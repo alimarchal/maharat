@@ -26,6 +26,8 @@ class UserResource extends JsonResource
             'mobile' => $this->mobile,
             'is_salesman_linked' => $this->is_salesman_linked,
             'language' => $this->language,
+            'roles' => $this->roles->pluck('name'),
+            'permissions' => $this->getAllPermissions()->pluck('name'),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at
         ];

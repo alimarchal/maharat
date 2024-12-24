@@ -19,6 +19,7 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $users = User::query()
+            ->with(['roles', 'permissions']) // Eager load relationships
             ->when($request->search, function($query, $search) {
                 $query->where(function($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
@@ -33,7 +34,6 @@ class UserController extends Controller
 
         return new UserCollection($users);
     }
-
     /**
      * Store a newly created resource in storage.
      */

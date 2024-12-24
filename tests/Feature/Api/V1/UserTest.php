@@ -4,6 +4,8 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -186,4 +188,38 @@ class UserTest extends TestCase
         $response = $this->getJson($this->apiEndpoint);
         $response->assertStatus(401);
     }
+
+    #[Test]
+    public function user_response_includes_roles_and_permissions()
+    {
+        // Create a role and permission
+        $role = Role::create(['name' => 'editor']);
+        $permission = Permission::create(['name' => 'edit articles']);
+
+        // Assign role and permission to user
+        $role->givePermissionTo($permission);
+        $this->user->assignRole('editor');
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->token,
+        ])->getJson("{$this->apiEndpoint}/{$this->user->id}");
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'data' => [
+                    'id',
+                    'name',
+                    'email',
+                    'roles',
+                    'permissions',
+                    'created_at',
+                    'updated_at',
+                ]
+            ])
+            ->assertJsonFragment([
+                'roles' => ['editor'],
+                'permissions' => ['edit articles']
+            ]);
+    }
+
 }
