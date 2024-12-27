@@ -19,30 +19,12 @@ class RoleAndPermissionSeeder extends Seeder
 
         // Create Permissions
         $permissions = [
-            // User Management
-            'view_users',
-            'create_users',
-            'edit_users',
-            'delete_users',
-
-            // Role Management
-            'view_roles',
-            'create_roles',
-            'edit_roles',
-            'delete_roles',
-
-            // Reports
-            'view_reports',
-            'create_reports',
-            'export_reports',
-
-            // Settings
-            'manage_settings',
-
-            // Basic permissions
-            'view_dashboard',
-            'edit_profile'
+            'view_users', 'create_users', 'edit_users', 'delete_users',
+            'view_roles', 'create_roles', 'edit_roles', 'delete_roles',
+            'view_reports', 'create_reports', 'export_reports',
+            'manage_settings', 'view_dashboard', 'edit_profile'
         ];
+
 
         foreach ($permissions as $permission) {
             Permission::create(['name' => $permission]);
@@ -51,11 +33,17 @@ class RoleAndPermissionSeeder extends Seeder
         // Create Roles and Assign Permissions
 
         // Admin/CEO
-        $adminRole = Role::create(['name' => 'Admin']);
+        $adminRole = Role::create([
+            'name' => 'Admin',
+            'parent_role_id' => null
+        ]);
         $adminRole->givePermissionTo(Permission::all());
 
         // Director
-        $directorRole = Role::create(['name' => 'Director']);
+        $directorRole = Role::create([
+            'name' => 'Director',
+            'parent_role_id' => $adminRole->id
+        ]);
         $directorRole->givePermissionTo([
             'view_users', 'create_users', 'edit_users',
             'view_roles',
@@ -64,7 +52,10 @@ class RoleAndPermissionSeeder extends Seeder
         ]);
 
         // Manager
-        $managerRole = Role::create(['name' => 'Manager']);
+        $managerRole = Role::create([
+            'name' => 'Manager',
+            'parent_role_id' => $directorRole->id
+        ]);
         $managerRole->givePermissionTo([
             'view_users',
             'view_reports', 'create_reports',
@@ -72,15 +63,21 @@ class RoleAndPermissionSeeder extends Seeder
         ]);
 
         // Supervisor
-        $supervisorRole = Role::create(['name' => 'Supervisor']);
+        $supervisorRole = Role::create([
+            'name' => 'Supervisor',
+            'parent_role_id' => $managerRole->id
+        ]);
         $supervisorRole->givePermissionTo([
             'view_users',
             'view_reports',
             'view_dashboard', 'edit_profile'
         ]);
 
-        // Ordinary User
-        $userRole = Role::create(['name' => 'User']);
+        // User
+        $userRole = Role::create([
+            'name' => 'User',
+            'parent_role_id' => $supervisorRole->id
+        ]);
         $userRole->givePermissionTo([
             'view_dashboard',
             'edit_profile'
