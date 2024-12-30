@@ -29,11 +29,13 @@ class Role extends SpatieRole
 
     public function subordinates()
     {
-        return $this->allChildren()->pluck('id')->push($this->id);
+        $children = $this->allChildren()->get();
+        return $children->pluck('id')->push($this->id);
     }
 
     public function superiors()
     {
-        return $this->allParents()->pluck('id')->push($this->id);
+        $parents = $this->allParents()->get();
+        return $parents->pluck('id')->push($this->id);
     }
 }

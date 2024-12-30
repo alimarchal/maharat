@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('firstname')->nullable();
             $table->string('lastname')->nullable();
             $table->string('name');  // Full Name
-            $table->string('username')->nullable(); // For separate username if different from email
+            $table->string('username')->unique()->nullable(); // For separate username if different from email
             $table->string('email')->unique();
             $table->string('password');
             $table->timestamp('email_verified_at')->nullable();
@@ -36,6 +36,7 @@ return new class extends Migration
             // Security & Session Management
             $table->string('api_token', 80)->nullable()->unique(); // API authentication token
             $table->boolean('is_active')->default(true);   // Account status
+            $table->boolean('is_admin')->default(false);   // Account status
             $table->timestamp('last_login_at')->nullable(); // Last login timestamp
             $table->string('last_login_ip')->nullable();   // Last login IP address
 

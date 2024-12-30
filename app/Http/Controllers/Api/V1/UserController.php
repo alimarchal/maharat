@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Http\Requests\V1\StoreUserRequest;
 use App\Http\Requests\V1\UpdateUserRequest;
@@ -13,9 +15,8 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+
+
     public function index(Request $request)
     {
         $users = User::query()
@@ -52,8 +53,9 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        return new UserResource($user);
+        return (new UserResource($user))->additional(['hierarchy' => self::buildUserHierarchy($user)]);
     }
+
 
     /**
      * Update the specified resource in storage.
@@ -79,5 +81,43 @@ class UserController extends Controller
         $user->delete();
 
         return response()->noContent();
+    }
+
+    public function hierarchy(User $user = null): JsonResponse
+    {
+        $user = $user ?? auth()->user();
+        $hierarchy = $this->buildUserHierarchy($user);
+
+        return response()->json(['data' => $hierarchy]);
+    }
+
+    private function buildUserHierarchy(User $user): array
+    {
+        $hierarchy = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'roles' => $user->roles->pluck('name'),
+            'children' => []
+        ];
+
+        foreach ($user->roles as $role) {
+            $roleIds = Role::where(function($query) use ($role) {
+                $path = explode('.', $role->id);
+                $query->where('parent_role_id', $role->id);
+            })->pluck('id');
+
+            if ($roleIds->isNotEmpty()) {
+                $subordinates = User::whereHas('roles', function($query) use ($roleIds) {
+                    $query->whereIn('id', $roleIds);
+                })->get();
+
+                foreach ($subordinates as $subordinate) {
+                    $hierarchy['children'][] = $this->buildUserHierarchy($subordinate);
+                }
+            }
+        }
+
+        return $hierarchy;
     }
 }
