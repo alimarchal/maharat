@@ -25,7 +25,7 @@ return new class extends Migration
             $table->string('currency_code');
             $table->boolean('is_default')->default(false);
             $table->boolean('is_active')->default(true);
-            $table->json('api_settings')->nullable();
+            $table->text('api_settings')->nullable();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->timestamps();
             $table->softDeletes();

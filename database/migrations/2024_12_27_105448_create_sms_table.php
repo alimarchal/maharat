@@ -17,8 +17,8 @@ return new class extends Migration
             $table->string('template_code')->unique();
             $table->text('content');
             $table->enum('type', ['transactional', 'promotional', 'otp']);
-            $table->json('placeholders')->nullable();
-            $table->json('recipients')->nullable();
+            $table->text('placeholders')->nullable();
+            $table->text('recipients')->nullable();
             $table->string('sender_id')->nullable();
             $table->enum('status', ['draft', 'active', 'inactive'])->default('draft');
             $table->integer('retry_attempts')->default(3);

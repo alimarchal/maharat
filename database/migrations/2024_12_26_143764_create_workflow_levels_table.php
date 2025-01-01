@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('workflow_id')->constrained('workflow_setups')->cascadeOnDelete();
             $table->foreignId('level_id')->constrained('levels')->cascadeOnDelete();
             $table->integer('order');
-            $table->json('conditions')->nullable();
+            $table->text('conditions')->nullable();
             $table->timestamps();
 
             $table->unique(['workflow_id', 'level_id', 'order']);

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');              // Purchase Order, General Payment
             $table->string('type');              // purchase, payment
-            $table->json('workflow_steps');      // Array of level_ids in order
+            $table->text('workflow_steps');      // Array of level_ids in order
             $table->boolean('is_active')->default(true);
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->timestamps();

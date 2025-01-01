@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name');              // Purchase Order Listing, etc
             $table->string('type');              // purchase, sales, inventory
             $table->enum('frequency', ['daily', 'weekly', '15_days', 'monthly', 'custom']);
-            $table->json('alert_rules')->nullable();
+            $table->text('alert_rules')->nullable();
             $table->boolean('is_active')->default(true);
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->timestamps();

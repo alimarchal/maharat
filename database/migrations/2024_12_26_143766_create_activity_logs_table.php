@@ -17,11 +17,11 @@ return new class extends Migration
             $table->string('record_number')->nullable();
             $table->string('action');
             $table->text('description');
-            $table->ipAddress('ip_address')->nullable();
+            $table->string('ip_address')->nullable();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
-            $table->json('old_values')->nullable();
-            $table->json('new_values')->nullable();
+            $table->text('old_values')->nullable();
+            $table->text('new_values')->nullable();
             $table->timestamps();
             $table->index(['page', 'record_number']);
         });

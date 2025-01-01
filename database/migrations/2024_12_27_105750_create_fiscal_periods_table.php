@@ -19,7 +19,7 @@ return new class extends Migration
             $table->date('transaction_closed_upto')->nullable();
             $table->enum('status', ['open', 'closed'])->default('open');
             $table->boolean('is_active')->default(true);
-            $table->json('closing_details')->nullable();
+            $table->text('closing_details')->nullable();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->foreignId('closed_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('closed_at')->nullable();

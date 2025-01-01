@@ -25,7 +25,7 @@ return new class extends Migration
             $table->integer('port_number')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamp('last_sync_at')->nullable();
-            $table->json('settings')->nullable();
+            $table->text('settings')->nullable();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->foreignId('branch_id')->nullable()->constrained()->nullOnDelete();
             $table->timestamps();

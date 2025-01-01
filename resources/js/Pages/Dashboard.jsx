@@ -32,16 +32,22 @@ export default function Dashboard() {
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                         <div className="p-6 text-gray-900">
-                            You're logged in!***
-                            <h2 className="text-lg font-bold mb-4">Posts:</h2>
-                            <ul>
-                                {posts.map(post => (
-                                    <li key={post.id}>
-                                        <h3 className="text-md font-bold">{post.title}</h3>
-                                        <p>{post.content}</p>
-                                    </li>
-                                ))}
-                            </ul>
+
+                            <img
+                                src="/images/dashboard.png"
+                                alt="Dashboard Logo"
+                                className="mx-auto mb-4 w-full"
+                            />
+                            {/*You're logged in!****/}
+                            {/*<h2 className="text-lg font-bold mb-4">Posts:</h2>*/}
+                            {/*<ul>*/}
+                            {/*    {posts.map(post => (*/}
+                            {/*        <li key={post.id}>*/}
+                            {/*            <h3 className="text-md font-bold">{post.title}</h3>*/}
+                            {/*            <p>{post.content}</p>*/}
+                            {/*        </li>*/}
+                            {/*    ))}*/}
+                            {/*</ul>*/}
 
                         </div>
                     </div>

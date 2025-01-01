@@ -16,8 +16,8 @@ return new class extends Migration
             $table->string('name');
             $table->integer('level_code')->unique();
             $table->integer('level_order');
-            $table->json('users')->nullable();    // [1,2,3] user IDs
-            $table->json('permissions')->nullable(); // ['approve', 'hold', 'update', 'decline']
+            $table->text('users')->nullable();    // [1,2,3] user IDs
+            $table->text('permissions')->nullable(); // ['approve', 'hold', 'update', 'decline']
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->timestamps();
         });

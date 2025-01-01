@@ -1,4 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
+import LanguageSwitcher from '@/Components/LanguageSwitcher';
 
 export default function Welcome({ auth, laravelVersion, phpVersion }) {
     const handleImageError = () => {
@@ -37,6 +38,14 @@ export default function Welcome({ auth, laravelVersion, phpVersion }) {
                                     />
                                 </svg>
                             </div>
+
+
+                            {/* Language Switcher */}
+                            <div className="flex justify-center">
+                                <LanguageSwitcher />
+
+                            </div>
+
                             <nav className="-mx-3 flex flex-1 justify-end">
                                 {auth.user ? (
                                     <Link
@@ -62,7 +71,11 @@ export default function Welcome({ auth, laravelVersion, phpVersion }) {
                                     </>
                                 )}
                             </nav>
+
+
                         </header>
+
+
 
                         <main className="mt-6">
                             <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">

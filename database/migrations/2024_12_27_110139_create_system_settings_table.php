@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('system_settings', function (Blueprint $table) {
             $table->id();
             $table->string('key')->unique();
-            $table->json('value');
+            $table->text('value');
             $table->string('group');
             $table->string('type')->default('string');
             $table->text('description')->nullable();
