@@ -1,12 +1,16 @@
 <?php
 
 use App\Http\Controllers\Api\V1\PermissionController;
+use App\Http\Controllers\Api\V1\ProductCategoryController;
 use App\Http\Controllers\Api\V1\RoleController;
+use App\Http\Controllers\Api\V1\UnitController;
 use App\Http\Controllers\Api\V1\UserRoleController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\StatusController;
+use App\Http\Controllers\Api\V1\WarehouseController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -33,6 +37,14 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
     // Permissions
     Route::get('/permissions', [PermissionController::class, 'index']);
     Route::post('/permissions', [PermissionController::class, 'store']);
+
+
+    Route::apiResource('statuses', StatusController::class);
+    Route::apiResource('warehouses', WarehouseController::class);
+    Route::apiResource('units', UnitController::class);
+    Route::apiResource('product-categories', ProductCategoryController::class);
+
+
 
 });
 

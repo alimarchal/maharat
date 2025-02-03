@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             CountrySeeder::class,
             RoleAndPermissionSeeder::class,
             UserSeeder::class,
+            StatusSeeder::class,
         ]);
         //php artisan db:seed
     }
