@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
+use App\Http\Controllers\Api\V1\InventoryTransferController;
+use App\Http\Controllers\Api\V1\MaterialRequestController;
+use App\Http\Controllers\Api\V1\MaterialRequestItemController;
 use App\Http\Controllers\Api\V1\PermissionController;
 use App\Http\Controllers\Api\V1\ProductCategoryController;
 use App\Http\Controllers\Api\V1\RoleController;
@@ -11,6 +15,8 @@ use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\StatusController;
 use App\Http\Controllers\Api\V1\WarehouseController;
+use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\InventoryController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -43,6 +49,20 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('warehouses', WarehouseController::class);
     Route::apiResource('units', UnitController::class);
     Route::apiResource('product-categories', ProductCategoryController::class);
+
+    // Products routes
+    Route::apiResource('products', ProductController::class);
+    // Inventory routes
+    Route::apiResource('inventories', InventoryController::class);
+    // Inventory Adjustments routes
+    Route::apiResource('inventory-adjustments', InventoryAdjustmentController::class);
+    // Inventory Transfers routes
+    Route::apiResource('inventory-transfers', InventoryTransferController::class);
+    // Material Requests routes
+    Route::apiResource('material-requests', MaterialRequestController::class);
+    // Material Request Items routes
+    Route::apiResource('material-request-items', MaterialRequestItemController::class);
+
 
 
 

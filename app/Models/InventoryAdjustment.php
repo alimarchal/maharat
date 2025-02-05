@@ -6,15 +6,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Inventory extends Model
+class InventoryAdjustment extends Model
 {
-    use HasFactory;
 
     protected $fillable = [
         'warehouse_id',
         'product_id',
+        'purchase_order_number',
         'quantity',
-        'reorder_level',
+        'reason',
+        'description',
+        'approved_by',
     ];
 
     public function warehouse(): BelongsTo
@@ -25,5 +27,15 @@ class Inventory extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function reasonStatus(): BelongsTo
+    {
+        return $this->belongsTo(Status::class, 'reason');
+    }
+
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }
