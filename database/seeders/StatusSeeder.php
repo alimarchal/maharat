@@ -32,7 +32,21 @@ class StatusSeeder extends Seeder
             ['type' => 'Request For Material', 'name' => 'Normal'],
             ['type' => 'Request For Material', 'name' => 'Low'],
             ['type' => 'Request For Material', 'name' => 'High'],
-            ['type' => 'Request For Material', 'name' => 'ASAP']
+            ['type' => 'Request For Material', 'name' => 'ASAP'],
+
+            ['type' => 'Purchase RFQ Status', 'name' => 'Active'],
+            ['type' => 'Purchase RFQ Status', 'name' => 'Pending'],
+            ['type' => 'Purchase RFQ Status', 'name' => 'Rejected'],
+            ['type' => 'Purchase RFQ Status', 'name' => 'Expired'],
+
+            // New RFQ Request Types
+            ['type' => 'RFQ Request Type', 'name' => 'Single Category'],
+            ['type' => 'RFQ Request Type', 'name' => 'Multiple Category'],
+
+            // New RFQ Payment Types
+            ['type' => 'RFQ Payment Type', 'name' => 'Cash'],
+            ['type' => 'RFQ Payment Type', 'name' => 'Credit'],
+            ['type' => 'RFQ Payment Type', 'name' => 'Bank Transfer'],
         ];
 
         foreach ($requests as $request) {

@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\V1\MaterialRequestController;
 use App\Http\Controllers\Api\V1\MaterialRequestItemController;
 use App\Http\Controllers\Api\V1\PermissionController;
 use App\Http\Controllers\Api\V1\ProductCategoryController;
+use App\Http\Controllers\Api\V1\RfqController;
+use App\Http\Controllers\Api\V1\RfqItemController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\UnitController;
 use App\Http\Controllers\Api\V1\UserRoleController;
@@ -62,7 +64,10 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('material-requests', MaterialRequestController::class);
     // Material Request Items routes
     Route::apiResource('material-request-items', MaterialRequestItemController::class);
-
+    // RFQ routes
+    Route::apiResource('rfqs', RfqController::class);
+    // RFQ Items routes
+    Route::apiResource('rfq-items', RfqItemController::class);
 
 
 
