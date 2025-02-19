@@ -99,7 +99,7 @@ const LoginPage = () => {
         {boxes.map((box, index) => (
             <div
             key={index}
-            className={`absolute flex justify-center items-center w-[250px] h-[220px] p-6 rounded-2xl backdrop-blur-sm transition-all duration-700 ease-in-out
+            className={`absolute flex justify-center items-center w-[250px] h-[220px] p-6 rounded-2xl backdrop-blur-sm transition-all duration-[1000ms] ease-in-out
             ${index === activeBoxes[0] ? 'opacity-100 transform scale-100' : 'opacity-100 scale-100'}
             ${getBoxPosition(index, activeBoxes)}`}
             style={{
