@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -29,6 +30,21 @@ class Rfq extends Model
         'notes',
         'status_id',
     ];
+
+
+    /**
+     * Get the categories for the RFQ.
+     */
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(ProductCategory::class, 'rfq_categories', 'rfq_id', 'category_id')
+            ->using(RfqCategory::class)
+            ->withTimestamps();
+    }
+//    public function categories()
+//    {
+//        return $this->belongsToMany(ProductCategory::class, 'rfq_categories', 'rfq_id', 'category_id');
+//    }
 
     public function requester(): BelongsTo
     {
