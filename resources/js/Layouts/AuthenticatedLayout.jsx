@@ -1,176 +1,96 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
-import Dropdown from '@/Components/Dropdown';
-import NavLink from '@/Components/NavLink';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
-import { Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import ApplicationLogo from "@/Components/ApplicationLogo";
+import { Link, usePage } from "@inertiajs/react";
+import { useState } from "react";
+import { faSearch, faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import Sidebar from "@/Components/Sidebar";
 
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
-
-    const [showingNavigationDropdown, setShowingNavigationDropdown] =
-        useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
-        <div className="min-h-screen bg-gray-100">
-            <nav className="border-b border-gray-100 bg-white">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="flex h-16 justify-between">
-                        <div className="flex">
-                            <div className="flex shrink-0 items-center">
-                                <Link href="/">
-                                    <ApplicationLogo className="block h-9 w-auto fill-current text-gray-800" />
-                                </Link>
-                            </div>
+        <div className="min-h-screen flex flex-col bg-[#C4E4F0] bg-opacity-20">
+            <header className="flex justify-between items-center px-6 py-4 w-full fixed top-0 left-0 right-0 z-40">
+                <div className="flex items-center gap-4 lg:gap-12">
+                    <button
+                        className="lg:hidden text-gray-600 focus:outline-none"
+                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    >
+                        <FontAwesomeIcon icon={faBars} size="lg" />
+                    </button>
 
-                            <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
-                                    href={route('dashboard')}
-                                    active={route().current('dashboard')}
-                                >
-                                    Dashboard
-                                </NavLink>
-                            </div>
-                        </div>
+                    <Link href="/">
+                        <ApplicationLogo className="block h-10 w-auto fill-current" />
+                    </Link>
 
-                        <div className="hidden sm:ms-6 sm:flex sm:items-center">
-                            <div className="relative ms-3">
-                                <Dropdown>
-                                    <Dropdown.Trigger>
-                                        <span className="inline-flex rounded-md">
-                                            <button
-                                                type="button"
-                                                className="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
-                                            >
-                                                {user.name}
-
-                                                <svg
-                                                    className="-me-0.5 ms-2 h-4 w-4"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </Dropdown.Trigger>
-
-                                    <Dropdown.Content>
-                                        <Dropdown.Link
-                                            href={route('profile.edit')}
-                                        >
-                                            Profile
-                                        </Dropdown.Link>
-                                        <Dropdown.Link
-                                            href={route('logout')}
-                                            method="post"
-                                            as="button"
-                                        >
-                                            Log Out
-                                        </Dropdown.Link>
-                                    </Dropdown.Content>
-                                </Dropdown>
-                            </div>
-                        </div>
-
-                        <div className="-me-2 flex items-center sm:hidden">
-                            <button
-                                onClick={() =>
-                                    setShowingNavigationDropdown(
-                                        (previousState) => !previousState,
-                                    )
-                                }
-                                className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none"
-                            >
-                                <svg
-                                    className="h-6 w-6"
-                                    stroke="currentColor"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        className={
-                                            !showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
-                                        }
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                    <path
-                                        className={
-                                            showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
-                                        }
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
+                    <div>
+                        <h1 className="text-xl lg:text-2xl font-medium text-[#2C323C]">
+                            Hi {user.name}!
+                        </h1>
+                        <p className="text-sm lg:text-base text-[#7D8086]">
+                            Good Morning
+                        </p>
                     </div>
                 </div>
+
+                <div className="flex items-center gap-4 lg:gap-6">
+                    <div className="relative hidden md:flex w-40 lg:w-72">
+                        <FontAwesomeIcon
+                            icon={faSearch}
+                            className="absolute left-4 top-3 text-[#B9BBBD]"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Search"
+                            className="pl-10 py-2 w-full bg-white rounded-full border border-[#B9BBBD] focus:outline-none"
+                        />
+                    </div>
+
+                    <img
+                        src="/images/profile.jpg"
+                        alt="Profile"
+                        className="h-10 w-10 lg:h-12 lg:w-12 rounded-full object-cover border border-gray-300 shadow-sm"
+                    />
+                </div>
+            </header>
+
+            <div className="flex flex-1 pt-20">
+                <div
+                    className={`fixed inset-0 z-40 bg-black bg-opacity-50 transition-opacity lg:hidden ${
+                        isSidebarOpen
+                            ? "opacity-100 visible"
+                            : "opacity-0 invisible"
+                    }`}
+                    onClick={() => setIsSidebarOpen(false)}
+                ></div>
 
                 <div
-                    className={
-                        (showingNavigationDropdown ? 'block' : 'hidden') +
-                        ' sm:hidden'
-                    }
+                    className={`fixed top-0 left-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-50 lg:hidden ${
+                        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+                    }`}
                 >
-                    <div className="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            href={route('dashboard')}
-                            active={route().current('dashboard')}
-                        >
-                            Dashboard
-                        </ResponsiveNavLink>
+                    <div className="pt-20">
+                        <Sidebar />
                     </div>
 
-                    <div className="border-t border-gray-200 pb-1 pt-4">
-                        <div className="px-4">
-                            <div className="text-base font-medium text-gray-800">
-                                {user.name}
-                            </div>
-                            <div className="text-sm font-medium text-gray-500">
-                                {user.email}
-                            </div>
-                        </div>
-
-                        <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink href={route('profile.edit')}>
-                                Profile
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink
-                                method="post"
-                                href={route('logout')}
-                                as="button"
-                            >
-                                Log Out
-                            </ResponsiveNavLink>
-                        </div>
-                    </div>
+                    <button
+                        className="absolute top-4 right-4 text-gray-600"
+                        onClick={() => setIsSidebarOpen(false)}
+                    >
+                        <FontAwesomeIcon icon={faTimes} size="lg" />
+                    </button>
                 </div>
-            </nav>
 
-            {header && (
-                <header className="bg-white shadow">
-                    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                        {header}
-                    </div>
-                </header>
-            )}
+                <div className="hidden lg:block lg:relative">
+                    <Sidebar />
+                </div>
 
-            <main>{children}</main>
+                <main className="flex-1 lg:ml-36 transition-all">
+                    {header && <header className="p-6 mb-4">{header}</header>}
+                    {children}
+                </main>
+            </div>
         </div>
     );
 }
