@@ -9,6 +9,9 @@ use App\Http\Controllers\Api\V1\ProductCategoryController;
 use App\Http\Controllers\Api\V1\RfqController;
 use App\Http\Controllers\Api\V1\RfqItemController;
 use App\Http\Controllers\Api\V1\RoleController;
+use App\Http\Controllers\Api\V1\SupplierAddressController;
+use App\Http\Controllers\Api\V1\SupplierContactController;
+use App\Http\Controllers\Api\V1\SupplierController;
 use App\Http\Controllers\Api\V1\UnitController;
 use App\Http\Controllers\Api\V1\UserRoleController;
 use Illuminate\Http\Request;
@@ -68,6 +71,10 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('rfqs', RfqController::class);
     // RFQ Items routes
     Route::apiResource('rfq-items', RfqItemController::class);
+
+    Route::apiResource('suppliers', SupplierController::class);
+    Route::apiResource('supplier-contacts', SupplierContactController::class);
+    Route::apiResource('supplier-addresses', SupplierAddressController::class);
 
 
 
