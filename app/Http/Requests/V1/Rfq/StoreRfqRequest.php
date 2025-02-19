@@ -11,7 +11,7 @@ class StoreRfqRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,8 @@ class StoreRfqRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'category_ids' => ['required', 'array'],
+            'category_ids.*' => ['exists:product_categories,id'],
         ];
     }
 }

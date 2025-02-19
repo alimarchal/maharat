@@ -47,6 +47,14 @@ class StatusSeeder extends Seeder
             ['type' => 'RFQ Payment Type', 'name' => 'Cash'],
             ['type' => 'RFQ Payment Type', 'name' => 'Credit'],
             ['type' => 'RFQ Payment Type', 'name' => 'Bank Transfer'],
+
+            ['type' => 'Quotation Status', 'name' => 'Pending'],
+            ['type' => 'Quotation Status', 'name' => 'Accepted'],
+            ['type' => 'Quotation Status', 'name' => 'Rejected'],
+            ['type' => 'Quotation Status', 'name' => 'Expired'],
+
+
+
         ];
 
         foreach ($requests as $request) {
