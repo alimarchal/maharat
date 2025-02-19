@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\V1\MaterialRequestController;
 use App\Http\Controllers\Api\V1\MaterialRequestItemController;
 use App\Http\Controllers\Api\V1\PermissionController;
 use App\Http\Controllers\Api\V1\ProductCategoryController;
+use App\Http\Controllers\Api\V1\QuotationController;
+use App\Http\Controllers\Api\V1\QuotationDocumentController;
 use App\Http\Controllers\Api\V1\RfqController;
 use App\Http\Controllers\Api\V1\RfqItemController;
 use App\Http\Controllers\Api\V1\RoleController;
@@ -75,6 +77,8 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('suppliers', SupplierController::class);
     Route::apiResource('supplier-contacts', SupplierContactController::class);
     Route::apiResource('supplier-addresses', SupplierAddressController::class);
+    Route::apiResource('quotations', QuotationController::class);
+    Route::apiResource('quotation-documents', QuotationDocumentController::class);
 
 
 
