@@ -35,16 +35,20 @@ class RfqController extends Controller
 
         return RfqResource::collection($rfqs);
     }
-
     public function store(StoreRfqRequest $request): JsonResponse
     {
         try {
             DB::beginTransaction();
 
-            // Create RFQ
-            $rfq = Rfq::create($request->safe()->except('items'));
+            // Create RFQ with validated data, excluding items and categories
+            $rfq = Rfq::create($request->safe()->except(['items', 'category_ids']));
 
-            // Create RFQ items
+            // Attach categories if provided
+            if ($request->has('category_ids')) {
+                $rfq->categories()->attach($request->input('category_ids'));
+            }
+
+            // Create RFQ items with their respective categories
             if ($request->has('items')) {
                 foreach ($request->input('items') as $item) {
                     $rfq->items()->create($item);
@@ -60,6 +64,7 @@ class RfqController extends Controller
 
             DB::commit();
 
+            // Return response with loaded relationships including categories
             return response()->json([
                 'message' => 'RFQ created successfully',
                 'data' => new RfqResource(
@@ -70,6 +75,7 @@ class RfqController extends Controller
                         'status',
                         'requestType',
                         'paymentType',
+                        'categories',
                         'items.category',
                         'items.unit',
                         'items.status'
@@ -84,7 +90,6 @@ class RfqController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
-
     public function show(string $id): JsonResponse
     {
         $rfq = QueryBuilder::for(Rfq::class)
@@ -95,14 +100,39 @@ class RfqController extends Controller
             'data' => new RfqResource($rfq)
         ], Response::HTTP_OK);
     }
-
     public function update(UpdateRfqRequest $request, Rfq $rfq): JsonResponse
     {
         try {
             DB::beginTransaction();
 
             $oldStatus = $rfq->status_id;
-            $rfq->update($request->validated());
+
+            // Update RFQ with validated data, excluding items and categories
+            $rfq->update($request->safe()->except(['items', 'category_ids']));
+
+            // Update categories if provided
+            if ($request->has('category_ids')) {
+                $rfq->categories()->sync($request->input('category_ids'));
+            }
+
+            // Update or create RFQ items
+            if ($request->has('items')) {
+                $existingItemIds = [];
+
+                foreach ($request->input('items') as $item) {
+                    if (isset($item['id'])) {
+                        $rfqItem = $rfq->items()->findOrFail($item['id']);
+                        $rfqItem->update($item);
+                        $existingItemIds[] = $item['id'];
+                    } else {
+                        $newItem = $rfq->items()->create($item);
+                        $existingItemIds[] = $newItem->id;
+                    }
+                }
+
+                // Remove items that were not included in the update
+                $rfq->items()->whereNotIn('id', $existingItemIds)->delete();
+            }
 
             // Log status change if status was updated
             if ($oldStatus !== $rfq->status_id) {
@@ -125,6 +155,7 @@ class RfqController extends Controller
                         'status',
                         'requestType',
                         'paymentType',
+                        'categories',
                         'items.category',
                         'items.unit',
                         'items.status'
@@ -139,7 +170,6 @@ class RfqController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
-
     public function destroy(Rfq $rfq): JsonResponse
     {
         try {
@@ -164,4 +194,5 @@ class RfqController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
 }
