@@ -21,6 +21,30 @@ Route::get('/', function () {
 });
 
 // Dashboard Route (Protected by Auth & Email Verification)
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/dashboard', function () {
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
+
+    Route::get('/my-requests', function () {
+        return Inertia::render('Dashboard', ['page' => 'Requests/RequestIndex']);
+    })->name('requests.index');
+
+    Route::get('/new-request', function () {
+        return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest']);
+    })->name('requests.create');
+});
+
+// Login Route
+Route::post('/login', [AuthController::class, 'login'])->name('login');
+
+// Logout Route
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Register Route
+Route::post('/register', [AuthController::class, 'register'])->name('register');
+
+// Dashboard Route (Protected)
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
