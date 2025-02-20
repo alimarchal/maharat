@@ -1,0 +1,46 @@
+import React, { useState } from "react";
+import RequestTable from "./RequestTable";
+import { Link } from "@inertiajs/react";
+
+const RequestIndex = () => {
+    const [selectedFilter, setSelectedFilter] = useState("All");
+
+    const filters = ["All", "Pending", "Referred", "Rejected", "Approved"];
+
+    return (
+        <div className="min-h-screen">
+            <div className="flex justify-between items-center mb-8">
+                <h2 className="text-3xl font-bold text-[#2C323C]">
+                    My Requests
+                </h2>
+                <div className="flex justify-between items-center gap-4">
+                    <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
+                        {filters.map((filter) => (
+                            <button
+                                key={filter}
+                                className={`px-6 py-2 rounded-full text-xl transition ${
+                                    selectedFilter === filter
+                                        ? "bg-[#009FDC] text-white"
+                                        : "text-[#9B9DA2]"
+                                }`}
+                                onClick={() => setSelectedFilter(filter)}
+                            >
+                                {filter}
+                            </button>
+                        ))}
+                    </div>
+
+                    <Link
+                        href="/new-request"
+                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                    >
+                        Make New Request
+                    </Link>
+                </div>
+            </div>
+            <RequestTable selectedFilter={selectedFilter} />
+        </div>
+    );
+};
+
+export default RequestIndex;
