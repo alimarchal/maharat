@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('rfqs', function (Blueprint $table) {
             $table->id();
             $table->string('rfq_number')->unique();
-            $table->foreignId('requester_id')->constrained('users');
-            $table->foreignId('company_id')->constrained('companies');
-            $table->foreignId('warehouse_id')->constrained('warehouses');
+            $table->foreignId('requester_id')->nullable()->constrained('users');
+            $table->foreignId('company_id')->nullable()->constrained('companies');
+            $table->foreignId('warehouse_id')->nullable()->constrained('warehouses');
 
             // Organization Details
             $table->string('organization_name')->nullable();

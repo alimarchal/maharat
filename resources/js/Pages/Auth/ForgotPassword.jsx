@@ -98,41 +98,52 @@ const ForgotPasswordPage = () => {
     e.preventDefault();
     setError("");
 
-    // Validate email format
     if (!validateEmail(email)) {
-      setError("Invalid email format. Please enter a valid email address.");
-      return;
+        setError("Invalid email format. Please enter a valid email address.");
+        return;
     }
 
-    // Simulate email existence check (replace with actual API call)
-    const emailExists = await checkEmailExists(email);
+    try {
+        const response = await fetch("/api/send-verification-code", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email }),
+        });
 
-    if (!emailExists) {
-      setError("Email does not exist. Please contact Admin.");
-      return;
+        if (!response.ok) {
+            throw new Error("Failed to send verification code.");
+        }
+
+        const data = await response.json();
+        console.log("Received Code from Backend:", data.code); // Debugging line
+        setVerificationCode(data.code);
+        setShowVerification(true);
+    } catch (error) {
+        console.error("Error sending verification code:", error);
+        setError("Something went wrong. Please try again.");
     }
+};
 
-    // Simulate sending verification code (replace with actual API call)
-    const code = Math.floor(100000 + Math.random() * 900000); // Generate 6-digit code
-    console.log("Verification Code:", code); // For testing purposes
-    setVerificationCode(code.toString());
-    setShowVerification(true);
-  };
+const handleVerifyCode = (e) => {
+  e.preventDefault();
+  setError("");
 
-  const handleVerifyCode = (e) => {
-    e.preventDefault();
-    setError("");
+  const enteredCode = verificationInputs.current.map(input => input.value).join("");
 
-    const enteredCode = Array.from({ length: 6 }, (_, i) => e.target[`code-${i}`].value).join("");
+  console.log("Entered Code:", enteredCode);
+  console.log("Stored Code:", verificationCode);
 
-    if (enteredCode !== verificationCode) {
+  if (enteredCode.trim() !== verificationCode.trim()) {
       setError("Verification code is incorrect.");
       return;
-    }
+  }
 
-    setIsVerified(true);
-    setShowVerification(false);
-  };
+  setIsVerified(true);
+  setShowVerification(false);
+};
+
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
@@ -174,11 +185,32 @@ const ForgotPasswordPage = () => {
     }
 };
 
-  // Simulated functions (replace with actual API calls)
-  const checkEmailExists = async (email) => {
-    // Replace with actual API call to check if email exists
-    return new Promise((resolve) => setTimeout(() => resolve(true), 1000)); // Simulate success
-  };
+const checkEmailExists = async (email) => {
+  try {
+      const response = await fetch("/api/check-email", {
+          method: "POST",
+          headers: {
+              "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+      console.log("API Response:", data); // Log API response
+
+      if (response.ok && data.exists && data.verified) {
+          return true;
+      } else {
+          setError("Email does not exist or is not verified.");
+          return false;
+      }
+  } catch (error) {
+      console.error("Error checking email:", error);
+      setError("Something went wrong. Please try again.");
+      return false;
+  }
+};
+
 
   const resetPassword = async (email, newPassword) => {
     // Replace with actual API call to reset password
@@ -323,6 +355,7 @@ const ForgotPasswordPage = () => {
                 )}
                 </div>
 
+                <div className="relative">
                 {!showVerification && !isVerified && (
                   <button
                     type="button"
@@ -337,6 +370,7 @@ const ForgotPasswordPage = () => {
                     Email Verification Code
                   </button>
                 )}
+                </div>
 
                 {showVerification && !isVerified && (
                 <>
@@ -359,12 +393,14 @@ const ForgotPasswordPage = () => {
                         <input
                             key={i}
                             type="text"
-                            id={`code-${i}`}
                             maxLength={1}
-                            ref={(el) => (verificationInputs.current[i] = el)}
+                            ref={(el) => {
+                                if (el) {
+                                    verificationInputs.current[i] = el;
+                                }
+                            }}
                             onChange={(e) => handleVerificationInput(i, e)}
-                            onKeyDown={(e) => handleVerificationInput(i, e)}
-                            className="w-1/6 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-center focus:ring-[#009FDC] focus:border-[#009FDC]"
+                            className="w-10 h-10 text-center border border-gray-300 rounded"
                         />
                     ))}
                     </div>
