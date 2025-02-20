@@ -24,11 +24,16 @@ use App\Http\Controllers\Api\V1\StatusController;
 use App\Http\Controllers\Api\V1\WarehouseController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\InventoryController;
+use App\Http\Controllers\ForgotPasswordController;
+
+//6-digit-pin
+Route::post('/send-verification-code', [ForgotPasswordController::class, 'sendVerificationCode']);
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+Route::post('/check-email', [AuthController::class, 'checkEmail']);
 
 // API V1 routes
 Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
@@ -79,8 +84,6 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('supplier-addresses', SupplierAddressController::class);
     Route::apiResource('quotations', QuotationController::class);
     Route::apiResource('quotation-documents', QuotationDocumentController::class);
-
-
 
 });
 
