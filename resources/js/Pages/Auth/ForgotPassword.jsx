@@ -1,20 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, router } from "@inertiajs/react";
+import React, { useState, useEffect } from 'react';
+import { Link, router, useForm } from "@inertiajs/react";
 
 const ForgotPasswordPage = () => {
   const [activeBoxes, setActiveBoxes] = useState([0, 1, 2, 3, 4, 5]);
   const [email, setEmail] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [error, setError] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
-  const [showVerification, setShowVerification] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isFocusedNewPassword, setIsFocusedNewPassword] = useState(false);
-  const [isFocusedConfirmPassword, setIsFocusedConfirmPassword] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
-  const [isVerificationFocused, setIsVerificationFocused] = useState(false);
-  const verificationInputs = useRef([]);
+  const [showCountdown, setShowCountdown] = useState(false);
+  const [countdown, setCountdown] = useState(10);
+  const { data, setData, post, processing, errors } = useForm({ email: "" });
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -29,9 +23,9 @@ const ForgotPasswordPage = () => {
         return newBoxes;
       });
     }, 3000);
-  
+
     return () => clearInterval(interval);
-  }, [verificationInputs.current]); 
+  }, []);
 
   const fixedBoxes = Array.from({ length: 6 }, () => ({
     text: "",
@@ -89,132 +83,78 @@ const ForgotPasswordPage = () => {
     return positions[index];
   };
 
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+  const startCountdown = () => {
+    let timer = 10;
+    setCountdown(timer);
+    const interval = setInterval(() => {
+      timer -= 1;
+      setCountdown(timer);
+      if (timer <= 0) {
+        clearInterval(interval);
+        router.visit("/login"); // Redirect to login page after countdown
+      }
+    }, 1000);
   };
 
   const handleEmailVerification = async (e) => {
     e.preventDefault();
-    setError("");
+    setError(""); // Reset error state
 
-    if (!validateEmail(email)) {
-        setError("Invalid email format. Please enter a valid email address.");
-        return;
+    const isValidEmail = /\S+@\S+\.\S+/.test(email);
+    if (!isValidEmail) {
+      setError("Invalid email format. Please enter a valid email address.");
+      return;
     }
 
     try {
-        const response = await fetch("/api/send-verification-code", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ email }),
-        });
+      // Step 1: Check if email exists and is verified
+      const emailExists = await checkEmailExists(email);
+      if (!emailExists) {
+        setError("This email is not registered or not verified.");
+        return;
+      }
 
-        if (!response.ok) {
-            throw new Error("Failed to send verification code.");
-        }
-
-        const data = await response.json();
-        console.log("Received Code from Backend:", data.code); // Debugging line
-        setVerificationCode(data.code);
-        setShowVerification(true);
+      // Step 2: Send password reset email using Inertia's post method
+      setData('email', email); // Set email data first
+      post(route('password.email'), {
+        onSuccess: () => {
+          setShowCountdown(true);
+          startCountdown();
+        },
+        onError: (errors) => {
+          setError(errors.email || "Failed to send reset link.");
+        },
+      });
     } catch (error) {
-        console.error("Error sending verification code:", error);
-        setError("Something went wrong. Please try again.");
+      console.error("Error sending reset link:", error);
+      setError("Something went wrong. Please try again.");
     }
-};
-
-const handleVerifyCode = (e) => {
-  e.preventDefault();
-  setError("");
-
-  const enteredCode = verificationInputs.current.map(input => input.value).join("");
-
-  console.log("Entered Code:", enteredCode);
-  console.log("Stored Code:", verificationCode);
-
-  if (enteredCode.trim() !== verificationCode.trim()) {
-      setError("Verification code is incorrect.");
-      return;
-  }
-
-  setIsVerified(true);
-  setShowVerification(false);
-};
-
-
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
-    setError("");
-
-    if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-
-    // Simulate password reset (replace with actual API call)
-    const resetSuccess = await resetPassword(email, newPassword);
-
-    if (!resetSuccess) {
-      setError("Failed to reset password. Please try again.");
-      return;
-    }
-
-    // Redirect to login page
-    router.visit("/login");
   };
 
-  const handleVerificationInput = (index, e) => {
-    const value = e.target.value;
-
-    // Move forward when a digit is entered
-    if (value.length === 1 && index < 5) {
-        verificationInputs.current[index + 1]?.focus();
-    }
-
-    // Move backward when backspace is pressed on an empty field
-    if (e.key === "Backspace") {
-        if (value === "" && index > 0) {
-            verificationInputs.current[index - 1].value = ""; // Clear the previous input
-            verificationInputs.current[index - 1]?.focus();
-        } else {
-            e.target.value = ""; // Clear the current input
-        }
-    }
-};
-
-const checkEmailExists = async (email) => {
-  try {
+  const checkEmailExists = async (email) => {
+    try {
       const response = await fetch("/api/check-email", {
-          method: "POST",
-          headers: {
-              "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email }),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
       });
 
       const data = await response.json();
       console.log("API Response:", data); // Log API response
 
       if (response.ok && data.exists && data.verified) {
-          return true;
+        return true;
       } else {
-          setError("Email does not exist or is not verified.");
-          return false;
+        setError("Email does not exist or is not verified.");
+        return false;
       }
-  } catch (error) {
+    } catch (error) {
       console.error("Error checking email:", error);
-      setError("Something went wrong. Please try again.");
+      setError("Email does not exist in the database. Please contact the Admin!");
       return false;
-  }
-};
-
-
-  const resetPassword = async (email, newPassword) => {
-    // Replace with actual API call to reset password
-    return new Promise((resolve) => setTimeout(() => resolve(true), 1000)); // Simulate success
+    }
   };
 
   return (
@@ -230,6 +170,8 @@ const checkEmailExists = async (email) => {
             marginBottom: "20px",
             height: "calc(100vh - 40px)",
             flex: "1 1 50%",
+            backgroundSize: 'cover', // Ensures background image adjusts automatically
+            backgroundPosition: 'center', // Centers the background
           }}
         >
           <div
@@ -252,11 +194,13 @@ const checkEmailExists = async (email) => {
             {fixedBoxes.map((box, index) => (
               <div
                 key={`fixed-${index}`}
-                className={`absolute flex justify-center items-center w-[250px] h-[220px] p-6 rounded-2xl backdrop-blur-sm
+                className={`absolute flex justify-center items-center p-6 rounded-2xl backdrop-blur-sm
                   ${getBoxPosition(index)}`}
                 style={{
                   backgroundColor: box.bgColor,
                   opacity: 1,
+                  width: '40%', // Increased width by 2% (now 40%)
+                  height: '31%', // Increased height by 2% (now 31%)
                   top: getBoxPosition(activeBoxes.indexOf(index)).top,
                   left: getBoxPosition(activeBoxes.indexOf(index)).left,
                 }}
@@ -270,11 +214,13 @@ const checkEmailExists = async (email) => {
               box.bgColor !== "transparent" ? (
                 <div
                   key={`rotating-${index}`}
-                  className={`absolute flex justify-center items-center w-[250px] h-[220px] p-6 rounded-2xl backdrop-blur-sm transition-all duration-[3000ms] ease-in-out
+                  className={`absolute flex justify-center items-center p-6 rounded-2xl backdrop-blur-sm transition-all duration-[3000ms] ease-in-out
                     ${getBoxPosition(activeBoxes.indexOf(index))}`}
                   style={{
                     backgroundColor: box.bgColor,
                     opacity: 1,
+                    width: '40%', // Increased width by 2% (now 40%)
+                    height: '31%', // Increased height by 2% (now 31%)
                     top: getBoxPosition(activeBoxes.indexOf(index)).top,
                     left: getBoxPosition(activeBoxes.indexOf(index)).left,
                   }}
@@ -284,7 +230,7 @@ const checkEmailExists = async (email) => {
                       <img
                         src={box.imgSrc}
                         alt={`Box ${index + 1}`}
-                        className="w-[100px] h-[100px] object-contain mb-2"
+                        className="w-[50%] h-[50%] object-contain mb-2" // Adjusted image size to fit
                       />
                     )}
                     {box.text && !box.isEmpty && (
@@ -327,11 +273,11 @@ const checkEmailExists = async (email) => {
                 choose a new one.
               </p>
 
-              <form className="space-y-6" onSubmit={isVerified ? handleResetPassword : handleVerifyCode}>
-              <div className="relative">
-                {!showVerification && !isVerified && (
+              <form className="space-y-6" onSubmit={handleEmailVerification}>
+                <div className="relative">
+                  {!showCountdown && (
                     <>
-                    <input
+                      <input
                         type="email"
                         id="email"
                         value={email}
@@ -339,135 +285,24 @@ const checkEmailExists = async (email) => {
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(email.length > 0)}
                         className="peer block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg 
-                                focus:ring-[#009FDC] focus:border-[#009FDC] placeholder-gray-400"
-                    />
-                    <label
+                                  focus:ring-[#009FDC] focus:border-[#009FDC] placeholder-gray-400"
+                      />
+                      <label
                         htmlFor="email"
                         className={`absolute transition-all text-base ${
-                        isFocused || email
+                          isFocused || email
                             ? "top-[-1.2rem] left-1 text-sm text-[#009FDC] font-bold"
                             : "top-1/2 transform -translate-y-1/2 left-5 text-gray-400 font-normal"
                         }`}
-                    >
+                      >
                         {email ? "Email" : "Enter your Email"}
-                    </label>
+                      </label>
                     </>
-                )}
+                  )}
                 </div>
 
                 <div className="relative">
-                {!showVerification && !isVerified && (
-                  <button
-                    type="button"
-                    onClick={handleEmailVerification}
-                    className="w-full py-3 px-4 text-white font-medium rounded-full transition duration-150"
-                    style={{
-                      backgroundColor: "#009FDC",
-                      opacity: 1,
-                      backgroundImage: "none",
-                    }}
-                  >
-                    Email Verification Code
-                  </button>
-                )}
-                </div>
-
-                {showVerification && !isVerified && (
-                <>
-                    <div className="relative">
-                    <label
-                    className={`absolute transition-all text-base ${
-                        verificationInputs.current.some(input => input?.value.length > 0) 
-                        ? "top-[-1.2rem] left-1 text-sm text-[#009FDC] font-bold"
-                        : "top-[-1.2rem] left-1 text-sm text-[#009FDC] font-bold"
-                    }`}
-                >
-                    {verificationInputs.current[0]?.value.length > 0 || 
-                    verificationInputs.current.some(input => input?.value.length > 0) 
-                        ? "Verification Code" 
-                        : "Enter 6 Digit Verification Code"}
-                </label>
-
-                    <div className="flex justify-between space-x-2 mt-8">
-                    {Array.from({ length: 6 }, (_, i) => (
-                        <input
-                            key={i}
-                            type="text"
-                            maxLength={1}
-                            ref={(el) => {
-                                if (el) {
-                                    verificationInputs.current[i] = el;
-                                }
-                            }}
-                            onChange={(e) => handleVerificationInput(i, e)}
-                            className="w-10 h-10 text-center border border-gray-300 rounded"
-                        />
-                    ))}
-                    </div>
-                    </div>
-                    <button
-                    type="submit"
-                    className="w-full py-3 px-4 text-white font-medium rounded-full transition duration-150 mt-4"
-                    style={{
-                        backgroundColor: "#009FDC",
-                        opacity: 1,
-                        backgroundImage: "none",
-                    }}
-                    >
-                    Verify Code
-                    </button>
-                </>
-                )}
-
-
-                {isVerified && (
-                  <>
-                    <div className="relative">
-                      <input
-                        type="password"
-                        id="newPassword"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        onFocus={() => setIsFocusedNewPassword(true)}
-                        onBlur={() => setIsFocusedNewPassword(newPassword.length > 0)}
-                        className="peer block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg 
-                                  focus:ring-[#009FDC] focus:border-[#009FDC] placeholder-gray-400"
-                      />
-                      <label
-                        htmlFor="newPassword"
-                        className={`absolute transition-all text-base ${
-                          isFocusedNewPassword || newPassword
-                            ? "top-[-1.2rem] left-1 text-sm text-[#009FDC] font-bold"
-                            : "top-1/2 transform -translate-y-1/2 left-5 text-gray-400 font-normal"
-                        }`}
-                      >
-                        {newPassword ? "New Password" : "Enter New Password"}
-                      </label>
-                    </div>
-
-                    <div className="relative">
-                      <input
-                        type="password"
-                        id="confirmPassword"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        onFocus={() => setIsFocusedConfirmPassword(true)}
-                        onBlur={() => setIsFocusedConfirmPassword(confirmPassword.length > 0)}
-                        className="peer block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg 
-                                  focus:ring-[#009FDC] focus:border-[#009FDC] placeholder-gray-400"
-                      />
-                      <label
-                        htmlFor="confirmPassword"
-                        className={`absolute transition-all text-base ${
-                          isFocusedConfirmPassword || confirmPassword
-                            ? "top-[-1.2rem] left-1 text-sm text-[#009FDC] font-bold"
-                            : "top-1/2 transform -translate-y-1/2 left-5 text-gray-400 font-normal"
-                        }`}
-                      >
-                        {confirmPassword ? "Confirmed New Password" : "Re-enter New Password"}
-                      </label>
-                    </div>
-
+                  {!showCountdown && (
                     <button
                       type="submit"
                       className="w-full py-3 px-4 text-white font-medium rounded-full transition duration-150"
@@ -477,9 +312,14 @@ const checkEmailExists = async (email) => {
                         backgroundImage: "none",
                       }}
                     >
-                      Reset Password
+                      Email Password Reset Link
                     </button>
-                  </>
+                  )}
+                </div>
+                {showCountdown && (
+                  <p className="text-gray-700 text-center font-medium">
+                    Reset Link has been sent to your email. Returning to Login Page in ({countdown}) seconds...
+                  </p>
                 )}
 
                 {error && <p className="text-red-500 text-sm mt-2 text-center">{error}</p>}
