@@ -3,7 +3,6 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
 use Inertia\Inertia;
 use App\Http\Controllers\PasswordResetLinkController;
 
@@ -20,35 +19,13 @@ Route::get('/', function () {
     ]);
 });
 
-// Dashboard Route (Protected by Auth & Email Verification)
-Route::middleware(['auth:sanctum'])->group(function () {
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->name('dashboard');
-
-    Route::get('/my-requests', function () {
-        return Inertia::render('Dashboard', ['page' => 'Requests/RequestIndex']);
-    })->name('requests.index');
-
-    Route::get('/new-request', function () {
-        return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest']);
-    })->name('requests.create');
-});
-
-// Login Route
-Route::post('/login', [AuthController::class, 'login'])->name('login');
-
-// Logout Route
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-
-// Register Route
-Route::post('/register', [AuthController::class, 'register'])->name('register');
-
-// Dashboard Route (Protected)
+// Dashboard Routes (Protected by Auth & Email Verification)
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', function () { return Inertia::render('Dashboard'); })->name('dashboard');
+
+    Route::get('/my-requests', function () { return Inertia::render('Dashboard', ['page' => 'Requests/RequestIndex']); })->name('requests.index');
+
+    Route::get('/new-request', function () { return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest']); })->name('requests.create');
 });
 
 // Profile Routes (Only for Authenticated Users)
@@ -60,10 +37,7 @@ Route::middleware('auth')->group(function () {
 
 // Forgot Password Route (Guest Only)
 Route::middleware('guest')->group(function () {
-    Route::get('/forgot-password', function () {
-        return Inertia::render('Auth/ForgotPassword');
-    })->name('password.request');
-    
+    Route::get('/forgot-password', function () { return Inertia::render('Auth/ForgotPassword');})->name('password.request');
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])->name('password.email');
 });
 
@@ -75,4 +49,3 @@ Route::get('language/{locale}', function ($locale) {
 })->name('language.switch');
 
 require __DIR__.'/auth.php';
-
