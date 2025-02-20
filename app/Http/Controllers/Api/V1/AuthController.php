@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Http\Resources\V1\UserResource;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -55,6 +56,20 @@ class AuthController extends Controller
         ]);
     }
 
+    public function checkEmail(Request $request)
+    {
+        $email = $request->input('email');
+
+        $user = DB::table('users')
+            ->where('email', $email)
+            ->whereNotNull('email_verified_at')
+            ->first();
+
+        return response()->json([
+            'exists' => $user ? true : false,
+            'verified' => $user ? true : false,
+        ]);
+    }
 
     public function logout(Request $request)
     {
