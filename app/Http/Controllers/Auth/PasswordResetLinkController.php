@@ -29,6 +29,8 @@ class PasswordResetLinkController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        \Log::info('Password reset request received', ['email' => $request->email]);
+
         $request->validate([
             'email' => 'required|email',
         ]);
@@ -40,12 +42,10 @@ class PasswordResetLinkController extends Controller
             $request->only('email')
         );
 
-        if ($status == Password::RESET_LINK_SENT) {
-            return back()->with('status', __($status));
-        }
+         \Log::info('Password reset status', ['status' => $status]);
 
-        throw ValidationException::withMessages([
-            'email' => [trans($status)],
-        ]);
-    }
+        return $status === Password::RESET_LINK_SENT
+                    ? back()->with(['status' => __($status)])
+                    : back()->withErrors(['email' => __($status)]);
+        }
 }

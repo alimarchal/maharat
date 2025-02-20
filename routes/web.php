@@ -5,7 +5,9 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use Inertia\Inertia;
+use App\Http\Controllers\PasswordResetLinkController;
 
+// Home Route
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'messages' => [
@@ -18,6 +20,7 @@ Route::get('/', function () {
     ]);
 });
 
+// Dashboard Route (Protected by Auth & Email Verification)
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
@@ -43,12 +46,9 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 
 // Dashboard Route (Protected)
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', function () { return Inertia::render('Dashboard'); })->name('dashboard');
-});
-
-// Forgot Password (Guest Only)
-Route::middleware('guest')->group(function () {
-    Route::get('/forgot-password', function () { return Inertia::render('Auth/ForgotPassword'); })->name('password.request');
+    Route::get('/dashboard', function () {
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
 });
 
 // Profile Routes (Only for Authenticated Users)
@@ -58,12 +58,21 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// Language Switch
+// Forgot Password Route (Guest Only)
+Route::middleware('guest')->group(function () {
+    Route::get('/forgot-password', function () {
+        return Inertia::render('Auth/ForgotPassword');
+    })->name('password.request');
+    
+    Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])->name('password.email');
+});
+
+// Language Switch Route
 Route::get('language/{locale}', function ($locale) {
     app()->setLocale($locale);
     session()->put('locale', $locale);
     return redirect()->back();
 })->name('language.switch');
 
-// Include Auth Routes
 require __DIR__.'/auth.php';
+
