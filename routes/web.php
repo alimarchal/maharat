@@ -21,10 +21,19 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/dashboard', function () {
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
 
+    Route::get('/my-requests', function () {
+        return Inertia::render('Dashboard', ['page' => 'Requests/RequestIndex']);
+    })->name('requests.index');
+
+    Route::get('/new-request', function () {
+        return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest']);
+    })->name('requests.create');
+});
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
