@@ -18,6 +18,20 @@ Route::get('/', function () {
     ]);
 });
 
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/dashboard', function () {
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
+
+    Route::get('/my-requests', function () {
+        return Inertia::render('Dashboard', ['page' => 'Requests/RequestIndex']);
+    })->name('requests.index');
+
+    Route::get('/new-request', function () {
+        return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest']);
+    })->name('requests.create');
+});
+
 // Login Route
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 
