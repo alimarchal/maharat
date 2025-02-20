@@ -80,8 +80,6 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('quotations', QuotationController::class);
     Route::apiResource('quotation-documents', QuotationDocumentController::class);
 
-
-
 });
 
 Route::get('/user', function (Request $request) {
