@@ -3,7 +3,7 @@ import { Link, router, useForm } from "@inertiajs/react";
 
 const ForgotPasswordPage = () => {
   const [activeBoxes, setActiveBoxes] = useState([0, 1, 2, 3, 4, 5]);
-  const [email, setEmail] = useState("");
+  //const [email, setEmail] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [error, setError] = useState("");
   const [showCountdown, setShowCountdown] = useState(false);
@@ -100,36 +100,43 @@ const ForgotPasswordPage = () => {
     e.preventDefault();
     setError(""); // Reset error state
 
-    const isValidEmail = /\S+@\S+\.\S+/.test(email);
+    console.log("Submitting email:", data.email); // Debugging
+
+    const isValidEmail = /\S+@\S+\.\S+/.test(data.email);
     if (!isValidEmail) {
-      setError("Invalid email format. Please enter a valid email address.");
-      return;
+        setError("Invalid email format. Please enter a valid email address.");
+        console.log("Invalid email format.");
+        return;
     }
 
     try {
-      // Step 1: Check if email exists and is verified
-      const emailExists = await checkEmailExists(email);
-      if (!emailExists) {
-        setError("This email is not registered or not verified.");
-        return;
-      }
+        console.log("Checking if email exists...");
+        const emailExists = await checkEmailExists(data.email);
+        console.log("Email check result:", emailExists);
 
-      // Step 2: Send password reset email using Inertia's post method
-      setData('email', email); // Set email data first
-      post(route('password.email'), {
-        onSuccess: () => {
-          setShowCountdown(true);
-          startCountdown();
-        },
-        onError: (errors) => {
-          setError(errors.email || "Failed to send reset link.");
-        },
-      });
+        if (!emailExists) {
+            setError("This email is not registered or not verified.");
+            console.log("Email does not exist or is not verified.");
+            return;
+        }
+
+        console.log("Sending password reset request...");
+        post(route('password.email'), {
+            onSuccess: () => {
+                console.log("Reset link sent successfully!");
+                setShowCountdown(true);
+                startCountdown();
+            },
+            onError: (errors) => {
+                console.error("Error response from server:", errors);
+                setError(errors.email || "Failed to send reset link.");
+            },
+        });
     } catch (error) {
-      console.error("Error sending reset link:", error);
-      setError("Something went wrong. Please try again.");
+        console.error("Unexpected error:", error);
+        setError("Something went wrong. Please try again.");
     }
-  };
+};
 
   const checkEmailExists = async (email) => {
     try {
@@ -280,22 +287,22 @@ const ForgotPasswordPage = () => {
                       <input
                         type="email"
                         id="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        value={data.email}
+                        onChange={(e) => setData("email", e.target.value)}
                         onFocus={() => setIsFocused(true)}
-                        onBlur={() => setIsFocused(email.length > 0)}
+                        onBlur={() => setIsFocused(data.email.length > 0)}
                         className="peer block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg 
                                   focus:ring-[#009FDC] focus:border-[#009FDC] placeholder-gray-400"
                       />
                       <label
                         htmlFor="email"
                         className={`absolute transition-all text-base ${
-                          isFocused || email
+                          isFocused || data.email
                             ? "top-[-1.2rem] left-1 text-sm text-[#009FDC] font-bold"
                             : "top-1/2 transform -translate-y-1/2 left-5 text-gray-400 font-normal"
                         }`}
                       >
-                        {email ? "Email" : "Enter your Email"}
+                        {data.email ? "Email" : "Enter your Email"}
                       </label>
                     </>
                   )}
