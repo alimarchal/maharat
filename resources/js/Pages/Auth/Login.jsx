@@ -121,57 +121,66 @@ const LoginPage = () => {
       <div className="flex w-full">
 
         {/* Left Side with Rotating Boxes */}
-        <div className="p-8 bg-cover bg-center rounded-3xl relative" 
-             style={{
-               backgroundImage: 'url("/images/BoxPic.jpeg")', 
-               marginTop: '20px', 
-               marginLeft: '20px', 
-               marginBottom: '20px', 
-               height: 'calc(100vh - 40px)', 
-               flex: '1 1 50%',
-             }}>
-
-            <div style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-                backgroundColor: "#005372",
-                mixBlendMode: "multiply",
-                opacity: 0.45,  
-                borderRadius: "1.5rem",  
-                zIndex: 0,
-            }} />
+        <div
+          className="p-8 bg-cover bg-center rounded-3xl relative"
+          style={{
+            backgroundImage: 'url("/images/BoxPic.jpeg")',
+            marginTop: "20px",
+            marginLeft: "20px",
+            marginBottom: "20px",
+            height: "calc(100vh - 40px)",
+            flex: "1 1 50%",
+            backgroundSize: 'cover', // Ensures background image adjusts automatically
+            backgroundPosition: 'center', // Centers the background
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              backgroundColor: "#005372",
+              mixBlendMode: "multiply",
+              opacity: 0.45,
+              borderRadius: "1.5rem",
+              zIndex: 0,
+            }}
+          />
 
           <div className="relative w-full h-full flex justify-center items-center">
             {/* Fixed transparent background boxes */}
             {fixedBoxes.map((box, index) => (
               <div
                 key={`fixed-${index}`}
-                className={`absolute flex justify-center items-center w-[250px] h-[220px] p-6 rounded-2xl backdrop-blur-sm
+                className={`absolute flex justify-center items-center p-6 rounded-2xl backdrop-blur-sm
                   ${getBoxPosition(index)}`}
                 style={{
                   backgroundColor: box.bgColor,
                   opacity: 1,
+                  width: '40%', // Increased width by 2% (now 40%)
+                  height: '31%', // Increased height by 2% (now 31%)
                   top: getBoxPosition(activeBoxes.indexOf(index)).top,
                   left: getBoxPosition(activeBoxes.indexOf(index)).left,
                 }}
               >
-                <p className={`text-sm text-center ${box.textColor || 'text-white'}`}>{box.text}</p>
+                <p className={`text-sm text-center ${box.textColor || "text-white"}`}>{box.text}</p>
               </div>
             ))}
 
             {/* Rotating boxes with content */}
-            {rotatingBoxes.map((box, index) => (
-              box.bgColor !== "transparent" && ( 
+            {rotatingBoxes.map((box, index) =>
+              box.bgColor !== "transparent" ? (
                 <div
                   key={`rotating-${index}`}
-                  className={`absolute flex justify-center items-center w-[250px] h-[220px] p-6 rounded-2xl backdrop-blur-sm transition-all duration-[3000ms] ease-in-out
+                  className={`absolute flex justify-center items-center p-6 rounded-2xl backdrop-blur-sm transition-all duration-[3000ms] ease-in-out
                     ${getBoxPosition(activeBoxes.indexOf(index))}`}
                   style={{
                     backgroundColor: box.bgColor,
                     opacity: 1,
+                    width: '40%', // Increased width by 2% (now 40%)
+                    height: '31%', // Increased height by 2% (now 31%)
                     top: getBoxPosition(activeBoxes.indexOf(index)).top,
                     left: getBoxPosition(activeBoxes.indexOf(index)).left,
                   }}
@@ -181,16 +190,16 @@ const LoginPage = () => {
                       <img
                         src={box.imgSrc}
                         alt={`Box ${index + 1}`}
-                        className="w-[100px] h-[100px] object-contain mb-2"
+                        className="w-[50%] h-[50%] object-contain mb-2" // Adjusted image size to fit
                       />
                     )}
                     {box.text && !box.isEmpty && (
-                      <p className={`text-sm text-center ${box.textColor || 'text-white'}`}>{box.text}</p>
+                      <p className={`text-sm text-center ${box.textColor || "text-white"}`}>{box.text}</p>
                     )}
                   </div>
                 </div>
-              )
-            ))}
+              ) : null
+            )}
           </div>
         </div>
 
