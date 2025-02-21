@@ -8,8 +8,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
 export default function Dashboard({ auth, page }) {
-    console.log(auth);
-
     const renderComponent = () => {
         if (page === "Requests/RequestIndex") return <RequestIndex />;
         if (page === "Requests/MakeRequest") return <MakeRequest />;
