@@ -8,6 +8,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import StatusIndex from "./Dashboard/Status/StatusIndex";
 import CreateStatus from "./Dashboard/Status/CreateStatus";
+import UnitIndex from "./Dashboard/Units/UnitIndex";
+import CreateUnit from "./Dashboard/Units/CreateUnit";
+import CategoryIndex from "./Dashboard/Category/CategoryIndex";
+import CreateCategory from "./Dashboard/Category/CreateCategory";
+import ProductIndex from "./Dashboard/Products/ProductIndex";
+import CreateProduct from "./Dashboard/Products/CreateProduct";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -15,6 +21,12 @@ export default function Dashboard({ auth, page }) {
         if (page === "Requests/MakeRequest") return <MakeRequest />;
         if (page === "Status/StatusIndex") return <StatusIndex />;
         if (page === "Status/CreateStatus") return <CreateStatus />;
+        if (page === "Units/UnitIndex") return <UnitIndex />;
+        if (page === "Units/CreateUnit") return <CreateUnit />;
+        if (page === "Category/CategoryIndex") return <CategoryIndex />;
+        if (page === "Category/CreateCategory") return <CreateCategory />;
+        if (page === "Products/ProductIndex") return <ProductIndex />;
+        if (page === "Products/CreateProduct") return <CreateProduct />;
         return <MainDashboard />;
     };
 

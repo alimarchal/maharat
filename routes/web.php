@@ -7,6 +7,8 @@ use Inertia\Inertia;
 use App\Http\Controllers\PasswordResetLinkController;
 use App\Models\Status;
 use App\Http\Controllers\StatusController;
+use App\Http\Controllers\UnitController;
+use App\Http\Controllers\ProductCategoryController;
 
 // Home Route
 Route::get('/', function () {
@@ -48,6 +50,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/new-status', function () { 
         return Inertia::render('Dashboard', ['page' => 'Status/CreateStatus']); 
     })->name('status.create');
+
+    Route::get('/units', [UnitController::class, 'index'])->name('units.index');
+    Route::get('/units', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Units/UnitIndex']); 
+    })->name('unit.index');
+    Route::get('/new-unit', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Units/CreateUnit']); 
+    })->name('unit.create');
+
+    Route::get('/product-categories', [ProductCategoryController::class, 'index'])->name('category.index');
+    Route::get('/category', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Category/CategoryIndex']); 
+    })->name('category.index');
+    Route::get('/new-category', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Category/CreateCategory']); 
+    })->name('category.create');
+
+    Route::get('/products', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Products/ProductIndex']); 
+    })->name('product.index');
+    Route::get('/new-product', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Products/CreateProduct']); 
+    })->name('product.create');
 });
 
 // Profile Routes (Only for Authenticated Users)
