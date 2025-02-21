@@ -5,6 +5,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\PasswordResetLinkController;
+use App\Http\Controllers\Api\StatusController;
 
 // Home Route
 Route::get('/', function () {
@@ -24,8 +25,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () { return Inertia::render('Dashboard'); })->name('dashboard');
 
     Route::get('/my-requests', function () { return Inertia::render('Dashboard', ['page' => 'Requests/RequestIndex']); })->name('requests.index');
-
     Route::get('/new-request', function () { return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest']); })->name('requests.create');
+
+    Route::get('/statuses', [StatusController::class, 'index'])->name('statuses.index');
+    Route::get('/status', function () { return Inertia::render('Dashboard', ['page' => 'Status/StatusIndex']); })->name('status.index');
+    Route::get('/new-status', function () { return Inertia::render('Dashboard', ['page' => 'Status/CreateStatus']); })->name('status.create');
 });
 
 // Profile Routes (Only for Authenticated Users)
