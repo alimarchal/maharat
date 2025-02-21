@@ -2,10 +2,9 @@ import { useState } from "react";
 import InputFloating from "../../../Components/InputFloating";
 import { router, usePage } from "@inertiajs/react";
 
-const CreateStatus = () => {
+const CreateUnit = () => {
     const { props } = usePage();
     const [formData, setFormData] = useState({
-        type: "",
         name: "",
     });
     const [errors, setErrors] = useState({});
@@ -18,7 +17,6 @@ const CreateStatus = () => {
 
     const validateForm = () => {
         let newErrors = {};
-        if (!formData.type.trim()) newErrors.type = "Type is required";
         if (!formData.name.trim()) newErrors.name = "Name is required";
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -29,13 +27,13 @@ const CreateStatus = () => {
         if (!validateForm()) return;
         setLoading(true);
 
-        router.post("/api/statuses", formData, {
+        router.post("/api/units", formData, {
             headers: {
                 Authorization: `Bearer ${props.auth.token}`,
             },
             onSuccess: () => {
                 setFormData({ type: "", name: "" });
-                router.visit("/status");
+                router.visit("/units");
             },
             onError: (err) => {
                 console.error("Error:", err);
@@ -49,27 +47,14 @@ const CreateStatus = () => {
     return (
         <>
             <h2 className="text-3xl font-bold text-[#2C323C]">
-                Make a New Status
+                Make a New Unit
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6 mt-8">
                 <h3 className="text-2xl font-medium text-[#6E66AC]">
-                    Requested New Status
+                    Requested New Unit
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <InputFloating
-                            label="Type"
-                            name="type"
-                            value={formData.type}
-                            onChange={handleChange}
-                        />
-                        {errors.type && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.type}
-                            </p>
-                        )}
-                    </div>
                     <div>
                         <InputFloating
                             label="Name"
@@ -90,7 +75,7 @@ const CreateStatus = () => {
                         className="bg-[#009FDC] text-white px-6 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50"
                         disabled={loading}
                     >
-                        {loading ? "Creating..." : "Create Status"}
+                        {loading ? "Creating..." : "Create Unit"}
                     </button>
                 </div>
             </form>
@@ -98,4 +83,4 @@ const CreateStatus = () => {
     );
 };
 
-export default CreateStatus;
+export default CreateUnit;
