@@ -21,6 +21,17 @@ return new class extends Migration
             $table->id();
             $table->string('name')->nullable();
             $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('brands', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->nullable()->comment('created_by')->constrained('users');
+            $table->foreignId('category_id')->nullable()->constrained('product_categories','id');
+            $table->string('name')->nullable();
+            $table->foreignId('status_id')->nullable()->constrained('statuses', 'id');
+            $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('products', function (Blueprint $table) {
@@ -96,6 +107,7 @@ return new class extends Migration
         Schema::dropIfExists('inventory_adjustments');
         Schema::dropIfExists('inventories');
         Schema::dropIfExists('products');
+        Schema::dropIfExists('brands');
         Schema::dropIfExists('product_categories');
         Schema::dropIfExists('units');
     }

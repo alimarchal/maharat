@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryTransferController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
@@ -65,6 +66,7 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
 
     Route::apiResource('units', UnitController::class);
     Route::apiResource('product-categories', ProductCategoryController::class);
+    Route::apiResource('brands', BrandController::class);
 
     // Products routes
     Route::apiResource('products', ProductController::class);
