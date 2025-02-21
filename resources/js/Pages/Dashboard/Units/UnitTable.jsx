@@ -3,59 +3,57 @@ import { Link } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 
-const StatusTable = () => {
-    const [statuses, setStatuses] = useState([]);
+const UnitTable = () => {
+    const [units, setUnits] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
 
     useEffect(() => {
-        const fetchStatuses = async () => {
+        const fetchUnits = async () => {
             setLoading(true);
             try {
-                const response = await fetch(
-                    `/api/statuses?page=${currentPage}`
-                );
+                const response = await fetch(`/api/units?page=${currentPage}`);
                 const data = await response.json();
 
                 if (response.ok) {
-                    setStatuses(data.data || []);
+                    setUnits(data.data || []);
                     setLastPage(data.meta?.last_page || 1);
                 } else {
-                    setError(data.message || "Failed to fetch statuses.");
+                    setError(data.message || "Failed to fetch units.");
                 }
             } catch (err) {
-                console.error("Error fetching statuses:", err);
-                setError("Error loading statuses.");
+                console.error("Error fetching units:", err);
+                setError("Error loading units.");
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchStatuses();
+        fetchUnits();
     }, [currentPage]);
 
     const handleDelete = async (id) => {
-        if (!confirm("Are you sure you want to delete this status?")) return;
+        if (!confirm("Are you sure you want to delete this Unit?")) return;
 
         try {
-            const response = await fetch(`/api/statuses/${id}`, {
+            const response = await fetch(`/api/units/${id}`, {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
             });
 
             if (response.ok) {
-                setStatuses((prevStatuses) =>
+                setUnits((prevStatuses) =>
                     prevStatuses.filter((status) => status.id !== id)
                 );
             } else {
                 const data = await response.json();
-                alert(data.message || "Failed to delete status.");
+                alert(data.message || "Failed to delete unit.");
             }
         } catch (err) {
-            console.error("Error deleting status:", err);
-            alert("An error occurred while deleting the status.");
+            console.error("Error deleting unit:", err);
+            alert("An error occurred while deleting the unit.");
         }
     };
 
@@ -63,7 +61,7 @@ const StatusTable = () => {
         <div className="w-full overflow-hidden">
             {loading ? (
                 <p className="text-center text-[#2C323C] font-medium py-4">
-                    Loading statuses...
+                    Loading Units...
                 </p>
             ) : error ? (
                 <p className="text-center text-red-500 font-medium py-4">
@@ -77,7 +75,6 @@ const StatusTable = () => {
                                 <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                                     ID
                                 </th>
-                                <th className="py-3 px-4">Type</th>
                                 <th className="py-3 px-4">Name</th>
                                 <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
                                     Actions
@@ -85,27 +82,26 @@ const StatusTable = () => {
                             </tr>
                         </thead>
                         <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                            {statuses.map((status) => (
-                                <tr key={status.id}>
-                                    <td className="py-3 px-4">{status.id}</td>
-                                    <td className="py-3 px-4">{status.type}</td>
-                                    <td className="py-3 px-4">{status.name}</td>
+                            {units.map((unit) => (
+                                <tr key={unit.id}>
+                                    <td className="py-3 px-4">{unit.id}</td>
+                                    <td className="py-3 px-4">{unit.name}</td>
                                     <td className="py-3 px-4 flex space-x-3">
                                         <Link
-                                            href={`/status/${status.id}`}
+                                            href={`/units/${unit.id}`}
                                             className="text-[#9B9DA2] hover:text-gray-500"
                                         >
                                             <FontAwesomeIcon icon={faEye} />
                                         </Link>
                                         <Link
-                                            href={`/status/${status.id}/edit`}
+                                            href={`/units/${unit.id}`}
                                             className="text-[#9B9DA2] hover:text-gray-500"
                                         >
                                             <FontAwesomeIcon icon={faEdit} />
                                         </Link>
                                         <button
                                             onClick={() =>
-                                                handleDelete(status.id)
+                                                handleDelete(unit.id)
                                             }
                                             className="text-[#9B9DA2] hover:text-gray-500"
                                         >
@@ -147,11 +143,11 @@ const StatusTable = () => {
                 </>
             ) : (
                 <p className="text-center text-[#2C323C] font-medium py-4">
-                    No statuses found.
+                    No Units found.
                 </p>
             )}
         </div>
     );
 };
 
-export default StatusTable;
+export default UnitTable;
