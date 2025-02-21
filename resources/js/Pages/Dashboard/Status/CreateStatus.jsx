@@ -1,6 +1,7 @@
 import { useState } from "react";
 import InputFloating from "../../../Components/InputFloating";
 import { router, usePage } from "@inertiajs/react";
+import axios from "axios";
 
 const CreateStatus = () => {
     const { props } = usePage();
@@ -10,6 +11,7 @@ const CreateStatus = () => {
     });
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -24,26 +26,38 @@ const CreateStatus = () => {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
-        setLoading(true);
 
-        router.post("/api/v1/statuses", formData, {
-            headers: {
-                Authorization: `Bearer ${props.auth.token}`,
-            },
-            onSuccess: () => {
-                setFormData({ type: "", name: "" });
-                router.visit("/status");
-            },
-            onError: (err) => {
-                console.error("Error:", err);
-            },
-            onFinish: () => {
-                setLoading(false);
-            },
-        });
+        setLoading(true);
+        setSuccessMessage(""); 
+
+        try {
+            const response = await axios.post('/api/v1/statuses', formData, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+
+            console.log('Success:', response.data);
+            setSuccessMessage("Status created successfully!"); 
+            setFormData({ type: "", name: "" }); // Reset form
+            
+            //Redirect after success
+            setTimeout(() => {
+                window.location.href = '/status';
+            }, 2000);
+
+        } catch (error) {
+            console.error('Error:', error.response?.data || error);
+            setErrors(error.response?.data?.errors || {
+                general: 'An error occurred while creating the status'
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

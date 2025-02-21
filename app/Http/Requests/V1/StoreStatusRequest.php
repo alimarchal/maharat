@@ -14,8 +14,8 @@ class StoreStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => ['required', 'string', 'max:255'],
-            'name' => ['required', 'string', 'max:255'],
+            'type' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
         ];
     }
 }
