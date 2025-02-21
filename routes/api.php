@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryTransferController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
@@ -35,6 +36,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 Route::post('/check-email', [AuthController::class, 'checkEmail']);
+Route::get('/statuses', [StatusController::class, 'index']);
 
 // API V1 routes
 Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
@@ -65,6 +67,7 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
 
     Route::apiResource('units', UnitController::class);
     Route::apiResource('product-categories', ProductCategoryController::class);
+    Route::apiResource('brands', BrandController::class);
 
     // Products routes
     Route::apiResource('products', ProductController::class);
