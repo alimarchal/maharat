@@ -6,7 +6,6 @@ const SelectFloating = ({ label, name, value, onChange, options }) => {
                 value={value}
                 onChange={onChange}
                 className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC] transition-all duration-300 ease-in-out"
-                required
             >
                 <option value="" disabled>
                     {`Select ${label}`}
