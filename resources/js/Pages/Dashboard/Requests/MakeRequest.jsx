@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCamera } from "@fortawesome/free-solid-svg-icons";
+import SelectFloating from "../../../Components/SelectFloating";
+import { router } from "@inertiajs/react";
 
 const MakeRequest = () => {
     const [formData, setFormData] = useState({
@@ -26,6 +28,7 @@ const MakeRequest = () => {
     const handleSubmit = (e) => {
         e.preventDefault();
         console.log("Form submitted:", formData);
+        router.visit("/my-requests");
     };
 
     return (
@@ -37,82 +40,51 @@ const MakeRequest = () => {
                 Employee requests for materials from the Maharat warehouse.
             </p>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
                 <h3 className="text-2xl font-medium text-[#6E66AC]">
                     Requested Item Detail
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="relative w-full">
-                        <select
-                            name="itemName"
-                            value={formData.itemName}
-                            onChange={handleChange}
-                            className="peer border border-gray-300 p-3 rounded-lg w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            required
-                        >
-                            <option value="" disabled hidden></option>
-                            <option value="Computer">Computer</option>
-                            <option value="Laptop">Laptop</option>
-                            <option value="Mouse">Mouse</option>
-                            <option value="Keyboard">Keyboard</option>
-                        </select>
-                        <label
-                            className={`absolute left-3 px-1 bg-white text-gray-500 text-sm transition-all ${
-                                formData.itemName
-                                    ? "top-0 text-xs text-blue-500 px-2 -translate-y-1/2"
-                                    : "top-1/2 -translate-y-1/2 text-base text-gray-400"
-                            }`}
-                        >
-                            Item Name
-                        </label>
-                    </div>
-
-                    <select
+                    <SelectFloating
+                        label="Item Name"
+                        name="itemName"
+                        value={formData.itemName}
+                        onChange={handleChange}
+                        options={["Computer", "Laptop", "Mouse", "Keyboard"]}
+                    />
+                    <SelectFloating
+                        label="Category"
                         name="category"
                         value={formData.category}
                         onChange={handleChange}
-                        className="border p-3 rounded-lg w-full"
-                        required
-                    >
-                        <option value="">Category</option>
-                        <option value="Electronics">Electronics</option>
-                        <option value="Stationary">Stationary</option>
-                    </select>
-                    <input
-                        type="text"
+                        options={["Electronics", "Stationary"]}
+                    />
+                    <SelectFloating
+                        label="Unit"
                         name="unit"
                         value={formData.unit}
                         onChange={handleChange}
-                        placeholder="Unit"
-                        className="border p-3 rounded-lg w-full"
-                        required
+                        options={["Piece", "Box", "Pack", "Set"]}
                     />
-                    <input
-                        type="number"
+                    <SelectFloating
+                        label="Quantity"
                         name="quantity"
                         value={formData.quantity}
                         onChange={handleChange}
-                        placeholder="Quantity"
-                        className="border p-3 rounded-lg w-full"
-                        required
+                        options={["1", "2", "5", "10", "20", "50", "100"]}
                     />
-                    <select
+                    <SelectFloating
+                        label="Urgency"
                         name="urgency"
                         value={formData.urgency}
                         onChange={handleChange}
-                        className="border p-3 rounded-lg w-full"
-                        required
-                    >
-                        <option value="">Urgency</option>
-                        <option value="High">High</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Low">Low</option>
-                    </select>
-                    <label className="border p-3 rounded-lg w-full flex items-center justify-center cursor-pointer">
+                        options={["High", "Medium", "Low"]}
+                    />
+                    <label className="border p-3 rounded-lg bg-white w-full flex items-center justify-center cursor-pointer">
                         <FontAwesomeIcon
                             icon={faCamera}
                             className="text-gray-500 mr-2"
-                        />{" "}
+                        />
                         Add a Photo
                         <input
                             type="file"
@@ -122,44 +94,71 @@ const MakeRequest = () => {
                         />
                     </label>
                 </div>
-                <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    placeholder="Description"
-                    className="border p-3 rounded-lg w-full h-24"
-                />
+                <div className="relative w-full">
+                    <textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleChange}
+                        className="peer border border-gray-300 p-3 rounded-lg w-full h-24 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
+                        required
+                    ></textarea>
+                    <label
+                        className={`absolute left-3 px-1 bg-white text-gray-500 text-sm transition-all
+        peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400
+        peer-focus:-top-2 peer-focus:left-2 peer-focus:text-xs peer-focus:text-[#009FDC] peer-focus:px-1
+        ${
+            formData.description
+                ? "-top-2 left-2 text-xs text-[#009FDC] px-1"
+                : "top-4 text-base text-gray-400"
+        }`}
+                    >
+                        Description
+                    </label>
+                </div>
 
-                {/* Warehouse Info */}
                 <h3 className="text-2xl font-medium text-[#6E66AC]">
                     Warehouse Info
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
-                    <input
-                        type="text"
+                    <SelectFloating
+                        label="Warehouse"
                         name="warehouse"
                         value={formData.warehouse}
                         onChange={handleChange}
-                        placeholder="Warehouse #"
-                        className="border p-3 rounded-lg w-full"
-                        required
+                        options={["Warehouse A", "Warehouse B", "Warehouse C"]}
                     />
-                    <input
-                        type="date"
-                        name="deliveryDate"
-                        value={formData.deliveryDate}
-                        onChange={handleChange}
-                        className="border p-3 rounded-lg w-full"
-                        required
-                    />
+                    <div className="relative w-full">
+                        <input
+                            type="date"
+                            name="deliveryDate"
+                            value={formData.deliveryDate}
+                            onChange={handleChange}
+                            className="peer border border-gray-300 p-3 rounded-lg w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
+                            required
+                        />
+                        <label
+                            className={`absolute left-3 px-1 bg-white text-gray-500 text-sm transition-all 
+                peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:-translate-y-1/2 
+                peer-focus:top-0 peer-focus:text-xs peer-focus:text-[#009FDC] peer-focus:px-2
+                ${
+                    formData.deliveryDate
+                        ? "top-0 text-xs text-[#009FDC] px-2"
+                        : "top-1/2 text-base text-gray-400 -translate-y-1/2"
+                }`}
+                        >
+                            Select Delivery Date
+                        </label>
+                    </div>
                 </div>
 
-                <button
-                    type="submit"
-                    className="bg-[#009FDC] text-white px-6 py-2 rounded-lg hover:bg-[#007CB8]"
-                >
-                    Submit Request
-                </button>
+                <div className="flex justify-end">
+                    <button
+                        type="submit"
+                        className="bg-[#009FDC] text-white px-6 py-2 rounded-lg hover:bg-[#007CB8]"
+                    >
+                        Submit Request
+                    </button>
+                </div>
             </form>
         </>
     );
