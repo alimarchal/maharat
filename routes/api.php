@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\SupplierContactController;
 use App\Http\Controllers\Api\V1\SupplierController;
 use App\Http\Controllers\Api\V1\UnitController;
 use App\Http\Controllers\Api\V1\UserRoleController;
+use App\Http\Controllers\Api\V1\WarehouseManagerController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\UserController;
@@ -59,6 +60,9 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
 
     Route::apiResource('statuses', StatusController::class);
     Route::apiResource('warehouses', WarehouseController::class);
+    Route::apiResource('warehouse-managers', WarehouseManagerController::class);
+
+
     Route::apiResource('units', UnitController::class);
     Route::apiResource('product-categories', ProductCategoryController::class);
 
