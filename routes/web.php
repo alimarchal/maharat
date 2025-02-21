@@ -5,7 +5,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\PasswordResetLinkController;
-use App\Http\Controllers\Api\StatusController;
+use App\Models\Status;
+use App\Http\Controllers\StatusController;
 
 // Home Route
 Route::get('/', function () {
@@ -22,14 +23,31 @@ Route::get('/', function () {
 
 // Dashboard Routes (Protected by Auth & Email Verification)
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', function () { return Inertia::render('Dashboard'); })->name('dashboard');
+    Route::get('/dashboard', function () { 
+        return Inertia::render('Dashboard'); 
+    })->name('dashboard');
 
-    Route::get('/my-requests', function () { return Inertia::render('Dashboard', ['page' => 'Requests/RequestIndex']); })->name('requests.index');
-    Route::get('/new-request', function () { return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest']); })->name('requests.create');
+    Route::get('/my-requests', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Requests/RequestIndex']); 
+    })->name('requests.index');
+
+    Route::get('/new-request', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest']); 
+    })->name('requests.create');
+
+    Route::get('/warehouse', function () { 
+        return Inertia::render('Dashboard/Warehouse/Warehouse'); 
+    })->name('warehouse.index');
 
     Route::get('/statuses', [StatusController::class, 'index'])->name('statuses.index');
-    Route::get('/status', function () { return Inertia::render('Dashboard', ['page' => 'Status/StatusIndex']); })->name('status.index');
-    Route::get('/new-status', function () { return Inertia::render('Dashboard', ['page' => 'Status/CreateStatus']); })->name('status.create');
+
+    Route::get('/status', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Status/StatusIndex']); 
+    })->name('status.index');
+
+    Route::get('/new-status', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Status/CreateStatus']); 
+    })->name('status.create');
 });
 
 // Profile Routes (Only for Authenticated Users)
@@ -41,7 +59,10 @@ Route::middleware('auth')->group(function () {
 
 // Forgot Password Route (Guest Only)
 Route::middleware('guest')->group(function () {
-    Route::get('/forgot-password', function () { return Inertia::render('Auth/ForgotPassword');})->name('password.request');
+    Route::get('/forgot-password', function () { 
+        return Inertia::render('Auth/ForgotPassword');
+    })->name('password.request');
+
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])->name('password.email');
 });
 

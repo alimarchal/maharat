@@ -36,6 +36,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 Route::post('/check-email', [AuthController::class, 'checkEmail']);
+Route::get('/statuses', [StatusController::class, 'index']);
 
 // API V1 routes
 Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
