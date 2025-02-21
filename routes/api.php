@@ -28,18 +28,16 @@ use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\InventoryController;
 use App\Http\Controllers\ForgotPasswordController;
 
-//6-digit-pin
-Route::post('/send-verification-code', [ForgotPasswordController::class, 'sendVerificationCode']);
-
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 Route::post('/check-email', [AuthController::class, 'checkEmail']);
 Route::get('/statuses', [StatusController::class, 'index']);
+//Route::post('/statuses', [StatusController::class, 'store']);
 
 // API V1 routes
-Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
+Route::prefix('v1')->group(function () {  
 
     Route::get('/users/hierarchy/{user?}', [UserController::class, 'hierarchy']);
     Route::apiResource('users', UserController::class);
@@ -58,7 +56,6 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
     // Permissions
     Route::get('/permissions', [PermissionController::class, 'index']);
     Route::post('/permissions', [PermissionController::class, 'store']);
-
 
     Route::apiResource('statuses', StatusController::class);
     Route::apiResource('warehouses', WarehouseController::class);

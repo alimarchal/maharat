@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Spatie\QueryBuilder\QueryBuilder;
+use Inertia\Inertia;
 
 class StatusController extends Controller
 {
@@ -33,25 +34,69 @@ class StatusController extends Controller
         return StatusResource::collection($statuses);
     }
 
+    public function authorize(): bool
+    {
+        return true;  // Make sure the user has permission
+    }
+
+    public function rules(): array
+    {
+        return [
+            'type' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
+        ];
+    }
+
     /**
      * Store a newly created resource in storage.
      */
     public function store(StoreStatusRequest $request): JsonResponse
     {
         try {
-            $status = Status::create($request->validated());
+            // Log incoming request
+            \Log::info('Incoming status creation request', [
+                'data' => $request->all()
+            ]);
 
+            // Validate the request
+            $validatedData = $request->validated();
+            
+            // Create the status
+            $status = Status::create([
+                'type' => $validatedData['type'],
+                'name' => $validatedData['name']
+            ]);
+
+            // Log success
+            \Log::info('Status created successfully', [
+                'status_id' => $status->id,
+                'data' => $status->toArray()
+            ]);
+
+            // Return success response
             return response()->json([
+                'success' => true,
                 'message' => 'Status created successfully',
-                'data' => new StatusResource($status)
-            ], Response::HTTP_CREATED);
+                'data' => $status
+            ], 201);
+
         } catch (\Exception $e) {
+            // Log the error
+            \Log::error('Failed to create status', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Return error response
             return response()->json([
+                'success' => false,
                 'message' => 'Failed to create status',
                 'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], 500);
         }
     }
+
+
 
     /**
      * Display the specified resource.
