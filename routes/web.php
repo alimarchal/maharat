@@ -22,10 +22,9 @@ Route::get('/', function () {
 // Dashboard Routes (Protected by Auth & Email Verification)
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () { return Inertia::render('Dashboard'); })->name('dashboard');
-
     Route::get('/my-requests', function () { return Inertia::render('Dashboard', ['page' => 'Requests/RequestIndex']); })->name('requests.index');
-
     Route::get('/new-request', function () { return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest']); })->name('requests.create');
+    Route::get('/warehouse', function () { return Inertia::render('Dashboard/Warehouse/Warehouse'); })->name('warehouse.index');
 });
 
 // Profile Routes (Only for Authenticated Users)

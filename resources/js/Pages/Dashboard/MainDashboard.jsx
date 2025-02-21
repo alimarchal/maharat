@@ -1,24 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import {
-    faFileAlt,
-    faBoxes,
-    faFileInvoice,
-    faChartBar,
-    faClipboardList,
-    faShoppingCart,
-    faCogs,
-    faChevronDown,
-    faChevronUp,
-    faChevronRight,
-    faFileCirclePlus,
-    faFileSignature,
-    faListCheck,
-    faUsers,
-    faBell,
-    faDiagramProject,
-    faUserPen,
-    faEllipsisH,
-} from "@fortawesome/free-solid-svg-icons";
+import { faFileAlt, faBoxes, faFileInvoice, faChartBar, faClipboardList, faShoppingCart, faCogs, faChevronDown, faChevronUp, faChevronRight, faFileCirclePlus, faFileSignature, faListCheck, faUsers, faBell, faDiagramProject, faUserPen, faEllipsisH, } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { router } from "@inertiajs/react";
 
@@ -220,6 +201,7 @@ export default function Dashboard({ page }) {
                     subtitle="Stock Management"
                     bgColor="bg-[#F7EBBA]"
                     iconColor="text-[#665200]"
+                    onClick={() => router.visit("/warehouse")}
                 />
                 <DashboardCard
                     icon={faFileInvoice}
