@@ -6,11 +6,15 @@ import MakeRequest from "./Dashboard/Requests/MakeRequest";
 import MainDashboard from "./Dashboard/MainDashboard";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import StatusIndex from "./Dashboard/Status/StatusIndex";
+import CreateStatus from "./Dashboard/Status/CreateStatus";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
         if (page === "Requests/RequestIndex") return <RequestIndex />;
         if (page === "Requests/MakeRequest") return <MakeRequest />;
+        if (page === "Status/StatusIndex") return <StatusIndex />;
+        if (page === "Status/CreateStatus") return <CreateStatus />;
         return <MainDashboard />;
     };
 

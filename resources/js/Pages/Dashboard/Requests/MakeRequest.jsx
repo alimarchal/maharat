@@ -80,7 +80,7 @@ const MakeRequest = () => {
                         onChange={handleChange}
                         options={["High", "Medium", "Low"]}
                     />
-                    <label className="border p-3 rounded-lg bg-white w-full flex items-center justify-center cursor-pointer">
+                    <label className="border p-5 rounded-2xl bg-white w-full flex items-center justify-center cursor-pointer">
                         <FontAwesomeIcon
                             icon={faCamera}
                             className="text-gray-500 mr-2"
@@ -99,16 +99,16 @@ const MakeRequest = () => {
                         name="description"
                         value={formData.description}
                         onChange={handleChange}
-                        className="peer border border-gray-300 p-3 rounded-lg w-full h-24 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
+                        className="peer border border-gray-300 p-5 rounded-2xl w-full h-24 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
                         required
                     ></textarea>
                     <label
-                        className={`absolute left-3 px-1 bg-white text-gray-500 text-sm transition-all
+                        className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
         peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400
-        peer-focus:-top-2 peer-focus:left-2 peer-focus:text-xs peer-focus:text-[#009FDC] peer-focus:px-1
+        peer-focus:-top-2 peer-focus:left-2 peer-focus:text-base peer-focus:text-[#009FDC] peer-focus:px-1
         ${
             formData.description
-                ? "-top-2 left-2 text-xs text-[#009FDC] px-1"
+                ? "-top-2 left-2 text-base text-[#009FDC] px-1"
                 : "top-4 text-base text-gray-400"
         }`}
                     >
@@ -133,16 +133,16 @@ const MakeRequest = () => {
                             name="deliveryDate"
                             value={formData.deliveryDate}
                             onChange={handleChange}
-                            className="peer border border-gray-300 p-3 rounded-lg w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
+                            className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
                             required
                         />
                         <label
-                            className={`absolute left-3 px-1 bg-white text-gray-500 text-sm transition-all 
+                            className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all 
                 peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:-translate-y-1/2 
-                peer-focus:top-0 peer-focus:text-xs peer-focus:text-[#009FDC] peer-focus:px-2
+                peer-focus:top-0 peer-focus:text-base peer-focus:text-[#009FDC] peer-focus:px-2
                 ${
                     formData.deliveryDate
-                        ? "top-0 text-xs text-[#009FDC] px-2"
+                        ? "top-0 text-base text-[#009FDC] px-2"
                         : "top-1/2 text-base text-gray-400 -translate-y-1/2"
                 }`}
                         >
