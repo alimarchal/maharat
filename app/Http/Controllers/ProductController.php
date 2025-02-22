@@ -2,65 +2,54 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreProductRequest;
-use App\Http\Requests\UpdateProductRequest;
-use App\Models\Product;
+use App\Http\Requests\StoreProductCategoryRequest;
+use App\Http\Requests\UpdateProductCategoryRequest;
+use App\Models\ProductCategory;
+use Illuminate\Http\Request;
 
-class ProductController extends Controller
+class ProductCategoryController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+        $categories = ProductCategory::with('brand')->get();
+        return response()->json($categories);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreProductRequest $request)
+    public function store(StoreProductCategoryRequest $request)
     {
-        //
+        $category = ProductCategory::create($request->validated());
+        return response()->json(['message' => 'Category created successfully', 'category' => $category], 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Product $product)
+    public function show(ProductCategory $category)
     {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Product $product)
-    {
-        //
+        return response()->json($category->load('brand'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateProductRequest $request, Product $product)
+    public function update(UpdateProductCategoryRequest $request, ProductCategory $category)
     {
-        //
+        $category->update($request->validated());
+        return response()->json(['message' => 'Category updated successfully', 'category' => $category]);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Product $product)
+    public function destroy(ProductCategory $category)
     {
-        //
+        $category->delete();
+        return response()->json(['message' => 'Category deleted successfully']);
     }
 }

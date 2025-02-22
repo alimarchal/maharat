@@ -25,23 +25,25 @@ class RoleAndPermissionSeeder extends Seeder
             'manage_settings', 'view_dashboard', 'edit_profile'
         ];
 
-
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+            // Use firstOrCreate to prevent duplicates
+            Permission::firstOrCreate(['name' => $permission]);
         }
 
         // Create Roles and Assign Permissions
 
         // Admin/CEO
-        $adminRole = Role::create([
+        $adminRole = Role::firstOrCreate([
             'name' => 'Admin',
+            'guard_name' => 'web',
             'parent_role_id' => null
         ]);
         $adminRole->givePermissionTo(Permission::all());
 
         // Director
-        $directorRole = Role::create([
+        $directorRole = Role::firstOrCreate([
             'name' => 'Director',
+            'guard_name' => 'web',
             'parent_role_id' => $adminRole->id
         ]);
         $directorRole->givePermissionTo([
@@ -52,8 +54,9 @@ class RoleAndPermissionSeeder extends Seeder
         ]);
 
         // Manager
-        $managerRole = Role::create([
+        $managerRole = Role::firstOrCreate([
             'name' => 'Manager',
+            'guard_name' => 'web',
             'parent_role_id' => $directorRole->id
         ]);
         $managerRole->givePermissionTo([
@@ -63,8 +66,9 @@ class RoleAndPermissionSeeder extends Seeder
         ]);
 
         // Supervisor
-        $supervisorRole = Role::create([
+        $supervisorRole = Role::firstOrCreate([
             'name' => 'Supervisor',
+            'guard_name' => 'web',
             'parent_role_id' => $managerRole->id
         ]);
         $supervisorRole->givePermissionTo([
@@ -74,8 +78,9 @@ class RoleAndPermissionSeeder extends Seeder
         ]);
 
         // User
-        $userRole = Role::create([
+        $userRole = Role::firstOrCreate([
             'name' => 'User',
+            'guard_name' => 'web',
             'parent_role_id' => $supervisorRole->id
         ]);
         $userRole->givePermissionTo([

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreWarehouseRequest;
 use App\Http\Requests\UpdateWarehouseRequest;
 use App\Models\Warehouse;
+use App\Models\WarehouseManager;
+use Illuminate\Http\Request;
 
 class WarehouseController extends Controller
 {
@@ -13,15 +15,8 @@ class WarehouseController extends Controller
      */
     public function index()
     {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+        $warehouses = Warehouse::with('manager')->get();
+        return response()->json($warehouses);
     }
 
     /**
@@ -29,7 +24,10 @@ class WarehouseController extends Controller
      */
     public function store(StoreWarehouseRequest $request)
     {
-        //
+        $validated = $request->validated();
+        
+        $warehouse = Warehouse::create($validated);
+        return response()->json(['message' => 'Warehouse created successfully', 'warehouse' => $warehouse], 201);
     }
 
     /**
@@ -37,15 +35,7 @@ class WarehouseController extends Controller
      */
     public function show(Warehouse $warehouse)
     {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Warehouse $warehouse)
-    {
-        //
+        return response()->json($warehouse->load('manager'));
     }
 
     /**
@@ -53,7 +43,10 @@ class WarehouseController extends Controller
      */
     public function update(UpdateWarehouseRequest $request, Warehouse $warehouse)
     {
-        //
+        $validated = $request->validated();
+        
+        $warehouse->update($validated);
+        return response()->json(['message' => 'Warehouse updated successfully', 'warehouse' => $warehouse]);
     }
 
     /**
@@ -61,6 +54,7 @@ class WarehouseController extends Controller
      */
     public function destroy(Warehouse $warehouse)
     {
-        //
+        $warehouse->delete();
+        return response()->json(['message' => 'Warehouse deleted successfully']);
     }
 }

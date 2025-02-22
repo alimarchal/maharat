@@ -41,6 +41,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard/Warehouse/Warehouse'); 
     })->name('warehouse.index');
 
+    Route::get('/rfq', function () { 
+        return Inertia::render('Dashboard/RFQ/RFQ'); 
+    })->name('rfq.index');
+
     Route::get('/statuses', [StatusController::class, 'index'])->name('statuses.index');
 
     Route::get('/status', function () { 
