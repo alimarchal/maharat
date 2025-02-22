@@ -11,12 +11,8 @@ const SelectFloating = ({ label, name, value, onChange, options }) => {
                     {`Select ${label}`}
                 </option>
                 {options.map((option, index) => (
-                    <option
-                        key={index}
-                        value={option}
-                        className="p-3 border-b border-gray-200 hover:bg-gray-100 transition-all"
-                    >
-                        {option}
+                    <option key={index} value={option.id}>
+                        {option.label}
                     </option>
                 ))}
             </select>
