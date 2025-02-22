@@ -2,12 +2,15 @@ import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCamera, faPlus } from "@fortawesome/free-solid-svg-icons";
 import SelectFloating from "../../../Components/SelectFloating";
-import { router } from "@inertiajs/react";
+import InputFloating from "../../../Components/InputFloating";
+import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
 
 const MakeRequest = () => {
+    const user_id = usePage().props.auth.user.id;
+
     const [formData, setFormData] = useState({
-        requester_id: "",
+        requester_id: user_id || "",
         warehouse_id: "",
         expected_delivery_date: "",
         status_id: "1",
@@ -60,8 +63,6 @@ const MakeRequest = () => {
 
     const validateForm = () => {
         let newErrors = {};
-        if (!formData.requester_id)
-            newErrors.requester_id = "Requester ID is required";
         if (!formData.warehouse_id)
             newErrors.warehouse_id = "Warehouse is required";
         if (!formData.expected_delivery_date)
@@ -89,12 +90,14 @@ const MakeRequest = () => {
     };
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
     };
 
     const handleItemChange = (index, e) => {
+        const { name, value } = e.target;
         const newItems = [...formData.items];
-        newItems[index][e.target.name] = e.target.value;
+        newItems[index][name] = value;
         setFormData({ ...formData, items: newItems });
     };
 
@@ -167,7 +170,7 @@ const MakeRequest = () => {
                                 value={item.product_id}
                                 onChange={(e) => handleItemChange(index, e)}
                                 options={products.map((p) => ({
-                                    value: p.id,
+                                    id: p.id,
                                     label: p.name,
                                 }))}
                             />
@@ -184,7 +187,7 @@ const MakeRequest = () => {
                                 value={item.category_id}
                                 onChange={(e) => handleItemChange(index, e)}
                                 options={categories.map((p) => ({
-                                    value: p.id,
+                                    id: p.id,
                                     label: p.name,
                                 }))}
                             />
@@ -201,7 +204,7 @@ const MakeRequest = () => {
                                 value={item.unit_id}
                                 onChange={(e) => handleItemChange(index, e)}
                                 options={units.map((p) => ({
-                                    value: p.id,
+                                    id: p.id,
                                     label: p.name,
                                 }))}
                             />
@@ -212,23 +215,19 @@ const MakeRequest = () => {
                             )}
                         </div>
                         <div>
-                            <SelectFloating
-                                label="Quantity"
-                                name="quantity"
-                                value={item.quantity}
-                                onChange={(e) => handleItemChange(index, e)}
-                                options={[1, 2, 5, 10, 20, 50, 100].map(
-                                    (q) => ({
-                                        value: q,
-                                        label: q,
-                                    })
+                            <div>
+                                <InputFloating
+                                    label="Quantity"
+                                    name="quantity"
+                                    value={item.quantity}
+                                    onChange={(e) => handleItemChange(index, e)}
+                                />
+                                {errors[`items.${index}.quantity`] && (
+                                    <p className="text-red-500 text-sm">
+                                        {errors[`items.${index}.quantity`]}
+                                    </p>
                                 )}
-                            />
-                            {errors[`items.${index}.quantity`] && (
-                                <p className="text-red-500 text-sm">
-                                    {errors[`items.${index}.quantity`]}
-                                </p>
-                            )}
+                            </div>
                         </div>
                         <div>
                             <SelectFloating
@@ -237,7 +236,7 @@ const MakeRequest = () => {
                                 value={item.urgency}
                                 onChange={(e) => handleItemChange(index, e)}
                                 options={statuses.map((p) => ({
-                                    value: p.id,
+                                    id: p.id,
                                     label: p.name,
                                 }))}
                             />
@@ -321,7 +320,7 @@ const MakeRequest = () => {
                             value={formData.warehouse_id}
                             onChange={handleChange}
                             options={warehouses.map((p) => ({
-                                value: p.id,
+                                id: p.id,
                                 label: p.name,
                             }))}
                         />

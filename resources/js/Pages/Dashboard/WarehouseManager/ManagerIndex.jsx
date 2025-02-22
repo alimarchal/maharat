@@ -1,22 +1,24 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
-import StatusTable from "./StatusTable";
+import ManagerTable from "./ManagerTable";
 
-const StatusIndex = () => {
+const ManagerIndex = () => {
     return (
         <div className="min-h-screen">
             <div className="flex justify-between items-center mb-8">
-                <h2 className="text-3xl font-bold text-[#2C323C] mb-4">Status</h2>
+                <h2 className="text-3xl font-bold text-[#2C323C] mb-4">
+                    Warehouse Manager
+                </h2>
                 <Link
-                    href="/status/create"
+                    href="/manager/create"
                     className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                 >
-                    Create New Status
+                    Create New Manager
                 </Link>
             </div>
-            <StatusTable />
+            <ManagerTable />
         </div>
     );
 };
 
-export default StatusIndex;
+export default ManagerIndex;
