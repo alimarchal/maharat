@@ -10,7 +10,7 @@ const UnitIndex = () => {
                     Units
                 </h2>
                 <Link
-                    href="/new-unit"
+                    href="/units/create"
                     className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                 >
                     Create New Unit

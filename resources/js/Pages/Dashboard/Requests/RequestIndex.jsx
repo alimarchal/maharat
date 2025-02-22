@@ -31,7 +31,7 @@ const RequestIndex = () => {
                     </div>
 
                     <Link
-                        href="/new-request"
+                        href="/my-requests/create"
                         className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                     >
                         Make New Request

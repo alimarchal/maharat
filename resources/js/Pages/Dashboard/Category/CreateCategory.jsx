@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import InputFloating from "../../../Components/InputFloating";
-import { router } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
 
 const CreateCategory = () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const categoryId = urlParams.get("id");
+    const { categoryId } = usePage().props;
 
     const [formData, setFormData] = useState({
         name: "",
@@ -91,11 +90,6 @@ const CreateCategory = () => {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6 mt-8">
-                <h3 className="text-2xl font-medium text-[#6E66AC]">
-                    {categoryId
-                        ? "Edit Existing Category"
-                        : "Requested New Category"}
-                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <InputFloating

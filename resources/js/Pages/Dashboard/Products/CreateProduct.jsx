@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
 import InputFloating from "../../../Components/InputFloating";
 import SelectFloating from "../../../Components/SelectFloating";
-import { router } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
 
 const CreateProduct = () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const productId = urlParams.get("id");
+    const { productId } = usePage().props;
 
     const [formData, setFormData] = useState({
         name: "",
@@ -108,7 +107,7 @@ const CreateProduct = () => {
                 upc: "",
                 description: "",
             });
-            router.visit("/products");
+            router.visit("/items");
         } catch (error) {
             setErrors(
                 error.response?.data?.errors || {
@@ -123,15 +122,10 @@ const CreateProduct = () => {
     return (
         <>
             <h2 className="text-3xl font-bold text-[#2C323C]">
-                {productId ? "Edit Product" : "Make a New Product"}
+                {productId ? "Edit Item" : "Make a New Item"}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6 mt-8">
-                <h3 className="text-2xl font-medium text-[#6E66AC]">
-                    {productId
-                        ? "Edit Existing Product"
-                        : "Requested New Product"}
-                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <InputFloating
@@ -234,8 +228,8 @@ const CreateProduct = () => {
                                 ? "Updating..."
                                 : "Creating..."
                             : productId
-                            ? "Update Product"
-                            : "Create Product"}
+                            ? "Update Item"
+                            : "Create Item"}
                     </button>
                 </div>
             </form>

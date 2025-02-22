@@ -1,33 +1,43 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import InputFloating from "../../../Components/InputFloating";
 import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
 
-const CreateUnit = () => {
-    const { unitId } = usePage().props;
+const CreateWarehouse = () => {
+    const { warehouseId } = usePage().props;
+    const user_id = usePage().props.auth.user.id;
 
     const [formData, setFormData] = useState({
         name: "",
-        short_title: "",
+        code: "",
+        address: "",
+        latitude: "",
+        longitude: "",
+        manager_id: user_id || "",
     });
+
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (unitId) {
+        if (warehouseId) {
             axios
-                .get(`/api/v1/units/${unitId}`)
+                .get(`/api/v1/warehouses/${warehouseId}`)
                 .then((response) => {
                     setFormData({
-                        name: response.data.data.name,
-                        short_title: response.data.data.short_title,
+                        name: response.data.data.name || "",
+                        code: response.data.data.code || "",
+                        address: response.data.data.address || "",
+                        latitude: response.data.data.latitude || "",
+                        longitude: response.data.data.longitude || "",
+                        manager_id: response.data.data.manager_id || user_id,
                     });
                 })
-                .catch((error) => {
-                    console.error("Error fetching units:", error);
-                });
+                .catch((error) =>
+                    console.error("Error fetching warehouse details:", error)
+                );
         }
-    }, [unitId]);
+    }, [warehouseId, user_id]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -36,11 +46,9 @@ const CreateUnit = () => {
 
     const validateForm = () => {
         let newErrors = {};
-
-        if (!formData?.name?.trim()) newErrors.name = "Name is required";
-        if (!formData?.short_title?.trim())
-            newErrors.short_title = "Short Title is required";
-
+        if (!formData.name.trim()) newErrors.name = "Name is required";
+        if (!formData.code.trim()) newErrors.code = "Code is required";
+        if (!formData.address.trim()) newErrors.address = "Address is required";
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -52,31 +60,27 @@ const CreateUnit = () => {
 
         try {
             let response;
-            if (unitId) {
+            if (warehouseId) {
                 response = await axios.put(
-                    `/api/v1/units/${unitId}`,
-                    formData,
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                            Accept: "application/json",
-                        },
-                    }
+                    `/api/v1/warehouses/${warehouseId}`,
+                    formData
                 );
             } else {
-                response = await axios.post("/api/v1/units", formData, {
-                    headers: {
-                        "Content-Type": "application/json",
-                        Accept: "application/json",
-                    },
-                });
+                response = await axios.post("/api/v1/warehouses", formData);
             }
-            setFormData({ name: "" });
-            router.visit("/units");
+            setFormData({
+                name: "",
+                code: "",
+                address: "",
+                latitude: "",
+                longitude: "",
+                manager_id: user_id,
+            });
+            router.visit("/warehouse-management");
         } catch (error) {
             setErrors(
                 error.response?.data?.errors || {
-                    general: "An error occurred while saving the units",
+                    general: "An error occurred while saving the warehouse",
                 }
             );
         } finally {
@@ -87,7 +91,7 @@ const CreateUnit = () => {
     return (
         <>
             <h2 className="text-3xl font-bold text-[#2C323C]">
-                {unitId ? "Edit Unit" : "Create New Unit"}
+                {warehouseId ? "Edit Warehouse" : "Create New Warehouse"}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6 mt-8">
@@ -107,14 +111,27 @@ const CreateUnit = () => {
                     </div>
                     <div>
                         <InputFloating
-                            label="Short Title"
-                            name="short_title"
-                            value={formData.short_title}
+                            label="Code"
+                            name="code"
+                            value={formData.code}
                             onChange={handleChange}
                         />
-                        {errors.short_title && (
+                        {errors.code && (
                             <p className="text-red-500 text-sm mt-1">
-                                {errors.short_title}
+                                {errors.code}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="Address"
+                            name="address"
+                            value={formData.address}
+                            onChange={handleChange}
+                        />
+                        {errors.address && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.address}
                             </p>
                         )}
                     </div>
@@ -126,12 +143,12 @@ const CreateUnit = () => {
                         disabled={loading}
                     >
                         {loading
-                            ? unitId
+                            ? warehouseId
                                 ? "Updating..."
                                 : "Creating..."
-                            : unitId
-                            ? "Update Unit"
-                            : "Create Unit"}
+                            : warehouseId
+                            ? "Update Warehouse"
+                            : "Create Warehouse"}
                     </button>
                 </div>
             </form>
@@ -139,4 +156,4 @@ const CreateUnit = () => {
     );
 };
 
-export default CreateUnit;
+export default CreateWarehouse;
