@@ -32,10 +32,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/my-requests', function () { 
         return Inertia::render('Dashboard', ['page' => 'Requests/RequestIndex']); 
     })->name('requests.index');
-
-    Route::get('/new-request', function () { 
+    Route::get('/my-requests/create', function () { 
         return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest']); 
     })->name('requests.create');
+    Route::get('/my-requests/{id}/edit', function ($id) { 
+        return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest', 'requestId' => $id]); 
+    })->name('requests.edit');
 
     Route::get('/warehouse', function () { 
         return Inertia::render('Dashboard/Warehouse/Warehouse'); 
@@ -78,15 +80,35 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'Category/CreateCategory', 'categoryId' => $id]); 
     })->name('category.edit');
 
-    Route::get('/products', function () { 
+    Route::get('/items', function () { 
         return Inertia::render('Dashboard', ['page' => 'Products/ProductIndex']); 
     })->name('product.index');
-    Route::get('/products/create', function () { 
+    Route::get('/items/create', function () { 
         return Inertia::render('Dashboard', ['page' => 'Products/CreateProduct']); 
     })->name('product.create');
-    Route::get('/products/{id}/edit', function ($id) { 
+    Route::get('/items/{id}/edit', function ($id) { 
         return Inertia::render('Dashboard', ['page' => 'Products/CreateProduct', 'productId' => $id]); 
     })->name('product.edit');
+
+    Route::get('/warehouse-management', function () { 
+        return Inertia::render('Dashboard', ['page' => 'WarehouseManagement/WarehouseIndex']); 
+    })->name('warehouse.index');
+    Route::get('/warehouse-management/create', function () { 
+        return Inertia::render('Dashboard', ['page' => 'WarehouseManagement/CreateWarehouse']); 
+    })->name('warehouse.create');
+    Route::get('/warehouse-management/{id}/edit', function ($id) { 
+        return Inertia::render('Dashboard', ['page' => 'WarehouseManagement/CreateWarehouse', 'warehouseId' => $id]); 
+    })->name('warehouse.edit');
+
+    Route::get('/manager', function () { 
+        return Inertia::render('Dashboard', ['page' => 'WarehouseManager/ManagerIndex']); 
+    })->name('manager.index');
+    Route::get('/manager/create', function () { 
+        return Inertia::render('Dashboard', ['page' => 'WarehouseManager/CreateManager']); 
+    })->name('manager.create');
+    Route::get('/manager/{id}/edit', function ($id) { 
+        return Inertia::render('Dashboard', ['page' => 'WarehouseManager/CreateManager', 'managerId' => $id]); 
+    })->name('manager.edit');
 });
 
 // Profile Routes (Only for Authenticated Users)
