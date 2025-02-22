@@ -9,6 +9,11 @@ class UnitParameters
         'created_at',
     ];
 
+    public const ALLOWED_FILTERS_EXACT = [
+        'name',
+        'short_title',
+    ];
+
     public const ALLOWED_SORTS = [
         'name',
         'created_at',
