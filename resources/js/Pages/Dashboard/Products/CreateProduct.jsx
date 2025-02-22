@@ -107,7 +107,7 @@ const CreateProduct = () => {
                 upc: "",
                 description: "",
             });
-            router.visit("/products");
+            router.visit("/items");
         } catch (error) {
             setErrors(
                 error.response?.data?.errors || {
@@ -122,7 +122,7 @@ const CreateProduct = () => {
     return (
         <>
             <h2 className="text-3xl font-bold text-[#2C323C]">
-                {productId ? "Edit Product" : "Make a New Product"}
+                {productId ? "Edit Item" : "Make a New Item"}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6 mt-8">
@@ -228,8 +228,8 @@ const CreateProduct = () => {
                                 ? "Updating..."
                                 : "Creating..."
                             : productId
-                            ? "Update Product"
-                            : "Create Product"}
+                            ? "Update Item"
+                            : "Create Item"}
                     </button>
                 </div>
             </form>

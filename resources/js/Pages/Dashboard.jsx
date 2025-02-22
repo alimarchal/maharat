@@ -14,6 +14,10 @@ import CategoryIndex from "./Dashboard/Category/CategoryIndex";
 import CreateCategory from "./Dashboard/Category/CreateCategory";
 import ProductIndex from "./Dashboard/Products/ProductIndex";
 import CreateProduct from "./Dashboard/Products/CreateProduct";
+import WarehouseIndex from "./Dashboard/WarehouseManagement/WarehouseIndex";
+import CreateWarehouse from "./Dashboard/WarehouseManagement/CreateWarehouse";
+import ManagerIndex from "./Dashboard/WarehouseManager/ManagerIndex";
+import CreateManager from "./Dashboard/WarehouseManager/CreateManager";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -27,6 +31,12 @@ export default function Dashboard({ auth, page }) {
         if (page === "Category/CreateCategory") return <CreateCategory />;
         if (page === "Products/ProductIndex") return <ProductIndex />;
         if (page === "Products/CreateProduct") return <CreateProduct />;
+        if (page === "WarehouseManagement/WarehouseIndex")
+            return <WarehouseIndex />;
+        if (page === "WarehouseManagement/CreateWarehouse")
+            return <CreateWarehouse />;
+        if (page === "WarehouseManager/ManagerIndex") return <ManagerIndex />;
+        if (page === "WarehouseManager/CreateManager") return <CreateManager />;
         return <MainDashboard />;
     };
 
