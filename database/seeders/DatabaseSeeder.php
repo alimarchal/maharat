@@ -19,6 +19,10 @@ class DatabaseSeeder extends Seeder
             RoleAndPermissionSeeder::class,
             UserSeeder::class,
             StatusSeeder::class,
+            RfqCategorySeeder::class,
+            RfqSeeder::class,
+            RfqItemSeeder::class,
+            QuotationSeeder::class,
         ]);
         //php artisan db:seed
     }

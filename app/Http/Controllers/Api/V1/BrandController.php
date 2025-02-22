@@ -22,8 +22,7 @@ class BrandController extends Controller
             ->allowedFilters(BrandParameters::ALLOWED_FILTERS)
             ->allowedSorts(BrandParameters::ALLOWED_SORTS)
             ->allowedIncludes(BrandParameters::ALLOWED_INCLUDES)
-            ->defaultSort('-created_at')
-            ->paginate(request()->get('per_page', 15))
+            ->paginate()
             ->appends(request()->query());
 
         if ($brands->isEmpty()) {
@@ -38,23 +37,14 @@ class BrandController extends Controller
 
     public function store(StoreBrandRequest $request): JsonResponse
     {
-
         try {
-            DB::beginTransaction();
-
-            $brand = Brand::create([
-                ...$request->validated(),
-                'user_id' => auth()->id(),
-            ]);
-
-            DB::commit();
+            $brand = Brand::create($request->validated());
 
             return response()->json([
                 'message' => 'Brand created successfully',
-                'data' => new BrandResource($brand->load(['creator', 'category', 'status']))
+                'data' => new BrandResource($brand->load('status'))
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'message' => 'Failed to create brand',
                 'error' => $e->getMessage()
@@ -65,7 +55,7 @@ class BrandController extends Controller
     public function show(string $id): JsonResponse
     {
         $brand = QueryBuilder::for(Brand::class)
-            ->allowedIncludes(['creator', 'category', 'status'])
+            ->allowedIncludes(BrandParameters::ALLOWED_INCLUDES)
             ->findOrFail($id);
 
         return response()->json([
@@ -76,18 +66,13 @@ class BrandController extends Controller
     public function update(UpdateBrandRequest $request, Brand $brand): JsonResponse
     {
         try {
-            DB::beginTransaction();
-
             $brand->update($request->validated());
-
-            DB::commit();
 
             return response()->json([
                 'message' => 'Brand updated successfully',
-                'data' => new BrandResource($brand->load(['creator', 'category', 'status']))
+                'data' => new BrandResource($brand->load('status'))
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'message' => 'Failed to update brand',
                 'error' => $e->getMessage()
@@ -98,17 +83,12 @@ class BrandController extends Controller
     public function destroy(Brand $brand): JsonResponse
     {
         try {
-            DB::beginTransaction();
-
             $brand->delete();
-
-            DB::commit();
 
             return response()->json([
                 'message' => 'Brand deleted successfully'
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'message' => 'Failed to delete brand',
                 'error' => $e->getMessage()
