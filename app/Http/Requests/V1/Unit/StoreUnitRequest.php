@@ -23,7 +23,7 @@ class StoreUnitRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'short_title' => ['required', 'string', 'max:255'],
+            'short_title' => ['nullable', 'string', 'max:255'],
         ];
     }
 }
