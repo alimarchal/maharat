@@ -53,6 +53,13 @@ class StatusSeeder extends Seeder
             ['type' => 'Quotation Status', 'name' => 'Rejected'],
             ['type' => 'Quotation Status', 'name' => 'Expired'],
 
+            ['type' => 'Workflow Material Request', 'name' => 'Normal Purchase Process'],
+            ['type' => 'Workflow Material Request', 'name' => 'Single Source Purchase Process'],
+            ['type' => 'Workflow Material Request', 'name' => 'User Request Purchase'],
+            ['type' => 'Workflow Material Request', 'name' => 'Purchase'],
+            ['type' => 'Workflow Material Request', 'name' => 'RFQ Purchase'],
+            ['type' => 'Workflow Material Request', 'name' => 'Request for Material'],
+
 
 
         ];
