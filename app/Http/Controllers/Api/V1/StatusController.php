@@ -11,6 +11,7 @@ use App\QueryParameters\StatusParameters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
+use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 use Inertia\Inertia;
 
@@ -19,7 +20,8 @@ class StatusController extends Controller
     public function index(): JsonResponse|ResourceCollection
     {
         $statuses = QueryBuilder::for(Status::class)
-            ->allowedFilters(StatusParameters::ALLOWED_FILTERS)
+            ->allowedFilters(['created_at',AllowedFilter::exact('type')])
+//            ->allowedFilters()
             ->allowedSorts(StatusParameters::ALLOWED_SORTS)
             ->paginate()
             ->appends(request()->query());
@@ -60,7 +62,7 @@ class StatusController extends Controller
 
             // Validate the request
             $validatedData = $request->validated();
-            
+
             // Create the status
             $status = Status::create([
                 'type' => $validatedData['type'],
