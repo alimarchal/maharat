@@ -18,7 +18,6 @@ const UnitTable = () => {
                     `/api/v1/units?page=${currentPage}`
                 );
                 const data = await response.json();
-
                 if (response.ok) {
                     setUnits(data.data || []);
                     setLastPage(data.meta?.last_page || 1);
@@ -68,6 +67,7 @@ const UnitTable = () => {
                             ID
                         </th>
                         <th className="py-3 px-4">Name</th>
+                        <th className="py-3 px-4">Short Title</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
                             Actions
                         </th>
@@ -76,14 +76,14 @@ const UnitTable = () => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="3" className="text-center py-12">
+                            <td colSpan="4" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="3"
+                                colSpan="4"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -94,12 +94,15 @@ const UnitTable = () => {
                             <tr key={unit.id}>
                                 <td className="py-3 px-4">{unit.id}</td>
                                 <td className="py-3 px-4">{unit.name}</td>
+                                <td className="py-3 px-4">
+                                    {unit.short_title}
+                                </td>
                                 <td className="py-3 px-4 flex space-x-3">
-                                    <Link className="text-[#9B9DA2] hover:text-gray-500">
+                                    {/* <Link className="text-[#9B9DA2] hover:text-gray-500">
                                         <FontAwesomeIcon icon={faEye} />
-                                    </Link>
+                                    </Link> */}
                                     <Link
-                                        href={`/new-unit?id=${unit.id}`}
+                                        href={`/units/${unit.id}/edit`}
                                         className="text-[#9B9DA2] hover:text-gray-500"
                                     >
                                         <FontAwesomeIcon icon={faEdit} />
@@ -116,7 +119,7 @@ const UnitTable = () => {
                     ) : (
                         <tr>
                             <td
-                                colSpan="3"
+                                colSpan="4"
                                 className="text-center text-[#2C323C] font-medium py-4"
                             >
                                 No Units found.

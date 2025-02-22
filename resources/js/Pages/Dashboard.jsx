@@ -32,7 +32,18 @@ export default function Dashboard({ auth, page }) {
 
     const currentPath = window.location.pathname;
     const isDashboard = currentPath === "/dashboard";
-    const breadcrumbText = currentPath.split("/").pop().replace(/-/g, " ");
+
+    const breadcrumbSegments = currentPath
+        .split("/")
+        .filter(
+            (segment) =>
+                segment !== "" && segment !== "dashboard" && isNaN(segment)
+        )
+        .map((segment) =>
+            segment
+                .replace(/-/g, " ")
+                .replace(/\b\w/g, (char) => char.toUpperCase())
+        );
 
     return (
         <AuthenticatedLayout>
@@ -40,21 +51,32 @@ export default function Dashboard({ auth, page }) {
                 title={
                     isDashboard
                         ? "Dashboard"
-                        : breadcrumbText.charAt(0).toUpperCase() +
-                          breadcrumbText.slice(1)
+                        : breadcrumbSegments.length > 0
+                        ? breadcrumbSegments.join(" > ")
+                        : "Dashboard"
                 }
             />
             {!isDashboard && (
                 <div className="p-6 text-[#7D8086] text-xl">
                     <p className="flex items-center gap-2">
                         <span>Dashboard</span>
-                        <FontAwesomeIcon
-                            icon={faChevronRight}
-                            className="text-[#7D8086]"
-                        />
-                        <span className="text-[#009FDC] font-medium capitalize">
-                            {breadcrumbText}
-                        </span>
+                        {breadcrumbSegments.map((segment, index) => (
+                            <React.Fragment key={index}>
+                                <FontAwesomeIcon
+                                    icon={faChevronRight}
+                                    className="text-[#7D8086]"
+                                />
+                                <span
+                                    className={
+                                        index === breadcrumbSegments.length - 1
+                                            ? "text-[#009FDC] font-medium"
+                                            : ""
+                                    }
+                                >
+                                    {segment}
+                                </span>
+                            </React.Fragment>
+                        ))}
                     </p>
                 </div>
             )}

@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import InputFloating from "../../../Components/InputFloating";
-import { router } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
 
 const CreateUnit = () => {
-    const query = new URLSearchParams(window.location.search);
-    const unitId = query.get("id");
+    const { unitId } = usePage().props;
 
     const [formData, setFormData] = useState({
         name: "",
+        short_title: "",
     });
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
@@ -20,6 +20,7 @@ const CreateUnit = () => {
                 .then((response) => {
                     setFormData({
                         name: response.data.data.name,
+                        short_title: response.data.data.short_title,
                     });
                 })
                 .catch((error) => {
@@ -35,7 +36,11 @@ const CreateUnit = () => {
 
     const validateForm = () => {
         let newErrors = {};
-        if (!formData.name.trim()) newErrors.name = "Name is required";
+
+        if (!formData?.name?.trim()) newErrors.name = "Name is required";
+        if (!formData?.short_title?.trim())
+            newErrors.short_title = "Short Title is required";
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -86,9 +91,6 @@ const CreateUnit = () => {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6 mt-8">
-                <h3 className="text-2xl font-medium text-[#6E66AC]">
-                    {unitId ? "Update Unit" : "Requested New Unit"}
-                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <InputFloating
@@ -100,6 +102,19 @@ const CreateUnit = () => {
                         {errors.name && (
                             <p className="text-red-500 text-sm mt-1">
                                 {errors.name}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="Short Title"
+                            name="short_title"
+                            value={formData.short_title}
+                            onChange={handleChange}
+                        />
+                        {errors.short_title && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.short_title}
                             </p>
                         )}
                     </div>
