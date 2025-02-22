@@ -46,37 +46,47 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('rfq.index');
 
     Route::get('/statuses', [StatusController::class, 'index'])->name('statuses.index');
-
     Route::get('/status', function () { 
         return Inertia::render('Dashboard', ['page' => 'Status/StatusIndex']); 
     })->name('status.index');
-
-    Route::get('/new-status', function () { 
+    Route::get('/status/create', function () { 
         return Inertia::render('Dashboard', ['page' => 'Status/CreateStatus']); 
     })->name('status.create');
+    Route::get('/status/{id}/edit', function ($id) { 
+        return Inertia::render('Dashboard', ['page' => 'Status/CreateStatus', 'statusId' => $id]); 
+    })->name('status.edit');
 
     Route::get('/units', [UnitController::class, 'index'])->name('units.index');
     Route::get('/units', function () { 
         return Inertia::render('Dashboard', ['page' => 'Units/UnitIndex']); 
     })->name('unit.index');
-    Route::get('/new-unit', function () { 
+    Route::get('/units/create', function () { 
         return Inertia::render('Dashboard', ['page' => 'Units/CreateUnit']); 
     })->name('unit.create');
+    Route::get('/units/{id}/edit', function ($id) { 
+        return Inertia::render('Dashboard', ['page' => 'Units/CreateUnit', 'unitId' => $id]); 
+    })->name('units.edit');
 
     Route::get('/product-categories', [ProductCategoryController::class, 'index'])->name('category.index');
     Route::get('/category', function () { 
         return Inertia::render('Dashboard', ['page' => 'Category/CategoryIndex']); 
     })->name('category.index');
-    Route::get('/new-category', function () { 
+    Route::get('/category/create', function () { 
         return Inertia::render('Dashboard', ['page' => 'Category/CreateCategory']); 
     })->name('category.create');
+    Route::get('/category/{id}/edit', function ($id) { 
+        return Inertia::render('Dashboard', ['page' => 'Category/CreateCategory', 'categoryId' => $id]); 
+    })->name('category.edit');
 
     Route::get('/products', function () { 
         return Inertia::render('Dashboard', ['page' => 'Products/ProductIndex']); 
     })->name('product.index');
-    Route::get('/new-product', function () { 
+    Route::get('/products/create', function () { 
         return Inertia::render('Dashboard', ['page' => 'Products/CreateProduct']); 
     })->name('product.create');
+    Route::get('/products/{id}/edit', function ($id) { 
+        return Inertia::render('Dashboard', ['page' => 'Products/CreateProduct', 'productId' => $id]); 
+    })->name('product.edit');
 });
 
 // Profile Routes (Only for Authenticated Users)

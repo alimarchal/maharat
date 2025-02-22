@@ -97,11 +97,11 @@ const StatusTable = () => {
                                 <td className="py-3 px-4">{status.type}</td>
                                 <td className="py-3 px-4">{status.name}</td>
                                 <td className="py-3 px-4 flex space-x-3">
-                                    <Link className="text-[#9B9DA2] hover:text-gray-500">
+                                    {/* <Link className="text-[#9B9DA2] hover:text-gray-500">
                                         <FontAwesomeIcon icon={faEye} />
-                                    </Link>
+                                    </Link> */}
                                     <Link
-                                        href={`/new-status?id=${status.id}`}
+                                        href={`/status/${status.id}/edit`}
                                         className="text-[#9B9DA2] hover:text-gray-500"
                                     >
                                         <FontAwesomeIcon icon={faEdit} />
