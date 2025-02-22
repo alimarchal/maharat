@@ -23,6 +23,7 @@ return new class extends Migration
 
             // Additional User Information
             $table->string('title')->nullable();           // Title (Mr, Mrs, etc.)
+            $table->string('designation')->nullable();
             $table->string('landline')->nullable();        // Landline phone number
             $table->string('mobile')->nullable();          // Mobile phone number
             $table->string('language')->nullable();        // Preferred language
