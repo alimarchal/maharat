@@ -52,9 +52,9 @@ class WorkflowProcess extends Model
     /**
      * Escalation user relationship
      */
-    public function escalationUser() {
-        return $this->belongsTo(User::class, 'escalation_user_id');
-    }
+//    public function escalationUser() {
+//        return $this->belongsTo(User::class, 'escalation_user_id');
+//    }
 
     /**
      * Workflow type relationship from status table
