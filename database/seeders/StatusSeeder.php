@@ -30,9 +30,10 @@ class StatusSeeder extends Seeder
             ['type' => 'Serial Numbers Status', 'name' => 'Allocated'],
             ['type' => 'Serial Numbers Status', 'name' => 'Scrapped'],
             ['type' => 'Request For Material', 'name' => 'Normal'],
-            ['type' => 'Request For Material', 'name' => 'Low'],
-            ['type' => 'Request For Material', 'name' => 'High'],
-            ['type' => 'Request For Material', 'name' => 'ASAP'],
+            ['type' => 'Urgency', 'name' => 'Normal'],
+            ['type' => 'Urgency', 'name' => 'LOW'],
+            ['type' => 'Urgency', 'name' => 'Normal'],
+            ['type' => 'Urgency', 'name' => 'Normal'],
 
             ['type' => 'Purchase RFQ Status', 'name' => 'Active'],
             ['type' => 'Purchase RFQ Status', 'name' => 'Pending'],
