@@ -3,9 +3,10 @@ import { faFileAlt, faBoxes, faFileInvoice, faChartBar, faClipboardList, faShopp
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { router } from "@inertiajs/react";
 
-const DropdownItem = ({ text, icon }) => {
+const DropdownItem = ({ text, icon, onClick }) => {
     return (
-        <div className="p-3 cursor-pointer flex items-center justify-between transition-all duration-300 hover:bg-[#009FDC] group">
+        <div className="p-3 cursor-pointer flex items-center justify-between transition-all duration-300 hover:bg-[#009FDC] group"
+        onClick={onClick}>
             <div className="flex items-center gap-3">
                 <div className="p-2 w-12 h-12 flex justify-center items-center border border-[#B9BBBD] rounded-full transition-all duration-300 group-hover:border-[#009FDC] group-hover:bg-white">
                     <FontAwesomeIcon
@@ -129,6 +130,7 @@ const DashboardCard = ({
                             key={index}
                             text={item.text}
                             icon={item.icon}
+                            onClick={item.onClick}
                         />
                     ))}
                 </div>
@@ -139,12 +141,12 @@ const DashboardCard = ({
 
 export default function Dashboard({ page }) {
     const purchaseDropdownItems = [
-        { text: "RFQs", icon: faFileCirclePlus },
+        { text: "RFQs", icon: faFileCirclePlus, onClick: () => router.visit("/rfq") },
         { text: "Quotations", icon: faFileInvoice },
         { text: "Purchase Orders", icon: faFileSignature },
         { text: "Goods Receiving Note", icon: faListCheck },
         { text: "Status", icon: faEllipsisH },
-    ];
+    ];    
 
     const configDropdownItems = [
         { text: "Organizational Chart", icon: faChartBar },
