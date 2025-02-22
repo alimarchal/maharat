@@ -1,17 +1,35 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import InputFloating from "../../../Components/InputFloating";
-import { router, usePage } from "@inertiajs/react";
+import { router } from "@inertiajs/react";
 import axios from "axios";
 
 const CreateStatus = () => {
-    const { props } = usePage();
+    const urlParams = new URLSearchParams(window.location.search);
+    const statusId = urlParams.get("id");
+
     const [formData, setFormData] = useState({
         type: "",
         name: "",
     });
+
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
-    const [successMessage, setSuccessMessage] = useState("");
+
+    useEffect(() => {
+        if (statusId) {
+            axios
+                .get(`/api/v1/statuses/${statusId}`)
+                .then((response) => {
+                    setFormData({
+                        type: response.data.data.type,
+                        name: response.data.data.name,
+                    });
+                })
+                .catch((error) => {
+                    console.error("Error fetching status:", error);
+                });
+        }
+    }, [statusId]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -31,30 +49,36 @@ const CreateStatus = () => {
         if (!validateForm()) return;
 
         setLoading(true);
-        setSuccessMessage(""); 
 
         try {
-            const response = await axios.post('/api/v1/statuses', formData, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                }
-            });
-
-            console.log('Success:', response.data);
-            setSuccessMessage("Status created successfully!"); 
-            setFormData({ type: "", name: "" }); // Reset form
-            
-            //Redirect after success
-            setTimeout(() => {
-                window.location.href = '/status';
-            }, 2000);
-
+            let response;
+            if (statusId) {
+                response = await axios.put(
+                    `/api/v1/statuses/${statusId}`,
+                    formData,
+                    {
+                        headers: {
+                            "Content-Type": "application/json",
+                            Accept: "application/json",
+                        },
+                    }
+                );
+            } else {
+                response = await axios.post("/api/v1/statuses", formData, {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                    },
+                });
+            }
+            setFormData({ type: "", name: "" });
+            router.visit("/status");
         } catch (error) {
-            console.error('Error:', error.response?.data || error);
-            setErrors(error.response?.data?.errors || {
-                general: 'An error occurred while creating the status'
-            });
+            setErrors(
+                error.response?.data?.errors || {
+                    general: "An error occurred while saving the status",
+                }
+            );
         } finally {
             setLoading(false);
         }
@@ -63,12 +87,12 @@ const CreateStatus = () => {
     return (
         <>
             <h2 className="text-3xl font-bold text-[#2C323C]">
-                Make a New Status
+                {statusId ? "Edit Status" : "Make a New Status"}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6 mt-8">
                 <h3 className="text-2xl font-medium text-[#6E66AC]">
-                    Requested New Status
+                    {statusId ? "Edit Existing Status" : "Requested New Status"}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -104,7 +128,13 @@ const CreateStatus = () => {
                         className="bg-[#009FDC] text-white px-6 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50"
                         disabled={loading}
                     >
-                        {loading ? "Creating..." : "Create Status"}
+                        {loading
+                            ? statusId
+                                ? "Updating..."
+                                : "Creating..."
+                            : statusId
+                            ? "Update Status"
+                            : "Create Status"}
                     </button>
                 </div>
             </form>

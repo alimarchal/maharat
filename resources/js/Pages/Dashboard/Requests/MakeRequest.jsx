@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCamera, faPlus } from "@fortawesome/free-solid-svg-icons";
 import SelectFloating from "../../../Components/SelectFloating";
@@ -24,6 +24,39 @@ const MakeRequest = () => {
         ],
     });
     const [errors, setErrors] = useState({});
+    const [products, setProducts] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [units, setUnits] = useState([]);
+    const [warehouses, setWarehouses] = useState([]);
+    const [statuses, setStatuses] = useState([]);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [
+                    productsRes,
+                    categoriesRes,
+                    unitsRes,
+                    warehousesRes,
+                    statusesRes,
+                ] = await Promise.all([
+                    axios.get("/api/v1/products"),
+                    axios.get("/api/v1/product-categories"),
+                    axios.get("/api/v1/units"),
+                    axios.get("/api/v1/warehouses"),
+                    axios.get("/api/v1/statuses"),
+                ]);
+                setProducts(productsRes.data.data);
+                setCategories(categoriesRes.data.data);
+                setUnits(unitsRes.data.data);
+                setWarehouses(warehousesRes.data.data);
+                setStatuses(statusesRes.data.data);
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        };
+        fetchData();
+    }, []);
 
     const validateForm = () => {
         let newErrors = {};
@@ -66,9 +99,12 @@ const MakeRequest = () => {
     };
 
     const handleFileChange = (index, e) => {
-        const newItems = [...formData.items];
-        newItems[index].photo = e.target.files[0];
-        setFormData({ ...formData, items: newItems });
+        const file = e.target.files[0];
+        if (file) {
+            const newItems = [...formData.items];
+            newItems[index].photo = file.name;
+            setFormData({ ...formData, items: newItems });
+        }
     };
 
     const addItem = () => {
@@ -94,7 +130,12 @@ const MakeRequest = () => {
         if (!validateForm()) return;
 
         try {
-            await axios.post("/api/material-requests", formData);
+            response = await axios.post("/api/v1/material-requests", formData, {
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                },
+            });
             router.visit("/my-requests");
         } catch (error) {
             console.error("Error submitting request:", error);
@@ -125,12 +166,10 @@ const MakeRequest = () => {
                                 name="product_id"
                                 value={item.product_id}
                                 onChange={(e) => handleItemChange(index, e)}
-                                options={[
-                                    "Computer",
-                                    "Laptop",
-                                    "Mouse",
-                                    "Keyboard",
-                                ]}
+                                options={products.map((p) => ({
+                                    value: p.id,
+                                    label: p.name,
+                                }))}
                             />
                             {errors[`items.${index}.product_id`] && (
                                 <p className="text-red-500 text-sm">
@@ -144,7 +183,10 @@ const MakeRequest = () => {
                                 name="category_id"
                                 value={item.category_id}
                                 onChange={(e) => handleItemChange(index, e)}
-                                options={["Electronics", "Stationary"]}
+                                options={categories.map((p) => ({
+                                    value: p.id,
+                                    label: p.name,
+                                }))}
                             />
                             {errors[`items.${index}.category_id`] && (
                                 <p className="text-red-500 text-sm">
@@ -158,7 +200,10 @@ const MakeRequest = () => {
                                 name="unit_id"
                                 value={item.unit_id}
                                 onChange={(e) => handleItemChange(index, e)}
-                                options={["Piece", "Box", "Pack", "Set"]}
+                                options={units.map((p) => ({
+                                    value: p.id,
+                                    label: p.name,
+                                }))}
                             />
                             {errors[`items.${index}.unit_id`] && (
                                 <p className="text-red-500 text-sm">
@@ -172,15 +217,12 @@ const MakeRequest = () => {
                                 name="quantity"
                                 value={item.quantity}
                                 onChange={(e) => handleItemChange(index, e)}
-                                options={[
-                                    "1",
-                                    "2",
-                                    "5",
-                                    "10",
-                                    "20",
-                                    "50",
-                                    "100",
-                                ]}
+                                options={[1, 2, 5, 10, 20, 50, 100].map(
+                                    (q) => ({
+                                        value: q,
+                                        label: q,
+                                    })
+                                )}
                             />
                             {errors[`items.${index}.quantity`] && (
                                 <p className="text-red-500 text-sm">
@@ -194,7 +236,10 @@ const MakeRequest = () => {
                                 name="urgency"
                                 value={item.urgency}
                                 onChange={(e) => handleItemChange(index, e)}
-                                options={["High", "Medium", "Low"]}
+                                options={statuses.map((p) => ({
+                                    value: p.id,
+                                    label: p.name,
+                                }))}
                             />
                             {errors[`items.${index}.urgency`] && (
                                 <p className="text-red-500 text-sm">
@@ -203,12 +248,18 @@ const MakeRequest = () => {
                             )}
                         </div>
                         <div>
-                            <label className="border p-5 rounded-2xl bg-white w-full flex items-center justify-center cursor-pointer">
+                            <label className="border p-5 rounded-2xl bg-white w-full flex items-center justify-center cursor-pointer relative">
                                 <FontAwesomeIcon
                                     icon={faCamera}
                                     className="text-gray-500 mr-2"
                                 />
-                                Add a Photo
+                                {item.photo ? (
+                                    <span className="text-gray-700">
+                                        {item.photo}
+                                    </span>
+                                ) : (
+                                    "Add a Photo"
+                                )}
                                 <input
                                     type="file"
                                     name="photo"
@@ -227,13 +278,12 @@ const MakeRequest = () => {
                                 ></textarea>
                                 <label
                                     className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
-        peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400
-        peer-focus:-top-2 peer-focus:left-2 peer-focus:text-base peer-focus:text-[#009FDC] peer-focus:px-1
-        ${
-            formData.description
-                ? "-top-2 left-2 text-base text-[#009FDC] px-1"
-                : "top-4 text-base text-gray-400"
-        }`}
+                ${
+                    item.description
+                        ? "-top-2 left-2 text-base text-[#009FDC] px-1"
+                        : "top-4 text-base text-gray-400"
+                }
+                peer-focus:-top-2 peer-focus:left-2 peer-focus:text-base peer-focus:text-[#009FDC] peer-focus:px-1`}
                                 >
                                     Description
                                 </label>
@@ -270,7 +320,10 @@ const MakeRequest = () => {
                             name="warehouse_id"
                             value={formData.warehouse_id}
                             onChange={handleChange}
-                            options={["Warehouse A", "Warehouse B"]}
+                            options={warehouses.map((p) => ({
+                                value: p.id,
+                                label: p.name,
+                            }))}
                         />
                         {errors.warehouse_id && (
                             <p className="text-red-500 text-sm">
@@ -288,14 +341,13 @@ const MakeRequest = () => {
                                 className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
                             />
                             <label
-                                className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all 
-                peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:-translate-y-1/2 
-                peer-focus:top-0 peer-focus:text-base peer-focus:text-[#009FDC] peer-focus:px-2
+                                className={`absolute left-3 px-2 bg-white text-gray-500 text-base transition-all 
                 ${
                     formData.expected_delivery_date
-                        ? "top-0 text-base text-[#009FDC] px-2"
-                        : "top-1/2 text-base text-gray-400 -translate-y-1/2"
-                }`}
+                        ? "-top-2 text-[#009FDC] text-sm px-2"
+                        : "top-1/2 text-gray-400 -translate-y-1/2"
+                }
+                peer-focus:top-0 peer-focus:text-sm peer-focus:text-[#009FDC] peer-focus:px-2`}
                             >
                                 Select Delivery Date
                             </label>
