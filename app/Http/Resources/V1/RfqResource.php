@@ -32,7 +32,7 @@ class RfqResource extends JsonResource
 
             // Relationships
             'requester' => new UserResource($this->whenLoaded('requester')),
-//            'company' => new CompanyResource($this->whenLoaded('company')),
+            'company' => new CompanyResource($this->whenLoaded('company')),
             'warehouse' => new WarehouseResource($this->whenLoaded('warehouse')),
             'status' => new StatusResource($this->whenLoaded('status')),
             'request_type' => new StatusResource($this->whenLoaded('requestType')),

@@ -18,7 +18,6 @@ return new class extends Migration
             $table->text('address')->nullable();
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
-            $table->foreignId('manager_id')->nullable()->constrained('users');
             $table->timestamps();
             $table->softDeletes();
         });

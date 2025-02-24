@@ -15,6 +15,7 @@ class StoreWarehouseManagerRequest extends FormRequest
     {
         return [
             'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'type' => ['nullable'],
             'manager_id' => [
                 'required',
                 'exists:users,id',

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Rfq extends Model
 {
-    use  SoftDeletes;
+    use SoftDeletes;
 
     protected $fillable = [
         'rfq_number',
@@ -26,9 +26,13 @@ class Rfq extends Model
         'payment_type',
         'request_date',
         'expected_delivery_date',
+        'closing_date',
         'attachments',
         'notes',
         'status_id',
+        'assigned_to',
+        'rejection_reason',
+        'quotation_document',
     ];
 
 
