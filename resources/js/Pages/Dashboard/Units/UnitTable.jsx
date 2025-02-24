@@ -129,7 +129,7 @@ const UnitTable = () => {
                 </tbody>
             </table>
 
-            {/* Updated Pagination */}
+            {/* Pagination */}
             {!loading && !error && units.length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                     {Array.from(
@@ -143,19 +143,22 @@ const UnitTable = () => {
                                 currentPage === page
                                     ? "bg-[#009FDC] text-white"
                                     : "border border-[#B9BBBD] bg-white"
-                            } rounded-full hover:bg-gray-100 transition`}
+                            } rounded-full hover:bg-[#0077B6] transition`}
                         >
                             {page}
                         </button>
                     ))}
-                    {currentPage < lastPage && (
-                        <button
-                            onClick={() => setCurrentPage(currentPage + 1)}
-                            className="px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition"
-                        >
-                            Next
-                        </button>
-                    )}
+                    <button
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage >= lastPage
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage >= lastPage}
+                    >
+                        Next
+                    </button>
                 </div>
             )}
         </div>
