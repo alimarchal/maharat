@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\V1\WarehouseController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\InventoryController;
 use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\Api\RfqApiController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -94,3 +95,9 @@ Route::prefix('v1')->group(function () {
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+Route::middleware('auth:sanctum')->group(function () {
+    // RFQ Routes
+    Route::get('/rfqs', [RfqApiController::class, 'index']);
+    Route::delete('/rfqs/{id}', [RfqApiController::class, 'destroy']);
+});

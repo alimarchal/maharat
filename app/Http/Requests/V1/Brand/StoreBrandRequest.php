@@ -14,9 +14,11 @@ class StoreBrandRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'category_id' => ['nullable', 'exists:product_categories,id'],
-            'name' => ['required'],
-            'status_id' => ['required', 'exists:statuses,id']
+            'name' => 'required|string|max:255',
+            'code' => 'required|string|max:255|unique:brands,code',
+            'description' => 'nullable|string',
+            'website' => 'nullable|url|max:255',
+            'status_id' => 'nullable|exists:statuses,id'
         ];
     }
 }

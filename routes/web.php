@@ -9,6 +9,8 @@ use App\Models\Status;
 use App\Http\Controllers\StatusController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\ProductCategoryController;
+use App\Http\Controllers\QuotationController;
+use App\Http\Controllers\RFQController;
 
 // Home Route
 Route::get('/', function () {
@@ -43,9 +45,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard/Warehouse/Warehouse'); 
     })->name('warehouse.index');
 
-    Route::get('/rfq', function () { 
-        return Inertia::render('Dashboard/RFQ/RFQ'); 
-    })->name('rfq.index');
+    Route::get('/rfq', [RFQController::class, 'index'])->name('rfq.index');
+    Route::get('/rfq/create', [RFQController::class, 'create'])->name('rfq.create');
+    Route::post('/rfq', [RFQController::class, 'store'])->name('rfq.store');
+    Route::get('/rfq/{quotation}', [RFQController::class, 'show'])->name('rfq.show');
+    Route::get('/rfq/{quotation}/pdf', [RFQController::class, 'generatePDF'])->name('rfq.pdf');
 
     Route::get('/statuses', [StatusController::class, 'index'])->name('statuses.index');
     Route::get('/status', function () { 
@@ -109,6 +113,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/manager/{id}/edit', function ($id) { 
         return Inertia::render('Dashboard', ['page' => 'WarehouseManager/CreateManager', 'managerId' => $id]); 
     })->name('manager.edit');
+
+    Route::get('/quotations', function () { 
+        return Inertia::render('Dashboard/Quotations/Quotation'); 
+    })->name('dashboard.quotations.index');
+    
+    Route::get('/quotations/create', function () { 
+        return Inertia::render('Dashboard/Quotations/AddQuotationForm'); 
+    })->name('dashboard.quotations.create');
+
+    Route::get('/rfq', function () { 
+        return Inertia::render('Dashboard/Quotations/RFQ'); 
+    })->name('rfq');
+    
+    // RFQ Routes
+    Route::get('/dashboard/quotations', [RFQController::class, 'index'])->name('dashboard.quotations.index');
+    Route::get('/dashboard/quotations/create', [RFQController::class, 'create'])->name('dashboard.quotations.create');
+    Route::post('/dashboard/quotations', [RFQController::class, 'store'])->name('dashboard.quotations.store');
+    Route::get('/dashboard/quotations/{quotation}', [RFQController::class, 'show'])->name('dashboard.quotations.show');
+    Route::get('/dashboard/quotations/{quotation}/edit', [RFQController::class, 'edit'])->name('dashboard.quotations.edit');
+    Route::put('/dashboard/quotations/{quotation}', [RFQController::class, 'update'])->name('dashboard.quotations.update');
+    Route::delete('/dashboard/quotations/{quotation}', [RFQController::class, 'destroy'])->name('dashboard.quotations.destroy');
 });
 
 // Profile Routes (Only for Authenticated Users)
