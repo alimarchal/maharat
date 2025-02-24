@@ -15,21 +15,22 @@ class Rfq extends Model
 
     protected $fillable = [
         'rfq_number',
-        'category_id',
+        'requester_id',
+        'company_id',
         'warehouse_id',
-        'issue_date',
-        'closing_date',
-        'payment_type',
+        'organization_name',
+        'organization_email',
+        'city',
         'contact_number',
+        'request_type',
+        'payment_type',
+        'request_date',
+        'expected_delivery_date',
+        'attachments',
+        'notes',
         'status_id',
-        'terms_and_conditions',
-        'notes'
     ];
 
-    protected $casts = [
-        'issue_date' => 'date',
-        'closing_date' => 'date'
-    ];
 
     /**
      * Get the categories for the RFQ.
@@ -40,23 +41,42 @@ class Rfq extends Model
             ->using(RfqCategory::class)
             ->withTimestamps();
     }
+//    public function categories()
+//    {
+//        return $this->belongsToMany(ProductCategory::class, 'rfq_categories', 'rfq_id', 'category_id');
+//    }
 
-    public function category()
+    public function requester(): BelongsTo
     {
-        return $this->belongsTo(RfqCategory::class, 'category_id');
+        return $this->belongsTo(User::class, 'requester_id');
     }
 
-    public function status()
+    public function company(): BelongsTo
     {
-        return $this->belongsTo(Status::class);
+        return $this->belongsTo(Company::class);
     }
 
-    public function supplier()
+    public function warehouse(): BelongsTo
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Warehouse::class);
     }
 
-    public function items()
+    public function status(): BelongsTo
+    {
+        return $this->belongsTo(Status::class, 'status_id');
+    }
+
+    public function requestType(): BelongsTo
+    {
+        return $this->belongsTo(Status::class, 'request_type');
+    }
+
+    public function paymentType(): BelongsTo
+    {
+        return $this->belongsTo(Status::class, 'payment_type');
+    }
+
+    public function items(): HasMany
     {
         return $this->hasMany(RfqItem::class);
     }
