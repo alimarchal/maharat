@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Rfq extends Model
 {
-    use HasFactory, SoftDeletes;
+    use  SoftDeletes;
 
     protected $fillable = [
         'rfq_number',
