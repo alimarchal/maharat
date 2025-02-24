@@ -7,11 +7,30 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Quotation extends Model
 {
     /** @use HasFactory<\Database\Factories\QuotationFactory> */
-    use HasFactory;
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'rfq_id',
+        'supplier_id',
+        'quotation_number',
+        'issue_date',
+        'valid_until',
+        'total_amount',
+        'status_id',
+        'terms_and_conditions',
+        'notes'
+    ];
+
+    protected $casts = [
+        'issue_date' => 'date',
+        'valid_until' => 'date',
+        'total_amount' => 'decimal:2'
+    ];
 
     public function rfq(): BelongsTo
     {
@@ -28,9 +47,8 @@ class Quotation extends Model
         return $this->hasMany(QuotationDocument::class);
     }
 
-
-    public function status(): HasOne
+    public function status(): BelongsTo
     {
-        return $this->hasOne(Status::class);
+        return $this->belongsTo(Status::class);
     }
 }

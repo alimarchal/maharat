@@ -2,18 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreRfqRequest;
-use App\Http\Requests\UpdateRfqRequest;
-use App\Models\Rfq;
+use App\Models\Quotation;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Barryvdh\DomPDF\Facade\Pdf;
 
-class RfqController extends Controller
+class RFQController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        //
+        // Add dd() to debug
+        dd('RFQ Index reached');
+        
+        return Inertia::render('Dashboard/Quotations/Quotation', [
+            'quotations' => Quotation::all() // Make sure this variable is passed
+        ]);
     }
 
     /**
@@ -21,46 +27,56 @@ class RfqController extends Controller
      */
     public function create()
     {
-        //
+        // Add dd() to debug
+        dd('RFQ Create reached');
+        
+        return Inertia::render('Dashboard/Quotations/AddQuotationForm');
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreRfqRequest $request)
+    public function store(Request $request)
     {
-        //
+        // Add validation rules here
+        $validated = $request->validate([
+            'organization_email' => 'required|email',
+            'city' => 'required|string',
+            'category_name' => 'required|string',
+            'warehouse' => 'required|string',
+            'issue_date' => 'required|date',
+            'closing_date' => 'required|date|after:issue_date',
+            'rfq_id' => 'required|string|unique:quotations,rfq_id',
+            'payment_type' => 'required|string',
+            'contact_no' => 'required|string',
+            'items' => 'required|array|min:1',
+            'items.*.item_name' => 'required|string',
+            'items.*.description' => 'required|string',
+            'items.*.quantity' => 'required|numeric|min:1',
+        ]);
+
+        $quotation = Quotation::create($validated);
+
+        return redirect()->route('rfq.index')
+            ->with('success', 'RFQ created successfully');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Rfq $rfq)
+    public function show(Quotation $quotation)
     {
-        //
+        return Inertia::render('Quotations/ViewQuotation', [
+            'quotation' => $quotation->load(['supplier', 'status', 'items'])
+        ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Rfq $rfq)
+    public function generatePDF(Quotation $quotation)
     {
-        //
-    }
+        $pdf = PDF::loadView('quotations.pdf', [
+            'quotation' => $quotation->load(['supplier', 'status', 'items'])
+        ]);
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(UpdateRfqRequest $request, Rfq $rfq)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Rfq $rfq)
-    {
-        //
+        return $pdf->download('RFQ-' . $quotation->quotation_number . '.pdf');
     }
 }
