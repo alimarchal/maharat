@@ -4,36 +4,36 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 
 const WarehouseTable = () => {
-    const [warehouses, setWarehouse] = useState([]);
+    const [warehouses, setWarehouses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
 
     useEffect(() => {
-        const fetchWarehouse = async () => {
-            setLoading(true);
-            try {
-                const response = await fetch(
-                    `/api/v1/warehouses?page=${currentPage}`
-                );
-                const data = await response.json();
-                if (response.ok) {
-                    setWarehouse(data.data || []);
-                    setLastPage(data.meta?.last_page || 1);
-                } else {
-                    setError(data.message || "Failed to fetch warehouse.");
-                }
-            } catch (err) {
-                console.error("Error fetching warehouses:", err);
-                setError("Error loading warehouses.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchWarehouse();
+        fetchWarehouses();
     }, [currentPage]);
+
+    const fetchWarehouses = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch(
+                `/api/v1/warehouses?include=manager&page=${currentPage}`
+            );
+            const data = await response.json();
+            if (response.ok) {
+                setWarehouses(data.data || []);
+                setLastPage(data.meta?.last_page || 1);
+            } else {
+                setError(data.message || "Failed to fetch warehouse.");
+            }
+        } catch (err) {
+            console.error("Error fetching warehouses:", err);
+            setError("Error loading warehouses.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleDelete = async (id) => {
         if (!confirm("Are you sure you want to delete this Warehouse?")) return;
@@ -44,8 +44,8 @@ const WarehouseTable = () => {
             });
 
             if (response.ok) {
-                setWarehouse((prevWarehouse) =>
-                    prevWarehouse.filter((warehouse) => warehouse.id !== id)
+                setWarehouses((prev) =>
+                    prev.filter((warehouse) => warehouse.id !== id)
                 );
             } else {
                 const data = await response.json();
@@ -65,8 +65,8 @@ const WarehouseTable = () => {
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             ID
                         </th>
-                        <th className="py-3 px-4">Name</th>
-                        <th className="py-3 px-4">Manager ID</th>
+                        <th className="py-3 px-4">Warehouse Name</th>
+                        <th className="py-3 px-4">Manager Name</th>
                         <th className="py-3 px-4">Code</th>
                         <th className="py-3 px-4">Address</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
@@ -96,16 +96,18 @@ const WarehouseTable = () => {
                                 <td className="py-3 px-4">{warehouse.id}</td>
                                 <td className="py-3 px-4">{warehouse.name}</td>
                                 <td className="py-3 px-4">
-                                    {warehouse.manager_id}
+                                    {warehouse.manager.name}
                                 </td>
                                 <td className="py-3 px-4">{warehouse.code}</td>
                                 <td className="py-3 px-4">
                                     {warehouse.address}
                                 </td>
                                 <td className="py-3 px-4 flex space-x-3">
-                                    {/* <Link className="text-[#9B9DA2] hover:text-gray-500">
+                                    {/* <button
+                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                    >
                                         <FontAwesomeIcon icon={faEye} />
-                                    </Link> */}
+                                    </button> */}
                                     <Link
                                         href={`/warehouse-management/${warehouse.id}/edit`}
                                         className="text-[#9B9DA2] hover:text-gray-500"

@@ -104,16 +104,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'WarehouseManagement/CreateWarehouse', 'warehouseId' => $id]); 
     })->name('warehouse.edit');
 
-    Route::get('/manager', function () { 
-        return Inertia::render('Dashboard', ['page' => 'WarehouseManager/ManagerIndex']); 
-    })->name('manager.index');
-    Route::get('/manager/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'WarehouseManager/CreateManager']); 
-    })->name('manager.create');
-    Route::get('/manager/{id}/edit', function ($id) { 
-        return Inertia::render('Dashboard', ['page' => 'WarehouseManager/CreateManager', 'managerId' => $id]); 
-    })->name('manager.edit');
-
     Route::get('/quotations', function () { 
         return Inertia::render('Dashboard/Quotations/Quotation'); 
     })->name('dashboard.quotations.index');
