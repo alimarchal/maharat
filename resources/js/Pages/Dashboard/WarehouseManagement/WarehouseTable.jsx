@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 
 const WarehouseTable = () => {
     const [warehouses, setWarehouses] = useState([]);
+    const [managers, setManagers] = useState({});
+    const [users, setUsers] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -12,6 +14,8 @@ const WarehouseTable = () => {
 
     useEffect(() => {
         fetchWarehouses();
+        fetchManagers();
+        fetchUsers();
     }, [currentPage]);
 
     const fetchWarehouses = async () => {
@@ -25,13 +29,47 @@ const WarehouseTable = () => {
                 setWarehouses(data.data || []);
                 setLastPage(data.meta?.last_page || 1);
             } else {
-                setError(data.message || "Failed to fetch warehouse.");
+                setError(data.message || "Failed to fetch warehouses.");
             }
         } catch (err) {
             console.error("Error fetching warehouses:", err);
             setError("Error loading warehouses.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Fetch Warehouse Managers
+    const fetchManagers = async () => {
+        try {
+            const response = await fetch(`/api/v1/warehouse-managers`);
+            const data = await response.json();
+            if (response.ok) {
+                const managerMap = {};
+                data.data.forEach((manager) => {
+                    managerMap[manager.warehouse_id] = manager.manager_id;
+                });
+                setManagers(managerMap);
+            }
+        } catch (err) {
+            console.error("Error fetching warehouse managers:", err);
+        }
+    };
+
+    // Fetch Users (Managers)
+    const fetchUsers = async () => {
+        try {
+            const response = await fetch(`/api/v1/users`);
+            const data = await response.json();
+            if (response.ok) {
+                const userMap = {};
+                data.data.forEach((user) => {
+                    userMap[user.id] = user.name;
+                });
+                setUsers(userMap);
+            }
+        } catch (err) {
+            console.error("Error fetching users:", err);
         }
     };
 
@@ -91,40 +129,49 @@ const WarehouseTable = () => {
                             </td>
                         </tr>
                     ) : warehouses.length > 0 ? (
-                        warehouses.map((warehouse) => (
-                            <tr key={warehouse.id}>
-                                <td className="py-3 px-4">{warehouse.id}</td>
-                                <td className="py-3 px-4">{warehouse.name}</td>
-                                <td className="py-3 px-4">
-                                    {warehouse.manager.name}
-                                </td>
-                                <td className="py-3 px-4">{warehouse.code}</td>
-                                <td className="py-3 px-4">
-                                    {warehouse.address}
-                                </td>
-                                <td className="py-3 px-4 flex space-x-3">
-                                    {/* <button
+                        warehouses.map((warehouse) => {
+                            const managerId = managers[warehouse.id];
+                            const managerName = users[managerId];
+
+                            return (
+                                <tr key={warehouse.id}>
+                                    <td className="py-3 px-4">
+                                        {warehouse.id}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {warehouse.name}
+                                    </td>
+                                    <td className="py-3 px-4">{managerName}</td>
+                                    <td className="py-3 px-4">
+                                        {warehouse.code}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {warehouse.address}
+                                    </td>
+                                    <td className="py-3 px-4 flex space-x-3">
+                                        {/* <button
                                         className="text-[#9B9DA2] hover:text-gray-500"
                                     >
                                         <FontAwesomeIcon icon={faEye} />
                                     </button> */}
-                                    <Link
-                                        href={`/warehouse-management/${warehouse.id}/edit`}
-                                        className="text-[#9B9DA2] hover:text-gray-500"
-                                    >
-                                        <FontAwesomeIcon icon={faEdit} />
-                                    </Link>
-                                    <button
-                                        onClick={() =>
-                                            handleDelete(warehouse.id)
-                                        }
-                                        className="text-[#9B9DA2] hover:text-gray-500"
-                                    >
-                                        <FontAwesomeIcon icon={faTrash} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))
+                                        <Link
+                                            href={`/warehouse-management/${warehouse.id}/edit`}
+                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                        >
+                                            <FontAwesomeIcon icon={faEdit} />
+                                        </Link>
+                                        <button
+                                            onClick={() =>
+                                                handleDelete(warehouse.id)
+                                            }
+                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                        >
+                                            <FontAwesomeIcon icon={faTrash} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        })
                     ) : (
                         <tr>
                             <td
