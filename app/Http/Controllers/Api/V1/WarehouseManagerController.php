@@ -42,9 +42,9 @@ class WarehouseManagerController extends Controller
 
             $warehouseManager = WarehouseManager::create($request->validated());
 
-            $warehouseManager->warehouse->update([
-                'manager_id' => $warehouseManager->manager_id,
-            ]);
+//            $warehouseManager->warehouse->update([
+//                'manager_id' => $warehouseManager->manager_id,
+//            ]);
 
             DB::commit();
 
