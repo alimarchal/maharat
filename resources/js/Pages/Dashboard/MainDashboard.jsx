@@ -132,7 +132,7 @@ const DashboardCard = ({
                     <h3 className="text-3xl font-medium text-[#2C323C]">
                         {title}
                     </h3>
-                    <p className="text-2xl text-[#9B9DA2] mt-1">{subtitle}</p>
+                    <p className="text-xl text-[#9B9DA2] mt-1">{subtitle}</p>
                 </div>
             </div>
             {isOpen && dropdownItems && (
@@ -190,7 +190,7 @@ export default function Dashboard({ page }) {
                     </p>
                 </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 my-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 my-6">
                 <DashboardCard
                     icon={faFileAlt}
                     title="Maharat"
@@ -206,13 +206,13 @@ export default function Dashboard({ page }) {
                     iconColor="text-[#005372]"
                     onClick={() => router.visit("/my-requests")}
                 />
-                <DashboardCard
+                {/* <DashboardCard
                     icon={faListCheck}
                     title="Tasks"
                     subtitle="My Tasks & History"
                     bgColor="bg-[#F7EBBA]"
                     iconColor="text-[#665200]"
-                />
+                /> */}
                 <DashboardCard
                     icon={faShoppingCart}
                     title="Purchases"
