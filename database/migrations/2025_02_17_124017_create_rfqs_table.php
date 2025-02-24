@@ -25,7 +25,7 @@ return new class extends Migration
             $table->string('contact_number')->nullable();
 
             // Request Details using Status References
-            $table->foreignId('request_type')->constrained('statuses', 'id');  // References RFQ Request Type
+            $table->foreignId('request_type')->nullable()->constrained('statuses', 'id');  // References RFQ Request Type
             $table->foreignId('payment_type')->constrained('statuses', 'id');  // References RFQ Payment Type
             $table->date('request_date')->nullable();
             $table->date('expected_delivery_date')->nullable();
