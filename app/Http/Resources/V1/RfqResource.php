@@ -23,6 +23,7 @@ class RfqResource extends JsonResource
             'contact_number' => $this->contact_number,
             'request_date' => $this->request_date,
             'expected_delivery_date' => $this->expected_delivery_date,
+            'closing_date' => $this->closing_date,
             'attachments' => $this->attachments,
             'notes' => $this->notes,
             'quotation_sent' => $this->quotation_sent,

@@ -29,6 +29,7 @@ return new class extends Migration
             $table->foreignId('payment_type')->constrained('statuses', 'id');  // References RFQ Payment Type
             $table->date('request_date')->nullable();
             $table->date('expected_delivery_date')->nullable();
+            $table->date('closing_date')->nullable();
 
             // Attachments and Notes
             $table->string('attachments')->nullable();
