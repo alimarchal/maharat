@@ -13,6 +13,7 @@ class WarehouseManagerResource extends JsonResource
             'id' => $this->id,
             'warehouse_id' => $this->warehouse_id,
             'manager_id' => $this->manager_id,
+            'type' => $this->type,
             'warehouse' => new WarehouseResource($this->whenLoaded('warehouse')),
             'manager' => new UserResource($this->whenLoaded('manager')),
             'created_at' => $this->created_at,

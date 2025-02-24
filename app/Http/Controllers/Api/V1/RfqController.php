@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\RfqItem;
 use Illuminate\Http\Request;
 use App\Http\Requests\V1\Rfq\StoreRfqRequest;
 use App\Http\Requests\V1\Rfq\UpdateRfqRequest;
@@ -35,32 +36,55 @@ class RfqController extends Controller
 
         return RfqResource::collection($rfqs);
     }
-    public function store(StoreRfqRequest $request): JsonResponse
+    public function store(StoreRfqRequest $request)
     {
         try {
             DB::beginTransaction();
 
-            // Create RFQ with validated data, excluding items and categories
-            $rfq = Rfq::create($request->safe()->except(['items', 'category_ids']));
+
+            // Generate RFQ Number
+            $currentYear = date('Y');
+            $latestRfq = Rfq::where('rfq_number', 'like', "RFQ-$currentYear-%")
+                ->latest()
+                ->first();
+
+            $lastNumber = $latestRfq ? intval(substr($latestRfq->rfq_number, -3)) : 0;
+            $newNumber = str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
+            $rfqNumber = "RFQ-$currentYear-$newNumber";
+
+
+//
+            // Create RFQ with validated data and RFQ number
+            $rfq = Rfq::create(array_merge(
+                $request->safe()->except(['items', 'category_ids']),
+                ['rfq_number' => $rfqNumber]
+            ));
+
+
+
+
 
             // Attach categories if provided
             if ($request->has('category_ids')) {
                 $rfq->categories()->attach($request->input('category_ids'));
             }
 
+
+
             // Create RFQ items with their respective categories
             if ($request->has('items')) {
                 foreach ($request->input('items') as $item) {
-                    $rfq->items()->create($item);
+                   RfqItem::create($item);
                 }
             }
 
-            // Create initial status log
             $rfq->statusLogs()->create([
                 'status_id' => $rfq->status_id,
                 'changed_by' => auth()->id(),
                 'remarks' => 'RFQ Created'
             ]);
+
+
 
             DB::commit();
 

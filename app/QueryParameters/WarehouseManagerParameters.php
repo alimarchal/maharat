@@ -7,6 +7,7 @@ class WarehouseManagerParameters
     public const ALLOWED_FILTERS = [
         'warehouse_id',
         'manager_id',
+        'type',
     ];
 
     public const ALLOWED_SORTS = [

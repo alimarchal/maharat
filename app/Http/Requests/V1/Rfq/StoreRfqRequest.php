@@ -22,8 +22,8 @@ class StoreRfqRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'category_ids' => ['required', 'array'],
-            'category_ids.*' => ['exists:product_categories,id'],
+//            'category_ids' => ['required', 'array'],
+//            'category_ids.*' => ['exists:product_categories,id'],
         ];
     }
 }

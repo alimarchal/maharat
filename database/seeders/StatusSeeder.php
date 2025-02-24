@@ -44,6 +44,11 @@ class StatusSeeder extends Seeder
             ['type' => 'RFQ Request Type', 'name' => 'Single Category'],
             ['type' => 'RFQ Request Type', 'name' => 'Multiple Category'],
 
+            ['type' => 'Request', 'name' => 'Pending'],
+            ['type' => 'Request', 'name' => 'Referred'],
+            ['type' => 'Request', 'name' => 'Rejected'],
+            ['type' => 'Request', 'name' => 'Approved'],
+
 
 
 
@@ -61,10 +66,16 @@ class StatusSeeder extends Seeder
 
             ['type' => 'RFQ Request Type ', 'name' => 'Request for Material'],
 
-            // New RFQ Payment Types
+            // RFQ Status
             ['type' => 'RFQ Payment Type', 'name' => 'Cash'],
             ['type' => 'RFQ Payment Type', 'name' => 'Credit'],
             ['type' => 'RFQ Payment Type', 'name' => 'Bank Transfer'],
+            ['type' => 'RFQ Status', 'name' => 'Active'],
+            ['type' => 'RFQ Status', 'name' => 'Pending'],
+            ['type' => 'RFQ Status', 'name' => 'Rejected'],
+            ['type' => 'RFQ Status', 'name' => 'Expired'],
+
+
 
 
 
