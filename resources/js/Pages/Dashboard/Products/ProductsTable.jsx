@@ -15,7 +15,7 @@ const ProductsTable = () => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/products?page=${currentPage}`
+                    `/api/v1/products?include=category,unit&page=${currentPage}`
                 );
                 const data = await response.json();
                 if (response.ok) {
@@ -97,9 +97,11 @@ const ProductsTable = () => {
                                 <td className="py-3 px-4">{product.id}</td>
                                 <td className="py-3 px-4">{product.name}</td>
                                 <td className="py-3 px-4">
-                                    {product.category_id}
+                                    {product?.category?.name}
                                 </td>
-                                <td className="py-3 px-4">{product.unit_id}</td>
+                                <td className="py-3 px-4">
+                                    {product?.unit?.name}
+                                </td>
                                 <td className="py-3 px-4">{product.upc}</td>
                                 <td className="py-3 px-4">
                                     {product.description}
@@ -136,6 +138,7 @@ const ProductsTable = () => {
                 </tbody>
             </table>
 
+            {/* Pagination */}
             {!loading && !error && products.length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                     {Array.from(
@@ -149,19 +152,22 @@ const ProductsTable = () => {
                                 currentPage === page
                                     ? "bg-[#009FDC] text-white"
                                     : "border border-[#B9BBBD] bg-white"
-                            } rounded-full hover:bg-gray-100 transition`}
+                            } rounded-full hover:bg-[#0077B6] transition`}
                         >
                             {page}
                         </button>
                     ))}
-                    {currentPage < lastPage && (
-                        <button
-                            onClick={() => setCurrentPage(currentPage + 1)}
-                            className="px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition"
-                        >
-                            Next
-                        </button>
-                    )}
+                    <button
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage >= lastPage
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage >= lastPage}
+                    >
+                        Next
+                    </button>
                 </div>
             )}
         </div>

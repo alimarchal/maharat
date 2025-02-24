@@ -1,5 +1,24 @@
 import React, { useState, useRef, useEffect } from "react";
-import { faFileAlt, faBoxes, faFileInvoice, faChartBar, faClipboardList, faShoppingCart, faCogs, faChevronDown, faChevronUp, faChevronRight, faFileCirclePlus, faFileSignature, faListCheck, faUsers, faBell, faDiagramProject, faUserPen, faEllipsisH, } from "@fortawesome/free-solid-svg-icons";
+import {
+    faFileAlt,
+    faBoxes,
+    faFileInvoice,
+    faChartBar,
+    faClipboardList,
+    faShoppingCart,
+    faCogs,
+    faChevronDown,
+    faChevronUp,
+    faChevronRight,
+    faFileCirclePlus,
+    faFileSignature,
+    faListCheck,
+    faUsers,
+    faBell,
+    faDiagramProject,
+    faUserPen,
+    faEllipsisH,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { router } from "@inertiajs/react";
 
@@ -169,7 +188,7 @@ export default function Dashboard({ page }) {
                     </p>
                 </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 my-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 my-6">
                 <DashboardCard
                     icon={faFileAlt}
                     title="Maharat"
@@ -184,6 +203,13 @@ export default function Dashboard({ page }) {
                     bgColor="bg-[#C4E4F0]"
                     iconColor="text-[#005372]"
                     onClick={() => router.visit("/my-requests")}
+                />
+                <DashboardCard
+                    icon={faListCheck}
+                    title="Tasks"
+                    subtitle="My Tasks & History"
+                    bgColor="bg-[#F7EBBA]"
+                    iconColor="text-[#665200]"
                 />
                 <DashboardCard
                     icon={faShoppingCart}
