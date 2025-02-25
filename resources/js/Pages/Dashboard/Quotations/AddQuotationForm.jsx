@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import { router, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import axios from 'axios';
 import { PaperClipIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronRight, faArrowLeftLong } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeftLong, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
 export default function AddQuotationForm({ auth }) {
     const [formData, setFormData] = useState({
@@ -20,8 +21,6 @@ export default function AddQuotationForm({ auth }) {
         items: []
     });
 
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
     const [warehouses, setWarehouses] = useState([]);
     const [categories, setCategories] = useState([]);
     const [paymentTypes, setPaymentTypes] = useState([]);
@@ -32,89 +31,31 @@ export default function AddQuotationForm({ auth }) {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch organization email, city, etc. from the backend
-                const response = await fetch('/api/v1/form-data', {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-XSRF-TOKEN': document.cookie.match(/XSRF-TOKEN=([^;]+)/)[1],
-                    },
-                    credentials: 'include'
-                });
-                const data = await response.json();
-                setFormData(prev => ({
-                    ...prev,
-                    organization_email: data.organization_email,
-                    city: data.city,
-                    category_name: data.category_name,
-                    warehouse: data.warehouse,
-                    issue_date: data.issue_date,
-                    closing_date: data.closing_date,
-                    rfq_id: data.rfq_id,
-                    payment_type: data.payment_type,
-                    contact_no: data.contact_no
-                }));
-    
-                // Fetch warehouses
-                const warehousesResponse = await fetch('/api/v1/warehouses', {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-XSRF-TOKEN': document.cookie.match(/XSRF-TOKEN=([^;]+)/)[1],
-                    },
-                    credentials: 'include'
-                });
-                const warehousesData = await warehousesResponse.json();
-                setWarehouses(warehousesData.data || []);
-    
-                // Fetch categories
-                const categoriesResponse = await fetch('/api/v1/product-categories', {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-XSRF-TOKEN': document.cookie.match(/XSRF-TOKEN=([^;]+)/)[1],
-                    },
-                    credentials: 'include'
-                });
-                const categoriesData = await categoriesResponse.json();
-                setCategories(categoriesData.data || []);
-    
-                // Fetch payment types
-                const paymentTypesResponse = await fetch('/api/v1/payment-types', {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-XSRF-TOKEN': document.cookie.match(/XSRF-TOKEN=([^;]+)/)[1],
-                    },
-                    credentials: 'include'
-                });
-                const paymentTypesData = await paymentTypesResponse.json();
-                setPaymentTypes(paymentTypesData.data || []);
-    
-                // Fetch units
-                const unitsResponse = await fetch('/api/v1/units', {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-XSRF-TOKEN': document.cookie.match(/XSRF-TOKEN=([^;]+)/)[1],
-                    },
-                    credentials: 'include'
-                });
-                const unitsData = await unitsResponse.json();
-                setUnits(unitsData.data || []);
-    
-                // Fetch brands
-                const brandsResponse = await fetch('/api/v1/brands', {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-XSRF-TOKEN': document.cookie.match(/XSRF-TOKEN=([^;]+)/)[1],
-                    },
-                    credentials: 'include'
-                });
-                const brandsData = await brandsResponse.json();
-                setBrands(brandsData.data || []);
-    
-            } catch (err) {
-                console.error('Error fetching data:', err);
-                setError('Failed to load form data');
+                const [
+                    warehousesRes,
+                    categoriesRes,
+                    paymentTypesRes,
+                    unitsRes,
+                    brandsRes
+                ] = await Promise.all([
+                    axios.get(route('api.warehouses.index')),
+                    axios.get(route('api.categories.index')),
+                    axios.get(route('api.payment-types.index')),
+                    axios.get(route('api.units.index')),
+                    axios.get(route('api.brands.index'))
+                ]);
+
+                setWarehouses(warehousesRes.data.data);
+                setCategories(categoriesRes.data.data);
+                setPaymentTypes(paymentTypesRes.data.data);
+                setUnits(unitsRes.data.data);
+                setBrands(brandsRes.data.data);
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
             }
         };
-    
+
         fetchData();
     }, []);
     
@@ -123,12 +64,15 @@ export default function AddQuotationForm({ auth }) {
         e.preventDefault();
         
         const formDataObj = new FormData();
+        
+        // Append main form fields
         Object.keys(formData).forEach(key => {
             if (key !== 'items') {
                 formDataObj.append(key, formData[key]);
             }
         });
 
+        // Append items and their attachments
         formData.items.forEach((item, index) => {
             Object.keys(item).forEach(key => {
                 formDataObj.append(`items[${index}][${key}]`, item[key]);
@@ -139,13 +83,13 @@ export default function AddQuotationForm({ auth }) {
             }
         });
 
-        router.post(route('quotations.store'), formDataObj, {
+        router.post(route('rfq.store'), formDataObj, {
             forceFormData: true,
             onSuccess: () => {
-                router.visit(route('quotations.index'));
+                router.visit(route('rfq.index'));
             },
             onError: (errors) => {
-                console.error(errors);
+                console.error('Validation errors:', errors);
             }
         });
     };
@@ -165,9 +109,21 @@ export default function AddQuotationForm({ auth }) {
         }));
     };
 
-    const deleteItem = (index) => {
-        const newItems = formData.items.filter((_, i) => i !== index);
-        setFormData({ ...formData, items: newItems });
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleItemChange = (index, field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            items: prev.items.map((item, i) => 
+                i === index ? { ...item, [field]: value } : item
+            )
+        }));
     };
 
     const handleFileChange = (index, e) => {
@@ -177,10 +133,7 @@ export default function AddQuotationForm({ auth }) {
                 ...prev,
                 [index]: file
             }));
-            
-            const newItems = [...formData.items];
-            newItems[index].attachment = file.name;
-            setFormData({ ...formData, items: newItems });
+            handleItemChange(index, 'attachment', file.name);
         }
     };
 
@@ -193,8 +146,17 @@ export default function AddQuotationForm({ auth }) {
         }
     };
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error: {error}</div>;
+    const handleRemoveItem = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            items: prev.items.filter((_, i) => i !== index)
+        }));
+        setAttachments(prev => {
+            const newAttachments = { ...prev };
+            delete newAttachments[index];
+            return newAttachments;
+        });
+    };
 
     return (
         <AuthenticatedLayout user={auth.user}>

@@ -14,6 +14,7 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
+use App\Models\Status;
 
 class RfqController extends Controller
 {
@@ -212,4 +213,24 @@ class RfqController extends Controller
         }
     }
 
+    public function getFormData()
+    {
+        try {
+            return response()->json([
+                'organization_email' => auth()->user()->company->email ?? '',
+                'city' => auth()->user()->company->city ?? '',
+                'rfq_number' => $this->getNewRFQNumber(),
+                'request_date' => now()->format('Y-m-d'),
+                'expected_delivery_date' => now()->addDays(7)->format('Y-m-d'),
+                'status_id' => Status::where('type', 'rfq_status')
+                                    ->where('name', 'Draft')
+                                    ->first()->id
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to fetch form data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
