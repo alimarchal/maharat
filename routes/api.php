@@ -40,7 +40,7 @@ Route::get('/statuses', [StatusController::class, 'index']);
 //Route::post('/statuses', [StatusController::class, 'store']);
 
 // API V1 routes
-Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
+Route::prefix('v1')->group(function () {
 
     Route::get('/users/hierarchy/{user?}', [UserController::class, 'hierarchy']);
     Route::apiResource('users', UserController::class);
@@ -91,8 +91,6 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::apiResource('supplier-addresses', SupplierAddressController::class);
     Route::apiResource('quotations', QuotationController::class);
     Route::apiResource('quotation-documents', QuotationDocumentController::class);
-
-
 
     // Process routes
     Route::apiResource('processes', ProcessController::class);
