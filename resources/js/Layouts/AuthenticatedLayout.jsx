@@ -1,6 +1,6 @@
 import ApplicationLogo from "@/Components/ApplicationLogo";
 import { Link, usePage } from "@inertiajs/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { faSearch, faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Sidebar from "@/Components/Sidebar";
@@ -8,10 +8,37 @@ import Sidebar from "@/Components/Sidebar";
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isScrolled, setIsScrolled] = useState(false);
+    const [greeting, setGreeting] = useState("");
+
+    useEffect(() => {
+        const currentHour = new Date().getHours();
+
+        if (currentHour >= 0 && currentHour < 12) {
+            setGreeting("Good Morning");
+        } else if (currentHour >= 12 && currentHour < 18) {
+            setGreeting("Good Afternoon");
+        } else {
+            setGreeting("Good Evening");
+        }
+    }, []);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            setIsScrolled(window.scrollY > 10);
+        };
+
+        window.addEventListener("scroll", handleScroll);
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
 
     return (
         <div className="min-h-screen flex flex-col bg-[#C4E4F0] bg-opacity-20">
-            <header className="flex justify-between items-center px-6 py-4 w-full fixed top-0 left-0 right-0 z-40">
+            <header
+                className={`flex justify-between items-center px-6 py-4 w-full fixed top-0 left-0 right-0 z-40 transition-all ${
+                    isScrolled ? "bg-white shadow-md" : "bg-transparent"
+                }`}
+            >
                 <div className="flex items-center gap-4 lg:gap-12">
                     <button
                         className="lg:hidden text-gray-600 focus:outline-none"
@@ -29,7 +56,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             Hi {user.name}!
                         </h1>
                         <p className="text-sm lg:text-base text-[#7D8086]">
-                            Good Morning
+                            {greeting}
                         </p>
                     </div>
                 </div>

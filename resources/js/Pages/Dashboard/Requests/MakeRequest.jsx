@@ -34,6 +34,8 @@ const MakeRequest = () => {
     const [units, setUnits] = useState([]);
     const [warehouses, setWarehouses] = useState([]);
     const [statuses, setStatuses] = useState([]);
+    const [filteredProducts, setFilteredProducts] = useState({});
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -57,6 +59,19 @@ const MakeRequest = () => {
         };
         fetchData();
     }, []);
+
+    useEffect(() => {
+        if (products.length === 0) return;
+        const updatedFilteredProducts = {};
+        categories.forEach((category) => {
+            const categoryProducts = products.filter(
+                (product) => product.category_id === category.id
+            );
+            updatedFilteredProducts[category.id] = categoryProducts;
+        });
+
+        setFilteredProducts(updatedFilteredProducts);
+    }, [products, categories]);
 
     const fetchAllStatuses = async () => {
         let allStatuses = [];
@@ -160,6 +175,11 @@ const MakeRequest = () => {
         setFormData((prev) => {
             const newItems = [...prev.items];
             newItems[index] = { ...newItems[index], [name]: value };
+
+            if (name === "category_id") {
+                newItems[index].product_id = "";
+            }
+
             return { ...prev, items: newItems };
         });
     };
@@ -201,6 +221,7 @@ const MakeRequest = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
+        setLoading(true);
 
         try {
             if (requestId) {
@@ -225,7 +246,15 @@ const MakeRequest = () => {
             router.visit("/my-requests");
         } catch (error) {
             console.error("Error submitting request:", error);
+        } finally {
+            setLoading(false);
         }
+    };
+
+    const getAvailableProducts = (index, categoryId) => {
+        if (!categoryId) return [];
+
+        return filteredProducts[categoryId] || [];
     };
 
     return (
@@ -240,31 +269,24 @@ const MakeRequest = () => {
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-                <h3 className="text-2xl font-medium text-[#6E66AC]">
-                    Requested Item Detail
-                </h3>
+                <div className="flex items-center w-full gap-4">
+                    <h3 className="text-2xl font-medium text-[#6E66AC] whitespace-nowrap">
+                        Requested Item Detail
+                    </h3>
+                    <div
+                        className="h-[3px] flex-grow"
+                        style={{
+                            background:
+                                "linear-gradient(to right, #9B9DA200, #9B9DA2)",
+                        }}
+                    ></div>
+                </div>
+
                 {formData.items.map((item, index) => (
                     <div
                         key={index}
                         className="grid grid-cols-1 md:grid-cols-2 gap-4"
                     >
-                        <div>
-                            <SelectFloating
-                                label="Item"
-                                name="product_id"
-                                value={item.product_id}
-                                onChange={(e) => handleItemChange(index, e)}
-                                options={products.map((p) => ({
-                                    id: p.id,
-                                    label: p.name,
-                                }))}
-                            />
-                            {errors[`items.${index}.product_id`] && (
-                                <p className="text-red-500 text-sm">
-                                    {errors[`items.${index}.product_id`]}
-                                </p>
-                            )}
-                        </div>
                         <div>
                             <SelectFloating
                                 label="Category"
@@ -279,6 +301,26 @@ const MakeRequest = () => {
                             {errors[`items.${index}.category_id`] && (
                                 <p className="text-red-500 text-sm">
                                     {errors[`items.${index}.category_id`]}
+                                </p>
+                            )}
+                        </div>
+                        <div>
+                            <SelectFloating
+                                label="Item"
+                                name="product_id"
+                                value={item.product_id}
+                                onChange={(e) => handleItemChange(index, e)}
+                                options={getAvailableProducts(
+                                    index,
+                                    item.category_id
+                                ).map((p) => ({
+                                    id: p.id,
+                                    label: p.name,
+                                }))}
+                            />
+                            {errors[`items.${index}.product_id`] && (
+                                <p className="text-red-500 text-sm">
+                                    {errors[`items.${index}.product_id`]}
                                 </p>
                             )}
                         </div>
@@ -340,11 +382,13 @@ const MakeRequest = () => {
                                     className="text-gray-500 mr-2"
                                 />
                                 {item.photo ? (
-                                    <span className="text-gray-700">
+                                    <span className="text-gray-700 text-sm sm:text-base overflow-hidden text-ellipsis max-w-[80%]">
                                         {item.photo}
                                     </span>
                                 ) : (
-                                    "Add a Photo"
+                                    <span className="text-sm sm:text-base">
+                                        Add a Photo
+                                    </span>
                                 )}
                                 <input
                                     type="file"
@@ -393,7 +437,7 @@ const MakeRequest = () => {
                                     <button
                                         type="button"
                                         onClick={() => handleDeleteItem(index)}
-                                        className="text-red-500 hover:text-red-700"
+                                        className="text-red-500 text-xl hover:text-red-700 p-2"
                                     >
                                         <FontAwesomeIcon icon={faTrash} />
                                     </button>
@@ -403,22 +447,44 @@ const MakeRequest = () => {
                     </div>
                 ))}
 
-                <div className="flex justify-center items-center relative w-full">
-                    <div className="absolute top-1/2 left-0 w-[45%] border-t border-[#9B9DA2] max-sm:w-[35%]"></div>
+                <div className="flex justify-center items-center relative w-full my-8">
+                    <div
+                        className="absolute top-1/2 left-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
+                        style={{
+                            background:
+                                "linear-gradient(to right, #9B9DA2, #9B9DA200)",
+                        }}
+                    ></div>
                     <button
                         type="button"
                         onClick={addItem}
-                        className="p-3 text-xl flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] z-10 transition-all duration-300 hover:bg-[#009FDC] hover:text-white hover:scale-105"
+                        className="p-2 text-base sm:text-lg flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] z-10 transition-all duration-300 hover:border-[#009FDC] hover:bg-[#009FDC] hover:text-white hover:scale-105"
                     >
                         <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add
                         Item
                     </button>
-                    <div className="absolute top-1/2 right-0 w-[45%] border-t border-[#9B9DA2] max-sm:w-[35%]"></div>
+                    <div
+                        className="absolute top-1/2 right-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
+                        style={{
+                            background:
+                                "linear-gradient(to left, #9B9DA2, #9B9DA200)",
+                        }}
+                    ></div>
                 </div>
 
-                <h3 className="text-2xl font-medium text-[#6E66AC]">
-                    Warehouse Info
-                </h3>
+                <div className="flex items-center w-full gap-4">
+                    <h3 className="text-2xl font-medium text-[#6E66AC] whitespace-nowrap">
+                        Warehouse Info
+                    </h3>
+                    <div
+                        className="h-[3px] flex-grow"
+                        style={{
+                            background:
+                                "linear-gradient(to right, #9B9DA200, #9B9DA2)",
+                        }}
+                    ></div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <SelectFloating
@@ -469,9 +535,16 @@ const MakeRequest = () => {
                 <div className="flex justify-end">
                     <button
                         type="submit"
-                        className="bg-[#009FDC] text-white px-6 py-2 rounded-lg hover:bg-[#007CB8]"
+                        className="bg-[#009FDC] text-white text-lg font-medium px-6 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50 w-full sm:w-auto"
+                        disabled={loading}
                     >
-                        Submit Request
+                        {loading
+                            ? requestId
+                                ? "Updating..."
+                                : "Creating..."
+                            : requestId
+                            ? "Update Request"
+                            : "Create Request"}
                     </button>
                 </div>
             </form>
