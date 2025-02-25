@@ -34,7 +34,7 @@ export default function Dashboard({ auth, page }) {
         if (page === "WarehouseManagement/CreateWarehouse")
             return <CreateWarehouse />;
 
-        return <MainDashboard />;
+        return <MainDashboard roles={auth.user.roles} />;
     };
 
     const currentPath = window.location.pathname;
