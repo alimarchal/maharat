@@ -115,7 +115,7 @@ const RequestTable = ({ selectedFilter }) => {
                             )
                             .map((req) => (
                                 <tr key={req.id}>
-                                    <td className="py-3 px-4">{req.id}</td>
+                                    <td className="py-3 px-4">MR-{req.id}</td>
                                     <td className="py-3 px-4">
                                         {req.items?.map(
                                             (item) => item.product?.name
