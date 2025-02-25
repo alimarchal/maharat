@@ -34,13 +34,13 @@ use App\Http\Controllers\Api\RfqApiController;
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth');
 Route::post('/check-email', [AuthController::class, 'checkEmail']);
 Route::get('/statuses', [StatusController::class, 'index']);
 //Route::post('/statuses', [StatusController::class, 'store']);
 
 // API V1 routes
-Route::prefix('v1')->group(function () {
+Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () { 
 
     Route::get('/users/hierarchy/{user?}', [UserController::class, 'hierarchy']);
     Route::apiResource('users', UserController::class);
@@ -63,7 +63,6 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('statuses', StatusController::class);
     Route::apiResource('warehouses', WarehouseController::class);
     Route::apiResource('warehouse-managers', WarehouseManagerController::class);
-
 
     Route::apiResource('units', UnitController::class);
     Route::apiResource('product-categories', ProductCategoryController::class);
@@ -107,9 +106,9 @@ Route::prefix('v1')->group(function () {
 
 Route::get('/user', function (Request $request) {
     return $request->user();
-})->middleware('auth:sanctum');
+})->middleware('auth');
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth')->group(function () {
     // RFQ Routes
     Route::get('/rfqs', [RfqApiController::class, 'index']);
     Route::delete('/rfqs/{id}', [RfqApiController::class, 'destroy']);
