@@ -47,7 +47,12 @@ const WarehouseTable = () => {
             if (response.ok) {
                 const managerMap = {};
                 data.data.forEach((manager) => {
-                    managerMap[manager.warehouse_id] = manager.manager_id;
+                    if (
+                        !managerMap[manager.warehouse_id] ||
+                        manager.role === "Manager"
+                    ) {
+                        managerMap[manager.warehouse_id] = manager.manager_id;
+                    }
                 });
                 setManagers(managerMap);
             }

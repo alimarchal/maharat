@@ -49,7 +49,9 @@ const CreateWarehouse = () => {
                 );
 
             axios
-                .get(`/api/v1/warehouse-managers?warehouse_id=${warehouseId}`)
+                .get(
+                    `/api/v1/warehouse-managers?filter[warehouse_id]=${warehouseId}`
+                )
                 .then((response) => {
                     const managersData = response.data.data;
                     const manager = managersData.find(
@@ -78,10 +80,14 @@ const CreateWarehouse = () => {
 
     const validateForm = () => {
         let newErrors = {};
-        if (!formData.name.trim()) newErrors.name = "Warehouse Name is required";
-        if (!formData.code.trim()) newErrors.code = "Warehouse Code is required";
-        if (!formData.address.trim()) newErrors.address = "Warehouse Address is required";
-        if (!formData.manager_id) newErrors.manager_id = "Warehouse Manager is required";
+        if (!formData.name.trim())
+            newErrors.name = "Warehouse Name is required";
+        if (!formData.code.trim())
+            newErrors.code = "Warehouse Code is required";
+        if (!formData.address.trim())
+            newErrors.address = "Warehouse Address is required";
+        if (!formData.manager_id)
+            newErrors.manager_id = "Warehouse Manager is required";
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };

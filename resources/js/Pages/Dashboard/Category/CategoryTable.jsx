@@ -67,7 +67,7 @@ const CategoryTable = () => {
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             ID
                         </th>
-                        <th className="py-3 px-4">Name</th>
+                        <th className="py-3 px-4">Category Name</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
                             Actions
                         </th>

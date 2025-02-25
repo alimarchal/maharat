@@ -225,7 +225,9 @@ const DashboardCard = ({
     );
 };
 
-export default function Dashboard({ page }) {
+export default function MainDashboard({ roles }) {
+    const isAdmin = roles && roles.includes("Admin");
+
     const purchaseDropdownItems = [
         {
             text: "RFQs",
@@ -332,55 +334,63 @@ export default function Dashboard({ page }) {
                     bgColor="bg-[#F7EBBA]"
                     iconColor="text-[#665200]"
                 />
-                <DashboardCard
-                    icon={faShoppingCart}
-                    title="Purchases"
-                    subtitle="Procurement System"
-                    bgColor="bg-[#BFBCD8]"
-                    iconColor="text-[#393559]"
-                    dropdownItems={purchaseDropdownItems}
-                />
-                <DashboardCard
-                    icon={faBoxes}
-                    title="Finance"
-                    subtitle="Budget & Expenses"
-                    bgColor="bg-[#C4E4F0]"
-                    iconColor="text-[#005372]"
-                />
+
+                {isAdmin && (
+                    <>
+                        <DashboardCard
+                            icon={faShoppingCart}
+                            title="Purchases"
+                            subtitle="Procurement System"
+                            bgColor="bg-[#BFBCD8]"
+                            iconColor="text-[#393559]"
+                            dropdownItems={purchaseDropdownItems}
+                        />
+                        <DashboardCard
+                            icon={faBoxes}
+                            title="Finance"
+                            subtitle="Budget & Expenses"
+                            bgColor="bg-[#C4E4F0]"
+                            iconColor="text-[#005372]"
+                        />
+                    </>
+                )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 my-6">
-                <DashboardCard
-                    icon={faWarehouse}
-                    title="Warehouse"
-                    subtitle="Stock Management"
-                    bgColor="bg-[#F7EBBA]"
-                    iconColor="text-[#665200]"
-                    dropdownItems={warehouseDropdownItems}
-                    onClick={() => router.visit("/warehouse")}
-                />
-                <DashboardCard
-                    icon={faFileInvoice}
-                    title="Invoices"
-                    subtitle="Paid & Unpaid"
-                    bgColor="bg-[#F7CCCC]"
-                    iconColor="text-[#661E1E]"
-                />
-                <DashboardCard
-                    icon={faChartBar}
-                    title="Reports"
-                    subtitle="All Reports"
-                    bgColor="bg-[#B9BBBD]"
-                    iconColor="text-[#2C323C]"
-                />
-                <DashboardCard
-                    icon={faCogs}
-                    title="Configuration"
-                    subtitle="Process Flow"
-                    bgColor="bg-[#DEEEE9]"
-                    iconColor="text-[#074D38]"
-                    dropdownItems={configDropdownItems}
-                />
-            </div>
+
+            {isAdmin && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 my-6">
+                    <DashboardCard
+                        icon={faWarehouse}
+                        title="Warehouse"
+                        subtitle="Stock Management"
+                        bgColor="bg-[#F7EBBA]"
+                        iconColor="text-[#665200]"
+                        dropdownItems={warehouseDropdownItems}
+                        onClick={() => router.visit("/warehouse")}
+                    />
+                    <DashboardCard
+                        icon={faFileInvoice}
+                        title="Invoices"
+                        subtitle="Paid & Unpaid"
+                        bgColor="bg-[#F7CCCC]"
+                        iconColor="text-[#661E1E]"
+                    />
+                    <DashboardCard
+                        icon={faChartBar}
+                        title="Reports"
+                        subtitle="All Reports"
+                        bgColor="bg-[#B9BBBD]"
+                        iconColor="text-[#2C323C]"
+                    />
+                    <DashboardCard
+                        icon={faCogs}
+                        title="Configuration"
+                        subtitle="Process Flow"
+                        bgColor="bg-[#DEEEE9]"
+                        iconColor="text-[#074D38]"
+                        dropdownItems={configDropdownItems}
+                    />
+                </div>
+            )}
         </>
     );
 }
