@@ -149,16 +149,4 @@ Route::get('language/{locale}', function ($locale) {
     return redirect()->back();
 })->name('language.switch');
 
-Route::middleware(['auth', 'verified', 'role:Admin'])->group(function () {
-    Route::get('/admin-dashboard', function () {
-        return Inertia::render('Dashboard/AdminDashboard');
-    })->name('admin.dashboard');
-});
-
-Route::middleware(['auth', 'verified', 'role:Manager'])->group(function () {
-    Route::get('/manager-dashboard', function () {
-        return Inertia::render('Dashboard/ManagerDashboard');
-    })->name('manager.dashboard');
-});
-
 require __DIR__.'/auth.php';
