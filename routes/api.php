@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\V1\InventoryTransferController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
 use App\Http\Controllers\Api\V1\MaterialRequestItemController;
 use App\Http\Controllers\Api\V1\PermissionController;
+use App\Http\Controllers\Api\V1\ProcessController;
+use App\Http\Controllers\Api\V1\ProcessStepController;
 use App\Http\Controllers\Api\V1\ProductCategoryController;
 use App\Http\Controllers\Api\V1\QuotationController;
 use App\Http\Controllers\Api\V1\QuotationDocumentController;
@@ -38,7 +40,7 @@ Route::get('/statuses', [StatusController::class, 'index']);
 //Route::post('/statuses', [StatusController::class, 'store']);
 
 // API V1 routes
-Route::prefix('v1')->group(function () {  
+Route::prefix('v1')->group(function () {
 
     Route::get('/users/hierarchy/{user?}', [UserController::class, 'hierarchy']);
     Route::apiResource('users', UserController::class);
@@ -89,6 +91,19 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('supplier-addresses', SupplierAddressController::class);
     Route::apiResource('quotations', QuotationController::class);
     Route::apiResource('quotation-documents', QuotationDocumentController::class);
+
+
+
+    // Process routes
+    Route::apiResource('processes', ProcessController::class);
+    Route::patch('processes/{process}/toggle-active', [ProcessController::class, 'toggleActive']);
+    Route::patch('processes/{process}/status', [ProcessController::class, 'updateStatus']);
+
+    // Process step routes
+    Route::apiResource('process-steps', ProcessStepController::class);
+    Route::patch('process-steps/{processStep}/status', [ProcessStepController::class, 'updateStatus']);
+    Route::patch('process-steps/{processStep}/toggle-active', [ProcessStepController::class, 'toggleActive']);
+    Route::post('process-steps/reorder', [ProcessStepController::class, 'reorder']);
 
 });
 
