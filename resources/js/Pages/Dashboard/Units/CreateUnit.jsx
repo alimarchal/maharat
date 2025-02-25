@@ -37,9 +37,9 @@ const CreateUnit = () => {
     const validateForm = () => {
         let newErrors = {};
 
-        if (!formData?.name?.trim()) newErrors.name = "Name is required";
+        if (!formData?.name?.trim()) newErrors.name = "Unit Name is required";
         if (!formData?.short_title?.trim())
-            newErrors.short_title = "Short Title is required";
+            newErrors.short_title = "Unit Short Title is required";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -94,7 +94,7 @@ const CreateUnit = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <InputFloating
-                            label="Name"
+                            label="Unit Name"
                             name="name"
                             value={formData.name}
                             onChange={handleChange}
@@ -107,7 +107,7 @@ const CreateUnit = () => {
                     </div>
                     <div>
                         <InputFloating
-                            label="Short Title"
+                            label="Unit Short Title"
                             name="short_title"
                             value={formData.short_title}
                             onChange={handleChange}
@@ -122,7 +122,7 @@ const CreateUnit = () => {
                 <div className="flex justify-end">
                     <button
                         type="submit"
-                        className="bg-[#009FDC] text-white px-6 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50"
+                        className="bg-[#009FDC] text-white text-lg font-medium px-6 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50"
                         disabled={loading}
                     >
                         {loading
