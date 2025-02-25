@@ -62,7 +62,7 @@ const CreateProduct = () => {
 
     const validateForm = () => {
         let newErrors = {};
-        if (!formData.name.trim()) newErrors.name = "Name is required";
+        if (!formData.name.trim()) newErrors.name = "Item Name is required";
         if (!formData.category_id)
             newErrors.category_id = "Category is required";
         if (!formData.unit_id) newErrors.unit_id = "Unit is required";
@@ -128,19 +128,6 @@ const CreateProduct = () => {
             <form onSubmit={handleSubmit} className="space-y-6 mt-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <InputFloating
-                            label="Name"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleChange}
-                        />
-                        {errors.name && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.name}
-                            </p>
-                        )}
-                    </div>
-                    <div>
                         <SelectFloating
                             label="Category"
                             name="category_id"
@@ -154,6 +141,19 @@ const CreateProduct = () => {
                         {errors.category_id && (
                             <p className="text-red-500 text-sm mt-1">
                                 {errors.category_id}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="Item Name"
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                        />
+                        {errors.name && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.name}
                             </p>
                         )}
                     </div>
@@ -220,7 +220,7 @@ const CreateProduct = () => {
                 <div className="flex justify-end">
                     <button
                         type="submit"
-                        className="bg-[#009FDC] text-white px-6 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50"
+                        className="bg-[#009FDC] text-white text-lg font-medium px-6 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50"
                         disabled={loading}
                     >
                         {loading
