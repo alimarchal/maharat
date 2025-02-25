@@ -41,7 +41,7 @@ class ProcessController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreProcessRequest $request): JsonResponse
+    public function store(StoreProcessRequest $request)
     {
         try {
             DB::beginTransaction();
@@ -50,12 +50,14 @@ class ProcessController extends Controller
             $processData = $request->validated();
             $stepsData = $processData['steps'] ?? [];
             unset($processData['steps']);
-
             // Add user ID for created_by
             $processData['created_by'] = $user->id;
             $processData['updated_by'] = $user->id;
 
             $process = Process::create($processData);
+
+
+
 
             // Create steps if provided
             if (!empty($stepsData)) {

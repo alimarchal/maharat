@@ -95,15 +95,15 @@ Route::prefix('v1')->group(function () {
 
 
     // Process routes
-    Route::apiResource('processes', ProcessController::class);
-    Route::patch('processes/{process}/toggle-active', [ProcessController::class, 'toggleActive']);
-    Route::patch('processes/{process}/status', [ProcessController::class, 'updateStatus']);
+    Route::apiResource('processes', ProcessController::class)->middleware('auth:sanctum');
+    Route::patch('processes/{process}/toggle-active', [ProcessController::class, 'toggleActive'])->middleware('auth:sanctum');;
+    Route::patch('processes/{process}/status', [ProcessController::class, 'updateStatus'])->middleware('auth:sanctum');;
 
     // Process step routes
-    Route::apiResource('process-steps', ProcessStepController::class);
-    Route::patch('process-steps/{processStep}/status', [ProcessStepController::class, 'updateStatus']);
-    Route::patch('process-steps/{processStep}/toggle-active', [ProcessStepController::class, 'toggleActive']);
-    Route::post('process-steps/reorder', [ProcessStepController::class, 'reorder']);
+    Route::apiResource('process-steps', ProcessStepController::class)->middleware('auth:sanctum');;
+    Route::patch('process-steps/{processStep}/status', [ProcessStepController::class, 'updateStatus'])->middleware('auth:sanctum');;
+    Route::patch('process-steps/{processStep}/toggle-active', [ProcessStepController::class, 'toggleActive'])->middleware('auth:sanctum');;
+    Route::post('process-steps/reorder', [ProcessStepController::class, 'reorder'])->middleware('auth:sanctum');;
 
 });
 
