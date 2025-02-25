@@ -3,7 +3,7 @@ import { Head } from '@inertiajs/react';
 import { router, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import axios from 'axios';
-import { PaperClipIcon } from '@heroicons/react/24/outline';
+import { PaperClipIcon, DocumentTextIcon, DocumentArrowDownIcon, EnvelopeIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeftLong, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
@@ -158,6 +158,44 @@ export default function AddQuotationForm({ auth }) {
         });
     };
 
+    const handleSave = () => {
+        router.post(route('quotations.store'), formData, {
+            preserveScroll: true,
+            onSuccess: () => {
+                // Show success message or redirect
+            },
+        });
+    };
+
+    const handleDownloadPDF = async () => {
+        try {
+            // First save the quotation if it hasn't been saved
+            if (!formData.id) {
+                await handleSave();
+            }
+
+            // Download PDF
+            const response = await axios.get(route('quotations.pdf', formData.id), {
+                responseType: 'blob'
+            });
+
+            // Create blob link to download
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `RFQ-${formData.rfq_number}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+
+            // Clean up
+            link.parentNode.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error downloading PDF:', error);
+            // You might want to show an error message to the user
+        }
+    };
+
     return (
         <AuthenticatedLayout user={auth.user}>
             <Head title="Create Quotation" />
@@ -183,10 +221,28 @@ export default function AddQuotationForm({ auth }) {
                         <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                         <span className="text-[#009FDC] text-xl">New RFQ Request</span>
                     </div>
-                    <label className="bg-green-600 text-white px-4 py-2 rounded-lg cursor-pointer">
-                        Upload CSV File
-                        <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} />
-                    </label>
+                    <label className="text-green-600 px-4 py-2 cursor-pointer flex items-center space-x-2 border border-green-600 rounded-lg">
+    {/* CSV Icon with Thin, Readable Text */}
+    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6 2C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2H6Z" />
+        <path d="M13 9V3.5L18.5 9H13Z" />
+        <text x="5.5" y="16.5" fontSize="6" fontWeight="400" fill="currentColor">CSV</text>
+    </svg>
+    <span className="text-green-600">Upload CSV File</span>
+    <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} />
+</label>
+
+
+
+
+
+
+
+
+
+
+
+
                 </div>
 
                 <div className="flex justify-between items-center mb-6">
@@ -272,143 +328,189 @@ export default function AddQuotationForm({ auth }) {
                     </div>
                 </div>
 
-                {/* Items Table */}
-                <table className="w-full mt-4">
-                    <thead style={{ backgroundColor: '#C7E7DE' }} className="rounded-t-lg">
-                        <tr>
-                            <th className="px-4 py-2 text-left first:rounded-tl-lg last:rounded-tr-lg">Item Name</th>
-                            <th className="px-4 py-2 text-left">Description</th>
-                            <th className="px-4 py-2 text-left">Unit</th>
-                            <th className="px-4 py-2 text-left">Quantity</th>
-                            <th className="px-4 py-2 text-left">Brand</th>
-                            <th className="px-4 py-2 text-left">Attachment</th>
-                            <th className="px-4 py-2 text-left">Expected Delivery Date</th>
-                            <th className="px-4 py-2 text-left">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {formData.items.map((item, index) => (
-                            <tr key={index} className="border-b">
-                                <td className="px-4 py-2">
-                                    <input
-                                        type="text"
-                                        value={item.item_name}
-                                        onChange={(e) => {
+                {/* Item Table */}
+                <table className="w-full mt-4 table-fixed border-collapse">
+                <thead style={{ backgroundColor: '#C7E7DE' }} className="rounded-t-lg">
+                    <tr>
+                        <th className="px-2 py-2 text-center w-[10%]">Item Name</th>
+                        <th className="px-2 py-2 text-center w-[11%]">Description</th>
+                        <th className="px-2 py-2 text-center w-[7%]">Unit</th>
+                        <th className="px-2 py-2 text-center w-[7%]">Quantity</th>
+                        <th className="px-2 py-2 text-center w-[10%]">Brand</th>
+                        <th className="px-2 py-2 text-center w-[10%]">Attachment</th>
+                        <th className="px-2 py-2 text-center w-[15%]">Expected Delivery Date</th>
+                        <th className="px-2 py-2 text-center w-[6%]">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {formData.items.map((item, index) => (
+                        <tr key={index} className="border-b text-center">
+                            <td className="px-2 py-2">
+                                <input
+                                    type="text"
+                                    value={item.item_name}
+                                    onChange={(e) => {
+                                        const newItems = [...formData.items];
+                                        newItems[index].item_name = e.target.value;
+                                        setFormData({ ...formData, items: newItems });
+                                    }}
+                                    className="w-full bg-transparent border-none focus:ring-0 text-center"
+                                />
+                            </td>
+                            <td className="px-2 py-2">
+                                <input
+                                    type="text"
+                                    value={item.description}
+                                    onChange={(e) => {
+                                        const newItems = [...formData.items];
+                                        newItems[index].description = e.target.value;
+                                        setFormData({ ...formData, items: newItems });
+                                    }}
+                                    className="w-full bg-transparent border-none focus:ring-0 text-center break-words whitespace-normal"
+                                />
+                            </td>
+                            <td className="px-2 py-2">
+                                <select
+                                    value={item.unit}
+                                    onChange={(e) => {
+                                        const newItems = [...formData.items];
+                                        newItems[index].unit = e.target.value;
+                                        setFormData({ ...formData, items: newItems });
+                                    }}
+                                    className="w-full bg-transparent border-none focus:ring-0 text-center"
+                                >
+                                    <option value="---">---</option>
+                                    {units.map(unit => (
+                                        <option key={unit.id} value={unit.name}>{unit.name}</option>
+                                    ))}
+                                </select>
+                            </td>
+                            <td className="px-2 py-2">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={item.quantity}
+                                    onChange={(e) => {
+                                        const newItems = [...formData.items];
+                                        newItems[index].quantity = Math.max(0, parseInt(e.target.value) || 0);
+                                        setFormData({ ...formData, items: newItems });
+                                    }}
+                                    className="w-full bg-transparent border-none focus:ring-0 text-center"
+                                />
+                            </td>
+                            <td className="px-2 py-2">
+                                <select
+                                    value={item.brand}
+                                    onChange={(e) => {
+                                        const newItems = [...formData.items];
+                                        newItems[index].brand = e.target.value;
+                                        setFormData({ ...formData, items: newItems });
+                                    }}
+                                    className="w-full bg-transparent border-none focus:ring-0 text-center"
+                                >
+                                    <option value="---">---</option>
+                                    {brands.map(brand => (
+                                        <option key={brand.id} value={brand.name}>{brand.name}</option>
+                                    ))}
+                                </select>
+                            </td>
+                            <td className="px-2 py-2 flex items-center justify-center">
+                                <input
+                                    type="file"
+                                    accept="application/pdf"
+                                    onChange={(e) => {
+                                        const file = e.target.files[0];
+                                        if (file && file.type === "application/pdf") {
                                             const newItems = [...formData.items];
-                                            newItems[index].item_name = e.target.value;
+                                            newItems[index].attachment = file.name;
                                             setFormData({ ...formData, items: newItems });
-                                        }}
-                                        className="w-full bg-transparent border-none focus:ring-0"
-                                    />
-                                </td>
-                                <td className="px-4 py-2">
-                                    <input
-                                        type="text"
-                                        value={item.description}
-                                        onChange={(e) => {
-                                            const newItems = [...formData.items];
-                                            newItems[index].description = e.target.value;
-                                            setFormData({ ...formData, items: newItems });
-                                        }}
-                                        className="w-full bg-transparent border-none focus:ring-0"
-                                    />
-                                </td>
-                                <td className="px-4 py-2">
-                                    <select
-                                        value={item.unit}
-                                        onChange={(e) => {
-                                            const newItems = [...formData.items];
-                                            newItems[index].unit = e.target.value;
-                                            setFormData({ ...formData, items: newItems });
-                                        }}
-                                        className="w-full bg-transparent border-none focus:ring-0"
-                                    >
-                                        <option value="---">---</option>
-                                        {units.map(unit => (
-                                            <option key={unit.id} value={unit.name}>{unit.name}</option>
-                                        ))}
-                                    </select>
-                                </td>
-                                <td className="px-4 py-2">
-                                    <input
-                                        type="text"
-                                        value={item.quantity}
-                                        onChange={(e) => {
-                                            const newItems = [...formData.items];
-                                            newItems[index].quantity = e.target.value;
-                                            setFormData({ ...formData, items: newItems });
-                                        }}
-                                        className="w-full bg-transparent border-none focus:ring-0"
-                                    />
-                                </td>
-                                <td className="px-4 py-2">
-                                    <select
-                                        value={item.brand}
-                                        onChange={(e) => {
-                                            const newItems = [...formData.items];
-                                            newItems[index].brand = e.target.value;
-                                            setFormData({ ...formData, items: newItems });
-                                        }}
-                                        className="w-full bg-transparent border-none focus:ring-0"
-                                    >
-                                        <option value="---">---</option>
-                                        {brands.map(brand => (
-                                            <option key={brand.id} value={brand.name}>{brand.name}</option>
-                                        ))}
-                                    </select>
-                                </td>
-                                <td className="px-4 py-2">
-                                    <button className="text-blue-600">
-                                        <PaperClipIcon className="h-5 w-5" />
-                                    </button>
-                                </td>
-                                <td className="px-4 py-2">
-                                    <input
-                                        type="text"
-                                        value={item.expected_delivery_date}
-                                        onChange={(e) => {
-                                            const newItems = [...formData.items];
-                                            newItems[index].expected_delivery_date = e.target.value;
-                                            setFormData({ ...formData, items: newItems });
-                                        }}
-                                        className="w-full bg-transparent border-none focus:ring-0"
-                                    />
-                                </td>
-                                <td className="px-4 py-2">
-                                    <button onClick={() => deleteItem(index)} className="text-red-600">
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                                        } else {
+                                            alert("Only PDF files are allowed.");
+                                        }
+                                    }}
+                                    className="hidden"
+                                    id={`fileInput-${index}`}
+                                />
+                                <label htmlFor={`fileInput-${index}`} className="cursor-pointer text-blue-600 flex items-center space-x-2">
+                                    <PaperClipIcon className="h-5 w-5 relative top-3" />
+                                    {item.attachment && <span className="text-sm text-gray-600 relative top-3">{item.attachment}</span>}
+                                </label>
+                            </td>
+                            <td className="px-2 py-2 text-center">
+                            <div className="relative flex justify-center items-center">
+                                <input
+                                    type="date"
+                                    value={item.expected_delivery_date
+                                        ?.split('/').reverse().join('-') || ''} // Convert DD/MM/YYYY -> YYYY-MM-DD for the input
+                                    onChange={(e) => {
+                                        if (!e.target.value) return;
 
-                {/* Add Item Button */}
-                <div className="mt-4 flex justify-center">
-                    <button
-                        type="button"
-                        onClick={addItem}
-                        className="text-blue-600 flex items-center"
-                    >
-                        + Add Item
-                    </button>
-                </div>
+                                        const [year, month, day] = e.target.value.split('-');
+                                        const formattedDate = `${day}/${month}/${year}`; // Convert back to DD/MM/YYYY
+
+                                        const newItems = [...formData.items];
+                                        newItems[index].expected_delivery_date = formattedDate;
+                                        setFormData({ ...formData, items: newItems });
+                                    }}
+                                    className="bg-transparent border border-gray-300 rounded-md px-2 py-1 text-center text-sm 
+                                            appearance-none focus:ring-0 focus:outline-none focus:border-transparent 
+                                            active:outline-none active:ring-0 border-none"
+                                />
+                            </div>
+                        </td>
+
+                            <td className="px-2 py-2">
+                                <button
+                                    onClick={() => {
+                                        const newItems = [...formData.items];
+                                        newItems.splice(index, 1);
+                                        setFormData({ ...formData, items: newItems });
+                                    }}
+                                    className="text-red-600"
+                                >
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+
+            {/* Add Item Button */}
+            <div className="mt-4 flex justify-center">
+                <button
+                    type="button"
+                    onClick={addItem}
+                    className="text-blue-600 flex items-center"
+                >
+                    + Add Item
+                </button>
+            </div>
+
 
                 {/* Action Buttons */}
                 <div className="mt-8 flex justify-end space-x-4">
                     <button
                         type="button"
-                        onClick={() => {/* Handle PDF download */}}
-                        className="px-4 py-2 border border-blue-600 text-blue-600 rounded-full"
+                        onClick={handleSave}
+                        className="inline-flex items-center px-4 py-2 border border-green-600 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50"
                     >
+                        <DocumentTextIcon className="h-5 w-5 mr-2" />
+                        Save Quotation
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleDownloadPDF}
+                        className="inline-flex items-center px-4 py-2 border border-blue-600 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50"
+                    >
+                        <DocumentArrowDownIcon className="h-5 w-5 mr-2" />
                         Download PDF
                     </button>
                     <button
                         type="submit"
-                        onClick={handleSubmit}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-full"
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-blue-700"
                     >
+                        <EnvelopeIcon className="h-5 w-5 mr-2" />
                         Send Quotation by Mail
                     </button>
                 </div>
