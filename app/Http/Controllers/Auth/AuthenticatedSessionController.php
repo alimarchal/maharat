@@ -27,18 +27,25 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request)
+    public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
         $request->session()->regenerate();
 
-        if ($request->expectsJson()) {
-            return response()->json(['message' => 'Authenticated successfully'], 200);
-        }
+        $user = Auth::user()->load(['roles', 'permissions']);
+        
+        // Transform roles and permissions to match API format
+        $roles = $user->roles->pluck('name')->toArray();
+        $permissions = $user->permissions->pluck('name')->toArray();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended(route('dashboard', absolute: false))
+            ->with('auth', [
+                'user' => array_merge($user->toArray(), [
+                    'roles' => $roles,
+                    'permissions' => $permissions
+                ])
+            ]);
     }
-
 
     /**
      * Destroy an authenticated session.
@@ -55,5 +62,4 @@ class AuthenticatedSessionController extends Controller
 
         return redirect()->route('login');
     }
-
 }
