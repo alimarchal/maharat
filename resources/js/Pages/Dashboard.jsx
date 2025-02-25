@@ -1,11 +1,11 @@
 import React from "react";
-import { Head } from "@inertiajs/react";
+import { Head, router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import RequestIndex from "./Dashboard/Requests/RequestIndex";
 import MakeRequest from "./Dashboard/Requests/MakeRequest";
 import MainDashboard from "./Dashboard/MainDashboard";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { faChevronRight, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import StatusIndex from "./Dashboard/Status/StatusIndex";
 import CreateStatus from "./Dashboard/Status/CreateStatus";
 import UnitIndex from "./Dashboard/Units/UnitIndex";
@@ -46,11 +46,15 @@ export default function Dashboard({ auth, page }) {
             (segment) =>
                 segment !== "" && segment !== "dashboard" && isNaN(segment)
         )
-        .map((segment) =>
-            segment
-                .replace(/-/g, " ")
-                .replace(/\b\w/g, (char) => char.toUpperCase())
-        );
+        .map((segment, index, array) => {
+            const path = `/dashboard/${array.slice(0, index + 1).join("/")}`;
+            return {
+                label: segment
+                    .replace(/-/g, " ")
+                    .replace(/\b\w/g, (char) => char.toUpperCase()),
+                path,
+            };
+        });
 
     return (
         <AuthenticatedLayout>
@@ -59,31 +63,61 @@ export default function Dashboard({ auth, page }) {
                     isDashboard
                         ? "Dashboard"
                         : breadcrumbSegments.length > 0
-                        ? breadcrumbSegments.join(" > ")
+                        ? breadcrumbSegments.map((b) => b.label).join(" > ")
                         : "Dashboard"
                 }
             />
             {!isDashboard && (
                 <div className="p-6 text-[#7D8086] text-xl">
+                    {/* Back Button */}
+                    <button
+                        onClick={() => window.history.back()}
+                        className="flex items-center gap-2 text-[#2C323C] text-xl font-medium mb-4"
+                    >
+                        <FontAwesomeIcon icon={faArrowLeft} />
+                        <span>Back</span>
+                    </button>
+
+                    {/* Breadcrumb */}
                     <p className="flex items-center gap-2">
-                        <span>Dashboard</span>
-                        {breadcrumbSegments.map((segment, index) => (
-                            <React.Fragment key={index}>
-                                <FontAwesomeIcon
-                                    icon={faChevronRight}
-                                    className="text-[#7D8086]"
-                                />
-                                <span
-                                    className={
-                                        index === breadcrumbSegments.length - 1
-                                            ? "text-[#009FDC] font-medium"
-                                            : ""
-                                    }
-                                >
-                                    {segment}
-                                </span>
-                            </React.Fragment>
-                        ))}
+                        <span
+                            onClick={() => router.visit("/dashboard")}
+                            className="cursor-pointer hover:text-[#009FDC] transition-colors"
+                        >
+                            Dashboard
+                        </span>
+                        {breadcrumbSegments.map((segment, index) => {
+                            const fullPath =
+                                `/` +
+                                breadcrumbSegments
+                                    .slice(0, index + 1)
+                                    .map((s) =>
+                                        s.label
+                                            .toLowerCase()
+                                            .replace(/\s+/g, "-")
+                                    )
+                                    .join("/");
+
+                            return (
+                                <React.Fragment key={index}>
+                                    <FontAwesomeIcon
+                                        icon={faChevronRight}
+                                        className="text-[#7D8086]"
+                                    />
+                                    <span
+                                        onClick={() => router.visit(fullPath)}
+                                        className={`cursor-pointer ${
+                                            index ===
+                                            breadcrumbSegments.length - 1
+                                                ? "text-[#009FDC] font-medium"
+                                                : "hover:text-[#009FDC] transition-colors"
+                                        }`}
+                                    >
+                                        {segment.label}
+                                    </span>
+                                </React.Fragment>
+                            );
+                        })}
                     </p>
                 </div>
             )}

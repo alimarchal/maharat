@@ -25,31 +25,48 @@ const CreateWarehouse = () => {
     useEffect(() => {
         axios
             .get("/api/v1/users")
-            .then((response) => {
-                setManagers(response.data.data);
-            })
+            .then((response) => setManagers(response.data.data))
             .catch((error) => console.error("Error fetching managers:", error));
     }, []);
 
-    // Fetch warehouse details if editing
     useEffect(() => {
         if (warehouseId) {
             axios
                 .get(`/api/v1/warehouses/${warehouseId}`)
                 .then((response) => {
                     const data = response.data.data;
-                    setFormData({
+                    setFormData((prev) => ({
+                        ...prev,
                         name: data.name || "",
                         code: data.code || "",
                         address: data.address || "",
                         latitude: data.latitude || "",
                         longitude: data.longitude || "",
-                        manager_id: data.manager_id || "",
-                        assistant_id: data.assistant_id || "",
-                    });
+                    }));
                 })
                 .catch((error) =>
                     console.error("Error fetching warehouse details:", error)
+                );
+
+            axios
+                .get(`/api/v1/warehouse-managers?warehouse_id=${warehouseId}`)
+                .then((response) => {
+                    const managersData = response.data.data;
+                    const manager = managersData.find(
+                        (m) => m.type === "Manager"
+                    );
+                    const assistant = managersData.find(
+                        (m) => m.type === "Assistant"
+                    );
+
+                    setFormData((prev) => ({
+                        ...prev,
+                        manager_id: manager ? manager.manager_id : "",
+                        assistant_id: assistant ? assistant.manager_id : "",
+                    }));
+                })
+                .catch((error) =>
+                    console.error("Error fetching warehouse managers:", error)
                 );
         }
     }, [warehouseId]);
@@ -65,8 +82,6 @@ const CreateWarehouse = () => {
         if (!formData.code.trim()) newErrors.code = "Code is required";
         if (!formData.address.trim()) newErrors.address = "Address is required";
         if (!formData.manager_id) newErrors.manager_id = "Manager is required";
-        if (!formData.assistant_id)
-            newErrors.assistant_id = "Assistant is required";
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -108,11 +123,13 @@ const CreateWarehouse = () => {
                 type: "Manager",
             });
 
-            await axios.post("/api/v1/warehouse-managers", {
-                warehouse_id: warehouseIdCreated,
-                manager_id: formData.assistant_id,
-                type: "Assistant",
-            });
+            if (formData.assistant_id) {
+                await axios.post("/api/v1/warehouse-managers", {
+                    warehouse_id: warehouseIdCreated,
+                    manager_id: formData.assistant_id,
+                    type: "Assistant",
+                });
+            }
 
             setFormData({
                 name: "",
@@ -234,11 +251,6 @@ const CreateWarehouse = () => {
                             }))}
                             disabled={loading}
                         />
-                        {errors.assistant_id && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.assistant_id}
-                            </p>
-                        )}
                     </div>
                 </div>
 
