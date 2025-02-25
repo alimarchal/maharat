@@ -14,6 +14,7 @@ class WarehouseManager extends Model
     protected $fillable = [
         'warehouse_id',
         'manager_id',
+        'type',
     ];
 
     public function warehouse(): BelongsTo

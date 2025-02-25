@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RfqStatusLog extends Model
 {
-    use HasFactory;
 
     protected $fillable = [
         'rfq_id',

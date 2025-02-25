@@ -21,8 +21,6 @@ class WarehouseResource extends JsonResource
             'address' => $this->address,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
-            'manager_id' => $this->manager_id,
-            'manager' => new UserResource($this->whenLoaded('manager')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

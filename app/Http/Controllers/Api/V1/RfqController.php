@@ -35,13 +35,30 @@ class RfqController extends Controller
 
         return RfqResource::collection($rfqs);
     }
-    public function store(StoreRfqRequest $request): JsonResponse
+
+    private function getNewRFQNumber(){
+        // Generate RFQ Number
+        $currentYear = date('Y');
+        $latestRfq = Rfq::where('rfq_number', 'like', "RFQ-$currentYear-%")
+            ->latest()
+            ->first();
+
+        $lastNumber = $latestRfq ? intval(substr($latestRfq->rfq_number, -3)) : 0;
+        $newNumber = str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
+        $rfqNumber = "RFQ-$currentYear-$newNumber";
+        return $rfqNumber;
+    }
+    public function store(Request $request)
     {
         try {
             DB::beginTransaction();
 
+            $rfq_number = $this->getNewRFQNumber();
+
+
+            $request->merge(['rfq_number' => $rfq_number]);
             // Create RFQ with validated data, excluding items and categories
-            $rfq = Rfq::create($request->safe()->except(['items', 'category_ids']));
+            $rfq = Rfq::create($request->all());
 
             // Attach categories if provided
             if ($request->has('category_ids')) {

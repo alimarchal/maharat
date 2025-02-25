@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('warehouse_managers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('warehouse_id')->nullable()->constrained('warehouses');
-            $table->foreignId('manager_id')->nullable()->constrained('users');
+            $table->foreignId('manager_id')->comment('User ID')->nullable()->constrained('users');
+            $table->enum('type',['Manager','Assistant'])->default('Manager');
             $table->timestamps();
             $table->softDeletes();
         });
