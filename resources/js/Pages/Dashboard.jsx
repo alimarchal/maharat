@@ -72,9 +72,12 @@ export default function Dashboard({ auth, page }) {
                     {/* Back Button */}
                     <button
                         onClick={() => window.history.back()}
-                        className="flex items-center gap-2 text-[#2C323C] text-xl font-medium mb-4"
+                        className="flex items-center gap-2 text-[#2C323C] text-2xl font-medium mb-4"
                     >
-                        <FontAwesomeIcon icon={faArrowLeft} />
+                        <FontAwesomeIcon
+                            icon={faArrowLeft}
+                            className="text-2xl"
+                        />
                         <span>Back</span>
                     </button>
 

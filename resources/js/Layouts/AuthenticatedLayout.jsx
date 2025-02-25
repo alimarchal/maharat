@@ -9,6 +9,19 @@ export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
+    const [greeting, setGreeting] = useState("");
+
+    useEffect(() => {
+        const currentHour = new Date().getHours();
+
+        if (currentHour >= 0 && currentHour < 12) {
+            setGreeting("Good Morning");
+        } else if (currentHour >= 12 && currentHour < 18) {
+            setGreeting("Good Afternoon");
+        } else {
+            setGreeting("Good Evening");
+        }
+    }, []);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -43,7 +56,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             Hi {user.name}!
                         </h1>
                         <p className="text-sm lg:text-base text-[#7D8086]">
-                            Good Morning
+                            {greeting}
                         </p>
                     </div>
                 </div>
