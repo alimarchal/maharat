@@ -37,8 +37,8 @@ const CreateStatus = () => {
 
     const validateForm = () => {
         let newErrors = {};
-        if (!formData.type.trim()) newErrors.type = "Type is required";
-        if (!formData.name.trim()) newErrors.name = "Name is required";
+        if (!formData.type.trim()) newErrors.type = "Status Type is required";
+        if (!formData.name.trim()) newErrors.name = "Status Name is required";
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -93,7 +93,7 @@ const CreateStatus = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <InputFloating
-                            label="Type"
+                            label="Status Type"
                             name="type"
                             value={formData.type}
                             onChange={handleChange}
@@ -106,7 +106,7 @@ const CreateStatus = () => {
                     </div>
                     <div>
                         <InputFloating
-                            label="Name"
+                            label="Status Name"
                             name="name"
                             value={formData.name}
                             onChange={handleChange}
@@ -121,7 +121,7 @@ const CreateStatus = () => {
                 <div className="flex justify-end">
                     <button
                         type="submit"
-                        className="bg-[#009FDC] text-white px-6 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50"
+                        className="bg-[#009FDC] text-white text-lg font-medium px-6 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50"
                         disabled={loading}
                     >
                         {loading

@@ -18,14 +18,29 @@ import {
     faDiagramProject,
     faUserPen,
     faEllipsisH,
+    faWarehouse,
+    faDolly,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { router } from "@inertiajs/react";
 
 const DropdownItem = ({ text, icon, onClick }) => {
     return (
-        <div className="p-3 cursor-pointer flex items-center justify-between transition-all duration-300 hover:bg-[#009FDC] group"
-        onClick={onClick}>
+        <div
+            className="p-3 cursor-pointer flex items-center justify-between transition-all duration-300 hover:bg-[#009FDC] group"
+            onClick={(e) => {
+                e.stopPropagation();
+                if (onClick) onClick(e);
+            }}
+            role="menuitem"
+            tabIndex="0"
+            onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    if (onClick) onClick(e);
+                }
+            }}
+        >
             <div className="flex items-center gap-3">
                 <div className="p-2 w-12 h-12 flex justify-center items-center border border-[#B9BBBD] rounded-full transition-all duration-300 group-hover:border-[#009FDC] group-hover:bg-white">
                     <FontAwesomeIcon
@@ -56,8 +71,11 @@ const DashboardCard = ({
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [dropdownPosition, setDropdownPosition] = useState("bottom");
+    const [isHovered, setIsHovered] = useState(false);
     const buttonRef = useRef(null);
     const dropdownRef = useRef(null);
+    const cardRef = useRef(null);
+    const [dropdownMeasured, setDropdownMeasured] = useState(false);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -77,7 +95,7 @@ const DashboardCard = ({
     }, [isOpen]);
 
     useEffect(() => {
-        if (isOpen && buttonRef.current && dropdownRef.current) {
+        if (dropdownRef.current && buttonRef.current && !dropdownMeasured) {
             const buttonRect = buttonRef.current.getBoundingClientRect();
             const dropdownRect = dropdownRef.current.getBoundingClientRect();
             const spaceBelow = window.innerHeight - buttonRect.bottom;
@@ -91,8 +109,33 @@ const DashboardCard = ({
             } else {
                 setDropdownPosition("bottom");
             }
+            setDropdownMeasured(true);
         }
-    }, [isOpen]);
+    }, [dropdownMeasured]);
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (buttonRef.current && dropdownRef.current) {
+                const buttonRect = buttonRef.current.getBoundingClientRect();
+                const dropdownRect =
+                    dropdownRef.current.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - buttonRect.bottom;
+                const spaceAbove = buttonRect.top;
+
+                if (
+                    spaceBelow < dropdownRect.height &&
+                    spaceAbove > dropdownRect.height
+                ) {
+                    setDropdownPosition("top");
+                } else {
+                    setDropdownPosition("bottom");
+                }
+            }
+        };
+
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
     const handleCardClick = (e) => {
         if (
@@ -104,8 +147,18 @@ const DashboardCard = ({
     };
 
     return (
-        <div className="relative cursor-pointer" onClick={handleCardClick}>
-            <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100 relative">
+        <div
+            ref={cardRef}
+            className="relative"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            <div
+                className={`bg-white p-6 rounded-2xl shadow-md border border-gray-100 relative transition-all duration-300 ${
+                    isHovered ? "shadow-lg" : ""
+                } ${onClick ? "cursor-pointer" : ""}`}
+                onClick={handleCardClick}
+            >
                 <div className="flex justify-between items-center">
                     <div
                         className={`${bgColor} flex justify-center items-center p-3 rounded-full w-14 h-14`}
@@ -118,12 +171,23 @@ const DashboardCard = ({
                     {dropdownItems && (
                         <button
                             ref={buttonRef}
-                            onClick={() => setIsOpen(!isOpen)}
-                            className="border border-[#B9BBBD] rounded-full w-12 h-12"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsOpen(!isOpen);
+                            }}
+                            className={`rounded-full w-12 h-12 flex items-center justify-center transition-all duration-300 ${
+                                isOpen
+                                    ? "bg-[#009FDC] border-[#009FDC]"
+                                    : "border border-[#B9BBBD]"
+                            }`}
+                            aria-expanded={isOpen}
+                            aria-haspopup="true"
                         >
                             <FontAwesomeIcon
                                 icon={isOpen ? faChevronUp : faChevronDown}
-                                className="text-xl text-[#074D38]"
+                                className={`text-xl transition-all duration-300 ${
+                                    isOpen ? "text-white" : "text-[#074D38]"
+                                }`}
                             />
                         </button>
                     )}
@@ -132,17 +196,20 @@ const DashboardCard = ({
                     <h3 className="text-3xl font-medium text-[#2C323C]">
                         {title}
                     </h3>
-                    <p className="text-xl text-[#9B9DA2] mt-1">{subtitle}</p>
+                    <p className="text-base text-[#9B9DA2] mt-1">{subtitle}</p>
                 </div>
             </div>
-            {isOpen && dropdownItems && (
+            {dropdownItems && (
                 <div
                     ref={dropdownRef}
                     className={`absolute ${
                         dropdownPosition === "top"
                             ? "bottom-52 right-5"
                             : "top-20 right-5"
-                    } bg-white rounded-lg shadow-lg w-72 z-50`}
+                    } bg-white rounded-lg shadow-lg w-72 z-50 ${
+                        isOpen ? "opacity-100" : "opacity-0 invisible"
+                    } transition-opacity duration-200`}
+                    role="menu"
                 >
                     {dropdownItems.map((item, index) => (
                         <DropdownItem
@@ -160,19 +227,78 @@ const DashboardCard = ({
 
 export default function Dashboard({ page }) {
     const purchaseDropdownItems = [
-        { text: "RFQs", icon: faFileCirclePlus, onClick: () => router.visit("/rfq") },
-        { text: "Quotations", icon: faFileInvoice },
-        { text: "Purchase Orders", icon: faFileSignature },
-        { text: "Goods Receiving Note", icon: faListCheck },
-        { text: "Status", icon: faEllipsisH },
-    ];    
+        {
+            text: "RFQs",
+            icon: faFileCirclePlus,
+        },
+        {
+            text: "Quotations",
+            icon: faFileInvoice,
+        },
+        {
+            text: "Purchase Orders",
+            icon: faFileSignature,
+        },
+        {
+            text: "Goods Receiving Note",
+            icon: faListCheck,
+        },
+        {
+            text: "Status",
+            icon: faEllipsisH,
+        },
+    ];
+
+    const warehouseDropdownItems = [
+        {
+            text: "Material Request",
+            icon: faFileAlt,
+        },
+        {
+            text: "Categories",
+            icon: faListCheck,
+            onClick: () => router.visit("/category"),
+        },
+        {
+            text: "Items",
+            icon: faClipboardList,
+            onClick: () => router.visit("/items"),
+        },
+        {
+            text: "Goods Receiving",
+            icon: faFileInvoice,
+        },
+        {
+            text: "Goods Issued",
+            icon: faDolly,
+        },
+        {
+            text: "Inventory Tracking",
+            icon: faChartBar,
+        },
+    ];
 
     const configDropdownItems = [
-        { text: "Organizational Chart", icon: faChartBar },
-        { text: "Process Flow", icon: faDiagramProject },
-        { text: "Notification Settings", icon: faBell },
-        { text: "Roles & Permission", icon: faUserPen },
-        { text: "Users", icon: faUsers },
+        {
+            text: "Organizational Chart",
+            icon: faChartBar,
+        },
+        {
+            text: "Process Flow",
+            icon: faDiagramProject,
+        },
+        {
+            text: "Notification Settings",
+            icon: faBell,
+        },
+        {
+            text: "Roles & Permission",
+            icon: faUserPen,
+        },
+        {
+            text: "Users",
+            icon: faUsers,
+        },
     ];
 
     return (
@@ -190,14 +316,7 @@ export default function Dashboard({ page }) {
                     </p>
                 </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 my-6">
-                <DashboardCard
-                    icon={faFileAlt}
-                    title="Maharat"
-                    subtitle="About Organization"
-                    bgColor="bg-[#DEEEE9]"
-                    iconColor="text-[#074D38]"
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 my-6">
                 <DashboardCard
                     icon={faClipboardList}
                     title="Requests"
@@ -206,13 +325,13 @@ export default function Dashboard({ page }) {
                     iconColor="text-[#005372]"
                     onClick={() => router.visit("/my-requests")}
                 />
-                {/* <DashboardCard
+                <DashboardCard
                     icon={faListCheck}
                     title="Tasks"
                     subtitle="My Tasks & History"
                     bgColor="bg-[#F7EBBA]"
                     iconColor="text-[#665200]"
-                /> */}
+                />
                 <DashboardCard
                     icon={faShoppingCart}
                     title="Purchases"
@@ -221,14 +340,22 @@ export default function Dashboard({ page }) {
                     iconColor="text-[#393559]"
                     dropdownItems={purchaseDropdownItems}
                 />
+                <DashboardCard
+                    icon={faBoxes}
+                    title="Finance"
+                    subtitle="Budget & Expenses"
+                    bgColor="bg-[#C4E4F0]"
+                    iconColor="text-[#005372]"
+                />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 my-6">
                 <DashboardCard
-                    icon={faBoxes}
+                    icon={faWarehouse}
                     title="Warehouse"
                     subtitle="Stock Management"
                     bgColor="bg-[#F7EBBA]"
                     iconColor="text-[#665200]"
+                    dropdownItems={warehouseDropdownItems}
                     onClick={() => router.visit("/warehouse")}
                 />
                 <DashboardCard

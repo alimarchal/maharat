@@ -78,10 +78,10 @@ const CreateWarehouse = () => {
 
     const validateForm = () => {
         let newErrors = {};
-        if (!formData.name.trim()) newErrors.name = "Name is required";
-        if (!formData.code.trim()) newErrors.code = "Code is required";
-        if (!formData.address.trim()) newErrors.address = "Address is required";
-        if (!formData.manager_id) newErrors.manager_id = "Manager is required";
+        if (!formData.name.trim()) newErrors.name = "Warehouse Name is required";
+        if (!formData.code.trim()) newErrors.code = "Warehouse Code is required";
+        if (!formData.address.trim()) newErrors.address = "Warehouse Address is required";
+        if (!formData.manager_id) newErrors.manager_id = "Warehouse Manager is required";
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -257,7 +257,7 @@ const CreateWarehouse = () => {
                 <div className="flex justify-end">
                     <button
                         type="submit"
-                        className="bg-[#009FDC] text-white px-6 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50"
+                        className="bg-[#009FDC] text-white text-lg font-medium px-6 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50"
                         disabled={loading}
                     >
                         {loading
