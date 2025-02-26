@@ -3,10 +3,9 @@ import { Head } from "@inertiajs/react";
 import { router, Link } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import axios from "axios";
-import { PaperClipIcon, DocumentTextIcon, DocumentArrowDownIcon, EnvelopeIcon, TrashIcon, CheckIcon } from "@heroicons/react/24/outline";
+import { DocumentTextIcon, DocumentArrowDownIcon, EnvelopeIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeftLong, faChevronRight, } from "@fortawesome/free-solid-svg-icons";
-import { DocumentIcon } from "@heroicons/react/24/outline";
 
 export default function AddQuotationForm({ auth, quotationId = null }) {
     const [formData, setFormData] = useState({
