@@ -35,7 +35,6 @@ class RfqItemController extends Controller
         try {
             DB::beginTransaction();
 
-            // Decode the items JSON string
             $items = json_decode($request->input('items'), true);
             
             if (!is_array($items)) {
@@ -56,7 +55,9 @@ class RfqItemController extends Controller
                 // Handle file upload if exists
                 if ($request->hasFile("attachments.{$index}")) {
                     $file = $request->file("attachments.{$index}");
-                    $path = $file->store('rfq-attachments', 'public');
+                    $filename = $file->getClientOriginalName();
+                    // Store with original filename
+                    $path = $file->storeAs('rfq-attachments', $filename, 'public');
                     $itemData['attachment'] = $path;
                 }
 
@@ -65,7 +66,6 @@ class RfqItemController extends Controller
                     return $value !== null;
                 });
 
-                // Create or update the item
                 RfqItem::updateOrCreate(
                     ['id' => $item['id'] ?? null],
                     $itemData
@@ -73,16 +73,11 @@ class RfqItemController extends Controller
             }
 
             DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Items saved successfully'
-            ]);
+            return response()->json(['success' => true, 'message' => 'Items saved successfully']);
 
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('RFQ Items Save Error: ' . $e->getMessage());
-            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to save items: ' . $e->getMessage()

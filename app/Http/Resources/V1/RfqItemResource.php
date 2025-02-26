@@ -15,7 +15,7 @@ class RfqItemResource extends JsonResource
             'rfq_id' => $this->rfq_id,
             'item_name' => $this->item_name,
             'description' => $this->description,
-            'quantity' => number_format((float)$this->quantity, 1, '.', ''),
+            'quantity' => $this->quantity,
             'brand_id' => $this->brand_id,
             'brand' => new BrandResource($this->whenLoaded('brand')),
             'model' => $this->model,
@@ -24,10 +24,12 @@ class RfqItemResource extends JsonResource
             'unit' => new UnitResource($this->whenLoaded('unit')),
             'status_id' => $this->status_id,
             'status' => new StatusResource($this->whenLoaded('status')),
-            'attachment' => $this->attachment ? [
-                'name' => urldecode(basename($this->attachment)),
-                'url' => Storage::disk('public')->url($this->attachment)
-            ] : null,
+            'attachment' => $this->when($this->attachment, function () {
+                return [
+                    'name' => basename($this->attachment),
+                    'url' => Storage::disk('public')->url($this->attachment)
+                ];
+            }),
             'expected_delivery_date' => $this->expected_delivery_date,
             'quoted_price' => $this->quoted_price,
             'negotiated_price' => $this->negotiated_price,
