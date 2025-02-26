@@ -15,7 +15,7 @@ class RfqItemResource extends JsonResource
             'rfq_id' => $this->rfq_id,
             'item_name' => $this->item_name,
             'description' => $this->description,
-            'quantity' => $this->quantity,
+            'quantity' => number_format((float)$this->quantity, 1, '.', ''),
             'brand_id' => $this->brand_id,
             'brand' => new BrandResource($this->whenLoaded('brand')),
             'model' => $this->model,

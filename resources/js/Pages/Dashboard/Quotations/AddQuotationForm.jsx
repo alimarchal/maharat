@@ -199,11 +199,16 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
     const handleItemChange = (index, field, value) => {
         const updatedItems = [...formData.items];
         if (field === 'quantity') {
-            // Allow empty string for typing but prevent values below 0
-            const numValue = value === '' ? '' : parseFloat(value);
-            if (numValue < 0) return;
-            // Format to 1 decimal place immediately
-            updatedItems[index][field] = numValue ? Number(numValue).toFixed(1) : '';
+            // Allow empty string for typing
+            if (value === '') {
+                updatedItems[index][field] = '';
+            } else {
+                // Convert to number and prevent negative values
+                const numValue = parseFloat(value);
+                if (numValue < 0) return;
+                // Format to 1 decimal place
+                updatedItems[index][field] = numValue.toFixed(1);
+            }
         } else {
             updatedItems[index][field] = value;
         }
@@ -336,7 +341,7 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
                 />
                 {fileName && (
                     <span 
-                        className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center"
+                        className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
                         onClick={() => fileUrl && window.open(fileUrl, '_blank')}
                     >
                         {fileName}
@@ -558,67 +563,82 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
                     <tbody>
                         {formData.items.map((item, index) => (
                             <tr key={index}>
-                                <td className="px-6 py-4 whitespace-nowrap">
+                                <td className="px-6 py-4 text-center align-middle">
                                     <input
                                         type="text"
                                         value={item.item_name || ''}
                                         onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
-                                        className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
+                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center"
+                                        style={{ background: 'none', outline: 'none', textAlign: 'center' }}
                                     />
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <input
-                                        type="text"
+                                <td className="px-6 py-4 text-center align-middle">
+                                    <textarea
                                         value={item.description || ''}
                                         onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                        className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
+                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal resize-none text-center"
+                                        style={{ background: 'none', outline: 'none', overflow: 'hidden', textAlign: 'center' }}
+                                        rows="1"
+                                        onInput={e => {
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = e.target.scrollHeight + 'px';
+                                        }}
                                     />
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="flex justify-center">
-                                        <select
-                                            value={item.unit_id || ''}
-                                            onChange={(e) => handleItemChange(index, 'unit_id', e.target.value)}
-                                            className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 text-center w-full"
-                                        >
-                                            <option value="">Select Unit</option>
-                                            {units.map((unit) => (
-                                                <option key={unit.id} value={unit.id}>
-                                                    {unit.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                <td className="px-6 py-4 text-center align-middle">
+                                    <select
+                                        value={item.unit_id || ''}
+                                        onChange={(e) => handleItemChange(index, 'unit_id', e.target.value)}
+                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent"
+                                        style={{ background: 'none', outline: 'none', textAlign: 'center', paddingRight: '1rem' }}
+                                    >
+                                        <option value="" className="bg-white text-gray-600 hover:text-gray-900">Select Unit</option>
+                                        {units.map((unit) => (
+                                            <option 
+                                                key={unit.id} 
+                                                value={unit.id} 
+                                                className="bg-transparent text-gray-600 hover:text-gray-900"
+                                                style={{ backgroundColor: 'transparent' }}
+                                            >
+                                                {unit.name}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
+                                <td className="px-6 py-4 text-center align-middle">
                                     <input
                                         type="number"
                                         step="0.1"
                                         min="0"
-                                        value={item.quantity || ''}
+                                        value={item.quantity}
                                         onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm"
-                                        style={{ background: 'none', outline: 'none' }}
+                                        onBlur={() => handleQuantityBlur(index)}
+                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm whitespace-normal text-center"
+                                        style={{ background: 'none', outline: 'none', textAlign: 'center' }}
                                     />
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="flex justify-center">
-                                        <select
-                                            value={item.brand_id || ''}
-                                            onChange={(e) => handleItemChange(index, 'brand_id', e.target.value)}
-                                            className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 text-center w-full"
-                                        >
-                                            <option value="">Select Brand</option>
-                                            {brands.map((brand) => (
-                                                <option key={brand.id} value={brand.id}>
-                                                    {brand.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                <td className="px-6 py-4 text-center align-middle">
+                                    <select
+                                        value={item.brand_id || ''}
+                                        onChange={(e) => handleItemChange(index, 'brand_id', e.target.value)}
+                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent"
+                                        style={{ background: 'none', outline: 'none', textAlign: 'center', paddingRight: '1rem' }}
+                                    >
+                                        <option value="" className="bg-white text-gray-600 hover:text-gray-900">Select Brand</option>
+                                        {brands.map((brand) => (
+                                            <option 
+                                                key={brand.id} 
+                                                value={brand.id} 
+                                                className="bg-transparent text-gray-600 hover:text-gray-900"
+                                                style={{ backgroundColor: 'transparent' }}
+                                            >
+                                                {brand.name}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="mt-2 flex flex-col items-center">
+                                <td className="px-6 py-4 text-center">
+                                    <div className="flex flex-col items-center justify-center w-full">
                                         <FileDisplay 
                                             file={item.attachment} 
                                             onFileClick={(url) => window.open(url, '_blank')}
@@ -632,7 +652,7 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
                                         />
                                         <label 
                                             htmlFor={`file-input-${index}`}
-                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer break-words whitespace-normal text-center"
                                         >
                                             {item.attachment ? 'Replace file' : 'Attach file'}
                                         </label>
