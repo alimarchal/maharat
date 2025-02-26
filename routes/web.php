@@ -12,17 +12,9 @@ use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\RFQController;
 
-// Home Route
+// Redirect root to login
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'messages' => [
-            'welcome' => __('messages.welcome')
-        ],
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return redirect()->route('login');
 });
 
 // Dashboard Routes (Protected by Auth & Email Verification)
@@ -125,10 +117,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/dashboard/quotations/{quotation}', [RFQController::class, 'update'])->name('dashboard.quotations.update');
     Route::delete('/dashboard/quotations/{quotation}', [RFQController::class, 'destroy'])->name('dashboard.quotations.destroy');
     Route::get('/quotations/{id}/pdf', [QuotationController::class, 'downloadPDF'])->name('quotations.pdf');
-});
 
-// Profile Routes (Only for Authenticated Users)
-Route::middleware('auth')->group(function () {
+    // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
