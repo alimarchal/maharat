@@ -4,6 +4,7 @@ namespace App\Http\Resources\V1;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class CompanyResource extends JsonResource
 {
@@ -29,8 +30,8 @@ class CompanyResource extends JsonResource
             'business_category' => $this->business_category,
             'id_type' => $this->id_type,
             'id_number' => $this->id_number,
-            'logo_path' => $this->logo_path,
-            'stamp_path' => $this->stamp_path,
+            'logo_path' => \Storage::url($this->logo_path),
+            'stamp_path' => Storage::url($this->stamp_path),
             'website' => $this->website,
             'fiscal_year_start' => $this->fiscal_year_start ? $this->fiscal_year_start->format('Y-m-d') : null,
             'fiscal_year_end' => $this->fiscal_year_end ? $this->fiscal_year_end->format('Y-m-d') : null,
