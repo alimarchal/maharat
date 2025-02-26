@@ -18,7 +18,7 @@ class RfqItem extends Model
         'description',
         'unit_id',
         'quantity',
-        'brand',
+        'brand_id',
         'model',
         'specifications',
         'attachment',
@@ -26,6 +26,7 @@ class RfqItem extends Model
         'quoted_price',
         'negotiated_price',
         'status_id',
+        'attachment'
     ];
 
     public function rfq(): BelongsTo

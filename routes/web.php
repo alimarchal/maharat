@@ -11,6 +11,7 @@ use App\Http\Controllers\UnitController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\RFQController;
+use App\Models\Quotation;
 
 // Redirect root to login
 Route::get('/', function () {
@@ -116,7 +117,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard/quotations/{quotation}/edit', [RFQController::class, 'edit'])->name('dashboard.quotations.edit');
     Route::put('/dashboard/quotations/{quotation}', [RFQController::class, 'update'])->name('dashboard.quotations.update');
     Route::delete('/dashboard/quotations/{quotation}', [RFQController::class, 'destroy'])->name('dashboard.quotations.destroy');
-    Route::get('/quotations/{id}/pdf', [QuotationController::class, 'downloadPDF'])->name('quotations.pdf');
+    Route::get('/quotations/{id}/pdf', function ($id) {
+        return Inertia::render('Dashboard/Quotations/QuotationPDF', [
+            'quotation' => Quotation::with(['rfq', 'supplier', 'status', 'documents'])->findOrFail($id)
+        ]);
+    })->name('quotations.pdf');
 
     Route::get('/company-profile', function () { 
         return Inertia::render('Dashboard', ['page' => 'CompanyProfile/CompanyProfile']); 

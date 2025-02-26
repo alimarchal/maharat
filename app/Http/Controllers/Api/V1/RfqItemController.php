@@ -36,23 +36,45 @@ class RfqItemController extends Controller
         }
     }
 
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         try {
             DB::beginTransaction();
 
-            foreach ($request->items as $item) {
+            // Decode the items JSON string
+            $items = json_decode($request->input('items'), true);
+            
+            if (!is_array($items)) {
+                throw new \Exception('Invalid items data');
+            }
+
+            foreach ($items as $index => $item) {
+                $itemData = [
+                    'item_name' => $item['item_name'] ?? null,
+                    'description' => $item['description'] ?? null,
+                    'unit_id' => $item['unit_id'] ?? null,
+                    'quantity' => $item['quantity'] ?? null,
+                    'brand_id' => $item['brand_id'] ?? null,
+                    'expected_delivery_date' => $item['expected_delivery_date'] ?? null,
+                    'status_id' => $item['status_id'] ?? null
+                ];
+
+                // Handle file upload if exists
+                if ($request->hasFile("attachments.{$index}")) {
+                    $file = $request->file("attachments.{$index}");
+                    $path = $file->store('rfq-attachments', 'public');
+                    $itemData['attachment'] = $path;
+                }
+
+                // Remove null values
+                $itemData = array_filter($itemData, function ($value) {
+                    return $value !== null;
+                });
+
+                // Create or update the item
                 RfqItem::updateOrCreate(
                     ['id' => $item['id'] ?? null],
-                    [
-                        'item_name' => $item['item_name'],
-                        'description' => $item['description'],
-                        'unit_id' => $item['unit_id'],
-                        'quantity' => $item['quantity'],
-                        'brand_id' => $item['brand_id'],
-                        'expected_delivery_date' => $item['expected_delivery_date'],
-                        'status_id' => $item['status_id']
-                    ]
+                    $itemData
                 );
             }
 
