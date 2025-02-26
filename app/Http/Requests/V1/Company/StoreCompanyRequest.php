@@ -16,7 +16,7 @@ class StoreCompanyRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'name_ar' => ['nullable', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:companies'],
+            'email' => ['required', 'string', 'email', 'max:255'],
             'contact_number' => ['required', 'string', 'max:20'],
             'fax' => ['nullable', 'string', 'max:20'],
             'country' => ['required', 'string', 'max:100'],
