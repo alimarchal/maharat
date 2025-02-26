@@ -366,7 +366,7 @@ export default function MainDashboard({ roles }) {
                         bgColor="bg-[#F7EBBA]"
                         iconColor="text-[#665200]"
                         dropdownItems={warehouseDropdownItems}
-                        onClick={() => router.visit("/warehouse")}
+                        onClick={() => router.visit("/warehouse-management")}
                     />
                     <DashboardCard
                         icon={faFileInvoice}

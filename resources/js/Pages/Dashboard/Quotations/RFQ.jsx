@@ -3,63 +3,84 @@ import { Link, router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeftLong, faEdit, faTrash, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { PencilIcon, CheckIcon, TrashIcon } from '@heroicons/react/24/outline';
+import axios from "axios";
 
-const RFQ = () => {
-    const [rfqs, setRfqs] = useState([]);
-    const [loading, setLoading] = useState(true);
+const RFQ = ({ auth }) => {
+    const [rfqLogs, setRfqLogs] = useState([]);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
+    const [editingId, setEditingId] = useState(null);
+    const [editData, setEditData] = useState({});
 
-    useEffect(() => {
-        const fetchRFQs = async () => {
-            setLoading(true);
-            try {
-                const response = await fetch(`/api/rfqs?page=${currentPage}`);
-                const data = await response.json();
-
-                if (response.ok) {
-                    setRfqs(data.data || []);
-                    setLastPage(data.meta?.last_page || 1);
-                } else {
-                    setError(data.message || "Failed to fetch RFQs.");
-                }
-            } catch (err) {
-                console.error("Error fetching RFQs:", err);
-                setError("Error loading RFQs.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchRFQs();
-    }, [currentPage]);
-
-    const handleDelete = async (id) => {
-        if (!confirm("Are you sure you want to delete this RFQ?")) return;
-
+    const fetchRFQLogs = async () => {
         try {
-            const response = await fetch(`/api/rfqs/${id}`, {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-            });
-
-            if (response.ok) {
-                setRfqs((prevRfqs) =>
-                    prevRfqs.filter((rfq) => rfq.id !== id)
-                );
-            } else {
-                const data = await response.json();
-                alert(data.message || "Failed to delete RFQ.");
-            }
-        } catch (err) {
-            console.error("Error deleting RFQ:", err);
-            alert("An error occurred while deleting the RFQ.");
+            const response = await axios.get(`/api/v1/rfq-status-logs?page=${currentPage}`);
+            setRfqLogs(response.data.data);
+            setLastPage(response.data.meta.last_page);
+            setError("");
+        } catch (error) {
+            console.error('API Error:', error);
+            setError("Failed to load RFQ logs");
+            setRfqLogs([]);
         }
     };
 
+    useEffect(() => {
+        fetchRFQLogs();
+    }, [currentPage]);
+
+    const handleEdit = (log) => {
+        setEditingId(log.id);
+        setEditData(log);
+    };
+
+    const handleSave = async (id) => {
+        try {
+            const response = await axios.put(`/api/v1/rfq-status-logs/${id}`, editData);
+            if (response.data) {
+                setEditingId(null);
+                fetchRFQLogs(); // Refresh the data
+            }
+        } catch (error) {
+            console.error('Save error:', error);
+            setError('Failed to save changes');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!confirm("Are you sure you want to delete this record?")) return;
+
+        try {
+            await axios.delete(`/api/v1/rfq-status-logs/${id}`);
+            fetchRFQLogs(); // Refresh data
+        } catch (error) {
+            console.error('Error deleting record:', error);
+        }
+    };
+
+    const handleChange = (field, value) => {
+        setEditData(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    const formatDateTime = (dateString) => {
+        const options = { 
+            year: 'numeric', 
+            month: 'numeric', 
+            day: 'numeric',
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+        };
+        return new Date(dateString).toLocaleString('en-US', options);
+    };
+
     return (
-        <AuthenticatedLayout>
+        <AuthenticatedLayout user={auth.user}>
             <div className="min-h-screen p-6">
                 {/* Back Button and Breadcrumbs */}
                 <div className="flex justify-between items-center mb-4">
@@ -92,11 +113,15 @@ const RFQ = () => {
 
                 {/* RFQs Table */}
                 <div className="w-full overflow-hidden">
+                    {error && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                            <span className="block sm:inline">{error}</span>
+                        </div>
+                    )}
                     <table className="w-full">
                         <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                             <tr>
                                 <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">RFQ#</th>
-                                <th className="py-3 px-4">Type</th>
                                 <th className="py-3 px-4">Supplier</th>
                                 <th className="py-3 px-4">Amount</th>
                                 <th className="py-3 px-4">Status</th>
@@ -105,83 +130,93 @@ const RFQ = () => {
                             </tr>
                         </thead>
 
-                        <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan="7" className="text-center py-12">
-                                        <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {rfqLogs.map((log) => (
+                                <tr key={log.id}>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        {log.rfq_id}
                                     </td>
-                                </tr>
-                            ) : error ? (
-                                <tr>
-                                    <td colSpan="7" className="text-center text-red-500 font-medium py-4">
-                                        {error}
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        {editingId === log.id ? (
+                                            <input
+                                                type="text"
+                                                value={editData.supplier_name || ''}
+                                                onChange={(e) => handleChange('supplier_name', e.target.value)}
+                                                className="border rounded px-2 py-1 w-full"
+                                            />
+                                        ) : (
+                                            log.supplier_name || 'N/A'
+                                        )}
                                     </td>
-                                </tr>
-                            ) : rfqs.length > 0 ? (
-                                rfqs.map((rfq) => (
-                                    <tr key={rfq.id}>
-                                        <td className="py-3 px-4">{rfq.rfq_number}</td>
-                                        <td className="py-3 px-4">{rfq.category_name}</td>
-                                        <td className="py-3 px-4">{rfq.supplier_name}</td>
-                                        <td className="py-3 px-4">{rfq.total_amount}</td>
-                                        <td className="py-3 px-4">{rfq.status}</td>
-                                        <td className="py-3 px-4">
-                                            <div className="flex flex-col">
-                                                {new Date(rfq.created_at).toLocaleDateString()}
-                                                <span className="text-gray-400">
-                                                    {new Date(rfq.created_at).toLocaleTimeString()}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <div className="flex space-x-3">
-                                                <Link
-                                                    href={`/quotations/${rfq.id}/edit`}
-                                                    className="text-[#9B9DA2] hover:text-gray-500"
-                                                >
-                                                    <FontAwesomeIcon icon={faEdit} />
-                                                </Link>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        {editingId === log.id ? (
+                                            <input
+                                                type="number"
+                                                value={editData.amount || ''}
+                                                onChange={(e) => handleChange('amount', e.target.value)}
+                                                className="border rounded px-2 py-1 w-full"
+                                            />
+                                        ) : (
+                                            log.amount || 'N/A'
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                            log.status_name === 'Approved' ? 'bg-green-100 text-green-800' :
+                                            log.status_name === 'Rejected' ? 'bg-red-100 text-red-800' :
+                                            'bg-yellow-100 text-yellow-800'
+                                        }`}>
+                                            {log.status_name}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        {formatDateTime(log.created_at)}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="flex space-x-3">
+                                            {editingId === log.id ? (
                                                 <button
-                                                    onClick={() => handleDelete(rfq.id)}
-                                                    className="text-[#9B9DA2] hover:text-gray-500"
+                                                    onClick={() => handleSave(log.id)}
+                                                    className="text-green-600 hover:text-green-900"
                                                 >
-                                                    <FontAwesomeIcon icon={faTrash} />
+                                                    <CheckIcon className="h-5 w-5" />
                                                 </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="7" className="text-center text-[#2C323C] font-medium py-4">
-                                        No RFQs found.
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleEdit(log)}
+                                                    className="text-blue-600 hover:text-blue-900"
+                                                >
+                                                    <PencilIcon className="h-5 w-5" />
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => handleDelete(log.id)}
+                                                className="text-red-600 hover:text-red-900"
+                                            >
+                                                <TrashIcon className="h-5 w-5" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
-                            )}
+                            ))}
                         </tbody>
                     </table>
 
                     {/* Pagination */}
-                    {!loading && !error && rfqs.length > 0 && (
+                    {lastPage > 1 && (
                         <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
-                            {Array.from({ length: lastPage }, (_, index) => index + 1).map((page) => (
+                            {currentPage > 1 && (
                                 <button
-                                    key={page}
-                                    onClick={() => setCurrentPage(page)}
-                                    className={`px-3 py-1 ${
-                                        currentPage === page
-                                            ? "bg-[#009FDC] text-white"
-                                            : "border border-[#B9BBBD] bg-white"
-                                    } rounded-full hover:bg-gray-100 transition`}
+                                    onClick={() => setCurrentPage(prev => prev - 1)}
+                                    className="px-3 py-1 bg-white rounded-full hover:bg-gray-100 transition"
                                 >
-                                    {page}
+                                    Previous
                                 </button>
-                            ))}
+                            )}
                             {currentPage < lastPage && (
                                 <button
-                                    onClick={() => setCurrentPage(currentPage + 1)}
-                                    className="px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition"
+                                    onClick={() => setCurrentPage(prev => prev + 1)}
+                                    className="px-3 py-1 bg-white rounded-full hover:bg-gray-100 transition"
                                 >
                                     Next
                                 </button>

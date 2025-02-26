@@ -27,29 +27,52 @@ export default function AddQuotationForm({ auth }) {
     const [units, setUnits] = useState([]);
     const [brands, setBrands] = useState([]);
     const [attachments, setAttachments] = useState({});
+    const [rfqs, setRfqs] = useState([]);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const [
-                    warehousesRes,
-                    categoriesRes,
-                    paymentTypesRes,
-                    unitsRes,
+                    rfqsResponse, 
+                    warehousesRes, 
+                    categoriesRes, 
+                    statusesRes,
+                    unitsRes, 
                     brandsRes
                 ] = await Promise.all([
-                    axios.get(route('api.warehouses.index')),
-                    axios.get(route('api.categories.index')),
-                    axios.get(route('api.payment-types.index')),
-                    axios.get(route('api.units.index')),
-                    axios.get(route('api.brands.index'))
+                    axios.get('/api/v1/rfqs'),
+                    axios.get('/api/v1/warehouses'),
+                    axios.get('/api/v1/product-categories'),
+                    axios.get('/api/v1/statuses'),
+                    axios.get('/api/v1/units'),
+                    axios.get('/api/v1/brands')
                 ]);
 
-                setWarehouses(warehousesRes.data.data);
-                setCategories(categoriesRes.data.data);
-                setPaymentTypes(paymentTypesRes.data.data);
-                setUnits(unitsRes.data.data);
-                setBrands(brandsRes.data.data);
+                // Set RFQs data
+                if (rfqsResponse.data.data.length > 0) {
+                    const rfq = rfqsResponse.data.data[0];
+                    setFormData({
+                        ...formData,
+                        organization_email: rfq.organization_email,
+                        city: rfq.city,
+                        rfq_id: rfq.rfq_number,
+                        issue_date: rfq.request_date?.split('T')[0] || '',
+                        closing_date: rfq.closing_date?.split('T')[0] || '',
+                        contact_no: rfq.contact_number,
+                        items: rfq.items || []
+                    });
+                }
+                
+                // Filter payment types from statuses
+                const paymentTypes = statusesRes.data.data.filter(
+                    status => status.type === 'payment_type'
+                );
+                
+                setWarehouses(warehousesRes.data.data || []);
+                setCategories(categoriesRes.data.data || []);
+                setPaymentTypes(paymentTypes);
+                setUnits(unitsRes.data.data || []);
+                setBrands(brandsRes.data.data || []);
 
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -158,13 +181,19 @@ export default function AddQuotationForm({ auth }) {
         });
     };
 
-    const handleSave = () => {
-        router.post(route('quotations.store'), formData, {
-            preserveScroll: true,
-            onSuccess: () => {
-                // Show success message or redirect
-            },
-        });
+    const handleSave = async () => {
+        try {
+            const response = await axios.post('/api/v1/rfqs', formData);
+            if (response.data) {
+                // Show success message
+                alert('RFQ saved successfully');
+                // Optionally redirect
+                router.visit(route('rfq.index'));
+            }
+        } catch (error) {
+            console.error('Error saving RFQ:', error);
+            alert('Failed to save RFQ');
+        }
     };
 
     const handleDownloadPDF = async () => {
@@ -196,6 +225,11 @@ export default function AddQuotationForm({ auth }) {
         }
     };
 
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        return new Date(dateString).toISOString().split('T')[0];
+    };
+
     return (
         <AuthenticatedLayout user={auth.user}>
             <Head title="Create Quotation" />
@@ -222,27 +256,15 @@ export default function AddQuotationForm({ auth }) {
                         <span className="text-[#009FDC] text-xl">New RFQ Request</span>
                     </div>
                     <label className="text-green-600 px-4 py-2 cursor-pointer flex items-center space-x-2 border border-green-600 rounded-lg">
-    {/* CSV Icon with Thin, Readable Text */}
-    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
-        <path d="M6 2C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2H6Z" />
-        <path d="M13 9V3.5L18.5 9H13Z" />
-        <text x="5.5" y="16.5" fontSize="6" fontWeight="400" fill="currentColor">CSV</text>
-    </svg>
-    <span className="text-green-600">Upload CSV File</span>
-    <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} />
-</label>
-
-
-
-
-
-
-
-
-
-
-
-
+                        {/* CSV Icon with Thin, Readable Text */}
+                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 2C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2H6Z" />
+                            <path d="M13 9V3.5L18.5 9H13Z" />
+                            <text x="5.5" y="16.5" fontSize="6" fontWeight="400" fill="currentColor">CSV</text>
+                        </svg>
+                        <span className="text-green-600">Upload CSV File</span>
+                        <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} />
+                    </label>
                 </div>
 
                 <div className="flex justify-between items-center mb-6">
@@ -304,7 +326,7 @@ export default function AddQuotationForm({ auth }) {
                         <span className="font-medium text-gray-600">Closing Date:</span> 
                         <span className="text-black">{formData.closing_date}</span>
 
-                        <span className="font-medium text-gray-600">RFQ-ID:</span> 
+                        <span className="font-medium text-gray-600">RFQ#:</span> 
                         <span className="text-black">{formData.rfq_id}</span>
 
                         <span className="font-medium text-gray-600">Payment Type:</span> 
@@ -315,8 +337,9 @@ export default function AddQuotationForm({ auth }) {
                                 className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none outline-none focus:ring-0 w-full appearance-none pl-0 pr-6 cursor-pointer"
                                 style={{ colorScheme: "light" }}
                             >
-                                {paymentTypes.map(type => (
-                                    <option key={type.id} value={type.name} className="text-[#009FDC] bg-blue-50">
+                                <option value="">Select Payment Type</option>
+                                {paymentTypes.map((type) => (
+                                    <option key={type.id} value={type.id}>
                                         {type.name}
                                     </option>
                                 ))}
@@ -342,79 +365,59 @@ export default function AddQuotationForm({ auth }) {
                         <th className="px-2 py-2 text-center w-[6%]">Action</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody className="bg-white divide-y divide-gray-200">
                     {formData.items.map((item, index) => (
-                        <tr key={index} className="border-b text-center">
-                            <td className="px-2 py-2">
+                        <tr key={index}>
+                            <td className="px-6 py-4 whitespace-nowrap">
                                 <input
                                     type="text"
                                     value={item.item_name}
-                                    onChange={(e) => {
-                                        const newItems = [...formData.items];
-                                        newItems[index].item_name = e.target.value;
-                                        setFormData({ ...formData, items: newItems });
-                                    }}
-                                    className="w-full bg-transparent border-none focus:ring-0 text-center"
+                                    onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
+                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
                                 />
                             </td>
-                            <td className="px-2 py-2">
+                            <td className="px-6 py-4 whitespace-nowrap">
                                 <input
                                     type="text"
                                     value={item.description}
-                                    onChange={(e) => {
-                                        const newItems = [...formData.items];
-                                        newItems[index].description = e.target.value;
-                                        setFormData({ ...formData, items: newItems });
-                                    }}
-                                    className="w-full bg-transparent border-none focus:ring-0 text-center break-words whitespace-normal"
+                                    onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
                                 />
                             </td>
-                            <td className="px-2 py-2">
+                            <td className="px-6 py-4 whitespace-nowrap">
                                 <select
-                                    value={item.unit}
-                                    onChange={(e) => {
-                                        const newItems = [...formData.items];
-                                        newItems[index].unit = e.target.value;
-                                        setFormData({ ...formData, items: newItems });
-                                    }}
-                                    className="w-full bg-transparent border-none focus:ring-0 text-center"
+                                    value={item.unit_id}
+                                    onChange={(e) => handleItemChange(index, 'unit_id', e.target.value)}
+                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
                                 >
-                                    <option value="---">---</option>
+                                    <option value="">Select Unit</option>
                                     {units.map(unit => (
-                                        <option key={unit.id} value={unit.name}>{unit.name}</option>
+                                        <option key={unit.id} value={unit.id}>{unit.name}</option>
                                     ))}
                                 </select>
                             </td>
-                            <td className="px-2 py-2">
+                            <td className="px-6 py-4 whitespace-nowrap">
                                 <input
                                     type="number"
                                     min="0"
                                     value={item.quantity}
-                                    onChange={(e) => {
-                                        const newItems = [...formData.items];
-                                        newItems[index].quantity = Math.max(0, parseInt(e.target.value) || 0);
-                                        setFormData({ ...formData, items: newItems });
-                                    }}
-                                    className="w-full bg-transparent border-none focus:ring-0 text-center"
+                                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
                                 />
                             </td>
-                            <td className="px-2 py-2">
+                            <td className="px-6 py-4 whitespace-nowrap">
                                 <select
                                     value={item.brand}
-                                    onChange={(e) => {
-                                        const newItems = [...formData.items];
-                                        newItems[index].brand = e.target.value;
-                                        setFormData({ ...formData, items: newItems });
-                                    }}
-                                    className="w-full bg-transparent border-none focus:ring-0 text-center"
+                                    onChange={(e) => handleItemChange(index, 'brand', e.target.value)}
+                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
                                 >
-                                    <option value="---">---</option>
+                                    <option value="">Select Brand</option>
                                     {brands.map(brand => (
-                                        <option key={brand.id} value={brand.name}>{brand.name}</option>
+                                        <option key={brand.id} value={brand.id}>{brand.name}</option>
                                     ))}
                                 </select>
                             </td>
-                            <td className="px-2 py-2 flex items-center justify-center">
+                            <td className="px-6 py-4 whitespace-nowrap">
                                 <input
                                     type="file"
                                     accept="application/pdf"
@@ -432,34 +435,33 @@ export default function AddQuotationForm({ auth }) {
                                     id={`fileInput-${index}`}
                                 />
                                 <label htmlFor={`fileInput-${index}`} className="cursor-pointer text-blue-600 flex items-center space-x-2">
-                                    <PaperClipIcon className="h-5 w-5 relative top-3" />
-                                    {item.attachment && <span className="text-sm text-gray-600 relative top-3">{item.attachment}</span>}
+                                    <PaperClipIcon className="h-5 w-5" />
+                                    {item.attachment && <span className="text-sm text-gray-600">{item.attachment}</span>}
                                 </label>
                             </td>
-                            <td className="px-2 py-2 text-center">
-                            <div className="relative flex justify-center items-center">
-                                <input
-                                    type="date"
-                                    value={item.expected_delivery_date
-                                        ?.split('/').reverse().join('-') || ''} // Convert DD/MM/YYYY -> YYYY-MM-DD for the input
-                                    onChange={(e) => {
-                                        if (!e.target.value) return;
+                            <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="relative flex justify-center items-center">
+                                    <input
+                                        type="date"
+                                        value={item.expected_delivery_date
+                                            ?.split('/').reverse().join('-') || ''} // Convert DD/MM/YYYY -> YYYY-MM-DD for the input
+                                        onChange={(e) => {
+                                            if (!e.target.value) return;
 
                                         const [year, month, day] = e.target.value.split('-');
                                         const formattedDate = `${day}/${month}/${year}`; // Convert back to DD/MM/YYYY
 
-                                        const newItems = [...formData.items];
-                                        newItems[index].expected_delivery_date = formattedDate;
-                                        setFormData({ ...formData, items: newItems });
-                                    }}
-                                    className="bg-transparent border border-gray-300 rounded-md px-2 py-1 text-center text-sm 
-                                            appearance-none focus:ring-0 focus:outline-none focus:border-transparent 
-                                            active:outline-none active:ring-0 border-none"
-                                />
-                            </div>
-                        </td>
-
-                            <td className="px-2 py-2">
+                                            const newItems = [...formData.items];
+                                            newItems[index].expected_delivery_date = formattedDate;
+                                            setFormData({ ...formData, items: newItems });
+                                        }}
+                                        className="bg-transparent border border-gray-300 rounded-md px-2 py-1 text-center text-sm 
+                                                appearance-none focus:ring-0 focus:outline-none focus:border-transparent 
+                                                active:outline-none active:ring-0 border-none"
+                                    />
+                                </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
                                 <button
                                     onClick={() => {
                                         const newItems = [...formData.items];
