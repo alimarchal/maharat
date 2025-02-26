@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeftLong, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeftLong, faEdit, faTrash, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
 const RFQ = () => {
     const [rfqs, setRfqs] = useState([]);
@@ -71,21 +71,17 @@ const RFQ = () => {
                         Back
                     </button>
                 </div>
-                <div className="flex items-center space-x-2 text-xl">
-                    <Link href="/dashboard" className="text-black hover:text-blue-500">
-                        Home
-                    </Link>
-                    <span className="text-gray-400">/</span>
-                    <Link href="/purchase" className="text-black hover:text-blue-500">
-                        Purchase
-                    </Link>
-                    <span className="text-gray-400">/</span>
-                    <span className="text-blue-500">RFQs</span>
+                <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2 mb-6">
+                    <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Home</Link>
+                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
+                    <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Purchases</Link>
+                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
+                    <span className="text-[#009FDC] text-xl">RFQs</span>
                 </div>
 
                 {/* RFQs Logs Heading and Make New RFQ Button */}
-                <div className="flex justify-between items-center mb-8">
-                    <h2 className="text-3xl font-bold text-[#2C323C]">RFQs Logs</h2>
+                <div className="flex justify-between items-center mb-12">
+                <h2 className="text-[32px] font-bold text-[#2C323C] whitespace-nowrap">RFQ Logs</h2>
                     <Link
                         href="/quotations/create"
                         className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
@@ -99,7 +95,7 @@ const RFQ = () => {
                     <table className="w-full">
                         <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                             <tr>
-                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">Doc ID</th>
+                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">RFQ#</th>
                                 <th className="py-3 px-4">Type</th>
                                 <th className="py-3 px-4">Supplier</th>
                                 <th className="py-3 px-4">Amount</th>

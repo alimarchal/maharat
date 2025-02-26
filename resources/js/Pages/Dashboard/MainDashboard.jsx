@@ -232,6 +232,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "RFQs",
             icon: faFileCirclePlus,
+            onClick: () => router.visit("/rfq")
         },
         {
             text: "Quotations",
