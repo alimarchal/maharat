@@ -19,21 +19,15 @@ use Illuminate\Support\Facades\Storage;
 
 class RfqItemController extends Controller
 {
-    public function index(): JsonResponse|ResourceCollection
+    public function index(Request $request): JsonResponse
     {
-        try {
-            $rfqItems = RfqItem::with(['unit:id,name', 'brand:id,name'])->get();
-            
-            return response()->json([
-                'success' => true,
-                'data' => $rfqItems
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch RFQ items'
-            ], 500);
-        }
+        $items = QueryBuilder::for(RfqItem::class)
+            ->with(['unit', 'brand'])
+            ->get();
+
+        return response()->json([
+            'data' => RfqItemResource::collection($items)
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -99,12 +93,12 @@ class RfqItemController extends Controller
     public function show(string $id): JsonResponse
     {
         $item = QueryBuilder::for(RfqItem::class)
-            ->allowedIncludes(RfqItemParameters::ALLOWED_INCLUDES)
+            ->with(['unit', 'brand'])
             ->findOrFail($id);
 
         return response()->json([
             'data' => new RfqItemResource($item)
-        ], Response::HTTP_OK);
+        ]);
     }
 
     public function update(Request $request)

@@ -12,6 +12,7 @@ use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\RFQController;
 use App\Models\Quotation;
+use App\Http\Controllers\QuotationPDFController;
 
 // Redirect root to login
 Route::get('/', function () {
@@ -155,5 +156,9 @@ Route::get('language/{locale}', function ($locale) {
     session()->put('locale', $locale);
     return redirect()->back();
 })->name('language.switch');
+
+// Add these routes
+Route::get('/quotations/{quotation}/pdf/view', [QuotationPDFController::class, 'show'])->name('quotations.pdf.view');
+Route::get('/quotations/{quotation}/pdf/download', [QuotationPDFController::class, 'download'])->name('quotations.pdf.download');
 
 require __DIR__.'/auth.php';
