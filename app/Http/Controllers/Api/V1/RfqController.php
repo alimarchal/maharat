@@ -18,23 +18,30 @@ use App\Models\Status;
 
 class RfqController extends Controller
 {
-    public function index(): JsonResponse|ResourceCollection
+    public function index()
     {
-        $rfqs = QueryBuilder::for(Rfq::class)
-            ->allowedFilters(RfqParameters::ALLOWED_FILTERS)
-            ->allowedSorts(RfqParameters::ALLOWED_SORTS)
-            ->allowedIncludes(RfqParameters::ALLOWED_INCLUDES)
-            ->paginate()
-            ->appends(request()->query());
+        try {
+            $rfqs = Rfq::with(['requester', 'status', 'items'])
+                ->orderBy('created_at', 'desc')
+                ->paginate(10);
 
-        if ($rfqs->isEmpty()) {
             return response()->json([
-                'message' => 'No RFQs found',
-                'data' => []
-            ], Response::HTTP_OK);
+                'data' => RfqResource::collection($rfqs),
+                'meta' => [
+                    'total' => $rfqs->total(),
+                    'per_page' => $rfqs->perPage(),
+                    'current_page' => $rfqs->currentPage(),
+                    'last_page' => $rfqs->lastPage(),
+                    'from' => $rfqs->firstItem(),
+                    'to' => $rfqs->lastItem(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to fetch RFQs',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return RfqResource::collection($rfqs);
     }
 
     private function getNewRFQNumber(){

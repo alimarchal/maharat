@@ -19,21 +19,23 @@ class StatusController extends Controller
 {
     public function index(): JsonResponse|ResourceCollection
     {
-        $statuses = QueryBuilder::for(Status::class)
-            ->allowedFilters(['created_at',AllowedFilter::exact('type')])
-//            ->allowedFilters()
-            ->allowedSorts(StatusParameters::ALLOWED_SORTS)
-            ->paginate()
-            ->appends(request()->query());
+        try {
+            // Get all payment type statuses
+            $paymentTypes = Status::where('type', 'payment_type')
+                ->select('id', 'name')
+                ->get();
 
-        if ($statuses->isEmpty()) {
             return response()->json([
-                'message' => 'No statuses found',
-                'data' => []
-            ], Response::HTTP_OK);
+                'data' => $paymentTypes,
+                'message' => 'Statuses retrieved successfully'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching statuses: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to fetch statuses',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return StatusResource::collection($statuses);
     }
 
     public function authorize(): bool
@@ -150,6 +152,26 @@ class StatusController extends Controller
                 'message' => 'Failed to delete status',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function getPaymentTypes()
+    {
+        try {
+            $paymentTypes = Status::where('type', 'payment_type')
+                ->select('id', 'name')
+                ->get();
+
+            return response()->json([
+                'data' => $paymentTypes,
+                'message' => 'Payment types retrieved successfully'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching payment types: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to fetch payment types',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 }
