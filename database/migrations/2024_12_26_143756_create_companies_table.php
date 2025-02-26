@@ -36,16 +36,17 @@ return new class extends Migration
             // Company Settings
             $table->date('fiscal_year_start');
             $table->date('fiscal_year_end');
-            $table->decimal('price_decimals',2)->default(0);
-            $table->decimal('quantity_decimals',2)->default(0);
-            $table->decimal('amount_decimals',2)->default(0);
-            $table->decimal('gazt_amount_decimals',2)->default(0);
+            $table->decimal('price_decimals',10,2)->default(0);
+            $table->decimal('quantity_decimals',10,2)->default(0);
+            $table->decimal('amount_decimals',10,2)->default(0);
+            $table->decimal('gazt_amount_decimals',10,2)->default(0);
             $table->string('currency')->default('SAR');
             $table->string('timezone')->default('UTC+03:00');
             $table->integer('session_expired_time')->default(5000);
             $table->boolean('stop_login')->default(false);
             $table->boolean('loyalty_use_phone_as_card')->default(false);
             $table->enum('zatca_environment', ['sandbox', 'production'])->default('sandbox');
+            $table->softDeletes();
             $table->timestamps();
         });
     }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\BrandController;
+use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryTransferController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
@@ -60,6 +61,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('/permissions', [PermissionController::class, 'index']);
     Route::post('/permissions', [PermissionController::class, 'store']);
 
+    Route::apiResource('companies', CompanyController::class);
     Route::apiResource('statuses', StatusController::class);
     Route::apiResource('warehouses', WarehouseController::class);
     Route::apiResource('warehouse-managers', WarehouseManagerController::class);
