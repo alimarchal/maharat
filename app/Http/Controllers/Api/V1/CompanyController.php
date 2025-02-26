@@ -12,6 +12,7 @@ use App\QueryParameters\CompanyParameters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Spatie\QueryBuilder\QueryBuilder;
 
 class CompanyController extends Controller
@@ -46,7 +47,22 @@ class CompanyController extends Controller
         try {
             DB::beginTransaction();
 
-            $company = Company::create($request->validated());
+            $data = $request->validated();
+
+            // Handle logo upload
+            if ($request->hasFile('logo')) {
+                $logoPath = $request->file('logo')->store('companies/logos', 'public');
+                $data['logo_path'] = $logoPath;
+            }
+
+            // Handle stamp upload
+            if ($request->hasFile('stamp')) {
+                $stampPath = $request->file('stamp')->store('companies/stamps', 'public');
+                $data['stamp_path'] = $stampPath;
+            }
+
+            $company = Company::create($data);
+
 
             DB::commit();
 
@@ -86,7 +102,31 @@ class CompanyController extends Controller
         try {
             DB::beginTransaction();
 
-            $company->update($request->validated());
+            $data = $request->validated();
+
+            // Handle logo upload
+            if ($request->hasFile('logo')) {
+                // Delete old logo if exists
+                if ($company->logo_path && Storage::disk('public')->exists($company->logo_path)) {
+                    Storage::disk('public')->delete($company->logo_path);
+                }
+
+                $logoPath = $request->file('logo')->store('companies/logos', 'public');
+                $data['logo_path'] = $logoPath;
+            }
+
+            // Handle stamp upload
+            if ($request->hasFile('stamp')) {
+                // Delete old stamp if exists
+                if ($company->stamp_path && Storage::disk('public')->exists($company->stamp_path)) {
+                    Storage::disk('public')->delete($company->stamp_path);
+                }
+
+                $stampPath = $request->file('stamp')->store('companies/stamps', 'public');
+                $data['stamp_path'] = $stampPath;
+            }
+
+            $company->update($data);
 
             DB::commit();
 
