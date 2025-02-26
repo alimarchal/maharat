@@ -6,8 +6,9 @@ import axios from "axios";
 import { PaperClipIcon, DocumentTextIcon, DocumentArrowDownIcon, EnvelopeIcon, TrashIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeftLong, faChevronRight, } from "@fortawesome/free-solid-svg-icons";
+import { DocumentIcon } from "@heroicons/react/24/outline";
 
-export default function AddQuotationForm({ auth }) {
+export default function AddQuotationForm({ auth, quotationId = null }) {
     const [formData, setFormData] = useState({
         organization_email: "",
         city: "",
@@ -122,6 +123,24 @@ export default function AddQuotationForm({ auth }) {
         fetchData();
     }, []);    
 
+    useEffect(() => {
+        if (quotationId) {
+            axios.get(`/api/v1/rfq-items/${quotationId}`)
+                .then(response => {
+                    const item = response.data.data;
+                    setFormData(prevData => ({
+                        ...prevData,
+                        items: [{
+                            ...item,
+                            unit_id: item.unit?.id,
+                            brand_id: item.brand?.id,
+                        }]
+                    }));
+                })
+                .catch(error => console.error('Error fetching data:', error));
+        }
+    }, [quotationId]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -178,15 +197,17 @@ export default function AddQuotationForm({ auth }) {
     };
 
     const handleItemChange = (index, field, value) => {
-        const newItems = [...formData.items];
-        newItems[index] = {
-            ...newItems[index],
-            [field]: value
-        };
-        setFormData(prev => ({
-            ...prev,
-            items: newItems
-        }));
+        const updatedItems = [...formData.items];
+        if (field === 'quantity') {
+            // Allow empty string for typing but prevent values below 0
+            const numValue = value === '' ? '' : parseFloat(value);
+            if (numValue < 0) return;
+            // Format to 1 decimal place immediately
+            updatedItems[index][field] = numValue ? Number(numValue).toFixed(1) : '';
+        } else {
+            updatedItems[index][field] = value;
+        }
+        setFormData({ ...formData, items: updatedItems });
     };
 
     const handleFileChange = (index, e) => {
@@ -198,8 +219,13 @@ export default function AddQuotationForm({ auth }) {
                 [index]: file
             }));
             
-            // Update the form data with the file name
-            handleItemChange(index, 'attachment', file.name);
+            // Update the form data with the file info
+            const updatedItems = [...formData.items];
+            updatedItems[index].attachment = file;
+            setFormData({ ...formData, items: updatedItems });
+
+            // Optionally create a temporary URL for immediate display
+            updatedItems[index].tempUrl = URL.createObjectURL(file);
         }
     };
 
@@ -273,23 +299,38 @@ export default function AddQuotationForm({ auth }) {
                 await handleSave();
             }
 
-            // Route to the QuotationPDF component
-            router.visit(route('quotations.pdf', formData.rfq_id), {
-                method: 'get',
-                preserveState: true,
-                preserveScroll: true,
-                onSuccess: () => {
-                    console.log('PDF view loaded successfully');
-                },
-                onError: (error) => {
-                    console.error('Error loading PDF view:', error);
-                    alert('Failed to load PDF view');
-                }
-            });
+            // Option 1: View PDF in new tab
+            window.open(route('quotations.pdf.view', formData.id), '_blank');
+
+            // Option 2: Direct download
+            // window.location.href = route('quotations.pdf.download', formData.id);
         } catch (error) {
             console.error('Error handling PDF:', error);
             alert('Failed to process PDF request');
         }
+    };
+
+    // Add this component for file display
+    const FileDisplay = ({ file, onFileClick }) => {
+        const fileName = file ? (typeof file === 'string' ? decodeURIComponent(file.split('/').pop()) : file.name) : null;
+        const fileUrl = file && typeof file === 'string' ? `/storage/${file}` : null;
+
+        return (
+            <div className="flex flex-col items-center justify-center space-y-2">
+                <DocumentArrowDownIcon 
+                    className="h-6 w-6 text-gray-400 cursor-pointer" 
+                    onClick={() => fileUrl && onFileClick(fileUrl)}
+                />
+                {fileName && (
+                    <span 
+                        className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center"
+                        onClick={() => fileUrl && onFileClick(fileUrl)}
+                    >
+                        {fileName}
+                    </span>
+                )}
+            </div>
+        );
     };
 
     return (
@@ -528,8 +569,10 @@ export default function AddQuotationForm({ auth }) {
                                             className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 text-center w-full"
                                         >
                                             <option value="">Select Unit</option>
-                                            {units.map(unit => (
-                                                <option key={unit.id} value={unit.id}>{unit.name}</option>
+                                            {units.map((unit) => (
+                                                <option key={unit.id} value={unit.id}>
+                                                    {unit.name}
+                                                </option>
                                             ))}
                                         </select>
                                     </div>
@@ -537,16 +580,12 @@ export default function AddQuotationForm({ auth }) {
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <input
                                         type="number"
+                                        step="0.1"
                                         min="0"
-                                        step="0.5"
-                                        value={item.quantity}
-                                        onChange={(e) => {
-                                            const value = parseFloat(e.target.value);
-                                            if (!isNaN(value) && value >= 0) {
-                                                handleItemChange(index, 'quantity', value);
-                                            }
-                                        }}
-                                        className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
+                                        value={item.quantity || ''}
+                                        onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm"
+                                        style={{ background: 'none', outline: 'none' }}
                                     />
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -557,31 +596,33 @@ export default function AddQuotationForm({ auth }) {
                                             className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 text-center w-full"
                                         >
                                             <option value="">Select Brand</option>
-                                            {brands.map(brand => (
-                                                <option key={brand.id} value={brand.id}>{brand.name}</option>
+                                            {brands.map((brand) => (
+                                                <option key={brand.id} value={brand.id}>
+                                                    {brand.name}
+                                                </option>
                                             ))}
                                         </select>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="flex flex-col items-center justify-center">
+                                    <div className="mt-2 flex flex-col items-center">
+                                        <FileDisplay 
+                                            file={item.attachment} 
+                                            onFileClick={(url) => window.open(url, '_blank')}
+                                        />
                                         <input
                                             type="file"
-                                            accept="application/pdf"
                                             onChange={(e) => handleFileChange(index, e)}
                                             className="hidden"
                                             id={`file-input-${index}`}
+                                            accept=".pdf,.doc,.docx"
                                         />
-                                        <label htmlFor={`file-input-${index}`} className="cursor-pointer">
-                                            <PaperClipIcon className="h-5 w-5 text-gray-500 hover:text-gray-700" />
+                                        <label 
+                                            htmlFor={`file-input-${index}`}
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
+                                        >
+                                            {item.attachment ? 'Replace file' : 'Attach file'}
                                         </label>
-                                        {item.attachment && (
-                                            <span className="mt-1 text-sm text-gray-600 text-center">
-                                                {typeof item.attachment === 'string' 
-                                                    ? item.attachment.split('/').pop() 
-                                                    : item.attachment.name}
-                                            </span>
-                                        )}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
