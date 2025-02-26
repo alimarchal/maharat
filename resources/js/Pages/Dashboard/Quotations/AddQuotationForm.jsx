@@ -192,11 +192,14 @@ export default function AddQuotationForm({ auth }) {
     const handleFileChange = (index, e) => {
         const file = e.target.files[0];
         if (file) {
-            setAttachments((prev) => ({
+            // Store the actual file object
+            setAttachments(prev => ({
                 ...prev,
-                [index]: file,
+                [index]: file
             }));
-            handleItemChange(index, "attachment", file.name);
+            
+            // Update the form data with the file name
+            handleItemChange(index, 'attachment', file.name);
         }
     };
 
@@ -222,32 +225,46 @@ export default function AddQuotationForm({ auth }) {
     };
 
     const handleSave = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         
         try {
-            // Get the existing status_id from the current items
-            const itemsWithStatus = formData.items.map(item => ({
-                ...item,
-                status_id: item.status_id || 1 // Use existing status_id or default to 1
-            }));
+            const formDataToSend = new FormData();
+            
+            // Add basic form data
+            Object.keys(formData).forEach(key => {
+                if (key !== 'items' && formData[key] !== null) {
+                    formDataToSend.append(key, formData[key]);
+                }
+            });
 
-            const response = await axios.post('/api/v1/rfq-items', {
-                items: itemsWithStatus
-            }, {
+            // Add items as a JSON string
+            if (formData.items && formData.items.length > 0) {
+                formDataToSend.append('items', JSON.stringify(formData.items));
+            }
+
+            // Add attachments separately
+            if (attachments) {
+                Object.keys(attachments).forEach(index => {
+                    formDataToSend.append(`attachments[${index}]`, attachments[index]);
+                });
+            }
+
+            const response = await axios.post('/api/v1/rfq-items', formDataToSend, {
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'multipart/form-data',
+                    'Accept': 'application/json'
                 }
             });
 
             if (response.data.success) {
-                alert('Items updated successfully!');
+                alert('Items saved successfully!');
                 router.visit(route('rfq.index'));
             }
         } catch (error) {
             console.error('Save error:', error);
-            alert(error.response?.data?.message || 'Failed to update items');
+            alert(error.response?.data?.message || 'Failed to save items');
         }
-    };
+    };    
 
     const handleDownloadPDF = async () => {
         try {
@@ -256,25 +273,22 @@ export default function AddQuotationForm({ auth }) {
                 await handleSave();
             }
 
-            // Download PDF
-            const response = await axios.get(
-                route("quotations.pdf", formData.id),
-                {
-                    responseType: "blob",
+            // Route to the QuotationPDF component
+            router.visit(route('quotations.pdf', formData.rfq_id), {
+                method: 'get',
+                preserveState: true,
+                preserveScroll: true,
+                onSuccess: () => {
+                    console.log('PDF view loaded successfully');
+                },
+                onError: (error) => {
+                    console.error('Error loading PDF view:', error);
+                    alert('Failed to load PDF view');
                 }
-            );
-
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `RFQ-${formData.rfq_id}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
+            });
         } catch (error) {
-            console.error('Error downloading PDF:', error);
-            alert('Failed to download PDF');
+            console.error('Error handling PDF:', error);
+            alert('Failed to process PDF request');
         }
     };
 
@@ -480,9 +494,9 @@ export default function AddQuotationForm({ auth }) {
                             <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Item Name</th>
                             <th className="px-2 py-2 text-center w-[11%] bg-[#C7E7DE]">Description</th>
                             <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">Unit</th>
-                            <th className="px-2 py-2 text-center w-[8%] bg-[#C7E7DE]">Quantity</th>
+                            <th className="px-2 py-2 text-center w-[9%] bg-[#C7E7DE]">Quantity</th>
                             <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">Brand</th>
-                            <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Attachment</th>
+                            <th className="px-2 py-2 text-center w-[9%] bg-[#C7E7DE]">Attachment</th>
                             <th className="px-2 py-2 text-center w-[13%] bg-[#C7E7DE]">Expected Delivery Date</th>
                             <th className="px-2 py-2 text-center w-[6%] bg-[#C7E7DE]">Action</th>
                         </tr>
