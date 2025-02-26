@@ -69,8 +69,8 @@ const Sidebar = ({ isOpen }) => {
           />
           <SidebarButton
             icon={faCog}
-            link="/settings"
-            isActive={url === "/settings"}
+            link="/company-profile"
+            isActive={url === "/company-profile"}
           />
         </nav>
 
