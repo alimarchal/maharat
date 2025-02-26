@@ -125,6 +125,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/process-flow', function () { 
         return Inertia::render('Dashboard', ['page' => 'ProcessFlow/ProcessFlowTable']); 
     })->name('process.index');
+    Route::get('/process-flow/create', function () { 
+        return Inertia::render('Dashboard', ['page' => 'ProcessFlow/CreateProcessFlow']); 
+    })->name('process.create');
 
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
