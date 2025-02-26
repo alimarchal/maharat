@@ -222,33 +222,32 @@ export default function AddQuotationForm({ auth }) {
     };
 
     const handleSave = async (e) => {
-    e.preventDefault();
-    
-    try {
-        const payload = {
-            ...formData,
-            items: formData.items.map(item => ({
+        e.preventDefault();
+        
+        try {
+            // Get the existing status_id from the current items
+            const itemsWithStatus = formData.items.map(item => ({
                 ...item,
-                quantity: parseFloat(item.quantity).toFixed(1)
-            }))
-        };
+                status_id: item.status_id || 1 // Use existing status_id or default to 1
+            }));
 
-        const response = await axios.post('/api/v1/rfqs', payload, {
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            const response = await axios.post('/api/v1/rfq-items', {
+                items: itemsWithStatus
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (response.data.success) {
+                alert('Items updated successfully!');
+                router.visit(route('rfq.index'));
             }
-        });
-
-        if (response.data.success) {
-            toast.success('RFQ saved successfully');
-            router.visit(route('rfq.index'));
+        } catch (error) {
+            console.error('Save error:', error);
+            alert(error.response?.data?.message || 'Failed to update items');
         }
-    } catch (error) {
-        console.error('Save error:', error);
-        toast.error(error.response?.data?.message || 'Failed to save RFQ');
-    }
-};
+    };
 
     const handleDownloadPDF = async () => {
         try {

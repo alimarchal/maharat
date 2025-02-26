@@ -12,6 +12,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Spatie\QueryBuilder\QueryBuilder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 class RfqItemController extends Controller
 {
@@ -32,22 +36,41 @@ class RfqItemController extends Controller
         }
     }
 
-    public function store(StoreRfqItemRequest $request): JsonResponse
+    public function store(Request $request)
     {
         try {
-            $item = RfqItem::create($request->validated());
+            DB::beginTransaction();
+
+            foreach ($request->items as $item) {
+                RfqItem::updateOrCreate(
+                    ['id' => $item['id'] ?? null],
+                    [
+                        'item_name' => $item['item_name'],
+                        'description' => $item['description'],
+                        'unit_id' => $item['unit_id'],
+                        'quantity' => $item['quantity'],
+                        'brand_id' => $item['brand_id'],
+                        'expected_delivery_date' => $item['expected_delivery_date'],
+                        'status_id' => $item['status_id']
+                    ]
+                );
+            }
+
+            DB::commit();
 
             return response()->json([
-                'message' => 'RFQ item created successfully',
-                'data' => new RfqItemResource(
-                    $item->load(['category', 'unit', 'status'])
-                )
-            ], Response::HTTP_CREATED);
+                'success' => true,
+                'message' => 'Items saved successfully'
+            ]);
+
         } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('RFQ Items Save Error: ' . $e->getMessage());
+            
             return response()->json([
-                'message' => 'Failed to create RFQ item',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+                'success' => false,
+                'message' => 'Failed to save items: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -62,22 +85,59 @@ class RfqItemController extends Controller
         ], Response::HTTP_OK);
     }
 
-    public function update(UpdateRfqItemRequest $request, RfqItem $rfqItem): JsonResponse
+    public function update(Request $request)
     {
         try {
-            $rfqItem->update($request->validated());
+            DB::beginTransaction();
+
+            $items = json_decode($request->items, true);
+            
+            if (!is_array($items)) {
+                throw new \Exception('Invalid items data');
+            }
+
+            foreach ($items as $index => $itemData) {
+                if (!isset($itemData['id'])) {
+                    continue;
+                }
+
+                $item = RfqItem::findOrFail($itemData['id']);
+                
+                // Only update fields that are present in the request
+                $updateData = array_filter($itemData, function($value) {
+                    return $value !== null && $value !== '';
+                });
+
+                // Handle file attachment if present
+                if (isset($request->file('attachments')[$index])) {
+                    $file = $request->file('attachments')[$index];
+                    $path = $file->store('rfq-attachments', 'public');
+                    $updateData['attachment'] = $path;
+                }
+
+                // Remove id from update data
+                unset($updateData['id']);
+                
+                if (!empty($updateData)) {
+                    $item->update($updateData);
+                }
+            }
+
+            DB::commit();
 
             return response()->json([
-                'message' => 'RFQ item updated successfully',
-                'data' => new RfqItemResource(
-                    $rfqItem->load(['category', 'unit', 'status'])
-                )
-            ], Response::HTTP_OK);
+                'success' => true,
+                'message' => 'Items updated successfully'
+            ]);
+
         } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('RFQ Items Update Error: ' . $e->getMessage());
+            
             return response()->json([
-                'message' => 'Failed to update RFQ item',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+                'success' => false,
+                'message' => 'Failed to update items: ' . $e->getMessage()
+            ], 500);
         }
     }
 
