@@ -14,12 +14,9 @@ const CompanyProfile = () => {
         short_address: "",
         website: "",
         logo: null,
-        fiscal_year_start: "2025-01-01",
-        fiscal_year_end: "2025-12-31",
     });
 
     const [errors, setErrors] = useState({});
-    const [isEditing, setIsEditing] = useState(false);
     const [companyId, setCompanyId] = useState(null);
 
     useEffect(() => {
@@ -29,22 +26,21 @@ const CompanyProfile = () => {
     const fetchCompanyData = async () => {
         try {
             const response = await axios.get("/api/v1/companies");
-            console.log("Fetched Data:", response.data);
+            const company = response.data.data?.[0];
 
-            if (response.data) {
+            if (company) {
                 setFormData({
-                    name: response.data.name || "",
-                    email: response.data.email || "",
-                    contact_number: response.data.contact_number || "",
-                    country: response.data.country || "",
-                    city: response.data.city || "",
-                    postal_code: response.data.postal_code || "",
-                    short_address: response.data.short_address || "",
-                    website: response.data.website || "",
-                    logo: response.data.logo || null,
+                    name: company.name ?? "",
+                    email: company.email ?? "",
+                    contact_number: company.contact_number ?? "",
+                    country: company.country ?? "",
+                    city: company.city ?? "",
+                    postal_code: company.postal_code ?? "",
+                    short_address: company.short_address ?? "",
+                    website: company.website ?? "",
+                    logo: company.logo ?? null,
                 });
-                setCompanyId(response.data.id);
-                setIsEditing(true);
+                setCompanyId(company.id);
             }
         } catch (error) {
             console.error("Error fetching company data:", error);
@@ -52,15 +48,24 @@ const CompanyProfile = () => {
     };
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        setFormData((prevData) => ({
+            ...prevData,
+            [e.target.name]: e.target.value,
+        }));
     };
 
     const handleFileChange = (e) => {
-        setFormData({ ...formData, logo: e.target.files[0] });
+        const file = e.target.files[0];
+        if (file) {
+            setFormData((prevData) => ({
+                ...prevData,
+                logo: file,
+            }));
+        }
     };
 
     const validate = () => {
-        let tempErrors = {};
+        const tempErrors = {};
         if (!formData.name) tempErrors.name = "Organization name is required";
         if (!formData.email) tempErrors.email = "Email is required";
         if (!formData.country) tempErrors.country = "Country is required";
@@ -69,14 +74,25 @@ const CompanyProfile = () => {
         return Object.keys(tempErrors).length === 0;
     };
 
+    const prepareFormData = () => {
+        const formDataToSend = new FormData();
+
+        Object.keys(formData).forEach((key) => {
+            if (key === "logo" && formData[key] instanceof File) {
+                formDataToSend.append(key, formData[key]);
+            } else {
+                formDataToSend.append(key, formData[key]);
+            }
+        });
+
+        return formDataToSend;
+    };
+
     const handleSave = async () => {
         if (!validate()) return;
-        try {
-            const formDataToSend = new FormData();
-            Object.keys(formData).forEach((key) => {
-                formDataToSend.append(key, formData[key]);
-            });
 
+        try {
+            const formDataToSend = prepareFormData();
             let response;
             if (companyId) {
                 response = await axios.put(
@@ -97,7 +113,6 @@ const CompanyProfile = () => {
                 setCompanyId(response.data.id);
             }
 
-            setIsEditing(true);
             fetchCompanyData();
         } catch (error) {
             console.error("Error saving data:", error);
@@ -150,7 +165,6 @@ const CompanyProfile = () => {
                 </div>
             </div>
 
-            {/* Form Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <InputFloating
@@ -233,23 +247,23 @@ const CompanyProfile = () => {
             <div className="flex justify-end my-6 space-x-4">
                 <button
                     className={`px-8 py-2 text-xl font-medium border border-[#009FDC] text-[#009FDC] rounded-full transition duration-300 ${
-                        isEditing
+                        companyId
                             ? "hover:bg-[#009FDC] hover:text-white"
                             : "opacity-50 cursor-not-allowed"
                     }`}
-                    onClick={() => setIsEditing(false)}
-                    disabled={!isEditing}
+                    onClick={handleSave}
+                    disabled={!companyId}
                 >
                     Edit
                 </button>
                 <button
                     className={`px-8 py-2 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 ${
-                        isEditing
-                            ? "hover:bg-[#007BB5]"
-                            : "opacity-50 cursor-not-allowed"
+                        companyId
+                            ? "opacity-50 cursor-not-allowed"
+                            : "hover:bg-[#007BB5]"
                     }`}
                     onClick={handleSave}
-                    disabled={!isEditing}
+                    disabled={companyId}
                 >
                     Save
                 </button>

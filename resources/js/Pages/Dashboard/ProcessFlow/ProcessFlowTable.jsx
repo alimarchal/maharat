@@ -1,10 +1,24 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaEdit, FaGripVertical } from "react-icons/fa";
 import SelectFloating from "@/Components/SelectFloating";
+import { Link } from "@inertiajs/react";
+import axios from "axios";
 
 const ProcessFlowTable = () => {
     const [formData, setFormData] = useState({ employee: "", type: "" });
-    const [errors, setErrors] = useState({});
+    const [users, setUsers] = useState([]);
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const response = await axios.get("/api/v1/users");
+                setUsers(response.data.data);
+            } catch (error) {
+                console.error("Error fetching users:", error);
+            }
+        };
+        fetchUsers();
+    }, []);
 
     const employees = [
         {
@@ -34,7 +48,7 @@ const ProcessFlowTable = () => {
         },
     ];
 
-    const users = [
+    const processTypes = [
         { id: 1, name: "Finance" },
         { id: 2, name: "HR" },
         { id: 3, name: "IT" },
@@ -42,14 +56,14 @@ const ProcessFlowTable = () => {
     ];
 
     const handleChange = (e) => {
-        setFormData({ ...formData, unit_id: e.target.value });
+        setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
     return (
         <div className="flex flex-col items-center">
             <div className="w-full">
-                <div className="mb-6 flex justify-between items-center gap-4">
-                    <div>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+                    <div className="mb-4 md:mb-0">
                         <h2 className="text-3xl font-bold text-[#2C323C]">
                             Normal Purchase Process Flow
                         </h2>
@@ -57,23 +71,30 @@ const ProcessFlowTable = () => {
                             Select an approval process flow with specific steps
                         </p>
                     </div>
-                    <div className="w-2/5">
-                        <div>
-                            <SelectFloating
-                                label="Type of Process"
-                                name="type"
-                                value={formData.type}
-                                onChange={handleChange}
-                                options={users.map((employee) => ({
-                                    id: employee.id,
-                                    label: employee.name,
-                                }))}
-                            />
+                    <div className="flex flex-col gap-2 w-full md:w-2/5">
+                        <SelectFloating
+                            label="Type of Process"
+                            name="type"
+                            value={formData.type}
+                            onChange={handleChange}
+                            options={processTypes.map((type) => ({
+                                id: type.id,
+                                label: type.name,
+                            }))}
+                            className="w-full"
+                        />
+                        <div className="flex justify-end">
+                            <Link
+                                href="/process-flow/create"
+                                className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium text-center w-full sm:w-auto"
+                            >
+                                Create Process Flow
+                            </Link>
                         </div>
                     </div>
                 </div>
 
-                <div className="w-full overflow-hidden">
+                <div className="w-full overflow-x-auto">
                     <table className="w-full">
                         <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                             <tr>
@@ -96,7 +117,7 @@ const ProcessFlowTable = () => {
                                         key={employee.id}
                                         className="hover:bg-gray-100"
                                     >
-                                        <td className="py-3 px-4 flex items-center gap-2">
+                                        <td className="py-3 px-4">
                                             {employee.name}
                                         </td>
                                         <td className="py-3 px-4">
@@ -118,7 +139,7 @@ const ProcessFlowTable = () => {
                             ) : (
                                 <tr>
                                     <td
-                                        colSpan="5"
+                                        colSpan="4"
                                         className="text-center text-[#2C323C] font-medium py-4"
                                     >
                                         No Employees found.
@@ -129,8 +150,8 @@ const ProcessFlowTable = () => {
                     </table>
                 </div>
 
-                <div className="flex justify-between items-center gap-4 mt-8">
-                    <div>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-8">
+                    <div className="mb-4 md:mb-0">
                         <h2 className="text-3xl font-bold text-[#2C323C]">
                             Add Employees to Process Flow
                         </h2>
@@ -139,20 +160,18 @@ const ProcessFlowTable = () => {
                             documents
                         </p>
                     </div>
-
-                    <div className="w-2/5">
-                        <div>
-                            <SelectFloating
-                                label="Employee"
-                                name="employee"
-                                value={formData.employee}
-                                onChange={handleChange}
-                                options={users.map((employee) => ({
-                                    id: employee.id,
-                                    label: employee.name,
-                                }))}
-                            />
-                        </div>
+                    <div className="w-full md:w-2/5">
+                        <SelectFloating
+                            label="Employee"
+                            name="employee"
+                            value={formData.employee}
+                            onChange={handleChange}
+                            options={users.map((user) => ({
+                                id: user.id,
+                                label: user.name,
+                            }))}
+                            className="w-full"
+                        />
                     </div>
                 </div>
             </div>
