@@ -222,27 +222,15 @@ export default function AddQuotationForm({ auth }) {
                         <span className="text-[#009FDC] text-xl">New RFQ Request</span>
                     </div>
                     <label className="text-green-600 px-4 py-2 cursor-pointer flex items-center space-x-2 border border-green-600 rounded-lg">
-    {/* CSV Icon with Thin, Readable Text */}
-    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
-        <path d="M6 2C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2H6Z" />
-        <path d="M13 9V3.5L18.5 9H13Z" />
-        <text x="5.5" y="16.5" fontSize="6" fontWeight="400" fill="currentColor">CSV</text>
-    </svg>
-    <span className="text-green-600">Upload CSV File</span>
-    <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} />
-</label>
-
-
-
-
-
-
-
-
-
-
-
-
+                        {/* CSV Icon with Thin, Readable Text */}
+                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 2C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2H6Z" />
+                            <path d="M13 9V3.5L18.5 9H13Z" />
+                            <text x="5.5" y="16.5" fontSize="6" fontWeight="400" fill="currentColor">CSV</text>
+                        </svg>
+                        <span className="text-green-600">Upload CSV File</span>
+                        <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} />
+                    </label>
                 </div>
 
                 <div className="flex justify-between items-center mb-6">
