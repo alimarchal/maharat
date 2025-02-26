@@ -3,18 +3,9 @@ import { Head } from "@inertiajs/react";
 import { router, Link } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import axios from "axios";
-import {
-    PaperClipIcon,
-    DocumentTextIcon,
-    DocumentArrowDownIcon,
-    EnvelopeIcon,
-    TrashIcon,
-} from "@heroicons/react/24/outline";
+import { PaperClipIcon, DocumentTextIcon, DocumentArrowDownIcon, EnvelopeIcon, TrashIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-    faArrowLeftLong,
-    faChevronRight,
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeftLong, faChevronRight, } from "@fortawesome/free-solid-svg-icons";
 
 export default function AddQuotationForm({ auth }) {
     const [formData, setFormData] = useState({
@@ -37,6 +28,10 @@ export default function AddQuotationForm({ auth }) {
     const [brands, setBrands] = useState([]);
     const [attachments, setAttachments] = useState({});
     const [rfqs, setRfqs] = useState([]);
+    const [unitNames, setUnitNames] = useState({});
+    const [brandNames, setBrandNames] = useState({});
+    const [editingRow, setEditingRow] = useState(null);
+    const [rfqItems, setRfqItems] = useState([]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -89,6 +84,43 @@ export default function AddQuotationForm({ auth }) {
 
         fetchData();
     }, []);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // Get RFQ items with their relationships
+                const rfqItemsResponse = await axios.get('/api/v1/rfq-items');
+                setRfqItems(rfqItemsResponse.data.data);
+
+                // Get units and brands for dropdowns
+                const [unitsRes, brandsRes] = await Promise.all([
+                    axios.get('/api/v1/units'),
+                    axios.get('/api/v1/brands')
+                ]);
+                
+                setUnits(unitsRes.data.data);
+                setBrands(brandsRes.data.data);
+                
+                // Create lookup maps
+                const unitLookup = {};
+                unitsRes.data.data.forEach(unit => {
+                    unitLookup[unit.id] = unit.name;
+                });
+                setUnitNames(unitLookup);
+
+                const brandLookup = {};
+                brandsRes.data.data.forEach(brand => {
+                    brandLookup[brand.id] = brand.name;
+                });
+                setBrandNames(brandLookup);
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        };
+
+        fetchData();
+    }, []);    
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -145,20 +177,15 @@ export default function AddQuotationForm({ auth }) {
         }));
     };
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-    };
-
     const handleItemChange = (index, field, value) => {
-        setFormData((prev) => ({
+        const newItems = [...formData.items];
+        newItems[index] = {
+            ...newItems[index],
+            [field]: value
+        };
+        setFormData(prev => ({
             ...prev,
-            items: prev.items.map((item, i) =>
-                i === index ? { ...item, [field]: value } : item
-            ),
+            items: newItems
         }));
     };
 
@@ -194,20 +221,34 @@ export default function AddQuotationForm({ auth }) {
         });
     };
 
-    const handleSave = async () => {
-        try {
-            const response = await axios.post('/api/v1/rfqs', formData);
-            if (response.data) {
-                // Show success message
-                alert('RFQ saved successfully');
-                // Optionally redirect
-                router.visit(route('rfq.index'));
+    const handleSave = async (e) => {
+    e.preventDefault();
+    
+    try {
+        const payload = {
+            ...formData,
+            items: formData.items.map(item => ({
+                ...item,
+                quantity: parseFloat(item.quantity).toFixed(1)
+            }))
+        };
+
+        const response = await axios.post('/api/v1/rfqs', payload, {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             }
-        } catch (error) {
-            console.error('Error saving RFQ:', error);
-            alert('Failed to save RFQ');
+        });
+
+        if (response.data.success) {
+            toast.success('RFQ saved successfully');
+            router.visit(route('rfq.index'));
         }
-    };
+    } catch (error) {
+        console.error('Save error:', error);
+        toast.error(error.response?.data?.message || 'Failed to save RFQ');
+    }
+};
 
     const handleDownloadPDF = async () => {
         try {
@@ -224,26 +265,18 @@ export default function AddQuotationForm({ auth }) {
                 }
             );
 
-            // Create blob link to download
             const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement("a");
+            const link = document.createElement('a');
             link.href = url;
-            link.setAttribute("download", `RFQ-${formData.rfq_number}.pdf`);
+            link.setAttribute('download', `RFQ-${formData.rfq_id}.pdf`);
             document.body.appendChild(link);
             link.click();
-
-            // Clean up
-            link.parentNode.removeChild(link);
+            link.remove();
             window.URL.revokeObjectURL(url);
         } catch (error) {
-            console.error("Error downloading PDF:", error);
-            // You might want to show an error message to the user
+            console.error('Error downloading PDF:', error);
+            alert('Failed to download PDF');
         }
-    };
-
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        return new Date(dateString).toISOString().split('T')[0];
     };
 
     return (
@@ -443,141 +476,133 @@ export default function AddQuotationForm({ auth }) {
 
                 {/* Item Table */}
                 <table className="w-full mt-4 table-fixed border-collapse">
-                <thead style={{ backgroundColor: '#C7E7DE' }} className="rounded-t-lg">
-                    <tr>
-                        <th className="px-2 py-2 text-center w-[10%]">Item Name</th>
-                        <th className="px-2 py-2 text-center w-[11%]">Description</th>
-                        <th className="px-2 py-2 text-center w-[7%]">Unit</th>
-                        <th className="px-2 py-2 text-center w-[7%]">Quantity</th>
-                        <th className="px-2 py-2 text-center w-[10%]">Brand</th>
-                        <th className="px-2 py-2 text-center w-[10%]">Attachment</th>
-                        <th className="px-2 py-2 text-center w-[15%]">Expected Delivery Date</th>
-                        <th className="px-2 py-2 text-center w-[6%]">Action</th>
-                    </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                    {formData.items.map((item, index) => (
-                        <tr key={index}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <input
-                                    type="text"
-                                    value={item.item_name}
-                                    onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
-                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
-                                />
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <input
-                                    type="text"
-                                    value={item.description}
-                                    onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
-                                />
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <select
-                                    value={item.unit_id}
-                                    onChange={(e) => handleItemChange(index, 'unit_id', e.target.value)}
-                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
-                                >
-                                    <option value="">Select Unit</option>
-                                    {units.map(unit => (
-                                        <option key={unit.id} value={unit.id}>{unit.name}</option>
-                                    ))}
-                                </select>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <input
-                                    type="number"
-                                    min="0"
-                                    value={item.quantity}
-                                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
-                                />
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <select
-                                    value={item.brand}
-                                    onChange={(e) => handleItemChange(index, 'brand', e.target.value)}
-                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
-                                >
-                                    <option value="">Select Brand</option>
-                                    {brands.map(brand => (
-                                        <option key={brand.id} value={brand.id}>{brand.name}</option>
-                                    ))}
-                                </select>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <input
-                                    type="file"
-                                    accept="application/pdf"
-                                    onChange={(e) => {
-                                        const file = e.target.files[0];
-                                        if (file && file.type === "application/pdf") {
-                                            const newItems = [...formData.items];
-                                            newItems[index].attachment = file.name;
-                                            setFormData({ ...formData, items: newItems });
-                                        } else {
-                                            alert("Only PDF files are allowed.");
-                                        }
-                                    }}
-                                    className="hidden"
-                                    id={`fileInput-${index}`}
-                                />
-                                <label htmlFor={`fileInput-${index}`} className="cursor-pointer text-blue-600 flex items-center space-x-2">
-                                    <PaperClipIcon className="h-5 w-5" />
-                                    {item.attachment && <span className="text-sm text-gray-600">{item.attachment}</span>}
-                                </label>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="relative flex justify-center items-center">
+                    <thead>
+                        <tr>
+                            <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Item Name</th>
+                            <th className="px-2 py-2 text-center w-[11%] bg-[#C7E7DE]">Description</th>
+                            <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">Unit</th>
+                            <th className="px-2 py-2 text-center w-[8%] bg-[#C7E7DE]">Quantity</th>
+                            <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">Brand</th>
+                            <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Attachment</th>
+                            <th className="px-2 py-2 text-center w-[13%] bg-[#C7E7DE]">Expected Delivery Date</th>
+                            <th className="px-2 py-2 text-center w-[6%] bg-[#C7E7DE]">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {formData.items.map((item, index) => (
+                            <tr key={index}>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <input
+                                        type="text"
+                                        value={item.item_name || ''}
+                                        onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
+                                        className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
+                                    />
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <input
+                                        type="text"
+                                        value={item.description || ''}
+                                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                        className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
+                                    />
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex justify-center">
+                                        <select
+                                            value={item.unit_id || ''}
+                                            onChange={(e) => handleItemChange(index, 'unit_id', e.target.value)}
+                                            className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 text-center w-full"
+                                        >
+                                            <option value="">Select Unit</option>
+                                            {units.map(unit => (
+                                                <option key={unit.id} value={unit.id}>{unit.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.5"
+                                        value={item.quantity}
+                                        onChange={(e) => {
+                                            const value = parseFloat(e.target.value);
+                                            if (!isNaN(value) && value >= 0) {
+                                                handleItemChange(index, 'quantity', value);
+                                            }
+                                        }}
+                                        className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
+                                    />
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex justify-center">
+                                        <select
+                                            value={item.brand_id || ''}
+                                            onChange={(e) => handleItemChange(index, 'brand_id', e.target.value)}
+                                            className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 text-center w-full"
+                                        >
+                                            <option value="">Select Brand</option>
+                                            {brands.map(brand => (
+                                                <option key={brand.id} value={brand.id}>{brand.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex flex-col items-center justify-center">
+                                        <input
+                                            type="file"
+                                            accept="application/pdf"
+                                            onChange={(e) => handleFileChange(index, e)}
+                                            className="hidden"
+                                            id={`file-input-${index}`}
+                                        />
+                                        <label htmlFor={`file-input-${index}`} className="cursor-pointer">
+                                            <PaperClipIcon className="h-5 w-5 text-gray-500 hover:text-gray-700" />
+                                        </label>
+                                        {item.attachment && (
+                                            <span className="mt-1 text-sm text-gray-600 text-center">
+                                                {typeof item.attachment === 'string' 
+                                                    ? item.attachment.split('/').pop() 
+                                                    : item.attachment.name}
+                                            </span>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
                                     <input
                                         type="date"
-                                        value={item.expected_delivery_date
-                                            ?.split('/').reverse().join('-') || ''} // Convert DD/MM/YYYY -> YYYY-MM-DD for the input
-                                        onChange={(e) => {
-                                            if (!e.target.value) return;
-
-                                        const [year, month, day] = e.target.value.split('-');
-                                        const formattedDate = `${day}/${month}/${year}`; // Convert back to DD/MM/YYYY
-
-                                            const newItems = [...formData.items];
-                                            newItems[index].expected_delivery_date = formattedDate;
-                                            setFormData({ ...formData, items: newItems });
-                                        }}
-                                        className="bg-transparent border border-gray-300 rounded-md px-2 py-1 text-center text-sm 
-                                                appearance-none focus:ring-0 focus:outline-none focus:border-transparent 
-                                                active:outline-none active:ring-0 border-none"
+                                        value={item.expected_delivery_date || ''}
+                                        onChange={(e) => handleItemChange(index, 'expected_delivery_date', e.target.value)}
+                                        className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
                                     />
-                                </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <button
-                                    onClick={() => {
-                                        const newItems = [...formData.items];
-                                        newItems.splice(index, 1);
-                                        setFormData({ ...formData, items: newItems });
-                                    }}
-                                    className="text-red-600"
-                                >
-                                    Delete
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <button
+                                        onClick={() => handleRemoveItem(index)}
+                                        className="text-red-600 hover:text-red-900"
+                                    >
+                                        <TrashIcon className="h-5 w-5" />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
 
-            {/* Add Item Button */}
-            <div className="mt-4 flex justify-center">
-                <button
-                    type="button"
-                    onClick={addItem}
-                    className="text-blue-600 flex items-center"
-                >
-                    + Add Item
-                </button>
-            </div>
+
+                {/* Add Item Button */}
+                <div className="mt-4 flex justify-center">
+                    <button
+                        type="button"
+                        onClick={addItem}
+                        className="text-blue-600 flex items-center"
+                    >
+                        + Add Item
+                    </button>
+                </div>
 
                 {/* Action Buttons */}
                 <div className="mt-8 flex justify-end space-x-4">
