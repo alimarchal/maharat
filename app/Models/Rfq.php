@@ -15,26 +15,31 @@ class Rfq extends Model
 
     protected $fillable = [
         'rfq_number',
-        'requester_id',
-        'company_id',
-        'warehouse_id',
         'organization_name',
         'organization_email',
         'city',
         'contact_number',
-        'request_type',
-        'payment_type',
         'request_date',
         'expected_delivery_date',
         'closing_date',
         'attachments',
         'notes',
-        'status_id',
-        'assigned_to',
-        'rejection_reason',
+        'quotation_sent',
+        'quotation_sent_at',
         'quotation_document',
+        'status_id',
+        'supplier_id'
     ];
 
+    protected $casts = [
+        'request_date' => 'date',
+        'expected_delivery_date' => 'date',
+        'closing_date' => 'date',
+        'quotation_sent' => 'boolean',
+        'quotation_sent_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
+    ];
 
     /**
      * Get the categories for the RFQ.
@@ -67,7 +72,7 @@ class Rfq extends Model
 
     public function status(): BelongsTo
     {
-        return $this->belongsTo(Status::class, 'status_id');
+        return $this->belongsTo(Status::class);
     }
 
     public function requestType(): BelongsTo
@@ -88,5 +93,10 @@ class Rfq extends Model
     public function statusLogs(): HasMany
     {
         return $this->hasMany(RfqStatusLog::class);
+    }
+
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
     }
 }

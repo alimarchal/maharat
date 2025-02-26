@@ -20,24 +20,20 @@ class WarehouseController extends Controller
      */
     public function index(): JsonResponse|ResourceCollection
     {
-        $warehouses = QueryBuilder::for(Warehouse::class)
-            ->allowedFilters(WarehouseParameters::ALLOWED_FILTERS)
-            ->allowedSorts(WarehouseParameters::ALLOWED_SORTS)
-            ->allowedIncludes(WarehouseParameters::ALLOWED_INCLUDES)
-            ->paginate()
-            ->appends(request()->query());
-
-        if ($warehouses->isEmpty()) {
+        try {
+            $warehouses = Warehouse::select('id', 'name')->get();
+            
+            return response()->json([
+                'data' => $warehouses,
+                'message' => 'Warehouses retrieved successfully'
+            ]);
+        } catch (\Exception $e) {
             return response()->json([
                 'message' => 'No warehouses found',
                 'data' => []
-            ], Response::HTTP_OK);
+            ]);
         }
-
-        return WarehouseResource::collection($warehouses);
     }
-
-
 
     /**
      * Store a newly created resource in storage.
