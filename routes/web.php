@@ -124,6 +124,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard/quotations/{quotation}/edit', [RFQController::class, 'edit'])->name('dashboard.quotations.edit');
     Route::put('/dashboard/quotations/{quotation}', [RFQController::class, 'update'])->name('dashboard.quotations.update');
     Route::delete('/dashboard/quotations/{quotation}', [RFQController::class, 'destroy'])->name('dashboard.quotations.destroy');
+    Route::get('/quotations/{id}/pdf', [QuotationController::class, 'downloadPDF'])->name('quotations.pdf');
 });
 
 // Profile Routes (Only for Authenticated Users)

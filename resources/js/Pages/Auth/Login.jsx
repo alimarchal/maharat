@@ -315,7 +315,7 @@ const LoginPage = () => {
               </form>
 
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center text-gray-600 text-sm">
-                <p>Powered by: <a href="dummy-link" className="text-[#009FDC]">الشركة خبراء المعرفة المحدوده</a></p>
+                <p>Powered by: <a href="https://kexpertsco.com/" className="text-[#009FDC]">الشركة خبراء المعرفة المحدوده</a></p>
               </div>
             </div>
           </div>

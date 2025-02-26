@@ -112,4 +112,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // RFQ Routes
     Route::get('/rfqs', [RfqApiController::class, 'index']);
     Route::delete('/rfqs/{id}', [RfqApiController::class, 'destroy']);
+
+    // RFQ Form Data endpoints
+    Route::get('/form-data', [RfqController::class, 'getFormData']);
+    Route::get('/warehouses', [WarehouseController::class, 'index']);
+    Route::get('/product-categories', [ProductCategoryController::class, 'index']);
+    Route::get('/payment-types', [StatusController::class, 'getPaymentTypes']);
+    Route::get('/units', [UnitController::class, 'index']);
+    Route::get('/brands', [BrandController::class, 'index']);
 });
