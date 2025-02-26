@@ -118,6 +118,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/dashboard/quotations/{quotation}', [RFQController::class, 'destroy'])->name('dashboard.quotations.destroy');
     Route::get('/quotations/{id}/pdf', [QuotationController::class, 'downloadPDF'])->name('quotations.pdf');
 
+    Route::get('/company-profile', function () { 
+        return Inertia::render('Dashboard', ['page' => 'CompanyProfile/CompanyProfile']); 
+    })->name('company.create');
+
+    Route::get('/process-flow', function () { 
+        return Inertia::render('Dashboard', ['page' => 'ProcessFlow/ProcessFlowTable']); 
+    })->name('process.index');
+    Route::get('/process-flow/create', function () { 
+        return Inertia::render('Dashboard', ['page' => 'ProcessFlow/CreateProcessFlow']); 
+    })->name('process.create');
+
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
