@@ -1,24 +1,33 @@
-import { useState, useEffect } from 'react';
-import { Head } from '@inertiajs/react';
-import { router, Link } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import axios from 'axios';
-import { PaperClipIcon, DocumentTextIcon, DocumentArrowDownIcon, EnvelopeIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { useState, useEffect } from "react";
+import { Head } from "@inertiajs/react";
+import { router, Link } from "@inertiajs/react";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import axios from "axios";
+import {
+    PaperClipIcon,
+    DocumentTextIcon,
+    DocumentArrowDownIcon,
+    EnvelopeIcon,
+    TrashIcon,
+} from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeftLong, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import {
+    faArrowLeftLong,
+    faChevronRight,
+} from "@fortawesome/free-solid-svg-icons";
 
 export default function AddQuotationForm({ auth }) {
     const [formData, setFormData] = useState({
-        organization_email: '',
-        city: '',
-        category_name: '',
-        warehouse: '',
-        issue_date: '',
-        closing_date: '',
-        rfq_id: '',
-        payment_type: '',
-        contact_no: '',
-        items: []
+        organization_email: "",
+        city: "",
+        category_name: "",
+        warehouse: "",
+        issue_date: "",
+        closing_date: "",
+        rfq_id: "",
+        payment_type: "",
+        contact_no: "",
+        items: [],
     });
 
     const [warehouses, setWarehouses] = useState([]);
@@ -73,108 +82,112 @@ export default function AddQuotationForm({ auth }) {
                 setPaymentTypes(paymentTypes);
                 setUnits(unitsRes.data.data || []);
                 setBrands(brandsRes.data.data || []);
-
             } catch (error) {
-                console.error('Error fetching data:', error);
+                console.error("Error fetching data:", error);
             }
         };
 
         fetchData();
     }, []);
-    
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         const formDataObj = new FormData();
-        
+
         // Append main form fields
-        Object.keys(formData).forEach(key => {
-            if (key !== 'items') {
+        Object.keys(formData).forEach((key) => {
+            if (key !== "items") {
                 formDataObj.append(key, formData[key]);
             }
         });
 
         // Append items and their attachments
         formData.items.forEach((item, index) => {
-            Object.keys(item).forEach(key => {
+            Object.keys(item).forEach((key) => {
                 formDataObj.append(`items[${index}][${key}]`, item[key]);
             });
-            
+
             if (attachments[index]) {
-                formDataObj.append(`items[${index}][attachment]`, attachments[index]);
+                formDataObj.append(
+                    `items[${index}][attachment]`,
+                    attachments[index]
+                );
             }
         });
 
-        router.post(route('rfq.store'), formDataObj, {
+        router.post(route("rfq.store"), formDataObj, {
             forceFormData: true,
             onSuccess: () => {
-                router.visit(route('rfq.index'));
+                router.visit(route("rfq.index"));
             },
             onError: (errors) => {
-                console.error('Validation errors:', errors);
-            }
+                console.error("Validation errors:", errors);
+            },
         });
     };
 
     const addItem = () => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            items: [...prev.items, {
-                item_name: '',
-                description: '',
-                unit: '---',
-                quantity: '',
-                brand: '---',
-                attachment: null,
-                expected_delivery_date: ''
-            }]
+            items: [
+                ...prev.items,
+                {
+                    item_name: "",
+                    description: "",
+                    unit: "---",
+                    quantity: "",
+                    brand: "---",
+                    attachment: null,
+                    expected_delivery_date: "",
+                },
+            ],
         }));
     };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            [name]: value
+            [name]: value,
         }));
     };
 
     const handleItemChange = (index, field, value) => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            items: prev.items.map((item, i) => 
+            items: prev.items.map((item, i) =>
                 i === index ? { ...item, [field]: value } : item
-            )
+            ),
         }));
     };
 
     const handleFileChange = (index, e) => {
         const file = e.target.files[0];
         if (file) {
-            setAttachments(prev => ({
+            setAttachments((prev) => ({
                 ...prev,
-                [index]: file
+                [index]: file,
             }));
-            handleItemChange(index, 'attachment', file.name);
+            handleItemChange(index, "attachment", file.name);
         }
     };
 
     const handleCSVUpload = (event) => {
         const file = event.target.files[0];
-        if (file && file.type === 'text/csv') {
+        if (file && file.type === "text/csv") {
             // Handle CSV file upload
         } else {
-            alert('Please upload a valid CSV file.');
+            alert("Please upload a valid CSV file.");
         }
     };
 
     const handleRemoveItem = (index) => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            items: prev.items.filter((_, i) => i !== index)
+            items: prev.items.filter((_, i) => i !== index),
         }));
-        setAttachments(prev => {
+        setAttachments((prev) => {
             const newAttachments = { ...prev };
             delete newAttachments[index];
             return newAttachments;
@@ -204,15 +217,18 @@ export default function AddQuotationForm({ auth }) {
             }
 
             // Download PDF
-            const response = await axios.get(route('quotations.pdf', formData.id), {
-                responseType: 'blob'
-            });
+            const response = await axios.get(
+                route("quotations.pdf", formData.id),
+                {
+                    responseType: "blob",
+                }
+            );
 
             // Create blob link to download
             const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
+            const link = document.createElement("a");
             link.href = url;
-            link.setAttribute('download', `RFQ-${formData.rfq_number}.pdf`);
+            link.setAttribute("download", `RFQ-${formData.rfq_number}.pdf`);
             document.body.appendChild(link);
             link.click();
 
@@ -220,7 +236,7 @@ export default function AddQuotationForm({ auth }) {
             link.parentNode.removeChild(link);
             window.URL.revokeObjectURL(url);
         } catch (error) {
-            console.error('Error downloading PDF:', error);
+            console.error("Error downloading PDF:", error);
             // You might want to show an error message to the user
         }
     };
@@ -239,7 +255,10 @@ export default function AddQuotationForm({ auth }) {
                         onClick={() => router.visit("/dashboard")}
                         className="flex items-center text-black text-2xl font-medium hover:text-gray-800 p-2"
                     >
-                        <FontAwesomeIcon icon={faArrowLeftLong} className="mr-2 text-2xl" />
+                        <FontAwesomeIcon
+                            icon={faArrowLeftLong}
+                            className="mr-2 text-2xl"
+                        />
                         Back
                     </button>
                 </div>
@@ -247,13 +266,39 @@ export default function AddQuotationForm({ auth }) {
                 {/* Header with Back Button */}
                 <div className="flex items-center justify-between mb-6 space-x-4">
                     <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2">
-                        <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Home</Link>
-                        <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                        <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Purchases</Link>
-                        <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                        <Link href="/rfq" className="hover:text-[#009FDC] text-xl">RFQs</Link>
-                        <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                        <span className="text-[#009FDC] text-xl">New RFQ Request</span>
+                        <Link
+                            href="/dashboard"
+                            className="hover:text-[#009FDC] text-xl"
+                        >
+                            Home
+                        </Link>
+                        <FontAwesomeIcon
+                            icon={faChevronRight}
+                            className="text-xl text-[#9B9DA2]"
+                        />
+                        <Link
+                            href="/purchase"
+                            className="hover:text-[#009FDC] text-xl"
+                        >
+                            Purchases
+                        </Link>
+                        <FontAwesomeIcon
+                            icon={faChevronRight}
+                            className="text-xl text-[#9B9DA2]"
+                        />
+                        <Link
+                            href="/rfq"
+                            className="hover:text-[#009FDC] text-xl"
+                        >
+                            RFQs
+                        </Link>
+                        <FontAwesomeIcon
+                            icon={faChevronRight}
+                            className="text-xl text-[#9B9DA2]"
+                        />
+                        <span className="text-[#009FDC] text-xl">
+                            New RFQ Request
+                        </span>
                     </div>
                     <label className="text-green-600 px-4 py-2 cursor-pointer flex items-center space-x-2 border border-green-600 rounded-lg">
                         {/* CSV Icon with Thin, Readable Text */}
@@ -269,48 +314,82 @@ export default function AddQuotationForm({ auth }) {
 
                 <div className="flex justify-between items-center mb-6">
                     <div>
-                        <h2 className="text-xl font-semibold">Request for a Quotation</h2>
-                        <p className="text-gray-500 text-sm">Share Requirements and Receive Tailored Estimates</p>
+                        <h2 className="text-xl font-semibold">
+                            Request for a Quotation
+                        </h2>
+                        <p className="text-gray-500 text-sm">
+                            Share Requirements and Receive Tailored Estimates
+                        </p>
                     </div>
-                    <img src="/images/MCTC Logo.png" alt="Maharat Logo" className="h-12" />
+                    <img
+                        src="/images/MCTC Logo.png"
+                        alt="Maharat Logo"
+                        className="h-12"
+                    />
                 </div>
 
                 {/* Info Grid */}
                 <div className="bg-blue-50 rounded-lg p-6 grid grid-cols-2 gap-6 shadow-md text-lg">
                     {/* Left Column */}
                     <div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-center">
-                        <span className="font-medium text-gray-600">Organization Email:</span> 
-                        <span className="text-black">{formData.organization_email}</span>
+                        <span className="font-medium text-gray-600">
+                            Organization Email:
+                        </span>
+                        <span className="text-black">
+                            {formData.organization_email}
+                        </span>
 
-                        <span className="font-medium text-gray-600">City:</span> 
+                        <span className="font-medium text-gray-600">City:</span>
                         <span className="text-black">{formData.city}</span>
 
-                        <span className="font-medium text-gray-600">Category Name:</span> 
+                        <span className="font-medium text-gray-600">
+                            Category Name:
+                        </span>
                         <div className="relative w-full">
                             <select
                                 value={formData.category_name}
-                                onChange={(e) => setFormData({ ...formData, category_name: e.target.value })}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        category_name: e.target.value,
+                                    })
+                                }
                                 className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none outline-none focus:ring-0 w-full appearance-none pl-0 pr-6 cursor-pointer"
                                 style={{ colorScheme: "light" }}
                             >
-                                {categories.map(category => (
-                                    <option key={category.id} value={category.name} className="text-[#009FDC] bg-blue-50">
+                                {categories.map((category) => (
+                                    <option
+                                        key={category.id}
+                                        value={category.name}
+                                        className="text-[#009FDC] bg-blue-50"
+                                    >
                                         {category.name}
                                     </option>
                                 ))}
                             </select>
                         </div>
 
-                        <span className="font-medium text-gray-600">Warehouse:</span> 
+                        <span className="font-medium text-gray-600">
+                            Warehouse:
+                        </span>
                         <div className="relative w-full">
                             <select
                                 value={formData.warehouse}
-                                onChange={(e) => setFormData({ ...formData, warehouse: e.target.value })}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        warehouse: e.target.value,
+                                    })
+                                }
                                 className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none outline-none focus:ring-0 w-full appearance-none pl-0 pr-6 cursor-pointer"
                                 style={{ colorScheme: "light" }}
                             >
-                                {warehouses.map(warehouse => (
-                                    <option key={warehouse.id} value={warehouse.name} className="text-[#009FDC] bg-blue-50">
+                                {warehouses.map((warehouse) => (
+                                    <option
+                                        key={warehouse.id}
+                                        value={warehouse.name}
+                                        className="text-[#009FDC] bg-blue-50"
+                                    >
                                         {warehouse.name}
                                     </option>
                                 ))}
@@ -329,11 +408,18 @@ export default function AddQuotationForm({ auth }) {
                         <span className="font-medium text-gray-600">RFQ#:</span> 
                         <span className="text-black">{formData.rfq_id}</span>
 
-                        <span className="font-medium text-gray-600">Payment Type:</span> 
+                        <span className="font-medium text-gray-600">
+                            Payment Type:
+                        </span>
                         <div className="relative w-full">
                             <select
                                 value={formData.payment_type}
-                                onChange={(e) => setFormData({ ...formData, payment_type: e.target.value })}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        payment_type: e.target.value,
+                                    })
+                                }
                                 className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none outline-none focus:ring-0 w-full appearance-none pl-0 pr-6 cursor-pointer"
                                 style={{ colorScheme: "light" }}
                             >
@@ -346,8 +432,12 @@ export default function AddQuotationForm({ auth }) {
                             </select>
                         </div>
 
-                        <span className="font-medium text-gray-600">Contact No#:</span> 
-                        <span className="text-black">{formData.contact_no}</span>
+                        <span className="font-medium text-gray-600">
+                            Contact No#:
+                        </span>
+                        <span className="text-black">
+                            {formData.contact_no}
+                        </span>
                     </div>
                 </div>
 
@@ -489,7 +579,6 @@ export default function AddQuotationForm({ auth }) {
                 </button>
             </div>
 
-
                 {/* Action Buttons */}
                 <div className="mt-8 flex justify-end space-x-4">
                     <button
@@ -498,7 +587,7 @@ export default function AddQuotationForm({ auth }) {
                         className="inline-flex items-center px-4 py-2 border border-green-600 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50"
                     >
                         <DocumentTextIcon className="h-5 w-5 mr-2" />
-                        Save Quotation
+                        Save RFQ
                     </button>
                     <button
                         type="button"
@@ -513,7 +602,7 @@ export default function AddQuotationForm({ auth }) {
                         className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-blue-700"
                     >
                         <EnvelopeIcon className="h-5 w-5 mr-2" />
-                        Send Quotation by Mail
+                        Send RFQ by Mail
                     </button>
                 </div>
             </div>

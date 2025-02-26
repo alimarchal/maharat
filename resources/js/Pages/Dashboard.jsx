@@ -16,6 +16,9 @@ import ProductIndex from "./Dashboard/Products/ProductIndex";
 import CreateProduct from "./Dashboard/Products/CreateProduct";
 import WarehouseIndex from "./Dashboard/WarehouseManagement/WarehouseIndex";
 import CreateWarehouse from "./Dashboard/WarehouseManagement/CreateWarehouse";
+import CompanyProfile from "./CompanyProfile/CompanyProfile";
+import ProcessFlowTable from "./Dashboard/ProcessFlow/ProcessFlowTable";
+import CreateProcessFlow from "./Dashboard/ProcessFlow/CreateProcessFlow";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -33,6 +36,11 @@ export default function Dashboard({ auth, page }) {
             return <WarehouseIndex />;
         if (page === "WarehouseManagement/CreateWarehouse")
             return <CreateWarehouse />;
+        if (page === "CompanyProfile/CompanyProfile") return <CompanyProfile />;
+        if (page === "ProcessFlow/ProcessFlowTable")
+            return <ProcessFlowTable />;
+        if (page === "ProcessFlow/CreateProcessFlow")
+            return <CreateProcessFlow />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };

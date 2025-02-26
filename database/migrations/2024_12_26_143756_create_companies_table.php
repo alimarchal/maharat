@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('companies', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->string('name')->nullable();
             $table->string('name_ar')->nullable(); // For Arabic name
-            $table->string('email');
-            $table->string('contact_number');
+            $table->string('email')->nullable();;
+            $table->string('contact_number')->nullable();
             $table->string('fax')->nullable();
-            $table->string('country');
-            $table->string('city');
+            $table->string('country')->nullable();;
+            $table->string('city')->nullable();;
             $table->string('states_provinces')->nullable();
             $table->string('district')->nullable();
             $table->string('postal_code')->nullable();
@@ -35,8 +35,8 @@ return new class extends Migration
             $table->string('stamp_path')->nullable();
             $table->string('website')->nullable();
             // Company Settings
-            $table->date('fiscal_year_start');
-            $table->date('fiscal_year_end');
+            $table->date('fiscal_year_start')->nullable();
+            $table->date('fiscal_year_end')->nullable();
             $table->decimal('price_decimals',10,2)->default(0);
             $table->decimal('quantity_decimals',10,2)->default(0);
             $table->decimal('amount_decimals',10,2)->default(0);
