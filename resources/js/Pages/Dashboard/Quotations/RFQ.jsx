@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeftLong, faEdit, faTrash, faChevronRight } from "@fortawesome/free-solid-svg-icons";
-import { PencilIcon, CheckIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 
 const RFQ = ({ auth }) => {
@@ -68,15 +67,20 @@ const RFQ = ({ auth }) => {
     };
 
     const formatDateTime = (dateString) => {
-        const options = { 
-            year: 'numeric', 
-            month: 'numeric', 
-            day: 'numeric',
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: true 
-        };
-        return new Date(dateString).toLocaleString('en-US', options);
+        const optionsDate = { year: "numeric", month: "long", day: "numeric" };
+        const optionsTime = { hour: "2-digit", minute: "2-digit", hour12: true };
+    
+        const dateObj = new Date(dateString);
+        const formattedDate = dateObj.toLocaleDateString("en-US", optionsDate);
+        const formattedTime = dateObj.toLocaleTimeString("en-US", optionsTime);
+    
+        return (
+            <div>
+                {formattedDate}
+                <br />
+                <span className="text-gray-500">at {formattedTime}</span>
+            </div>
+        );
     };
 
     return (
@@ -121,79 +125,88 @@ const RFQ = ({ auth }) => {
                     <table className="w-full">
                         <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                             <tr>
-                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">RFQ#</th>
-                                <th className="py-3 px-4">Supplier</th>
-                                <th className="py-3 px-4">Amount</th>
-                                <th className="py-3 px-4">Status</th>
-                                <th className="py-3 px-4">Date & Time</th>
-                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">Actions</th>
+                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">RFQ#</th>
+                                <th className="py-3 px-4 text-center">Supplier</th>
+                                <th className="py-3 px-4 text-center">Amount</th>
+                                <th className="py-3 px-4 text-center">Status</th>
+                                <th className="py-3 px-4 text-center">Date & Time</th>
+                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Actions</th>
                             </tr>
                         </thead>
 
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-transparent divide-y divide-gray-200">
                             {rfqLogs.map((log) => (
                                 <tr key={log.id}>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-6 py-4 whitespace-nowrap text-center">
                                         {log.rfq_id}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-6 py-4 whitespace-nowrap text-center">
                                         {editingId === log.id ? (
                                             <input
                                                 type="text"
                                                 value={editData.supplier_name || ''}
                                                 onChange={(e) => handleChange('supplier_name', e.target.value)}
-                                                className="border rounded px-2 py-1 w-full"
+                                                className="bg-transparent border-none focus:outline-none focus:ring-0 w-20 text-center text-base"
                                             />
                                         ) : (
                                             log.supplier_name || 'N/A'
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-6 py-4 whitespace-nowrap text-center w-[250px]">
                                         {editingId === log.id ? (
                                             <input
                                                 type="number"
                                                 value={editData.amount || ''}
-                                                onChange={(e) => handleChange('amount', e.target.value)}
-                                                className="border rounded px-2 py-1 w-full"
+                                                onChange={(e) => {
+                                                    const value = Math.max(0, Number(e.target.value)); // Prevent negative values
+                                                    handleChange('amount', value);
+                                                }}
+                                                className="bg-transparent border-none focus:outline-none focus:ring-0 w-[150px] text-center text-base"
+                                                min="0"
                                             />
                                         ) : (
-                                            log.amount || 'N/A'
+                                            <span className="text-base inline-block w-[150px] truncate">{log.amount || '0'}</span>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                            log.status_name === 'Approved' ? 'bg-green-100 text-green-800' :
+                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                        <span className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${
+                                            log.status_name === 'Active' ? 'bg-green-100 text-green-800' :
                                             log.status_name === 'Rejected' ? 'bg-red-100 text-red-800' :
+                                            log.status_name === 'Expired' ? 'bg-gray-100 text-gray-800' :
                                             'bg-yellow-100 text-yellow-800'
                                         }`}>
                                             {log.status_name}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+
+                                    {/* Format Date & Time */}
+                                    <td className="px-6 py-4 whitespace-nowrap text-center">
                                         {formatDateTime(log.created_at)}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex space-x-3">
+
+                                    {/* Centered Buttons */}
+                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                        <div className="flex justify-center space-x-3">
                                             {editingId === log.id ? (
                                                 <button
                                                     onClick={() => handleSave(log.id)}
                                                     className="text-green-600 hover:text-green-900"
                                                 >
-                                                    <CheckIcon className="h-5 w-5" />
+                                                    <FontAwesomeIcon icon={faCheck} className="h-5 w-5" />
                                                 </button>
                                             ) : (
                                                 <button
                                                     onClick={() => handleEdit(log)}
-                                                    className="text-blue-600 hover:text-blue-900"
+                                                    className="text-gray-600 hover:text-gray-600"
                                                 >
-                                                    <PencilIcon className="h-5 w-5" />
+                                                    <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
                                                 </button>
                                             )}
                                             <button
                                                 onClick={() => handleDelete(log.id)}
                                                 className="text-red-600 hover:text-red-900"
                                             >
-                                                <TrashIcon className="h-5 w-5" />
+                                                <FontAwesomeIcon icon={faTrash} className="h-5 w-5" />
                                             </button>
                                         </div>
                                     </td>
@@ -203,24 +216,39 @@ const RFQ = ({ auth }) => {
                     </table>
 
                     {/* Pagination */}
-                    {lastPage > 1 && (
+                    {!error && rfqLogs.length > 0 && (
                         <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
-                            {currentPage > 1 && (
+                            <button
+                                onClick={() => setCurrentPage(currentPage - 1)}
+                                className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
+                                    currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
+                                }`}
+                                disabled={currentPage <= 1}
+                            >
+                                Previous
+                            </button>
+                            {Array.from({ length: lastPage }, (_, index) => index + 1).map((page) => (
                                 <button
-                                    onClick={() => setCurrentPage(prev => prev - 1)}
-                                    className="px-3 py-1 bg-white rounded-full hover:bg-gray-100 transition"
+                                    key={page}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={`px-3 py-1 ${
+                                        currentPage === page
+                                            ? "bg-[#009FDC] text-white"
+                                            : "border border-[#B9BBBD] bg-white text-black"
+                                    } rounded-full`}
                                 >
-                                    Previous
+                                    {page}
                                 </button>
-                            )}
-                            {currentPage < lastPage && (
-                                <button
-                                    onClick={() => setCurrentPage(prev => prev + 1)}
-                                    className="px-3 py-1 bg-white rounded-full hover:bg-gray-100 transition"
-                                >
-                                    Next
-                                </button>
-                            )}
+                            ))}
+                            <button
+                                onClick={() => setCurrentPage(currentPage + 1)}
+                                className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
+                                    currentPage >= lastPage ? "opacity-50 cursor-not-allowed" : ""
+                                }`}
+                                disabled={currentPage >= lastPage}
+                            >
+                                Next
+                            </button>
                         </div>
                     )}
                 </div>
