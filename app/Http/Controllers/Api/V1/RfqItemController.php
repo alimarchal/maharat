@@ -17,21 +17,19 @@ class RfqItemController extends Controller
 {
     public function index(): JsonResponse|ResourceCollection
     {
-        $items = QueryBuilder::for(RfqItem::class)
-            ->allowedFilters(RfqItemParameters::ALLOWED_FILTERS)
-            ->allowedSorts(RfqItemParameters::ALLOWED_SORTS)
-            ->allowedIncludes(RfqItemParameters::ALLOWED_INCLUDES)
-            ->paginate()
-            ->appends(request()->query());
-
-        if ($items->isEmpty()) {
+        try {
+            $rfqItems = RfqItem::with(['unit:id,name', 'brand:id,name'])->get();
+            
             return response()->json([
-                'message' => 'No RFQ items found',
-                'data' => []
-            ], Response::HTTP_OK);
+                'success' => true,
+                'data' => $rfqItems
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch RFQ items'
+            ], 500);
         }
-
-        return RfqItemResource::collection($items);
     }
 
     public function store(StoreRfqItemRequest $request): JsonResponse
