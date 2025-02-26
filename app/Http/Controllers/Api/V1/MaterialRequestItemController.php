@@ -68,7 +68,6 @@ class MaterialRequestItemController extends Controller
     {
         try {
             $materialRequestItem->update($request->validated());
-
             return response()->json([
                 'message' => 'Material request item updated successfully',
                 'data' => new MaterialRequestItemResource(
