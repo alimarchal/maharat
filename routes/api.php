@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\V1\InventoryController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\Api\RfqApiController;
 use App\Http\Controllers\Api\V1\RfqStatusLogController;
+use App\Http\Controllers\Api\V1\RfqCategoryController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -120,6 +121,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::post('/api/v1/rfq-items', [RfqItemController::class, 'store']);
     Route::put('/api/v1/rfq-items', [RfqItemController::class, 'update']);
+
+    Route::get('/rfq-categories/{rfq_id}', [RfqCategoryController::class, 'show']);
 });
 
 Route::get('/user', function (Request $request) {

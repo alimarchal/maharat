@@ -180,7 +180,7 @@ const RFQ = ({ auth }) => {
                             ))}
                         </div>
                         <Link
-                            href="/quotations/create"
+                            href="/new-quotation"
                             className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium"
                         >
                             Add Quotation
@@ -222,7 +222,11 @@ const RFQ = ({ auth }) => {
                                         {quotation.total_amount}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {new Date(quotation.valid_until).toLocaleDateString()}
+                                        {quotation.valid_until ? new Date(quotation.valid_until).toLocaleDateString('en-GB', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric'
+                                        }) : ''}
                                     </td>
                                 </tr>
                             ))}

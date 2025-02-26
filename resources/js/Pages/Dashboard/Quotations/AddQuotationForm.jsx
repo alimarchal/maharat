@@ -3,9 +3,10 @@ import { Head } from "@inertiajs/react";
 import { router, Link } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import axios from "axios";
-import { DocumentTextIcon, DocumentArrowDownIcon, EnvelopeIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { PaperClipIcon, DocumentTextIcon, DocumentArrowDownIcon, EnvelopeIcon, TrashIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeftLong, faChevronRight, } from "@fortawesome/free-solid-svg-icons";
+import { DocumentIcon } from "@heroicons/react/24/outline";
 
 export default function AddQuotationForm({ auth, quotationId = null }) {
     const [formData, setFormData] = useState({
@@ -607,7 +608,7 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
                                 <td className="px-6 py-4 text-center align-middle">
                                     <input
                                         type="number"
-                                        step="1"
+                                        step="0.1"
                                         min="0"
                                         value={item.quantity}
                                         onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
