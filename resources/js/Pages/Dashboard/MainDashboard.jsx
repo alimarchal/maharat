@@ -237,6 +237,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "Quotations",
             icon: faFileInvoice,
+            onClick: () => router.visit("/quotation"),
         },
         {
             text: "Purchase Orders",

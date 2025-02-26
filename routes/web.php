@@ -109,6 +109,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/rfq', function () { 
         return Inertia::render('Dashboard/Quotations/RFQ'); 
     })->name('rfq');
+
+    Route::get('/quotation', function () { 
+        return Inertia::render('Dashboard/Quotations/Quotations'); 
+    })->name('Quotation');
     
     // RFQ Routes
     Route::get('/dashboard/quotations', [RFQController::class, 'index'])->name('dashboard.quotations.index');

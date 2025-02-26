@@ -607,7 +607,7 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
                                 <td className="px-6 py-4 text-center align-middle">
                                     <input
                                         type="number"
-                                        step="0.1"
+                                        step="1"
                                         min="0"
                                         value={item.quantity}
                                         onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
