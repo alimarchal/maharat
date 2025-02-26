@@ -105,7 +105,7 @@ export default function NewQuotation({ auth }) {
                                         {rfq.category_name}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <Link href={`/quotations/create/${rfq.id}`}>
+                                        <Link href={`/quotation-to-rfq`}>
                                             <PlusCircleIcon className="h-6 w-6 text-gray-400 hover:text-gray-600 cursor-pointer mx-auto" />
                                         </Link>
                                     </td>

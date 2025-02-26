@@ -123,6 +123,14 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::put('/api/v1/rfq-items', [RfqItemController::class, 'update']);
 
     Route::get('/rfq-categories/{rfq_id}', [RfqCategoryController::class, 'show']);
+
+    Route::get('/quotations-by-rfq/{rfq_id}', [QuotationController::class, 'getQuotationsByRfq']);
+    Route::post('/upload-terms', [QuotationController::class, 'uploadTerms']);
+    Route::post('/update-quotations', [QuotationController::class, 'updateQuotations']);
+
+    Route::get('/quotations/rfq/{rfqId}', [QuotationController::class, 'getByRfq']);
+    Route::post('/quotations/update-batch', [QuotationController::class, 'updateBatch']);
+    Route::post('/quotations/upload-terms', [QuotationController::class, 'uploadTerms']);
 });
 
 Route::get('/user', function (Request $request) {

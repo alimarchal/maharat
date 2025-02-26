@@ -117,6 +117,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/new-quotation', function () { 
         return Inertia::render('Dashboard/Quotations/NewQuotation'); 
     })->name('new-quotation');
+
+    Route::get('/quotation-to-rfq', function () { 
+        return Inertia::render('Dashboard/Quotations/QuotationRFQ'); 
+    })->name('quotation-to-rfq');
     
     // RFQ Routes
     Route::get('/dashboard/quotations', [RFQController::class, 'index'])->name('dashboard.quotations.index');
@@ -168,5 +172,13 @@ Route::get('language/{locale}', function ($locale) {
 // Add these routes
 Route::get('/quotations/{quotation}/pdf/view', [QuotationPDFController::class, 'show'])->name('quotations.pdf.view');
 Route::get('/quotations/{quotation}/pdf/download', [QuotationPDFController::class, 'download'])->name('quotations.pdf.download');
+
+Route::get('/quotations/rfq/{rfqId}', function ($rfqId) {
+    return Inertia::render('Dashboard/Quotations/QuotationRFQ', [
+        'params' => [
+            'rfqId' => $rfqId
+        ]
+    ]);
+})->name('quotations.rfq');
 
 require __DIR__.'/auth.php';
