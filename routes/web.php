@@ -125,6 +125,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/dashboard/quotations/{quotation}', [RFQController::class, 'update'])->name('dashboard.quotations.update');
     Route::delete('/dashboard/quotations/{quotation}', [RFQController::class, 'destroy'])->name('dashboard.quotations.destroy');
     Route::get('/quotations/{id}/pdf', [QuotationController::class, 'downloadPDF'])->name('quotations.pdf');
+
+    Route::get('/company-profile', function () { 
+        return Inertia::render('Dashboard', ['page' => 'CompanyProfile/CompanyProfile']); 
+    })->name('company.create');
+
+    Route::get('/process-flow', function () { 
+        return Inertia::render('Dashboard', ['page' => 'ProcessFlow/ProcessFlowTable']); 
+    })->name('process.index');
 });
 
 // Profile Routes (Only for Authenticated Users)
