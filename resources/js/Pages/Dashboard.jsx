@@ -18,6 +18,7 @@ import WarehouseIndex from "./Dashboard/WarehouseManagement/WarehouseIndex";
 import CreateWarehouse from "./Dashboard/WarehouseManagement/CreateWarehouse";
 import CompanyProfile from "./CompanyProfile/CompanyProfile";
 import ProcessFlowTable from "./Dashboard/ProcessFlow/ProcessFlowTable";
+import CreateProcessFlow from "./Dashboard/ProcessFlow/CreateProcessFlow";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -38,6 +39,8 @@ export default function Dashboard({ auth, page }) {
         if (page === "CompanyProfile/CompanyProfile") return <CompanyProfile />;
         if (page === "ProcessFlow/ProcessFlowTable")
             return <ProcessFlowTable />;
+        if (page === "ProcessFlow/CreateProcessFlow")
+            return <CreateProcessFlow />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };
