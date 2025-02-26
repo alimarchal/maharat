@@ -232,7 +232,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "RFQs",
             icon: faFileCirclePlus,
-            onClick: () => router.visit("/rfq")
+            onClick: () => router.visit("/rfq"),
         },
         {
             text: "Quotations",
@@ -289,6 +289,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "Process Flow",
             icon: faDiagramProject,
+            onClick: () => router.visit("/process-flow"),
         },
         {
             text: "Notification Settings",
