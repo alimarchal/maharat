@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\InventoryController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\Api\RfqApiController;
+use App\Http\Controllers\Api\V1\RfqStatusLogController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -40,7 +41,7 @@ Route::get('/statuses', [StatusController::class, 'index']);
 //Route::post('/statuses', [StatusController::class, 'store']);
 
 // API V1 routes
-Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () { 
+Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::get('/users/hierarchy/{user?}', [UserController::class, 'hierarchy']);
     Route::apiResource('users', UserController::class);
@@ -102,6 +103,18 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::patch('process-steps/{processStep}/toggle-active', [ProcessStepController::class, 'toggleActive']);
     Route::post('process-steps/reorder', [ProcessStepController::class, 'reorder']);
 
+    // Form Data Routes
+    Route::get('/warehouses', [WarehouseController::class, 'index']);
+    Route::get('/product-categories', [ProductCategoryController::class, 'index']);
+    Route::get('/statuses', [StatusController::class, 'index']);
+    Route::get('/units', [UnitController::class, 'index']);
+    Route::get('/brands', [BrandController::class, 'index']);
+
+    Route::get('/rfq-status-logs', [RfqStatusLogController::class, 'index']);
+    Route::put('/rfq-status-logs/{id}', [RfqStatusLogController::class, 'update']);
+    Route::delete('/rfq-status-logs/{id}', [RfqStatusLogController::class, 'destroy']);
+
+    Route::get('/statuses/payment-types', [StatusController::class, 'getPaymentTypes']);
 });
 
 Route::get('/user', function (Request $request) {
@@ -110,14 +123,16 @@ Route::get('/user', function (Request $request) {
 
 Route::middleware(['auth:sanctum'])->group(function () {
     // RFQ Routes
-    Route::get('/rfqs', [RfqApiController::class, 'index']);
-    Route::delete('/rfqs/{id}', [RfqApiController::class, 'destroy']);
+    Route::get('/rfqs', [RfqController::class, 'index']);
+    Route::get('/rfqs/{id}', [RfqController::class, 'show']);
+    Route::post('/rfqs', [RfqController::class, 'store']);
+    Route::delete('/rfqs/{id}', [RfqController::class, 'destroy']);
 
     // RFQ Form Data endpoints
     Route::get('/form-data', [RfqController::class, 'getFormData']);
     Route::get('/warehouses', [WarehouseController::class, 'index']);
     Route::get('/product-categories', [ProductCategoryController::class, 'index']);
-    Route::get('/payment-types', [StatusController::class, 'getPaymentTypes']);
+    Route::get('/statuses', [StatusController::class, 'index']);
     Route::get('/units', [UnitController::class, 'index']);
     Route::get('/brands', [BrandController::class, 'index']);
 });

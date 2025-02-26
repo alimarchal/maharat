@@ -18,23 +18,30 @@ use App\Models\Status;
 
 class RfqController extends Controller
 {
-    public function index(): JsonResponse|ResourceCollection
+    public function index()
     {
-        $rfqs = QueryBuilder::for(Rfq::class)
-            ->allowedFilters(RfqParameters::ALLOWED_FILTERS)
-            ->allowedSorts(RfqParameters::ALLOWED_SORTS)
-            ->allowedIncludes(RfqParameters::ALLOWED_INCLUDES)
-            ->paginate()
-            ->appends(request()->query());
+        try {
+            $rfqs = Rfq::with(['requester', 'status', 'items'])
+                ->orderBy('created_at', 'desc')
+                ->paginate(10);
 
-        if ($rfqs->isEmpty()) {
             return response()->json([
-                'message' => 'No RFQs found',
-                'data' => []
-            ], Response::HTTP_OK);
+                'data' => RfqResource::collection($rfqs),
+                'meta' => [
+                    'total' => $rfqs->total(),
+                    'per_page' => $rfqs->perPage(),
+                    'current_page' => $rfqs->currentPage(),
+                    'last_page' => $rfqs->lastPage(),
+                    'from' => $rfqs->firstItem(),
+                    'to' => $rfqs->lastItem(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to fetch RFQs',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return RfqResource::collection($rfqs);
     }
 
     private function getNewRFQNumber(){
@@ -110,15 +117,16 @@ class RfqController extends Controller
     }
     public function show(string $id): JsonResponse
     {
+
         $rfq = QueryBuilder::for(Rfq::class)
             ->allowedIncludes(RfqParameters::ALLOWED_INCLUDES)
             ->findOrFail($id);
-
         return response()->json([
             'data' => new RfqResource($rfq)
         ], Response::HTTP_OK);
     }
-    public function update(UpdateRfqRequest $request, Rfq $rfq): JsonResponse
+
+    public function update(Request $request, Rfq $rfq)
     {
         try {
             DB::beginTransaction();
@@ -126,7 +134,7 @@ class RfqController extends Controller
             $oldStatus = $rfq->status_id;
 
             // Update RFQ with validated data, excluding items and categories
-            $rfq->update($request->safe()->except(['items', 'category_ids']));
+            $rfq->update($request->all());
 
             // Update categories if provided
             if ($request->has('category_ids')) {
@@ -157,12 +165,13 @@ class RfqController extends Controller
                 $rfq->statusLogs()->create([
                     'status_id' => $rfq->status_id,
                     'changed_by' => auth()->id(),
-                    'remarks' => $request->input('remarks')
+                    'remarks' => $request->input('remarks', 'RFQ Updated')
                 ]);
             }
 
             DB::commit();
 
+            // Return response with loaded relationships including categories
             return response()->json([
                 'message' => 'RFQ updated successfully',
                 'data' => new RfqResource(
@@ -188,6 +197,78 @@ class RfqController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+//    public function update(UpdateRfqRequest $request, Rfq $rfq)
+//    {
+//
+//        try {
+//            DB::beginTransaction();
+//
+//            $oldStatus = $rfq->status_id;
+//
+//            // Update RFQ with validated data, excluding items and categories
+//            $rfq->update($request->safe()->except(['items', 'category_ids']));
+//
+//            // Update categories if provided
+//            if ($request->has('category_ids')) {
+//                $rfq->categories()->sync($request->input('category_ids'));
+//            }
+//
+//            // Update or create RFQ items
+//            if ($request->has('items')) {
+//                $existingItemIds = [];
+//
+//                foreach ($request->input('items') as $item) {
+//                    if (isset($item['id'])) {
+//                        $rfqItem = $rfq->items()->findOrFail($item['id']);
+//                        $rfqItem->update($item);
+//                        $existingItemIds[] = $item['id'];
+//                    } else {
+//                        $newItem = $rfq->items()->create($item);
+//                        $existingItemIds[] = $newItem->id;
+//                    }
+//                }
+//
+//                // Remove items that were not included in the update
+//                $rfq->items()->whereNotIn('id', $existingItemIds)->delete();
+//            }
+//
+//            // Log status change if status was updated
+//            if ($oldStatus !== $rfq->status_id) {
+//                $rfq->statusLogs()->create([
+//                    'status_id' => $rfq->status_id,
+//                    'changed_by' => auth()->id(),
+//                    'remarks' => $request->input('remarks')
+//                ]);
+//            }
+//
+//            DB::commit();
+//
+//            return response()->json([
+//                'message' => 'RFQ updated successfully',
+//                'data' => new RfqResource(
+//                    $rfq->load([
+//                        'requester',
+//                        'company',
+//                        'warehouse',
+//                        'status',
+//                        'requestType',
+//                        'paymentType',
+//                        'categories',
+//                        'items.category',
+//                        'items.unit',
+//                        'items.status'
+//                    ])
+//                )
+//            ], Response::HTTP_OK);
+//        } catch (\Exception $e) {
+//            DB::rollBack();
+//            return response()->json([
+//                'message' => 'Failed to update RFQ',
+//                'error' => $e->getMessage()
+//            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+//        }
+//    }
     public function destroy(Rfq $rfq): JsonResponse
     {
         try {

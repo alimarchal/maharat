@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RfqStatusLog extends Model
 {
+    protected $table = 'rfq_status_logs';
 
     protected $fillable = [
         'rfq_id',
@@ -18,7 +19,13 @@ class RfqStatusLog extends Model
         'rejected_by',
         'rejection_reason',
         'documents',
-        'quotation_sent',
+        'quotation_sent'
+    ];
+
+    protected $casts = [
+        'quotation_sent' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
     ];
 
     public function rfq(): BelongsTo
@@ -34,5 +41,10 @@ class RfqStatusLog extends Model
     public function changedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'changed_by');
+    }
+
+    public function assignedTo(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 }
