@@ -16,6 +16,7 @@ class StoreCompanyRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'name_ar' => ['nullable', 'string', 'max:255'],
+            'website' => ['nullable', 'string', 'max:100'],
             'email' => ['required', 'string', 'email', 'max:255'],
             'contact_number' => ['required', 'string', 'max:20'],
             'fax' => ['nullable', 'string', 'max:20'],
@@ -32,8 +33,8 @@ class StoreCompanyRequest extends FormRequest
             'business_category' => ['nullable', 'string', 'max:100'],
             'id_type' => ['nullable', 'string', 'max:50'],
             'id_number' => ['nullable', 'string', 'max:50'],
-            'logo_path' => ['nullable', 'string', 'max:255'],
-            'stamp_path' => ['nullable', 'string', 'max:255'],
+            'logo' => ['nullable', 'file', 'image', 'mimes:jpeg,png,jpg,gif', 'max:4096'],
+            'stamp' => ['nullable', 'file', 'image', 'mimes:jpeg,png,jpg,gif', 'max:4096'],
             'fiscal_year_start' => ['required', 'date'],
             'fiscal_year_end' => ['required', 'date', 'after:fiscal_year_start'],
             'price_decimals' => ['nullable', 'numeric', 'min:0', 'max:10'],

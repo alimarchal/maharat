@@ -31,6 +31,7 @@ class CompanyResource extends JsonResource
             'id_number' => $this->id_number,
             'logo_path' => $this->logo_path,
             'stamp_path' => $this->stamp_path,
+            'website' => $this->website,
             'fiscal_year_start' => $this->fiscal_year_start ? $this->fiscal_year_start->format('Y-m-d') : null,
             'fiscal_year_end' => $this->fiscal_year_end ? $this->fiscal_year_end->format('Y-m-d') : null,
             'price_decimals' => $this->price_decimals,

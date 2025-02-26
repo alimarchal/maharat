@@ -33,6 +33,7 @@ return new class extends Migration
             $table->string('id_number')->nullable();
             $table->string('logo_path')->nullable();
             $table->string('stamp_path')->nullable();
+            $table->string('website')->nullable();
             // Company Settings
             $table->date('fiscal_year_start');
             $table->date('fiscal_year_end');
