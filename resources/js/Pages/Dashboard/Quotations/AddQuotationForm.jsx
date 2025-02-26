@@ -312,19 +312,32 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
 
     // Add this component for file display
     const FileDisplay = ({ file, onFileClick }) => {
-        const fileName = file ? (typeof file === 'string' ? decodeURIComponent(file.split('/').pop()) : file.name) : null;
-        const fileUrl = file && typeof file === 'string' ? `/storage/${file}` : null;
+        const fileName = file ? (
+            typeof file === 'object' && file.name 
+                ? file.name 
+                : typeof file === 'string' 
+                    ? decodeURIComponent(file.split('/').pop()) 
+                    : file.name
+        ) : null;
+
+        const fileUrl = file ? (
+            typeof file === 'object' && file.url 
+                ? `/api/download/${fileName}` 
+                : typeof file === 'string' 
+                    ? `/api/download/${fileName}` 
+                    : null
+        ) : null;
 
         return (
             <div className="flex flex-col items-center justify-center space-y-2">
                 <DocumentArrowDownIcon 
                     className="h-6 w-6 text-gray-400 cursor-pointer" 
-                    onClick={() => fileUrl && onFileClick(fileUrl)}
+                    onClick={() => fileUrl && window.open(fileUrl, '_blank')}
                 />
                 {fileName && (
                     <span 
                         className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center"
-                        onClick={() => fileUrl && onFileClick(fileUrl)}
+                        onClick={() => fileUrl && window.open(fileUrl, '_blank')}
                     >
                         {fileName}
                     </span>
