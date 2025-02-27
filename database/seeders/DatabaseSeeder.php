@@ -12,18 +12,18 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            StatusSeeder::class,
             CurrencySeeder::class,
             CountrySeeder::class,
             RoleAndPermissionSeeder::class,
             UserSeeder::class,
             SupplierSeeder::class,
-            StatusSeeder::class,
             ProductCategorySeeder::class,
             RfqCategorySeeder::class,
-            UnitSeeder::class,  
+            UnitSeeder::class,
             BrandSeeder::class,
-            RfqSeeder::class,     
-            RfqItemSeeder::class, 
+            RfqSeeder::class,
+            RfqItemSeeder::class,
             QuotationSeeder::class,
         ]);
     }
