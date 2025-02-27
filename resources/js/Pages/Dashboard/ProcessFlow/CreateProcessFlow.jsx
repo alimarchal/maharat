@@ -3,21 +3,18 @@ import axios from "axios";
 import InputFloating from "../../../Components/InputFloating";
 import SelectFloating from "../../../Components/SelectFloating";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit, faTrash, faEye } from "@fortawesome/free-solid-svg-icons";
-import ProcessFlowModal from "./ProcessFlowModal";
+import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 
 const CreateProcessFlow = () => {
     const [formData, setFormData] = useState({
         title: "",
         status: "",
-        is_active: "true",
+        is_active: true,
     });
     const [editingId, setEditingId] = useState(null);
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const [processes, setProcesses] = useState([]);
-    const [selectedProcess, setSelectedProcess] = useState(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
         fetchProcesses();
@@ -26,30 +23,22 @@ const CreateProcessFlow = () => {
     const fetchProcesses = async () => {
         try {
             const response = await axios.get("/api/v1/processes");
-            const processesData = response.data.data.map((process) => ({
-                ...process,
-                is_active: Boolean(process.is_active),
-            }));
-            setProcesses(processesData);
+            setProcesses(response.data.data || []);
         } catch (error) {
             console.error("Error fetching processes:", error);
         }
     };
 
     const statusOptions = [
+        { id: "Draft", label: "Draft" },
         { id: "Active", label: "Active" },
         { id: "Pending", label: "Pending" },
         { id: "Rejected", label: "Rejected" },
         { id: "Expired", label: "Expired" },
     ];
 
-    const isActiveOptions = [
-        { id: "true", label: "activated" },
-        { id: "false", label: "deactivated" },
-    ];
-
     const validate = () => {
-        let newErrors = {};
+        const newErrors = {};
         if (!formData.title.trim()) newErrors.title = "Title is required";
         if (!formData.status.trim()) newErrors.status = "Status is required";
         setErrors(newErrors);
@@ -68,21 +57,15 @@ const CreateProcessFlow = () => {
         setLoading(true);
         try {
             if (editingId) {
-                await axios.put(`/api/v1/processes/${editingId}`, {
-                    ...formData,
-                    is_active: formData.is_active === "true",
-                });
+                await axios.put(`/api/v1/processes/${editingId}`, formData);
             } else {
-                await axios.post("/api/v1/processes", {
-                    ...formData,
-                    is_active: formData.is_active === "true",
-                });
+                await axios.post("/api/v1/processes", formData);
             }
-            setFormData({ title: "", status: "", is_active: "true" });
+            setFormData({ title: "", status: "", is_active: true });
             setEditingId(null);
             fetchProcesses();
         } catch (error) {
-            console.error("Error saving process flow:", error);
+            console.error("Error saving process:", error);
         }
         setLoading(false);
     };
@@ -91,13 +74,14 @@ const CreateProcessFlow = () => {
         setFormData({
             title: process.title,
             status: process.status,
-            is_active: process.is_active.toString(),
+            is_active: process.is_active,
         });
         setEditingId(process.id);
     };
 
     const handleDelete = async (id) => {
-        if (!confirm("Are you sure you want to delete this Process?")) return;
+        if (!window.confirm("Are you sure you want to delete this Process?"))
+            return;
         try {
             await axios.delete(`/api/v1/processes/${id}`);
             setProcesses(processes.filter((process) => process.id !== id));
@@ -106,15 +90,10 @@ const CreateProcessFlow = () => {
         }
     };
 
-    const handleView = (process) => {
-        setSelectedProcess(process);
-        setIsModalOpen(true);
-    };
-
     return (
         <>
             <h2 className="text-3xl font-bold text-[#2C323C]">
-                {editingId ? "Edit Process Flow" : "Make a New Process Flow"}
+                {editingId ? "Edit a Process" : "Make a New Process"}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-6 mt-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -145,13 +124,6 @@ const CreateProcessFlow = () => {
                             </p>
                         )}
                     </div>
-                    <SelectFloating
-                        label="Is Active"
-                        name="is_active"
-                        value={formData.is_active}
-                        onChange={handleChange}
-                        options={isActiveOptions}
-                    />
                 </div>
                 <div className="flex justify-end">
                     <button
@@ -162,8 +134,8 @@ const CreateProcessFlow = () => {
                         {loading
                             ? "Saving..."
                             : editingId
-                            ? "Update Process Flow"
-                            : "Create Process Flow"}
+                            ? "Update Process"
+                            : "Create Process"}
                     </button>
                 </div>
             </form>
@@ -177,7 +149,6 @@ const CreateProcessFlow = () => {
                             </th>
                             <th className="py-3 px-4">Title</th>
                             <th className="py-3 px-4">Status</th>
-                            <th className="py-3 px-4">Active</th>
                             <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
                                 Actions
                             </th>
@@ -194,16 +165,7 @@ const CreateProcessFlow = () => {
                                     <td className="py-3 px-4">
                                         {process.status}
                                     </td>
-                                    <td className="py-3 px-4">
-                                        {process.is_active ? "True" : "False"}
-                                    </td>
                                     <td className="py-3 px-4 flex space-x-3">
-                                        <button
-                                            onClick={() => handleView(process)}
-                                            className="text-[#9B9DA2] hover:text-gray-500"
-                                        >
-                                            <FontAwesomeIcon icon={faEye} />
-                                        </button>
                                         <button
                                             onClick={() => handleEdit(process)}
                                             className="text-[#9B9DA2] hover:text-gray-500"
@@ -224,7 +186,7 @@ const CreateProcessFlow = () => {
                         ) : (
                             <tr>
                                 <td
-                                    colSpan="5"
+                                    colSpan="4"
                                     className="text-center text-[#2C323C] font-medium py-4"
                                 >
                                     No Process found.
@@ -234,14 +196,6 @@ const CreateProcessFlow = () => {
                     </tbody>
                 </table>
             </div>
-
-            {isModalOpen && (
-                <ProcessFlowModal
-                    isOpen={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
-                    process={selectedProcess}
-                />
-            )}
         </>
     );
 };
