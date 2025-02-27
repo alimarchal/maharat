@@ -7,9 +7,6 @@ use App\Models\Supplier;
 
 class SupplierSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $suppliers = [
@@ -24,8 +21,6 @@ class SupplierSeeder extends Seeder
                 'is_approved' => 1,
                 'currency_id' => 1,
                 'status_id' => 1,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'name' => 'Office Essentials Inc.',
@@ -38,8 +33,6 @@ class SupplierSeeder extends Seeder
                 'is_approved' => 1,
                 'currency_id' => 1,
                 'status_id' => 1,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'name' => 'Global Supplies Co.',
@@ -52,11 +45,12 @@ class SupplierSeeder extends Seeder
                 'is_approved' => 1,
                 'currency_id' => 1,
                 'status_id' => 1,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
         ];
 
-        Supplier::insert($suppliers);
+        foreach ($suppliers as $supplier) {
+            Supplier::firstOrCreate(['code' => $supplier['code']], $supplier);
+        }
     }
 }
+
