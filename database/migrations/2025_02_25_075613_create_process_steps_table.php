@@ -29,7 +29,6 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->index(['process_id', 'order']);
-            $table->index(['user_id', 'status']);
         });
     }
 
