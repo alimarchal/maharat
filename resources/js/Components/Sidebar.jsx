@@ -59,8 +59,8 @@ const Sidebar = ({ isOpen }) => {
           />
           <SidebarButton
             icon={faBell}
-            link="/notifications"
-            isActive={url === "/notifications"}
+            link="/notification-settings"
+            isActive={url === "/notification-settings"}
           />
           <SidebarButton
             icon={faCommentDots}
