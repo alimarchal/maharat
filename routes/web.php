@@ -11,6 +11,8 @@ use App\Http\Controllers\UnitController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\RFQController;
+use App\Models\Quotation;
+use App\Http\Controllers\QuotationPDFController;
 
 // Redirect root to login
 Route::get('/', function () {
@@ -107,6 +109,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/rfq', function () { 
         return Inertia::render('Dashboard/Quotations/RFQ'); 
     })->name('rfq');
+
+    Route::get('/quotation', function () { 
+        return Inertia::render('Dashboard/Quotations/Quotations'); 
+    })->name('Quotation');
+
+    Route::get('/new-quotation', function () { 
+        return Inertia::render('Dashboard/Quotations/NewQuotation'); 
+    })->name('new-quotation');
+
+    Route::get('/quotation-to-rfq', function () { 
+        return Inertia::render('Dashboard/Quotations/QuotationRFQ'); 
+    })->name('quotation-to-rfq');
     
     // RFQ Routes
     Route::get('/dashboard/quotations', [RFQController::class, 'index'])->name('dashboard.quotations.index');
@@ -116,7 +130,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard/quotations/{quotation}/edit', [RFQController::class, 'edit'])->name('dashboard.quotations.edit');
     Route::put('/dashboard/quotations/{quotation}', [RFQController::class, 'update'])->name('dashboard.quotations.update');
     Route::delete('/dashboard/quotations/{quotation}', [RFQController::class, 'destroy'])->name('dashboard.quotations.destroy');
-    Route::get('/quotations/{id}/pdf', [QuotationController::class, 'downloadPDF'])->name('quotations.pdf');
+    Route::get('/quotations/{id}/pdf', function ($id) {
+        return Inertia::render('Dashboard/Quotations/QuotationPDF', [
+            'quotation' => Quotation::with(['rfq', 'supplier', 'status', 'documents'])->findOrFail($id)
+        ]);
+    })->name('quotations.pdf');
 
     Route::get('/company-profile', function () { 
         return Inertia::render('Dashboard', ['page' => 'CompanyProfile/CompanyProfile']); 
@@ -150,5 +168,17 @@ Route::get('language/{locale}', function ($locale) {
     session()->put('locale', $locale);
     return redirect()->back();
 })->name('language.switch');
+
+// Add these routes
+Route::get('/quotations/{quotation}/pdf/view', [QuotationPDFController::class, 'show'])->name('quotations.pdf.view');
+Route::get('/quotations/{quotation}/pdf/download', [QuotationPDFController::class, 'download'])->name('quotations.pdf.download');
+
+Route::get('/quotations/rfq/{rfqId}', function ($rfqId) {
+    return Inertia::render('Dashboard/Quotations/QuotationRFQ', [
+        'params' => [
+            'rfqId' => $rfqId
+        ]
+    ]);
+})->name('quotations.rfq');
 
 require __DIR__.'/auth.php';
