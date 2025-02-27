@@ -11,12 +11,22 @@ export default function NewQuotation({ auth }) {
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
+    const [loading, setLoading] = useState(true);
+    const [progress, setProgress] = useState(0);
 
     const fetchRfqs = async () => {
+        setLoading(true);
+        setProgress(0);
+    
+        // Smoothly increase progress
+        const interval = setInterval(() => {
+            setProgress((oldProgress) => (oldProgress >= 90 ? 90 : oldProgress + 10));
+        }, 300);
+    
         try {
             const response = await axios.get(`/api/v1/rfqs?page=${currentPage}`);
             const rfqsData = response.data.data;
-            
+    
             // Fetch category details for each RFQ
             const rfqsWithDetails = await Promise.all(
                 rfqsData.map(async (rfq) => {
@@ -27,16 +37,24 @@ export default function NewQuotation({ auth }) {
                     };
                 })
             );
-            
+    
             setRfqs(rfqsWithDetails);
             setLastPage(response.data.meta.last_page);
             setError("");
+    
+            // Ensure full progress bar before hiding
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
         } catch (error) {
             console.error('API Error:', error);
             setError("Failed to load RFQs");
             setRfqs([]);
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
+        } finally {
+            clearInterval(interval);
         }
-    };
+    };    
 
     useEffect(() => {
         fetchRfqs();
@@ -88,6 +106,22 @@ export default function NewQuotation({ auth }) {
                             </tr>
                         </thead>
 
+                        {/* Loading Bar */}
+                        {loading && (
+                        <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
+                            <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
+                                <div
+                                    className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
+                                    style={{ width: `${progress}%` }}
+                                ></div>
+                                <span className="absolute text-white">
+                                    {progress < 60 ? "Please Wait, Fetching Details..." : `${progress}%`}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
+                    {!loading && (
                         <tbody className="bg-transparent divide-y divide-gray-200">
                             {rfqs.map((rfq) => (
                                 <tr key={rfq.id}>
@@ -112,44 +146,45 @@ export default function NewQuotation({ auth }) {
                                 </tr>
                             ))}
                         </tbody>
+                    )}
                     </table>
 
                     {/* Pagination */}
-                    {!error && rfqs.length > 0 && (
-                        <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    {!loading && !error && rfqs.length > 0 && (
+                    <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                        <button
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
+                                currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
+                            disabled={currentPage <= 1}
+                        >
+                            Previous
+                        </button>
+                        {Array.from({ length: Math.ceil(rfqs.length / 10) }, (_, index) => index + 1).map((page) => (
                             <button
-                                onClick={() => setCurrentPage(currentPage - 1)}
-                                className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                    currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
-                                }`}
-                                disabled={currentPage <= 1}
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={`px-3 py-1 ${
+                                    currentPage === page
+                                        ? "bg-[#009FDC] text-white"
+                                        : "border border-[#B9BBBD] bg-white text-black"
+                                } rounded-full`}
                             >
-                                Previous
+                                {page}
                             </button>
-                            {Array.from({ length: lastPage }, (_, index) => index + 1).map((page) => (
-                                <button
-                                    key={page}
-                                    onClick={() => setCurrentPage(page)}
-                                    className={`px-3 py-1 ${
-                                        currentPage === page
-                                            ? "bg-[#009FDC] text-white"
-                                            : "border border-[#B9BBBD] bg-white text-black"
-                                    } rounded-full`}
-                                >
-                                    {page}
-                                </button>
-                            ))}
-                            <button
-                                onClick={() => setCurrentPage(currentPage + 1)}
-                                className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                    currentPage >= lastPage ? "opacity-50 cursor-not-allowed" : ""
-                                }`}
-                                disabled={currentPage >= lastPage}
-                            >
-                                Next
-                            </button>
-                        </div>
-                    )}
+                        ))}
+                        <button
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
+                                currentPage >= Math.ceil(rfqs.length / 10) ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
+                            disabled={currentPage >= Math.ceil(rfqs.length / 10)}
+                        >
+                            Next
+                        </button>
+                    </div>
+                )}
                 </div>
             </div>
             </div>
