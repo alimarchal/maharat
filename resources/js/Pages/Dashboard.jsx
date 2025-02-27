@@ -17,8 +17,10 @@ import CreateProduct from "./Dashboard/Products/CreateProduct";
 import WarehouseIndex from "./Dashboard/WarehouseManagement/WarehouseIndex";
 import CreateWarehouse from "./Dashboard/WarehouseManagement/CreateWarehouse";
 import CompanyProfile from "./CompanyProfile/CompanyProfile";
-import ProcessFlowTable from "./Dashboard/ProcessFlow/ProcessFlowTable";
+import ProcessFlow from "./Dashboard/ProcessFlow/ProcessFlow";
 import CreateProcessFlow from "./Dashboard/ProcessFlow/CreateProcessFlow";
+import RolesPermissions from "./Dashboard/RolePermission/RolesPermissions";
+import Notification from "./Dashboard/NotificationSettings/Notification";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -37,10 +39,13 @@ export default function Dashboard({ auth, page }) {
         if (page === "WarehouseManagement/CreateWarehouse")
             return <CreateWarehouse />;
         if (page === "CompanyProfile/CompanyProfile") return <CompanyProfile />;
-        if (page === "ProcessFlow/ProcessFlowTable")
-            return <ProcessFlowTable />;
+        if (page === "ProcessFlow/ProcessFlow") return <ProcessFlow />;
         if (page === "ProcessFlow/CreateProcessFlow")
             return <CreateProcessFlow />;
+        if (page === "RolePermission/RolesPermissions")
+            return <RolesPermissions />;
+        if (page === "NotificationSettings/Notification")
+            return <Notification />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };

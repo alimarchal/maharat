@@ -295,10 +295,12 @@ export default function MainDashboard({ roles }) {
         {
             text: "Notification Settings",
             icon: faBell,
+            onClick: () => router.visit("/notification-settings"),
         },
         {
             text: "Roles & Permission",
             icon: faUserPen,
+            onClick: () => router.visit("/roles-permissions"),
         },
         {
             text: "Users",
