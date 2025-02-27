@@ -3,20 +3,12 @@ import { Head } from "@inertiajs/react";
 import { router, Link } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import axios from "axios";
-import {
-    PaperClipIcon,
-    DocumentTextIcon,
-    DocumentArrowDownIcon,
-    EnvelopeIcon,
-    TrashIcon,
-} from "@heroicons/react/24/outline";
+import { PaperClipIcon, DocumentTextIcon, DocumentArrowDownIcon, EnvelopeIcon, TrashIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-    faArrowLeftLong,
-    faChevronRight,
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeftLong, faChevronRight, } from "@fortawesome/free-solid-svg-icons";
+import { DocumentIcon } from "@heroicons/react/24/outline";
 
-export default function AddQuotationForm({ auth }) {
+export default function AddQuotationForm({ auth, quotationId = null }) {
     const [formData, setFormData] = useState({
         organization_email: "",
         city: "",
@@ -37,6 +29,10 @@ export default function AddQuotationForm({ auth }) {
     const [brands, setBrands] = useState([]);
     const [attachments, setAttachments] = useState({});
     const [rfqs, setRfqs] = useState([]);
+    const [unitNames, setUnitNames] = useState({});
+    const [brandNames, setBrandNames] = useState({});
+    const [editingRow, setEditingRow] = useState(null);
+    const [rfqItems, setRfqItems] = useState([]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -89,6 +85,61 @@ export default function AddQuotationForm({ auth }) {
 
         fetchData();
     }, []);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // Get RFQ items with their relationships
+                const rfqItemsResponse = await axios.get('/api/v1/rfq-items');
+                setRfqItems(rfqItemsResponse.data.data);
+
+                // Get units and brands for dropdowns
+                const [unitsRes, brandsRes] = await Promise.all([
+                    axios.get('/api/v1/units'),
+                    axios.get('/api/v1/brands')
+                ]);
+                
+                setUnits(unitsRes.data.data);
+                setBrands(brandsRes.data.data);
+                
+                // Create lookup maps
+                const unitLookup = {};
+                unitsRes.data.data.forEach(unit => {
+                    unitLookup[unit.id] = unit.name;
+                });
+                setUnitNames(unitLookup);
+
+                const brandLookup = {};
+                brandsRes.data.data.forEach(brand => {
+                    brandLookup[brand.id] = brand.name;
+                });
+                setBrandNames(brandLookup);
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        };
+
+        fetchData();
+    }, []);    
+
+    useEffect(() => {
+        if (quotationId) {
+            axios.get(`/api/v1/rfq-items/${quotationId}`)
+                .then(response => {
+                    const item = response.data.data;
+                    setFormData(prevData => ({
+                        ...prevData,
+                        items: [{
+                            ...item,
+                            unit_id: item.unit?.id,
+                            brand_id: item.brand?.id,
+                        }]
+                    }));
+                })
+                .catch(error => console.error('Error fetching data:', error));
+        }
+    }, [quotationId]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -145,31 +196,41 @@ export default function AddQuotationForm({ auth }) {
         }));
     };
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-    };
-
     const handleItemChange = (index, field, value) => {
-        setFormData((prev) => ({
-            ...prev,
-            items: prev.items.map((item, i) =>
-                i === index ? { ...item, [field]: value } : item
-            ),
-        }));
+        const updatedItems = [...formData.items];
+        if (field === 'quantity') {
+            // Allow empty string for typing
+            if (value === '') {
+                updatedItems[index][field] = '';
+            } else {
+                // Convert to number and prevent negative values
+                const numValue = parseFloat(value);
+                if (numValue < 0) return;
+                // Format to 1 decimal place
+                updatedItems[index][field] = numValue.toFixed(1);
+            }
+        } else {
+            updatedItems[index][field] = value;
+        }
+        setFormData({ ...formData, items: updatedItems });
     };
 
     const handleFileChange = (index, e) => {
         const file = e.target.files[0];
         if (file) {
-            setAttachments((prev) => ({
+            // Store the actual file object
+            setAttachments(prev => ({
                 ...prev,
-                [index]: file,
+                [index]: file
             }));
-            handleItemChange(index, "attachment", file.name);
+            
+            // Update the form data with the file info
+            const updatedItems = [...formData.items];
+            updatedItems[index].attachment = file;
+            setFormData({ ...formData, items: updatedItems });
+
+            // Optionally create a temporary URL for immediate display
+            updatedItems[index].tempUrl = URL.createObjectURL(file);
         }
     };
 
@@ -194,20 +255,47 @@ export default function AddQuotationForm({ auth }) {
         });
     };
 
-    const handleSave = async () => {
+    const handleSave = async (e) => {
+        if (e) e.preventDefault();
+        
         try {
-            const response = await axios.post('/api/v1/rfqs', formData);
-            if (response.data) {
-                // Show success message
-                alert('RFQ saved successfully');
-                // Optionally redirect
+            const formDataToSend = new FormData();
+            
+            // Add basic form data
+            Object.keys(formData).forEach(key => {
+                if (key !== 'items' && formData[key] !== null) {
+                    formDataToSend.append(key, formData[key]);
+                }
+            });
+
+            // Add items as a JSON string
+            if (formData.items && formData.items.length > 0) {
+                formDataToSend.append('items', JSON.stringify(formData.items));
+            }
+
+            // Add attachments separately
+            if (attachments) {
+                Object.keys(attachments).forEach(index => {
+                    formDataToSend.append(`attachments[${index}]`, attachments[index]);
+                });
+            }
+
+            const response = await axios.post('/api/v1/rfq-items', formDataToSend, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.data.success) {
+                alert('Items saved successfully!');
                 router.visit(route('rfq.index'));
             }
         } catch (error) {
-            console.error('Error saving RFQ:', error);
-            alert('Failed to save RFQ');
+            console.error('Save error:', error);
+            alert(error.response?.data?.message || 'Failed to save items');
         }
-    };
+    };    
 
     const handleDownloadPDF = async () => {
         try {
@@ -216,34 +304,51 @@ export default function AddQuotationForm({ auth }) {
                 await handleSave();
             }
 
-            // Download PDF
-            const response = await axios.get(
-                route("quotations.pdf", formData.id),
-                {
-                    responseType: "blob",
-                }
-            );
+            // Option 1: View PDF in new tab
+            window.open(route('quotations.pdf.view', formData.id), '_blank');
 
-            // Create blob link to download
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement("a");
-            link.href = url;
-            link.setAttribute("download", `RFQ-${formData.rfq_number}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-
-            // Clean up
-            link.parentNode.removeChild(link);
-            window.URL.revokeObjectURL(url);
+            // Option 2: Direct download
+            // window.location.href = route('quotations.pdf.download', formData.id);
         } catch (error) {
-            console.error("Error downloading PDF:", error);
-            // You might want to show an error message to the user
+            console.error('Error handling PDF:', error);
+            alert('Failed to process PDF request');
         }
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        return new Date(dateString).toISOString().split('T')[0];
+    // Add this component for file display
+    const FileDisplay = ({ file, onFileClick }) => {
+        const fileName = file ? (
+            typeof file === 'object' && file.name 
+                ? file.name 
+                : typeof file === 'string' 
+                    ? decodeURIComponent(file.split('/').pop()) 
+                    : file.name
+        ) : null;
+
+        const fileUrl = file ? (
+            typeof file === 'object' && file.url 
+                ? `/api/download/${fileName}` 
+                : typeof file === 'string' 
+                    ? `/api/download/${fileName}` 
+                    : null
+        ) : null;
+
+        return (
+            <div className="flex flex-col items-center justify-center space-y-2">
+                <DocumentArrowDownIcon 
+                    className="h-6 w-6 text-gray-400 cursor-pointer" 
+                    onClick={() => fileUrl && window.open(fileUrl, '_blank')}
+                />
+                {fileName && (
+                    <span 
+                        className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
+                        onClick={() => fileUrl && window.open(fileUrl, '_blank')}
+                    >
+                        {fileName}
+                    </span>
+                )}
+            </div>
+        );
     };
 
     return (
@@ -443,141 +548,148 @@ export default function AddQuotationForm({ auth }) {
 
                 {/* Item Table */}
                 <table className="w-full mt-4 table-fixed border-collapse">
-                <thead style={{ backgroundColor: '#C7E7DE' }} className="rounded-t-lg">
-                    <tr>
-                        <th className="px-2 py-2 text-center w-[10%]">Item Name</th>
-                        <th className="px-2 py-2 text-center w-[11%]">Description</th>
-                        <th className="px-2 py-2 text-center w-[7%]">Unit</th>
-                        <th className="px-2 py-2 text-center w-[7%]">Quantity</th>
-                        <th className="px-2 py-2 text-center w-[10%]">Brand</th>
-                        <th className="px-2 py-2 text-center w-[10%]">Attachment</th>
-                        <th className="px-2 py-2 text-center w-[15%]">Expected Delivery Date</th>
-                        <th className="px-2 py-2 text-center w-[6%]">Action</th>
-                    </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                    {formData.items.map((item, index) => (
-                        <tr key={index}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <input
-                                    type="text"
-                                    value={item.item_name}
-                                    onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
-                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
-                                />
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <input
-                                    type="text"
-                                    value={item.description}
-                                    onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
-                                />
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <select
-                                    value={item.unit_id}
-                                    onChange={(e) => handleItemChange(index, 'unit_id', e.target.value)}
-                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
-                                >
-                                    <option value="">Select Unit</option>
-                                    {units.map(unit => (
-                                        <option key={unit.id} value={unit.id}>{unit.name}</option>
-                                    ))}
-                                </select>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <input
-                                    type="number"
-                                    min="0"
-                                    value={item.quantity}
-                                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
-                                />
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <select
-                                    value={item.brand}
-                                    onChange={(e) => handleItemChange(index, 'brand', e.target.value)}
-                                    className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
-                                >
-                                    <option value="">Select Brand</option>
-                                    {brands.map(brand => (
-                                        <option key={brand.id} value={brand.id}>{brand.name}</option>
-                                    ))}
-                                </select>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <input
-                                    type="file"
-                                    accept="application/pdf"
-                                    onChange={(e) => {
-                                        const file = e.target.files[0];
-                                        if (file && file.type === "application/pdf") {
-                                            const newItems = [...formData.items];
-                                            newItems[index].attachment = file.name;
-                                            setFormData({ ...formData, items: newItems });
-                                        } else {
-                                            alert("Only PDF files are allowed.");
-                                        }
-                                    }}
-                                    className="hidden"
-                                    id={`fileInput-${index}`}
-                                />
-                                <label htmlFor={`fileInput-${index}`} className="cursor-pointer text-blue-600 flex items-center space-x-2">
-                                    <PaperClipIcon className="h-5 w-5" />
-                                    {item.attachment && <span className="text-sm text-gray-600">{item.attachment}</span>}
-                                </label>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="relative flex justify-center items-center">
+                    <thead>
+                        <tr>
+                            <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Item Name</th>
+                            <th className="px-2 py-2 text-center w-[11%] bg-[#C7E7DE]">Description</th>
+                            <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">Unit</th>
+                            <th className="px-2 py-2 text-center w-[9%] bg-[#C7E7DE]">Quantity</th>
+                            <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">Brand</th>
+                            <th className="px-2 py-2 text-center w-[9%] bg-[#C7E7DE]">Attachment</th>
+                            <th className="px-2 py-2 text-center w-[13%] bg-[#C7E7DE]">Expected Delivery Date</th>
+                            <th className="px-2 py-2 text-center w-[6%] bg-[#C7E7DE]">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {formData.items.map((item, index) => (
+                            <tr key={index}>
+                                <td className="px-6 py-4 text-center align-middle">
+                                    <input
+                                        type="text"
+                                        value={item.item_name || ''}
+                                        onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
+                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center"
+                                        style={{ background: 'none', outline: 'none', textAlign: 'center' }}
+                                    />
+                                </td>
+                                <td className="px-6 py-4 text-center align-middle">
+                                    <textarea
+                                        value={item.description || ''}
+                                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal resize-none text-center"
+                                        style={{ background: 'none', outline: 'none', overflow: 'hidden', textAlign: 'center' }}
+                                        rows="1"
+                                        onInput={e => {
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = e.target.scrollHeight + 'px';
+                                        }}
+                                    />
+                                </td>
+                                <td className="px-6 py-4 text-center align-middle">
+                                    <select
+                                        value={item.unit_id || ''}
+                                        onChange={(e) => handleItemChange(index, 'unit_id', e.target.value)}
+                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent"
+                                        style={{ background: 'none', outline: 'none', textAlign: 'center', paddingRight: '1rem' }}
+                                    >
+                                        <option value="" className="bg-white text-gray-600 hover:text-gray-900">Select Unit</option>
+                                        {units.map((unit) => (
+                                            <option 
+                                                key={unit.id} 
+                                                value={unit.id} 
+                                                className="bg-transparent text-gray-600 hover:text-gray-900"
+                                                style={{ backgroundColor: 'transparent' }}
+                                            >
+                                                {unit.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </td>
+                                <td className="px-6 py-4 text-center align-middle">
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        value={item.quantity}
+                                        onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                        onBlur={() => handleQuantityBlur(index)}
+                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm whitespace-normal text-center"
+                                        style={{ background: 'none', outline: 'none', textAlign: 'center' }}
+                                    />
+                                </td>
+                                <td className="px-6 py-4 text-center align-middle">
+                                    <select
+                                        value={item.brand_id || ''}
+                                        onChange={(e) => handleItemChange(index, 'brand_id', e.target.value)}
+                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent"
+                                        style={{ background: 'none', outline: 'none', textAlign: 'center', paddingRight: '1rem' }}
+                                    >
+                                        <option value="" className="bg-white text-gray-600 hover:text-gray-900">Select Brand</option>
+                                        {brands.map((brand) => (
+                                            <option 
+                                                key={brand.id} 
+                                                value={brand.id} 
+                                                className="bg-transparent text-gray-600 hover:text-gray-900"
+                                                style={{ backgroundColor: 'transparent' }}
+                                            >
+                                                {brand.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                    <div className="flex flex-col items-center justify-center w-full">
+                                        <FileDisplay 
+                                            file={item.attachment} 
+                                            onFileClick={(url) => window.open(url, '_blank')}
+                                        />
+                                        <input
+                                            type="file"
+                                            onChange={(e) => handleFileChange(index, e)}
+                                            className="hidden"
+                                            id={`file-input-${index}`}
+                                            accept=".pdf,.doc,.docx"
+                                        />
+                                        <label 
+                                            htmlFor={`file-input-${index}`}
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer break-words whitespace-normal text-center"
+                                        >
+                                            {item.attachment ? 'Replace file' : 'Attach file'}
+                                        </label>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
                                     <input
                                         type="date"
-                                        value={item.expected_delivery_date
-                                            ?.split('/').reverse().join('-') || ''} // Convert DD/MM/YYYY -> YYYY-MM-DD for the input
-                                        onChange={(e) => {
-                                            if (!e.target.value) return;
-
-                                        const [year, month, day] = e.target.value.split('-');
-                                        const formattedDate = `${day}/${month}/${year}`; // Convert back to DD/MM/YYYY
-
-                                            const newItems = [...formData.items];
-                                            newItems[index].expected_delivery_date = formattedDate;
-                                            setFormData({ ...formData, items: newItems });
-                                        }}
-                                        className="bg-transparent border border-gray-300 rounded-md px-2 py-1 text-center text-sm 
-                                                appearance-none focus:ring-0 focus:outline-none focus:border-transparent 
-                                                active:outline-none active:ring-0 border-none"
+                                        value={item.expected_delivery_date || ''}
+                                        onChange={(e) => handleItemChange(index, 'expected_delivery_date', e.target.value)}
+                                        className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
                                     />
-                                </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <button
-                                    onClick={() => {
-                                        const newItems = [...formData.items];
-                                        newItems.splice(index, 1);
-                                        setFormData({ ...formData, items: newItems });
-                                    }}
-                                    className="text-red-600"
-                                >
-                                    Delete
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <button
+                                        onClick={() => handleRemoveItem(index)}
+                                        className="text-red-600 hover:text-red-900"
+                                    >
+                                        <TrashIcon className="h-5 w-5" />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
 
-            {/* Add Item Button */}
-            <div className="mt-4 flex justify-center">
-                <button
-                    type="button"
-                    onClick={addItem}
-                    className="text-blue-600 flex items-center"
-                >
-                    + Add Item
-                </button>
-            </div>
+
+                {/* Add Item Button */}
+                <div className="mt-4 flex justify-center">
+                    <button
+                        type="button"
+                        onClick={addItem}
+                        className="text-blue-600 flex items-center"
+                    >
+                        + Add Item
+                    </button>
+                </div>
 
                 {/* Action Buttons */}
                 <div className="mt-8 flex justify-end space-x-4">

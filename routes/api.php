@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\V1\InventoryController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\Api\RfqApiController;
 use App\Http\Controllers\Api\V1\RfqStatusLogController;
+use App\Http\Controllers\Api\V1\RfqCategoryController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -117,6 +118,19 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::delete('/rfq-status-logs/{id}', [RfqStatusLogController::class, 'destroy']);
 
     Route::get('/statuses/payment-types', [StatusController::class, 'getPaymentTypes']);
+
+    Route::post('/api/v1/rfq-items', [RfqItemController::class, 'store']);
+    Route::put('/api/v1/rfq-items', [RfqItemController::class, 'update']);
+
+    Route::get('/rfq-categories/{rfq_id}', [RfqCategoryController::class, 'show']);
+
+    Route::get('/quotations-by-rfq/{rfq_id}', [QuotationController::class, 'getQuotationsByRfq']);
+    Route::post('/upload-terms', [QuotationController::class, 'uploadTerms']);
+    Route::post('/update-quotations', [QuotationController::class, 'updateQuotations']);
+
+    Route::get('/quotations/rfq/{rfqId}', [QuotationController::class, 'getByRfq']);
+    Route::post('/quotations/update-batch', [QuotationController::class, 'updateBatch']);
+    Route::post('/quotations/upload-terms', [QuotationController::class, 'uploadTerms']);
 });
 
 Route::get('/user', function (Request $request) {
@@ -138,3 +152,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/units', [UnitController::class, 'index']);
     Route::get('/brands', [BrandController::class, 'index']);
 });
+
+Route::get('download/{filename}', function ($filename) {
+    $path = storage_path('app/public/rfq-attachments/' . $filename);
+    
+    if (!file_exists($path)) {
+        abort(404);
+    }
+    
+    return response()->file($path);
+})->where('filename', '.*')->name('file.download');

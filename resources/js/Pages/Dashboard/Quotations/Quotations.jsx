@@ -6,41 +6,97 @@ import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight } from "@fort
 import axios from "axios";
 
 const RFQ = ({ auth }) => {
-    const [rfqLogs, setRfqLogs] = useState([]);
+    const [quotations, setQuotations] = useState([]);
+    const [filteredQuotations, setFilteredQuotations] = useState([]);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [editingId, setEditingId] = useState(null);
     const [editData, setEditData] = useState({});
+    const [selectedFilter, setSelectedFilter] = useState("All");
+    const filters = ["All", "Expired", "Active", "Approved"];
 
-    const fetchRFQLogs = async () => {
+    const fetchQuotations = async () => {
         try {
-            const response = await axios.get(`/api/v1/rfq-status-logs?page=${currentPage}`);
-            setRfqLogs(response.data.data);
+            const response = await axios.get(`/api/v1/quotations?page=${currentPage}`);
+            const quotationsData = response.data.data;
+            
+            // Fetch status details for each quotation
+            const quotationsWithDetails = await Promise.all(
+                quotationsData.map(async (quotation) => {
+                    // Fetch status details
+                    const statusResponse = await axios.get(`/api/v1/statuses/${quotation.status_id}`);
+                    // Fetch RFQ details
+                    const rfqResponse = await axios.get(`/api/v1/rfqs/${quotation.rfq_id}`);
+                    
+                    return {
+                        ...quotation,
+                        organization_name: rfqResponse.data.data.organization_name,
+                        status_type: statusResponse.data.data.type,
+                        status_name: statusResponse.data.data.name
+                    };
+                })
+            );
+            
+            setQuotations(quotationsWithDetails);
+            applyFilter(selectedFilter, quotationsWithDetails);
             setLastPage(response.data.meta.last_page);
             setError("");
         } catch (error) {
             console.error('API Error:', error);
-            setError("Failed to load RFQ logs");
-            setRfqLogs([]);
+            setError("Failed to load quotations");
+            setQuotations([]);
+            setFilteredQuotations([]);
         }
     };
 
+    // Apply filter function
+    const applyFilter = (filter, data = quotations) => {
+        const quotationsToFilter = data.length > 0 ? data : quotations;
+        
+        switch(filter) {
+            case 'Expired':
+                setFilteredQuotations(quotationsToFilter.filter(
+                    quotation => quotation.status_name.toLowerCase() === 'expired'
+                ));
+                break;
+            case 'Active':
+                setFilteredQuotations(quotationsToFilter.filter(
+                    quotation => quotation.status_name.toLowerCase() === 'active'
+                ));
+                break;
+            case 'Approved':
+                setFilteredQuotations(quotationsToFilter.filter(
+                    quotation => quotation.status_name.toLowerCase() === 'approved'
+                ));
+                break;
+            default: // 'All'
+                setFilteredQuotations(quotationsToFilter);
+                break;
+        }
+    };
+
+    // Handle filter change
+    const handleFilterChange = (filter) => {
+        setSelectedFilter(filter);
+        applyFilter(filter);
+    };
+
     useEffect(() => {
-        fetchRFQLogs();
+        fetchQuotations();
     }, [currentPage]);
 
-    const handleEdit = (log) => {
-        setEditingId(log.id);
-        setEditData(log);
+    const handleEdit = (quotation) => {
+        setEditingId(quotation.id);
+        setEditData(quotation);
     };
 
     const handleSave = async (id) => {
         try {
-            const response = await axios.put(`/api/v1/rfq-status-logs/${id}`, editData);
+            const response = await axios.put(`/api/v1/quotations/${id}`, editData);
             if (response.data) {
                 setEditingId(null);
-                fetchRFQLogs(); // Refresh the data
+                fetchQuotations(); // Refresh the data
             }
         } catch (error) {
             console.error('Save error:', error);
@@ -52,8 +108,8 @@ const RFQ = ({ auth }) => {
         if (!confirm("Are you sure you want to delete this record?")) return;
 
         try {
-            await axios.delete(`/api/v1/rfq-status-logs/${id}`);
-            fetchRFQLogs(); // Refresh data
+            await axios.delete(`/api/v1/quotations/${id}`);
+            fetchQuotations(); // Refresh data
         } catch (error) {
             console.error('Error deleting record:', error);
         }
@@ -101,21 +157,38 @@ const RFQ = ({ auth }) => {
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                     <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Purchases</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                    <span className="text-[#009FDC] text-xl">RFQs</span>
+                    <span className="text-[#009FDC] text-xl">Quotations</span>
                 </div>
 
-                {/* RFQs Logs Heading and Make New RFQ Button */}
+                {/* Quotations Heading and Buttons */}
                 <div className="flex justify-between items-center mb-12">
-                <h2 className="text-[32px] font-bold text-[#2C323C] whitespace-nowrap">RFQ Logs</h2>
-                    <Link
-                        href="/quotations/create"
-                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                    >
-                        Make New RFQ
-                    </Link>
+                    <h2 className="text-[32px] font-bold text-[#2C323C] whitespace-nowrap">Quotations</h2>
+                    <div className="flex items-center space-x-4">
+                        <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
+                            {filters.map((filter) => (
+                                <button
+                                    key={filter}
+                                    className={`px-6 py-2 rounded-full text-xl transition ${
+                                        selectedFilter === filter
+                                            ? "bg-[#009FDC] text-white"
+                                            : "text-[#9B9DA2]"
+                                    }`}
+                                    onClick={() => handleFilterChange(filter)}
+                                >
+                                    {filter}
+                                </button>
+                            ))}
+                        </div>
+                        <Link
+                            href="/new-quotation"
+                            className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium"
+                        >
+                            Add Quotation
+                        </Link>
+                    </div>
                 </div>
 
-                {/* RFQs Table */}
+                {/* Quotations Table */}
                 <div className="w-full overflow-hidden">
                     {error && (
                         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
@@ -125,90 +198,35 @@ const RFQ = ({ auth }) => {
                     <table className="w-full">
                         <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                             <tr>
-                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">RFQ#</th>
-                                <th className="py-3 px-4 text-center">Supplier</th>
+                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">Quotation#</th>
+                                <th className="py-3 px-4 text-center">RFQ#</th>
+                                <th className="py-3 px-4 text-center">Company</th>
                                 <th className="py-3 px-4 text-center">Amount</th>
-                                <th className="py-3 px-4 text-center">Status</th>
-                                <th className="py-3 px-4 text-center">Date & Time</th>
-                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Actions</th>
+                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Expiry Date</th>
                             </tr>
                         </thead>
 
                         <tbody className="bg-transparent divide-y divide-gray-200">
-                            {rfqLogs.map((log) => (
-                                <tr key={log.id}>
+                            {filteredQuotations.map((quotation) => (
+                                <tr key={quotation.id}>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {log.rfq_id}
+                                        {quotation.quotation_number}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {editingId === log.id ? (
-                                            <input
-                                                type="text"
-                                                value={editData.supplier_name || ''}
-                                                onChange={(e) => handleChange('supplier_name', e.target.value)}
-                                                className="bg-transparent border-none focus:outline-none focus:ring-0 w-20 text-center text-base"
-                                            />
-                                        ) : (
-                                            log.supplier_name || 'N/A'
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center w-[250px]">
-                                        {editingId === log.id ? (
-                                            <input
-                                                type="number"
-                                                value={editData.amount || ''}
-                                                onChange={(e) => {
-                                                    const value = Math.max(0, Number(e.target.value)); // Prevent negative values
-                                                    handleChange('amount', value);
-                                                }}
-                                                className="bg-transparent border-none focus:outline-none focus:ring-0 w-[150px] text-center text-base"
-                                                min="0"
-                                            />
-                                        ) : (
-                                            <span className="text-base inline-block w-[150px] truncate">{log.amount || '0'}</span>
-                                        )}
+                                        {quotation.rfq_id}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <span className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${
-                                            log.status_name === 'Active' ? 'bg-green-100 text-green-800' :
-                                            log.status_name === 'Rejected' ? 'bg-red-100 text-red-800' :
-                                            log.status_name === 'Expired' ? 'bg-gray-100 text-gray-800' :
-                                            'bg-yellow-100 text-yellow-800'
-                                        }`}>
-                                            {log.status_name}
-                                        </span>
+                                        {quotation.organization_name}
                                     </td>
-
-                                    {/* Format Date & Time */}
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {formatDateTime(log.created_at)}
+                                        {quotation.total_amount}
                                     </td>
-
-                                    {/* Centered Buttons */}
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <div className="flex justify-center space-x-3">
-                                            {editingId === log.id ? (
-                                                <button
-                                                    onClick={() => handleSave(log.id)}
-                                                    className="text-green-600 hover:text-green-900"
-                                                >
-                                                    <FontAwesomeIcon icon={faCheck} className="h-5 w-5" />
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={() => handleEdit(log)}
-                                                    className="text-gray-600 hover:text-gray-600"
-                                                >
-                                                    <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={() => handleDelete(log.id)}
-                                                className="text-red-600 hover:text-red-900"
-                                            >
-                                                <FontAwesomeIcon icon={faTrash} className="h-5 w-5" />
-                                            </button>
-                                        </div>
+                                        {quotation.valid_until ? new Date(quotation.valid_until).toLocaleDateString('en-GB', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric'
+                                        }) : ''}
                                     </td>
                                 </tr>
                             ))}
@@ -216,7 +234,7 @@ const RFQ = ({ auth }) => {
                     </table>
 
                     {/* Pagination */}
-                    {!error && rfqLogs.length > 0 && (
+                    {!error && filteredQuotations.length > 0 && (
                         <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                             <button
                                 onClick={() => setCurrentPage(currentPage - 1)}

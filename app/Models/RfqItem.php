@@ -18,7 +18,7 @@ class RfqItem extends Model
         'description',
         'unit_id',
         'quantity',
-        'brand',
+        'brand_id',
         'model',
         'specifications',
         'attachment',
@@ -26,6 +26,7 @@ class RfqItem extends Model
         'quoted_price',
         'negotiated_price',
         'status_id',
+        'attachment'
     ];
 
     public function rfq(): BelongsTo
@@ -38,9 +39,14 @@ class RfqItem extends Model
         return $this->belongsTo(ProductCategory::class);
     }
 
-    public function unit(): BelongsTo
+    public function unit()
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    public function brand()
+    {
+        return $this->belongsTo(Brand::class);
     }
 
     public function status(): BelongsTo
