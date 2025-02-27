@@ -121,6 +121,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/quotation-to-rfq', function () { 
         return Inertia::render('Dashboard/Quotations/QuotationRFQ'); 
     })->name('quotation-to-rfq');
+
+    Route::get('/view-order', function () { 
+        return Inertia::render('Dashboard/Purchase Order/ViewOrder'); 
+    })->name('view-order');
+
+    Route::get('/approve-order', function () { 
+        return Inertia::render('Dashboard/Purchase Order/ApproveOrder'); 
+    })->name('approve-order');
     
     // RFQ Routes
     Route::get('/dashboard/quotations', [RFQController::class, 'index'])->name('dashboard.quotations.index');
