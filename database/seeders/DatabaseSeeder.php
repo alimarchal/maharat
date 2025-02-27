@@ -2,8 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -18,14 +16,15 @@ class DatabaseSeeder extends Seeder
             CountrySeeder::class,
             RoleAndPermissionSeeder::class,
             UserSeeder::class,
+            SupplierSeeder::class,
             StatusSeeder::class,
-            RfqCategorySeeder::class,
-            RfqSeeder::class,
-            RfqItemSeeder::class,
-            QuotationSeeder::class,
-            UnitSeeder::class,
             ProductCategorySeeder::class,
+            RfqCategorySeeder::class,
+            UnitSeeder::class,  
+            BrandSeeder::class,
+            RfqSeeder::class,     
+            RfqItemSeeder::class, 
+            QuotationSeeder::class,
         ]);
-        //php artisan db:seed
     }
 }
