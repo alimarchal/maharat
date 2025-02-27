@@ -23,6 +23,8 @@ class DatabaseSeeder extends Seeder
             RfqSeeder::class,
             RfqItemSeeder::class,
             QuotationSeeder::class,
+            UnitSeeder::class,
+            ProductCategorySeeder::class,
         ]);
         //php artisan db:seed
     }
