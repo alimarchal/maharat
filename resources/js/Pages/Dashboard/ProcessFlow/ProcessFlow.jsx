@@ -4,7 +4,7 @@ import SelectFloating from "@/Components/SelectFloating";
 import { Link } from "@inertiajs/react";
 import axios from "axios";
 
-const ProcessFlowTable = () => {
+const ProcessFlow = () => {
     const [formData, setFormData] = useState({ employee: "", type: "" });
     const [users, setUsers] = useState([]);
 
@@ -179,4 +179,4 @@ const ProcessFlowTable = () => {
     );
 };
 
-export default ProcessFlowTable;
+export default ProcessFlow;

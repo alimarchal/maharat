@@ -123,11 +123,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('company.create');
 
     Route::get('/process-flow', function () { 
-        return Inertia::render('Dashboard', ['page' => 'ProcessFlow/ProcessFlowTable']); 
+        return Inertia::render('Dashboard', ['page' => 'ProcessFlow/ProcessFlow']); 
     })->name('process.index');
     Route::get('/process-flow/create', function () { 
         return Inertia::render('Dashboard', ['page' => 'ProcessFlow/CreateProcessFlow']); 
     })->name('process.create');
+
+    Route::get('/roles-permissions', function () { 
+        return Inertia::render('Dashboard', ['page' => 'RolePermission/RolesPermissions']); 
+    })->name('permission.index');
+
+    Route::get('/notification-settings', function () { 
+        return Inertia::render('Dashboard', ['page' => 'NotificationSettings/Notification']); 
+    })->name('notification.index');
 
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
