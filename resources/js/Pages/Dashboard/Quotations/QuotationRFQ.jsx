@@ -48,21 +48,39 @@ export default function QuotationRFQ({ auth }) {
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [attachments, setAttachments] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [progress, setProgress] = useState(0);
 
     // Get rfqId from URL
     const rfqId = window.location.pathname.split('/').pop();
 
     const fetchQuotations = async () => {
+        setLoading(true);
+        setProgress(0);
+    
+        // Smoothly increase progress
+        const interval = setInterval(() => {
+            setProgress((oldProgress) => (oldProgress >= 90 ? 90 : oldProgress + 10));
+        }, 300);
+    
         try {
             const response = await axios.get(`/api/v1/quotations?page=${currentPage}&rfq_id=${rfqId}`);
             console.log('API Response:', response.data); // Debug log
             setQuotations(response.data.data);
             setLastPage(response.data.meta.last_page);
             setError("");
+    
+            // Ensure full progress bar before hiding
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
         } catch (error) {
             console.error('API Error:', error);
             setError("Failed to load quotations");
             setQuotations([]);
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
+        } finally {
+            clearInterval(interval);
         }
     };
 
@@ -158,6 +176,22 @@ export default function QuotationRFQ({ auth }) {
                                         </tr>
                                     </thead>
 
+                                    {/* Loading Bar */}
+                                    {loading && (
+                                        <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
+                                            <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
+                                                <div
+                                                    className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
+                                                    style={{ width: `${progress}%` }}
+                                                ></div>
+                                                <span className="absolute text-white">
+                                                    {progress < 60 ? "Please Wait, Fetching Details..." : `${progress}%`}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {!loading && (
                                     <tbody className="bg-transparent divide-y divide-gray-200">
                                         {quotations.map((quotation, index) => (
                                             <tr key={quotation.id}>
@@ -213,9 +247,11 @@ export default function QuotationRFQ({ auth }) {
                                             </tr>
                                         ))}
                                     </tbody>
+                                    )}
                                 </table>
 
-                                {!error && quotations.length > 0 && (
+                                {/* Pagination */}
+                                {!loading && !error && quotations.length > 0 && (
                                     <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                                         <button
                                             onClick={() => setCurrentPage(currentPage - 1)}
@@ -226,7 +262,7 @@ export default function QuotationRFQ({ auth }) {
                                         >
                                             Previous
                                         </button>
-                                        {Array.from({ length: lastPage }, (_, index) => index + 1).map((page) => (
+                                        {Array.from({ length: Math.ceil(quotations.length / 10) }, (_, index) => index + 1).map((page) => (
                                             <button
                                                 key={page}
                                                 onClick={() => setCurrentPage(page)}
@@ -242,15 +278,16 @@ export default function QuotationRFQ({ auth }) {
                                         <button
                                             onClick={() => setCurrentPage(currentPage + 1)}
                                             className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                                currentPage >= lastPage ? "opacity-50 cursor-not-allowed" : ""
+                                                currentPage >= Math.ceil(quotations.length / 10) ? "opacity-50 cursor-not-allowed" : ""
                                             }`}
-                                            disabled={currentPage >= lastPage}
+                                            disabled={currentPage >= Math.ceil(quotations.length / 10)}
                                         >
                                             Next
                                         </button>
                                     </div>
                                 )}
 
+                                {!loading && (
                                 <div className="mt-6 flex justify-end border-t pt-6">
                                     <button
                                         onClick={handleSave}
@@ -259,6 +296,7 @@ export default function QuotationRFQ({ auth }) {
                                         Save Changes
                                     </button>
                                 </div>
+                                )}
                             </div>
                         </div>
                     </div>
