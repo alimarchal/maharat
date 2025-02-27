@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->foreignId('unit_id')->nullable()->constrained('units');
             $table->decimal('quantity', 15, 4);
-            $table->string('brand')->nullable();
+            $table->foreignId('brand_id')->nullable()->constrained('brands');
             $table->string('model')->nullable();
             $table->string('specifications')->nullable();
             $table->string('attachment')->nullable();
