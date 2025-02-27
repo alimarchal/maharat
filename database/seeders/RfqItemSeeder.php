@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\Rfq;
 use App\Models\RfqItem;
 use Illuminate\Database\Seeder;
+use App\Models\Brand;
+use App\Models\Unit;
 
 class RfqItemSeeder extends Seeder
 {
@@ -31,10 +33,11 @@ class RfqItemSeeder extends Seeder
                     'rfq_id' => $rfq->id,
                     'item_name' => $item['name'],
                     'description' => $item['description'],
-                    'unit' => ['PCS', 'SET', 'UNIT'][rand(0, 2)],
+                    'unit_id' => Unit::inRandomOrder()->first()->id ?? 1,
                     'quantity' => rand(1, 10),
-                    'brand' => ['Samsung', 'HP', 'Dell', 'Generic'][rand(0, 3)],
+                    'brand_id' => Brand::inRandomOrder()->first()->id ?? 1,
                     'expected_delivery_date' => now()->addDays(rand(7, 30)),
+                    'status_id' => 1,
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
