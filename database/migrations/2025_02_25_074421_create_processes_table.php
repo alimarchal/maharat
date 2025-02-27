@@ -16,7 +16,7 @@ return new class extends Migration
             $table->id();
             $table->string('title')->comment('Process name like Purchase Approval, RFQ Process');
             $table->boolean('is_active')->default(true);
-            $table->enum('status', ['Active', 'Pending', 'Rejected', 'Expired'])->default('Active');
+            $table->enum('status', ['Active', 'Pending', 'Rejected', 'Expired', 'Draft'])->default('Draft');
             $table->foreignId('created_by')->nullable()->constrained('users', 'id');
             $table->foreignId('updated_by')->nullable()->constrained('users', 'id');
             $table->timestamps();
