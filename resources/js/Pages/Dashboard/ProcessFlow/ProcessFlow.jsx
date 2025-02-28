@@ -14,7 +14,6 @@ const ProcessFlow = () => {
     const [processes, setProcesses] = useState([]);
     const [selectedProcess, setSelectedProcess] = useState(null);
     const [users, setUsers] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         const fetchProcesses = async () => {
@@ -40,7 +39,6 @@ const ProcessFlow = () => {
     }, []);
 
     const handleProcessChange = async (e) => {
-        setIsLoading(true);
         const processId = Number(e.target.value);
         const process = processes.find((p) => p.id === processId);
         setSelectedProcess(process || null);
@@ -82,12 +80,9 @@ const ProcessFlow = () => {
                         taskDescription: "",
                     },
                 ]);
-            } finally {
-                setIsLoading(false);
             }
         } else {
             setRows([]);
-            setIsLoading(false);
         }
     };
 
@@ -160,7 +155,6 @@ const ProcessFlow = () => {
             }
         }
 
-        setIsLoading(true);
         try {
             if (rows.some((row) => row.step_id)) {
                 await axios.delete(
@@ -182,22 +176,20 @@ const ProcessFlow = () => {
             handleProcessChange({ target: { value: selectedProcess.id } });
         } catch (error) {
             alert("Failed to update process flow. Please try again.");
-        } finally {
-            setIsLoading(false);
         }
     };
 
     const renderEmptyState = () => (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 mt-6 flex flex-col items-center justify-center text-center">
+        <div className="border border-gray-300 rounded-2xl p-8 mt-6 flex flex-col items-center justify-center text-center">
             <div className="bg-[#E6F4F9] p-5 rounded-full mb-4">
                 <FaClipboardList className="text-[#009FDC] text-4xl" />
             </div>
-            <h3 className="text-2xl font-semibold text-[#2C323C] mb-2">
+            <h3 className="text-3xl font-semibold text-[#2C323C] mb-2">
                 No Process Selected
             </h3>
             <p className="text-[#7D8086] text-lg max-w-md mb-6">
                 Please select a process type from the dropdown above to view or
-                create a process flow.
+                create a new process.
             </p>
         </div>
     );
@@ -216,7 +208,7 @@ const ProcessFlow = () => {
                             Select an approval process flow with specific steps
                         </p>
                     </div>
-                    <div className="flex flex-col gap-2 w-full md:w-2/5">
+                    <div className="flex flex-col gap-4 w-full md:w-2/5">
                         <SelectFloating
                             label="Type of Process"
                             name="type"
@@ -296,7 +288,7 @@ const ProcessFlow = () => {
                                             <td className="py-3 px-4">
                                                 <input
                                                     type="text"
-                                                    className="border border-gray-400 rounded-2xl p-4 w-full"
+                                                    className="border border-gray-300 rounded-xl px-4 py-5 w-full"
                                                     value={row.taskDescription}
                                                     onChange={(e) =>
                                                         handleTaskDescriptionChange(
@@ -313,26 +305,28 @@ const ProcessFlow = () => {
                                                         rows.length - 1 && (
                                                         <button
                                                             type="button"
-                                                            className="text-[#009FDC] hover:text-blue-600 transition-all"
+                                                            className="text-lg text-[#9B9DA2] hover:text-blue-600"
                                                             onClick={addRow}
                                                             title="Add row"
                                                         >
                                                             <FaPlus />
                                                         </button>
                                                     )}
+                                                    {index !== 0 && (
+                                                        <button
+                                                            type="button"
+                                                            className="text-lg text-[#9B9DA2] hover:text-red-500"
+                                                            onClick={() =>
+                                                                removeRow(index)
+                                                            }
+                                                            title="Remove row"
+                                                        >
+                                                            <FaTrash />
+                                                        </button>
+                                                    )}
                                                     <button
                                                         type="button"
-                                                        className="text-[#9B9DA2] hover:text-red-500 transition-all"
-                                                        onClick={() =>
-                                                            removeRow(index)
-                                                        }
-                                                        title="Remove row"
-                                                    >
-                                                        <FaTrash />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className="text-[#009FDC] hover:text-blue-600 transition-all cursor-move"
+                                                        className="text-xl text-[#009FDC] hover:text-blue-600 cursor-move"
                                                         title="Drag to reorder"
                                                     >
                                                         <FaGripVertical />
@@ -347,10 +341,9 @@ const ProcessFlow = () => {
                             <div className="flex justify-end mt-6">
                                 <button
                                     onClick={handleSubmit}
-                                    disabled={isLoading}
                                     className="bg-[#009FDC] text-white px-6 py-2 rounded-lg text-lg font-medium hover:bg-[#007CB8] transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
                                 >
-                                    {isLoading ? "Saving..." : "Submit"}
+                                    Submit
                                 </button>
                             </div>
                         </div>

@@ -21,6 +21,8 @@ import ProcessFlow from "./Dashboard/ProcessFlow/ProcessFlow";
 import CreateProcessFlow from "./Dashboard/ProcessFlow/CreateProcessFlow";
 import RolesPermissions from "./Dashboard/RolePermission/RolesPermissions";
 import Notification from "./Dashboard/NotificationSettings/Notification";
+import TasksTable from "./Dashboard/Tasks/TasksTable";
+import ReviewTask from "./Dashboard/Tasks/ReviewTask";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -46,6 +48,8 @@ export default function Dashboard({ auth, page }) {
             return <RolesPermissions />;
         if (page === "NotificationSettings/Notification")
             return <Notification />;
+        if (page === "Tasks/TasksTable") return <TasksTable />;
+        if (page === "Tasks/ReviewTask") return <ReviewTask />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };
