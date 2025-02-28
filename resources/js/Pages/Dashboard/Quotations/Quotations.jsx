@@ -174,7 +174,7 @@ const RFQ = ({ auth }) => {
                         </div>
                         <Link
                             href="/new-quotation"
-                            className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium"
+                            className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
                         >
                             Add Quotation
                         </Link>

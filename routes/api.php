@@ -130,7 +130,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/upload-terms', [QuotationController::class, 'uploadTerms']);
     Route::post('/update-quotations', [QuotationController::class, 'updateQuotations']);
 
-    Route::get('/quotations/rfq/{rfqId}', [QuotationController::class, 'getByRfq']);
+    Route::get('/quotations/by-rfq/{rfqId}', [QuotationController::class, 'getByRfqId']);
     Route::post('/quotations/update-batch', [QuotationController::class, 'updateBatch']);
     Route::post('/quotations/upload-terms', [QuotationController::class, 'uploadTerms']);
 
