@@ -96,7 +96,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('quotation-documents', QuotationDocumentController::class);
 
     // Process routes
-    Route::apiResource('processes', ProcessController::class);
+    Route::apiResource('processes', ProcewssController::class);
     Route::patch('processes/{process}/toggle-active', [ProcessController::class, 'toggleActive']);
     Route::patch('processes/{process}/status', [ProcessController::class, 'updateStatus']);
 
@@ -155,10 +155,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 Route::get('download/{filename}', function ($filename) {
     $path = storage_path('app/public/rfq-attachments/' . $filename);
-    
+
     if (!file_exists($path)) {
         abort(404);
     }
-    
+
     return response()->file($path);
 })->where('filename', '.*')->name('file.download');
