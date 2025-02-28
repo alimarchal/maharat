@@ -25,7 +25,7 @@ class StoreProcessRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
-            'status' => ['sometimes', 'string', Rule::in(['Active', 'Pending', 'Rejected', 'Expired'])],
+            'status' => ['sometimes', 'string', Rule::in(['Active', 'Pending', 'Rejected', 'Expired','Draft'])],
 
             // Validate steps if they are provided with the process
             'steps' => ['sometimes', 'array'],
