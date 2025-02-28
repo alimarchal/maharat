@@ -159,7 +159,7 @@ const DashboardCard = ({
             onMouseLeave={() => setIsHovered(false)}
         >
             <div
-                className={`bg-white p-6 rounded-2xl shadow-md border border-gray-100 relative transition-all duration-300 h-56 flex flex-col justify-between ${
+                className={`bg-white p-10 rounded-tr-[5rem] rounded-bl-[5rem] shadow-md border border-gray-100 relative transition-all duration-300 h-64 flex flex-col justify-between ${
                     isHovered ? "shadow-lg" : ""
                 } ${onClick ? "cursor-pointer" : ""}`}
                 onClick={handleCardClick}
@@ -343,7 +343,7 @@ export default function MainDashboard({ roles }) {
     return (
         <>
             <div
-                className="relative w-full h-72 md:h-80 lg:h-[17rem] bg-cover bg-center text-white p-6 rounded-3xl"
+                className="relative w-full h-72 md:h-80 lg:h-60 bg-cover bg-center text-white p-6 rounded-3xl"
                 style={{ backgroundImage: "url('/images/banner.png')" }}
             >
                 <div className="absolute bottom-4 text-left">
