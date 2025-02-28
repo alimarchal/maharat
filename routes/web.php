@@ -155,6 +155,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'NotificationSettings/Notification']); 
     })->name('notification.index');
 
+    Route::get('/tasks', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Tasks/TasksTable']); 
+    })->name('tasks.index');
+    Route::get('/tasks/new', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Tasks/ReviewTask']); 
+    })->name('tasks.create');
+
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
