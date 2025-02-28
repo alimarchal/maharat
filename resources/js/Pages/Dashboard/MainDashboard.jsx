@@ -242,6 +242,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "Purchase Orders",
             icon: faFileSignature,
+            onClick: () => router.visit("/view-order"),
         },
         {
             text: "Goods Receiving Note",

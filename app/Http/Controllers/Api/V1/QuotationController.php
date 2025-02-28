@@ -13,6 +13,7 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
+use Illuminate\Http\Request;
 
 class QuotationController extends Controller
 {
@@ -110,64 +111,19 @@ class QuotationController extends Controller
         ], Response::HTTP_OK);
     }
 
-    public function update(UpdateQuotationRequest $request, Quotation $quotation): JsonResponse
+    public function update(Request $request, $id)
     {
-        try {
-            DB::beginTransaction();
+        $quotation = Quotation::findOrFail($id);
+        $quotation->update($request->all());
 
-            $quotation->update($request->safe()->except('documents'));
-
-            // Handle document uploads if provided
-            if ($request->hasFile('documents')) {
-                foreach ($request->file('documents') as $document) {
-                    $path = $document->store('quotations');
-                    $quotation->documents()->create([
-                        'file_path' => $path,
-                        'original_name' => $document->getClientOriginalName(),
-                        'type' => 'quotation'
-                    ]);
-                }
-            }
-
-            DB::commit();
-
-            return response()->json([
-                'message' => 'Quotation updated successfully',
-                'data' => new QuotationResource(
-                    $quotation->load(['rfq', 'supplier', 'status', 'documents'])
-                )
-            ], Response::HTTP_OK);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Failed to update quotation',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
+        return response()->json(['success' => true]);
     }
 
-    public function destroy(Quotation $quotation): JsonResponse
+    public function destroy($id)
     {
-        try {
-            DB::beginTransaction();
+        $quotation = Quotation::findOrFail($id);
+        $quotation->delete();
 
-            // Delete associated documents first
-            $quotation->documents()->delete();
-
-            // Delete the quotation
-            $quotation->delete();
-
-            DB::commit();
-
-            return response()->json([
-                'message' => 'Quotation deleted successfully'
-            ], Response::HTTP_OK);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Failed to delete quotation',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
+        return response()->json(['success' => true]);
     }
 }
