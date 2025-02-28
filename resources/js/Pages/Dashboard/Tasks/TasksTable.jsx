@@ -43,7 +43,7 @@ const TasksTable = () => {
                 <h2 className="text-3xl font-bold text-[#2C323C]">My Tasks</h2>
                 <Link
                     href={`/tasks/new`}
-                    className="text-[#9B9DA2] hover:text-gray-500"
+                    className="flex text-gray-400 items-center hover:text-[#2C323C]"
                 >
                     Go to New Task
                 </Link>

@@ -18,6 +18,7 @@ const CompanyProfile = () => {
 
     const [errors, setErrors] = useState({});
     const [companyId, setCompanyId] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         fetchCompanyData();
@@ -48,9 +49,10 @@ const CompanyProfile = () => {
     };
 
     const handleChange = (e) => {
+        const { name, value } = e.target;
         setFormData((prevData) => ({
             ...prevData,
-            [e.target.name]: e.target.value,
+            [name]: value,
         }));
     };
 
@@ -80,7 +82,7 @@ const CompanyProfile = () => {
         Object.keys(formData).forEach((key) => {
             if (key === "logo" && formData[key] instanceof File) {
                 formDataToSend.append(key, formData[key]);
-            } else {
+            } else if (formData[key] !== null && formData[key] !== undefined) {
                 formDataToSend.append(key, formData[key]);
             }
         });
@@ -90,32 +92,30 @@ const CompanyProfile = () => {
 
     const handleSave = async () => {
         if (!validate()) return;
+        setIsSubmitting(true);
 
         try {
             const formDataToSend = prepareFormData();
             let response;
+
             if (companyId) {
                 response = await axios.put(
                     `/api/v1/companies/${companyId}`,
-                    formDataToSend,
-                    {
-                        headers: { "Content-Type": "multipart/form-data" },
-                    }
+                    formDataToSend
                 );
             } else {
                 response = await axios.post(
                     "/api/v1/companies",
-                    formDataToSend,
-                    {
-                        headers: { "Content-Type": "multipart/form-data" },
-                    }
+                    formDataToSend
                 );
-                setCompanyId(response.data.id);
+                setCompanyId(response.data.data.id);
             }
 
             fetchCompanyData();
         } catch (error) {
             console.error("Error saving data:", error);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -252,9 +252,9 @@ const CompanyProfile = () => {
                             : "opacity-50 cursor-not-allowed"
                     }`}
                     onClick={handleSave}
-                    disabled={!companyId}
+                    disabled={!companyId || isSubmitting}
                 >
-                    Edit
+                    {isSubmitting ? "Updating..." : "Edit"}
                 </button>
                 <button
                     className={`px-8 py-2 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 ${
@@ -263,9 +263,9 @@ const CompanyProfile = () => {
                             : "hover:bg-[#007BB5]"
                     }`}
                     onClick={handleSave}
-                    disabled={companyId}
+                    disabled={companyId || isSubmitting}
                 >
-                    Save
+                    {isSubmitting ? "Saving..." : "Save"}
                 </button>
             </div>
         </div>

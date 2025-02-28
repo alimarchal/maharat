@@ -131,7 +131,7 @@ const ReviewTask = () => {
                 <div className="my-6 flex justify-center md:justify-end w-full">
                     <button
                         onClick={handleSubmit}
-                        className="px-8 py-3 text-lg font-medium bg-[#009FDC] text-white rounded-full hover:bg-blue-500 w-full md:w-auto"
+                        className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto"
                     >
                         Submit
                     </button>
