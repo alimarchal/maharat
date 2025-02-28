@@ -20,6 +20,11 @@ import {
     faEllipsisH,
     faWarehouse,
     faDolly,
+    faCoins,
+    faBook,
+    faMoneyCheckDollar,
+    faFileInvoiceDollar,
+    faBalanceScale,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { router } from "@inertiajs/react";
@@ -154,7 +159,7 @@ const DashboardCard = ({
             onMouseLeave={() => setIsHovered(false)}
         >
             <div
-                className={`bg-white p-6 rounded-2xl shadow-md border border-gray-100 relative transition-all duration-300 ${
+                className={`bg-white p-6 rounded-2xl shadow-md border border-gray-100 relative transition-all duration-300 h-56 flex flex-col justify-between ${
                     isHovered ? "shadow-lg" : ""
                 } ${onClick ? "cursor-pointer" : ""}`}
                 onClick={handleCardClick}
@@ -192,7 +197,7 @@ const DashboardCard = ({
                         </button>
                     )}
                 </div>
-                <div className="mt-16">
+                <div className="flex flex-col flex-grow justify-end">
                     <h3 className="text-3xl font-medium text-[#2C323C]">
                         {title}
                     </h3>
@@ -250,6 +255,33 @@ export default function MainDashboard({ roles }) {
         {
             text: "Status",
             icon: faEllipsisH,
+        },
+    ];
+
+    const financeDropdownItems = [
+        {
+            text: "Cost Centers",
+            icon: faCoins,
+        },
+        {
+            text: "Ledgers",
+            icon: faBook,
+        },
+        {
+            text: "Payment Orders",
+            icon: faMoneyCheckDollar,
+        },
+        {
+            text: "Account Receivables",
+            icon: faFileInvoiceDollar,
+        },
+        {
+            text: "Account Payables",
+            icon: faFileInvoice,
+        },
+        {
+            text: "Balance Sheet",
+            icon: faBalanceScale,
         },
     ];
 
@@ -323,7 +355,7 @@ export default function MainDashboard({ roles }) {
                     </p>
                 </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 my-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 my-6">
                 <DashboardCard
                     icon={faClipboardList}
                     title="Requests"
@@ -334,7 +366,7 @@ export default function MainDashboard({ roles }) {
                 />
                 <DashboardCard
                     icon={faListCheck}
-                    title="Tasks"
+                    title="Task Center"
                     subtitle="My Tasks & History"
                     bgColor="bg-[#F7EBBA]"
                     iconColor="text-[#665200]"
@@ -345,7 +377,7 @@ export default function MainDashboard({ roles }) {
                     <>
                         <DashboardCard
                             icon={faShoppingCart}
-                            title="Purchases"
+                            title="Procurement Center"
                             subtitle="Procurement System"
                             bgColor="bg-[#BFBCD8]"
                             iconColor="text-[#393559]"
@@ -353,17 +385,18 @@ export default function MainDashboard({ roles }) {
                         />
                         <DashboardCard
                             icon={faBoxes}
-                            title="Finance"
-                            subtitle="Budget & Expenses"
+                            title="Finance Center"
+                            subtitle="Financials"
                             bgColor="bg-[#C4E4F0]"
                             iconColor="text-[#005372]"
+                            dropdownItems={financeDropdownItems}
                         />
                     </>
                 )}
             </div>
 
             {isAdmin && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 my-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 my-6">
                     <DashboardCard
                         icon={faWarehouse}
                         title="Warehouse"
