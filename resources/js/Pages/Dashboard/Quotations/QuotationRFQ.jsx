@@ -7,6 +7,7 @@ import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight } from "@fort
 import axios from "axios";
 import { DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 
+// FileDisplay Component
 const FileDisplay = ({ file, onFileClick }) => {
     const fileName = file ? (
         typeof file === 'object' && file.name 
@@ -138,7 +139,7 @@ export default function QuotationRFQ({ auth }) {
             console.error('Save error:', error.response ? error.response.data : error.message);
             setError('Failed to save changes');
         }
-    };    
+    };
 
     const handleEdit = (quotation) => {
         setEditingId(quotation.id);
@@ -191,6 +192,45 @@ export default function QuotationRFQ({ auth }) {
             month: '2-digit',
             year: 'numeric'
         });
+    };
+
+    const handleFileUpload = async (quotationId, file) => {
+        const formData = new FormData();
+        formData.append('document', file);
+        formData.append('quotation_id', quotationId);
+        formData.append('type', 'quotation');
+
+        try {
+            // Find the existing document for the quotation
+            const existingDocument = quotations.find(q => q.id === quotationId)?.documents;
+
+            if (existingDocument && existingDocument.length > 0) {
+                // Update existing document
+                const response = await axios.put(`/api/v1/quotation-documents/${existingDocument[0].id}`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+                console.log("Document updated:", response.data);
+            } else {
+                // Create new document
+                const response = await axios.post('/api/v1/quotation-documents', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+                console.log("Document uploaded:", response.data);
+            }
+
+            fetchQuotations(); // Refresh the quotations after upload
+        } catch (error) {
+            console.error("Upload Error:", error.response ? error.response.data : error.message);
+            setError("Failed to upload document: " + (error.response?.data?.message || error.message));
+        }
+    };
+
+    const toggleEditMode = (quotationId) => {
+        setEditingId(editingId === quotationId ? null : quotationId); // Toggle edit mode
     };
 
     return (
@@ -263,123 +303,138 @@ export default function QuotationRFQ({ auth }) {
 
                             {!loading && (
                             <tbody className="bg-transparent divide-y divide-gray-200">
-                                {quotations.map((quotation, index) => (
-                                    <tr key={quotation.id}>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            {editingId === quotation.id ? (
-                                                <input
-                                                    type="text"
-                                                    value={editData.quotation_number || ''}
-                                                    onChange={(e) => setEditData({ ...editData, quotation_number: e.target.value })}
-                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
-                                                />
-                                            ) : (
-                                                quotation.quotation_number
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            {editingId === quotation.id ? (
-                                                <input
-                                                    type="text"
-                                                    value={editData.company_name || ''}
-                                                    onChange={(e) => setEditData({ ...editData, company_name: e.target.value })}
-                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
-                                                />
-                                            ) : (
-                                                quotation.company_name
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            {editingId === quotation.id ? (
-                                                <input
-                                                    type="date"
-                                                    value={editData.issue_date ? formatDateForInput(editData.issue_date) : ""}
-                                                    onChange={(e) => setEditData({ ...editData, issue_date: e.target.value })}
-                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
-                                                />
-                                            ) : (
-                                                formatDateForDisplay(quotation.issue_date)
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            {editingId === quotation.id ? (
-                                                <input
-                                                    type="date"
-                                                    value={editData.valid_until ? formatDateForInput(editData.valid_until) : ""}
-                                                    onChange={(e) => setEditData({ ...editData, valid_until: e.target.value })}
-                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
-                                                />
-                                            ) : (
-                                                formatDateForDisplay(quotation.valid_until)
-                                            )}
+                                {quotations.length > 0 ? (
+                                    quotations.map((quotation, index) => (
+                                        <tr key={quotation.id}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                {editingId === quotation.id ? (
+                                                    <input
+                                                        type="text"
+                                                        value={editData.quotation_number || ''}
+                                                        onChange={(e) => setEditData({ ...editData, quotation_number: e.target.value })}
+                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
+                                                    />
+                                                ) : (
+                                                    quotation.quotation_number
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                {editingId === quotation.id ? (
+                                                    <input
+                                                        type="text"
+                                                        value={editData.company_name || ''}
+                                                        onChange={(e) => setEditData({ ...editData, company_name: e.target.value })}
+                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
+                                                    />
+                                                ) : (
+                                                    quotation.company_name
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                {editingId === quotation.id ? (
+                                                    <input
+                                                        type="date"
+                                                        value={editData.issue_date ? formatDateForInput(editData.issue_date) : ""}
+                                                        onChange={(e) => setEditData({ ...editData, issue_date: e.target.value })}
+                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
+                                                    />
+                                                ) : (
+                                                    formatDateForDisplay(quotation.issue_date)
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                {editingId === quotation.id ? (
+                                                    <input
+                                                        type="date"
+                                                        value={editData.valid_until ? formatDateForInput(editData.valid_until) : ""}
+                                                        onChange={(e) => setEditData({ ...editData, valid_until: e.target.value })}
+                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
+                                                    />
+                                                ) : (
+                                                    formatDateForDisplay(quotation.valid_until)
+                                                )}
+                                            </td>
+
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                {editingId === quotation.id ? (
+                                                    <input
+                                                        type="number"
+                                                        value={editData.total_amount || ''}
+                                                        onChange={(e) => setEditData({ ...editData, total_amount: e.target.value })}
+                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center [&::-webkit-inner-spin-button]:hidden"
+                                                        style={{ textAlign: '-webkit-center' }}
+                                                    />
+                                                ) : (
+                                                    quotation.total_amount
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                            <div className="flex flex-col items-center justify-center w-full">
+                                                {quotation.documents && Array.isArray(quotation.documents) && quotation.documents.length > 0 ? (
+                                                    quotation.documents.map((doc) => (
+                                                        <FileDisplay 
+                                                            key={doc.id}
+                                                            file={doc}
+                                                            onFileClick={() => window.open(`/api/download/${doc.original_name}`, '_blank')}
+                                                        />
+                                                    ))
+                                                ) : (
+                                                    <span className="text-gray-500">No document attached</span>
+                                                )}
+
+                                                {editingId === quotation.id && (
+                                                    <>
+                                                        <input
+                                                            type="file"
+                                                            onChange={(e) => handleFileUpload(quotation.id, e.target.files[0])}
+                                                            className="hidden"
+                                                            id={`file-input-${quotation.id}`}
+                                                            accept=".pdf,.doc,.docx"
+                                                        />
+                                                        <label 
+                                                            htmlFor={`file-input-${quotation.id}`}
+                                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer break-words whitespace-normal text-center"
+                                                        >
+                                                            {(quotation.documents && Array.isArray(quotation.documents) && quotation.documents.length > 0) ? 'Replace file' : 'Attach file'}
+                                                        </label>
+                                                    </>
+                                                )}
+                                            </div>
                                         </td>
 
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            {editingId === quotation.id ? (
-                                                <input
-                                                    type="number"
-                                                    value={editData.total_amount || ''}
-                                                    onChange={(e) => setEditData({ ...editData, total_amount: e.target.value })}
-                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center [&::-webkit-inner-spin-button]:hidden"
-                                                    style={{ textAlign: '-webkit-center' }}
-                                                />
-                                            ) : (
-                                                quotation.total_amount
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            <div className="flex flex-col items-center justify-center w-full">
-                                                {quotation.terms_and_conditions && (
-                                                    <a 
-                                                        href={`/storage/${quotation.terms_and_conditions}`}
-                                                        target="_blank"
-                                                        className="text-blue-600 hover:text-blue-800"
-                                                    >
-                                                        View File
-                                                    </a>
-                                                )}
-                                                <input
-                                                    type="file"
-                                                    onChange={(e) => handleFileChange(index, e)}
-                                                    className="hidden"
-                                                    id={`file-input-${index}`}
-                                                    accept=".pdf,.doc,.docx"
-                                                />
-                                                <label 
-                                                    htmlFor={`file-input-${index}`}
-                                                    className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-                                                >
-                                                    {quotation.terms_and_conditions ? 'Replace file' : 'Attach file'}
-                                                </label>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            <div className="flex justify-center space-x-3">
-                                                {editingId === quotation.id ? (
+
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                <div className="flex justify-center space-x-3">
+                                                    {editingId === quotation.id ? (
+                                                        <button
+                                                            onClick={() => handleSave(quotation.id)}
+                                                            className="text-green-600 hover:text-green-900"
+                                                        >
+                                                            <FontAwesomeIcon icon={faCheck} className="h-5 w-5" />
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleEdit(quotation)}
+                                                            className="text-gray-600 hover:text-gray-600"
+                                                        >
+                                                            <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
+                                                        </button>
+                                                    )}
                                                     <button
-                                                        onClick={() => handleSave(quotation.id)}
-                                                        className="text-green-600 hover:text-green-900"
+                                                        onClick={() => handleDelete(quotation.id)}
+                                                        className="text-red-600 hover:text-red-900"
                                                     >
-                                                        <FontAwesomeIcon icon={faCheck} className="h-5 w-5" />
+                                                        <FontAwesomeIcon icon={faTrash} className="h-5 w-5" />
                                                     </button>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => handleEdit(quotation)}
-                                                        className="text-gray-600 hover:text-gray-600"
-                                                    >
-                                                        <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={() => handleDelete(quotation.id)}
-                                                    className="text-red-600 hover:text-red-900"
-                                                >
-                                                    <FontAwesomeIcon icon={faTrash} className="h-5 w-5" />
-                                                </button>
-                                            </div>
-                                        </td>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="4" className="text-center">No quotations available for this RFQ.</td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                             )}
                         </table>
@@ -434,17 +489,6 @@ export default function QuotationRFQ({ auth }) {
                                 </button>
                             </div>
                         )}
-
-                        {/* {!loading && (
-                        <div className="mt-6 flex justify-end border-t pt-6">
-                            <button
-                                onClick={handleSave}
-                                className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium"
-                            >
-                                Save Changes
-                            </button>
-                        </div>
-                        )} */}
                     </div>
                 </div>
             </div>
