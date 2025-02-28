@@ -18,6 +18,8 @@ use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\SupplierAddressController;
 use App\Http\Controllers\Api\V1\SupplierContactController;
 use App\Http\Controllers\Api\V1\SupplierController;
+use App\Http\Controllers\Api\V1\TaskController;
+use App\Http\Controllers\Api\V1\TaskDescriptionController;
 use App\Http\Controllers\Api\V1\UnitController;
 use App\Http\Controllers\Api\V1\UserRoleController;
 use App\Http\Controllers\Api\V1\WarehouseManagerController;
@@ -131,6 +133,19 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('/quotations/rfq/{rfqId}', [QuotationController::class, 'getByRfq']);
     Route::post('/quotations/update-batch', [QuotationController::class, 'updateBatch']);
     Route::post('/quotations/upload-terms', [QuotationController::class, 'uploadTerms']);
+
+
+    // Task Routes
+    Route::apiResource('tasks', TaskController::class);
+    Route::put('tasks/{task}/mark-as-read', [TaskController::class, 'markAsRead']);
+    Route::get('tasks/urgency/{urgency}', [TaskController::class, 'getByUrgency']);
+
+    // Task Description Routes
+    Route::apiResource('task-descriptions', TaskDescriptionController::class);
+    Route::get('task-descriptions/action/{action}', [TaskDescriptionController::class, 'getByAction']);
+    Route::get('task-descriptions/task/{taskId}', [TaskDescriptionController::class, 'getByTaskId']);
+
+
 });
 
 Route::get('/user', function (Request $request) {
@@ -155,10 +170,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 Route::get('download/{filename}', function ($filename) {
     $path = storage_path('app/public/rfq-attachments/' . $filename);
-    
+
     if (!file_exists($path)) {
         abort(404);
     }
-    
+
     return response()->file($path);
 })->where('filename', '.*')->name('file.download');
