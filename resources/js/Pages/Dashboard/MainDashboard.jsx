@@ -338,6 +338,7 @@ export default function MainDashboard({ roles }) {
                     subtitle="My Tasks & History"
                     bgColor="bg-[#F7EBBA]"
                     iconColor="text-[#665200]"
+                    onClick={() => router.visit("/tasks")}
                 />
 
                 {isAdmin && (
