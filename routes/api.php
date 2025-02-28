@@ -95,7 +95,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('supplier-contacts', SupplierContactController::class);
     Route::apiResource('supplier-addresses', SupplierAddressController::class);
     Route::apiResource('quotations', QuotationController::class);
-    Route::apiResource('quotation-documents', QuotationDocumentController::class);
+    Route::post('/quotation-documents', [QuotationDocumentController::class, 'store']);
+    Route::put('/quotation-documents/{id}', [QuotationDocumentController::class, 'update']);
+
 
     // Process routes
     Route::apiResource('processes', ProcessController::class);
