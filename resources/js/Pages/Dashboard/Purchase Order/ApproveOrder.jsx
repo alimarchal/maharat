@@ -142,17 +142,15 @@ export default function QuotationRFQ({ auth }) {
                              <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                              <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Purchases</Link>
                              <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                             <Link href="/quotation" className="hover:text-[#009FDC] text-xl">Quotations</Link>
+                             <Link href="/view-order" className="hover:text-[#009FDC] text-xl">Purchase Order</Link>
                              <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                             <Link href="/new-quotation" className="hover:text-[#009FDC] text-xl"> Add Quotations</Link>
-                             <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                             <span className="text-[#009FDC] text-xl"> Add Quotation to RFQ </span>
+                             <span className="text-[#009FDC] text-xl"> Approve Purchase Order </span>
                          </div>
-            <Head title="Add Quotation to RFQ" />
+            <Head title="Approve Purchase Order" />
 
             <div className="w-full overflow-hidden">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-[32px] font-bold text-[#2C323C]">Add Quotation to RFQ</h2>
+                    <h2 className="text-[32px] font-bold text-[#2C323C]">Approve Purchase Order</h2>
                 </div>
 
                 <p className="text-purple-600 mb-6">RFQ #{rfqId}</p>

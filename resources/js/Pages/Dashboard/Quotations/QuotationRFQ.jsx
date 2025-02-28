@@ -50,9 +50,9 @@ export default function QuotationRFQ({ auth }) {
     const [attachments, setAttachments] = useState({});
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
-
-    // Get rfqId from URL
-    const rfqId = window.location.pathname.split('/').pop();
+    const [rfqId, setRfqId] = useState(null);
+    const [editingId, setEditingId] = useState(null);
+    const [editData, setEditData] = useState({});
 
     const fetchQuotations = async () => {
         setLoading(true);
@@ -64,10 +64,10 @@ export default function QuotationRFQ({ auth }) {
         }, 300);
     
         try {
-            const response = await axios.get(`/api/v1/quotations?page=${currentPage}&rfq_id=${rfqId}`);
-            console.log('API Response:', response.data); // Debug log
+            const response = await axios.get(`/api/v1/quotations?page=${currentPage}`);
             setQuotations(response.data.data);
             setLastPage(response.data.meta.last_page);
+            setRfqId(response.data.data[0]?.rfq_id || ''); // Get rfq_id from the first quotation
             setError("");
     
             // Ensure full progress bar before hiding
@@ -112,194 +112,328 @@ export default function QuotationRFQ({ auth }) {
         }
     };
 
-    const handleSave = async () => {
+    const handleSave = async (id) => {
         try {
-            await axios.post('/api/v1/quotations/update-batch', {
-                quotations: quotations
-            });
-            alert('Changes saved successfully!');
+            const response = await axios.put(`/api/v1/quotations/${id}`, editData);
+            if (response.data) {
+                setEditingId(null);
+                fetchQuotations(); // Refresh the data
+            }
         } catch (error) {
             console.error('Save error:', error);
-            alert(error.response?.data?.message || 'Failed to save changes');
+            setError('Failed to save changes');
         }
+    };
+
+    const handleEdit = (quotation) => {
+        setEditingId(quotation.id);
+        setEditData(quotation);
+    };
+
+    const handleDelete = async (id) => {
+        if (!confirm("Are you sure you want to delete this record?")) return;
+
+        try {
+            // Check if it's a temporary ID (newly added record)
+            if (id.toString().length > 10) {
+                setQuotations(prevQuotations => prevQuotations.filter(q => q.id !== id));
+            } else {
+                await axios.delete(`/api/v1/quotations/${id}`);
+                fetchQuotations(); // Refresh the data after deletion
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            setError('Failed to delete record');
+        }
+    };
+
+    const addItem = () => {
+        const newQuotation = {
+            id: Date.now(), // Temporary ID for new row
+            quotation_number: '',
+            company_name: '',
+            issue_date: '',
+            valid_until: '',
+            total_amount: '',
+            terms_and_conditions: '',
+        };
+        setQuotations([...quotations, newQuotation]);
+        setEditingId(newQuotation.id);
+        setEditData(newQuotation);
+    };
+
+    const formatDateForInput = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format for input
+    };
+
+    const formatDateForDisplay = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
     };
 
     return (
         <AuthenticatedLayout user={auth.user}>
-         <div className="min-h-screen p-6">
-                         {/* Back Button and Breadcrumbs */}
-                         <div className="flex justify-between items-center mb-4">
-                             <button
-                                 onClick={() => router.visit("/dashboard")}
-                                 className="flex items-center text-black text-2xl font-medium hover:text-gray-800 p-2"
-                             >
-                                 <FontAwesomeIcon icon={faArrowLeftLong} className="mr-2 text-2xl" />
-                                 Back
-                             </button>
-                         </div>
-                         <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2 mb-6">
-                             <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Home</Link>
-                             <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                             <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Purchases</Link>
-                             <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                             <Link href="/quotation" className="hover:text-[#009FDC] text-xl">Quotations</Link>
-                             <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                             <Link href="/new-quotation" className="hover:text-[#009FDC] text-xl"> Add Quotations</Link>
-                             <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                             <span className="text-[#009FDC] text-xl"> Add Quotation to RFQ </span>
-                         </div>
-            <Head title="Add Quotation to RFQ" />
-
-            <div className="w-full overflow-hidden">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-[32px] font-bold text-[#2C323C]">Add Quotation to RFQ</h2>
+            <div className="min-h-screen p-6">
+                {/* Back Button and Breadcrumbs */}
+                <div className="flex justify-between items-center mb-4">
+                    <button
+                        onClick={() => router.visit("/dashboard")}
+                        className="flex items-center text-black text-2xl font-medium hover:text-gray-800 p-2"
+                    >
+                        <FontAwesomeIcon icon={faArrowLeftLong} className="mr-2 text-2xl" />
+                        Back
+                    </button>
                 </div>
+                <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2 mb-6">
+                    <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Home</Link>
+                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
+                    <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Purchases</Link>
+                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
+                    <Link href="/quotation" className="hover:text-[#009FDC] text-xl">Quotations</Link>
+                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
+                    <Link href="/new-quotation" className="hover:text-[#009FDC] text-xl"> Add Quotations</Link>
+                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
+                    <span className="text-[#009FDC] text-xl"> Add Quotation to RFQ </span>
+                </div>
+                <Head title="Add Quotation to RFQ" />
 
-                <p className="text-purple-600 mb-6">RFQ #{rfqId}</p>
-
-                            <div className="w-full overflow-hidden">
-                                {error && (
-                                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-                                        <span className="block sm:inline">{error}</span>
-                                    </div>
-                                )}
-                                
-                                <table className="w-full">
-                                    <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
-                                        <tr>
-                                            <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">Quotation#</th>
-                                            <th className="py-3 px-4 text-center">Company</th>
-                                            <th className="py-3 px-4 text-center">Issue Date</th>
-                                            <th className="py-3 px-4 text-center">Expiry Date</th>
-                                            <th className="py-3 px-4 text-center">Amount</th>
-                                            <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Attachment</th>
-                                        </tr>
-                                    </thead>
-
-                                    {/* Loading Bar */}
-                                    {loading && (
-                                        <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
-                                            <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
-                                                <div
-                                                    className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
-                                                    style={{ width: `${progress}%` }}
-                                                ></div>
-                                                <span className="absolute text-white">
-                                                    {progress < 60 ? "Please Wait, Fetching Details..." : `${progress}%`}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {!loading && (
-                                    <tbody className="bg-transparent divide-y divide-gray-200">
-                                        {quotations.map((quotation, index) => (
-                                            <tr key={quotation.id}>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                    {quotation.quotation_number}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                    {quotation.company_name}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                    {quotation.issue_date ? new Date(quotation.issue_date).toLocaleDateString('en-GB', {
-                                                        day: '2-digit',
-                                                        month: '2-digit',
-                                                        year: 'numeric'
-                                                    }) : ''}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                    {quotation.valid_until ? new Date(quotation.valid_until).toLocaleDateString('en-GB', {
-                                                        day: '2-digit',
-                                                        month: '2-digit',
-                                                        year: 'numeric'
-                                                    }) : ''}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                    {quotation.total_amount}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                    <div className="flex flex-col items-center justify-center w-full">
-                                                        {quotation.terms_and_conditions && (
-                                                            <a 
-                                                                href={`/storage/${quotation.terms_and_conditions}`}
-                                                                target="_blank"
-                                                                className="text-blue-600 hover:text-blue-800"
-                                                            >
-                                                                View File
-                                                            </a>
-                                                        )}
-                                                        <input
-                                                            type="file"
-                                                            onChange={(e) => handleFileChange(index, e)}
-                                                            className="hidden"
-                                                            id={`file-input-${index}`}
-                                                            accept=".pdf,.doc,.docx"
-                                                        />
-                                                        <label 
-                                                            htmlFor={`file-input-${index}`}
-                                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-                                                        >
-                                                            {quotation.terms_and_conditions ? 'Replace file' : 'Attach file'}
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                    )}
-                                </table>
-
-                                {/* Pagination */}
-                                {!loading && !error && quotations.length > 0 && (
-                                    <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
-                                        <button
-                                            onClick={() => setCurrentPage(currentPage - 1)}
-                                            className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                                currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
-                                            }`}
-                                            disabled={currentPage <= 1}
-                                        >
-                                            Previous
-                                        </button>
-                                        {Array.from({ length: Math.ceil(quotations.length / 10) }, (_, index) => index + 1).map((page) => (
-                                            <button
-                                                key={page}
-                                                onClick={() => setCurrentPage(page)}
-                                                className={`px-3 py-1 ${
-                                                    currentPage === page
-                                                        ? "bg-[#009FDC] text-white"
-                                                        : "border border-[#B9BBBD] bg-white text-black"
-                                                } rounded-full`}
-                                            >
-                                                {page}
-                                            </button>
-                                        ))}
-                                        <button
-                                            onClick={() => setCurrentPage(currentPage + 1)}
-                                            className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                                currentPage >= Math.ceil(quotations.length / 10) ? "opacity-50 cursor-not-allowed" : ""
-                                            }`}
-                                            disabled={currentPage >= Math.ceil(quotations.length / 10)}
-                                        >
-                                            Next
-                                        </button>
-                                    </div>
-                                )}
-
-                                {!loading && (
-                                <div className="mt-6 flex justify-end border-t pt-6">
-                                    <button
-                                        onClick={handleSave}
-                                        className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium"
-                                    >
-                                        Save Changes
-                                    </button>
-                                </div>
-                                )}
-                            </div>
-                        </div>
+                <div className="w-full overflow-hidden">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-[32px] font-bold text-[#2C323C]">Add Quotation to RFQ</h2>
                     </div>
+
+                    <p className="text-purple-600 text-2xl mb-6">RFQ# {rfqId}</p>
+
+                    <div className="w-full overflow-hidden">
+                        {error && (
+                            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                                <span className="block sm:inline">{error}</span>
+                            </div>
+                        )}
+                        
+                        <table className="w-full">
+                            <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                                <tr>
+                                    <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">Quotation#</th>
+                                    <th className="py-3 px-4 text-center">Company</th>
+                                    <th className="py-3 px-4 text-center">Issue Date</th>
+                                    <th className="py-3 px-4 text-center">Expiry Date</th>
+                                    <th className="py-3 px-4 text-center">Amount</th>
+                                    <th className="py-3 px-4 text-center">Attachment</th>
+                                    <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Actions</th>
+                                </tr>
+                            </thead>
+
+                            {/* Loading Bar */}
+                            {loading && (
+                                <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
+                                    <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
+                                        <div
+                                            className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
+                                            style={{ width: `${progress}%` }}
+                                        ></div>
+                                        <span className="absolute text-white">
+                                            {progress < 60 ? "Please Wait, Fetching Details..." : `${progress}%`}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {!loading && (
+                            <tbody className="bg-transparent divide-y divide-gray-200">
+                                {quotations.map((quotation, index) => (
+                                    <tr key={quotation.id}>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            {editingId === quotation.id ? (
+                                                <input
+                                                    type="text"
+                                                    value={editData.quotation_number || ''}
+                                                    onChange={(e) => setEditData({ ...editData, quotation_number: e.target.value })}
+                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
+                                                />
+                                            ) : (
+                                                quotation.quotation_number
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            {editingId === quotation.id ? (
+                                                <input
+                                                    type="text"
+                                                    value={editData.company_name || ''}
+                                                    onChange={(e) => setEditData({ ...editData, company_name: e.target.value })}
+                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
+                                                />
+                                            ) : (
+                                                quotation.company_name
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            {editingId === quotation.id ? (
+                                                <input
+                                                    type="date"
+                                                    value={formatDateForInput(editData.issue_date)}
+                                                    onChange={(e) => setEditData({ ...editData, issue_date: e.target.value })}
+                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center [&::-webkit-calendar-picker-indicator]:hidden"
+                                                    style={{ textAlign: '-webkit-center' }}
+                                                />
+                                            ) : (
+                                                formatDateForDisplay(quotation.issue_date)
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            {editingId === quotation.id ? (
+                                                <input
+                                                    type="date"
+                                                    value={formatDateForInput(editData.valid_until)}
+                                                    onChange={(e) => setEditData({ ...editData, valid_until: e.target.value })}
+                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center [&::-webkit-calendar-picker-indicator]:hidden"
+                                                    style={{ textAlign: '-webkit-center' }}
+                                                />
+                                            ) : (
+                                                formatDateForDisplay(quotation.valid_until)
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            {editingId === quotation.id ? (
+                                                <input
+                                                    type="number"
+                                                    value={editData.total_amount || ''}
+                                                    onChange={(e) => setEditData({ ...editData, total_amount: e.target.value })}
+                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center [&::-webkit-inner-spin-button]:hidden"
+                                                    style={{ textAlign: '-webkit-center' }}
+                                                />
+                                            ) : (
+                                                quotation.total_amount
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <div className="flex flex-col items-center justify-center w-full">
+                                                {quotation.terms_and_conditions && (
+                                                    <a 
+                                                        href={`/storage/${quotation.terms_and_conditions}`}
+                                                        target="_blank"
+                                                        className="text-blue-600 hover:text-blue-800"
+                                                    >
+                                                        View File
+                                                    </a>
+                                                )}
+                                                <input
+                                                    type="file"
+                                                    onChange={(e) => handleFileChange(index, e)}
+                                                    className="hidden"
+                                                    id={`file-input-${index}`}
+                                                    accept=".pdf,.doc,.docx"
+                                                />
+                                                <label 
+                                                    htmlFor={`file-input-${index}`}
+                                                    className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
+                                                >
+                                                    {quotation.terms_and_conditions ? 'Replace file' : 'Attach file'}
+                                                </label>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <div className="flex justify-center space-x-3">
+                                                {editingId === quotation.id ? (
+                                                    <button
+                                                        onClick={() => handleSave(quotation.id)}
+                                                        className="text-green-600 hover:text-green-900"
+                                                    >
+                                                        <FontAwesomeIcon icon={faCheck} className="h-5 w-5" />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleEdit(quotation)}
+                                                        className="text-gray-600 hover:text-gray-600"
+                                                    >
+                                                        <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => handleDelete(quotation.id)}
+                                                    className="text-red-600 hover:text-red-900"
+                                                >
+                                                    <FontAwesomeIcon icon={faTrash} className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            )}
+                        </table>
+
+                        {/* Add Quotation Button - Only show on last page and if we're at the last record */}
+                        {!loading && currentPage === lastPage && quotations.length > 0 && 
+                         quotations[quotations.length - 1] === quotations.slice(-1)[0] && (
+                            <div className="mt-4 flex justify-center">
+                                <button
+                                    type="button"
+                                    onClick={addItem}
+                                    className="text-blue-600 flex items-center"
+                                >
+                                    + Add Quotation
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Pagination */}
+                        {!loading && !error && quotations.length > 0 && (
+                            <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                                <button
+                                    onClick={() => setCurrentPage(currentPage - 1)}
+                                    className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
+                                        currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
+                                    }`}
+                                    disabled={currentPage <= 1}
+                                >
+                                    Previous
+                                </button>
+                                {Array.from({ length: lastPage }, (_, index) => index + 1).map((page) => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`px-3 py-1 ${
+                                            currentPage === page
+                                                ? "bg-[#009FDC] text-white"
+                                                : "border border-[#B9BBBD] bg-white text-black"
+                                        } rounded-full`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => setCurrentPage(currentPage + 1)}
+                                    className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
+                                        currentPage >= lastPage ? "opacity-50 cursor-not-allowed" : ""
+                                    }`}
+                                    disabled={currentPage >= lastPage}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        )}
+
+                        {/* {!loading && (
+                        <div className="mt-6 flex justify-end border-t pt-6">
+                            <button
+                                onClick={handleSave}
+                                className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
+                        )} */}
+                    </div>
+                </div>
+            </div>
         </AuthenticatedLayout>
     );
 }

@@ -78,15 +78,13 @@ export default function NewQuotation({ auth }) {
                              <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                              <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Purchases</Link>
                              <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                             <Link href="/quotation" className="hover:text-[#009FDC] text-xl">Quotations</Link>
-                             <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                             <span className="text-[#009FDC] text-xl"> Add Quotation </span>
+                             <span className="text-[#009FDC] text-xl"> Purchase Order </span>
                          </div>
-            <Head title="New Quotation" />
+            <Head title="Purchase Order" />
 
             <div className="w-full overflow-hidden">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-[32px] font-bold text-[#2C323C]">New Quotation</h2>
+                    <h2 className="text-[32px] font-bold text-[#2C323C]">Purchase Order</h2>
                 </div>
 
                 <div className="w-full overflow-hidden">
@@ -139,7 +137,7 @@ export default function NewQuotation({ auth }) {
                                         {rfq.category_name}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <Link href={`/quotation-to-rfq`}>
+                                        <Link href={`/approve-order`}>
                                             <PlusCircleIcon className="h-6 w-6 text-gray-400 hover:text-gray-600 cursor-pointer mx-auto" />
                                         </Link>
                                     </td>
