@@ -121,25 +121,30 @@ const ProcessFlow = () => {
         ]);
     };
 
-    const removeRow = (index) => {
-        if (rows.length === 1) {
-            setRows([
-                {
-                    id: 1,
-                    employee: "",
-                    designation: "",
-                    taskDescription: "",
-                },
-            ]);
-            return;
-        }
+    const removeRow = async (index) => {
+        const rowToDelete = rows[index];
 
         const newRows = rows.filter((_, i) => i !== index);
-        const reorderedRows = newRows.map((row, i) => ({
-            ...row,
-            id: i + 1,
-        }));
-        setRows(reorderedRows);
+        setRows(
+            newRows.length > 0
+                ? newRows.map((row, i) => ({ ...row, id: i + 1 }))
+                : [
+                      {
+                          id: 1,
+                          employee: "",
+                          designation: "",
+                          taskDescription: "",
+                      },
+                  ]
+        );
+
+        if (rowToDelete.step_id) {
+            try {
+                await axios.delete(`/api/v1/process-steps/${rowToDelete.id}`);
+            } catch (error) {
+                alert("Failed to delete process step. Please try again.");
+            }
+        }
     };
 
     const handleSubmit = async () => {
