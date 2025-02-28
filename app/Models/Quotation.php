@@ -32,10 +32,11 @@ class Quotation extends Model
         'total_amount' => 'decimal:2'
     ];
 
-    public function rfq(): BelongsTo
+    public function rfq()
     {
-        return $this->belongsTo(Rfq::class);
+        return $this->belongsTo(Rfq::class, 'rfq_id', 'id'); // Correct reference to primary key
     }
+
 
     public function supplier(): BelongsTo
     {

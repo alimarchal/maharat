@@ -114,16 +114,31 @@ export default function QuotationRFQ({ auth }) {
 
     const handleSave = async (id) => {
         try {
-            const response = await axios.put(`/api/v1/quotations/${id}`, editData);
-            if (response.data) {
+            const updatedData = {
+                ...editData,
+                issue_date: formatDateForInput(editData.issue_date),
+                valid_until: formatDateForInput(editData.valid_until)
+            };
+    
+            console.log("Sending Data:", updatedData); // Debugging
+    
+            const response = await axios.put(`/api/v1/quotations/${id}`, updatedData);
+            console.log("Response:", response.data); // Debugging
+    
+            if (response.data.success) {
+                setQuotations(prevQuotations =>
+                    prevQuotations.map(q => (q.id === id ? { ...q, ...updatedData } : q))
+                );
                 setEditingId(null);
-                fetchQuotations(); // Refresh the data
+            } else {
+                console.error('Update failed:', response.data);
+                setError('Failed to save changes');
             }
         } catch (error) {
-            console.error('Save error:', error);
+            console.error('Save error:', error.response ? error.response.data : error.message);
             setError('Failed to save changes');
         }
-    };
+    };    
 
     const handleEdit = (quotation) => {
         setEditingId(quotation.id);
@@ -278,10 +293,9 @@ export default function QuotationRFQ({ auth }) {
                                             {editingId === quotation.id ? (
                                                 <input
                                                     type="date"
-                                                    value={formatDateForInput(editData.issue_date)}
+                                                    value={editData.issue_date ? formatDateForInput(editData.issue_date) : ""}
                                                     onChange={(e) => setEditData({ ...editData, issue_date: e.target.value })}
-                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center [&::-webkit-calendar-picker-indicator]:hidden"
-                                                    style={{ textAlign: '-webkit-center' }}
+                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
                                                 />
                                             ) : (
                                                 formatDateForDisplay(quotation.issue_date)
@@ -291,15 +305,15 @@ export default function QuotationRFQ({ auth }) {
                                             {editingId === quotation.id ? (
                                                 <input
                                                     type="date"
-                                                    value={formatDateForInput(editData.valid_until)}
+                                                    value={editData.valid_until ? formatDateForInput(editData.valid_until) : ""}
                                                     onChange={(e) => setEditData({ ...editData, valid_until: e.target.value })}
-                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center [&::-webkit-calendar-picker-indicator]:hidden"
-                                                    style={{ textAlign: '-webkit-center' }}
+                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
                                                 />
                                             ) : (
                                                 formatDateForDisplay(quotation.valid_until)
                                             )}
                                         </td>
+
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
                                             {editingId === quotation.id ? (
                                                 <input
