@@ -15,7 +15,7 @@ class Rfq extends Model
 
     protected $table = 'rfqs';
 
-    protected $primaryKey = 'rfq_number';
+    protected $primaryKey = 'id';
     public $incrementing = false;
 
     protected $fillable = [
@@ -107,6 +107,6 @@ class Rfq extends Model
 
     public function quotations()
     {
-        return $this->hasMany(Quotation::class, 'rfq_id', 'rfq_number');
+        return $this->hasMany(Quotation::class, 'rfq_id', 'id');
     }
 }

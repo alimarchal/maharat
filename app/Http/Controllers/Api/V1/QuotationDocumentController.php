@@ -13,6 +13,8 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Spatie\QueryBuilder\QueryBuilder;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class QuotationDocumentController extends Controller
 {
@@ -35,35 +37,47 @@ class QuotationDocumentController extends Controller
         return QuotationDocumentResource::collection($documents);
     }
 
-    public function store(StoreQuotationDocumentRequest $request): JsonResponse
+    public function store(Request $request)
     {
-        try {
-            if ($request->hasFile('document')) {
-                $path = $request->file('document')->store('quotations');
+        Log::info('File upload request received', $request->all());
 
-                $document = QuotationDocument::create([
-                    'quotation_id' => $request->quotation_id,
-                    'file_path' => $path,
-                    'original_name' => $request->file('document')->getClientOriginalName(),
-                    'type' => $request->type
-                ]);
+        $request->validate([
+            'quotation_id' => 'required|exists:quotations,id',
+            'document' => 'required|file|mimes:pdf,doc,docx',
+            'type' => 'required|string'
+        ]);
 
-                return response()->json([
-                    'message' => 'Document uploaded successfully',
-                    'data' => new QuotationDocumentResource($document->load('quotation'))
-                ], Response::HTTP_CREATED);
-            }
-
-            return response()->json([
-                'message' => 'No document provided'
-            ], Response::HTTP_BAD_REQUEST);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to upload document',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        // Ensure the directory exists
+        if (!Storage::exists('public/quotations')) {
+            Storage::makeDirectory('public/quotations');
+            Log::info('Storage directory created: public/quotations');
+        } else {
+            Log::info('Storage directory already exists: public/quotations');
         }
+
+        // Store the file and log the path
+        $filePath = $request->file('document')->store('public/quotations');
+        Log::info('File stored at: ' . $filePath);
+
+        // Remove 'public/' prefix so the file is accessible via `/storage/`
+        $relativePath = str_replace('public/', '', $filePath);
+
+        // Save to the database
+        $document = QuotationDocument::create([
+            'quotation_id' => $request->quotation_id,
+            'file_path' => $relativePath,
+            'original_name' => $request->file('document')->getClientOriginalName(),
+            'type' => $request->type
+        ]);
+
+        Log::info('Database entry created:', $document->toArray());
+
+        return response()->json([
+            'message' => 'File uploaded successfully',
+            'file_path' => asset('storage/' . $document->file_path)
+        ], 201);
     }
+
 
     public function show(string $id): JsonResponse
     {
@@ -76,36 +90,35 @@ class QuotationDocumentController extends Controller
         ], Response::HTTP_OK);
     }
 
-    public function update(UpdateQuotationDocumentRequest $request, QuotationDocument $document): JsonResponse
+    public function update(Request $request, $id)
     {
-        try {
-            if ($request->hasFile('document')) {
-                // Delete old file
-                Storage::delete($document->file_path);
+        $request->validate([
+            'document' => 'required|file|mimes:pdf,doc,docx',
+            'type' => 'required|string'
+        ]);
 
-                // Store new file
-                $path = $request->file('document')->store('quotations');
+        $quotationDocument = QuotationDocument::findOrFail($id);
 
-                $document->update([
-                    'file_path' => $path,
-                    'original_name' => $request->file('document')->getClientOriginalName(),
-                    'type' => $request->type ?? $document->type
-                ]);
-            } else {
-                $document->update($request->validated());
-            }
+        // Delete old file
+        Storage::delete($quotationDocument->file_path);
 
-            return response()->json([
-                'message' => 'Document updated successfully',
-                'data' => new QuotationDocumentResource($document->load('quotation'))
-            ], Response::HTTP_OK);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to update document',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
+        // Upload new file
+        $filePath = $request->file('document')->store('quotations');
+
+        // Update document details
+        $quotationDocument->update([
+            'file_path' => $filePath,
+            'original_name' => $request->file('document')->getClientOriginalName(),
+            'type' => $request->type
+        ]);
+
+        return response()->json([
+            'message' => 'File updated successfully',
+            'file_path' => asset('storage/' . $filePath),
+            'document' => new QuotationDocumentResource($quotationDocument)
+        ], 200);
     }
+
 
     public function destroy(QuotationDocument $document): JsonResponse
     {

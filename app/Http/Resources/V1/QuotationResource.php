@@ -33,7 +33,7 @@ class QuotationResource extends JsonResource
             'rfq' => new RfqResource($this->whenLoaded('rfq')),
             'supplier' => new SupplierResource($this->whenLoaded('supplier')),
             'status' => new StatusResource($this->whenLoaded('status')),
-            'documents' => QuotationDocumentResource::collection($this->whenLoaded('documents'))
+            'documents' => QuotationDocumentResource::collection($this->documents)
         ];
     }
 }

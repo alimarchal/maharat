@@ -37,6 +37,8 @@ class QuotationController extends Controller
             ->paginate()
             ->appends(request()->query());
 
+        $quotations = Quotation::with('documents')->paginate(10);
+        
         return $quotations->isEmpty()
             ? response()->json(['message' => 'No quotations found', 'data' => []], Response::HTTP_OK)
             : QuotationResource::collection($quotations);
@@ -88,16 +90,23 @@ class QuotationController extends Controller
         $quotation = Quotation::findOrFail($id);
 
         // Update the fields in the quotations table
-        $quotation->update($request->except(['company_name']));
+        $quotation->update($request->except(['company_name', 'original_name', 'file_path']));
 
         // Check if the request contains organization_name and update the related RFQ
         if ($request->has('organization_name') && $quotation->rfq) {
             $quotation->rfq->update(['organization_name' => $request->input('organization_name')]);
         }
 
+        // Check if the request contains original_name or file_path and update related documents
+        if ($request->has('original_name') || $request->has('file_path')) {
+            $quotation->documents()->update([
+                'original_name' => $request->input('original_name', 'N/A'),
+                'file_path' => $request->input('file_path', 'N/A'),
+            ]);
+        }
+
         return response()->json(['success' => true]);
     }
-
 
     public function destroy($id)
     {
@@ -110,9 +119,15 @@ class QuotationController extends Controller
     {
         try {
             \Log::info('Fetching quotations for RFQ ID: ' . $rfqId);
-            $quotations = Quotation::with(['rfq' => function($query) {
-                $query->select('rfq_number', 'organization_name');
-            }])
+
+            $quotations = Quotation::with([
+                'rfq' => function ($query) {
+                    $query->select('rfq_number', 'organization_name');
+                },
+                'documents' => function ($query) {
+                    $query->select('quotation_id', 'original_name', 'file_path');
+                }
+            ])
             ->where('rfq_id', $rfqId)
             ->paginate(10);
 
@@ -128,4 +143,6 @@ class QuotationController extends Controller
             ], 500);
         }
     }
+
+
 }

@@ -7,36 +7,27 @@ import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight } from "@fort
 import axios from "axios";
 import { DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 
-// FileDisplay Component
-const FileDisplay = ({ file, onFileClick }) => {
-    const fileName = file ? (
-        typeof file === 'object' && file.name 
-            ? file.name 
-            : typeof file === 'string' 
-                ? decodeURIComponent(file.split('/').pop()) 
-                : file.name
-    ) : null;
+const FileDisplay = ({ file }) => {
+    if (!file) return null;
 
-    const fileUrl = file ? (
-        typeof file === 'object' && file.url 
-            ? `/api/download/${fileName}` 
-            : typeof file === 'string' 
-                ? `/api/download/${fileName}` 
-                : null
-    ) : null;
+    // Use the file_path directly from the API response
+    const fileUrl = file.file_path; 
 
     return (
         <div className="flex flex-col items-center justify-center space-y-2">
+            {/* Clickable PDF Icon */}
             <DocumentArrowDownIcon 
-                className="h-6 w-6 text-gray-400 cursor-pointer" 
-                onClick={() => fileUrl && window.open(fileUrl, '_blank')}
+                className="h-10 w-10 text-gray-500 cursor-pointer hover:text-gray-700 transition-colors"
+                onClick={() => fileUrl && window.open(fileUrl, '_blank')} // Opens file in a new tab
             />
-            {fileName && (
+            
+            {/* File Name */}
+            {file.original_name && (
                 <span 
                     className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
-                    onClick={() => fileUrl && window.open(fileUrl, '_blank')}
+                    onClick={() => fileUrl && window.open(fileUrl, '_blank')} // Opens file when name is clicked
                 >
-                    {fileName}
+                    {file.original_name}
                 </span>
             )}
         </div>
@@ -59,19 +50,20 @@ export default function QuotationRFQ({ auth }) {
         setLoading(true);
         setProgress(0);
     
-        // Smoothly increase progress
-        const interval = setInterval(() => {
-            setProgress((oldProgress) => (oldProgress >= 90 ? 90 : oldProgress + 10));
-        }, 300);
-    
         try {
             const response = await axios.get(`/api/v1/quotations?page=${currentPage}`);
-            setQuotations(response.data.data);
+    
+            // Ensure documents array is properly assigned
+            const updatedQuotations = response.data.data.map(quotation => ({
+                ...quotation,
+                documents: quotation.documents || [] // Ensure documents array exists
+            }));
+    
+            setQuotations(updatedQuotations);
             setLastPage(response.data.meta.last_page);
-            setRfqId(response.data.data[0]?.rfq_id || ''); // Get rfq_id from the first quotation
+            setRfqId(response.data.data[0]?.rfq_id || '');
             setError("");
     
-            // Ensure full progress bar before hiding
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
         } catch (error) {
@@ -80,10 +72,8 @@ export default function QuotationRFQ({ auth }) {
             setQuotations([]);
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
-        } finally {
-            clearInterval(interval);
         }
-    };
+    };        
 
     useEffect(() => {
         fetchQuotations();
@@ -168,6 +158,8 @@ export default function QuotationRFQ({ auth }) {
             id: Date.now(), // Temporary ID for new row
             quotation_number: '',
             company_name: '',
+            original_name: '',
+            file_path: '',
             issue_date: '',
             valid_until: '',
             total_amount: '',
@@ -195,39 +187,40 @@ export default function QuotationRFQ({ auth }) {
     };
 
     const handleFileUpload = async (quotationId, file) => {
+        if (!file) {
+            setError("No file selected.");
+            return;
+        }
+    
         const formData = new FormData();
-        formData.append('document', file);
+        formData.append('document', file);  // Ensure the file is correctly appended
         formData.append('quotation_id', quotationId);
-        formData.append('type', 'quotation');
-
+        formData.append('type', 'quotation'); // Make sure 'type' is always sent
+    
         try {
-            // Find the existing document for the quotation
-            const existingDocument = quotations.find(q => q.id === quotationId)?.documents;
-
-            if (existingDocument && existingDocument.length > 0) {
-                // Update existing document
-                const response = await axios.put(`/api/v1/quotation-documents/${existingDocument[0].id}`, formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
+            const quotation = quotations.find(q => q.id === quotationId);
+            const existingDocument = quotation?.documents?.length > 0 ? quotation.documents[0] : null;
+    
+            let response;
+            if (existingDocument) {
+                // Use PUT for updating existing document
+                response = await axios.post(`/api/v1/quotation-documents/${existingDocument.id}?_method=PUT`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
                 });
-                console.log("Document updated:", response.data);
             } else {
-                // Create new document
-                const response = await axios.post('/api/v1/quotation-documents', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
+                // Use POST for new document
+                response = await axios.post('/api/v1/quotation-documents', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
                 });
-                console.log("Document uploaded:", response.data);
             }
-
-            fetchQuotations(); // Refresh the quotations after upload
+    
+            console.log("File upload response:", response.data);
+            fetchQuotations(); // Refresh the list after successful upload
         } catch (error) {
-            console.error("Upload Error:", error.response ? error.response.data : error.message);
+            console.error("Upload Error:", error.response?.data || error.message);
             setError("Failed to upload document: " + (error.response?.data?.message || error.message));
         }
-    };
+    };       
 
     const toggleEditMode = (quotationId) => {
         setEditingId(editingId === quotationId ? null : quotationId); // Toggle edit mode
@@ -370,13 +363,9 @@ export default function QuotationRFQ({ auth }) {
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                             <div className="flex flex-col items-center justify-center w-full">
-                                                {quotation.documents && Array.isArray(quotation.documents) && quotation.documents.length > 0 ? (
+                                                {quotation.documents && quotation.documents.length > 0 ? (
                                                     quotation.documents.map((doc) => (
-                                                        <FileDisplay 
-                                                            key={doc.id}
-                                                            file={doc}
-                                                            onFileClick={() => window.open(`/api/download/${doc.original_name}`, '_blank')}
-                                                        />
+                                                        <FileDisplay key={doc.id} file={doc} />
                                                     ))
                                                 ) : (
                                                     <span className="text-gray-500">No document attached</span>
@@ -397,11 +386,11 @@ export default function QuotationRFQ({ auth }) {
                                                         >
                                                             {(quotation.documents && Array.isArray(quotation.documents) && quotation.documents.length > 0) ? 'Replace file' : 'Attach file'}
                                                         </label>
+
                                                     </>
                                                 )}
                                             </div>
                                         </td>
-
 
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 <div className="flex justify-center space-x-3">
