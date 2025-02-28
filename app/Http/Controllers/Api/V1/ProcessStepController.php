@@ -48,7 +48,7 @@ class ProcessStepController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreProcessStepRequest $request): JsonResponse
+    public function store(StoreProcessStepRequest $request)
     {
         try {
             DB::beginTransaction();
@@ -65,6 +65,8 @@ class ProcessStepController extends Controller
 
             // Create step
             $step = ProcessStep::create($stepData);
+
+
 
             DB::commit();
 
