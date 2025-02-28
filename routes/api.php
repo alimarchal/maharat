@@ -96,7 +96,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('quotation-documents', QuotationDocumentController::class);
 
     // Process routes
-    Route::apiResource('processes', ProcewssController::class);
+    Route::apiResource('processes', ProcessController::class);
     Route::patch('processes/{process}/toggle-active', [ProcessController::class, 'toggleActive']);
     Route::patch('processes/{process}/status', [ProcessController::class, 'updateStatus']);
 
