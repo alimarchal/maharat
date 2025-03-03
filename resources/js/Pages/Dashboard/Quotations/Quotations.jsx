@@ -148,7 +148,7 @@ const RFQ = ({ auth }) => {
                 <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2 mb-6">
                     <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Home</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                    <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Purchases</Link>
+                    <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Procurement Center</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                     <span className="text-[#009FDC] text-xl">Quotations</span>
                 </div>

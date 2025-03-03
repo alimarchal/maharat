@@ -66,7 +66,7 @@ export default function NewQuotation({ auth }) {
                          {/* Back Button and Breadcrumbs */}
                          <div className="flex justify-between items-center mb-4">
                              <button
-                                 onClick={() => router.visit("/quotation")}
+                                 onClick={() => router.visit("/view-order")}
                                  className="flex items-center text-black text-2xl font-medium hover:text-gray-800 p-2"
                              >
                                  <FontAwesomeIcon icon={faArrowLeftLong} className="mr-2 text-2xl" />
@@ -78,15 +78,15 @@ export default function NewQuotation({ auth }) {
                              <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                              <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Procurement Center</Link>
                              <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                             <Link href="/quotation" className="hover:text-[#009FDC] text-xl">Quotations</Link>
+                             <Link href="/view-order" className="hover:text-[#009FDC] text-xl">Purchase Orders</Link>
                              <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                             <span className="text-[#009FDC] text-xl"> Add Quotation </span>
+                             <span className="text-[#009FDC] text-xl"> Create Purchase Order </span>
                          </div>
-            <Head title="New Quotation" />
+            <Head title="Create Purchase Order" />
 
             <div className="w-full overflow-hidden">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-[32px] font-bold text-[#2C323C]">New Quotation</h2>
+                    <h2 className="text-[32px] font-bold text-[#2C323C]">Create Purchase Order</h2>
                 </div>
 
                 <div className="w-full overflow-hidden">
@@ -139,7 +139,7 @@ export default function NewQuotation({ auth }) {
                                         {rfq.category_name}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <Link href={`/quotation-to-rfq`}>
+                                        <Link href={`/approve-order`}>
                                             <PlusCircleIcon className="h-6 w-6 text-gray-400 hover:text-gray-600 cursor-pointer mx-auto" />
                                         </Link>
                                     </td>
