@@ -95,7 +95,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('supplier-contacts', SupplierContactController::class);
     Route::apiResource('supplier-addresses', SupplierAddressController::class);
     Route::apiResource('quotations', QuotationController::class);
-    Route::apiResource('quotation-documents', QuotationDocumentController::class);
+    Route::post('/quotation-documents', [QuotationDocumentController::class, 'store']);
+    Route::put('/quotation-documents/{id}', [QuotationDocumentController::class, 'update']);
+
 
     // Process routes
     Route::apiResource('processes', ProcessController::class);
@@ -130,7 +132,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/upload-terms', [QuotationController::class, 'uploadTerms']);
     Route::post('/update-quotations', [QuotationController::class, 'updateQuotations']);
 
-    Route::get('/quotations/rfq/{rfqId}', [QuotationController::class, 'getByRfq']);
+    Route::get('/quotations/by-rfq/{rfqId}', [QuotationController::class, 'getByRfqId']);
     Route::post('/quotations/update-batch', [QuotationController::class, 'updateBatch']);
     Route::post('/quotations/upload-terms', [QuotationController::class, 'uploadTerms']);
 

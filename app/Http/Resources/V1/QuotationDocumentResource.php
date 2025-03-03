@@ -12,7 +12,7 @@ class QuotationDocumentResource extends JsonResource
         return [
             'id' => $this->id,
             'quotation_id' => $this->quotation_id,
-            'file_path' => $this->file_path,
+            'file_path' => asset('storage/' . $this->file_path),
             'original_name' => $this->original_name,
             'type' => $this->type,
             'created_at' => $this->created_at,

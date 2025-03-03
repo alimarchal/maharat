@@ -19,6 +19,7 @@ class QuotationResource extends JsonResource
             'rfq_id' => $this->rfq_id,
             'supplier_id' => $this->supplier_id,
             'quotation_number' => $this->quotation_number,
+            'company_name' => $this->rfq ? $this->rfq->organization_name : 'N/A',
             'issue_date' => $this->issue_date,
             'valid_until' => $this->valid_until,
             'total_amount' => $this->total_amount,
@@ -32,7 +33,7 @@ class QuotationResource extends JsonResource
             'rfq' => new RfqResource($this->whenLoaded('rfq')),
             'supplier' => new SupplierResource($this->whenLoaded('supplier')),
             'status' => new StatusResource($this->whenLoaded('status')),
-            'documents' => QuotationDocumentResource::collection($this->whenLoaded('documents'))
+            'documents' => QuotationDocumentResource::collection($this->documents)
         ];
     }
 }
