@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\PermissionController;
 use App\Http\Controllers\Api\V1\ProcessController;
 use App\Http\Controllers\Api\V1\ProcessStepController;
 use App\Http\Controllers\Api\V1\ProductCategoryController;
+use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\QuotationController;
 use App\Http\Controllers\Api\V1\QuotationDocumentController;
 use App\Http\Controllers\Api\V1\RfqController;
@@ -146,6 +147,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('task-descriptions', TaskDescriptionController::class);
     Route::get('task-descriptions/action/{action}', [TaskDescriptionController::class, 'getByAction']);
     Route::get('task-descriptions/task/{taskId}', [TaskDescriptionController::class, 'getByTaskId']);
+
+
+    // Purchase Orders API Routes
+    Route::apiResource('purchase-orders', PurchaseOrderController::class);
 
 
 });
