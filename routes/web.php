@@ -129,6 +129,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/approve-order', function () { 
         return Inertia::render('Dashboard/Purchase Order/ApproveOrder'); 
     })->name('approve-order');
+
+    Route::get('/create-order', function () { 
+        return Inertia::render('Dashboard/Purchase Order/CreateOrder'); 
+    })->name('create-order');
     
     // RFQ Routes
     Route::get('/dashboard/quotations', [RFQController::class, 'index'])->name('dashboard.quotations.index');

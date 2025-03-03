@@ -357,7 +357,7 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
             <div className="min-h-screen p-6">
                 <div className="flex justify-between items-center mb-4">
                     <button
-                        onClick={() => router.visit("/dashboard")}
+                        onClick={() => router.visit("/rfq")}
                         className="flex items-center text-black text-2xl font-medium hover:text-gray-800 p-2"
                     >
                         <FontAwesomeIcon
@@ -385,7 +385,7 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
                             href="/purchase"
                             className="hover:text-[#009FDC] text-xl"
                         >
-                            Purchases
+                            Procurement Center
                         </Link>
                         <FontAwesomeIcon
                             icon={faChevronRight}
