@@ -13,6 +13,11 @@ class Rfq extends Model
 {
     use SoftDeletes;
 
+    protected $table = 'rfqs';
+
+    protected $primaryKey = 'id';
+    public $incrementing = false;
+
     protected $fillable = [
         'rfq_number',
         'organization_name',
@@ -98,5 +103,10 @@ class Rfq extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function quotations()
+    {
+        return $this->hasMany(Quotation::class, 'rfq_id', 'id');
     }
 }

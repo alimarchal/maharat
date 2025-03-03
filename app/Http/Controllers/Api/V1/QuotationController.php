@@ -13,13 +13,10 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
+use Illuminate\Http\Request;
 
 class QuotationController extends Controller
 {
-    /**
-     * Generate a unique quotation number
-     * Format: QUO-YYYY-XXXXX (e.g., QUO-2025-00001)
-     */
     private function generateQuotationNumber(): string
     {
         $year = date('Y');
@@ -27,18 +24,9 @@ class QuotationController extends Controller
             ->orderBy('quotation_number', 'desc')
             ->first();
 
-        if ($lastQuotation) {
-            // Extract the numeric part and increment
-            $lastNumber = (int) substr($lastQuotation->quotation_number, -5);
-            $newNumber = $lastNumber + 1;
-        } else {
-            $newNumber = 1;
-        }
-
-        // Format with leading zeros to maintain 5 digits
+        $newNumber = $lastQuotation ? ((int) substr($lastQuotation->quotation_number, -5)) + 1 : 1;
         return sprintf("QUO-%s-%05d", $year, $newNumber);
     }
-
 
     public function index(): JsonResponse|ResourceCollection
     {
@@ -49,28 +37,21 @@ class QuotationController extends Controller
             ->paginate()
             ->appends(request()->query());
 
-        if ($quotations->isEmpty()) {
-            return response()->json([
-                'message' => 'No quotations found',
-                'data' => []
-            ], Response::HTTP_OK);
-        }
-
-        return QuotationResource::collection($quotations);
+        $quotations = Quotation::with('documents')->paginate(10);
+        
+        return $quotations->isEmpty()
+            ? response()->json(['message' => 'No quotations found', 'data' => []], Response::HTTP_OK)
+            : QuotationResource::collection($quotations);
     }
 
     public function store(StoreQuotationRequest $request): JsonResponse
     {
         try {
             DB::beginTransaction();
-
-            // Generate unique quotation number
             $quotationData = $request->safe()->except('documents');
             $quotationData['quotation_number'] = $this->generateQuotationNumber();
-
             $quotation = Quotation::create($quotationData);
 
-            // Handle document uploads if provided
             if ($request->hasFile('documents')) {
                 foreach ($request->file('documents') as $document) {
                     $path = $document->store('quotations');
@@ -83,7 +64,6 @@ class QuotationController extends Controller
             }
 
             DB::commit();
-
             return response()->json([
                 'message' => 'Quotation created successfully',
                 'data' => new QuotationResource(
@@ -92,10 +72,7 @@ class QuotationController extends Controller
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'message' => 'Failed to create quotation',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json(['message' => 'Failed to create quotation', 'error' => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -105,69 +82,67 @@ class QuotationController extends Controller
             ->allowedIncludes(QuotationParameters::ALLOWED_INCLUDES)
             ->findOrFail($id);
 
-        return response()->json([
-            'data' => new QuotationResource($quotation)
-        ], Response::HTTP_OK);
+        return response()->json(['data' => new QuotationResource($quotation)], Response::HTTP_OK);
     }
 
-    public function update(UpdateQuotationRequest $request, Quotation $quotation): JsonResponse
+    public function update(Request $request, $id)
+    {
+        $quotation = Quotation::findOrFail($id);
+
+        // Update the fields in the quotations table
+        $quotation->update($request->except(['company_name', 'original_name', 'file_path']));
+
+        // Check if the request contains organization_name and update the related RFQ
+        if ($request->has('organization_name') && $quotation->rfq) {
+            $quotation->rfq->update(['organization_name' => $request->input('organization_name')]);
+        }
+
+        // Check if the request contains original_name or file_path and update related documents
+        if ($request->has('original_name') || $request->has('file_path')) {
+            $quotation->documents()->update([
+                'original_name' => $request->input('original_name', 'N/A'),
+                'file_path' => $request->input('file_path', 'N/A'),
+            ]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    public function destroy($id)
+    {
+        $quotation = Quotation::findOrFail($id);
+        $quotation->delete();
+        return response()->json(['success' => true]);
+    }
+
+    public function getByRfqId($rfqId)
     {
         try {
-            DB::beginTransaction();
+            \Log::info('Fetching quotations for RFQ ID: ' . $rfqId);
 
-            $quotation->update($request->safe()->except('documents'));
-
-            // Handle document uploads if provided
-            if ($request->hasFile('documents')) {
-                foreach ($request->file('documents') as $document) {
-                    $path = $document->store('quotations');
-                    $quotation->documents()->create([
-                        'file_path' => $path,
-                        'original_name' => $document->getClientOriginalName(),
-                        'type' => 'quotation'
-                    ]);
+            $quotations = Quotation::with([
+                'rfq' => function ($query) {
+                    $query->select('rfq_number', 'organization_name');
+                },
+                'documents' => function ($query) {
+                    $query->select('quotation_id', 'original_name', 'file_path');
                 }
-            }
+            ])
+            ->where('rfq_id', $rfqId)
+            ->paginate(10);
 
-            DB::commit();
+            \Log::info('Quotations found: ' . $quotations->count());
+            \Log::info('Response data: ' . json_encode($quotations));
 
-            return response()->json([
-                'message' => 'Quotation updated successfully',
-                'data' => new QuotationResource(
-                    $quotation->load(['rfq', 'supplier', 'status', 'documents'])
-                )
-            ], Response::HTTP_OK);
+            return response()->json($quotations);
         } catch (\Exception $e) {
-            DB::rollBack();
+            \Log::error('Error fetching quotations: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Failed to update quotation',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+                'error' => 'Failed to load quotations',
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 
-    public function destroy(Quotation $quotation): JsonResponse
-    {
-        try {
-            DB::beginTransaction();
 
-            // Delete associated documents first
-            $quotation->documents()->delete();
-
-            // Delete the quotation
-            $quotation->delete();
-
-            DB::commit();
-
-            return response()->json([
-                'message' => 'Quotation deleted successfully'
-            ], Response::HTTP_OK);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Failed to delete quotation',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-    }
 }

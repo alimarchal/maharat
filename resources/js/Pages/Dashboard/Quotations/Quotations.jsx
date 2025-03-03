@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeftLong, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 
 const RFQ = ({ auth }) => {
@@ -15,38 +15,55 @@ const RFQ = ({ auth }) => {
     const [editData, setEditData] = useState({});
     const [selectedFilter, setSelectedFilter] = useState("All");
     const filters = ["All", "Expired", "Active", "Approved"];
+    const [loading, setLoading] = useState(true);
+    const [progress, setProgress] = useState(0);
 
     const fetchQuotations = async () => {
+        setLoading(true);
+        setProgress(0);
+
+        // Smoothly increase progress
+        const interval = setInterval(() => {
+            setProgress((oldProgress) => (oldProgress >= 90 ? 90 : oldProgress + 10));
+        }, 300); 
+
         try {
             const response = await axios.get(`/api/v1/quotations?page=${currentPage}`);
             const quotationsData = response.data.data;
-            
-            // Fetch status details for each quotation
+
             const quotationsWithDetails = await Promise.all(
                 quotationsData.map(async (quotation) => {
-                    // Fetch status details
-                    const statusResponse = await axios.get(`/api/v1/statuses/${quotation.status_id}`);
-                    // Fetch RFQ details
-                    const rfqResponse = await axios.get(`/api/v1/rfqs/${quotation.rfq_id}`);
-                    
+                    const [statusResponse, rfqResponse] = await Promise.all([
+                        axios.get(`/api/v1/statuses/${quotation.status_id}`),
+                        axios.get(`/api/v1/rfqs/${quotation.rfq_id}`)
+                    ]);
+
                     return {
                         ...quotation,
                         organization_name: rfqResponse.data.data.organization_name,
                         status_type: statusResponse.data.data.type,
-                        status_name: statusResponse.data.data.name
+                        status_name: statusResponse.data.data.name,
                     };
                 })
             );
-            
+
             setQuotations(quotationsWithDetails);
             applyFilter(selectedFilter, quotationsWithDetails);
             setLastPage(response.data.meta.last_page);
             setError("");
+
+            // Ensure full progress bar before hiding
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
         } catch (error) {
-            console.error('API Error:', error);
+            console.error("API Error:", error);
             setError("Failed to load quotations");
             setQuotations([]);
             setFilteredQuotations([]);
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
+        } finally {
+            clearInterval(interval);
         }
     };
 
@@ -78,49 +95,25 @@ const RFQ = ({ auth }) => {
 
     // Handle filter change
     const handleFilterChange = (filter) => {
+        setLoading(true);
+        setProgress(0);
         setSelectedFilter(filter);
-        applyFilter(filter);
+    
+        const interval = setInterval(() => {
+            setProgress((oldProgress) => (oldProgress >= 90 ? 90 : oldProgress + 10));
+        }, 300);
+    
+        setTimeout(() => {
+            applyFilter(filter);
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
+            clearInterval(interval);
+        }, 3000); 
     };
 
     useEffect(() => {
         fetchQuotations();
     }, [currentPage]);
-
-    const handleEdit = (quotation) => {
-        setEditingId(quotation.id);
-        setEditData(quotation);
-    };
-
-    const handleSave = async (id) => {
-        try {
-            const response = await axios.put(`/api/v1/quotations/${id}`, editData);
-            if (response.data) {
-                setEditingId(null);
-                fetchQuotations(); // Refresh the data
-            }
-        } catch (error) {
-            console.error('Save error:', error);
-            setError('Failed to save changes');
-        }
-    };
-
-    const handleDelete = async (id) => {
-        if (!confirm("Are you sure you want to delete this record?")) return;
-
-        try {
-            await axios.delete(`/api/v1/quotations/${id}`);
-            fetchQuotations(); // Refresh data
-        } catch (error) {
-            console.error('Error deleting record:', error);
-        }
-    };
-
-    const handleChange = (field, value) => {
-        setEditData(prev => ({
-            ...prev,
-            [field]: value
-        }));
-    };
 
     const formatDateTime = (dateString) => {
         const optionsDate = { year: "numeric", month: "long", day: "numeric" };
@@ -181,7 +174,7 @@ const RFQ = ({ auth }) => {
                         </div>
                         <Link
                             href="/new-quotation"
-                            className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium"
+                            className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
                         >
                             Add Quotation
                         </Link>
@@ -206,6 +199,22 @@ const RFQ = ({ auth }) => {
                             </tr>
                         </thead>
 
+                        {/* Loading Bar */}
+                        {loading && (
+                            <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
+                                <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
+                                    <div
+                                        className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
+                                        style={{ width: `${progress}%` }}
+                                    ></div>
+                                    <span className="absolute text-white">
+                                        {progress < 60 ? "Please Wait, Fetching Details..." : `${progress}%`}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {!loading && (
                         <tbody className="bg-transparent divide-y divide-gray-200">
                             {filteredQuotations.map((quotation) => (
                                 <tr key={quotation.id}>
@@ -231,10 +240,11 @@ const RFQ = ({ auth }) => {
                                 </tr>
                             ))}
                         </tbody>
+                        )}
                     </table>
 
                     {/* Pagination */}
-                    {!error && filteredQuotations.length > 0 && (
+                    {!loading && !error && filteredQuotations.length > 0 && Math.ceil(filteredQuotations.length / 10) > 1 && (
                         <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                             <button
                                 onClick={() => setCurrentPage(currentPage - 1)}
@@ -245,7 +255,7 @@ const RFQ = ({ auth }) => {
                             >
                                 Previous
                             </button>
-                            {Array.from({ length: lastPage }, (_, index) => index + 1).map((page) => (
+                            {Array.from({ length: Math.ceil(filteredQuotations.length / 10) }, (_, index) => index + 1).map((page) => (
                                 <button
                                     key={page}
                                     onClick={() => setCurrentPage(page)}
@@ -261,9 +271,9 @@ const RFQ = ({ auth }) => {
                             <button
                                 onClick={() => setCurrentPage(currentPage + 1)}
                                 className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                    currentPage >= lastPage ? "opacity-50 cursor-not-allowed" : ""
+                                    currentPage >= Math.ceil(filteredQuotations.length / 10) ? "opacity-50 cursor-not-allowed" : ""
                                 }`}
-                                disabled={currentPage >= lastPage}
+                                disabled={currentPage >= Math.ceil(filteredQuotations.length / 10)}
                             >
                                 Next
                             </button>
