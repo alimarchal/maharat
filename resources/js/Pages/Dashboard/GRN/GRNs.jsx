@@ -232,7 +232,7 @@ export default function QuotationRFQ({ auth }) {
                 {/* Back Button and Breadcrumbs */}
                 <div className="flex justify-between items-center mb-4">
                     <button
-                        onClick={() => router.visit("/warehouse")}
+                        onClick={() => router.visit("/dashboard")}
                         className="flex items-center text-black text-2xl font-medium hover:text-gray-800 p-2"
                     >
                         <FontAwesomeIcon icon={faArrowLeftLong} className="mr-2 text-2xl" />

@@ -264,14 +264,17 @@ export default function MainDashboard({ roles }) {
         {
             text: "Cost Centers",
             icon: faCoins,
+            onClick: () => router.visit("/cost-centers"),
         },
         {
             text: "Ledgers",
             icon: faBook,
+            onClick: () => router.visit("/ledgers"),
         },
         {
             text: "Payment Orders",
             icon: faMoneyCheckDollar,
+            onClick: () => router.visit("/payment-orders"),
         },
         {
             text: "Account Receivables",
@@ -305,6 +308,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "Goods Receiving",
             icon: faFileInvoice,
+            onClick: () => router.visit("/grn"),
         },
         {
             text: "Goods Issued",
