@@ -54,12 +54,14 @@ class PurchaseOrderController extends Controller
             // Add the authenticated user's ID as creator
             $validatedData['user_id'] = auth()->id();
 
+            $validatedData['purchase_order_no'] = $this->generatePurchaseOrderNumber();
+
             // Create purchase order
             $purchaseOrder = PurchaseOrder::create($validatedData);
 
             // Handle file upload if provided
             if ($request->hasFile('attachment')) {
-                $path = $request->file('attachment')->store('purchase-orders');
+                $path = $request->file('attachment')->store('purchase-orders','public');
                 $purchaseOrder->attachment = $path;
                 $purchaseOrder->save();
             }
