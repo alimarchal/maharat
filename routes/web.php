@@ -170,6 +170,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'Tasks/ReviewTask']); 
     })->name('tasks.create');
 
+    Route::get('/cost-centers', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Finance/CostCenter/CostCenterTable']); 
+    })->name('costCenter.index');
+
+    Route::get('/ledgers', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Finance/Ledgers/LedgersTable']); 
+    })->name('ledgers.index');
+
+    Route::get('/payment-orders', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/PaymentOrderTable']); 
+    })->name('paymentOrder.index');
+    Route::get('/payment-orders/create', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/CreatePaymentOrderTable']); 
+    })->name('PaymentOrder.create');
+    Route::get('/payment-orders/{id}/create-payment-order', function ($id) { 
+        return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/CreatePaymentOrder']); 
+    })->name('createPaymentOrder.create');
+
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
