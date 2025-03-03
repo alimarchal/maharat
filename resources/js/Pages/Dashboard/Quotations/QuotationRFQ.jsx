@@ -232,7 +232,7 @@ export default function QuotationRFQ({ auth }) {
                 {/* Back Button and Breadcrumbs */}
                 <div className="flex justify-between items-center mb-4">
                     <button
-                        onClick={() => router.visit("/dashboard")}
+                        onClick={() => router.visit("/new-quotation")}
                         className="flex items-center text-black text-2xl font-medium hover:text-gray-800 p-2"
                     >
                         <FontAwesomeIcon icon={faArrowLeftLong} className="mr-2 text-2xl" />
@@ -242,7 +242,7 @@ export default function QuotationRFQ({ auth }) {
                 <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2 mb-6">
                     <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Home</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                    <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Purchases</Link>
+                    <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Procurement Center</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                     <Link href="/quotation" className="hover:text-[#009FDC] text-xl">Quotations</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
