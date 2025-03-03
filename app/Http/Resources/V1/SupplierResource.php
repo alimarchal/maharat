@@ -27,7 +27,7 @@ class SupplierResource extends JsonResource
             // Include related resources when loaded
             'contacts' => SupplierContactResource::collection($this->whenLoaded('contacts')),
             'addresses' => SupplierAddressResource::collection($this->whenLoaded('addresses')),
-            'currency' => new CurrencyResource($this->whenLoaded('currency')),
+//            'currency' => new CurrencyResource($this->whenLoaded('currency')),
             'status' => new StatusResource($this->whenLoaded('status'))
         ];
     }
