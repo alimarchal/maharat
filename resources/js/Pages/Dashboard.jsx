@@ -23,6 +23,11 @@ import RolesPermissions from "./Dashboard/RolePermission/RolesPermissions";
 import Notification from "./Dashboard/NotificationSettings/Notification";
 import TasksTable from "./Dashboard/Tasks/TasksTable";
 import ReviewTask from "./Dashboard/Tasks/ReviewTask";
+import PaymentOrderTable from "./Dashboard/Finance/PaymentOrder/PaymentOrderTable";
+import CostCenterTable from "./Dashboard/Finance/CostCenter/CostCenterTable";
+import LedgersTable from "./Dashboard/Finance/Ledgers/LedgersTable";
+import CreatePaymentOrdersTable from "./Dashboard/Finance/PaymentOrder/CreatePaymentOrdersTable";
+import CreatePaymentOrder from "./Dashboard/Finance/PaymentOrder/CreatePaymentOrder";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -50,6 +55,15 @@ export default function Dashboard({ auth, page }) {
             return <Notification />;
         if (page === "Tasks/TasksTable") return <TasksTable />;
         if (page === "Tasks/ReviewTask") return <ReviewTask />;
+        if (page === "Finance/CostCenter/CostCenterTable")
+            return <CostCenterTable />;
+        if (page === "Finance/Ledgers/LedgersTable") return <LedgersTable />;
+        if (page === "Finance/PaymentOrder/PaymentOrderTable")
+            return <PaymentOrderTable />;
+        if (page === "Finance/PaymentOrder/CreatePaymentOrderTable")
+            return <CreatePaymentOrdersTable />;
+        if (page === "Finance/PaymentOrder/CreatePaymentOrder")
+            return <CreatePaymentOrder />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };
