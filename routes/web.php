@@ -137,6 +137,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/grn', function () { 
         return Inertia::render('Dashboard/GRN/GRNs'); 
     })->name('grn');
+
+    Route::get('/receive-goods', function () { 
+        return Inertia::render('Dashboard/GRN/ReceiveGoods'); 
+    })->name('receive-goods');
+
+    Route::get('/add-goods', function () { 
+        return Inertia::render('Dashboard/GRN/AddGoods'); 
+    })->name('add-goods');
     
     // RFQ Routes
     Route::get('/dashboard/quotations', [RFQController::class, 'index'])->name('dashboard.quotations.index');
@@ -177,6 +185,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/tasks/new', function () { 
         return Inertia::render('Dashboard', ['page' => 'Tasks/ReviewTask']); 
     })->name('tasks.create');
+
+    Route::get('/cost-centers', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Finance/CostCenter/CostCenterTable']); 
+    })->name('costCenter.index');
+
+    Route::get('/ledgers', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Finance/Ledgers/LedgersTable']); 
+    })->name('ledgers.index');
+
+    Route::get('/payment-orders', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/PaymentOrderTable']); 
+    })->name('paymentOrder.index');
+    Route::get('/payment-orders/create', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/CreatePaymentOrderTable']); 
+    })->name('PaymentOrder.create');
+    Route::get('/payment-orders/{id}/create-payment-order', function ($id) { 
+        return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/CreatePaymentOrder']); 
+    })->name('createPaymentOrder.create');
 
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

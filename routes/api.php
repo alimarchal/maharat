@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\CompanyController;
+use App\Http\Controllers\Api\V1\GrnController;
+use App\Http\Controllers\Api\V1\GrnReceiveGoodController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryTransferController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
@@ -151,6 +153,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     // Purchase Orders API Routes
     Route::apiResource('purchase-orders', PurchaseOrderController::class);
+    // GRN routes
+    Route::apiResource('grns', GrnController::class);
+    // GRN Receive Goods routes
+    Route::apiResource('grn-receive-goods', GrnReceiveGoodController::class);
 
 
 });
