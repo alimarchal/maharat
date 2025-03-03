@@ -252,6 +252,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "Goods Receiving Note",
             icon: faListCheck,
+            onClick: () => router.visit("/grn"),
         },
         {
             text: "Status",
