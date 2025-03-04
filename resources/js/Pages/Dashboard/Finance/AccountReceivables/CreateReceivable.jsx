@@ -1,25 +1,34 @@
 import React, { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPaperclip } from "@fortawesome/free-solid-svg-icons";
+import { faUpload } from "@fortawesome/free-solid-svg-icons";
 
 const CreateReceivable = () => {
     const [formData, setFormData] = useState({
         customer: "SECCO",
         status: "Partially Paid",
-        issueDate: "4 Jan 2025",
-        dueDate: "14 Jan 2025",
+        issueDate: "2025-01-04",
+        dueDate: "2025-01-14",
         paymentTerms: "Net 60",
-        amount: "12,000.00",
-        paid: "3,000.00",
-        balance: "9,000.00",
+        amount: "12000.00",
+        paid: "3000.00",
+        balance: "9000.00",
     });
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        let updatedData = { ...formData, [name]: value };
+
+        if (name === "amount" || name === "paid") {
+            const amount = parseFloat(updatedData.amount) || 0;
+            const paid = parseFloat(updatedData.paid) || 0;
+            updatedData.balance = (amount - paid).toFixed(2);
+        }
+
+        setFormData(updatedData);
     };
 
     return (
-        <div className="w-full px-4 md:px-6 lg:px-8">
+        <div className="w-full">
             <h2 className="text-2xl md:text-3xl font-bold text-[#2C323C] mb-6 md:mb-10">
                 Account Receivables Details
             </h2>
@@ -49,7 +58,7 @@ const CreateReceivable = () => {
                             <th className="py-3 px-4">Issue Date</th>
                             <th className="py-3 px-4">Due Date</th>
                             <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
-                                Invoice Link
+                                Upload Invoice
                             </th>
                         </tr>
                     </thead>
@@ -60,7 +69,7 @@ const CreateReceivable = () => {
                                     name="customer"
                                     value={formData.customer}
                                     onChange={handleChange}
-                                    className="w-full xl:w-2/3 border-none bg-transparent rounded p-2 cursor-pointer"
+                                    className="w-full border-none bg-transparent rounded p-2 cursor-pointer"
                                 >
                                     <option>SECCO</option>
                                     <option>SARAMCO</option>
@@ -73,18 +82,34 @@ const CreateReceivable = () => {
                                     name="status"
                                     value={formData.status}
                                     onChange={handleChange}
-                                    className="w-full xl:w-4/5 border-none bg-transparent rounded p-2 cursor-pointer"
+                                    className="w-full border-none bg-transparent rounded p-2 cursor-pointer"
                                 >
                                     <option>Unpaid</option>
                                     <option>Paid</option>
                                     <option>Partially Paid</option>
                                 </select>
                             </td>
-                            <td className="py-3 px-4">{formData.issueDate}</td>
-                            <td className="py-3 px-4">{formData.dueDate}</td>
+                            <td className="py-3 px-4">
+                                <input
+                                    type="date"
+                                    name="issueDate"
+                                    value={formData.issueDate}
+                                    onChange={handleChange}
+                                    className="border-none bg-transparent rounded p-2 w-full"
+                                />
+                            </td>
+                            <td className="py-3 px-4">
+                                <input
+                                    type="date"
+                                    name="dueDate"
+                                    value={formData.dueDate}
+                                    onChange={handleChange}
+                                    className="border-none bg-transparent rounded p-2 w-full"
+                                />
+                            </td>
                             <td className="py-3 px-4 text-center">
                                 <FontAwesomeIcon
-                                    icon={faPaperclip}
+                                    icon={faUpload}
                                     className="text-lg md:text-xl text-[#009FDC] hover:text-blue-700 cursor-pointer"
                                 />
                             </td>
@@ -114,14 +139,30 @@ const CreateReceivable = () => {
                                     name="paymentTerms"
                                     value={formData.paymentTerms}
                                     onChange={handleChange}
-                                    className="w-full lg:w-1/3 xl:w-1/2 border-none bg-transparent rounded p-2 cursor-pointer"
+                                    className="w-full border-none bg-transparent rounded p-2 cursor-pointer"
                                 >
                                     <option>Net 30</option>
                                     <option>Net 60</option>
                                 </select>
                             </td>
-                            <td className="py-3 px-4">{formData.amount}</td>
-                            <td className="py-3 px-4">{formData.paid}</td>
+                            <td className="py-3 px-4">
+                                <input
+                                    type="number"
+                                    name="amount"
+                                    value={formData.amount}
+                                    onChange={handleChange}
+                                    className="border-none bg-transparent rounded p-2 w-full"
+                                />
+                            </td>
+                            <td className="py-3 px-4">
+                                <input
+                                    type="number"
+                                    name="paid"
+                                    value={formData.paid}
+                                    onChange={handleChange}
+                                    className="border-none bg-transparent rounded p-2 w-full"
+                                />
+                            </td>
                             <td className="py-3 px-4">{formData.balance}</td>
                         </tr>
                     </tbody>
