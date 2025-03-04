@@ -192,6 +192,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/CreatePaymentOrder']); 
     })->name('createPaymentOrder.create');
 
+    Route::get('/account-receivables', function () { 
+        return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ReceivableTable']); 
+    })->name('receivable.index');
+    Route::get('/account-receivables/create', function () { 
+        return Inertia::render('Dashboard', ['page' => 'AccountReceivables/CreateReceivable']); 
+    })->name('receivable.create');
+    Route::get('/account-receivables/view/{id}', function () { 
+        return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ViewReceivable']); 
+    })->name('receivable.view');
+
+    Route::get('/account-payables', function () { 
+        return Inertia::render('Dashboard', ['page' => 'AccountPayables/PayablesTable']); 
+    })->name('payables.index');
+    Route::get('/account-payables/view/{id}', function () { 
+        return Inertia::render('Dashboard', ['page' => 'AccountPayables/ViewPayable']); 
+    })->name('payables.view');
+
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
