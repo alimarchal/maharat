@@ -279,10 +279,12 @@ export default function MainDashboard({ roles }) {
         {
             text: "Account Receivables",
             icon: faFileInvoiceDollar,
+            onClick: () => router.visit("/account-receivables"),
         },
         {
             text: "Account Payables",
             icon: faFileInvoice,
+            onClick: () => router.visit("/account-payables"),
         },
         {
             text: "Balance Sheet",
