@@ -133,6 +133,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/create-order', function () { 
         return Inertia::render('Dashboard/Purchase Order/CreateOrder'); 
     })->name('create-order');
+
+    Route::get('/grn', function () { 
+        return Inertia::render('Dashboard/GRN/GRNs'); 
+    })->name('grn');
+
+    Route::get('/receive-goods', function () { 
+        return Inertia::render('Dashboard/GRN/ReceiveGoods'); 
+    })->name('receive-goods');
+
+    Route::get('/add-goods', function () { 
+        return Inertia::render('Dashboard/GRN/AddGoods'); 
+    })->name('add-goods');
     
     // RFQ Routes
     Route::get('/dashboard/quotations', [RFQController::class, 'index'])->name('dashboard.quotations.index');
