@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\V1;
 
+use App\Models\Brand;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,6 +16,7 @@ class InventoryResource extends JsonResource
             'warehouse_id' => $this->warehouse_id,
             'product_id' => $this->product_id,
             'category' => $this->product?->category,
+            'brand' => Brand::find($this->product?->category_id),
             'quantity' => $this->quantity,
             'reorder_level' => $this->reorder_level,
             'description' => $this->description,
