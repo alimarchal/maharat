@@ -252,6 +252,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "Goods Receiving Note",
             icon: faListCheck,
+            onClick: () => router.visit("/grn"),
         },
         {
             text: "Status",
@@ -307,6 +308,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "Goods Receiving",
             icon: faFileInvoice,
+            onClick: () => router.visit("/grn"),
         },
         {
             text: "Goods Issued",
