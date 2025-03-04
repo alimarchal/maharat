@@ -15,6 +15,7 @@ class Inventory extends Model
         'product_id',
         'quantity',
         'reorder_level',
+        'description',
     ];
 
     public function warehouse(): BelongsTo
