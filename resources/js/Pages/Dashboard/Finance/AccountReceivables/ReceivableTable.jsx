@@ -10,7 +10,7 @@ const ReceivableTable = () => {
     const [receivables, setReceivables] = useState([
         {
             id: "01",
-            invoice_no: "MC-INV-2024001",
+            invoice_no: "INV-2024001",
             customer: "SECCO",
             contact: "QT-2024001",
             status: "Unpaid",
@@ -19,7 +19,7 @@ const ReceivableTable = () => {
         },
         {
             id: "02",
-            invoice_no: "MC-INV-6788001",
+            invoice_no: "INV-6788001",
             customer: "SARAMCO",
             contact: "QT-6788001",
             status: "Paid",
@@ -28,7 +28,7 @@ const ReceivableTable = () => {
         },
         {
             id: "03",
-            invoice_no: "MC-INV-3249801",
+            invoice_no: "INV-3249801",
             customer: "BAHRI",
             contact: "QT-3249801",
             status: "Overdue",
@@ -37,7 +37,7 @@ const ReceivableTable = () => {
         },
         {
             id: "04",
-            invoice_no: "MC-INV-2024001",
+            invoice_no: "INV-2024001",
             customer: "MARITIME",
             contact: "QT-2024001",
             status: "Partially Paid",

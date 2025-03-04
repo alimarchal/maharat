@@ -17,7 +17,6 @@ import {
     faBell,
     faDiagramProject,
     faUserPen,
-    faEllipsisH,
     faWarehouse,
     faDolly,
     faCoins,
@@ -25,6 +24,14 @@ import {
     faMoneyCheckDollar,
     faFileInvoiceDollar,
     faBalanceScale,
+    faHourglassHalf,
+    faCheckCircle,
+    faShareSquare,
+    faTimesCircle,
+    faCalculator,
+    faChartLine,
+    faMoneyBillWave,
+    faSignal,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { router } from "@inertiajs/react";
@@ -233,6 +240,29 @@ const DashboardCard = ({
 export default function MainDashboard({ roles }) {
     const isAdmin = roles && roles.includes("Admin");
 
+    const tasksDropdownItems = [
+        {
+            text: "New",
+            icon: faFileCirclePlus,
+        },
+        {
+            text: "Pending",
+            icon: faHourglassHalf,
+        },
+        {
+            text: "Approved",
+            icon: faCheckCircle,
+        },
+        {
+            text: "Referred",
+            icon: faShareSquare,
+        },
+        {
+            text: "Rejected",
+            icon: faTimesCircle,
+        },
+    ];
+
     const purchaseDropdownItems = [
         {
             text: "RFQs",
@@ -255,8 +285,8 @@ export default function MainDashboard({ roles }) {
             onClick: () => router.visit("/grn"),
         },
         {
-            text: "Status",
-            icon: faEllipsisH,
+            text: "Invoices",
+            icon: faFileAlt,
         },
     ];
 
@@ -285,10 +315,6 @@ export default function MainDashboard({ roles }) {
             text: "Account Payables",
             icon: faFileInvoice,
             onClick: () => router.visit("/account-payables"),
-        },
-        {
-            text: "Balance Sheet",
-            icon: faBalanceScale,
         },
     ];
 
@@ -319,6 +345,37 @@ export default function MainDashboard({ roles }) {
         {
             text: "Inventory Tracking",
             icon: faChartBar,
+        },
+    ];
+
+    const budgetDropdownItems = [
+        {
+            text: "Income Statement",
+            icon: faChartLine,
+            onClick: () => router.visit("/income-statement"),
+        },
+        {
+            text: "Balance Sheet",
+            icon: faBalanceScale,
+        },
+        {
+            text: "Budget",
+            icon: faMoneyBillWave,
+        },
+        {
+            text: "Request a Budget",
+            icon: faFileSignature,
+        },
+    ];
+
+    const reportsDropdownItems = [
+        {
+            text: "Reports",
+            icon: faFileAlt,
+        },
+        {
+            text: "Statuses",
+            icon: faSignal,
         },
     ];
 
@@ -379,6 +436,7 @@ export default function MainDashboard({ roles }) {
                     bgColor="bg-[#F7EBBA]"
                     iconColor="text-[#665200]"
                     onClick={() => router.visit("/tasks")}
+                    dropdownItems={tasksDropdownItems}
                 />
 
                 {isAdmin && (
@@ -415,22 +473,24 @@ export default function MainDashboard({ roles }) {
                         onClick={() => router.visit("/warehouse-management")}
                     />
                     <DashboardCard
-                        icon={faFileInvoice}
-                        title="Invoices"
-                        subtitle="Paid & Unpaid"
+                        icon={faCalculator}
+                        title="Budget & Accounts"
+                        subtitle="Planning & Accounting"
                         bgColor="bg-[#F7CCCC]"
                         iconColor="text-[#661E1E]"
+                        dropdownItems={budgetDropdownItems}
                     />
                     <DashboardCard
-                        icon={faChartBar}
-                        title="Reports"
-                        subtitle="All Reports"
+                        icon={faClipboardList}
+                        title="Reports & Statuses"
+                        subtitle="All Reports & Statuses"
                         bgColor="bg-[#B9BBBD]"
                         iconColor="text-[#2C323C]"
+                        dropdownItems={reportsDropdownItems}
                     />
                     <DashboardCard
                         icon={faCogs}
-                        title="Configuration"
+                        title="Configuration Center"
                         subtitle="Process Flow"
                         bgColor="bg-[#DEEEE9]"
                         iconColor="text-[#074D38]"

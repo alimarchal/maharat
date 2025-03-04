@@ -33,6 +33,7 @@ import CreateReceivable from "./Dashboard/Finance/AccountReceivables/CreateRecei
 import ViewReceivable from "./Dashboard/Finance/AccountReceivables/ViewReceivable";
 import PayablesTable from "./Dashboard/Finance/AccountPayables/PayablesTable";
 import ViewPayable from "./Dashboard/Finance/AccountPayables/ViewPayable";
+import IncomeStatementTable from "./Dashboard/BudgetAndAccounts/IncomeStatement/IncomeStatementTable";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -77,6 +78,8 @@ export default function Dashboard({ auth, page }) {
             return <ViewReceivable />;
         if (page === "AccountPayables/PayablesTable") return <PayablesTable />;
         if (page === "AccountPayables/ViewPayable") return <ViewPayable />;
+        if (page === "BudgetAndAccounts/IncomeStatement/IncomeStatementTable")
+            return <IncomeStatementTable />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };
