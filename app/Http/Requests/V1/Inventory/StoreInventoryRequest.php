@@ -12,6 +12,13 @@ class StoreInventoryRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation()
+    {
+        $this->merge([
+            'user_id' => auth()->id(),
+        ]);
+    }
+
     public function rules(): array
     {
         return [
@@ -25,6 +32,14 @@ class StoreInventoryRequest extends FormRequest
             'quantity' => ['required', 'numeric', 'min:0'],
             'reorder_level' => ['required', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
+            'transaction_type' => ['required', 'string'],
+            'previous_quantity' => ['nullable', 'string'],
+            'new_quantity' => ['nullable', 'string'],
+            'reference_number' => ['nullable', 'string'],
+            'reference_type' => ['nullable', 'string'],
+            'reference_id' => ['nullable', 'string'],
+            'notes' => ['nullable', 'string'],
+            'user_id' => ['sometimes'],
         ];
     }
 }
