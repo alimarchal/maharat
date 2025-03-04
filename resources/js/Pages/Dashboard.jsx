@@ -28,6 +28,11 @@ import CostCenterTable from "./Dashboard/Finance/CostCenter/CostCenterTable";
 import LedgersTable from "./Dashboard/Finance/Ledgers/LedgersTable";
 import CreatePaymentOrdersTable from "./Dashboard/Finance/PaymentOrder/CreatePaymentOrdersTable";
 import CreatePaymentOrder from "./Dashboard/Finance/PaymentOrder/CreatePaymentOrder";
+import ReceivableTable from "./Dashboard/Finance/AccountReceivables/ReceivableTable";
+import CreateReceivable from "./Dashboard/Finance/AccountReceivables/CreateReceivable";
+import ViewReceivable from "./Dashboard/Finance/AccountReceivables/ViewReceivable";
+import PayablesTable from "./Dashboard/Finance/AccountPayables/PayablesTable";
+import ViewPayable from "./Dashboard/Finance/AccountPayables/ViewPayable";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -64,6 +69,14 @@ export default function Dashboard({ auth, page }) {
             return <CreatePaymentOrdersTable />;
         if (page === "Finance/PaymentOrder/CreatePaymentOrder")
             return <CreatePaymentOrder />;
+        if (page === "AccountReceivables/ReceivableTable")
+            return <ReceivableTable />;
+        if (page === "AccountReceivables/CreateReceivable")
+            return <CreateReceivable />;
+        if (page === "AccountReceivables/ViewReceivable")
+            return <ViewReceivable />;
+        if (page === "AccountPayables/PayablesTable") return <PayablesTable />;
+        if (page === "AccountPayables/ViewPayable") return <ViewPayable />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };
