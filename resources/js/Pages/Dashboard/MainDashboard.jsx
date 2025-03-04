@@ -405,6 +405,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "Users",
             icon: faUsers,
+            onClick: () => router.visit("/users"),
         },
     ];
 
