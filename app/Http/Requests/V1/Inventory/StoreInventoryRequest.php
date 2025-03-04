@@ -24,6 +24,7 @@ class StoreInventoryRequest extends FormRequest
             ],
             'quantity' => ['required', 'numeric', 'min:0'],
             'reorder_level' => ['required', 'numeric', 'min:0'],
+            'description' => ['nullable', 'string'],
         ];
     }
 }

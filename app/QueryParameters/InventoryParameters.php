@@ -9,6 +9,7 @@ class InventoryParameters
         'product_id',
         'quantity',
         'reorder_level',
+        'description',
         'created_at',
     ];
 

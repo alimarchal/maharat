@@ -79,12 +79,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     // Products routes
     Route::apiResource('products', ProductController::class);
-    // Inventory routes
-    Route::apiResource('inventories', InventoryController::class);
-    // Inventory Adjustments routes
-    Route::apiResource('inventory-adjustments', InventoryAdjustmentController::class);
-    // Inventory Transfers routes
-    Route::apiResource('inventory-transfers', InventoryTransferController::class);
     // Material Requests routes
     Route::apiResource('material-requests', MaterialRequestController::class);
     // Material Request Items routes
@@ -157,6 +151,12 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('grns', GrnController::class);
     // GRN Receive Goods routes
     Route::apiResource('grn-receive-goods', GrnReceiveGoodController::class);
+    // Inventory routes
+    Route::apiResource('inventories', InventoryController::class);
+    // Inventory Adjustments routes
+    Route::apiResource('inventory-adjustments', InventoryAdjustmentController::class);
+    // Inventory Transfers routes
+    Route::apiResource('inventory-transfers', InventoryTransferController::class);
 
 
 });
