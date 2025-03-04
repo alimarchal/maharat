@@ -1,11 +1,11 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPaperclip, faEye } from "@fortawesome/free-solid-svg-icons";
+import { faDownload, faEye } from "@fortawesome/free-solid-svg-icons";
 
 const ViewPayable = () => {
     const suppliers = [
         {
-            id: "MC-INV-2024001",
+            id: "INV-2024001",
             name: "SECCO",
             contact: "Abdul Jabbar",
             status: "Partially Paid",
@@ -54,7 +54,7 @@ const ViewPayable = () => {
                             <th className="py-3 px-4">Issue Date</th>
                             <th className="py-3 px-4">Due Date</th>
                             <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
-                                View & Invoice Link
+                                View & Download Invoice
                             </th>
                         </tr>
                     </thead>
@@ -78,7 +78,7 @@ const ViewPayable = () => {
                                         className="text-lg md:text-xl text-[#9B9DA2] cursor-pointer hover:text-black"
                                     />
                                     <FontAwesomeIcon
-                                        icon={faPaperclip}
+                                        icon={faDownload}
                                         className="text-lg md:text-xl text-[#009FDC] cursor-pointer hover:text-blue-700"
                                     />
                                 </td>
@@ -113,15 +113,6 @@ const ViewPayable = () => {
                         ))}
                     </tbody>
                 </table>
-            </div>
-
-            <div className="my-8 flex flex-col md:flex-row items-center md:justify-end gap-4">
-                <button className="px-8 py-3 text-lg md:text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto">
-                    Edit
-                </button>
-                <button className="px-8 py-3 text-lg md:text-xl font-medium bg-gray-400 text-white rounded-full transition duration-300 hover:bg-gray-500 w-full md:w-auto">
-                    Save
-                </button>
             </div>
         </div>
     );

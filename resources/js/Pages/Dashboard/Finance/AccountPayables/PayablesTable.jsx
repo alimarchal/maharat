@@ -10,7 +10,7 @@ const PayablesTable = () => {
     const [payables, setPayables] = useState([
         {
             id: "01",
-            invoice_no: "MC-INV-2024001",
+            invoice_no: "INV-2024001",
             supplier: "SECCO",
             contact: "QT-2024001",
             status: "Unpaid",
@@ -19,7 +19,7 @@ const PayablesTable = () => {
         },
         {
             id: "02",
-            invoice_no: "MC-INV-6788001",
+            invoice_no: "INV-6788001",
             supplier: "SARAMCO",
             contact: "QT-6788001",
             status: "Paid",
@@ -28,7 +28,7 @@ const PayablesTable = () => {
         },
         {
             id: "03",
-            invoice_no: "MC-INV-3249801",
+            invoice_no: "INV-3249801",
             supplier: "BAHRI",
             contact: "QT-3249801",
             status: "Overdue",
@@ -37,7 +37,7 @@ const PayablesTable = () => {
         },
         {
             id: "04",
-            invoice_no: "MC-INV-2024001",
+            invoice_no: "INV-2024001",
             supplier: "MARITIME",
             contact: "QT-2024001",
             status: "Partially Paid",
