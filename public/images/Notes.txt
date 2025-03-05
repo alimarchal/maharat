@@ -1,0 +1,164 @@
+
+        /*
+
+        // 3. cost_center_hierarchy - Explicit relationships between cost centers
+        Schema::create('cost_center_hierarchy', function (Blueprint $table) {
+            $table->id('hierarchy_id')->comment('Primary key for hierarchy relationships');
+            $table->unsignedBigInteger('parent_cost_center_id')->comment('Parent cost center');
+            $table->unsignedBigInteger('child_cost_center_id')->comment('Child cost center');
+            $table->string('relationship_type', 50)->comment('Type of relationship (Reporting/Allocation/Functional)');
+            $table->decimal('allocation_percentage', 8, 4)->nullable()->comment('Percentage for cost allocation relationships');
+            $table->date('effective_start_date')->comment('Start date of relationship');
+            $table->date('effective_end_date')->nullable()->comment('End date of relationship');
+            $table->timestamps();
+            $table->foreignId('created_by')->nullable()->comment('User who created this record')->constrained('users', 'id');
+            $table->foreignId('updated_by')->nullable()->comment('User who last updated this record')->constrained('users', 'id');
+
+            // Foreign keys
+            $table->foreign('parent_cost_center_id')->references('cost_center_id')->on('cost_centers')->onDelete('cascade');
+            $table->foreign('child_cost_center_id')->references('cost_center_id')->on('cost_centers')->onDelete('cascade');
+
+            // Unique constraint to prevent duplicate relationships
+            $table->unique(['parent_cost_center_id', 'child_cost_center_id', 'relationship_type', 'effective_start_date']);
+
+            // Check constraint for dates
+            //$table->check('effective_end_date IS NULL OR effective_end_date >= effective_start_date');
+        });
+
+        // 4. cost_center_budgets - Budget allocations for cost centers
+        Schema::create('cost_center_budgets', function (Blueprint $table) {
+            $table->id('budget_id')->comment('Primary key for budget entries');
+            $table->unsignedBigInteger('cost_center_id')->comment('Related cost center');
+            $table->year('fiscal_year')->comment('Budget year');
+            $table->string('fiscal_period', 10)->comment('Month/Quarter');
+            $table->unsignedBigInteger('account_id')->comment('Chart of accounts reference');
+            $table->decimal('budget_amount', 19, 4)->comment('Planned amount');
+            $table->string('currency_code', 3)->default('USD')->comment('Currency code');
+            $table->enum('status', ['Draft', 'Approved', 'Revised'])->default('Draft')->comment('Budget status');
+            $table->integer('version')->default(1)->comment('Budget version number');
+            $table->timestamps();
+            $table->foreignId('created_by')->nullable()->comment('User who created this record')->constrained('users', 'id');
+            $table->foreignId('updated_by')->nullable()->comment('User who last updated this record')->constrained('users', 'id');
+            $table->foreignId('approved_by')->nullable()->comment('User who approved this budget')->constrained('users', 'id');
+            $table->timestamp('approved_at')->nullable()->comment('When this budget was approved');
+
+            // Foreign keys
+            $table->foreign('cost_center_id')->references('cost_center_id')->on('cost_centers')->onDelete('cascade');
+            $table->foreign('account_id')->references('id')->on('chart_of_accounts');
+
+            // Unique constraint for budget entries
+            $table->unique(['cost_center_id', 'fiscal_year', 'fiscal_period', 'account_id', 'version']);
+        });
+
+
+
+        // 5. cost_center_employees - Employee assignments to cost centers
+        Schema::create('cost_center_employees', function (Blueprint $table) {
+            $table->id('assignment_id')->comment('Primary key for employee assignments');
+            $table->unsignedBigInteger('cost_center_id')->comment('Cost center the employee is assigned to');
+            $table->unsignedBigInteger('employee_id')->comment('Employee being assigned');
+            $table->decimal('allocation_percentage', 8, 4)->default(100.00)->comment('Percentage allocation if split between centers');
+            $table->date('effective_start_date')->comment('Assignment start date');
+            $table->date('effective_end_date')->nullable()->comment('Assignment end date');
+            $table->boolean('primary_assignment')->default(true)->comment('Whether this is the employee\'s primary cost center');
+            $table->timestamps();
+            $table->foreignId('created_by')->nullable()->comment('User who created this record')->constrained('users', 'id');
+            $table->foreignId('updated_by')->nullable()->comment('User who last updated this record')->constrained('users', 'id');
+
+            // Foreign keys
+            $table->foreign('cost_center_id')->references('cost_center_id')->on('cost_centers')->onDelete('cascade');
+            $table->foreign('employee_id')->references('id')->on('employees')->onDelete('cascade');
+
+            // Check constraints
+            $table->check('allocation_percentage > 0 AND allocation_percentage <= 100');
+            $table->check('effective_end_date IS NULL OR effective_end_date >= effective_start_date');
+        });
+
+        // 6. cost_center_allocations - Rules for allocating costs between centers
+        Schema::create('cost_center_allocations', function (Blueprint $table) {
+            $table->id('allocation_id')->comment('Primary key for allocation rules');
+            $table->unsignedBigInteger('source_cost_center_id')->comment('Source cost center');
+            $table->unsignedBigInteger('target_cost_center_id')->comment('Target cost center');
+            $table->enum('allocation_method', ['Fixed', 'Variable', 'Percentage'])->comment('Method of allocation');
+            $table->string('allocation_basis', 50)->nullable()->comment('Basis for variable allocations (Headcount/Square footage/Revenue)');
+            $table->decimal('percentage', 8, 4)->nullable()->comment('Percentage for percentage-based allocations');
+            $table->decimal('amount', 19, 4)->nullable()->comment('Amount for fixed allocations');
+            $table->date('effective_start_date')->comment('Start date of allocation rule');
+            $table->date('effective_end_date')->nullable()->comment('End date of allocation rule');
+            $table->enum('frequency', ['Monthly', 'Quarterly', 'Yearly'])->default('Monthly')->comment('Frequency of allocation');
+            $table->boolean('is_automatic')->default(true)->comment('Whether allocation is automatic');
+            $table->timestamps();
+            $table->foreignId('created_by')->nullable()->comment('User who created this record')->constrained('users', 'id');
+            $table->foreignId('updated_by')->nullable()->comment('User who last updated this record')->constrained('users', 'id');
+
+            // Foreign keys
+            $table->foreign('source_cost_center_id')->references('cost_center_id')->on('cost_centers')->onDelete('cascade');
+            $table->foreign('target_cost_center_id')->references('cost_center_id')->on('cost_centers')->onDelete('cascade');
+
+            // Check constraints
+            $table->check('source_cost_center_id != target_cost_center_id');
+            $table->check('(allocation_method = "Percentage" AND percentage IS NOT NULL) OR
+                           (allocation_method = "Fixed" AND amount IS NOT NULL) OR
+                           (allocation_method = "Variable" AND allocation_basis IS NOT NULL)');
+            $table->check('effective_end_date IS NULL OR effective_end_date >= effective_start_date');
+        });
+
+        // 7. cost_center_actuals - Actual financial transactions for cost centers
+        Schema::create('cost_center_actuals', function (Blueprint $table) {
+            $table->id('actual_id')->comment('Primary key for actual financial entries');
+            $table->unsignedBigInteger('cost_center_id')->comment('Related cost center');
+            $table->unsignedBigInteger('transaction_id')->comment('Related financial transaction');
+            $table->unsignedBigInteger('account_id')->comment('Chart of accounts reference');
+            $table->year('fiscal_year')->comment('Fiscal year');
+            $table->string('fiscal_period', 10)->comment('Month/Quarter');
+            $table->decimal('amount', 19, 4)->comment('Actual amount');
+            $table->string('currency_code', 3)->default('USD')->comment('Currency code');
+            $table->date('posting_date')->comment('When posted to ledger');
+            $table->date('transaction_date')->comment('When transaction occurred');
+            $table->string('source', 50)->comment('Origin system/module');
+            $table->timestamps();
+            $table->foreignId('created_by')->nullable()->comment('User who created this record')->constrained('users', 'id');
+            $table->foreignId('updated_by')->nullable()->comment('User who last updated this record')->constrained('users', 'id');
+
+            // Foreign keys
+            $table->foreign('cost_center_id')->references('cost_center_id')->on('cost_centers')->onDelete('cascade');
+            $table->foreign('transaction_id')->references('id')->on('financial_transactions');
+            $table->foreign('account_id')->references('id')->on('chart_of_accounts');
+        });
+
+        // 8. cost_center_metrics - Performance metrics for cost centers
+        Schema::create('cost_center_metrics', function (Blueprint $table) {
+            $table->id('metric_id')->comment('Primary key for metrics');
+            $table->unsignedBigInteger('cost_center_id')->comment('Related cost center');
+            $table->unsignedBigInteger('metric_type_id')->comment('Type of metric being measured');
+            $table->year('fiscal_year')->comment('Fiscal year');
+            $table->string('fiscal_period', 10)->comment('Month/Quarter');
+            $table->decimal('target_value', 19, 4)->nullable()->comment('Target metric value');
+            $table->decimal('actual_value', 19, 4)->nullable()->comment('Actual metric value');
+            $table->decimal('variance', 19, 4)->nullable()->comment('Difference between target and actual');
+            $table->decimal('variance_percentage', 8, 4)->nullable()->comment('Percentage variance');
+            $table->timestamps();
+            $table->foreignId('created_by')->nullable()->comment('User who created this record')->constrained('users', 'id');
+            $table->foreignId('updated_by')->nullable()->comment('User who last updated this record')->constrained('users', 'id');
+
+            // Foreign keys
+            $table->foreign('cost_center_id')->references('cost_center_id')->on('cost_centers')->onDelete('cascade');
+            $table->foreign('metric_type_id')->references('id')->on('metric_types');
+
+            // Unique constraint
+            $table->unique(['cost_center_id', 'metric_type_id', 'fiscal_year', 'fiscal_period']);
+        });
+
+        // 9. cost_center_reports - Saved report definitions for cost centers
+        Schema::create('cost_center_reports', function (Blueprint $table) {
+            $table->id('report_id')->comment('Primary key for reports');
+            $table->string('name', 100)->comment('Report name');
+            $table->text('description')->nullable()->comment('Report description');
+            $table->text('query_definition')->comment('SQL/query definition');
+            $table->boolean('is_public')->default(false)->comment('Public availability flag');
+            $table->timestamps();
+            $table->foreignId('created_by')->nullable()->comment('User who created this report')->constrained('users', 'id');
+            $table->foreignId('updated_by')->nullable()->comment('User who last updated this report')->constrained('users', 'id');
+        });
+
+        */

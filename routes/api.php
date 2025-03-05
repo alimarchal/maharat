@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\CompanyController;
+use App\Http\Controllers\Api\V1\CostCenterController;
 use App\Http\Controllers\Api\V1\DepartmentController;
 use App\Http\Controllers\Api\V1\GrnController;
 use App\Http\Controllers\Api\V1\GrnReceiveGoodController;
@@ -179,11 +180,16 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     // End Inventory
 
-
     // Department routes
     Route::apiResource('departments', DepartmentController::class);
     Route::get('departments-tree', [DepartmentController::class, 'tree']);
     Route::post('departments/{id}/restore', [DepartmentController::class, 'restore']);
+
+
+    Route::apiResource('cost-centers', CostCenterController::class);
+    Route::get('cost-centers-tree', [CostCenterController::class, 'tree']);
+    Route::post('cost-centers/{id}/restore', [CostCenterController::class, 'restore']);
+
 
 });
 
