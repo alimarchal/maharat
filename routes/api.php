@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\CompanyController;
+use App\Http\Controllers\Api\V1\DepartmentController;
 use App\Http\Controllers\Api\V1\GrnController;
 use App\Http\Controllers\Api\V1\GrnReceiveGoodController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
@@ -170,7 +171,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // Additional inventory routes
     Route::get('products/{product}/inventory', [InventoryController::class, 'getProductInventory']);
     Route::get('warehouses/{warehouse}/inventory', [InventoryController::class, 'getWarehouseInventory']);
-
     // Inventory Adjustments routes
     Route::apiResource('inventory-adjustments', InventoryAdjustmentController::class);
 
@@ -178,6 +178,13 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('inventory-transfers', InventoryTransferController::class);
 
     // End Inventory
+
+
+    // Department routes
+    Route::apiResource('departments', DepartmentController::class);
+    Route::get('departments-tree', [DepartmentController::class, 'tree']);
+    Route::post('departments/{id}/restore', [DepartmentController::class, 'restore']);
+
 });
 
 Route::get('/user', function (Request $request) {
