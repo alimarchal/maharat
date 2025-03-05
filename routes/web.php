@@ -224,6 +224,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/income-statement', function () { 
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/IncomeStatement/IncomeStatementTable']); 
     })->name('statement.index');
+    Route::get('/income-statement/details/{id}', function () { 
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/IncomeStatement/ViewIncomeStatement']); 
+    })->name('statement.view');
+
+    Route::get('/balance-sheet', function () { 
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/BalanceSheet/ViewBalanceSheet']); 
+    })->name('balance.index');
+
+    Route::get('/budget', function () { 
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/BudgetTable']); 
+    })->name('budget.index');
+    Route::get('/budget/details/{id}', function () { 
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/ViewBudget']); 
+    })->name('budget.view');
+    Route::get('/request-budget', function () { 
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/BudgetRequestForm']); 
+    })->name('budget.create');
 
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
