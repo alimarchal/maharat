@@ -35,7 +35,7 @@ export default function AuthenticatedLayout({ header, children }) {
     return (
         <div className="min-h-screen flex flex-col bg-[#C4E4F0] bg-opacity-20">
             <header
-                className={`flex justify-between items-center px-6 py-4 w-full fixed top-0 left-0 right-0 transition-all ${
+                className={`flex justify-between items-center px-6 py-4 w-full fixed top-0 left-0 right-0 z-10 transition-all ${
                     isScrolled ? "bg-white shadow-md" : "bg-transparent"
                 }`}
             >
