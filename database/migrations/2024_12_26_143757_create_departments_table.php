@@ -13,10 +13,11 @@ return new class extends Migration
     {
         Schema::create('departments', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('parent_id')->nullable()->constrained('departments')->nullOnDelete();
             $table->string('name');
             $table->string('code')->unique();
             $table->boolean('is_active')->default(true);
-            $table->foreignId('company_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('company_id')->nullable()->constrained()->cascadeOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
