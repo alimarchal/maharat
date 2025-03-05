@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\GrnController;
 use App\Http\Controllers\Api\V1\GrnReceiveGoodController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
+use App\Http\Controllers\Api\V1\InventoryTransactionController;
 use App\Http\Controllers\Api\V1\InventoryTransferController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
 use App\Http\Controllers\Api\V1\MaterialRequestItemController;
@@ -151,14 +152,32 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('grns', GrnController::class);
     // GRN Receive Goods routes
     Route::apiResource('grn-receive-goods', GrnReceiveGoodController::class);
-    // Inventory routes
+
+
+    // Start Inventory
+    // Inventory Management
+    Route::get('inventories/low-stock', [InventoryController::class, 'getLowStockItems']);
     Route::apiResource('inventories', InventoryController::class);
+
+    // Inventory Transactions
+    Route::apiResource('inventory-transactions', InventoryTransactionController::class)->only(['index', 'show']);
+
+    // Stock operations by product
+    Route::post('inventories/product/{product}/stock-in', [InventoryController::class, 'adjustInventoryByProduct'])->name('inventories.stock-in');
+    Route::post('inventories/product/{product}/stock-out', [InventoryController::class, 'adjustInventoryByProduct'])->name('inventories.stock-out');
+    Route::post('inventories/product/{product}/adjustment', [InventoryController::class, 'adjustInventoryByProduct'])->name('inventories.adjustment');
+
+    // Additional inventory routes
+    Route::get('products/{product}/inventory', [InventoryController::class, 'getProductInventory']);
+    Route::get('warehouses/{warehouse}/inventory', [InventoryController::class, 'getWarehouseInventory']);
+
     // Inventory Adjustments routes
     Route::apiResource('inventory-adjustments', InventoryAdjustmentController::class);
+
     // Inventory Transfers routes
     Route::apiResource('inventory-transfers', InventoryTransferController::class);
 
-
+    // End Inventory
 });
 
 Route::get('/user', function (Request $request) {

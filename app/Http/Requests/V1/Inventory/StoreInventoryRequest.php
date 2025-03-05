@@ -26,11 +26,13 @@ class StoreInventoryRequest extends FormRequest
             'product_id' => [
                 'required',
                 'exists:products,id',
-                Rule::unique('inventories', 'product_id')
-                    ->where('warehouse_id', $this->warehouse_id),
+                Rule::unique('inventories')->where(function ($query) {
+                    return $query->where('warehouse_id', $this->warehouse_id)
+                        ->where('product_id', $this->product_id);
+                }),
             ],
-            'quantity' => ['required', 'numeric', 'min:0'],
-            'reorder_level' => ['required', 'numeric', 'min:0'],
+            'quantity' => ['required', 'numeric', 'min:0', 'decimal:0,4'],
+            'reorder_level' => ['required', 'numeric', 'min:0', 'decimal:0,4'],
             'description' => ['nullable', 'string'],
             'transaction_type' => ['required', 'string'],
             'previous_quantity' => ['nullable', 'string'],

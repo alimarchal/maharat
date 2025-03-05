@@ -16,9 +16,9 @@ class InventoryTransaction extends Model
         'previous_quantity',
         'new_quantity',
         'user_id',
-        'reference_number',
         'reference_type',
         'reference_id',
+        'reference_number',
         'notes',
     ];
 
