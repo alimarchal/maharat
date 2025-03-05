@@ -287,6 +287,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "Invoices",
             icon: faFileAlt,
+            onClick: () => router.visit("/invoices"),
         },
     ];
 
@@ -372,10 +373,12 @@ export default function MainDashboard({ roles }) {
         {
             text: "Reports",
             icon: faFileAlt,
+            onClick: () => router.visit("/report-logs"),
         },
         {
             text: "Statuses",
             icon: faSignal,
+            onClick: () => router.visit("/doc-status"),
         },
     ];
 
@@ -402,6 +405,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "Users",
             icon: faUsers,
+            onClick: () => router.visit("/users"),
         },
     ];
 

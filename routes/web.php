@@ -103,11 +103,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard.quotations.index');
     
     Route::get('/quotations/create', function () { 
-        return Inertia::render('Dashboard/Quotations/AddQuotationForm'); 
+        return Inertia::render('Dashboard/RFQ/AddQuotationForm'); 
     })->name('dashboard.quotations.create');
 
     Route::get('/rfq', function () { 
-        return Inertia::render('Dashboard/Quotations/RFQ'); 
+        return Inertia::render('Dashboard/RFQ/RFQ'); 
     })->name('rfq');
 
     Route::get('/quotation', function () { 
@@ -145,6 +145,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/add-goods', function () { 
         return Inertia::render('Dashboard/GRN/AddGoods'); 
     })->name('add-goods');
+
+    Route::get('/doc-status', function () { 
+        return Inertia::render('Dashboard/Reports/Statuses'); 
+    })->name('doc-status');
+
+    Route::get('/report-logs', function () { 
+        return Inertia::render('Dashboard/Reports/ReportLogs'); 
+    })->name('report-logs');
+
+    Route::get('/invoices', function () { 
+        return Inertia::render('Dashboard/Invoices/Invoices'); 
+    })->name('invoices');
+
+    Route::get('/users', function () { 
+        return Inertia::render('Dashboard/Users/Users'); 
+    })->name('users');
     
     // RFQ Routes
     Route::get('/dashboard/quotations', [RFQController::class, 'index'])->name('dashboard.quotations.index');
