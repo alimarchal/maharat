@@ -34,6 +34,11 @@ import ViewReceivable from "./Dashboard/Finance/AccountReceivables/ViewReceivabl
 import PayablesTable from "./Dashboard/Finance/AccountPayables/PayablesTable";
 import ViewPayable from "./Dashboard/Finance/AccountPayables/ViewPayable";
 import IncomeStatementTable from "./Dashboard/BudgetAndAccounts/IncomeStatement/IncomeStatementTable";
+import ViewIncomeStatement from "./Dashboard/BudgetAndAccounts/IncomeStatement/ViewIncomeStatement";
+import BudgetTable from "./Dashboard/BudgetAndAccounts/Budget/BudgetTable";
+import ViewBudget from "./Dashboard/BudgetAndAccounts/Budget/ViewBudget";
+import ViewBalanceSheet from "./Dashboard/BudgetAndAccounts/BalanceSheet/ViewBalanceSheet";
+import BudgetRequestForm from "./Dashboard/BudgetAndAccounts/Budget/BudgetRequestForm";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -80,6 +85,16 @@ export default function Dashboard({ auth, page }) {
         if (page === "AccountPayables/ViewPayable") return <ViewPayable />;
         if (page === "BudgetAndAccounts/IncomeStatement/IncomeStatementTable")
             return <IncomeStatementTable />;
+        if (page === "BudgetAndAccounts/IncomeStatement/ViewIncomeStatement")
+            return <ViewIncomeStatement />;
+        if (page === "BudgetAndAccounts/BalanceSheet/ViewBalanceSheet")
+            return <ViewBalanceSheet />;
+        if (page === "BudgetAndAccounts/Budget/BudgetTable")
+            return <BudgetTable />;
+        if (page === "BudgetAndAccounts/Budget/ViewBudget")
+            return <ViewBudget />;
+        if (page === "BudgetAndAccounts/Budget/BudgetRequestForm")
+            return <BudgetRequestForm />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };
