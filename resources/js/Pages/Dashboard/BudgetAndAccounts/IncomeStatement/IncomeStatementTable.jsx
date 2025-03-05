@@ -192,7 +192,10 @@ const IncomeStatementTable = () => {
                                     {statement.final_net_assets}
                                 </td>
                                 <td className="py-3 px-4 flex justify-center text-center">
-                                    <Link className="flex items-center justify-center rounded-full text-[#9B9DA2] hover:text-gray-800 cursor-pointer transition duration-200">
+                                    <Link
+                                        href={`income-statement/details/${statement.id}`}
+                                        className="flex items-center justify-center rounded-full text-[#9B9DA2] hover:text-gray-800 cursor-pointer transition duration-200"
+                                    >
                                         <FontAwesomeIcon icon={faEye} />
                                     </Link>
                                 </td>

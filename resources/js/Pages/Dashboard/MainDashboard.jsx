@@ -357,14 +357,17 @@ export default function MainDashboard({ roles }) {
         {
             text: "Balance Sheet",
             icon: faBalanceScale,
+            onClick: () => router.visit("/balance-sheet"),
         },
         {
             text: "Budget",
             icon: faMoneyBillWave,
+            onClick: () => router.visit("/budget"),
         },
         {
             text: "Request a Budget",
             icon: faFileSignature,
+            onClick: () => router.visit("/request-budget"),
         },
     ];
 
