@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\GrnReceiveGoodController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryTransactionController;
 use App\Http\Controllers\Api\V1\InventoryTransferController;
+use App\Http\Controllers\Api\V1\LedgerController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
 use App\Http\Controllers\Api\V1\MaterialRequestItemController;
 use App\Http\Controllers\Api\V1\PermissionController;
@@ -189,6 +190,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('cost-centers', CostCenterController::class);
     Route::get('cost-centers-tree', [CostCenterController::class, 'tree']);
     Route::post('cost-centers/{id}/restore', [CostCenterController::class, 'restore']);
+
+    Route::apiResource('ledgers', LedgerController::class);
+    Route::post('ledgers/{id}/restore', [LedgerController::class, 'restore']);
+
 
 
 });
