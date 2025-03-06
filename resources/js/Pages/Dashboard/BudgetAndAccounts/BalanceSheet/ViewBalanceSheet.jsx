@@ -139,7 +139,7 @@ const BalanceSheetReport = () => {
                 <h2 className="text-3xl font-bold text-[#2C323C]">
                     Comprehensive Balance Sheet
                 </h2>
-                <div className="w-1/2">
+                <div className="w-full lg:w-1/4">
                     <SelectFloating
                         label="Year"
                         name="year"
@@ -171,7 +171,7 @@ const BalanceSheetReport = () => {
                         openSections.nonCurrentAssets,
                         "nonCurrentAssets"
                     )}
-                    <div className="bg-[#009FDC] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
+                    <div className="bg-[#DCECF2] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
                         <h3>Total Assets:</h3>
                         <p>
                             $
@@ -203,7 +203,7 @@ const BalanceSheetReport = () => {
                         openSections.nonCurrentLiabilities,
                         "nonCurrentLiabilities"
                     )}
-                    <div className="bg-[#009FDC] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
+                    <div className="bg-[#DCECF2] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
                         <h3>Total Liabilities:</h3>
                         <p>
                             $
@@ -235,7 +235,7 @@ const BalanceSheetReport = () => {
                         openSections.withDonorRestrictions,
                         "withDonorRestrictions"
                     )}
-                    <div className="bg-[#009FDC] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
+                    <div className="bg-[#DCECF2] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
                         <h3>Total Net Assets:</h3>
                         <p>
                             $
