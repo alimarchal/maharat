@@ -2,15 +2,15 @@ import React, { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
-import CostCenterModal from "./CostCenterModal";
+import SubCostCenterModal from "./SubCostCenterModal";
 
-const CostCenterTable = () => {
+const SubCostCenterTable = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [selectedFilter, setSelectedFilter] = useState("All");
     const filters = ["All", "Approved", "Pending"];
 
-    const [costCenters, setCostCenters] = useState([
+    const [subCostCenters, setSubCostCenters] = useState([
         {
             id: "01",
             name: "Management",
@@ -76,24 +76,24 @@ const CostCenterTable = () => {
         },
     ]);
 
-    const handleSave = async (newCostCenter) => {
+    const handleSave = async (newSubCostCenter) => {
         try {
             const response = await axios.post(
-                "/api/v1/cost-centers",
-                newCostCenter
+                "/api/v1/sub-cost-centers",
+                newSubCostCenter
             );
-            setCostCenters([...costCenters, response.data]);
+            setSubCostCenters([...newSubCostCenter, response.data]);
             setIsModalOpen(false);
         } catch (error) {
-            console.error("Error saving cost center:", error);
+            console.error("Error saving Sub cost center:", error);
         }
     };
 
     return (
         <div className="w-full">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-3xl font-bold text-[#2C323C] mb-4">
-                    Cost Centers
+                <h2 className="text-3xl font-bold text-[#2C323C]">
+                    Sub Cost Centers
                 </h2>
                 <div className="flex justify-between items-center gap-4">
                     <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
@@ -111,12 +111,6 @@ const CostCenterTable = () => {
                             </button>
                         ))}
                     </div>
-                    <Link
-                        href="/sub-cost-centers"
-                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                    >
-                        Create Sub Cost Center
-                    </Link>
                 </div>
             </div>
 
@@ -138,7 +132,7 @@ const CostCenterTable = () => {
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                    {costCenters
+                    {subCostCenters
                         .filter(
                             (center) =>
                                 selectedFilter === "All" ||
@@ -183,7 +177,7 @@ const CostCenterTable = () => {
                     className="p-2 text-base sm:text-lg flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] transition-all duration-300 hover:border-[#009FDC] hover:bg-[#009FDC] hover:text-white hover:scale-105"
                     onClick={() => setIsModalOpen(true)}
                 >
-                    <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add a
+                    <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add a Sub
                     Cost Center
                 </button>
                 <div
@@ -197,7 +191,7 @@ const CostCenterTable = () => {
 
             {/* Render the modal */}
             {isModalOpen && (
-                <CostCenterModal
+                <SubCostCenterModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
                     onSave={handleSave}
@@ -207,4 +201,4 @@ const CostCenterTable = () => {
     );
 };
 
-export default CostCenterTable;
+export default SubCostCenterTable;

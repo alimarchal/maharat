@@ -1,7 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faDownload } from "@fortawesome/free-solid-svg-icons";
-import { Link } from "@inertiajs/react";
 
 const ViewBudget = () => {
     const [budgets, setBudgets] = useState([]);
@@ -10,43 +7,57 @@ const ViewBudget = () => {
         {
             id: 1,
             costCenter: "Management",
+            subCostCenter: "Management",
             department: "Management",
-            amountRequested: "6,000,000",
-            amountApproved: "6,000,000",
+            amountRequested: 6000000,
+            amountApproved: 6000000,
         },
         {
             id: 2,
             costCenter: "IT",
+            subCostCenter: "IT",
             department: "Engineering",
-            amountRequested: "6,000,000",
-            amountApproved: "6,000,000",
+            amountRequested: 6000000,
+            amountApproved: 6000000,
         },
         {
             id: 3,
             costCenter: "Marketing",
+            subCostCenter: "Marketing",
             department: "Marketing",
-            amountRequested: "6,000,000",
-            amountApproved: "6,000,000",
+            amountRequested: 6000000,
+            amountApproved: 6000000,
         },
         {
             id: 4,
             costCenter: "Training",
+            subCostCenter: "Training",
             department: "Training",
-            amountRequested: "6,000,000",
-            amountApproved: "6,000,000",
+            amountRequested: 6000000,
+            amountApproved: 6000000,
         },
         {
             id: 5,
             costCenter: "Maintenance",
+            subCostCenter: "Training",
             department: "Building",
-            amountRequested: "6,000,000",
-            amountApproved: "6,000,000",
+            amountRequested: 6000000,
+            amountApproved: 6000000,
         },
     ];
 
     useEffect(() => {
         setBudgets(staticBudgetData);
     }, []);
+
+    const totalRequested = budgets.reduce(
+        (sum, budget) => sum + budget.amountRequested,
+        0
+    );
+    const totalApproved = budgets.reduce(
+        (sum, budget) => sum + budget.amountApproved,
+        0
+    );
 
     return (
         <div className="w-full">
@@ -55,13 +66,13 @@ const ViewBudget = () => {
                 <thead className="bg-[#C7E7DE] text-[#2C323C] text-center text-xl font-medium">
                     <tr>
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
-                            Cost Center
+                            Cost Centers
                         </th>
+                        <th className="py-3 px-4">Sub Cost Centers</th>
                         <th className="py-3 px-4">Department</th>
                         <th className="py-3 px-4">Amount Requested</th>
-                        <th className="py-3 px-4">Amount Approved</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
-                            Download
+                            Amount Approved
                         </th>
                     </tr>
                 </thead>
@@ -69,29 +80,35 @@ const ViewBudget = () => {
                     {budgets.map((budget) => (
                         <tr key={budget.id}>
                             <td className="py-3 px-4">{budget.costCenter}</td>
+                            <td className="py-3 px-4">
+                                {budget.subCostCenter}
+                            </td>
                             <td className="py-3 px-4">{budget.department}</td>
                             <td className="py-3 px-4">
-                                {budget.amountRequested}
+                                {budget.amountRequested.toLocaleString()}
                             </td>
                             <td className="py-3 px-4">
-                                {budget.amountApproved}
-                            </td>
-                            <td className="py-3 px-4">
-                                <Link>
-                                    <FontAwesomeIcon
-                                        icon={faDownload}
-                                        className="text-gray-500 cursor-pointer hover:text-gray-700"
-                                    />
-                                </Link>
+                                {budget.amountApproved.toLocaleString()}
                             </td>
                         </tr>
                     ))}
+
+                    <tr className="bg-[#DCECF2] text-2xl font-bold border-none">
+                        <td
+                            className="p-4 rounded-tl-2xl rounded-bl-2xl"
+                            colSpan="3"
+                        >
+                            Total Amounts:
+                        </td>
+                        <td className="p-4 text-blue-500">
+                            {totalRequested.toLocaleString()}
+                        </td>
+                        <td className="p-4 text-green-500 rounded-tr-2xl rounded-br-2xl">
+                            {totalApproved.toLocaleString()}
+                        </td>
+                    </tr>
                 </tbody>
             </table>
-            <div className="mt-8 p-4 bg-[#DCECF2] rounded-2xl text-xl font-medium text-[#2C323C] flex justify-end text-center">
-                <p>Total Budget Amount:</p>
-                <span className="ms-8 font-bold">30,000,000</span>
-            </div>
         </div>
     );
 };
