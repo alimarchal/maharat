@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\V1\BrandController;
+use App\Http\Controllers\Api\V1\ChartOfAccountController;
 use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\CostCenterController;
 use App\Http\Controllers\Api\V1\DepartmentController;
+use App\Http\Controllers\Api\V1\FiscalPeriodController;
 use App\Http\Controllers\Api\V1\GrnController;
 use App\Http\Controllers\Api\V1\GrnReceiveGoodController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
@@ -193,6 +195,18 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::apiResource('ledgers', LedgerController::class);
     Route::post('ledgers/{id}/restore', [LedgerController::class, 'restore']);
+
+
+    Route::get('chart-of-accounts-tree', [ChartOfAccountController::class, 'tree']);
+    Route::post('chart-of-accounts/{id}/restore', [ChartOfAccountController::class, 'restore']);
+    Route::apiResource('chart-of-accounts', ChartOfAccountController::class);
+
+
+
+    Route::post('fiscal-periods/{id}/restore', [FiscalPeriodController::class, 'restore']);
+    Route::post('fiscal-periods/{fiscalPeriod}/close', [FiscalPeriodController::class, 'close']);
+    Route::post('fiscal-periods/{fiscalPeriod}/reopen', [FiscalPeriodController::class, 'reopen']);
+    Route::apiResource('fiscal-periods', FiscalPeriodController::class);
 
 
 
