@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye } from "@fortawesome/free-solid-svg-icons";
+import {
+    faEye,
+    faFilePdf,
+    faFileExcel,
+} from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 
 const BudgetTable = () => {
@@ -70,7 +74,7 @@ const BudgetTable = () => {
                         <th className="py-3 px-4">Total Expense Planned</th>
                         <th className="py-3 px-4">Total Expense Actual</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
-                            Details
+                            Actions
                         </th>
                     </tr>
                 </thead>
@@ -106,13 +110,19 @@ const BudgetTable = () => {
                                 <td className="py-3 px-4">
                                     {budget.total_expense_actual}
                                 </td>
-                                <td className="py-3 px-4">
+                                <td className="py-3 px-4 flex items-center justify-center gap-4">
                                     <Link
                                         href={`budget/details/${budget.id}`}
-                                        className="flex items-center justify-center rounded-full text-[#9B9DA2] hover:text-gray-800 cursor-pointer transition duration-200"
+                                        className="text-[#9B9DA2] hover:text-gray-800 transition duration-200"
                                     >
                                         <FontAwesomeIcon icon={faEye} />
                                     </Link>
+                                    <button className="text-red-500 hover:text-red-700 transition duration-200">
+                                        <FontAwesomeIcon icon={faFilePdf} />
+                                    </button>
+                                    <button className="text-green-500 hover:text-green-700 transition duration-200">
+                                        <FontAwesomeIcon icon={faFileExcel} />
+                                    </button>
                                 </td>
                             </tr>
                         ))

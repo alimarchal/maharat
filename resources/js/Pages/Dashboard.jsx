@@ -21,8 +21,8 @@ import ProcessFlow from "./Dashboard/ProcessFlow/ProcessFlow";
 import CreateProcessFlow from "./Dashboard/ProcessFlow/CreateProcessFlow";
 import RolesPermissions from "./Dashboard/RolePermission/RolesPermissions";
 import Notification from "./Dashboard/NotificationSettings/Notification";
-import TasksTable from "./Dashboard/Tasks/TasksTable";
-import ReviewTask from "./Dashboard/Tasks/ReviewTask";
+import TasksTable from "./Dashboard/MyTasks/Tasks/TasksTable";
+import ReviewTask from "./Dashboard/MyTasks/Tasks/ReviewTask";
 import PaymentOrderTable from "./Dashboard/Finance/PaymentOrder/PaymentOrderTable";
 import CostCenterTable from "./Dashboard/BudgetAndAccounts/CostCenter/CostCenterTable";
 import LedgersTable from "./Dashboard/Finance/Ledgers/LedgersTable";
@@ -40,6 +40,9 @@ import ViewBudget from "./Dashboard/BudgetAndAccounts/Budget/ViewBudget";
 import ViewBalanceSheet from "./Dashboard/BudgetAndAccounts/BalanceSheet/ViewBalanceSheet";
 import BudgetRequestForm from "./Dashboard/BudgetAndAccounts/Budget/BudgetRequestForm";
 import MaharatInvoicesTable from "./Dashboard/Finance/MaharatInvoices/MaharatInvoicesTable";
+import ApproveBudgetForm from "./Dashboard/MyTasks/ApproveBudgetRequest/ApproveBudgetForm";
+import SubCostCenterTable from "./Dashboard/BudgetAndAccounts/SubCostCenter/SubCostCenterTable";
+import CreateMaharatInvoice from "./Dashboard/Finance/MaharatInvoices/CreateMaharatInvoice";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -65,10 +68,14 @@ export default function Dashboard({ auth, page }) {
             return <RolesPermissions />;
         if (page === "NotificationSettings/Notification")
             return <Notification />;
-        if (page === "Tasks/TasksTable") return <TasksTable />;
-        if (page === "Tasks/ReviewTask") return <ReviewTask />;
+        if (page === "MyTasks/Tasks/TasksTable") return <TasksTable />;
+        if (page === "MyTasks/Tasks/ReviewTask") return <ReviewTask />;
+        if (page === "MyTasks/ApproveBudgetRequest/ApproveBudgetForm")
+            return <ApproveBudgetForm />;
         if (page === "Finance/MaharatInvoices/MaharatInvoicesTable")
             return <MaharatInvoicesTable />;
+        if (page === "Finance/MaharatInvoices/CreateMaharatInvoice")
+            return <CreateMaharatInvoice />;
         if (page === "Finance/Ledgers/LedgersTable") return <LedgersTable />;
         if (page === "Finance/PaymentOrder/PaymentOrderTable")
             return <PaymentOrderTable />;
@@ -86,6 +93,8 @@ export default function Dashboard({ auth, page }) {
         if (page === "AccountPayables/ViewPayable") return <ViewPayable />;
         if (page === "BudgetAndAccounts/CostCenter/CostCenterTable")
             return <CostCenterTable />;
+        if (page === "BudgetAndAccounts/SubCostCenter/SubCostCenterTable")
+            return <SubCostCenterTable />;
         if (page === "BudgetAndAccounts/IncomeStatement/IncomeStatementTable")
             return <IncomeStatementTable />;
         if (page === "BudgetAndAccounts/IncomeStatement/ViewIncomeStatement")
