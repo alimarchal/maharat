@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye } from "@fortawesome/free-solid-svg-icons";
+import {
+    faEye,
+    faFilePdf,
+    faFileExcel,
+} from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 
 const IncomeStatementTable = () => {
@@ -191,13 +195,19 @@ const IncomeStatementTable = () => {
                                 <td className="py-3 px-4">
                                     {statement.final_net_assets}
                                 </td>
-                                <td className="py-3 px-4 flex justify-center text-center">
+                                <td className="py-3 px-4 flex items-center justify-center gap-4">
                                     <Link
                                         href={`income-statement/details/${statement.id}`}
                                         className="flex items-center justify-center rounded-full text-[#9B9DA2] hover:text-gray-800 cursor-pointer transition duration-200"
                                     >
                                         <FontAwesomeIcon icon={faEye} />
                                     </Link>
+                                    <button className="text-red-500 hover:text-red-700 transition duration-200">
+                                        <FontAwesomeIcon icon={faFilePdf} />
+                                    </button>
+                                    <button className="text-green-500 hover:text-green-700 transition duration-200">
+                                        <FontAwesomeIcon icon={faFileExcel} />
+                                    </button>
                                 </td>
                             </tr>
                         ))

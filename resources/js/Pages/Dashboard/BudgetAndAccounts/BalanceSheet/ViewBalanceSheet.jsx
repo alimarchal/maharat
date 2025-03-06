@@ -1,10 +1,16 @@
 import React, { useState } from "react";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileArrowDown } from "@fortawesome/free-solid-svg-icons";
+import { faFilePdf } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
+import SelectFloating from "@/Components/SelectFloating";
 
 const BalanceSheetReport = () => {
+    const [formData, setFormData] = useState({
+        year: "",
+    });
+    const [errors, setErrors] = useState({});
+
     const [openSections, setOpenSections] = useState({
         currentAssets: true,
         nonCurrentAssets: false,
@@ -19,6 +25,12 @@ const BalanceSheetReport = () => {
             ...prev,
             [section]: !prev[section],
         }));
+    };
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
+        setErrors({ ...errors, [name]: "" });
     };
 
     const balanceSheetData = {
@@ -123,24 +135,28 @@ const BalanceSheetReport = () => {
 
     return (
         <div className="w-full">
-            <div className="flex flex-wrap justify-between items-center text-center mb-8">
-                <h1 className="text-3xl font-bold text-[#2C323C]">
+            <div className="flex justify-between items-center text-center mb-8">
+                <h2 className="text-3xl font-bold text-[#2C323C]">
                     Comprehensive Balance Sheet
-                </h1>
-
-                <div className="flex flex-wrap justify-center items-center space-x-4">
-                    <button className="bg-[#009FDC] text-white px-6 py-3 rounded-2xl hover:bg-blue-500 transition duration-200">
-                        Current Year
-                    </button>
-                    <button className="bg-gray-600 text-white px-6 py-3 rounded-2xl hover:bg-gray-700 transition duration-200">
-                        Previous Year
-                    </button>
+                </h2>
+                <div className="w-1/2">
+                    <SelectFloating
+                        label="Year"
+                        name="year"
+                        value={formData.year}
+                        onChange={handleChange}
+                        options={[
+                            { id: 1, label: "2023" },
+                            { id: 2, label: "2024" },
+                            { id: 3, label: "2025" },
+                        ]}
+                    />
                 </div>
             </div>
 
             <div className="space-y-8">
                 <div className="bg-white rounded-2xl p-8 shadow-md">
-                    <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#C7E7DE] pb-3 mb-6">
+                    <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#009FDC] pb-3 mb-6">
                         Assets
                     </h2>
                     {renderTable(
@@ -155,7 +171,7 @@ const BalanceSheetReport = () => {
                         openSections.nonCurrentAssets,
                         "nonCurrentAssets"
                     )}
-                    <div className="bg-[#C7E7DE] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
+                    <div className="bg-[#009FDC] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
                         <h3>Total Assets:</h3>
                         <p>
                             $
@@ -172,7 +188,7 @@ const BalanceSheetReport = () => {
                 </div>
 
                 <div className="bg-white rounded-2xl p-8 shadow-md">
-                    <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#C7E7DE] pb-3 mb-6">
+                    <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#009FDC] pb-3 mb-6">
                         Liabilities
                     </h2>
                     {renderTable(
@@ -187,7 +203,7 @@ const BalanceSheetReport = () => {
                         openSections.nonCurrentLiabilities,
                         "nonCurrentLiabilities"
                     )}
-                    <div className="bg-[#C7E7DE] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
+                    <div className="bg-[#009FDC] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
                         <h3>Total Liabilities:</h3>
                         <p>
                             $
@@ -204,7 +220,7 @@ const BalanceSheetReport = () => {
                 </div>
 
                 <div className="bg-white rounded-2xl p-8 shadow-md">
-                    <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#C7E7DE] pb-3 mb-6">
+                    <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#009FDC] pb-3 mb-6">
                         Net Assets
                     </h2>
                     {renderTable(
@@ -219,7 +235,7 @@ const BalanceSheetReport = () => {
                         openSections.withDonorRestrictions,
                         "withDonorRestrictions"
                     )}
-                    <div className="bg-[#C7E7DE] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
+                    <div className="bg-[#009FDC] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
                         <h3>Total Net Assets:</h3>
                         <p>
                             $
@@ -238,16 +254,13 @@ const BalanceSheetReport = () => {
                 </div>
             </div>
 
-            <div className="flex flex-wrap justify-end items-center space-x-4 my-8">
-                <button className="text-[#3A7C69] px-6 py-3 rounded-full border border-[#3A7C69] hover:text-white hover:bg-[#3A7C69] transition duration-200">
-                    Print View
-                </button>
-                <Link className="flex items-center bg-[#3A7C69] text-white px-6 py-3 rounded-full hover:bg-[#2C323C] transition duration-200">
+            <div className="flex flex-wrap justify-end items-center my-8">
+                <Link className="flex items-center bg-[#009FDC] text-white px-6 py-3 rounded-full hover:bg-[#0077B6] transition duration-200">
                     <FontAwesomeIcon
-                        icon={faFileArrowDown}
+                        icon={faFilePdf}
                         className="mr-2 text-lg"
                     />
-                    Generate Report
+                    Generate PDF
                 </Link>
             </div>
         </div>

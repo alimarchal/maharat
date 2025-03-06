@@ -245,8 +245,9 @@ export default function MainDashboard({ roles }) {
             onClick: () => router.visit("/tasks"),
         },
         {
-            text: "Accept a Budget",
+            text: "Approve a Budget",
             icon: faMoneyBillWave,
+            onClick: () => router.visit("/approve-budget"),
         },
     ];
 
