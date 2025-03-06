@@ -32,6 +32,7 @@ import {
     faChartLine,
     faMoneyBillWave,
     faSignal,
+    faSync,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { router } from "@inertiajs/react";
@@ -379,9 +380,14 @@ export default function MainDashboard({ roles }) {
             onClick: () => router.visit("/report-logs"),
         },
         {
-            text: "Statuses",
+            text: "Purchase Document Status",
             icon: faSignal,
             onClick: () => router.visit("/doc-status"),
+        },
+        {
+            text: "RFQ Status",
+            icon: faSync,
+            onClick: () => router.visit("/rfq-status"),
         },
     ];
 
@@ -389,6 +395,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "Organizational Chart",
             icon: faChartBar,
+            onClick: () => router.visit("/chart"),
         },
         {
             text: "Process Flow",

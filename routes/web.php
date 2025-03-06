@@ -161,6 +161,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/users', function () { 
         return Inertia::render('Dashboard/Users/Users'); 
     })->name('users');
+
+    Route::get('/chart', function () { 
+        return Inertia::render('Dashboard/OrganizationalChart/Chart'); 
+    })->name('chart');
+
+    Route::get('/rfq-status', function () { 
+        return Inertia::render('Dashboard/RFQ/RFQStatus'); 
+    })->name('rfq-status');
     
     // RFQ Routes
     Route::get('/dashboard/quotations', [RFQController::class, 'index'])->name('dashboard.quotations.index');
