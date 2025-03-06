@@ -154,7 +154,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard/Reports/ReportLogs'); 
     })->name('report-logs');
 
-    Route::get('/invoices', function () { 
+    Route::get('/external-invoices', function () { 
         return Inertia::render('Dashboard/Invoices/Invoices'); 
     })->name('invoices');
 
@@ -202,9 +202,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'Tasks/ReviewTask']); 
     })->name('tasks.create');
 
-    Route::get('/cost-centers', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Finance/CostCenter/CostCenterTable']); 
-    })->name('costCenter.index');
+    Route::get('/maharat-invoices', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Finance/MaharatInvoices/MaharatInvoicesTable']); 
+    })->name('maharatInvoices.index');
 
     Route::get('/ledgers', function () { 
         return Inertia::render('Dashboard', ['page' => 'Finance/Ledgers/LedgersTable']); 
@@ -236,6 +236,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account-payables/view/{id}', function () { 
         return Inertia::render('Dashboard', ['page' => 'AccountPayables/ViewPayable']); 
     })->name('payables.view');
+
+    Route::get('/cost-centers', function () { 
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/CostCenter/CostCenterTable']); 
+    })->name('costCenter.index');
 
     Route::get('/income-statement', function () { 
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/IncomeStatement/IncomeStatementTable']); 
