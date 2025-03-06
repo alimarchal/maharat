@@ -112,7 +112,7 @@ const CostCenterTable = () => {
                         ))}
                     </div>
                     <Link
-                        href="/sub-cost-centers"
+                        href="/cost-centers/sub-cost-centers"
                         className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                     >
                         Create Sub Cost Center

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import InputFloating from "../../../Components/InputFloating";
+import InputFloating from "../../../../Components/InputFloating";
 import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
 

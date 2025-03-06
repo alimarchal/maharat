@@ -69,23 +69,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/product-categories', [ProductCategoryController::class, 'index'])->name('category.index');
     Route::get('/category', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Category/CategoryIndex']); 
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/Category/CategoryIndex']); 
     })->name('category.index');
     Route::get('/category/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Category/CreateCategory']); 
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/Category/CreateCategory']); 
     })->name('category.create');
     Route::get('/category/{id}/edit', function ($id) { 
-        return Inertia::render('Dashboard', ['page' => 'Category/CreateCategory', 'categoryId' => $id]); 
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/Category/CreateCategory', 'categoryId' => $id]); 
     })->name('category.edit');
 
     Route::get('/items', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Products/ProductIndex']); 
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/Products/ProductIndex']); 
     })->name('product.index');
     Route::get('/items/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Products/CreateProduct']); 
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/Products/CreateProduct']); 
     })->name('product.create');
     Route::get('/items/{id}/edit', function ($id) { 
-        return Inertia::render('Dashboard', ['page' => 'Products/CreateProduct', 'productId' => $id]); 
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/Products/CreateProduct', 'productId' => $id]); 
     })->name('product.edit');
 
     Route::get('/warehouse-management', function () { 
@@ -256,7 +256,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/CostCenter/CostCenterTable']); 
     })->name('costCenter.index');
 
-    Route::get('/sub-cost-centers', function () { 
+    Route::get('/cost-centers/sub-cost-centers', function () { 
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/SubCostCenter/SubCostCenterTable']); 
     })->name('subCostCenter.index');
 
@@ -280,6 +280,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/request-budget', function () { 
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/BudgetRequestForm']); 
     })->name('budget.create');
+
+    Route::get('/material-requests', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/ReceivedMaterialRequest/ReceivedMRsTable']); 
+    })->name('material.index');
 
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
