@@ -14,7 +14,7 @@ const MaharatInvoicesTable = () => {
     const staticInvoices = [
         {
             id: 1,
-            rfq_id: "INV-001",
+            rfq_id: "MC-INV-001",
             supplier_name: "Supplier A",
             amount: "$1,500",
             status_name: "Active",
@@ -22,7 +22,7 @@ const MaharatInvoicesTable = () => {
         },
         {
             id: 2,
-            rfq_id: "INV-002",
+            rfq_id: "MC-INV-002",
             supplier_name: "Supplier B",
             amount: "$2,000",
             status_name: "Pending",
@@ -30,7 +30,7 @@ const MaharatInvoicesTable = () => {
         },
         {
             id: 3,
-            rfq_id: "INV-003",
+            rfq_id: "MC-INV-003",
             supplier_name: "Supplier C",
             amount: "$3,750",
             status_name: "Rejected",

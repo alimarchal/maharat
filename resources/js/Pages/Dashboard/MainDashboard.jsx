@@ -18,7 +18,6 @@ import {
     faDiagramProject,
     faUserPen,
     faWarehouse,
-    faDolly,
     faCoins,
     faBook,
     faMoneyCheckDollar,
@@ -309,8 +308,9 @@ export default function MainDashboard({ roles }) {
 
     const warehouseDropdownItems = [
         {
-            text: "Material Request",
+            text: "Received Material Request",
             icon: faFileAlt,
+            onClick: () => router.visit("/material-requests"),
         },
         {
             text: "Categories",
@@ -326,10 +326,6 @@ export default function MainDashboard({ roles }) {
             text: "Goods Receiving",
             icon: faFileInvoice,
             onClick: () => router.visit("/grn"),
-        },
-        {
-            text: "Goods Issued",
-            icon: faDolly,
         },
         {
             text: "Inventory Tracking",
