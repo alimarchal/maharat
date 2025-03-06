@@ -10,10 +10,10 @@ import StatusIndex from "./Dashboard/Status/StatusIndex";
 import CreateStatus from "./Dashboard/Status/CreateStatus";
 import UnitIndex from "./Dashboard/Units/UnitIndex";
 import CreateUnit from "./Dashboard/Units/CreateUnit";
-import CategoryIndex from "./Dashboard/Category/CategoryIndex";
-import CreateCategory from "./Dashboard/Category/CreateCategory";
-import ProductIndex from "./Dashboard/Products/ProductIndex";
-import CreateProduct from "./Dashboard/Products/CreateProduct";
+import CategoryIndex from "./Dashboard/Warehouse/Category/CategoryIndex";
+import CreateCategory from "./Dashboard/Warehouse/Category/CreateCategory";
+import ProductIndex from "./Dashboard/Warehouse/Products/ProductIndex";
+import CreateProduct from "./Dashboard/Warehouse/Products/CreateProduct";
 import WarehouseIndex from "./Dashboard/WarehouseManagement/WarehouseIndex";
 import CreateWarehouse from "./Dashboard/WarehouseManagement/CreateWarehouse";
 import CompanyProfile from "./CompanyProfile/CompanyProfile";
@@ -43,6 +43,7 @@ import MaharatInvoicesTable from "./Dashboard/Finance/MaharatInvoices/MaharatInv
 import ApproveBudgetForm from "./Dashboard/MyTasks/ApproveBudgetRequest/ApproveBudgetForm";
 import SubCostCenterTable from "./Dashboard/BudgetAndAccounts/SubCostCenter/SubCostCenterTable";
 import CreateMaharatInvoice from "./Dashboard/Finance/MaharatInvoices/CreateMaharatInvoice";
+import ReceivedMRsTable from "./Dashboard/Warehouse/ReceivedMaterialRequest/ReceivedMRsTable";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -52,10 +53,10 @@ export default function Dashboard({ auth, page }) {
         if (page === "Status/CreateStatus") return <CreateStatus />;
         if (page === "Units/UnitIndex") return <UnitIndex />;
         if (page === "Units/CreateUnit") return <CreateUnit />;
-        if (page === "Category/CategoryIndex") return <CategoryIndex />;
-        if (page === "Category/CreateCategory") return <CreateCategory />;
-        if (page === "Products/ProductIndex") return <ProductIndex />;
-        if (page === "Products/CreateProduct") return <CreateProduct />;
+        if (page === "Warehouse/Category/CategoryIndex") return <CategoryIndex />;
+        if (page === "Warehouse/Category/CreateCategory") return <CreateCategory />;
+        if (page === "Warehouse/Products/ProductIndex") return <ProductIndex />;
+        if (page === "Warehouse/Products/CreateProduct") return <CreateProduct />;
         if (page === "WarehouseManagement/WarehouseIndex")
             return <WarehouseIndex />;
         if (page === "WarehouseManagement/CreateWarehouse")
@@ -107,6 +108,8 @@ export default function Dashboard({ auth, page }) {
             return <ViewBudget />;
         if (page === "BudgetAndAccounts/Budget/BudgetRequestForm")
             return <BudgetRequestForm />;
+        if (page === "Warehouse/ReceivedMaterialRequest/ReceivedMRsTable")
+            return <ReceivedMRsTable />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };

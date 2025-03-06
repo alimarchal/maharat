@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import InputFloating from "../../../Components/InputFloating";
-import SelectFloating from "../../../Components/SelectFloating";
+import InputFloating from "../../../../Components/InputFloating";
+import SelectFloating from "../../../../Components/SelectFloating";
 import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
 

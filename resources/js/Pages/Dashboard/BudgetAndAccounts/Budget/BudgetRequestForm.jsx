@@ -8,6 +8,7 @@ const BudgetRequestForm = () => {
         year: "",
         department: "",
         costCenter: "",
+        sub_cost_center: "",
         previousBudget: "",
         requestedAmount: "",
         urgency: "",
@@ -32,6 +33,8 @@ const BudgetRequestForm = () => {
             newErrors.department = "Department is required";
         if (!formData.costCenter)
             newErrors.costCenter = "Cost Center is required";
+        if (!formData.sub_cost_center)
+            newErrors.sub_cost_center = "Sub Cost Center is required";
         if (!formData.previousBudget)
             newErrors.previousBudget = "Previous Budget is required";
         if (!formData.requestedAmount)
@@ -62,7 +65,7 @@ const BudgetRequestForm = () => {
                         Request by department head for the budget
                     </p>
                 </div>
-                <div className="w-1/2">
+                <div className="w-full lg:w-1/4">
                     <SelectFloating
                         label="Year"
                         name="year"
@@ -91,7 +94,7 @@ const BudgetRequestForm = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <SelectFloating
                             label="Department Name"
@@ -126,6 +129,25 @@ const BudgetRequestForm = () => {
                             </p>
                         )}
                     </div>
+                    <div>
+                        <SelectFloating
+                            label="Sub Cost Center"
+                            name="sub_cost_center"
+                            value={formData.sub_cost_center}
+                            onChange={handleChange}
+                            options={[
+                                { id: 1, label: "Operations" },
+                                { id: 2, label: "Marketing" },
+                            ]}
+                        />
+                        {errors.sub_cost_center && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.sub_cost_center}
+                            </p>
+                        )}
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <SelectFloating
                             label="Previous Budget Amount"
