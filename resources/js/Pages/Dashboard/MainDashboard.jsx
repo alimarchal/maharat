@@ -24,14 +24,11 @@ import {
     faMoneyCheckDollar,
     faFileInvoiceDollar,
     faBalanceScale,
-    faHourglassHalf,
-    faCheckCircle,
-    faShareSquare,
-    faTimesCircle,
     faCalculator,
     faChartLine,
     faMoneyBillWave,
     faSignal,
+    faTasks,
     faSync,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -243,24 +240,13 @@ export default function MainDashboard({ roles }) {
 
     const tasksDropdownItems = [
         {
-            text: "New",
-            icon: faFileCirclePlus,
+            text: "My Tasks",
+            icon: faTasks,
+            onClick: () => router.visit("/tasks"),
         },
         {
-            text: "Pending",
-            icon: faHourglassHalf,
-        },
-        {
-            text: "Approved",
-            icon: faCheckCircle,
-        },
-        {
-            text: "Referred",
-            icon: faShareSquare,
-        },
-        {
-            text: "Rejected",
-            icon: faTimesCircle,
+            text: "Accept a Budget",
+            icon: faMoneyBillWave,
         },
     ];
 
@@ -286,17 +272,17 @@ export default function MainDashboard({ roles }) {
             onClick: () => router.visit("/grn"),
         },
         {
-            text: "Invoices",
+            text: "External Invoices",
             icon: faFileAlt,
-            onClick: () => router.visit("/invoices"),
+            onClick: () => router.visit("/external-invoices"),
         },
     ];
 
     const financeDropdownItems = [
         {
-            text: "Cost Centers",
-            icon: faCoins,
-            onClick: () => router.visit("/cost-centers"),
+            text: "Maharat Invoices",
+            icon: faFileInvoice,
+            onClick: () => router.visit("/maharat-invoices"),
         },
         {
             text: "Ledgers",
@@ -351,6 +337,11 @@ export default function MainDashboard({ roles }) {
     ];
 
     const budgetDropdownItems = [
+        {
+            text: "Cost Centers",
+            icon: faCoins,
+            onClick: () => router.visit("/cost-centers"),
+        },
         {
             text: "Income Statement",
             icon: faChartLine,
@@ -449,7 +440,6 @@ export default function MainDashboard({ roles }) {
                     subtitle="My Tasks & History"
                     bgColor="bg-[#F7EBBA]"
                     iconColor="text-[#665200]"
-                    onClick={() => router.visit("/tasks")}
                     dropdownItems={tasksDropdownItems}
                 />
 
