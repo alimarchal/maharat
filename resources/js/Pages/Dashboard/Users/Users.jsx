@@ -56,7 +56,7 @@ const Users = () => {
                     ></div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     {[
                         { label: "ID", type: "text", name: "id" },
                         { label: "Username", type: "text", name: "username" },
