@@ -12,6 +12,7 @@ class Ledger extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'chart_of_account_id',
         'name',
         'description',
         'cost_center_id',

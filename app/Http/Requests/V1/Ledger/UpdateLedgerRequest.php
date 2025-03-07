@@ -22,6 +22,7 @@ class UpdateLedgerRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'chart_of_account_id' => ['sometimes', 'required', 'string', 'max:255'],
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'cost_center_id' => ['nullable', 'exists:cost_centers,id'],

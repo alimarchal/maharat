@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\ChartOfAccountController;
 use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\CostCenterController;
+use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\DepartmentController;
 use App\Http\Controllers\Api\V1\FiscalPeriodController;
 use App\Http\Controllers\Api\V1\GrnController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Api\V1\GrnReceiveGoodController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryTransactionController;
 use App\Http\Controllers\Api\V1\InventoryTransferController;
+use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\LedgerController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
 use App\Http\Controllers\Api\V1\MaterialRequestItemController;
@@ -155,7 +157,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('purchase-orders', PurchaseOrderController::class);
     // GRN routes
     Route::apiResource('grns', GrnController::class);
-    // GRN Receive Goods routes
+    // GRN Receive Goods routes (delivery note from third or second party)
     Route::apiResource('grn-receive-goods', GrnReceiveGoodController::class);
 
 
@@ -207,6 +209,17 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('fiscal-periods/{fiscalPeriod}/close', [FiscalPeriodController::class, 'close']);
     Route::post('fiscal-periods/{fiscalPeriod}/reopen', [FiscalPeriodController::class, 'reopen']);
     Route::apiResource('fiscal-periods', FiscalPeriodController::class);
+
+
+    // Maharat Invoice
+
+    // Customers routes
+    Route::apiResource('customers', CustomerController::class);
+    Route::post('customers/{id}/restore', [CustomerController::class, 'restore']);
+
+    // Invoices routes
+    Route::apiResource('invoices', InvoiceController::class);
+    Route::post('invoices/{id}/restore', [InvoiceController::class, 'restore']);
 
 
 
