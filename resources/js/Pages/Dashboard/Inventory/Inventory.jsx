@@ -3,7 +3,7 @@ import { PlusCircleIcon } from '@heroicons/react/24/outline';
 import { Link, router, Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight, faPlus } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 
 export default function InventoryTracking({ auth }) {
@@ -41,32 +41,22 @@ export default function InventoryTracking({ auth }) {
     const fetchWarehouses = async () => {
         try {
             const response = await axios.get('/api/v1/warehouses');
-            
-            if (Array.isArray(response.data)) {
-                setWarehouses(response.data);
-            } else if (response.data && Array.isArray(response.data.data)) {
-                setWarehouses(response.data.data); 
-            } else {
-                console.error('Unexpected API response format:', response.data);
-                setWarehouses([]); 
-            }
+            setWarehouses(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
             console.error('Failed to fetch warehouses:', error);
             setWarehouses([]);
         }
     };
-    
+
     const fetchProducts = async () => {
         try {
             const response = await axios.get('/api/v1/products');
-            console.log("Products API response:", response.data);
-            setProducts(Array.isArray(response.data) ? response.data : []); 
+            setProducts(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
             console.error('Failed to fetch products:', error);
-            setProducts([]); 
+            setProducts([]);
         }
     };
-    
 
     useEffect(() => {
         fetchInventories();
@@ -76,11 +66,17 @@ export default function InventoryTracking({ auth }) {
 
     const handleSave = async (id) => {
         try {
-            const response = await axios.put(`/api/v1/inventories/${id}`, editData);
+            let response;
+            if (id.toString().length > 10) {
+                // New item (temporary ID)
+                response = await axios.post('/api/v1/inventories', editData);
+            } else {
+                // Existing item
+                response = await axios.put(`/api/v1/inventories/${id}`, editData);
+            }
+
             if (response.data.success) {
-                setInventories(prevInventories =>
-                    prevInventories.map(inv => (inv.id === id ? { ...inv, ...editData } : inv))
-                );
+                fetchInventories(); // Refresh the list
                 setEditingId(null);
             } else {
                 setError('Failed to save changes');
@@ -100,8 +96,14 @@ export default function InventoryTracking({ auth }) {
         if (!confirm("Are you sure you want to delete this record?")) return;
 
         try {
-            await axios.delete(`/api/v1/inventories/${id}`);
-            fetchInventories();
+            if (id.toString().length > 10) {
+                // Temporary ID (newly added record)
+                setInventories(prevInventories => prevInventories.filter(inv => inv.id !== id));
+            } else {
+                // Permanent ID (existing record)
+                await axios.delete(`/api/v1/inventories/${id}`);
+                fetchInventories(); // Refresh the list
+            }
         } catch (error) {
             console.error('Delete error:', error);
             setError('Failed to delete record');
@@ -280,14 +282,19 @@ export default function InventoryTracking({ auth }) {
 
                         {/* Add Inventory Button */}
                         {!loading && currentPage === lastPage && inventories.length > 0 && (
-                            <div className="mt-4 flex justify-center">
+                            <div className="mt-4 flex justify-center items-center relative">
+                                <div className="w-[45%] max-sm:w-[35%] h-[3px] flex-grow bg-gradient-to-l from-[#9B9DA2] to-[#9B9DA200]"></div>
+                            
                                 <button
                                     type="button"
+                                    className="py-3 px-6 text-base sm:text-lg flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] transition-all duration-300 hover:border-[#009FDC] hover:bg-[#009FDC] hover:text-white hover:scale-105 whitespace-nowrap"
                                     onClick={addItem}
-                                    className="text-blue-600 flex items-center"
                                 >
-                                    + Add Inventory
+                                    <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add Inventory
                                 </button>
+                            
+                                {/* Gradient Line (After Button) */}
+                                <div className="w-[45%] max-sm:w-[35%] h-[3px] flex-grow bg-gradient-to-r from-[#9B9DA2] to-[#9B9DA200]"></div>
                             </div>
                         )}
 
