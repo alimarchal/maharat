@@ -46,6 +46,7 @@ return new class extends Migration
 //            $table->foreignId('department_id')->nullable()->constrained()->cascadeOnUpdate()->nullOnDelete();
 //            $table->foreignId('branch_id')->nullable()->constrained()->cascadeOnUpdate()->nullOnDelete();
 
+            $table->string('attachment')->nullable();
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();
