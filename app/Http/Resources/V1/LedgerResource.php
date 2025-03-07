@@ -16,6 +16,7 @@ class LedgerResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'chart_of_account_id' => $this->chart_of_account_id,
             'name' => $this->name,
             'description' => $this->description,
             'cost_center_id' => $this->cost_center_id,

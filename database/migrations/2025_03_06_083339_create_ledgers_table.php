@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('ledgers', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('chart_of_account_id')->nullable()->constrained('chart_of_accounts', 'id');
             $table->string('name')->nullable();
             $table->string('description')->nullable();
             $table->foreignId('cost_center_id')->nullable()->constrained('cost_centers')->nullOnDelete();
