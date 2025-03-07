@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import InputFloating from "../../../Components/InputFloating";
-import SelectFloating from "../../../Components/SelectFloating";
+import InputFloating from "../../../../Components/InputFloating";
+import SelectFloating from "../../../../Components/SelectFloating";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 
