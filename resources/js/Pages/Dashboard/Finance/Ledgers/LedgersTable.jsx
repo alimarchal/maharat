@@ -15,6 +15,7 @@ const LedgersTable = () => {
             id: "01",
             name: "Sales",
             description: "All type of income, sales, and revenues",
+            type: "assets",
             costCenter: "Management",
             status: "Approved",
         },
@@ -22,6 +23,7 @@ const LedgersTable = () => {
             id: "02",
             name: "Purchase",
             description: "All Purchases through POs and petty cash",
+            type: "liablities",
             costCenter: "IT",
             status: "Pending",
         },
@@ -29,6 +31,7 @@ const LedgersTable = () => {
             id: "03",
             name: "Cash",
             description: "All cash in hand",
+            type: "expenses",
             costCenter: "Marketing",
             status: "Approved",
         },
@@ -36,6 +39,7 @@ const LedgersTable = () => {
             id: "04",
             name: "Bank",
             description: "Amount in all banks",
+            type: "equity",
             costCenter: "Training",
             status: "Pending",
         },
@@ -43,6 +47,7 @@ const LedgersTable = () => {
             id: "05",
             name: "Inventory",
             description: "Stock in all warehouses",
+            type: "assets",
             costCenter: "Maintenance",
             status: "Pending",
         },
@@ -50,6 +55,7 @@ const LedgersTable = () => {
             id: "06",
             name: "Fixed Assets",
             description: "All tangible assets",
+            type: "liabilities",
             costCenter: "HR",
             status: "Approved",
         },
@@ -57,6 +63,7 @@ const LedgersTable = () => {
             id: "07",
             name: "VAT",
             description: "Total VAT paid and received",
+            type: "assets",
             costCenter: "OPR",
             status: "Pending",
         },
@@ -105,6 +112,7 @@ const LedgersTable = () => {
                         </th>
                         <th className="py-3 px-4">Name</th>
                         <th className="py-3 px-4">Description</th>
+                        <th className="py-3 px-4">Type</th>
                         <th className="py-3 px-4">Cost Center</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
@@ -126,6 +134,7 @@ const LedgersTable = () => {
                                 <td className="py-3 px-4">
                                     {ledger.description}
                                 </td>
+                                <td className="py-3 px-4">{ledger.type}</td>
                                 <td className="py-3 px-4">
                                     {ledger.costCenter}
                                 </td>
