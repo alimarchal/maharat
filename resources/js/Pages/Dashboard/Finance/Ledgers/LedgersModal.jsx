@@ -10,6 +10,7 @@ const LedgersModal = ({ isOpen, onClose, onSave }) => {
         name: "",
         status: "",
         description: "",
+        type: "",
         costCenter: "",
     });
 
@@ -64,6 +65,18 @@ const LedgersModal = ({ isOpen, onClose, onSave }) => {
                         name="costCenter"
                         value={formData.costCenter}
                         onChange={handleChange}
+                    />
+                    <SelectFloating
+                        label="Type"
+                        name="type"
+                        value={formData.type}
+                        onChange={handleChange}
+                        options={[
+                            { id: "assets", label: "Assets" },
+                            { id: "liabilities", label: "Liabilities" },
+                            { id: "expenses", label: "Expenses" },
+                            { id: "equity", label: "Equity" },
+                        ]}
                     />
                     <SelectFloating
                         label="Status"
