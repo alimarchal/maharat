@@ -1,119 +1,806 @@
-import React, { useState } from "react";
-import InputFloating from "../../../../Components/InputFloating";
-import SelectFloating from "../../../../Components/SelectFloating";
-import axios from "axios";
+import React, { useState, useEffect } from "react";
+import { FaPlus, FaTrash } from "react-icons/fa";
 
-const CreateMaharatInvoice = () => {
+export default function CreateMaharatInvoice() {
     const [formData, setFormData] = useState({
-        name: "",
-        amount: "",
-        status: "",
+        customer_id: "",
+        mobile: "",
+        vat_no: "",
+        quotation_date: "",
+        valid_until: "",
+        validity: "",
+        payment_terms: "",
+        vat_rate: "5",
+        vat_amount: "",
+        subtotal: "0.00",
+        total: "0.00",
+        discount: "0",
+        items: [
+            {
+                item_id: "",
+                description: "",
+                quantity: "",
+                unit_price: "",
+                subtotal: "",
+            },
+        ],
     });
 
     const [errors, setErrors] = useState({});
-    const [loading, setLoading] = useState(false);
+    const [touched, setTouched] = useState({});
+    const [itemErrors, setItemErrors] = useState([]);
+    const [itemTouched, setItemTouched] = useState([]);
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-        setErrors({ ...errors, [e.target.name]: "" });
+    useEffect(() => {
+        setItemErrors(formData.items.map(() => ({})));
+        setItemTouched(formData.items.map(() => ({})));
+    }, []);
+
+    useEffect(() => {
+        if (formData.quotation_date && formData.valid_until) {
+            const start = new Date(formData.quotation_date);
+            const end = new Date(formData.valid_until);
+            const diffTime = Math.abs(end - start);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            setFormData((prev) => ({
+                ...prev,
+                validity: diffDays.toString(),
+            }));
+        }
+    }, [formData.quotation_date, formData.valid_until]);
+
+    const handleBlur = (field) => {
+        setTouched((prev) => ({
+            ...prev,
+            [field]: true,
+        }));
+        validateField(field);
     };
 
-    const validateForm = () => {
-        let newErrors = {};
-        if (!formData.name.trim()) newErrors.name = "Supplier Name is required";
-        if (!formData.amount.trim()) newErrors.amount = "Amount is required";
-        if (!formData.status.trim()) newErrors.status = "Status is required";
+    const handleItemBlur = (index, field) => {
+        const newItemTouched = [...itemTouched];
+        if (!newItemTouched[index]) {
+            newItemTouched[index] = {};
+        }
+        newItemTouched[index][field] = true;
+        setItemTouched(newItemTouched);
+
+        validateItemField(index, field);
+    };
+
+    const validateItemField = (index, field) => {
+        const newItemErrors = [...itemErrors];
+        if (!newItemErrors[index]) {
+            newItemErrors[index] = {};
+        }
+
+        const item = formData.items[index];
+
+        switch (field) {
+            case "item_id":
+                if (!item.item_id) {
+                    newItemErrors[index].item_id = "Item name is required";
+                } else {
+                    delete newItemErrors[index].item_id;
+                }
+                break;
+            case "quantity":
+                if (!item.quantity) {
+                    newItemErrors[index].quantity = "Quantity is required";
+                } else if (parseFloat(item.quantity) <= 0) {
+                    newItemErrors[index].quantity =
+                        "Quantity must be greater than 0";
+                } else {
+                    delete newItemErrors[index].quantity;
+                }
+                break;
+            case "unit_price":
+                if (!item.unit_price) {
+                    newItemErrors[index].unit_price = "Unit price is required";
+                } else if (parseFloat(item.unit_price) < 0) {
+                    newItemErrors[index].unit_price =
+                        "Unit price cannot be negative";
+                } else {
+                    delete newItemErrors[index].unit_price;
+                }
+                break;
+            default:
+                break;
+        }
+
+        setItemErrors(newItemErrors);
+    };
+
+    const validateField = (field) => {
+        const newErrors = { ...errors };
+
+        switch (field) {
+            case "customer_id":
+                if (!formData.customer_id) {
+                    newErrors.customer_id = "Customer is required";
+                } else {
+                    delete newErrors.customer_id;
+                }
+                break;
+            case "quotation_date":
+                if (!formData.quotation_date) {
+                    newErrors.quotation_date = "Quotation date is required";
+                } else {
+                    delete newErrors.quotation_date;
+                }
+                break;
+            case "valid_until":
+                if (!formData.valid_until) {
+                    newErrors.valid_until = "Valid until date is required";
+                } else if (
+                    formData.quotation_date &&
+                    new Date(formData.valid_until) <=
+                        new Date(formData.quotation_date)
+                ) {
+                    newErrors.valid_until =
+                        "Valid until date must be after quotation date";
+                } else {
+                    delete newErrors.valid_until;
+                }
+                break;
+            default:
+                break;
+        }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!validateForm()) return;
-        setLoading(true);
+    const validateForm = () => {
+        const validationErrors = {};
+        let isValid = true;
 
-        try {
-            await axios.post("/api/v1/maharat-invoices", formData);
-            setFormData({ name: "", amount: "", status: "" });
-        } catch (error) {
-            setErrors(
-                error.response?.data?.errors || {
-                    general: "An error occurred while saving the invoice",
-                }
-            );
-        } finally {
-            setLoading(false);
+        if (!formData.customer_id)
+            validationErrors.customer_id = "Customer is required";
+
+        if (!formData.quotation_date)
+            validationErrors.quotation_date = "Quotation date is required";
+
+        if (!formData.valid_until)
+            validationErrors.valid_until = "Valid until date is required";
+        else if (
+            formData.quotation_date &&
+            new Date(formData.valid_until) <= new Date(formData.quotation_date)
+        )
+            validationErrors.valid_until =
+                "Valid until date must be after quotation date";
+
+        // Validate items
+        const newItemErrors = formData.items.map((item, index) => {
+            const itemValidationErrors = {};
+
+            if (!item.item_id) {
+                itemValidationErrors.item_id = "Item name is required";
+                isValid = false;
+            }
+
+            if (!item.quantity) {
+                itemValidationErrors.quantity = "Quantity is required";
+                isValid = false;
+            } else if (parseFloat(item.quantity) <= 0) {
+                itemValidationErrors.quantity =
+                    "Quantity must be greater than 0";
+                isValid = false;
+            }
+
+            if (!item.unit_price) {
+                itemValidationErrors.unit_price = "Unit price is required";
+                isValid = false;
+            } else if (parseFloat(item.unit_price) < 0) {
+                itemValidationErrors.unit_price =
+                    "Unit price cannot be negative";
+                isValid = false;
+            }
+
+            return itemValidationErrors;
+        });
+
+        setErrors(validationErrors);
+        setItemErrors(newItemErrors);
+
+        setTouched({
+            customer_id: true,
+            quotation_date: true,
+            valid_until: true,
+        });
+
+        const allItemsTouched = formData.items.map(() => ({
+            item_id: true,
+            quantity: true,
+            unit_price: true,
+        }));
+        setItemTouched(allItemsTouched);
+
+        return isValid && Object.keys(validationErrors).length === 0;
+    };
+
+    const handleInputChange = (e, index = null) => {
+        const { name, value } = e.target;
+
+        if (index !== null) {
+            const updatedItems = [...formData.items];
+            updatedItems[index][name] = value;
+
+            if (["quantity", "unit_price"].includes(name)) {
+                const quantity = Number(updatedItems[index].quantity) || 0;
+                const unitPrice = Number(updatedItems[index].unit_price) || 0;
+                const subtotal = (quantity * unitPrice).toFixed(2);
+                updatedItems[index].subtotal = subtotal;
+            }
+
+            setFormData((prev) => ({
+                ...prev,
+                items: updatedItems,
+            }));
+
+            updateSummary(updatedItems);
+
+            if (itemErrors[index] && itemErrors[index][name]) {
+                const newItemErrors = [...itemErrors];
+                delete newItemErrors[index][name];
+                setItemErrors(newItemErrors);
+            }
+
+            return;
+        }
+
+        setFormData((prev) => {
+            const updatedData = { ...prev, [name]: value };
+
+            if (name === "vat_rate" || name === "discount") {
+                updateSummary(formData.items, value, name);
+            }
+
+            return updatedData;
+        });
+
+        if (errors[name]) {
+            setErrors((prev) => {
+                const updated = { ...prev };
+                delete updated[name];
+                return updated;
+            });
+        }
+    };
+
+    const addItemRow = () => {
+        const updatedItems = [
+            ...formData.items,
+            {
+                item_id: "",
+                description: "",
+                quantity: "",
+                unit_price: "",
+                subtotal: "",
+            },
+        ];
+
+        setFormData((prev) => ({
+            ...prev,
+            items: updatedItems,
+        }));
+
+        setItemErrors([...itemErrors, {}]);
+        setItemTouched([...itemTouched, {}]);
+
+        updateSummary(updatedItems);
+    };
+
+    const removeItemRow = (index) => {
+        if (index === 0 || formData.items.length <= 1) return;
+
+        const updatedItems = formData.items.filter((_, i) => i !== index);
+        const updatedItemErrors = itemErrors.filter((_, i) => i !== index);
+        const updatedItemTouched = itemTouched.filter((_, i) => i !== index);
+
+        setFormData((prev) => ({
+            ...prev,
+            items: updatedItems,
+        }));
+
+        setItemErrors(updatedItemErrors);
+        setItemTouched(updatedItemTouched);
+
+        updateSummary(updatedItems);
+    };
+
+    const updateSummary = (
+        updatedItems,
+        newValue = null,
+        changedField = null
+    ) => {
+        let subtotal = updatedItems.reduce(
+            (sum, item) => sum + (parseFloat(item.subtotal) || 0),
+            0
+        );
+
+        let vatRate =
+            changedField === "vat_rate"
+                ? parseFloat(newValue)
+                : parseFloat(formData.vat_rate) || 0;
+
+        let vatAmount = (subtotal * vatRate) / 100;
+        let totalBeforeDiscount = subtotal + vatAmount;
+
+        let discount =
+            changedField === "discount"
+                ? parseFloat(newValue) || 0
+                : parseFloat(formData.discount) || 0;
+
+        let finalTotal = totalBeforeDiscount - discount;
+        finalTotal = finalTotal > 0 ? finalTotal : 0;
+
+        setFormData((prevState) => ({
+            ...prevState,
+            subtotal: subtotal.toFixed(2),
+            vat_amount: vatAmount.toFixed(2),
+            total: finalTotal.toFixed(2),
+        }));
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+
+        if (validateForm()) {
+            console.log("Form Data Submitted:", formData);
+            alert("Invoice created successfully!");
+        } else {
+            console.log("Form validation failed");
         }
     };
 
     return (
-        <>
-            <h2 className="text-3xl font-bold text-[#2C323C]">
-                Create Maharat Invoice
-            </h2>
-
-            <form onSubmit={handleSubmit} className="space-y-6 mt-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <InputFloating
-                            label="Supplier Name"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleChange}
-                        />
-                        {errors.name && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.name}
-                            </p>
-                        )}
+        <div className="flex flex-col bg-white rounded-2xl shadow-lg p-6 max-w-7xl mx-auto">
+            <header className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-4">
+                <div className="w-full">
+                    <h1 className="text-3xl font-bold uppercase mb-1 truncate">
+                        Maharat
+                    </h1>
+                    <p>Address: Riyadh, Saudi Arabia</p>
+                    <p>VAT No: 123456789</p>
+                    <p>Mobile: +966 123 456 789</p>
+                </div>
+                <div className="w-full flex justify-center">
+                    <img
+                        src="/images/MCTC Logo.png"
+                        alt="Maharat Logo"
+                        className="h-40 w-40 object-contain"
+                    />
+                </div>
+                <div className="w-full bg-gray-100 p-4 rounded-2xl">
+                    <div className="flex justify-start items-center gap-2">
+                        <strong className="w-1/4">Customer Name:</strong>
+                        <div className="w-full">
+                            <input
+                                type="text"
+                                id="customer_id"
+                                name="customer_id"
+                                value={formData.customer_id}
+                                onChange={handleInputChange}
+                                onBlur={() => handleBlur("customer_id")}
+                                className={`mt-1 block w-full rounded ${
+                                    touched.customer_id && errors.customer_id
+                                        ? "border-red-500"
+                                        : "border-gray-300"
+                                }`}
+                                placeholder="Enter Customer Name"
+                            />
+                            {touched.customer_id && errors.customer_id && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.customer_id}
+                                </p>
+                            )}
+                        </div>
                     </div>
-                    <div>
-                        <InputFloating
-                            label="Amount"
-                            name="amount"
-                            type="number"
-                            value={formData.amount}
-                            onChange={handleChange}
+                    <div className="flex justify-start items-center gap-2 mt-4">
+                        <strong className="w-1/4">Mobile:</strong>
+                        <input
+                            type="text"
+                            id="mobile"
+                            name="mobile"
+                            value={formData.mobile}
+                            onChange={handleInputChange}
+                            className="mt-1 block w-full rounded border-gray-300"
+                            placeholder="Enter Mobile Number"
                         />
-                        {errors.amount && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.amount}
-                            </p>
-                        )}
                     </div>
-                    <div>
-                        <SelectFloating
-                            label="Status"
-                            name="status"
-                            value={formData.status}
-                            onChange={handleChange}
-                            options={[
-                                { value: "Active", label: "Active" },
-                                { value: "Approved", label: "Approved" },
-                                { value: "Rejected", label: "Rejected" },
-                            ]}
+                    <div className="flex justify-start items-center gap-2 mt-4">
+                        <strong className="w-1/4">VAT No:</strong>
+                        <input
+                            type="text"
+                            id="vat_no"
+                            name="vat_no"
+                            value={formData.vat_no}
+                            onChange={handleInputChange}
+                            className="mt-1 block w-full rounded border-gray-300"
+                            placeholder="Enter VAT Number"
                         />
-                        {errors.status && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.status}
-                            </p>
-                        )}
                     </div>
                 </div>
+            </header>
 
-                <div className="flex justify-end">
-                    <button
-                        type="submit"
-                        className="bg-[#009FDC] text-white text-lg font-medium px-6 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50"
-                        disabled={loading}
-                    >
-                        {loading ? "Creating..." : "Create Invoice"}
-                    </button>
+            <section className="mt-6">
+                <div className="p-2 flex justify-center text-center bg-[#C7E7DE] rounded-2xl">
+                    <h2 className="text-xl font-bold">Invoice</h2>
                 </div>
-            </form>
-        </>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div className="bg-gray-100 p-4 rounded-2xl">
+                        <div className="flex justify-start items-center gap-2">
+                            <strong className="w-1/4">Quotation Date:</strong>
+                            <div className="w-full">
+                                <input
+                                    type="date"
+                                    id="quotation_date"
+                                    name="quotation_date"
+                                    value={formData.quotation_date}
+                                    onChange={handleInputChange}
+                                    onBlur={() => handleBlur("quotation_date")}
+                                    className={`mt-1 block w-full rounded ${
+                                        touched.quotation_date &&
+                                        errors.quotation_date
+                                            ? "border-red-500"
+                                            : "border-gray-300"
+                                    }`}
+                                />
+                                {touched.quotation_date &&
+                                    errors.quotation_date && (
+                                        <p className="text-red-500 text-sm mt-1">
+                                            {errors.quotation_date}
+                                        </p>
+                                    )}
+                            </div>
+                        </div>
+                        <div className="flex justify-start items-center gap-2 mt-4">
+                            <strong className="w-1/4">Valid Until:</strong>
+                            <div className="w-full">
+                                <input
+                                    type="date"
+                                    id="valid_until"
+                                    name="valid_until"
+                                    value={formData.valid_until}
+                                    onChange={handleInputChange}
+                                    onBlur={() => handleBlur("valid_until")}
+                                    className={`mt-1 block w-full rounded ${
+                                        touched.valid_until &&
+                                        errors.valid_until
+                                            ? "border-red-500"
+                                            : "border-gray-300"
+                                    }`}
+                                />
+                                {touched.valid_until && errors.valid_until && (
+                                    <p className="text-red-500 text-sm mt-1">
+                                        {errors.valid_until}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex justify-start items-center gap-2 mt-4">
+                            <strong className="w-1/5">Validity:</strong>
+                            <p>{formData.validity || "0"} days</p>
+                        </div>
+                    </div>
+                    <div className="bg-gray-100 p-4 rounded-2xl">
+                        <div className="flex justify-start items-center gap-2">
+                            <strong className="w-1/4">Payment Terms:</strong>
+                            <div className="w-full">
+                                <select
+                                    id="payment_terms"
+                                    name="payment_terms"
+                                    value={formData.payment_terms}
+                                    onChange={handleInputChange}
+                                    className="mt-1 block w-full rounded border-gray-300"
+                                >
+                                    <option value="">
+                                        Select payment terms
+                                    </option>
+                                    <option value="cash">Cash</option>
+                                    <option value="credit">Credit</option>
+                                    <option value="bank_transfer">
+                                        Bank Transfer
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="flex justify-start items-center gap-2 mt-4">
+                            <strong className="w-1/4">VAT Rate (%):</strong>
+                            <input
+                                type="number"
+                                id="vat_rate"
+                                name="vat_rate"
+                                value={formData.vat_rate}
+                                onChange={handleInputChange}
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                className="mt-1 block w-full rounded border-gray-300"
+                                placeholder="Enter VAT Rate"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div className="mt-8">
+                <h3 className="text-2xl font-bold mb-2">Invoice Items</h3>
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                        <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                            <tr>
+                                <th className="p-3 rounded-tl-2xl rounded-bl-2xl">
+                                    SN
+                                </th>
+                                <th className="p-3">Item Name</th>
+                                <th className="p-3">Description</th>
+                                <th className="p-3">Qty</th>
+                                <th className="p-3">Unit Price</th>
+                                <th className="p-3">Total</th>
+                                <th className="p-3 rounded-tr-2xl rounded-br-2xl">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
+                            {formData.items.map((item, index) => (
+                                <tr key={index}>
+                                    <td className="p-3">{index + 1}</td>
+                                    <td className="p-3">
+                                        <div>
+                                            <input
+                                                type="text"
+                                                id={`item_id_${index}`}
+                                                name="item_id"
+                                                value={item.item_id}
+                                                onChange={(e) =>
+                                                    handleInputChange(e, index)
+                                                }
+                                                onBlur={() =>
+                                                    handleItemBlur(
+                                                        index,
+                                                        "item_id"
+                                                    )
+                                                }
+                                                className={`mt-1 block w-full rounded ${
+                                                    itemTouched[index]
+                                                        ?.item_id &&
+                                                    itemErrors[index]?.item_id
+                                                        ? "border-red-500"
+                                                        : "border-gray-300"
+                                                }`}
+                                                placeholder="Enter Item Name"
+                                            />
+                                            {itemTouched[index]?.item_id &&
+                                                itemErrors[index]?.item_id && (
+                                                    <p className="text-red-500 text-sm mt-1">
+                                                        {
+                                                            itemErrors[index]
+                                                                .item_id
+                                                        }
+                                                    </p>
+                                                )}
+                                        </div>
+                                    </td>
+                                    <td className="p-3">
+                                        <input
+                                            type="text"
+                                            id={`description_${index}`}
+                                            name="description"
+                                            value={item.description}
+                                            onChange={(e) =>
+                                                handleInputChange(e, index)
+                                            }
+                                            className="mt-1 block w-full rounded border-gray-300"
+                                            placeholder="Enter Description"
+                                        />
+                                    </td>
+                                    <td className="p-3">
+                                        <div>
+                                            <input
+                                                type="number"
+                                                id={`quantity_${index}`}
+                                                name="quantity"
+                                                value={item.quantity}
+                                                onChange={(e) =>
+                                                    handleInputChange(e, index)
+                                                }
+                                                onBlur={() =>
+                                                    handleItemBlur(
+                                                        index,
+                                                        "quantity"
+                                                    )
+                                                }
+                                                min="0"
+                                                step="1"
+                                                className={`mt-1 block w-full rounded ${
+                                                    itemTouched[index]
+                                                        ?.quantity &&
+                                                    itemErrors[index]?.quantity
+                                                        ? "border-red-500"
+                                                        : "border-gray-300"
+                                                }`}
+                                                placeholder="Enter Qty"
+                                            />
+                                            {itemTouched[index]?.quantity &&
+                                                itemErrors[index]?.quantity && (
+                                                    <p className="text-red-500 text-sm mt-1">
+                                                        {
+                                                            itemErrors[index]
+                                                                .quantity
+                                                        }
+                                                    </p>
+                                                )}
+                                        </div>
+                                    </td>
+                                    <td className="p-3">
+                                        <div>
+                                            <input
+                                                type="number"
+                                                id={`unit_price_${index}`}
+                                                name="unit_price"
+                                                value={item.unit_price}
+                                                onChange={(e) =>
+                                                    handleInputChange(e, index)
+                                                }
+                                                onBlur={() =>
+                                                    handleItemBlur(
+                                                        index,
+                                                        "unit_price"
+                                                    )
+                                                }
+                                                min="0"
+                                                step="0.01"
+                                                className={`mt-1 block w-full rounded ${
+                                                    itemTouched[index]
+                                                        ?.unit_price &&
+                                                    itemErrors[index]
+                                                        ?.unit_price
+                                                        ? "border-red-500"
+                                                        : "border-gray-300"
+                                                }`}
+                                                placeholder="Enter Unit Price"
+                                            />
+                                            {itemTouched[index]?.unit_price &&
+                                                itemErrors[index]
+                                                    ?.unit_price && (
+                                                    <p className="text-red-500 text-sm mt-1">
+                                                        {
+                                                            itemErrors[index]
+                                                                .unit_price
+                                                        }
+                                                    </p>
+                                                )}
+                                        </div>
+                                    </td>
+                                    <td className="p-3">
+                                        <input
+                                            type="text"
+                                            id={`subtotal_${index}`}
+                                            name="subtotal"
+                                            value={item.subtotal || "0.00"}
+                                            className="mt-1 block w-full rounded bg-gray-50 border-gray-300"
+                                            readOnly
+                                        />
+                                    </td>
+                                    <td className="p-3">
+                                        <div className="flex justify-start gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    removeItemRow(index)
+                                                }
+                                                className={`p-1 text-red-500 hover:text-red-700 ${
+                                                    index === 0 ||
+                                                    formData.items.length <= 1
+                                                        ? "opacity-50 cursor-not-allowed"
+                                                        : ""
+                                                }`}
+                                                title="Remove Item"
+                                                disabled={
+                                                    index === 0 ||
+                                                    formData.items.length <= 1
+                                                }
+                                            >
+                                                <FaTrash />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div className="flex justify-start mt-4">
+                <button
+                    type="button"
+                    onClick={addItemRow}
+                    className="px-4 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-200"
+                    title="Add Item"
+                >
+                    <FaPlus className="inline-block mr-2" /> Add Item
+                </button>
+            </div>
+
+            <div className="flex justify-end gap-2 w-full mt-6">
+                <div className="w-full md:w-5/12">
+                    <div className="bg-gray-100 p-4 rounded-2xl">
+                        <div className="flex justify-between items-center gap-2 mb-4">
+                            <strong className="w-1/4">Subtotal:</strong>
+                            <p className="font-medium">
+                                {parseFloat(formData.subtotal).toLocaleString(
+                                    undefined,
+                                    {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    }
+                                )}{" "}
+                                SAR
+                            </p>
+                        </div>
+                        <div className="flex justify-start items-center gap-2">
+                            <strong className="w-1/3">Discount:</strong>
+                            <div className="w-full">
+                                <input
+                                    type="number"
+                                    id="discount"
+                                    name="discount"
+                                    value={formData.discount}
+                                    onChange={handleInputChange}
+                                    min="0"
+                                    step="0.01"
+                                    className="mt-1 block w-full rounded border-gray-300"
+                                    placeholder="Enter Discount"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-center gap-2 mt-4">
+                            <strong className="w-1/4">VAT Amount:</strong>
+                            <p className="font-medium">
+                                {parseFloat(formData.vat_amount).toLocaleString(
+                                    undefined,
+                                    {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    }
+                                )}{" "}
+                                SAR
+                            </p>
+                        </div>
+                    </div>
+                    <div className="bg-gray-100 p-4 rounded mt-4">
+                        <div className="flex justify-between items-center gap-2 font-medium text-2xl text-red-500">
+                            <strong>Net Amount:</strong>
+                            <p>
+                                {parseFloat(formData.total).toLocaleString(
+                                    undefined,
+                                    {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    }
+                                )}{" "}
+                                SAR
+                            </p>
+                        </div>
+                    </div>
+                    <div className="my-8 flex justify-center md:justify-end w-full gap-4">
+                        <button className="px-8 py-3 text-xl font-medium border border-[#009FDC] text-[#009FDC] hover:text-white rounded-full transition duration-300 hover:bg-[#009FDC] w-full md:w-auto">
+                            Generate PDF
+                        </button>
+                        <button
+                            onClick={handleSubmit}
+                            className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto"
+                        >
+                            Create Invoice
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
-};
-
-export default CreateMaharatInvoice;
+}
