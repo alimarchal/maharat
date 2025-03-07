@@ -11,23 +11,22 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('fiscal_periods', function (Blueprint $table) {
-            $table->id();
-            $table->date('fiscal_year');
-            $table->integer('period_number');
-            $table->string('period_name');
-            $table->date('start_date');
-            $table->date('end_date');
-            $table->date('transaction_closed_upto')->nullable();
-            $table->enum('status', ['Open', 'Closed','Adjusting'])->default('Open');
-            $table->foreignId('created_by')->nullable()->constrained('users','id')->nullOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users','id')->nullOnDelete();
-            $table->timestamps();
-            $table->softDeletes();
-        });
-
-
-
+        if (!Schema::hasTable('fiscal_periods')) {
+            Schema::create('fiscal_periods', function (Blueprint $table) {
+                $table->id();
+                $table->date('fiscal_year');
+                $table->integer('period_number');
+                $table->string('period_name');
+                $table->date('start_date');
+                $table->date('end_date');
+                $table->date('transaction_closed_upto')->nullable();
+                $table->enum('status', ['Open', 'Closed', 'Adjusting'])->default('Open');
+                $table->foreignId('created_by')->nullable()->constrained('users', 'id')->nullOnDelete();
+                $table->foreignId('updated_by')->nullable()->constrained('users', 'id')->nullOnDelete();
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
 
         /*
 
