@@ -16,6 +16,8 @@ use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\LedgerController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
 use App\Http\Controllers\Api\V1\MaterialRequestItemController;
+use App\Http\Controllers\Api\V1\PaymentOrderController;
+use App\Http\Controllers\Api\V1\PaymentOrderLogController;
 use App\Http\Controllers\Api\V1\PermissionController;
 use App\Http\Controllers\Api\V1\ProcessController;
 use App\Http\Controllers\Api\V1\ProcessStepController;
@@ -220,6 +222,12 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // Invoices routes
     Route::apiResource('invoices', InvoiceController::class);
     Route::post('invoices/{id}/restore', [InvoiceController::class, 'restore']);
+
+
+    // Payment Orders routes
+    Route::apiResource('payment-orders', PaymentOrderController::class);
+    // Payment Order Logs routes
+    Route::apiResource('payment-order-logs', PaymentOrderLogController::class);
 
 
 
