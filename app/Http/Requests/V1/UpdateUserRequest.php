@@ -32,7 +32,8 @@ class UpdateUserRequest extends FormRequest
             'landline' => 'nullable|string|max:20',
             'mobile' => 'nullable|string|max:20',
             'is_salesman_linked' => 'nullable|string',
-            'language' => 'nullable|string|max:10'
+            'language' => 'nullable|string|max:10',
+            'attachment' => 'nullable|file|image|max:10240', // 10MB max
         ];
     }
 }

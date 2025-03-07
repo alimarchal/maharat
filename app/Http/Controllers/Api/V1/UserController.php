@@ -12,6 +12,7 @@ use App\Http\Resources\V1\UserResource;
 use App\Http\Resources\V1\UserCollection;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Storage;
 
 class UserController extends Controller
 {
@@ -43,6 +44,13 @@ class UserController extends Controller
         $validated = $request->validated();
         $validated['password'] = Hash::make($validated['password']);
 
+        // Handle attachment if present
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $path = $file->store('attachments');
+            $validated['attachment'] = $path;
+        }
+
         $user = User::create($validated);
 
         return new UserResource($user);
@@ -68,11 +76,21 @@ class UserController extends Controller
             $validated['password'] = Hash::make($validated['password']);
         }
 
+        // Handle file upload first
+        if ($request->hasFile('attachment')) {
+            // Remove old file if it exists
+            if ($user->attachment && Storage::disk('public')->exists($user->attachment)) {
+                Storage::disk('public')->delete($user->attachment);
+            }
+
+            $path = $request->file('attachment')->store('user-profiles', 'public');
+            $validated['attachment'] = $path; // Include path in the data being updated
+        }
+
         $user->update($validated);
 
         return new UserResource($user);
     }
-
     /**
      * Remove the specified resource from storage.
      */
