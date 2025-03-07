@@ -105,6 +105,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/quotation-documents', [QuotationDocumentController::class, 'store']);
     Route::put('/quotation-documents/{id}', [QuotationDocumentController::class, 'update']);
 
+    Route::get('/inventories', [InventoryController::class, 'index']);
+    Route::post('/inventories', [InventoryController::class, 'store']);
+    Route::put('/inventories/{id}', [InventoryController::class, 'update']);
+    Route::delete('/inventories/{id}', [InventoryController::class, 'destroy']);
 
     // Process routes
     Route::apiResource('processes', ProcessController::class);

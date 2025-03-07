@@ -330,6 +330,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "Inventory Tracking",
             icon: faChartBar,
+            onClick: () => router.visit("/inventory-tracking"),
         },
     ];
 
