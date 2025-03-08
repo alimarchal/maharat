@@ -9,31 +9,34 @@ const MaharatInvoicesTable = () => {
     const [error, setError] = useState("");
 
     const [selectedFilter, setSelectedFilter] = useState("All");
-    const filters = ["All", "Active", "Pending", "Rejected"];
+    const filters = ["All", "Draft", "Paid", "Unpaid", "Partially Paid"];
 
     const staticInvoices = [
         {
             id: 1,
             rfq_id: "MC-INV-001",
-            supplier_name: "Supplier A",
+            customer_name: "Customer A",
+            created_by: "Ahsan",
             amount: "$1,500",
-            status_name: "Active",
+            status_name: "Draft",
             created_at: "2025-03-06T10:30:00Z",
         },
         {
             id: 2,
             rfq_id: "MC-INV-002",
-            supplier_name: "Supplier B",
+            customer_name: "Customer B",
+            created_by: "Ali",
             amount: "$2,000",
-            status_name: "Pending",
+            status_name: "Paid",
             created_at: "2025-03-05T15:45:00Z",
         },
         {
             id: 3,
             rfq_id: "MC-INV-003",
-            supplier_name: "Supplier C",
+            customer_name: "Customer C",
+            created_by: "Akhtar",
             amount: "$3,750",
-            status_name: "Rejected",
+            status_name: "Unpaid",
             created_at: "2025-03-04T08:15:00Z",
         },
     ];
@@ -90,13 +93,14 @@ const MaharatInvoicesTable = () => {
             </div>
 
             <table className="w-full border-collapse">
-                <thead className="bg-[#C7E7DE] text-[#2C323C] text-center text-xl font-medium">
+                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                     <tr>
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             Invoice ID
                         </th>
-                        <th className="py-3 px-4">Supplier</th>
-                        <th className="py-3 px-4">Amount</th>
+                        <th className="py-3 px-4">Customer</th>
+                        <th className="py-3 px-4">Created By</th>
+                        <th className="py-3 px-4">Total Amount</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">Date & Time</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
@@ -104,7 +108,7 @@ const MaharatInvoicesTable = () => {
                         </th>
                     </tr>
                 </thead>
-                <tbody className="text-[#2C323C] text-center text-base font-medium divide-y divide-[#D7D8D9]">
+                <tbody className="text-[#2C323C] text-left text-base font-medium divide-y divide-[#D7D8D9]">
                     {!loading ? (
                         <tr>
                             <td colSpan="6" className="text-center py-12">
@@ -133,7 +137,10 @@ const MaharatInvoicesTable = () => {
                                         {invoice.rfq_id}
                                     </td>
                                     <td className="py-3 px-4">
-                                        {invoice.supplier_name}
+                                        {invoice.customer_name}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {invoice.created_by}
                                     </td>
                                     <td className="py-3 px-4">
                                         {invoice.amount}
@@ -141,10 +148,10 @@ const MaharatInvoicesTable = () => {
                                     <td className="py-3 px-4">
                                         <span
                                             className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${
-                                                invoice.status_name === "Active"
+                                                invoice.status_name === "Paid"
                                                     ? "bg-green-100 text-green-800"
                                                     : invoice.status_name ===
-                                                      "Rejected"
+                                                      "Unpaid"
                                                     ? "bg-red-100 text-red-800"
                                                     : "bg-yellow-100 text-yellow-800"
                                             }`}
@@ -157,7 +164,7 @@ const MaharatInvoicesTable = () => {
                                             invoice.created_at
                                         ).toLocaleString()}
                                     </td>
-                                    <td className="py-3 px-4 flex justify-center space-x-3">
+                                    <td className="py-3 px-4 flex justify-start space-x-3">
                                         <button className="text-gray-600 hover:text-gray-800">
                                             <FontAwesomeIcon icon={faEye} />
                                         </button>

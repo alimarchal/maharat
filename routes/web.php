@@ -128,9 +128,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/external-invoices', function () { return Inertia::render('Dashboard/Invoices/Invoices'); })->name('invoices');
 
+    Route::get('/chart', function () { 
+        return Inertia::render('Dashboard/OrganizationalChart/Chart'); 
+    })->name('chart');
     Route::get('/users', function () { return Inertia::render('Dashboard/Users/Users'); })->name('users');
 
-    Route::get('/chart', function () { return Inertia::render('Dashboard/OrganizationalChart/Chart'); })->name('chart');
+    //Route::get('/chart', function () { return Inertia::render('Dashboard/OrganizationalChart/Chart'); })->name('chart');
 
     Route::get('/rfq-status', function () { return Inertia::render('Dashboard/RFQ/RFQStatus'); })->name('rfq-status');
 
@@ -155,19 +158,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('company.create');
 
     Route::get('/process-flow', function () { 
-        return Inertia::render('Dashboard', ['page' => 'ProcessFlow/ProcessFlow']); 
+        return Inertia::render('Dashboard', ['page' => 'Configuration/ProcessFlow/ProcessFlow']); 
     })->name('process.index');
     Route::get('/process-flow/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'ProcessFlow/CreateProcessFlow']); 
+        return Inertia::render('Dashboard', ['page' => 'Configuration/ProcessFlow/CreateProcessFlow']); 
     })->name('process.create');
 
     Route::get('/roles-permissions', function () { 
-        return Inertia::render('Dashboard', ['page' => 'RolePermission/RolesPermissions']); 
+        return Inertia::render('Dashboard', ['page' => 'Configuration/RolePermission/RolesPermissions']); 
     })->name('permission.index');
 
     Route::get('/notification-settings', function () { 
-        return Inertia::render('Dashboard', ['page' => 'NotificationSettings/Notification']); 
+        return Inertia::render('Dashboard', ['page' => 'Configuration/NotificationSettings/Notification']); 
     })->name('notification.index');
+
+    Route::get('/users', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Configuration/Users/Users']); 
+    })->name('users.index');
 
     Route::get('/tasks', function () { 
         return Inertia::render('Dashboard', ['page' => 'MyTasks/Tasks/TasksTable']); 
