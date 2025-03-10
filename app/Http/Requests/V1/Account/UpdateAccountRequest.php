@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests\V1\Ledger;
+namespace App\Http\Requests\V1\Account;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreLedgerRequest extends FormRequest
+class UpdateAccountRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,8 +22,8 @@ class StoreLedgerRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'chart_of_account_id' => ['required', 'string', 'max:255'],
-            'name' => ['required', 'string', 'max:255'],
+            'chart_of_account_id' => ['sometimes', 'required', 'string', 'max:255'],
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'cost_center_id' => ['nullable', 'exists:cost_centers,id'],
             'status' => ['nullable', 'in:Approved,Pending'],
@@ -36,7 +36,6 @@ class StoreLedgerRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'created_by' => auth()->id(),
             'updated_by' => auth()->id(),
         ]);
     }

@@ -1,13 +1,15 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\Account\StoreAccountRequest;
 use App\Http\Requests\V1\Account\StoreLedgerRequest;
 use App\Http\Requests\V1\Account\UpdateLedgerRequest;
+use App\Http\Resources\V1\AccountResource;
 use App\Http\Resources\V1\LedgerResource;
+use App\Models\Account;
 use App\Models\Ledger;
-use App\QueryParameters\LedgerParameters;
+use App\QueryParameters\AccountParameters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
@@ -15,51 +17,51 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
 
-class LedgerController extends Controller
+class AccountController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index(): JsonResponse|ResourceCollection
     {
-        $ledgers = QueryBuilder::for(Ledger::class)
-            ->allowedFilters(LedgerParameters::ALLOWED_FILTERS)
-            ->allowedSorts(LedgerParameters::ALLOWED_SORTS)
-            ->allowedIncludes(LedgerParameters::ALLOWED_INCLUDES)
+        $ledgers = QueryBuilder::for(Account::class)
+            ->allowedFilters(AccountParameters::ALLOWED_FILTERS)
+            ->allowedSorts(AccountParameters::ALLOWED_SORTS)
+            ->allowedIncludes(AccountParameters::ALLOWED_INCLUDES)
             ->paginate()
             ->appends(request()->query());
 
         if ($ledgers->isEmpty()) {
             return response()->json([
-                'message' => 'No ledgers found',
+                'message' => 'No account found',
                 'data' => []
             ], Response::HTTP_OK);
         }
 
-        return LedgerResource::collection($ledgers);
+        return AccountResource::collection($ledgers);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreLedgerRequest $request): JsonResponse
+    public function store(StoreAccountRequest $request): JsonResponse
     {
         try {
             DB::beginTransaction();
 
-            $ledger = Ledger::create($request->validated());
+            $ledger = Account::create($request->validated());
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Ledger created successfully',
-                'data' => new LedgerResource($ledger->load(['costCenter', 'creator', 'updater']))
+                'message' => 'Account created successfully',
+                'data' => new AccountResource($ledger->load(['costCenter', 'creator', 'updater']))
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
             DB::rollBack();
 
             return response()->json([
-                'message' => 'Failed to create ledger',
+                'message' => 'Failed to create accounts',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
@@ -70,36 +72,36 @@ class LedgerController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $ledger = QueryBuilder::for(Ledger::class)
-            ->allowedIncludes(LedgerParameters::ALLOWED_INCLUDES)
+        $ledger = QueryBuilder::for(Account::class)
+            ->allowedIncludes(AccountParameters::ALLOWED_INCLUDES)
             ->findOrFail($id);
 
         return response()->json([
-            'data' => new LedgerResource($ledger)
+            'data' => new AccountResource($ledger)
         ], Response::HTTP_OK);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateLedgerRequest $request, Ledger $ledger): JsonResponse
+    public function update(UpdateLedgerRequest $request, Account $account): JsonResponse
     {
         try {
             DB::beginTransaction();
 
-            $ledger->update($request->validated());
+            $account->update($request->validated());
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Ledger updated successfully',
-                'data' => new LedgerResource($ledger->load(['costCenter', 'creator', 'updater']))
+                'message' => 'Account updated successfully',
+                'data' => new AccountResource($account->load(['costCenter', 'creator', 'updater']))
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
 
             return response()->json([
-                'message' => 'Failed to update ledger',
+                'message' => 'Failed to update account',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
@@ -108,23 +110,23 @@ class LedgerController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Ledger $ledger): JsonResponse
+    public function destroy(Account $account): JsonResponse
     {
         try {
             DB::beginTransaction();
 
-            $ledger->delete();
+            $account->delete();
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Ledger deleted successfully'
+                'message' => 'Account deleted successfully'
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
 
             return response()->json([
-                'message' => 'Failed to delete ledger',
+                'message' => 'Failed to delete account',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
@@ -138,20 +140,20 @@ class LedgerController extends Controller
         try {
             DB::beginTransaction();
 
-            $ledger = Ledger::withTrashed()->findOrFail($id);
+            $ledger = Account::withTrashed()->findOrFail($id);
             $ledger->restore();
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Ledger restored successfully',
-                'data' => new LedgerResource($ledger)
+                'message' => 'Account restored successfully',
+                'data' => new AccountResource($ledger)
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
 
             return response()->json([
-                'message' => 'Failed to restore ledger',
+                'message' => 'Failed to restore account',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
