@@ -17,15 +17,14 @@ import CreateProduct from "./Dashboard/Warehouse/Products/CreateProduct";
 import WarehouseIndex from "./Dashboard/WarehouseManagement/WarehouseIndex";
 import CreateWarehouse from "./Dashboard/WarehouseManagement/CreateWarehouse";
 import CompanyProfile from "./CompanyProfile/CompanyProfile";
-import ProcessFlow from "./Dashboard/ProcessFlow/ProcessFlow";
-import CreateProcessFlow from "./Dashboard/ProcessFlow/CreateProcessFlow";
-import RolesPermissions from "./Dashboard/RolePermission/RolesPermissions";
-import Notification from "./Dashboard/NotificationSettings/Notification";
+import ProcessFlow from "./Dashboard/Configuration/ProcessFlow/ProcessFlow";
+import CreateProcessFlow from "./Dashboard/Configuration/ProcessFlow/CreateProcessFlow";
+import RolesPermissions from "./Dashboard/Configuration/RolePermission/RolesPermissions";
+import Notification from "./Dashboard/Configuration/NotificationSettings/Notification";
 import TasksTable from "./Dashboard/MyTasks/Tasks/TasksTable";
 import ReviewTask from "./Dashboard/MyTasks/Tasks/ReviewTask";
 import PaymentOrderTable from "./Dashboard/Finance/PaymentOrder/PaymentOrderTable";
 import CostCenterTable from "./Dashboard/BudgetAndAccounts/CostCenter/CostCenterTable";
-import LedgersTable from "./Dashboard/Finance/Ledgers/LedgersTable";
 import CreatePaymentOrdersTable from "./Dashboard/Finance/PaymentOrder/CreatePaymentOrdersTable";
 import CreatePaymentOrder from "./Dashboard/Finance/PaymentOrder/CreatePaymentOrder";
 import ReceivableTable from "./Dashboard/Finance/AccountReceivables/ReceivableTable";
@@ -44,6 +43,9 @@ import ApproveBudgetForm from "./Dashboard/MyTasks/ApproveBudgetRequest/ApproveB
 import SubCostCenterTable from "./Dashboard/BudgetAndAccounts/SubCostCenter/SubCostCenterTable";
 import CreateMaharatInvoice from "./Dashboard/Finance/MaharatInvoices/CreateMaharatInvoice";
 import ReceivedMRsTable from "./Dashboard/Warehouse/ReceivedMaterialRequest/ReceivedMRsTable";
+import Users from "./Dashboard/Configuration/Users/Users";
+import AccountsTable from "./Dashboard/Finance/Accounts/AccountsTable";
+import Chart from "./Dashboard/Configuration/OrganizationalChart/Chart";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -53,21 +55,25 @@ export default function Dashboard({ auth, page }) {
         if (page === "Status/CreateStatus") return <CreateStatus />;
         if (page === "Units/UnitIndex") return <UnitIndex />;
         if (page === "Units/CreateUnit") return <CreateUnit />;
-        if (page === "Warehouse/Category/CategoryIndex") return <CategoryIndex />;
-        if (page === "Warehouse/Category/CreateCategory") return <CreateCategory />;
+        if (page === "Warehouse/Category/CategoryIndex")
+            return <CategoryIndex />;
+        if (page === "Warehouse/Category/CreateCategory")
+            return <CreateCategory />;
         if (page === "Warehouse/Products/ProductIndex") return <ProductIndex />;
-        if (page === "Warehouse/Products/CreateProduct") return <CreateProduct />;
+        if (page === "Warehouse/Products/CreateProduct")
+            return <CreateProduct />;
         if (page === "WarehouseManagement/WarehouseIndex")
             return <WarehouseIndex />;
         if (page === "WarehouseManagement/CreateWarehouse")
             return <CreateWarehouse />;
         if (page === "CompanyProfile/CompanyProfile") return <CompanyProfile />;
-        if (page === "ProcessFlow/ProcessFlow") return <ProcessFlow />;
-        if (page === "ProcessFlow/CreateProcessFlow")
+        if (page === "Configuration/ProcessFlow/ProcessFlow")
+            return <ProcessFlow />;
+        if (page === "Configuration/ProcessFlow/CreateProcessFlow")
             return <CreateProcessFlow />;
-        if (page === "RolePermission/RolesPermissions")
+        if (page === "Configuration/RolePermission/RolesPermissions")
             return <RolesPermissions />;
-        if (page === "NotificationSettings/Notification")
+        if (page === "Configuration/NotificationSettings/Notification")
             return <Notification />;
         if (page === "MyTasks/Tasks/TasksTable") return <TasksTable />;
         if (page === "MyTasks/Tasks/ReviewTask") return <ReviewTask />;
@@ -77,7 +83,7 @@ export default function Dashboard({ auth, page }) {
             return <MaharatInvoicesTable />;
         if (page === "Finance/MaharatInvoices/CreateMaharatInvoice")
             return <CreateMaharatInvoice />;
-        if (page === "Finance/Ledgers/LedgersTable") return <LedgersTable />;
+        if (page === "Finance/Accounts/AccountsTable") return <AccountsTable />;
         if (page === "Finance/PaymentOrder/PaymentOrderTable")
             return <PaymentOrderTable />;
         if (page === "Finance/PaymentOrder/CreatePaymentOrderTable")
@@ -110,6 +116,9 @@ export default function Dashboard({ auth, page }) {
             return <BudgetRequestForm />;
         if (page === "Warehouse/ReceivedMaterialRequest/ReceivedMRsTable")
             return <ReceivedMRsTable />;
+        if (page === "Configuration/Users/Users") return <Users />;
+        if (page === "Configuration/OrganizationalChart/Chart")
+            return <Chart />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };

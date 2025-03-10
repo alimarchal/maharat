@@ -32,6 +32,7 @@ class User extends Authenticatable
         'is_salesman_linked',
         'language',
         'attachment',
+        'parent_id',
     ];
 
     /**
