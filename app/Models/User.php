@@ -4,6 +4,8 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -11,10 +13,15 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles, HasApiTokens;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, HasRoles;
 
-
+    /**
+     * Get the designation associated with the user.
+     */
+    public function designation()
+    {
+        return $this->belongsTo(Designation::class);
+    }
     /**
      * The attributes that are mass assignable.
      *
@@ -22,7 +29,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'firstname',
-        'designation',
+        'designation_id',
         'lastname',
         'name',
         'email',

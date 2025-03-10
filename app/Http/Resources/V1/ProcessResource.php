@@ -18,6 +18,7 @@ class ProcessResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'is_active' => $this->is_active,
+            'is_deletable' => $this->is_deletable,
             'status' => $this->status,
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,

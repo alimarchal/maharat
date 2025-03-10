@@ -24,6 +24,7 @@ class StoreProcessRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
+            'is_deletable' => ['nullable', 'string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
             'status' => ['sometimes', 'string', Rule::in(['Active', 'Pending', 'Rejected', 'Expired','Draft'])],
 

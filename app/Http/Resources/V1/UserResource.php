@@ -29,6 +29,7 @@ class UserResource extends JsonResource
             'is_salesman_linked' => $this->is_salesman_linked,
             'language' => $this->language,
             'attachment' => $this->attachment,
+            'designation_id' => $this->designation_id,
             'roles' => $this->roles->pluck('name'),
             'permissions' => $this->getAllPermissions()->pluck('name'),
             'created_at' => $this->created_at,
