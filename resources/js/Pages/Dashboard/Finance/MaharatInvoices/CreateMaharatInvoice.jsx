@@ -383,7 +383,7 @@ export default function CreateMaharatInvoice() {
     return (
         <div className="flex flex-col bg-white rounded-2xl shadow-lg p-6 max-w-7xl mx-auto">
             <header className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-2">
-                <div className="mt-12 w-full flex flex-col justify-end text-center md:text-left md:items-start">
+                <div className="mt-16 w-full flex flex-col justify-end text-center md:text-left md:items-start">
                     <h1 className="text-3xl font-bold uppercase mb-2 truncate">
                         Maharat
                     </h1>
@@ -392,17 +392,14 @@ export default function CreateMaharatInvoice() {
                         Saudi Arabia
                     </p>
                     <p>
-                        <span className="font-semibold">VAT No:</span> 123456789
-                    </p>
-                    <p>
                         <span className="font-semibold">Mobile:</span> +966 123
                         456 789
                     </p>
                     <p>
-                        <span className="font-semibold">CR No:</span> 0345
+                        <span className="font-semibold">VAT No:</span> 123456789
                     </p>
                     <p>
-                        <span className="font-semibold">IBAN:</span> 67898765
+                        <span className="font-semibold">CR No:</span> 0345
                     </p>
                 </div>
                 <div className="w-full flex justify-center">
@@ -784,6 +781,10 @@ export default function CreateMaharatInvoice() {
                             SA0345000000242089787001
                         </p>
                         <p>
+                            <span className="font-semibold">Bank Name:</span>{" "}
+                            Saudi National Bank (SNB)
+                        </p>
+                        <p>
                             <span className="font-semibold">Branch Name:</span>{" "}
                             Khobar Main Branch
                         </p>
@@ -861,9 +862,6 @@ export default function CreateMaharatInvoice() {
                 </div>
             </div>
             <div className="my-8 flex flex-col md:flex-row justify-center md:justify-end w-full gap-4">
-                <button className="px-8 py-3 text-xl font-medium border border-[#009FDC] text-[#009FDC] hover:text-white rounded-full transition duration-300 hover:bg-[#009FDC] w-full md:w-auto">
-                    Generate PDF
-                </button>
                 <button
                     onClick={handleSubmit}
                     className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto"

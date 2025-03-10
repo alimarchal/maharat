@@ -267,7 +267,7 @@ export default function MainDashboard({ roles }) {
             onClick: () => router.visit("/view-order"),
         },
         {
-            text: "Goods Receiving Note",
+            text: "Goods Receiving Notes",
             icon: faListCheck,
             onClick: () => router.visit("/grn"),
         },
@@ -285,9 +285,9 @@ export default function MainDashboard({ roles }) {
             onClick: () => router.visit("/maharat-invoices"),
         },
         {
-            text: "Ledgers",
+            text: "Accounts",
             icon: faBook,
-            onClick: () => router.visit("/ledgers"),
+            onClick: () => router.visit("/accounts"),
         },
         {
             text: "Payment Orders",

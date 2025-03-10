@@ -129,8 +129,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/external-invoices', function () { return Inertia::render('Dashboard/Invoices/Invoices'); })->name('invoices');
 
     Route::get('/chart', function () { 
-        return Inertia::render('Dashboard/OrganizationalChart/Chart'); 
-    })->name('chart');
+        return Inertia::render('Dashboard', ['page' => 'Configuration/OrganizationalChart/Chart']); 
+    })->name('chart.index');
+    
     Route::get('/users', function () { return Inertia::render('Dashboard/Users/Users'); })->name('users');
 
     //Route::get('/chart', function () { return Inertia::render('Dashboard/OrganizationalChart/Chart'); })->name('chart');
@@ -194,9 +195,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'Finance/MaharatInvoices/CreateMaharatInvoice']); 
     })->name('maharatInvoices.create');
 
-    Route::get('/ledgers', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Finance/Ledgers/LedgersTable']); 
-    })->name('ledgers.index');
+    Route::get('/accounts', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Finance/Accounts/AccountsTable']); 
+    })->name('accounts.index');
 
     Route::get('/payment-orders', function () { 
         return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/PaymentOrderTable']); 
