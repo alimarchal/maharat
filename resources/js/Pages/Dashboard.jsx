@@ -25,7 +25,6 @@ import TasksTable from "./Dashboard/MyTasks/Tasks/TasksTable";
 import ReviewTask from "./Dashboard/MyTasks/Tasks/ReviewTask";
 import PaymentOrderTable from "./Dashboard/Finance/PaymentOrder/PaymentOrderTable";
 import CostCenterTable from "./Dashboard/BudgetAndAccounts/CostCenter/CostCenterTable";
-import LedgersTable from "./Dashboard/Finance/Ledgers/LedgersTable";
 import CreatePaymentOrdersTable from "./Dashboard/Finance/PaymentOrder/CreatePaymentOrdersTable";
 import CreatePaymentOrder from "./Dashboard/Finance/PaymentOrder/CreatePaymentOrder";
 import ReceivableTable from "./Dashboard/Finance/AccountReceivables/ReceivableTable";
@@ -45,6 +44,8 @@ import SubCostCenterTable from "./Dashboard/BudgetAndAccounts/SubCostCenter/SubC
 import CreateMaharatInvoice from "./Dashboard/Finance/MaharatInvoices/CreateMaharatInvoice";
 import ReceivedMRsTable from "./Dashboard/Warehouse/ReceivedMaterialRequest/ReceivedMRsTable";
 import Users from "./Dashboard/Configuration/Users/Users";
+import AccountsTable from "./Dashboard/Finance/Accounts/AccountsTable";
+import Chart from "./Dashboard/Configuration/OrganizationalChart/Chart";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -82,7 +83,7 @@ export default function Dashboard({ auth, page }) {
             return <MaharatInvoicesTable />;
         if (page === "Finance/MaharatInvoices/CreateMaharatInvoice")
             return <CreateMaharatInvoice />;
-        if (page === "Finance/Ledgers/LedgersTable") return <LedgersTable />;
+        if (page === "Finance/Accounts/AccountsTable") return <AccountsTable />;
         if (page === "Finance/PaymentOrder/PaymentOrderTable")
             return <PaymentOrderTable />;
         if (page === "Finance/PaymentOrder/CreatePaymentOrderTable")
@@ -116,6 +117,8 @@ export default function Dashboard({ auth, page }) {
         if (page === "Warehouse/ReceivedMaterialRequest/ReceivedMRsTable")
             return <ReceivedMRsTable />;
         if (page === "Configuration/Users/Users") return <Users />;
+        if (page === "Configuration/OrganizationalChart/Chart")
+            return <Chart />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };
