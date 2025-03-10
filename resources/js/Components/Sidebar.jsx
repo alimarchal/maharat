@@ -62,11 +62,11 @@ const Sidebar = ({ isOpen }) => {
             link="/notification-settings"
             isActive={url === "/notification-settings"}
           />
-          <SidebarButton
+          {/* <SidebarButton
             icon={faCommentDots}
             link="/comments"
             isActive={url === "/comments"}
-          />
+          /> */}
           <SidebarButton
             icon={faCog}
             link="/company-profile"
