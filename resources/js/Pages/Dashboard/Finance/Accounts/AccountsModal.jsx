@@ -5,7 +5,7 @@ import axios from "axios";
 import InputFloating from "../../../../Components/InputFloating";
 import SelectFloating from "../../../../Components/SelectFloating";
 
-const LedgersModal = ({ isOpen, onClose, onSave }) => {
+const AccountsModal = ({ isOpen, onClose, onSave }) => {
     const [formData, setFormData] = useState({
         name: "",
         status: "",
@@ -44,7 +44,7 @@ const LedgersModal = ({ isOpen, onClose, onSave }) => {
             <div className="bg-white p-8 rounded-2xl w-[90%] max-w-lg">
                 <div className="flex justify-between border-b pb-2 mb-4">
                     <h2 className="text-3xl font-bold text-[#2C323C]">
-                        Add Ledger
+                        Add Account
                     </h2>
                     <button
                         onClick={onClose}
@@ -108,4 +108,4 @@ const LedgersModal = ({ isOpen, onClose, onSave }) => {
     );
 };
 
-export default LedgersModal;
+export default AccountsModal;

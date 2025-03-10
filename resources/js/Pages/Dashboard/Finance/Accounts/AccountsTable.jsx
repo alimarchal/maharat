@@ -2,15 +2,15 @@ import React, { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
-import LedgersModal from "./LedgersModal";
+import AccountsModal from "./AccountsModal";
 
-const LedgersTable = () => {
+const AccountsTable = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [selectedFilter, setSelectedFilter] = useState("All");
     const filters = ["All", "Approved", "Pending"];
 
-    const [ledgers, setLedgers] = useState([
+    const [accounts, setAccounts] = useState([
         {
             id: "01",
             name: "Sales",
@@ -69,13 +69,13 @@ const LedgersTable = () => {
         },
     ]);
 
-    const handleSave = async (newLedgers) => {
+    const handleSave = async (newAccount) => {
         try {
-            const response = await axios.post("/api/v1/ledgers", newLedgers);
-            setLedgers([...ledgers, response.data]);
+            const response = await axios.post("/api/v1/accounts", newAccount);
+            setAccounts([...accounts, response.data]);
             setIsModalOpen(false);
         } catch (error) {
-            console.error("Error saving Ledgers:", error);
+            console.error("Error saving accounts:", error);
         }
     };
 
@@ -83,7 +83,7 @@ const LedgersTable = () => {
         <div className="w-full">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-bold text-[#2C323C] mb-4">
-                    Ledgers
+                    Accounts
                 </h2>
                 <div className="flex justify-between items-center gap-4">
                     <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
@@ -121,24 +121,24 @@ const LedgersTable = () => {
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                    {ledgers
+                    {accounts
                         .filter(
-                            (ledger) =>
+                            (account) =>
                                 selectedFilter === "All" ||
-                                ledger.status === selectedFilter
+                                account.status === selectedFilter
                         )
-                        .map((ledger) => (
-                            <tr key={ledger.id}>
-                                <td className="py-3 px-4">{ledger.id}</td>
-                                <td className="py-3 px-4">{ledger.name}</td>
+                        .map((account) => (
+                            <tr key={account.id}>
+                                <td className="py-3 px-4">{account.id}</td>
+                                <td className="py-3 px-4">{account.name}</td>
                                 <td className="py-3 px-4">
-                                    {ledger.description}
+                                    {account.description}
                                 </td>
-                                <td className="py-3 px-4">{ledger.type}</td>
+                                <td className="py-3 px-4">{account.type}</td>
                                 <td className="py-3 px-4">
-                                    {ledger.costCenter}
+                                    {account.costCenter}
                                 </td>
-                                <td className="py-3 px-4">{ledger.status}</td>
+                                <td className="py-3 px-4">{account.status}</td>
                                 <td className="py-3 px-4 flex space-x-3">
                                     <Link className="text-[#9B9DA2] hover:text-gray-500">
                                         <FontAwesomeIcon icon={faEdit} />
@@ -165,7 +165,7 @@ const LedgersTable = () => {
                     onClick={() => setIsModalOpen(true)}
                 >
                     <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add a
-                    Ledger
+                    Account
                 </button>
                 <div
                     className="absolute top-1/2 right-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
@@ -178,7 +178,7 @@ const LedgersTable = () => {
 
             {/* Render the modal */}
             {isModalOpen && (
-                <LedgersModal
+                <AccountsModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
                     onSave={handleSave}
@@ -188,4 +188,4 @@ const LedgersTable = () => {
     );
 };
 
-export default LedgersTable;
+export default AccountsTable;
