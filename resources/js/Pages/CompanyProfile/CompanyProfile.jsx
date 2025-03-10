@@ -39,7 +39,7 @@ const CompanyProfile = () => {
                     postal_code: company.postal_code ?? "",
                     short_address: company.short_address ?? "",
                     website: company.website ?? "",
-                    logo: company.logo ?? null,
+                    logo: company.logo_path ?? null,
                 });
                 setCompanyId(company.id);
             }
@@ -139,7 +139,7 @@ const CompanyProfile = () => {
                                         : URL.createObjectURL(formData.logo)
                                 }
                                 alt="Company Logo"
-                                className="w-full h-full object-cover rounded-full"
+                                className="w-24 h-24 object-contain"
                             />
                         ) : (
                             <img
