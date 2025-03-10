@@ -11,13 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('ledgers', function (Blueprint $table) {
+        Schema::create('accounts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('chart_of_account_id')->nullable()->constrained('chart_of_accounts', 'id');
+            $table->foreignId('cost_center_id')->nullable()->constrained('cost_centers')->nullOnDelete();
             $table->string('name')->nullable();
             $table->string('description')->nullable();
-            $table->foreignId('cost_center_id')->nullable()->constrained('cost_centers')->nullOnDelete();
-            $table->enum('status', ['Approved', 'Pending'])->default(NULL);
+            $table->enum('status', ['Approved', 'Pending'])->default('Approved');
             $table->foreignId('created_by')->nullable()->comment('User who created this record')->constrained('users', 'id');
             $table->foreignId('updated_by')->nullable()->comment('User who last updated this record')->constrained('users', 'id');
             $table->timestamps();
@@ -30,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('ledgers');
+        Schema::dropIfExists('accounts');
     }
 };

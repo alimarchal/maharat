@@ -5,19 +5,20 @@ namespace App\QueryParameters;
 class ChartOfAccountParameters
 {
     const ALLOWED_FILTERS = [
-        'account_code',
+        'parent_id',
+        'account_code_id',
         'account_name',
-        'account_type',
         'is_active',
-        'parent_account_id'
+        'description'
     ];
 
     const ALLOWED_SORTS = [
         'id',
-        'account_code',
+        'parent_id',
+        'account_code_id',
         'account_name',
-        'account_type',
         'is_active',
+        'description',
         'created_at',
         'updated_at'
     ];

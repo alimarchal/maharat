@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\ChartOfAccountController;
 use App\Http\Controllers\Api\V1\CompanyController;
@@ -201,8 +202,11 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('cost-centers-tree', [CostCenterController::class, 'tree']);
     Route::post('cost-centers/{id}/restore', [CostCenterController::class, 'restore']);
 
-    Route::apiResource('ledgers', LedgerController::class);
-    Route::post('ledgers/{id}/restore', [LedgerController::class, 'restore']);
+//    Route::apiResource('ledgers', LedgerController::class);
+//    Route::post('ledgers/{id}/restore', [LedgerController::class, 'restore']);
+
+    Route::apiResource('accounts', AccountController::class);
+    Route::post('accounts/{id}/restore', [AccountController::class, 'restore']);
 
 
     Route::get('chart-of-accounts-tree', [ChartOfAccountController::class, 'tree']);

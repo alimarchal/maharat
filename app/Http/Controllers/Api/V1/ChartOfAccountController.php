@@ -174,7 +174,7 @@ class ChartOfAccountController extends Controller
      */
     public function tree(): JsonResponse
     {
-        $accounts = ChartOfAccount::whereNull('parent_account_id')
+        $accounts = ChartOfAccount::whereNull('parent_id')
             ->with('children.children')
             ->get();
 
