@@ -26,7 +26,7 @@ class DepartmentController extends Controller
             ->allowedFilters(DepartmentParameters::ALLOWED_FILTERS)
             ->allowedSorts(DepartmentParameters::ALLOWED_SORTS)
             ->allowedIncludes(DepartmentParameters::ALLOWED_INCLUDES)
-            ->with('users') // ✅ Load users
+            ->with('users') 
             ->paginate()
             ->appends(request()->query());
 

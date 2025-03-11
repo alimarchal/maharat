@@ -20,7 +20,7 @@ const Users = () => {
         language: "",
         employeeType: "",
         description: "",
-        // enableOtp: false,
+        parent: "",
     });
 
     const [errors, setErrors] = useState({});
@@ -73,7 +73,7 @@ const Users = () => {
                 language: "",
                 employeeType: "",
                 description: "",
-                // enableOtp: false,
+                parent: "",
             });
             setErrors({});
         } catch (error) {
@@ -139,7 +139,7 @@ const Users = () => {
             <form onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <InputFloating
-                        label="ID"
+                        label="Maharat Employee ID"
                         name="id"
                         value={formData.id}
                         onChange={handleChange}
@@ -207,7 +207,7 @@ const Users = () => {
                         )}
                     </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
                         <InputFloating
                             label="Designation"
@@ -231,6 +231,16 @@ const Users = () => {
                             ]}
                         />
                     </div>
+                    <div>
+                        <InputFloating
+                            label="Reporting Manager"
+                            name="parent"
+                            value={formData.parent}
+                            onChange={handleChange}
+                        />
+                    </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <InputFloating
                         label="Language"
                         name="language"
@@ -251,10 +261,10 @@ const Users = () => {
                             ]}
                         />
                     </div>
-                </div>
+                    </div>
 
                 <div className="w-full">
-                    <div className="relative w-full">
+                    <div className="relative w-full mb-2">
                         <textarea
                             name="description"
                             value={formData.description}
@@ -275,20 +285,7 @@ const Users = () => {
                     </div>
                 </div>
 
-                {/* <div className="flex items-center my-4">
-                    <input
-                        type="checkbox"
-                        name="enableOtp"
-                        checked={formData.enableOtp}
-                        onChange={handleChange}
-                        className="h-6 w-6 text-[#009FDC] focus:ring-[#009FDC] border-gray-300 rounded"
-                    />
-                    <label className="ml-2 block text-lg text-gray-900">
-                        Enable OTP
-                    </label>
-                </div> */}
-
-                <div className="flex justify-end gap-4">
+                <div className="flex justify-end">
                     <button
                         type="submit"
                         className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium"
