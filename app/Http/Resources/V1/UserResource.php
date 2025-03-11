@@ -19,6 +19,14 @@ class UserResource extends JsonResource
 //        return parent::toArray($request);
         return [
             'id' => $this->id,
+            'parent' => $this->parent,
+            'children' => $this->children,
+            'parent_id' => $this->parent_id,
+            'hierarchy_level' => $this->hierarchy_level,
+            'designation_id' => $this->designation_id,
+            'company_id' => $this->company_id,
+            'department_id' => $this->department_id,
+            'branch_id' => $this->branch_id,
             'firstname' => $this->firstname,
             'lastname' => $this->lastname,
             'name' => $this->name,
@@ -35,7 +43,6 @@ class UserResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'department' => $this->department ? $this->department->name : null,
-            'department_id' => $this->department_id,
         ];
     }
 }

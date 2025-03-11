@@ -21,7 +21,7 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $users = User::query()
-            ->with(['roles', 'permissions', 'department']) 
+            ->with(['roles', 'permissions', 'department'])
             ->when($request->search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
@@ -102,10 +102,132 @@ class UserController extends Controller
         return response()->noContent();
     }
 
+
+    /**
+     * Get the hierarchical structure under a user
+     *
+     * @param \App\Models\User|null $user
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function hierarchy(User $user = null): JsonResponse
     {
         $user = $user ?? auth()->user();
-        $hierarchy = $this->buildUserHierarchy($user);
+
+        // Get the full team structure with all nested subordinates
+        $hierarchyData = $this->formatHierarchy($user);
+
+        return response()->json(['data' => $hierarchyData]);
+    }
+
+    /**
+     * Format user hierarchy data recursively
+     *
+     * @param \App\Models\User $user
+     * @return array
+     */
+    private function formatHierarchy(User $user): array
+    {
+        // Load the user with all subordinates
+        $userWithSubordinates = $user->load('children.children');
+
+        // Format basic user data
+        $result = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'designation' => $user->designation ? $user->designation->name : null,
+            'email' => $user->email,
+            'hierarchy_level' => $user->hierarchy_level,
+            'children' => []
+        ];
+
+        // Add children recursively
+        foreach ($userWithSubordinates->children as $child) {
+            $result['children'][] = $this->formatHierarchy($child);
+        }
+
+        return $result;
+    }
+
+
+    /**
+     * Get users at a specific hierarchy level
+     *
+     * @param int $level
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getUsersByLevel(int $level): JsonResponse
+    {
+        $users = User::where('hierarchy_level', $level)->get();
+        return response()->json(['data' => $users]);
+    }
+
+    /**
+     * Get a user's reporting chain (path to top of organization)
+     *
+     * @param \App\Models\User|null $user
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function reportingChain(User $user = null): JsonResponse
+    {
+        $user = $user ?? auth()->user();
+        $chain = $user->getReportingChain();
+
+        return response()->json(['data' => $chain]);
+    }
+
+
+    /**
+     * Get organizational chart data
+     *
+     * @param User|null $user
+     * @return JsonResponse
+     */
+    public function organogram(User $user = null): JsonResponse
+    {
+        $user = $user ?? User::whereNull('parent_id')->first(); // Start from top if no user specified
+
+        $orgData = $this->buildOrganogramData($user);
+
+        return response()->json(['data' => $orgData]);
+    }
+
+    /**
+     * Build organogram data structure recursively
+     *
+     * @param User $user
+     * @return array
+     */
+    private function buildOrganogramData(User $user): array
+    {
+        // Load essential relations
+        $user->load(['designation', 'children.designation', 'department']);
+
+        // Format node data
+        $node = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'title' => $user->designation ? $user->designation->name : '',
+            'department' => $user->department ? $user->department->name : '',
+            'email' => $user->email,
+            'level' => $user->hierarchy_level,
+            'image' => $user->attachment,
+            'children' => []
+        ];
+
+        // Process children recursively
+        foreach ($user->children as $child) {
+            $node['children'][] = $this->buildOrganogramData($child);
+        }
+
+        return $node;
+    }
+
+
+    /*
+    public function hierarchy(User $user = null): JsonResponse
+    {
+        $user = $user ?? auth()->user();
+         $hierarchy = $this->buildUserHierarchy($user);
 
         return response()->json(['data' => $hierarchy]);
     }
@@ -139,4 +261,6 @@ class UserController extends Controller
 
         return $hierarchy;
     }
+    */
+
 }

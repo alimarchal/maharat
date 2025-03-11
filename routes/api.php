@@ -53,7 +53,7 @@ use App\Http\Controllers\Api\V1\RfqCategoryController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
+// Route::post('/register', [AuthController::class, 'register']); Disable now only use users
 Route::post('/logout', [AuthController::class, 'logout'])->middleware(['auth:sanctum']);
 Route::post('/check-email', [AuthController::class, 'checkEmail']);
 Route::get('/statuses', [StatusController::class, 'index']);
@@ -63,6 +63,9 @@ Route::get('/statuses', [StatusController::class, 'index']);
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::get('/users/hierarchy/{user?}', [UserController::class, 'hierarchy']);
+    Route::get('/users/hierarchy-level/{level}', [UserController::class, 'getUsersByLevel']);
+    Route::get('/users/reporting-chain/{user?}', [UserController::class, 'reportingChain']);
+    Route::get('/users/organogram/{user?}', [UserController::class, 'organogram']);
     Route::apiResource('users', UserController::class);
 
     // Note the order is important - specific routes before resource routes
