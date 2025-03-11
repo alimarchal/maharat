@@ -243,6 +243,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('payment-order-logs', PaymentOrderLogController::class);
     Route::apiResource('designations', DesignationController::class);
 
+    Route::get('users/organogram', [UserController::class, 'organogram']);
 
 });
 

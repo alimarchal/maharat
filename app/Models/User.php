@@ -98,9 +98,8 @@ class User extends Authenticatable
      */
     public function designation()
     {
-        return $this->belongsTo(Designation::class);
+        return $this->belongsTo(Designation::class, 'designation_id');
     }
-
 
     /**
      * Get the user's complete reporting chain, including the user.
