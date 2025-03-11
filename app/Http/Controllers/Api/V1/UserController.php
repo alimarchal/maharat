@@ -21,20 +21,21 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $users = User::query()
-            ->with(['roles', 'permissions']) // Eager load relationships
-            ->when($request->search, function($query, $search) {
-                $query->where(function($q) use ($search) {
+            ->with(['roles', 'permissions', 'department']) 
+            ->when($request->search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
                 });
             })
-            ->when($request->sort, function($query, $sort) {
+            ->when($request->sort, function ($query, $sort) use ($request) {
                 $direction = $request->order ?? 'asc';
                 $query->orderBy($sort, $direction);
             })
             ->paginate($request->per_page ?? 15);
 
         return new UserCollection($users);
+
     }
     /**
      * Store a newly created resource in storage.

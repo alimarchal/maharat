@@ -32,6 +32,12 @@ class Department extends Model
         return $this->belongsTo(Department::class, 'parent_id');
     }
 
+    public function users()
+    {
+        return $this->hasMany(User::class, 'department_id');
+    }
+
+
     /**
      * Get the child departments
      */

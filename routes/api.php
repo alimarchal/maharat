@@ -233,8 +233,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // Payment Order Logs routes
     Route::apiResource('payment-order-logs', PaymentOrderLogController::class);
 
-
-
 });
 
 Route::get('/user', function (Request $request) {
