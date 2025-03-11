@@ -11,16 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('departments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('parent_id')->nullable()->constrained('departments')->nullOnDelete();
-            $table->string('name');
-            $table->string('code')->unique();
-            $table->boolean('is_active')->default(true);
-            $table->foreignId('company_id')->nullable()->constrained()->cascadeOnDelete();
-            $table->timestamps();
-            $table->softDeletes();
-        });
+        if (!Schema::hasTable('departments')) {
+            Schema::create('departments', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('parent_id')->nullable()->constrained('departments')->nullOnDelete();
+                $table->string('name');
+                $table->string('code')->unique();
+                $table->boolean('is_active')->default(true);
+                $table->foreignId('company_id')->nullable()->constrained()->cascadeOnDelete();
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
     }
 
     /**
