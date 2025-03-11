@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
             $table->string('invoice_number')->unique();
-            $table->foreignId('vendor_id')->constrained('customers')->onDelete('cascade');
+            // $table->foreignId('vendor_id')->constrained('customers')->onDelete('cascade');
             $table->foreignId('client_id')->constrained('customers')->onDelete('cascade');
             $table->string('status')->default('Draft'); // Directly store status as string field
             $table->string('payment_method')->nullable();
