@@ -22,15 +22,15 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'parent_id' => 'required|integer|exists:users,id',
+            'parent_id' => 'nullable|exists:users,id',
             'hierarchy_level' => 'nullable|integer',
-            'department_id' => 'nullable|integer|exists:departments,id',
-            'company_id' => 'nullable|integer|exists:companies,id',
-            'designation_id' => 'nullable|integer|exists:designations,id',
-            'branch_id' => 'nullable|integer|exists:branches,id',
-            'firstname' => 'nullable|string|max:255',
-            'lastname' => 'nullable|string|max:255',
-            'name' => 'required|string|max:255',
+            'designation_id' => 'nullable|exists:designations,id',
+            'company_id' => 'nullable|exists:companies,id',
+            'department_id' => 'nullable|exists:departments,id',
+            'branch_id' => 'nullable|exists:branches,id',
+            'firstname' => 'nullable|string',
+            'lastname' => 'nullable|string',
+            'name' => 'required|string',
             'email' => 'required|string|email|unique:users,email',
             'password' => 'required|string|min:8',
             'landline' => 'nullable|string|max:20',

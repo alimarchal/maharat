@@ -17,21 +17,29 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     protected $fillable = [
-        'firstname',
+        'parent_id',
+        'hierarchy_level',
         'designation_id',
         'company_id',
         'department_id',
         'branch_id',
-        'parent_id',
-        'hierarchy_level',
+        'firstname',
         'lastname',
         'name',
+        'username',
         'email',
         'password',
+        'title',
         'landline',
         'mobile',
-        'is_salesman_linked',
         'language',
+        'favourite_module',
+        'enable_otp',
+        'is_salesman_linked',
+        'login_id',
+        'api_token',
+        'is_active',
+        'is_admin',
         'attachment',
     ];
 
