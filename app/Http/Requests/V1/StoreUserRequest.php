@@ -22,7 +22,7 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'parent_id' => 'nullable|integer|exists:users,id',
+            'parent_id' => 'required|integer|exists:users,id',
             'hierarchy_level' => 'nullable|integer',
             'department_id' => 'nullable|integer|exists:departments,id',
             'company_id' => 'nullable|integer|exists:companies,id',
