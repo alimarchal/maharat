@@ -76,6 +76,7 @@ const Users = () => {
                 parent: "",
             });
             setErrors({});
+            navigate("/chart");
         } catch (error) {
             console.error("Error saving user", error);
         }

@@ -29,29 +29,22 @@ function OrganizationNode({
 
     return (
         <Card variant="outlined" className="org-node">
-            <IconButton
-                size="small"
-                className="menu-icon"
-                onClick={handleClick}
-            >
+            <IconButton size="small" className="menu-icon" onClick={handleClick}>
                 <FontAwesomeIcon icon={faEllipsisV} />
             </IconButton>
 
             <div className="node-header">
                 <div className="avatar">
-                    <FontAwesomeIcon
-                        icon={isRoot ? faSitemap : faUser}
-                        color={isRoot ? "#009FDC" : "black"}
-                    />
+                    <FontAwesomeIcon icon={isRoot ? faSitemap : faUser} color={isRoot ? "#009FDC" : "black"} />
                 </div>
-                <Typography className="node-text">
-                    {node.department || "Add Employee Details"}
+                <Typography className="node-text font-bold">
+                    {node.department || "Department"}
                 </Typography>
                 <Typography className="node-text">
-                    {node.designation || "Add Employee Details"}
+                    {node.title || "Designation"}
                 </Typography>
                 <Typography className="node-text">
-                    {node.full_name || (
+                    {node.name || (
                         <Button
                             startIcon={<FontAwesomeIcon icon={faPlus} />}
                             onClick={() => router.visit('/users')}
@@ -128,8 +121,8 @@ function OrgChartTree({
         }
         node.children.push({
             department: "New Department",
-            designation: "New Position",
-            full_name: "", // Empty to show "Add Employee Details"
+            title: "New Position",
+            name: "", // Empty to show "Add Employee Details"
             children: [],
         });
         onUpdate();
@@ -150,7 +143,7 @@ function OrgChartTree({
                     node={node}
                     onRename={() => {}}
                     onDelete={handleDelete}
-                    onAddPosition={handleAddPosition} // Updated to handleAddPosition
+                    onAddPosition={handleAddPosition}
                     isRoot={isRoot}
                     hasChildren={node.children && node.children.length > 0}
                     isExpanded={isExpanded}
@@ -186,54 +179,20 @@ const Chart = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [usersResponse, departmentsResponse] = await Promise.all([
-                    axios.get('/api/v1/users'),
-                    axios.get('/api/v1/departments'),
-                ]);
-
-                console.log("Users API Response:", usersResponse.data);
-                console.log("Departments API Response:", departmentsResponse.data);
-
-                const users = usersResponse.data.data;
-                const departments = departmentsResponse.data.data;
-
-                // Create a map of department IDs to department names
-                const departmentMap = {};
-                departments.forEach(dept => {
-                    departmentMap[dept.id] = dept.name;
-                });
-
-                // Build the hierarchy
-                const hierarchy = buildHierarchy(users, departmentMap);
-                setOrgChart(hierarchy);
+                const response = await axios.get('/api/v1/users/organogram');
+                let organogramData = response.data.data;
+                
+                console.log("Fetched organogram data:", organogramData);
+                
+                // If the data is already hierarchical, just use it directly
+                setOrgChart(organogramData);
             } catch (error) {
-                console.error("Error fetching data:", error);
+                console.error("Error fetching organogram data:", error);
             }
         };
-
+    
         fetchData();
     }, []);
-
-    const buildHierarchy = (users, departmentMap) => {
-        const userMap = {};
-        users.forEach(user => {
-            user.children = [];
-            user.department = departmentMap[user.department_id] || "Unknown Department";
-            user.full_name = `${user.firstname || ""} ${user.lastname || ""}`.trim();
-            userMap[user.id] = user;
-        });
-
-        const rootNodes = [];
-        users.forEach(user => {
-            if (user.parent_id && userMap[user.parent_id]) {
-                userMap[user.parent_id].children.push(user);
-            } else {
-                rootNodes.push(user);
-            }
-        });
-
-        return rootNodes.length > 0 ? rootNodes[0] : null;
-    };
 
     const handleSave = () => {
         console.log("Saved Organization Chart:", orgChart);
@@ -283,8 +242,8 @@ const Chart = () => {
                                     }
                                     updated.children.push({
                                         department: "New Department",
-                                        designation: "New Position",
-                                        full_name: "", // Empty to show "Add Employee Details"
+                                        title: "New Position",
+                                        name: "", // Empty to show "Add Employee Details"
                                         children: [],
                                     });
                                     setOrgChart(updated);

@@ -186,11 +186,81 @@ class UserController extends Controller
      */
     public function organogram(User $user = null): JsonResponse
     {
-        $user = $user ?? User::whereNull('parent_id')->first(); // Start from top if no user specified
+        if ($user === null) {
+            // Find the user with hierarchy_level = 0 and null parent_id
+            $user = User::where('hierarchy_level', 0)
+                        ->whereNull('parent_id')
+                        ->first();
+            
+            // If no hierarchy level 0 user, try to find any root user
+            if (!$user) {
+                $user = User::whereNull('parent_id')->first();
+            }
+            
+            // If still no root user found, use any user as root
+            if (!$user) {
+                $user = User::first();
+            }
+        }
+        
+        // Build the organogram data starting from this user
+        if ($user) {
+            $orgData = $this->buildCompleteOrganogram();
+            return response()->json(['data' => $orgData]);
+        }
+        
+        return response()->json(['data' => [], 'message' => 'No users found']);
+    }
 
-        $orgData = $this->buildOrganogramData($user);
-
-        return response()->json(['data' => $orgData]);
+    /**
+     * Build a complete organogram structure from all users
+     * 
+     * @return array
+     */
+    private function buildCompleteOrganogram(): array
+    {
+        // Find the root user with hierarchy_level = 0 and null parent_id
+        $rootUser = User::where('hierarchy_level', 0)
+                        ->whereNull('parent_id')
+                        ->with(['designation', 'department'])
+                        ->first();
+        
+        if (!$rootUser) {
+            return [];
+        }
+        
+        // Format the root node
+        $result = [
+            'id' => $rootUser->id,
+            'name' => $rootUser->name ?? 'N/A',
+            'title' => $rootUser->designation ? $rootUser->designation->name : 'N/A',
+            'department' => $rootUser->department ? $rootUser->department->name : 'N/A', 
+            'email' => $rootUser->email,
+            'level' => $rootUser->hierarchy_level,
+            'image' => $rootUser->attachment,
+            'children' => []
+        ];
+        
+        // Find all direct children of the root user
+        $directChildren = User::where('parent_id', $rootUser->id)
+                            ->with(['designation', 'department'])
+                            ->get();
+        
+        // Add each child to the result
+        foreach ($directChildren as $child) {
+            $result['children'][] = [
+                'id' => $child->id,
+                'name' => $child->name,
+                'title' => $child->designation ? $child->designation->name : 'Designation',
+                'department' => $child->department ? $child->department->name : 'Marketing', // Set default if missing
+                'email' => $child->email,
+                'level' => $child->hierarchy_level,
+                'image' => $child->attachment,
+                'children' => [] // Add empty children array
+            ];
+        }
+        
+        return $result;
     }
 
     /**
