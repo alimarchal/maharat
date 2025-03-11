@@ -90,7 +90,7 @@ const ProcessFlow = () => {
         if (!employeeId) return;
 
         try {
-            const response = await axios.get(`/api/v1/users/${employeeId}`);
+            const response = await axios.get(`/api/v1/users/hierarchy/${employeeId}`);
             const updatedRows = [...rows];
             updatedRows[index] = {
                 ...updatedRows[index],
@@ -241,16 +241,14 @@ const ProcessFlow = () => {
                             <table className="w-full border-collapse">
                                 <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                                     <tr>
-                                        <th className="py-3 px-4 text-center rounded-tl-2xl rounded-bl-2xl">
-                                            ID
+                                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
+                                            Order
                                         </th>
-                                        <th className="py-3 px-4 text-center">
-                                            Employee
-                                        </th>
-                                        <th className="py-3 px-4 text-center">
+                                        <th className="py-3 px-4">Approver</th>
+                                        <th className="py-3 px-4">
                                             Designation
                                         </th>
-                                        <th className="py-3 px-4 text-center">
+                                        <th className="py-3 px-4">
                                             Task Description
                                         </th>
                                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
@@ -260,16 +258,14 @@ const ProcessFlow = () => {
                                 </thead>
                                 <tbody>
                                     {rows.map((row, index) => (
-                                        <tr
-                                            key={index}
-                                            className="text-center border-b"
-                                        >
+                                        <tr key={index} className="border-b">
                                             <td className="py-3 px-4">
                                                 {row.id}
                                             </td>
                                             <td className="py-3 px-4">
                                                 <SelectFloating
-                                                    name={`employee-${index}`}
+                                                    label="Approver"
+                                                    name="approver"
                                                     value={row.employee}
                                                     onChange={(e) =>
                                                         handleEmployeeChange(

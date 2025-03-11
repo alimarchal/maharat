@@ -46,27 +46,19 @@ const CreateSupplier = () => {
         if (supplierId) {
             const fetchSupplierData = async () => {
                 try {
-                    const [supplierRes, contactsRes, addressesRes] =
-                        await Promise.all([
-                            axios.get(`/api/v1/suppliers/${supplierId}`),
-                            axios.get(
-                                `/api/v1/supplier-contacts/${supplierId}`
-                            ),
-                            axios.get(
-                                `/api/v1/supplier-addresses/${supplierId}`
-                            ),
-                        ]);
+                    const response = await axios.get(
+                        `/api/v1/suppliers/${supplierId}?include=contacts,addresses,currency,status`
+                    );
 
                     setFormData({
-                        ...supplierRes.data.data,
+                        ...response.data.data,
                         contacts:
-                            contactsRes.data.data.length > 0
-                                ? contactsRes.data.data
-                                : formData.contacts,
+                            response.data.data.contacts || formData.contacts,
                         addresses:
-                            addressesRes.data.data.length > 0
-                                ? addressesRes.data.data
-                                : formData.addresses,
+                            response.data.data.addresses || formData.addresses,
+                        currency:
+                            response.data.data.currency || formData.currency,
+                        status: response.data.data.status || formData.status,
                     });
                 } catch (error) {
                     console.error("Error fetching supplier data:", error);
@@ -268,7 +260,7 @@ const CreateSupplier = () => {
                         <InputFloating
                             label="Contact Name"
                             name="contact_name"
-                            value={formData.contacts[0].contact_name}
+                            value={formData.contacts[0]?.contact_name}
                             onChange={(e) =>
                                 handleNestedChange(
                                     e,
@@ -286,7 +278,7 @@ const CreateSupplier = () => {
                     <InputFloating
                         label="Designation"
                         name="designation"
-                        value={formData.contacts[0].designation}
+                        value={formData.contacts[0]?.designation}
                         onChange={(e) =>
                             handleNestedChange(e, "contacts", "designation")
                         }
@@ -295,7 +287,7 @@ const CreateSupplier = () => {
                         <InputFloating
                             label="Contact Email"
                             name="contact_email"
-                            value={formData.contacts[0].email}
+                            value={formData.contacts[0]?.email}
                             onChange={(e) =>
                                 handleNestedChange(e, "contacts", "email")
                             }
@@ -309,7 +301,7 @@ const CreateSupplier = () => {
                     <InputFloating
                         label="Contact Phone"
                         name="contact_phone"
-                        value={formData.contacts[0].phone}
+                        value={formData.contacts[0]?.phone}
                         onChange={(e) =>
                             handleNestedChange(e, "contacts", "phone")
                         }
@@ -321,7 +313,7 @@ const CreateSupplier = () => {
                         <InputFloating
                             label="Street Address"
                             name="street_address"
-                            value={formData.addresses[0].street_address}
+                            value={formData.addresses[0]?.street_address}
                             onChange={(e) =>
                                 handleNestedChange(
                                     e,
@@ -339,7 +331,7 @@ const CreateSupplier = () => {
                     <InputFloating
                         label="City"
                         name="city"
-                        value={formData.addresses[0].city}
+                        value={formData.addresses[0]?.city}
                         onChange={(e) =>
                             handleNestedChange(e, "addresses", "city")
                         }

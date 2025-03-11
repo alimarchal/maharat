@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FaPlus, FaTrash } from "react-icons/fa";
+import { router } from "@inertiajs/react";
 
 export default function CreateMaharatInvoice() {
     const [customers, setCustomers] = useState([]);
@@ -346,21 +347,36 @@ export default function CreateMaharatInvoice() {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!validateForm()) return;
+        setLoading(true);
 
-        if (validateForm()) {
-            console.log("Form Data Submitted:", formData);
-            alert("Invoice created successfully!");
-        } else {
-            console.log("Form validation failed");
+        try {
+            await axios.post("/api/v1/invoices", formData);
+            router.visit("/invoices");
+        } catch (error) {
+            setErrors(
+                error.response?.data?.errors || {
+                    general: "An error occurred while creating the invoice",
+                }
+            );
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
         <div className="flex flex-col bg-white rounded-2xl shadow-lg p-6 max-w-7xl mx-auto">
+            <div className="w-full flex justify-center">
+                <img
+                    src="/images/MCTC Logo.png"
+                    alt="Maharat Logo"
+                    className="w-48 h-20"
+                />
+            </div>
             <header className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-2">
-                <div className="mt-16 w-full flex flex-col justify-end text-center md:text-left md:items-start">
+                <div className="w-full flex flex-col justify-end text-center md:text-left md:items-start">
                     <h1 className="text-3xl font-bold uppercase mb-2 truncate">
                         Maharat
                     </h1>
@@ -379,18 +395,11 @@ export default function CreateMaharatInvoice() {
                         <span className="font-semibold">CR No:</span> 0345
                     </p>
                 </div>
-                <div className="w-full flex justify-center">
-                    <img
-                        src="/images/MCTC Logo.png"
-                        alt="Maharat Logo"
-                        className="w-48 h-20"
-                    />
-                </div>
             </header>
 
             <section className="mt-6">
                 <div className="p-2 flex justify-center text-center bg-[#C7E7DE] rounded-2xl">
-                    <h2 className="text-xl font-bold">VAT Invoice</h2>
+                    <h2 className="text-3xl font-bold">VAT Invoice</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                     <div className="bg-gray-100 p-4 rounded-2xl">
