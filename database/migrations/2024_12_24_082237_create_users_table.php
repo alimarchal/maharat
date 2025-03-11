@@ -13,6 +13,12 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('parent_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->integer('hierarchy_level')->default(0);
+            $table->foreignId('designation_id')->nullable()->constrained('designations')->nullOnDelete();
+            $table->foreignId('company_id')->nullable()->constrained('companies')->cascadeOnUpdate()->nullOnDelete();
+            $table->foreignId('department_id')->nullable()->constrained('departments')->cascadeOnUpdate()->nullOnDelete();
+            $table->foreignId('branch_id')->nullable()->constrained('branches')->cascadeOnUpdate()->nullOnDelete();
             $table->string('firstname')->nullable();
             $table->string('lastname')->nullable();
             $table->string('name');  // Full Name
@@ -24,7 +30,6 @@ return new class extends Migration
             // Additional User Information
             $table->string('title')->nullable();           // Title (Mr, Mrs, etc.)
             //$table->string('designation')->nullable();
-            $table->foreignId('designation_id')->nullable()->constrained('designations')->nullOnDelete();
 
             $table->string('landline')->nullable();        // Landline phone number
             $table->string('mobile')->nullable();          // Mobile phone number
@@ -42,11 +47,6 @@ return new class extends Migration
             $table->boolean('is_admin')->default(false);   // Account status
             $table->timestamp('last_login_at')->nullable(); // Last login timestamp
             $table->string('last_login_ip')->nullable();   // Last login IP address
-
-            // Relationships (Laravel 11 style - explicit foreign keys)
-//            $table->foreignId('company_id')->nullable()->constrained()->cascadeOnUpdate()->nullOnDelete();
-//            $table->foreignId('department_id')->nullable()->constrained()->cascadeOnUpdate()->nullOnDelete();
-//            $table->foreignId('branch_id')->nullable()->constrained()->cascadeOnUpdate()->nullOnDelete();
 
             $table->string('attachment')->nullable();
             $table->rememberToken();
