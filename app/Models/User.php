@@ -13,6 +13,11 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable, HasRoles, HasApiTokens, SoftDeletes;
 
+    public function designation()
+    {
+        return $this->belongsTo(Designation::class);
+    }
+
     protected $fillable = [
         'firstname',
         'designation',
@@ -42,7 +47,6 @@ class User extends Authenticatable
         ];
     }
 
-    // ✅ Define the relationship to the Department model
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
