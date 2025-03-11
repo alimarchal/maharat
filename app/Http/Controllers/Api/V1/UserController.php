@@ -136,7 +136,8 @@ class UserController extends Controller
         $result = [
             'id' => $user->id,
             'name' => $user->name,
-            'designation' => $user->designation ? $user->designation->name : null,
+            'title' => $user->designation ? $user->designation->name : 'N/A',
+            'department' => $user->department ? $user->department->name : 'N/A',
             'email' => $user->email,
             'hierarchy_level' => $user->hierarchy_level,
             'children' => []
@@ -221,9 +222,9 @@ class UserController extends Controller
     {
         // Find the root user with hierarchy_level = 0 and null parent_id
         $rootUser = User::where('hierarchy_level', 0)
-                        ->whereNull('parent_id')
-                        ->with(['designation', 'department'])
-                        ->first();
+            ->whereNull('parent_id')
+            ->with(['designation', 'department'])
+            ->first();
         
         if (!$rootUser) {
             return [];
@@ -233,7 +234,7 @@ class UserController extends Controller
         $result = [
             'id' => $rootUser->id,
             'name' => $rootUser->name ?? 'N/A',
-            'title' => $rootUser->designation ? $rootUser->designation->name : 'N/A',
+            'title' => $rootUser->designation ? $rootUser->designation->designation : 'N/A',
             'department' => $rootUser->department ? $rootUser->department->name : 'N/A', 
             'email' => $rootUser->email,
             'level' => $rootUser->hierarchy_level,
@@ -243,20 +244,19 @@ class UserController extends Controller
         
         // Find all direct children of the root user
         $directChildren = User::where('parent_id', $rootUser->id)
-                            ->with(['designation', 'department'])
-                            ->get();
+        ->with(['designation', 'department'])
+        ->get();
         
-        // Add each child to the result
         foreach ($directChildren as $child) {
             $result['children'][] = [
                 'id' => $child->id,
                 'name' => $child->name,
-                'title' => $child->designation ? $child->designation->name : 'Designation',
-                'department' => $child->department ? $child->department->name : 'Marketing', // Set default if missing
+                'title' => $child->designation ? $child->designation->designation : 'N/A',
+                'department' => $child->department ? $child->department->name : 'N/A', 
                 'email' => $child->email,
                 'level' => $child->hierarchy_level,
                 'image' => $child->attachment,
-                'children' => [] // Add empty children array
+                'children' => [] 
             ];
         }
         
@@ -278,8 +278,8 @@ class UserController extends Controller
         $node = [
             'id' => $user->id,
             'name' => $user->name,
-            'title' => $user->designation ? $user->designation->name : '',
-            'department' => $user->department ? $user->department->name : '',
+            'title' => $user->designation ? $user->designation->designation : 'N/A',
+            'department' => $user->department ? $user->department->name : 'N/A',
             'email' => $user->email,
             'level' => $user->hierarchy_level,
             'image' => $user->attachment,

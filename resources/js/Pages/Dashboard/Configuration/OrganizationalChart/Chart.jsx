@@ -29,70 +29,56 @@ function OrganizationNode({
 
     return (
         <Card variant="outlined" className="org-node">
+        <div className="node-header">
+            {/* Left: Main Icon (Centered) */}
+            <div className="avatar">
+                <FontAwesomeIcon icon={isRoot ? faSitemap : faUser} color={isRoot ? "#009FDC" : "black"} />
+            </div>
+
+            {/* Right: Three Dots Menu */}
             <IconButton size="small" className="menu-icon" onClick={handleClick}>
                 <FontAwesomeIcon icon={faEllipsisV} />
             </IconButton>
+        </div>
 
-            <div className="node-header">
-                <div className="avatar">
-                    <FontAwesomeIcon icon={isRoot ? faSitemap : faUser} color={isRoot ? "#009FDC" : "black"} />
-                </div>
-                <Typography className="node-text font-bold">
-                    {node.department || "Department"}
-                </Typography>
-                <Typography className="node-text">
-                    {node.title || "Designation"}
-                </Typography>
-                <Typography className="node-text">
-                    {node.name || (
-                        <Button
-                            startIcon={<FontAwesomeIcon icon={faPlus} />}
-                            onClick={() => router.visit('/users')}
-                            style={{ textTransform: "none" }}
-                        >
-                            Add Employee Details
-                        </Button>
-                    )}
-                </Typography>
-            </div>
-
-            {hasChildren && (
-                <IconButton
-                    size="small"
-                    className="expand-icon"
-                    onClick={onToggleExpand}
-                >
-                    <FontAwesomeIcon
-                        icon={isExpanded ? faChevronUp : faChevronDown}
-                    />
-                </IconButton>
-            )}
-
-            <Menu
-                open={Boolean(anchorEl)}
-                anchorEl={anchorEl}
-                onClose={handleClose}
+        {node.name ? (
+            <>
+                <Typography className="node-text font-bold">{node.department}</Typography>
+                <Typography className="node-text">{node.title}</Typography>
+                <Typography className="node-text">{node.name}</Typography>
+            </>
+        ) : (
+            <Button
+                startIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => router.visit('/users', { state: { nodeId: node.id } })}
+                sx={{ textTransform: "none", color: "#009FDC", fontSize: "0.85rem" }}
             >
-                <MenuItem
-                    onClick={() => {
-                        onAddPosition();
-                        handleClose();
-                    }}
-                >
-                    Add Position
+                Add Employee Details
+            </Button>
+        )}
+
+        {hasChildren && (
+            <IconButton
+                size="small"
+                className="expand-icon"
+                onClick={onToggleExpand}
+            >
+                <FontAwesomeIcon icon={isExpanded ? faChevronUp : faChevronDown} />
+            </IconButton>
+        )}
+
+        <Menu open={Boolean(anchorEl)} anchorEl={anchorEl} onClose={handleClose}>
+            <MenuItem onClick={() => { onAddPosition(); handleClose(); }}>
+                Add Position
+            </MenuItem>
+            {!isRoot && (
+                <MenuItem onClick={() => { onDelete(); handleClose(); }}>
+                    Delete
                 </MenuItem>
-                {!isRoot && (
-                    <MenuItem
-                        onClick={() => {
-                            onDelete();
-                            handleClose();
-                        }}
-                    >
-                        Delete
-                    </MenuItem>
-                )}
-            </Menu>
-        </Card>
+            )}
+        </Menu>
+    </Card>
+
     );
 }
 
@@ -120,9 +106,10 @@ function OrgChartTree({
             node.children = [];
         }
         node.children.push({
-            department: "New Department",
-            title: "New Position",
-            name: "", // Empty to show "Add Employee Details"
+            department: "",  
+            title: "",       
+            name: "",        
+            id: `temp-${Date.now()}`, 
             children: [],
         });
         onUpdate();
@@ -180,17 +167,13 @@ const Chart = () => {
         const fetchData = async () => {
             try {
                 const response = await axios.get('/api/v1/users/organogram');
-                let organogramData = response.data.data;
-                
-                console.log("Fetched organogram data:", organogramData);
-                
-                // If the data is already hierarchical, just use it directly
+                const organogramData = response.data.data;
                 setOrgChart(organogramData);
             } catch (error) {
                 console.error("Error fetching organogram data:", error);
             }
         };
-    
+
         fetchData();
     }, []);
 
@@ -241,8 +224,8 @@ const Chart = () => {
                                         updated.children = [];
                                     }
                                     updated.children.push({
-                                        department: "New Department",
-                                        title: "New Position",
+                                        department: "",
+                                        title: "",
                                         name: "", // Empty to show "Add Employee Details"
                                         children: [],
                                     });
@@ -275,10 +258,6 @@ const Chart = () => {
                             ))}
                     </Tree>
                 </div>
-            </div>
-
-            <div className="save-button">
-                <Button onClick={handleSave}>Save</Button>
             </div>
         </div>
     );
