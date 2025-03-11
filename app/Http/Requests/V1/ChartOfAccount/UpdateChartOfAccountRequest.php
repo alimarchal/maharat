@@ -23,15 +23,14 @@ class UpdateChartOfAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'account_code' => [
+            'account_code_id' => [
                 'sometimes',
                 'required',
                 'string',
                 Rule::unique('chart_of_accounts')->ignore($this->chart_of_account)
             ],
             'account_name' => ['sometimes', 'required', 'string', 'max:255'],
-            'account_type' => ['sometimes', 'required', Rule::in(['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'])],
-            'parent_account_id' => ['nullable', 'exists:chart_of_accounts,id'],
+            'parent_id' => ['nullable', 'exists:chart_of_accounts,id'],
             'is_active' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string'],
         ];

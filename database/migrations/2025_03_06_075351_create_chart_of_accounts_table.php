@@ -13,15 +13,13 @@ return new class extends Migration
     {
         Schema::create('chart_of_accounts', function (Blueprint $table) {
             $table->id();
-            $table->string('account_code')->unique();
+            $table->foreignId('parent_id')->nullable()->constrained('chart_of_accounts', 'id');
+            $table->foreignId('account_code_id')->nullable()->constrained('account_codes', 'id');
             $table->string('account_name')->nullable();
-            $table->enum('account_type', ['Asset', 'Liability', 'Equity', 'Revenue', 'Expense']);
-            $table->unsignedBigInteger('parent_account_id')->nullable();
             $table->boolean('is_active')->default(true);
             $table->text('description')->nullable();
             $table->timestamps();
             $table->softDeletes();
-            $table->foreign('parent_account_id')->references('id')->on('chart_of_accounts');
         });
     }
 

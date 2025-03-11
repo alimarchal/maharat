@@ -3,6 +3,7 @@
 namespace App\Http\Resources\V1;
 
 use App\Http\Controllers\Api\V1\UserController;
+use App\Models\Designation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -18,8 +19,15 @@ class UserResource extends JsonResource
 //        return parent::toArray($request);
         return [
             'id' => $this->id,
+            'parent' => $this->parent,
+            'children' => $this->children,
+            'parent_id' => $this->parent_id,
+            'hierarchy_level' => $this->hierarchy_level,
+            'designation_id' => $this->designation_id,
+            'company_id' => $this->company_id,
+            'department_id' => $this->department_id,
+            'branch_id' => $this->branch_id,
             'firstname' => $this->firstname,
-            'designation' => $this->designation,
             'lastname' => $this->lastname,
             'name' => $this->name,
             'email' => $this->email,
@@ -29,12 +37,12 @@ class UserResource extends JsonResource
             'is_salesman_linked' => $this->is_salesman_linked,
             'language' => $this->language,
             'attachment' => $this->attachment,
+            'designation' => Designation::find($this->designation_id),
             'roles' => $this->roles->pluck('name'),
             'permissions' => $this->getAllPermissions()->pluck('name'),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'department' => $this->department ? $this->department->name : null,
-            'department_id' => $this->department_id,
         ];
     }
 }

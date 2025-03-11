@@ -13,6 +13,12 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('parent_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->integer('hierarchy_level')->default(0);
+            $table->foreignId('designation_id')->nullable()->constrained('designations')->nullOnDelete();
+            $table->foreignId('company_id')->nullable()->constrained('companies')->cascadeOnUpdate()->nullOnDelete();
+            $table->foreignId('department_id')->nullable()->constrained('departments')->cascadeOnUpdate()->nullOnDelete();
+            $table->foreignId('branch_id')->nullable()->constrained('branches')->cascadeOnUpdate()->nullOnDelete();
             $table->string('firstname')->nullable();
             $table->string('lastname')->nullable();
             $table->string('name');  // Full Name
@@ -23,7 +29,8 @@ return new class extends Migration
 
             // Additional User Information
             $table->string('title')->nullable();           // Title (Mr, Mrs, etc.)
-            $table->string('designation')->nullable();
+            //$table->string('designation')->nullable();
+
             $table->string('landline')->nullable();        // Landline phone number
             $table->string('mobile')->nullable();          // Mobile phone number
             $table->string('language')->nullable();        // Preferred language
@@ -40,11 +47,6 @@ return new class extends Migration
             $table->boolean('is_admin')->default(false);   // Account status
             $table->timestamp('last_login_at')->nullable(); // Last login timestamp
             $table->string('last_login_ip')->nullable();   // Last login IP address
-
-            // Relationships (Laravel 11 style - explicit foreign keys)
-//            $table->foreignId('company_id')->nullable()->constrained()->cascadeOnUpdate()->nullOnDelete();
-//            $table->foreignId('department_id')->nullable()->constrained()->cascadeOnUpdate()->nullOnDelete();
-//            $table->foreignId('branch_id')->nullable()->constrained()->cascadeOnUpdate()->nullOnDelete();
 
             $table->string('attachment')->nullable();
             $table->rememberToken();
@@ -77,102 +79,4 @@ return new class extends Migration
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
     }
-
-
-    /*
-    erDiagram
-    users ||--o{ personal_access_tokens : has
-    users ||--o{ activity_logs : creates
-    users ||--o{ model_has_roles : has
-    users ||--o{ model_has_permissions : has
-    users ||--o{ currencies : "created by"
-    users ||--o{ currencies : "updated by"
-    users }|--|| companies : "belongs to"
-    users }|--|| departments : "belongs to"
-    users }|--|| branches : "belongs to"
-
-    companies ||--o{ departments : has
-    companies ||--o{ branches : has
-    companies ||--o{ activity_logs : has
-    companies ||--o{ smtp_settings : has
-    companies ||--o{ workflow_setups : has
-    companies ||--o{ system_alert_configurations : has
-    companies ||--o{ levels : has
-
-    workflow_setups ||--o{ workflow_levels : has
-    workflow_levels }|--|| levels : contains
-
-    roles ||--o{ model_has_roles : has
-    roles ||--o{ role_has_permissions : has
-    permissions ||--o{ role_has_permissions : has
-    permissions ||--o{ model_has_permissions : has
-
-    countries }|--|| currencies : uses
-
-    users {
-        id bigint PK
-        firstname string
-        lastname string
-        name string
-        email string "unique"
-        password string
-        language string
-        is_salesman_linked boolean
-        company_id bigint FK
-        department_id bigint FK
-        branch_id bigint FK
-    }
-
-    companies {
-        id bigint PK
-        name string
-        name_ar string
-        email string
-        fiscal_year_start date
-        fiscal_year_end date
-        zatca_environment enum
-        currency string
-        timezone string
-    }
-
-    workflow_setups {
-        id bigint PK
-        name string
-        type string
-        workflow_steps json
-        is_active boolean
-        company_id bigint FK
-    }
-
-    levels {
-        id bigint PK
-        name string
-        level_code integer "unique"
-        level_order integer
-        users json
-        permissions json
-        company_id bigint FK
-    }
-
-    activity_logs {
-        id bigint PK
-        page string
-        action string
-        description text
-        ip_address string
-        user_id bigint FK
-        company_id bigint FK
-        old_values json
-        new_values json
-    }
-
-    countries {
-        id bigint PK
-        name string
-        code string "unique"
-        phone_code string
-        currency_id bigint FK
-        is_active boolean
-    }
-     */
 };

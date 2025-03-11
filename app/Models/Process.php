@@ -20,6 +20,7 @@ class Process extends Model
     protected $fillable = [
         'title',
         'is_active',
+        'is_deletable',
         'status',
         'created_by',
         'updated_by',

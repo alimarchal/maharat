@@ -39,31 +39,19 @@ export default function CreateMaharatInvoice() {
         setItemTouched(formData.items.map(() => ({})));
     }, []);
 
-    // Static Customers
     useEffect(() => {
-        setCustomers([
-            {
-                id: "1",
-                company_name: "John Doe Ltd.",
-                representative: "Michael Smith",
-                address: "123 King Street, Riyadh, Saudi Arabia",
-                cr_no: "CR123456",
-                vat_no: "VAT789123",
-                mobile: "+966 500 123 456",
-                email: "john.doe@example.com",
-            },
-            {
-                id: "2",
-                company_name: "Jane Doe Enterprises",
-                representative: "Sarah Johnson",
-                address: "456 Queen Street, Jeddah, Saudi Arabia",
-                cr_no: "CR654321",
-                vat_no: "VAT321987",
-                mobile: "+966 555 987 654",
-                email: "jane.doe@example.com",
-            },
-        ]);
+        fetchCustomers();
     }, []);
+
+    const fetchCustomers = async () => {
+        try {
+            const response = await axios.get("/api/v1/customers");
+            console.log(response.data.data);
+            setCustomers(response.data.data);
+        } catch (error) {
+            console.error("Error fetching customers:", error);
+        }
+    };
 
     const handleBlur = (field) => {
         setTouched((prev) => ({
@@ -85,7 +73,7 @@ export default function CreateMaharatInvoice() {
     };
 
     const handleCompanyChange = (event) => {
-        const selectedCompanyId = event.target.value;
+        const selectedCompanyId = Number(event.target.value);
         const selectedCompany = customers.find(
             (c) => c.id === selectedCompanyId
         );
@@ -94,23 +82,12 @@ export default function CreateMaharatInvoice() {
             setFormData({
                 ...formData,
                 company_id: selectedCompanyId,
-                representative: selectedCompany.representative,
-                address: selectedCompany.address,
-                cr_no: selectedCompany.cr_no,
-                vat_no: selectedCompany.vat_no,
-                mobile: selectedCompany.mobile,
-                email: selectedCompany.email,
-            });
-        } else {
-            setFormData({
-                ...formData,
-                company_id: "",
-                representative: "",
-                address: "",
-                cr_no: "",
-                vat_no: "",
-                mobile: "",
-                email: "",
+                representative: selectedCompany.account_name || "",
+                address: selectedCompany.city || "",
+                cr_no: selectedCompany.commercial_registration_number || "",
+                vat_no: selectedCompany.tax_number || "",
+                mobile: selectedCompany.contact_number || "",
+                email: selectedCompany.email || "",
             });
         }
     };
@@ -505,7 +482,7 @@ export default function CreateMaharatInvoice() {
                                                 key={customer.id}
                                                 value={customer.id}
                                             >
-                                                {customer.company_name}
+                                                {customer.name}
                                             </option>
                                         ))
                                     ) : (

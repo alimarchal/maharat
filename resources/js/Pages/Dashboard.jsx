@@ -46,6 +46,10 @@ import ReceivedMRsTable from "./Dashboard/Warehouse/ReceivedMaterialRequest/Rece
 import Users from "./Dashboard/Configuration/Users/Users";
 import AccountsTable from "./Dashboard/Finance/Accounts/AccountsTable";
 import Chart from "./Dashboard/Configuration/OrganizationalChart/Chart";
+import CustomersTable from "./Dashboard/Customers/CustomersTable";
+import CreateCustomer from "./Dashboard/Customers/CreateCustomers";
+import SuppliersTable from "./Dashboard/Suppliers/SuppliersTable";
+import CreateSuppliers from "./Dashboard/Suppliers/CreateSuppliers";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -119,6 +123,10 @@ export default function Dashboard({ auth, page }) {
         if (page === "Configuration/Users/Users") return <Users />;
         if (page === "Configuration/OrganizationalChart/Chart")
             return <Chart />;
+        if (page === "Customers/CustomersTable") return <CustomersTable />;
+        if (page === "Customers/CreateCustomers") return <CreateCustomer />;
+        if (page === "Suppliers/SuppliersTable") return <SuppliersTable />;
+        if (page === "Suppliers/CreateSuppliers") return <CreateSuppliers />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };

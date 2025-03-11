@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\ChartOfAccountController;
 use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\CostCenterController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\DepartmentController;
+use App\Http\Controllers\Api\V1\DesignationController;
 use App\Http\Controllers\Api\V1\FiscalPeriodController;
 use App\Http\Controllers\Api\V1\GrnController;
 use App\Http\Controllers\Api\V1\GrnReceiveGoodController;
@@ -51,7 +53,7 @@ use App\Http\Controllers\Api\V1\RfqCategoryController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
+// Route::post('/register', [AuthController::class, 'register']); Disable now only use users
 Route::post('/logout', [AuthController::class, 'logout'])->middleware(['auth:sanctum']);
 Route::post('/check-email', [AuthController::class, 'checkEmail']);
 Route::get('/statuses', [StatusController::class, 'index']);
@@ -61,6 +63,9 @@ Route::get('/statuses', [StatusController::class, 'index']);
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::get('/users/hierarchy/{user?}', [UserController::class, 'hierarchy']);
+    Route::get('/users/hierarchy-level/{level}', [UserController::class, 'getUsersByLevel']);
+    Route::get('/users/reporting-chain/{user?}', [UserController::class, 'reportingChain']);
+    Route::get('/users/organogram/{user?}', [UserController::class, 'organogram']);
     Route::apiResource('users', UserController::class);
 
     // Note the order is important - specific routes before resource routes
@@ -101,6 +106,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('suppliers', SupplierController::class);
     Route::apiResource('supplier-contacts', SupplierContactController::class);
     Route::apiResource('supplier-addresses', SupplierAddressController::class);
+
     Route::apiResource('quotations', QuotationController::class);
     Route::post('/quotation-documents', [QuotationDocumentController::class, 'store']);
     Route::put('/quotation-documents/{id}', [QuotationDocumentController::class, 'update']);
@@ -201,8 +207,11 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('cost-centers-tree', [CostCenterController::class, 'tree']);
     Route::post('cost-centers/{id}/restore', [CostCenterController::class, 'restore']);
 
-    Route::apiResource('ledgers', LedgerController::class);
-    Route::post('ledgers/{id}/restore', [LedgerController::class, 'restore']);
+//    Route::apiResource('ledgers', LedgerController::class);
+//    Route::post('ledgers/{id}/restore', [LedgerController::class, 'restore']);
+
+    Route::apiResource('accounts', AccountController::class);
+    Route::post('accounts/{id}/restore', [AccountController::class, 'restore']);
 
 
     Route::get('chart-of-accounts-tree', [ChartOfAccountController::class, 'tree']);
@@ -232,6 +241,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('payment-orders', PaymentOrderController::class);
     // Payment Order Logs routes
     Route::apiResource('payment-order-logs', PaymentOrderLogController::class);
+    Route::apiResource('designations', DesignationController::class);
+
 
 });
 

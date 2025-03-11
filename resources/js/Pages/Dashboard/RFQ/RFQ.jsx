@@ -2,7 +2,13 @@ import React, { useState, useEffect } from "react";
 import { Link, router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import {
+    faArrowLeftLong,
+    faEdit,
+    faTrash,
+    faCheck,
+    faChevronRight,
+} from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 
 const RFQ = ({ auth }) => {
@@ -15,12 +21,14 @@ const RFQ = ({ auth }) => {
 
     const fetchRFQLogs = async () => {
         try {
-            const response = await axios.get(`/api/v1/rfq-status-logs?page=${currentPage}`);
+            const response = await axios.get(
+                `/api/v1/rfq-status-logs?page=${currentPage}`
+            );
             setRfqLogs(response.data.data);
             setLastPage(response.data.meta.last_page);
             setError("");
         } catch (error) {
-            console.error('API Error:', error);
+            console.error("API Error:", error);
             setError("Failed to load RFQ logs");
             setRfqLogs([]);
         }
@@ -37,14 +45,17 @@ const RFQ = ({ auth }) => {
 
     const handleSave = async (id) => {
         try {
-            const response = await axios.put(`/api/v1/rfq-status-logs/${id}`, editData);
+            const response = await axios.put(
+                `/api/v1/rfq-status-logs/${id}`,
+                editData
+            );
             if (response.data) {
                 setEditingId(null);
                 fetchRFQLogs(); // Refresh the data
             }
         } catch (error) {
-            console.error('Save error:', error);
-            setError('Failed to save changes');
+            console.error("Save error:", error);
+            setError("Failed to save changes");
         }
     };
 
@@ -55,25 +66,29 @@ const RFQ = ({ auth }) => {
             await axios.delete(`/api/v1/rfq-status-logs/${id}`);
             fetchRFQLogs(); // Refresh data
         } catch (error) {
-            console.error('Error deleting record:', error);
+            console.error("Error deleting record:", error);
         }
     };
 
     const handleChange = (field, value) => {
-        setEditData(prev => ({
+        setEditData((prev) => ({
             ...prev,
-            [field]: value
+            [field]: value,
         }));
     };
 
     const formatDateTime = (dateString) => {
         const optionsDate = { year: "numeric", month: "long", day: "numeric" };
-        const optionsTime = { hour: "2-digit", minute: "2-digit", hour12: true };
-    
+        const optionsTime = {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+        };
+
         const dateObj = new Date(dateString);
         const formattedDate = dateObj.toLocaleDateString("en-US", optionsDate);
         const formattedTime = dateObj.toLocaleTimeString("en-US", optionsTime);
-    
+
         return (
             <div>
                 {formattedDate}
@@ -92,45 +107,89 @@ const RFQ = ({ auth }) => {
                         onClick={() => router.visit("/dashboard")}
                         className="flex items-center text-black text-2xl font-medium hover:text-gray-800 p-2"
                     >
-                        <FontAwesomeIcon icon={faArrowLeftLong} className="mr-2 text-2xl" />
+                        <FontAwesomeIcon
+                            icon={faArrowLeftLong}
+                            className="mr-2 text-2xl"
+                        />
                         Back
                     </button>
                 </div>
                 <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2 mb-6">
-                    <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Home</Link>
-                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                    <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Procurement Center</Link>
-                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
+                    <Link
+                        href="/dashboard"
+                        className="hover:text-[#009FDC] text-xl"
+                    >
+                        Home
+                    </Link>
+                    <FontAwesomeIcon
+                        icon={faChevronRight}
+                        className="text-xl text-[#9B9DA2]"
+                    />
+                    <Link
+                        href="/purchase"
+                        className="hover:text-[#009FDC] text-xl"
+                    >
+                        Procurement Center
+                    </Link>
+                    <FontAwesomeIcon
+                        icon={faChevronRight}
+                        className="text-xl text-[#9B9DA2]"
+                    />
                     <span className="text-[#009FDC] text-xl">RFQs</span>
                 </div>
 
                 {/* RFQs Logs Heading and Make New RFQ Button */}
                 <div className="flex justify-between items-center mb-12">
-                <h2 className="text-[32px] font-bold text-[#2C323C] whitespace-nowrap">RFQ Logs</h2>
-                    <Link
-                        href="/quotations/create"
-                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                    >
-                        Make New RFQ
-                    </Link>
+                    <h2 className="text-[32px] font-bold text-[#2C323C] whitespace-nowrap">
+                        RFQ Logs
+                    </h2>
+                    <div className="flex justify-start gap-2">
+                        <Link
+                            href={`/suppliers`}
+                            className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                        >
+                            Add Suppliers
+                        </Link>
+                        <Link
+                            href="/quotations/create"
+                            className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                        >
+                            Make New RFQ
+                        </Link>
+                    </div>
                 </div>
 
                 {/* RFQs Table */}
                 <div className="w-full overflow-hidden">
                     {error && (
-                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                        <div
+                            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+                            role="alert"
+                        >
                             <span className="block sm:inline">{error}</span>
                         </div>
                     )}
                     <table className="w-full">
                         <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                             <tr>
-                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">RFQ#</th>
-                                <th className="py-3 px-4 text-center">Supplier</th>
-                                <th className="py-3 px-4 text-center">Amount</th>
-                                <th className="py-3 px-4 text-center">Status</th>
-                                <th className="py-3 px-4 text-center">Date & Time</th>
-                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Actions</th>
+                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">
+                                    RFQ#
+                                </th>
+                                <th className="py-3 px-4 text-center">
+                                    Supplier
+                                </th>
+                                <th className="py-3 px-4 text-center">
+                                    Amount
+                                </th>
+                                <th className="py-3 px-4 text-center">
+                                    Status
+                                </th>
+                                <th className="py-3 px-4 text-center">
+                                    Date & Time
+                                </th>
+                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
+                                    Actions
+                                </th>
                             </tr>
                         </thead>
 
@@ -144,37 +203,59 @@ const RFQ = ({ auth }) => {
                                         {editingId === log.id ? (
                                             <input
                                                 type="text"
-                                                value={editData.supplier_name || ''}
-                                                onChange={(e) => handleChange('supplier_name', e.target.value)}
+                                                value={
+                                                    editData.supplier_name || ""
+                                                }
+                                                onChange={(e) =>
+                                                    handleChange(
+                                                        "supplier_name",
+                                                        e.target.value
+                                                    )
+                                                }
                                                 className="bg-transparent border-none focus:outline-none focus:ring-0 w-20 text-center text-base"
                                             />
                                         ) : (
-                                            log.supplier_name || 'N/A'
+                                            log.supplier_name || "N/A"
                                         )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center w-[250px]">
                                         {editingId === log.id ? (
                                             <input
                                                 type="number"
-                                                value={editData.amount || ''}
+                                                value={editData.amount || ""}
                                                 onChange={(e) => {
-                                                    const value = Math.max(0, Number(e.target.value)); // Prevent negative values
-                                                    handleChange('amount', value);
+                                                    const value = Math.max(
+                                                        0,
+                                                        Number(e.target.value)
+                                                    ); // Prevent negative values
+                                                    handleChange(
+                                                        "amount",
+                                                        value
+                                                    );
                                                 }}
                                                 className="bg-transparent border-none focus:outline-none focus:ring-0 w-[150px] text-center text-base"
                                                 min="0"
                                             />
                                         ) : (
-                                            <span className="text-base inline-block w-[150px] truncate">{log.amount || '0'}</span>
+                                            <span className="text-base inline-block w-[150px] truncate">
+                                                {log.amount || "0"}
+                                            </span>
                                         )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <span className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${
-                                            log.status_name === 'Active' ? 'bg-green-100 text-green-800' :
-                                            log.status_name === 'Rejected' ? 'bg-red-100 text-red-800' :
-                                            log.status_name === 'Expired' ? 'bg-gray-100 text-gray-800' :
-                                            'bg-yellow-100 text-yellow-800'
-                                        }`}>
+                                        <span
+                                            className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${
+                                                log.status_name === "Active"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : log.status_name ===
+                                                      "Rejected"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : log.status_name ===
+                                                      "Expired"
+                                                    ? "bg-gray-100 text-gray-800"
+                                                    : "bg-yellow-100 text-yellow-800"
+                                            }`}
+                                        >
                                             {log.status_name}
                                         </span>
                                     </td>
@@ -189,24 +270,39 @@ const RFQ = ({ auth }) => {
                                         <div className="flex justify-center space-x-3">
                                             {editingId === log.id ? (
                                                 <button
-                                                    onClick={() => handleSave(log.id)}
+                                                    onClick={() =>
+                                                        handleSave(log.id)
+                                                    }
                                                     className="text-green-600 hover:text-green-900"
                                                 >
-                                                    <FontAwesomeIcon icon={faCheck} className="h-5 w-5" />
+                                                    <FontAwesomeIcon
+                                                        icon={faCheck}
+                                                        className="h-5 w-5"
+                                                    />
                                                 </button>
                                             ) : (
                                                 <button
-                                                    onClick={() => handleEdit(log)}
+                                                    onClick={() =>
+                                                        handleEdit(log)
+                                                    }
                                                     className="text-gray-600 hover:text-gray-600"
                                                 >
-                                                    <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
+                                                    <FontAwesomeIcon
+                                                        icon={faEdit}
+                                                        className="h-5 w-5"
+                                                    />
                                                 </button>
                                             )}
                                             <button
-                                                onClick={() => handleDelete(log.id)}
+                                                onClick={() =>
+                                                    handleDelete(log.id)
+                                                }
                                                 className="text-red-600 hover:text-red-900"
                                             >
-                                                <FontAwesomeIcon icon={faTrash} className="h-5 w-5" />
+                                                <FontAwesomeIcon
+                                                    icon={faTrash}
+                                                    className="h-5 w-5"
+                                                />
                                             </button>
                                         </div>
                                     </td>
@@ -221,13 +317,18 @@ const RFQ = ({ auth }) => {
                             <button
                                 onClick={() => setCurrentPage(currentPage - 1)}
                                 className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                    currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
+                                    currentPage <= 1
+                                        ? "opacity-50 cursor-not-allowed"
+                                        : ""
                                 }`}
                                 disabled={currentPage <= 1}
                             >
                                 Previous
                             </button>
-                            {Array.from({ length: lastPage }, (_, index) => index + 1).map((page) => (
+                            {Array.from(
+                                { length: lastPage },
+                                (_, index) => index + 1
+                            ).map((page) => (
                                 <button
                                     key={page}
                                     onClick={() => setCurrentPage(page)}
@@ -243,7 +344,9 @@ const RFQ = ({ auth }) => {
                             <button
                                 onClick={() => setCurrentPage(currentPage + 1)}
                                 className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                    currentPage >= lastPage ? "opacity-50 cursor-not-allowed" : ""
+                                    currentPage >= lastPage
+                                        ? "opacity-50 cursor-not-allowed"
+                                        : ""
                                 }`}
                                 disabled={currentPage >= lastPage}
                             >
