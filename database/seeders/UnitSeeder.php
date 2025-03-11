@@ -15,11 +15,15 @@ class UnitSeeder extends Seeder
     public function run(): void
     {
         DB::table('rfq_items')->delete();
-        
+
         DB::table('units')->delete();
 
         $units = [
             // Weight/Mass Units
+            [
+                'name' => 'Pieces',
+                'short_title' => 'PCs',
+            ],
             [
                 'name' => 'Kilogram',
                 'short_title' => 'kg',

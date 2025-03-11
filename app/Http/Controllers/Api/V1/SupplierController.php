@@ -35,10 +35,14 @@ class SupplierController extends Controller
         return SupplierResource::collection($suppliers);
     }
 
-    public function store(StoreSupplierRequest $request): JsonResponse
+    public function store(StoreSupplierRequest $request)
     {
+        return 'sss';
         try {
             DB::beginTransaction();
+
+
+
 
             $supplier = Supplier::create($request->safe()->except(['contacts', 'addresses']));
 
