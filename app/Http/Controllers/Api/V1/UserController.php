@@ -43,6 +43,8 @@ class UserController extends Controller
     public function store(StoreUserRequest $request)
     {
         $validated = $request->validated();
+
+        // Set the hashed password
         $validated['password'] = Hash::make($validated['password']);
 
         // Handle attachment if present
