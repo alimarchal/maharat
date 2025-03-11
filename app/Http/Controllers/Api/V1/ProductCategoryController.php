@@ -81,6 +81,10 @@ class ProductCategoryController extends Controller
     public function destroy(ProductCategory $productCategory): JsonResponse
     {
         try {
+            // Delete all products associated with this category
+            $productCategory->products()->delete(); 
+
+            // Now delete the category
             $productCategory->delete();
 
             return response()->json([
@@ -93,4 +97,5 @@ class ProductCategoryController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
 }

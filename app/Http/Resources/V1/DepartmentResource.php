@@ -24,6 +24,7 @@ class DepartmentResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->when($request->user()?->can('viewDeleted', Department::class), $this->deleted_at),
+            'users' => UserResource::collection($this->whenLoaded('users')),
 
             // Include related resources when loaded
             'parent' => new DepartmentResource($this->whenLoaded('parent')),
