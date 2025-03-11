@@ -401,11 +401,6 @@ export default function MainDashboard({ roles }) {
             icon: faUserPen,
             onClick: () => router.visit("/roles-permissions"),
         },
-        {
-            text: "Users",
-            icon: faUsers,
-            onClick: () => router.visit("/users"),
-        },
     ];
 
     return (

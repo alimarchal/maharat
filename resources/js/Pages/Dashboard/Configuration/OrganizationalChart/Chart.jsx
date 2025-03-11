@@ -188,11 +188,7 @@ const Chart = () => {
     if (!orgChart) {
         return (
             <div className="w-full flex justify-center items-center h-screen">
-                <Button
-                    startIcon={<FontAwesomeIcon icon={faPlus} />}
-                    onClick={() => router.visit('/users')}
-                >
-                    Add Details
+                <Button>
                 </Button>
             </div>
         );
