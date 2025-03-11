@@ -13,24 +13,28 @@ class ChartOfAccount extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'account_code',
+        'parent_id',
+        'account_code_id',
         'account_name',
-        'account_type',
-        'parent_account_id',
         'is_active',
-        'description'
+        'description',
     ];
 
     protected $casts = [
         'is_active' => 'boolean'
     ];
 
+    public function accountCode(): BelongsTo
+    {
+        return $this->belongsTo(AccountCode::class);
+    }
+
     /**
      * Get the parent account that owns the account.
      */
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(ChartOfAccount::class, 'parent_account_id');
+        return $this->belongsTo(ChartOfAccount::class, 'parent_id');
     }
 
     /**
@@ -38,7 +42,7 @@ class ChartOfAccount extends Model
      */
     public function children(): HasMany
     {
-        return $this->hasMany(ChartOfAccount::class, 'parent_account_id');
+        return $this->hasMany(ChartOfAccount::class, 'parent_id');
     }
 
     /**

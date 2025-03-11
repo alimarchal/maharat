@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\ChartOfAccountController;
 use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\CostCenterController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\DepartmentController;
+use App\Http\Controllers\Api\V1\DesignationController;
 use App\Http\Controllers\Api\V1\FiscalPeriodController;
 use App\Http\Controllers\Api\V1\GrnController;
 use App\Http\Controllers\Api\V1\GrnReceiveGoodController;
@@ -101,6 +103,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('suppliers', SupplierController::class);
     Route::apiResource('supplier-contacts', SupplierContactController::class);
     Route::apiResource('supplier-addresses', SupplierAddressController::class);
+
     Route::apiResource('quotations', QuotationController::class);
     Route::post('/quotation-documents', [QuotationDocumentController::class, 'store']);
     Route::put('/quotation-documents/{id}', [QuotationDocumentController::class, 'update']);
@@ -201,8 +204,11 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('cost-centers-tree', [CostCenterController::class, 'tree']);
     Route::post('cost-centers/{id}/restore', [CostCenterController::class, 'restore']);
 
-    Route::apiResource('ledgers', LedgerController::class);
-    Route::post('ledgers/{id}/restore', [LedgerController::class, 'restore']);
+//    Route::apiResource('ledgers', LedgerController::class);
+//    Route::post('ledgers/{id}/restore', [LedgerController::class, 'restore']);
+
+    Route::apiResource('accounts', AccountController::class);
+    Route::post('accounts/{id}/restore', [AccountController::class, 'restore']);
 
 
     Route::get('chart-of-accounts-tree', [ChartOfAccountController::class, 'tree']);
@@ -232,6 +238,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('payment-orders', PaymentOrderController::class);
     // Payment Order Logs routes
     Route::apiResource('payment-order-logs', PaymentOrderLogController::class);
+    Route::apiResource('designations', DesignationController::class);
+
 
 });
 

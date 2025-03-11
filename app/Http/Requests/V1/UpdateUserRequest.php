@@ -26,6 +26,12 @@ class UpdateUserRequest extends FormRequest
         return [
             'firstname' => 'nullable|string|max:255',
             'lastname' => 'nullable|string|max:255',
+            'parent_id' => 'nullable|integer|exists:users,id',
+            'hierarchy_level' => 'nullable|integer',
+            'department_id' => 'nullable|integer|exists:departments,id',
+            'company_id' => 'nullable|integer|exists:companies,id',
+            'designation_id' => 'nullable|integer|exists:designations,id',
+            'branch_id' => 'nullable|integer|exists:branches,id',
             'name' => 'sometimes|required|string|max:255',
             'email' => ['sometimes', 'required', 'email', Rule::unique('users')->ignore($this->user)],
             'password' => 'sometimes|required|string|min:8',

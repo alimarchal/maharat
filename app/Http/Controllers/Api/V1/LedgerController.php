@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\V1\Ledger\StoreLedgerRequest;
-use App\Http\Requests\V1\Ledger\UpdateLedgerRequest;
+use App\Http\Requests\V1\Account\StoreLedgerRequest;
+use App\Http\Requests\V1\Account\UpdateLedgerRequest;
 use App\Http\Resources\V1\LedgerResource;
 use App\Models\Ledger;
 use App\QueryParameters\LedgerParameters;

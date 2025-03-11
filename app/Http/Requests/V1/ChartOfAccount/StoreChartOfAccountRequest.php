@@ -23,10 +23,9 @@ class StoreChartOfAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'account_code' => ['required', 'string', 'unique:chart_of_accounts,account_code'],
+            'account_code_id' => ['required', 'string', 'unique:chart_of_accounts,account_code_id'],
             'account_name' => ['required', 'string', 'max:255'],
-            'account_type' => ['required', Rule::in(['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'])],
-            'parent_account_id' => ['nullable', 'exists:chart_of_accounts,id'],
+            'parent_id' => ['nullable', 'exists:chart_of_accounts,id'],
             'is_active' => ['boolean'],
             'description' => ['nullable', 'string'],
         ];
