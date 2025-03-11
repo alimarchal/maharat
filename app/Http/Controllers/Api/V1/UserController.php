@@ -222,45 +222,45 @@ class UserController extends Controller
     {
         // Find the root user with hierarchy_level = 0 and null parent_id
         $rootUser = User::where('hierarchy_level', 0)
-            ->whereNull('parent_id')
-            ->with(['designation', 'department'])
-            ->first();
-        
+        ->whereNull('parent_id')
+        ->with(['designation', 'department'])
+        ->first();
+    
         if (!$rootUser) {
             return [];
         }
         
-        // Format the root node
-        $result = [
-            'id' => $rootUser->id,
-            'name' => $rootUser->name ?? 'N/A',
-            'title' => $rootUser->designation ? $rootUser->designation->designation : 'N/A',
-            'department' => $rootUser->department ? $rootUser->department->name : 'N/A', 
-            'email' => $rootUser->email,
-            'level' => $rootUser->hierarchy_level,
-            'image' => $rootUser->attachment,
-            'children' => []
-        ];
+        // // Format the root node
+        // $result = [
+        //     'id' => $rootUser->id,
+        //     'name' => $rootUser->name ?? 'N/A',
+        //     'title' => $rootUser->designation ? $rootUser->designation->designation : 'N/A',
+        //     'department' => $rootUser->department ? $rootUser->department->name : 'N/A', 
+        //     'email' => $rootUser->email,
+        //     'level' => $rootUser->hierarchy_level,
+        //     'image' => $rootUser->attachment,
+        //     'children' => []
+        // ];
         
-        // Find all direct children of the root user
-        $directChildren = User::where('parent_id', $rootUser->id)
-        ->with(['designation', 'department'])
-        ->get();
+        // // Find all direct children of the root user
+        // $directChildren = User::where('parent_id', $rootUser->id)
+        // ->with(['designation', 'department'])
+        // ->get();
         
-        foreach ($directChildren as $child) {
-            $result['children'][] = [
-                'id' => $child->id,
-                'name' => $child->name,
-                'title' => $child->designation ? $child->designation->designation : 'N/A',
-                'department' => $child->department ? $child->department->name : 'N/A', 
-                'email' => $child->email,
-                'level' => $child->hierarchy_level,
-                'image' => $child->attachment,
-                'children' => [] 
-            ];
-        }
+        // foreach ($directChildren as $child) {
+        //     $result['children'][] = [
+        //         'id' => $child->id,
+        //         'name' => $child->name,
+        //         'title' => $child->designation ? $child->designation->designation : 'N/A',
+        //         'department' => $child->department ? $child->department->name : 'N/A', 
+        //         'email' => $child->email,
+        //         'level' => $child->hierarchy_level,
+        //         'image' => $child->attachment,
+        //         'children' => [] 
+        //     ];
+        // }
         
-        return $result;
+        return $this->buildOrganogramData($rootUser);
     }
 
     /**
@@ -271,8 +271,8 @@ class UserController extends Controller
      */
     private function buildOrganogramData(User $user): array
     {
-        // Load essential relations
-        $user->load(['designation', 'children.designation', 'department']);
+        // Load essential relations including nested children
+        $user->load(['designation', 'department', 'children.designation', 'children.department', 'children.children']);
 
         // Format node data
         $node = [
