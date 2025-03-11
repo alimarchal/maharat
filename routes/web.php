@@ -259,6 +259,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'Warehouse/ReceivedMaterialRequest/ReceivedMRsTable']); 
     })->name('material.index');
 
+    Route::get('/customers', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Customers/CustomersTable']); 
+    })->name('customer.index');
+    Route::get('/customers/create', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Customers/CreateCustomers']); 
+    })->name('customer.create');
+    Route::get('/customers/{id}/edit', function ($id) { 
+        return Inertia::render('Dashboard', ['page' => 'Customers/CreateCustomers', 'customerId' => $id]); 
+    })->name('customer.edit');
+
+    Route::get('/suppliers', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Suppliers/SuppliersTable']); 
+    })->name('supplier.index');
+    Route::get('/suppliers/create', function () { 
+        return Inertia::render('Dashboard', ['page' => 'Suppliers/CreateSuppliers']); 
+    })->name('supplier.create');
+    Route::get('/suppliers/{id}/edit', function ($id) { 
+        return Inertia::render('Dashboard', ['page' => 'Suppliers/CreateSuppliers', 'supplierId' => $id]); 
+    })->name('supplier.edit');
+
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

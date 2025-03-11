@@ -89,6 +89,12 @@ const MaharatInvoicesTable = () => {
                         ))}
                     </div>
                     <Link
+                        href={`/customers`}
+                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                    >
+                        Add Customers
+                    </Link>
+                    <Link
                         href={`/maharat-invoices/create`}
                         className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                     >
