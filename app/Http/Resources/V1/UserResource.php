@@ -33,7 +33,9 @@ class UserResource extends JsonResource
             'roles' => $this->roles->pluck('name'),
             'permissions' => $this->getAllPermissions()->pluck('name'),
             'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at
+            'updated_at' => $this->updated_at,
+            'department' => $this->department ? $this->department->name : null,
+            'department_id' => $this->department_id,
         ];
     }
 }

@@ -241,8 +241,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('designations', DesignationController::class);
 
 
-
-
 });
 
 Route::get('/user', function (Request $request) {
