@@ -106,43 +106,56 @@ const Users = () => {
     };
 
     const [photo, setPhoto] = useState(null);
+    const [photoPreview, setPhotoPreview] = useState(null); // To store the image preview
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            setPhoto(URL.createObjectURL(file));
+            setPhoto(file);
+            setPhotoPreview(URL.createObjectURL(file)); // Create preview URL
+            setFormData((prevData) => ({
+                ...prevData,
+                photo: file, 
+            }));
         }
     };
-
+  
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
-
+    
         try {
-            const name = `${formData.first_name} ${formData.last_name}`.trim();
-            const userData = {
-                employee_id: formData.employee_id,
-                username: formData.username,
-                name: name,
-                email: formData.email,
-                landline: formData.landline,
-                mobile: formData.mobile,
-                designation_id: formData.designation_id,
-                department_id: formData.department_id,
-                language: formData.language,
-                employee_type: formData.employee_type,
-                description: formData.description,
-                parent_id: formData.parent_id ? parseInt(formData.parent_id) : null,
-                hierarchy_level: formData.hierarchy_level,
-                password: "defaultPassword", // Add a default password or make it optional in the backend
-            };
-
-            console.log("Submitting user data:", userData);
+            const formDataToSend = new FormData();
+            formDataToSend.append("employee_id", formData.employee_id);
+            formDataToSend.append("username", formData.username);
+            formDataToSend.append("name", `${formData.first_name} ${formData.last_name}`);
+            formDataToSend.append("email", formData.email);
+            formDataToSend.append("landline", formData.landline);
+            formDataToSend.append("mobile", formData.mobile);
+            formDataToSend.append("designation_id", formData.designation_id);
+            formDataToSend.append("department_id", formData.department_id);
+            formDataToSend.append("language", formData.language);
+            formDataToSend.append("employee_type", formData.employee_type);
+            formDataToSend.append("description", formData.description);
+            formDataToSend.append("parent_id", formData.parent_id ? parseInt(formData.parent_id) : null);
+            formDataToSend.append("hierarchy_level", formData.hierarchy_level);
+            formDataToSend.append("password", "defaultPassword"); // Change this as needed
             
-            const response = await axios.post("/api/v1/users", userData);
+            if (photo) {
+                formDataToSend.append("photo", photo); // Attach image file
+            }
+    
+            console.log("Submitting user data:", formDataToSend);
+            
+            const response = await axios.post("/api/v1/users", formDataToSend, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            });
+    
             console.log("API Response:", response.data);
-            
             alert("User added successfully!");
+    
             setFormData({
                 employee_id: "",
                 username: "",
@@ -159,13 +172,15 @@ const Users = () => {
                 parent_id: "",
                 hierarchy_level: 0,
             });
+    
+            setPhoto(null); // Reset photo
             setErrors({});
             router.visit("/chart");
         } catch (error) {
             console.log("API Error Details:", error.response?.data);
             console.error("Error saving user", error);
         }
-    };
+    };    
 
     return (
         <div className="w-full">
@@ -194,32 +209,33 @@ const Users = () => {
                 </div>
 
                 <div className="flex justify-end">
-                    <label className="border-2 border-gray-300 bg-white rounded-full w-40 h-40 flex items-center justify-center cursor-pointer relative shadow-md overflow-hidden mb-4">
-                        <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-white">
-                            {photo ? (
-                                <img
-                                    src={photo}
-                                    alt="Profile"
-                                    className="w-full h-full object-contain rounded-full"
-                                />
-                            ) : (
-                                <div className="flex flex-col items-center justify-center w-full h-full">
-                                    <FontAwesomeIcon icon={faCamera} className="text-gray-500 text-4xl mb-2" />
-                                    <span className="text-gray-700 text-sm">
-                                        Add Profile Picture
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                        <input
-                            type="file"
-                            name="photo"
-                            accept="image/*"
-                            onChange={handleFileChange}
-                            className="hidden"
-                        />
-                    </label>
-                </div>
+                <label className="border-2 border-gray-300 bg-white rounded-full w-40 h-40 flex items-center justify-center cursor-pointer relative shadow-md overflow-hidden mb-4">
+                    <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-white">
+                        {photoPreview ? (
+                            <img 
+                                src={URL.createObjectURL(photo)} 
+                                alt="Profile" 
+                                className="w-[100%] h-[100%] object-cover rounded-full" 
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center justify-center w-full h-full">
+                                <FontAwesomeIcon icon={faCamera} className="text-gray-500 text-4xl mb-2" />
+                                <span className="text-gray-700 text-sm">
+                                    Add Profile Picture
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                    <input
+                        type="file"
+                        name="photo"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="hidden"
+                    />
+                </label>
+            </div>
+
             </div>
 
             <form onSubmit={handleSubmit}>

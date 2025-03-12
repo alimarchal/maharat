@@ -102,6 +102,7 @@ function OrgChartTree({
     onUpdate,
     isRoot,
     parentExpanded = true,
+    onMarkForDeletion,
 }) {
     const [isExpanded, setIsExpanded] = useState(true);
 
@@ -111,6 +112,7 @@ function OrgChartTree({
             if (index !== -1) {
                 parent.children.splice(index, 1);
                 onUpdate();
+                onMarkForDeletion(node.id); // Mark the node for deletion
             }
         }
     };
@@ -164,7 +166,6 @@ function OrgChartTree({
             console.error("Error fetching parent data:", error);
         }
     };
-    
 
     const handleToggleExpand = () => {
         setIsExpanded(!isExpanded);
@@ -204,6 +205,7 @@ function OrgChartTree({
                         onUpdate={onUpdate}
                         isRoot={false}
                         parentExpanded={isExpanded}
+                        onMarkForDeletion={onMarkForDeletion}
                     />
                 ))}
         </TreeNode>
@@ -213,6 +215,7 @@ function OrgChartTree({
 const Chart = () => {
     const [orgChart, setOrgChart] = useState(null);
     const [rootExpanded, setRootExpanded] = useState(true);
+    const [nodesToDelete, setNodesToDelete] = useState([]); // Track nodes marked for deletion
 
     useEffect(() => {
         const fetchData = async () => {
@@ -228,12 +231,29 @@ const Chart = () => {
         fetchData();
     }, []);
 
-    const handleSave = () => {
-        console.log("Saved Organization Chart:", orgChart);
+    const handleSave = async () => {
+        try {
+            // Delete nodes marked for deletion
+            for (const nodeId of nodesToDelete) {
+                await axios.delete(`/api/v1/users/${nodeId}`);
+            }
+
+            // Clear the list of nodes to delete
+            setNodesToDelete([]);
+
+            console.log("Saved Organization Chart:", orgChart);
+            alert("Changes saved successfully!");
+        } catch (error) {
+            console.error("Error saving changes:", error);
+        }
     };
 
     const updateOrgChart = () => {
         setOrgChart({ ...orgChart });
+    };
+
+    const handleMarkForDeletion = (nodeId) => {
+        setNodesToDelete((prevNodes) => [...prevNodes, nodeId]);
     };
 
     if (!orgChart) {
@@ -301,10 +321,20 @@ const Chart = () => {
                                     onUpdate={updateOrgChart}
                                     isRoot={false}
                                     parentExpanded={rootExpanded}
+                                    onMarkForDeletion={handleMarkForDeletion}
                                 />
                             ))}
                     </Tree>
                 </div>
+            </div>
+
+            <div className="flex justify-end">
+                <button
+                    onClick={handleSave}
+                    className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium"
+                >
+                    Save
+                </button>
             </div>
         </div>
     );
