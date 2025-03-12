@@ -140,5 +140,17 @@ class UserSeeder extends Seeder
                 'department_id' => $departmentIds[4] ?? null,
             ]
         );
+
+        // Normal User Check The Process Step for getApproverIdViaDesignation
+        $officer = User::firstOrCreate(
+            ['email' => 'officer@example.com'],
+            [
+                'name' => 'Officer',
+                'password' => Hash::make('password'),
+                'parent_id' => $john->id,
+                'designation_id' => $designationIds[6] ?? null,
+                'department_id' => $departmentIds[4] ?? null,
+            ]
+        );
     }
 }

@@ -21,6 +21,7 @@ class DesignationSeeder extends Seeder
             'Direct Manager',
             'Supervisor',
             'Warehouse Manager',
+            'Officer',
             'Software Engineer',
             'Project Manager',
             'HR Specialist',

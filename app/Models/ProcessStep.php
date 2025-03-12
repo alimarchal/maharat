@@ -46,6 +46,11 @@ class ProcessStep extends Model
         return $this->belongsTo(Process::class);
     }
 
+    public function designation(): BelongsTo
+    {
+        return $this->belongsTo(Designation::class, 'designation_id','id');
+    }
+
     /**
      * Get the user assigned to this step.
      */

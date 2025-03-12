@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
             QuotationSeeder::class,
             WarehouseSeeder::class,
             ProcessSeeder::class,
+            ProcessStepSeeder::class,
         ]);
     }
 }
