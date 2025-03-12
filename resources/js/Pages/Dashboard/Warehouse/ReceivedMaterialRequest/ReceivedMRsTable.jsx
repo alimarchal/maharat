@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faEye } from "@fortawesome/free-solid-svg-icons";
+import { faChevronRight, faEye } from "@fortawesome/free-solid-svg-icons";
 import ReceivedMRsModal from "./ReceivedMRsModal";
 
 const ReceivedMRsTable = () => {
@@ -12,18 +12,12 @@ const ReceivedMRsTable = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [selectedFilter, setSelectedFilter] = useState("All");
-    const filters = [
-        "All",
-        "Pending",
-        "Referred",
-        "Rejected",
-        "Approved",
-        "Issued",
-    ];
+    const filters = ["All", "New", "Pending", "Issued"];
 
     const staticRequests = [
         {
             id: 1,
+            user_name: "Ahsan",
             items: [
                 {
                     product: { name: "Steel Rod" },
@@ -38,6 +32,7 @@ const ReceivedMRsTable = () => {
         },
         {
             id: 2,
+            user_name: "Ali",
             items: [
                 {
                     product: { name: "Cement" },
@@ -47,7 +42,7 @@ const ReceivedMRsTable = () => {
             costCenter: "Infrastructure",
             subCostCenter: "Roads",
             department: "Logistics",
-            status: { name: "Approved" },
+            status: { name: "Issued" },
             created_at: "2024-03-05T14:00:00Z",
         },
     ];
@@ -86,8 +81,7 @@ const ReceivedMRsTable = () => {
 
     const statusColors = {
         Pending: "text-yellow-500",
-        Approved: "text-green-500",
-        Rejected: "text-red-500",
+        Issued: "text-green-500",
     };
 
     const priorityColors = {
@@ -141,6 +135,7 @@ const ReceivedMRsTable = () => {
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             Request #
                         </th>
+                        <th className="py-3 px-4">User Name</th>
                         <th className="py-3 px-4">Items</th>
                         <th className="py-3 px-4">Cost Centers</th>
                         <th className="py-3 px-4">Sub Cost Centers</th>
@@ -180,6 +175,9 @@ const ReceivedMRsTable = () => {
                             .map((req) => (
                                 <tr key={req.id}>
                                     <td className="py-3 px-4">MR-{req.id}</td>
+                                    <td className="py-3 px-4">
+                                        {req.user_name}
+                                    </td>
                                     <td className="py-3 px-4">
                                         <div className="flex flex-col">
                                             {req.items?.map((item, index) => (
@@ -238,8 +236,13 @@ const ReceivedMRsTable = () => {
                                         <button className="text-[#9B9DA2] hover:text-gray-500">
                                             <FontAwesomeIcon icon={faEye} />
                                         </button>
-                                        <button className="text-[#9B9DA2] hover:text-gray-500">
-                                            <FontAwesomeIcon icon={faTrash} />
+                                        <button
+                                            onClick={() => setIsModalOpen(true)}
+                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                        >
+                                            <FontAwesomeIcon
+                                                icon={faChevronRight}
+                                            />
                                         </button>
                                     </td>
                                 </tr>
@@ -256,31 +259,6 @@ const ReceivedMRsTable = () => {
                     )}
                 </tbody>
             </table>
-
-            <div className="flex justify-center items-center relative w-full my-8">
-                <div
-                    className="absolute top-1/2 left-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
-                    style={{
-                        background:
-                            "linear-gradient(to right, #9B9DA2, #9B9DA200)",
-                    }}
-                ></div>
-                <button
-                    type="button"
-                    className="p-2 text-base sm:text-lg flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] transition-all duration-300 hover:border-[#009FDC] hover:bg-[#009FDC] hover:text-white hover:scale-105"
-                    onClick={() => setIsModalOpen(true)}
-                >
-                    <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add a
-                    Material Request
-                </button>
-                <div
-                    className="absolute top-1/2 right-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
-                    style={{
-                        background:
-                            "linear-gradient(to left, #9B9DA2, #9B9DA200)",
-                    }}
-                ></div>
-            </div>
 
             {/* Render the modal */}
             {isModalOpen && (
