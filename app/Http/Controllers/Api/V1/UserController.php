@@ -47,11 +47,11 @@ class UserController extends Controller
         // Set the hashed password
         $validated['password'] = Hash::make($validated['password']);
 
-        // Handle attachment if present
+        // Handle profile photo
         if ($request->hasFile('profile_photo_path')) {
             $file = $request->file('profile_photo_path');
-            $path = $file->store('photos', 'public');
-            $validated['profile_photo_path'] = $path;
+            $path = $file->store('profile_photos', 'public'); 
+            $validated['profile_photo_path'] = asset("storage/$path"); 
         }
 
         $user = User::create($validated);
