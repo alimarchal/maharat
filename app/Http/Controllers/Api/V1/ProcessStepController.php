@@ -9,6 +9,7 @@ use App\Http\Resources\V1\ProcessStepResource;
 use App\Http\Resources\V1\ProcessStepCollection;
 use App\Models\Process;
 use App\Models\ProcessStep;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -244,6 +245,20 @@ class ProcessStepController extends Controller
                 'message' => 'Failed to toggle process step status',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
+    public function getApproverIdViaDesignation(ProcessStep $processStep, User $user): JsonResponse
+    {
+        // $processStep->designation_id mean designation_id is null then return message no approver_id exist
+        if (!empty($user->designation_id)) {
+
+        }
+        else{
+            return response()->json([
+                'message' => 'approver id does not exist',
+            ]);
         }
     }
 }
