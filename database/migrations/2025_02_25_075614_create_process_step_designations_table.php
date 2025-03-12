@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('process_step_designations')) {
         Schema::create('process_step_designations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('process_step_id')->constrained('users');
@@ -18,6 +19,7 @@ return new class extends Migration
             $table->string('name')->comment('designation name');
             $table->timestamps();
         });
+        }
     }
 
     /**
