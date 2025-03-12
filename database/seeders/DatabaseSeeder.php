@@ -13,12 +13,13 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             StatusSeeder::class,
+            ProcessStepDesignationSeeder::class,
+            DesignationSeeder::class,
             CurrencySeeder::class,
             CountrySeeder::class,
             RoleAndPermissionSeeder::class,
             CompanySeeder::class,
             DepartmentSeeder::class,
-            DesignationSeeder::class,
             UserSeeder::class,
             SupplierSeeder::class,
             ProductCategorySeeder::class,
@@ -28,6 +29,8 @@ class DatabaseSeeder extends Seeder
             RfqSeeder::class,
             RfqItemSeeder::class,
             QuotationSeeder::class,
+            WarehouseSeeder::class,
+            ProcessSeeder::class,
         ]);
     }
 }

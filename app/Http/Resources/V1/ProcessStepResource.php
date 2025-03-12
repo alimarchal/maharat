@@ -17,13 +17,11 @@ class ProcessStepResource extends JsonResource
         return [
             'id' => $this->id,
             'process_id' => $this->process_id,
-            'user_id' => $this->user_id,
+            'user_id' => $this->approver_id,
+            'approver_id' => null, // get approver id here from up line
+            'designation_id' => $this->designation_id,
             'order' => $this->order,
-//            'name' => $this->name,
             'description' => $this->description,
-//            'conditions' => $this->conditions,
-//            'status' => $this->status,
-//            'required_fields' => $this->required_fields,
             'is_active' => $this->is_active,
             'timeout_days' => $this->timeout_days,
             'created_by' => $this->created_by,

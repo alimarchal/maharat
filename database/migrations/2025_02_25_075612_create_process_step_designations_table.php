@@ -13,8 +13,6 @@ return new class extends Migration
     {
         Schema::create('process_step_designations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('process_step_id')->constrained('users');
-            $table->foreignId('user_id')->constrained('process_steps');
             $table->string('name')->comment('designation name');
             $table->timestamps();
         });

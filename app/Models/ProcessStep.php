@@ -19,12 +19,9 @@ class ProcessStep extends Model
     protected $fillable = [
         'process_id',
         'user_id',
+        'designation_id',
         'order',
-//        'name',
         'description',
-//        'conditions',
-//        'status',
-//        'required_fields',
         'is_active',
         'timeout_days',
         'created_by',
