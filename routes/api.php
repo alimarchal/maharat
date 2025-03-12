@@ -59,8 +59,6 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware(['auth:san
 Route::post('/check-email', [AuthController::class, 'checkEmail']);
 Route::get('/statuses', [StatusController::class, 'index']);
 //Route::post('/statuses', [StatusController::class, 'store']);
-Route::apiResource('designations', DesignationController::class);
-Route::post('designations/{id}/restore', [DesignationController::class, 'restore']);
 
 // API V1 routes
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
@@ -102,9 +100,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // Material Request Items routes
     Route::apiResource('material-request-items', MaterialRequestItemController::class);
     Route::apiResource('material-request-transactions', MaterialRequestTransactionController::class);
-
-
-
 
     // RFQ routes
     Route::apiResource('rfqs', RfqController::class);
@@ -258,6 +253,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // Departments routes
     Route::apiResource('departments', DepartmentController::class);
     Route::post('departments/{id}/restore', [DepartmentController::class, 'restore']);
+
+    Route::apiResource('designations', DesignationController::class);
+    Route::post('designations/{id}/restore', [DesignationController::class, 'restore']);
 
 });
 

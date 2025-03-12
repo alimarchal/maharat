@@ -13,7 +13,7 @@ const Users = () => {
     
     // Extract hierarchy data from URL parameters
     const hierarchy_level = urlParams.get('hierarchy_level') ? parseInt(urlParams.get('hierarchy_level')) : undefined;
-    const parent_id = urlParams.get('parent_id');
+    const parent_id = urlParams.get('parent_id') ? parseInt(urlParams.get('parent_id')) : null;
 
     // Log the received information
     console.log("URL Parameters:", {
@@ -36,32 +36,38 @@ const Users = () => {
         language: "",
         employee_type: "",
         description: "",
-        parent_id: parent_id || "", 
+        parent_id: parent_id ?? null, 
         hierarchy_level: hierarchy_level !== undefined ? hierarchy_level : 0,
     });
 
     const [designations, setDesignations] = useState([]);
     const [departments, setDepartments] = useState([]);
+    const [reportingManager, setReportingManager] = useState("");
     const [errors, setErrors] = useState({});
 
-    // Fetch designations and departments on component mount
+    // Fetch designations, departments, and reporting manager on component mount
     useEffect(() => {
-        const fetchDesignationsAndDepartments = async () => {
+        const fetchData = async () => {
             try {
-                const [designationsResponse, departmentsResponse] = await Promise.all([
-                    axios.get('/designations'),
+                const [designationsResponse, departmentsResponse, reportingManagerResponse] = await Promise.all([
+                    axios.get('/api/v1/designations'),
                     axios.get('/api/v1/departments'),
+                    parent_id ? axios.get(`/api/v1/users/${parent_id}`) : Promise.resolve(null),
                 ]);
 
                 setDesignations(designationsResponse.data.data);
                 setDepartments(departmentsResponse.data.data);
+
+                if (reportingManagerResponse) {
+                    setReportingManager(reportingManagerResponse.data.data.name);
+                }
             } catch (error) {
-                console.error("Error fetching designations or departments:", error);
+                console.error("Error fetching data:", error);
             }
         };
 
-        fetchDesignationsAndDepartments();
-    }, []);
+        fetchData();
+    }, [parent_id]);
 
     // Update formData when props change
     useEffect(() => {
@@ -113,10 +119,7 @@ const Users = () => {
         if (!validateForm()) return;
 
         try {
-            // Combine first name and last name into a single name field
             const name = `${formData.first_name} ${formData.last_name}`.trim();
-
-            // Prepare the data to be sent to the API
             const userData = {
                 employee_id: formData.employee_id,
                 username: formData.username,
@@ -129,13 +132,16 @@ const Users = () => {
                 language: formData.language,
                 employee_type: formData.employee_type,
                 description: formData.description,
-                parent_id: formData.parent_id,
+                parent_id: formData.parent_id ? parseInt(formData.parent_id) : null,
                 hierarchy_level: formData.hierarchy_level,
+                password: "defaultPassword", // Add a default password or make it optional in the backend
             };
 
-            console.log("Submitting user with hierarchy data:", userData);
+            console.log("Submitting user data:", userData);
             
-            await axios.post("/api/v1/users", userData);
+            const response = await axios.post("/api/v1/users", userData);
+            console.log("API Response:", response.data);
+            
             alert("User added successfully!");
             setFormData({
                 employee_id: "",
@@ -156,6 +162,7 @@ const Users = () => {
             setErrors({});
             router.visit("/chart");
         } catch (error) {
+            console.log("API Error Details:", error.response?.data);
             console.error("Error saving user", error);
         }
     };
@@ -315,7 +322,7 @@ const Users = () => {
                         <InputFloating
                             label="Reporting Manager"
                             name="parent_id"
-                            value={formData.parent_id}
+                            value={reportingManager}
                             onChange={handleChange}
                             disabled
                         />
