@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('process_id')->constrained()->onDelete('cascade');
             $table->foreignId('approver_id')->nullable()->comment('approver_id is user id employee who assigned to this workflow')->constrained('users');
-            $table->foreignId('designation_id')->nullable()->comment('Get ID From Process Step Designation')->constrained('process_step_designations', 'id');
+            $table->foreignId('designation_id')->nullable()->comment('Get ID From Designation')->constrained('designations', 'id');
             $table->integer('order')->default(0)->comment('Step sequence in workflow');
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);

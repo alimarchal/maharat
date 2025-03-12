@@ -13,7 +13,6 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             StatusSeeder::class,
-            ProcessStepDesignationSeeder::class,
             DesignationSeeder::class,
             CurrencySeeder::class,
             CountrySeeder::class,
