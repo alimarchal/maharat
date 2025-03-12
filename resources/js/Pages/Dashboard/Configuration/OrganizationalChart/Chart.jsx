@@ -29,56 +29,70 @@ function OrganizationNode({
 
     return (
         <Card variant="outlined" className="org-node">
-        <div className="node-header">
-            {/* Left: Main Icon (Centered) */}
-            <div className="avatar">
-                <FontAwesomeIcon icon={isRoot ? faSitemap : faUser} color={isRoot ? "#009FDC" : "black"} />
+            <div className="node-header">
+                {/* Left: Main Icon (Centered) */}
+                <div className="avatar">
+                    <FontAwesomeIcon icon={isRoot ? faSitemap : faUser} color={isRoot ? "#009FDC" : "black"} />
+                </div>
+
+                {/* Right: Three Dots Menu */}
+                <IconButton size="small" className="menu-icon" onClick={handleClick}>
+                    <FontAwesomeIcon icon={faEllipsisV} />
+                </IconButton>
             </div>
 
-            {/* Right: Three Dots Menu */}
-            <IconButton size="small" className="menu-icon" onClick={handleClick}>
-                <FontAwesomeIcon icon={faEllipsisV} />
-            </IconButton>
-        </div>
-
-        {node.name ? (
-            <>
-                <Typography className="node-text font-bold">{node.department}</Typography>
-                <Typography className="node-text">{node.title}</Typography>
-                <Typography className="node-text">{node.name}</Typography>
-            </>
-        ) : (
-            <Button
-                startIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => router.visit('/users', { state: { nodeId: node.id } })}
-                sx={{ textTransform: "none", color: "#009FDC", fontSize: "0.85rem" }}
-            >
-                Add Employee Details
-            </Button>
-        )}
-
-        {hasChildren && (
-            <IconButton
-                size="small"
-                className="expand-icon"
-                onClick={onToggleExpand}
-            >
-                <FontAwesomeIcon icon={isExpanded ? faChevronUp : faChevronDown} />
-            </IconButton>
-        )}
-
-        <Menu open={Boolean(anchorEl)} anchorEl={anchorEl} onClose={handleClose}>
-            <MenuItem onClick={() => { onAddPosition(); handleClose(); }}>
-                Add Position
-            </MenuItem>
-            {!isRoot && (
-                <MenuItem onClick={() => { onDelete(); handleClose(); }}>
-                    Delete
-                </MenuItem>
+            {node.name ? (
+                <>
+                    <Typography className="node-text font-bold" style={{ color: "#009FDC" }}>
+                        {node.department}
+                    </Typography>
+                    <Typography className="node-text" style={{ color: "red" }}>
+                        {node.title}
+                    </Typography>
+                    <Typography className="node-text" style={{ color: "black" }}>
+                        {node.name}
+                    </Typography>
+                </>
+            ) : (
+                <Button
+                    startIcon={<FontAwesomeIcon icon={faPlus} />}
+                    onClick={() => {
+                        // Log the data being sent
+                        console.log("Sending to Users.jsx:", {
+                            hierarchy_level: node.hierarchy_level,
+                            parent_id: node.id
+                        });
+                            
+                        // Use query parameters instead of props
+                        router.visit(`/users?hierarchy_level=${node.hierarchy_level}&parent_id=${node.id}`);
+                    }}
+                    sx={{ textTransform: "none", color: "#009FDC", fontSize: "0.85rem" }}
+                >
+                    Add Employee
+                </Button>
             )}
-        </Menu>
-    </Card>
 
+            {hasChildren && (
+                <IconButton
+                    size="small"
+                    className="expand-icon"
+                    onClick={onToggleExpand}
+                >
+                    <FontAwesomeIcon icon={isExpanded ? faChevronUp : faChevronDown} />
+                </IconButton>
+            )}
+
+            <Menu open={Boolean(anchorEl)} anchorEl={anchorEl} onClose={handleClose}>
+                <MenuItem onClick={() => { onAddPosition(); handleClose(); }}>
+                    Add Position
+                </MenuItem>
+                {!isRoot && (
+                    <MenuItem onClick={() => { onDelete(); handleClose(); }}>
+                        Delete
+                    </MenuItem>
+                )}
+            </Menu>
+        </Card>
     );
 }
 
@@ -101,19 +115,56 @@ function OrgChartTree({
         }
     };
 
-    const handleAddPosition = () => {
-        if (!node.children) {
-            node.children = [];
+    const handleAddPosition = async () => {
+        try {
+            // Ensure the current node has an ID before proceeding
+            if (!node.id) {
+                console.error("Node ID is missing, cannot fetch parent data.");
+                return;
+            }
+    
+            // Fetch parent details from backend
+            const response = await axios.get(`/api/v1/users/${node.id}`);
+            const parentData = response.data.data;
+
+            if (!parentData || !parentData.id) {
+                console.error("Invalid parent data received from API:", parentData);
+                return;
+            }
+    
+            // Assign the fetched parent_id and increment hierarchy level
+            const parentId = parentData.id;
+            const nextLevel = parentData.hierarchy_level + 1;
+    
+            console.log("Adding position under parent:", {
+                parent_id: parentId,
+                hierarchy_level: nextLevel,
+            });
+    
+            // Ensure children array exists before pushing new node
+            if (!node.children) {
+                node.children = [];
+            }
+    
+            // Add a new child position with fetched parent data
+            node.children.push({
+                department: "",
+                title: "",
+                name: "",
+                id: parentId, // Temporary ID for frontend
+                hierarchy_level: nextLevel,
+                parent_id: parentId,
+                children: [],
+            });
+    
+            // Update the UI state
+            onUpdate();
+    
+        } catch (error) {
+            console.error("Error fetching parent data:", error);
         }
-        node.children.push({
-            department: "",  
-            title: "",       
-            name: "",        
-            id: `temp-${Date.now()}`, 
-            children: [],
-        });
-        onUpdate();
     };
+    
 
     const handleToggleExpand = () => {
         setIsExpanded(!isExpanded);

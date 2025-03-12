@@ -121,4 +121,4 @@ class UserHierarchyTest extends TestCase
         $response = $this->getJson("{$this->baseUrl}/users/hierarchy");
         $response->assertStatus(401);
     }
-}
+} 

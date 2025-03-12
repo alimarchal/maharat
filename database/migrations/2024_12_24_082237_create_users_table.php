@@ -15,7 +15,7 @@ return new class extends Migration
             Schema::create('users', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('parent_id')->nullable()->constrained('users')->nullOnDelete();
-                $table->unsignedInteger('hierarchy_level')->nullable()->default(null);
+                $table->unsignedBigInteger('hierarchy_level')->nullable()->default(null);
                 $table->foreignId('designation_id')->nullable()->constrained('designations')->nullOnDelete();
                 $table->foreignId('company_id')->nullable()->constrained('companies')->cascadeOnUpdate()->nullOnDelete();
                 $table->foreignId('department_id')->nullable()->constrained('departments')->cascadeOnUpdate()->nullOnDelete();

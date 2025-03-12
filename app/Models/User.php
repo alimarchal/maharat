@@ -134,7 +134,9 @@ class User extends Authenticatable
     public function updateSubordinateHierarchyLevels()
     {
         $this->children->each(function ($child) {
-            $child->hierarchy_level = $this->hierarchy_level + 1;
+            dump($this->hierarchy_level); // Debugging
+            $child->hierarchy_level = $this->hierarchy_level === null ? null : $this->hierarchy_level + 1;
+            dump($child->hierarchy_level); // Debugging
             $child->save();
             $child->updateSubordinateHierarchyLevels();
         });

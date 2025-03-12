@@ -191,8 +191,9 @@ class UserController extends Controller
         if ($user === null) {
             // Find the user with hierarchy_level = 0 and null parent_id
             $user = User::where('hierarchy_level', 0)
-                        ->whereNull('parent_id')
-                        ->first();
+                ->whereNull('parent_id')
+                ->whereHas('children') // Ensures the user has at least one child
+                ->first();
 
             // If no hierarchy level 0 user, try to find any root user
             if (!$user) {
