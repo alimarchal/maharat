@@ -20,6 +20,7 @@ return new class extends Migration
                 $table->foreignId('company_id')->nullable()->constrained('companies')->cascadeOnUpdate()->nullOnDelete();
                 $table->foreignId('department_id')->nullable()->constrained('departments')->cascadeOnUpdate()->nullOnDelete();
                 $table->foreignId('branch_id')->nullable()->constrained('branches')->cascadeOnUpdate()->nullOnDelete();
+                $table->string('employee_id')->unique()->nullable()->default(null);
                 $table->string('firstname')->nullable();
                 $table->string('lastname')->nullable();
                 $table->string('name');  // Full Name
@@ -49,7 +50,7 @@ return new class extends Migration
                 $table->timestamp('last_login_at')->nullable(); // Last login timestamp
                 $table->string('last_login_ip')->nullable();   // Last login IP address
 
-                $table->string('attachment')->nullable();
+                $table->string('profile_photo_path')->nullable();
                 $table->rememberToken();
                 $table->timestamps();
                 $table->softDeletes();

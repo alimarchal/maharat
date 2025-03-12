@@ -28,6 +28,7 @@ class StoreUserRequest extends FormRequest
             'company_id' => 'nullable|exists:companies,id',
             'department_id' => 'nullable|exists:departments,id',
             'branch_id' => 'nullable|exists:branches,id',
+            'employee_id' => 'nullable|unique:users,employee_id',
             'firstname' => 'nullable|string',
             'lastname' => 'nullable|string',
             'name' => 'required|string',
@@ -37,7 +38,7 @@ class StoreUserRequest extends FormRequest
             'mobile' => 'nullable|string|max:20',
             'is_salesman_linked' => 'nullable|string',
             'language' => 'nullable|string|max:10',
-            'attachment' => 'nullable|file|image|max:10240', // 10MB max
+            'profile_photo_path' => 'nullable|file|image|max:10240', // 10MB max
         ];
     }
 }

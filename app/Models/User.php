@@ -23,6 +23,7 @@ class User extends Authenticatable
         'company_id',
         'department_id',
         'branch_id',
+        'employee_id',
         'firstname',
         'lastname',
         'name',
@@ -40,7 +41,7 @@ class User extends Authenticatable
         'api_token',
         'is_active',
         'is_admin',
-        'attachment',
+        'profile_photo_path',
     ];
 
     protected $hidden = [
