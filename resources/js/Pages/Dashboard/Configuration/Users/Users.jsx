@@ -1,29 +1,85 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileCsv, faCamera } from "@fortawesome/free-solid-svg-icons";
 import SelectFloating from "../../../../Components/SelectFloating";
 import InputFloating from "../../../../Components/InputFloating";
 import axios from "axios";
+import { router, usePage } from '@inertiajs/react';
 
 const Users = () => {
-    const [formData, setFormData] = useState({
-        id: "",
-        username: "",
-        firstName: "",
-        lastName: "",
-        email: "",
-        extensionNumber: "",
-        mobileNumber: "",
-        photo: "",
-        designation: "",
-        department: "",
-        language: "",
-        employeeType: "",
-        description: "",
-        parent: "",
+    // Get props from Inertia page
+    const { props } = usePage();
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Extract hierarchy data from URL parameters
+    const hierarchy_level = urlParams.get('hierarchy_level') ? parseInt(urlParams.get('hierarchy_level')) : undefined;
+    const parent_id = urlParams.get('parent_id');
+
+    // Log the received information
+    console.log("URL Parameters:", {
+        raw_url_params: window.location.search,
+        hierarchy_level: hierarchy_level,
+        parent_id: parent_id
     });
 
+    const [formData, setFormData] = useState({
+        employee_id: "",
+        username: "",
+        first_name: "",
+        last_name: "",
+        email: "",
+        landline: "",
+        mobile: "",
+        photo: "",
+        designation_id: "",
+        department_id: "",
+        language: "",
+        employee_type: "",
+        description: "",
+        parent_id: parent_id || "", 
+        hierarchy_level: hierarchy_level !== undefined ? hierarchy_level : 0,
+    });
+
+    const [designations, setDesignations] = useState([]);
+    const [departments, setDepartments] = useState([]);
     const [errors, setErrors] = useState({});
+
+    // Fetch designations and departments on component mount
+    useEffect(() => {
+        const fetchDesignationsAndDepartments = async () => {
+            try {
+                const [designationsResponse, departmentsResponse] = await Promise.all([
+                    axios.get('/designations'),
+                    axios.get('/api/v1/departments'),
+                ]);
+
+                setDesignations(designationsResponse.data.data);
+                setDepartments(departmentsResponse.data.data);
+            } catch (error) {
+                console.error("Error fetching designations or departments:", error);
+            }
+        };
+
+        fetchDesignationsAndDepartments();
+    }, []);
+
+    // Update formData when props change
+    useEffect(() => {
+        console.log("useEffect triggered with URL params:", { parent_id, hierarchy_level });
+        
+        if (parent_id !== undefined || hierarchy_level !== undefined) {
+            console.log("Updating form data with new hierarchy information:", {
+                parent_id: parent_id,
+                hierarchy_level: hierarchy_level
+            });
+            
+            setFormData(prevData => ({
+                ...prevData,
+                parent_id: parent_id || prevData.parent_id,
+                hierarchy_level: hierarchy_level !== undefined ? hierarchy_level : prevData.hierarchy_level
+            }));
+        }
+    }, [parent_id, hierarchy_level]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -37,8 +93,7 @@ const Users = () => {
         let newErrors = {};
         if (!formData.username) newErrors.username = "Username is required.";
         if (!formData.email) newErrors.email = "Email is required.";
-        if (!formData.mobileNumber)
-            newErrors.mobileNumber = "Mobile number is required.";
+        if (!formData.mobile) newErrors.mobile = "Mobile number is required.";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -58,25 +113,48 @@ const Users = () => {
         if (!validateForm()) return;
 
         try {
-            await axios.post("/api/v1/users", formData);
+            // Combine first name and last name into a single name field
+            const name = `${formData.first_name} ${formData.last_name}`.trim();
+
+            // Prepare the data to be sent to the API
+            const userData = {
+                employee_id: formData.employee_id,
+                username: formData.username,
+                name: name,
+                email: formData.email,
+                landline: formData.landline,
+                mobile: formData.mobile,
+                designation_id: formData.designation_id,
+                department_id: formData.department_id,
+                language: formData.language,
+                employee_type: formData.employee_type,
+                description: formData.description,
+                parent_id: formData.parent_id,
+                hierarchy_level: formData.hierarchy_level,
+            };
+
+            console.log("Submitting user with hierarchy data:", userData);
+            
+            await axios.post("/api/v1/users", userData);
             alert("User added successfully!");
             setFormData({
-                id: "",
+                employee_id: "",
                 username: "",
-                firstName: "",
-                lastName: "",
+                first_name: "",
+                last_name: "",
                 email: "",
-                extensionNumber: "",
-                mobileNumber: "",
-                designation: "",
-                department: "",
+                landline: "",
+                mobile: "",
+                designation_id: "",
+                department_id: "",
                 language: "",
-                employeeType: "",
+                employee_type: "",
                 description: "",
-                parent: "",
+                parent_id: "",
+                hierarchy_level: 0,
             });
             setErrors({});
-            navigate("/chart");
+            router.visit("/chart");
         } catch (error) {
             console.error("Error saving user", error);
         }
@@ -85,64 +163,64 @@ const Users = () => {
     return (
         <div className="w-full">
             <div className="grid grid-cols-2 gap-4 items-start relative">
-            <div className="relative">
-                <h1 className="text-3xl font-bold text-[#2C323C]">
-                    User Management
-                </h1>
-                <p className="text-[#7D8086] text-xl mt-2 mb-8">
-                    Manage users and their account permissions here.
-                </p>
+                <div className="relative">
+                    <h1 className="text-3xl font-bold text-[#2C323C]">
+                        User Management
+                    </h1>
+                    <p className="text-[#7D8086] text-xl mt-2 mb-8">
+                        Manage users and their account permissions here.
+                    </p>
 
-                <div className="flex items-center gap-4 relative">
-                    <h2 className="text-2xl font-medium text-[#6E66AC] whitespace-nowrap">
-                        Add a User
-                    </h2>
-                    <div 
-                        className="h-[3px] absolute left-0"
-                        style={{
-                            background: "linear-gradient(to right, #9B9DA200, #9B9DA2)",
-                            width: "calc(100% + 16rem)", 
-                            marginLeft: "calc(100% - 26rem)" 
-                        }}
-                    ></div>
+                    <div className="flex items-center gap-4 relative">
+                        <h2 className="text-2xl font-medium text-[#6E66AC] whitespace-nowrap">
+                            Add a User
+                        </h2>
+                        <div 
+                            className="h-[3px] absolute left-0"
+                            style={{
+                                background: "linear-gradient(to right, #9B9DA200, #9B9DA2)",
+                                width: "calc(100% + 16rem)", 
+                                marginLeft: "calc(100% - 26rem)" 
+                            }}
+                        ></div>
+                    </div>
+                </div>
+
+                <div className="flex justify-end">
+                    <label className="border-2 border-gray-300 bg-white rounded-full w-40 h-40 flex items-center justify-center cursor-pointer relative shadow-md overflow-hidden mb-4">
+                        <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-white">
+                            {photo ? (
+                                <img
+                                    src={photo}
+                                    alt="Profile"
+                                    className="w-full h-full object-contain rounded-full"
+                                />
+                            ) : (
+                                <div className="flex flex-col items-center justify-center w-full h-full">
+                                    <FontAwesomeIcon icon={faCamera} className="text-gray-500 text-4xl mb-2" />
+                                    <span className="text-gray-700 text-sm">
+                                        Add Profile Picture
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                        <input
+                            type="file"
+                            name="photo"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            className="hidden"
+                        />
+                    </label>
                 </div>
             </div>
-
-            <div className="flex justify-end">
-                <label className="border-2 border-gray-300 bg-white rounded-full w-40 h-40 flex items-center justify-center cursor-pointer relative shadow-md overflow-hidden mb-4">
-                    <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-white">
-                        {photo ? (
-                            <img
-                                src={photo}
-                                alt="Profile"
-                                className="w-full h-full object-contain rounded-full"
-                            />
-                        ) : (
-                            <div className="flex flex-col items-center justify-center w-full h-full">
-                                <FontAwesomeIcon icon={faCamera} className="text-gray-500 text-4xl mb-2" />
-                                <span className="text-gray-700 text-sm">
-                                    Add Profile Picture
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                    <input
-                        type="file"
-                        name="photo"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        className="hidden"
-                    />
-                </label>
-            </div>
-        </div>
 
             <form onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <InputFloating
                         label="Maharat Employee ID"
-                        name="id"
-                        value={formData.id}
+                        name="employee_id"
+                        value={formData.employee_id}
                         onChange={handleChange}
                     />
                     <div>
@@ -162,14 +240,14 @@ const Users = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <InputFloating
                         label="First Name"
-                        name="firstName"
-                        value={formData.firstName}
+                        name="first_name"
+                        value={formData.first_name}
                         onChange={handleChange}
                     />
                     <InputFloating
                         label="Last Name"
-                        name="lastName"
-                        value={formData.lastName}
+                        name="last_name"
+                        value={formData.last_name}
                         onChange={handleChange}
                     />
                 </div>
@@ -190,58 +268,60 @@ const Users = () => {
                     </div>
                     <InputFloating
                         label="Extension Number"
-                        name="extensionNumber"
-                        value={formData.extensionNumber}
+                        name="landline"
+                        value={formData.landline}
                         onChange={handleChange}
                     />
                     <div>
                         <InputFloating
                             label="Mobile Number"
-                            name="mobileNumber"
-                            value={formData.mobileNumber}
+                            name="mobile"
+                            value={formData.mobile}
                             onChange={handleChange}
                         />
-                        {errors.mobileNumber && (
+                        {errors.mobile && (
                             <p className="text-red-500 text-sm mt-1">
-                                {errors.mobileNumber}
+                                {errors.mobile}
                             </p>
                         )}
                     </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
-                        <InputFloating
-                            label="Designation"
-                            name="designation"
-                            value={formData.designation}
+                        <SelectFloating
+                            label="Select Designation"
+                            name="designation_id"
+                            value={formData.designation_id}
                             onChange={handleChange}
+                            options={designations.map(designation => ({
+                                id: designation.id,
+                                label: designation.designation,
+                            }))}
                         />
                     </div>
                     <div>
                         <SelectFloating
-                            label="Department"
-                            name="department"
-                            value={formData.department}
+                            label="Select Department"
+                            name="department_id"
+                            value={formData.department_id}
                             onChange={handleChange}
-                            options={[
-                                { id: "hr", label: "HR" },
-                                { id: "finance", label: "Finance" },
-                                { id: "it", label: "IT" },
-                                { id: "marketing", label: "Marketing" },
-                                { id: "sales", label: "Sales" },
-                            ]}
+                            options={departments.map(department => ({
+                                id: department.id,
+                                label: department.name,
+                            }))}
                         />
                     </div>
                     <div>
                         <InputFloating
                             label="Reporting Manager"
-                            name="parent"
-                            value={formData.parent}
+                            name="parent_id"
+                            value={formData.parent_id}
                             onChange={handleChange}
+                            disabled
                         />
                     </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <InputFloating
                         label="Language"
                         name="language"
@@ -251,8 +331,8 @@ const Users = () => {
                     <div>
                         <SelectFloating
                             label="Employee Type"
-                            name="employeeType"
-                            value={formData.employeeType}
+                            name="employee_type"
+                            value={formData.employee_type}
                             onChange={handleChange}
                             options={[
                                 { id: "full-time", label: "Full-Time" },
@@ -262,7 +342,7 @@ const Users = () => {
                             ]}
                         />
                     </div>
-                    </div>
+                </div>
 
                 <div className="w-full">
                     <div className="relative w-full mb-2">

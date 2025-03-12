@@ -16,7 +16,7 @@ return new class extends Migration
                 $table->id();
                 $table->foreignId('parent_id')->nullable()->constrained('departments')->nullOnDelete();
                 $table->string('name');
-                $table->string('code')->unique();
+                $table->string('code')->nullable()->unique();
                 $table->boolean('is_active')->default(true);
                 $table->foreignId('company_id')->nullable()->constrained()->cascadeOnDelete();
                 $table->timestamps();

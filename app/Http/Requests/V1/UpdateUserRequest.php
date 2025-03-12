@@ -33,6 +33,7 @@ class UpdateUserRequest extends FormRequest
             'designation_id' => 'nullable|integer|exists:designations,id',
             'branch_id' => 'nullable|integer|exists:branches,id',
             'name' => 'sometimes|required|string|max:255',
+            'employee_id' => 'nullable|unique:users,employee_id',
             'email' => ['sometimes', 'required', 'email', Rule::unique('users')->ignore($this->user)],
             'password' => 'sometimes|required|string|min:8',
             'landline' => 'nullable|string|max:20',

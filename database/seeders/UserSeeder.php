@@ -34,7 +34,6 @@ class UserSeeder extends Seeder
             [
                 'name' => 'System Admin',
                 'password' => Hash::make('password'),
-                'hierarchy_level' => null,
             ]
         );
         $admin->assignRole('Admin');
@@ -45,7 +44,6 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Department Director',
                 'password' => Hash::make('password'),
-                'hierarchy_level' => null,
             ]
         );
         $director->assignRole('Director');
@@ -56,7 +54,6 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Team Manager',
                 'password' => Hash::make('password'),
-                'hierarchy_level' => null,
             ]
         );
         $manager->assignRole('Manager');
@@ -67,7 +64,6 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Team Supervisor',
                 'password' => Hash::make('password'),
-                'hierarchy_level' => null,
             ]
         );
         $supervisor->assignRole('Supervisor');
@@ -79,7 +75,7 @@ class UserSeeder extends Seeder
                 'name' => 'Alice Johnson',
                 'password' => Hash::make('password'),
                 'parent_id' => null,
-                'hierarchy_level' => null, // Ensure it remains NULL
+                'hierarchy_level' => 0, // Ensure it remains NULL
                 'designation_id' => $designationIds[0] ?? null,
                 'department_id' => $departmentIds[0] ?? null,
             ]

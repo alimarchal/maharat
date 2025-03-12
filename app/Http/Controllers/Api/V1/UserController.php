@@ -48,10 +48,10 @@ class UserController extends Controller
         $validated['password'] = Hash::make($validated['password']);
 
         // Handle attachment if present
-        if ($request->hasFile('attachment')) {
-            $file = $request->file('attachment');
-            $path = $file->store('attachments');
-            $validated['attachment'] = $path;
+        if ($request->hasFile('profile_photo_path')) {
+            $file = $request->file('profile_photo_path');
+            $path = $file->store('photos', 'public');
+            $validated['profile_photo_path'] = $path;
         }
 
         $user = User::create($validated);
@@ -64,7 +64,8 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        return (new UserResource($user))->additional(['hierarchy' => self::buildUserHierarchy($user)]);
+        return new UserResource($user);
+//        return (new UserResource($user))->additional(['hierarchy' => self::buildUserHierarchy($user)]);
     }
 
 
@@ -190,32 +191,33 @@ class UserController extends Controller
         if ($user === null) {
             // Find the user with hierarchy_level = 0 and null parent_id
             $user = User::where('hierarchy_level', 0)
-                        ->whereNull('parent_id')
-                        ->first();
-            
+                ->whereNull('parent_id')
+                ->whereHas('children') // Ensures the user has at least one child
+                ->first();
+
             // If no hierarchy level 0 user, try to find any root user
             if (!$user) {
                 $user = User::whereNull('parent_id')->first();
             }
-            
+
             // If still no root user found, use any user as root
             if (!$user) {
                 $user = User::first();
             }
         }
-        
+
         // Build the organogram data starting from this user
         if ($user) {
             $orgData = $this->buildCompleteOrganogram();
             return response()->json(['data' => $orgData]);
         }
-        
+
         return response()->json(['data' => [], 'message' => 'No users found']);
     }
 
     /**
      * Build a complete organogram structure from all users
-     * 
+     *
      * @return array
      */
     private function buildCompleteOrganogram(): array
@@ -225,41 +227,41 @@ class UserController extends Controller
         ->whereNull('parent_id')
         ->with(['designation', 'department'])
         ->first();
-    
+
         if (!$rootUser) {
             return [];
         }
-        
+
         // // Format the root node
         // $result = [
         //     'id' => $rootUser->id,
         //     'name' => $rootUser->name ?? 'N/A',
         //     'title' => $rootUser->designation ? $rootUser->designation->designation : 'N/A',
-        //     'department' => $rootUser->department ? $rootUser->department->name : 'N/A', 
+        //     'department' => $rootUser->department ? $rootUser->department->name : 'N/A',
         //     'email' => $rootUser->email,
         //     'level' => $rootUser->hierarchy_level,
         //     'image' => $rootUser->attachment,
         //     'children' => []
         // ];
-        
+
         // // Find all direct children of the root user
         // $directChildren = User::where('parent_id', $rootUser->id)
         // ->with(['designation', 'department'])
         // ->get();
-        
+
         // foreach ($directChildren as $child) {
         //     $result['children'][] = [
         //         'id' => $child->id,
         //         'name' => $child->name,
         //         'title' => $child->designation ? $child->designation->designation : 'N/A',
-        //         'department' => $child->department ? $child->department->name : 'N/A', 
+        //         'department' => $child->department ? $child->department->name : 'N/A',
         //         'email' => $child->email,
         //         'level' => $child->hierarchy_level,
         //         'image' => $child->attachment,
-        //         'children' => [] 
+        //         'children' => []
         //     ];
         // }
-        
+
         return $this->buildOrganogramData($rootUser);
     }
 

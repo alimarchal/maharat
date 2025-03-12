@@ -15,11 +15,12 @@ return new class extends Migration
             Schema::create('users', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('parent_id')->nullable()->constrained('users')->nullOnDelete();
-                $table->unsignedBigInteger('hierarchy_level')->nullable();
+                $table->unsignedBigInteger('hierarchy_level')->nullable()->default(null);
                 $table->foreignId('designation_id')->nullable()->constrained('designations')->nullOnDelete();
                 $table->foreignId('company_id')->nullable()->constrained('companies')->cascadeOnUpdate()->nullOnDelete();
                 $table->foreignId('department_id')->nullable()->constrained('departments')->cascadeOnUpdate()->nullOnDelete();
                 $table->foreignId('branch_id')->nullable()->constrained('branches')->cascadeOnUpdate()->nullOnDelete();
+                $table->string('employee_id')->unique()->nullable()->default(null);
                 $table->string('firstname')->nullable();
                 $table->string('lastname')->nullable();
                 $table->string('name');  // Full Name
@@ -49,7 +50,7 @@ return new class extends Migration
                 $table->timestamp('last_login_at')->nullable(); // Last login timestamp
                 $table->string('last_login_ip')->nullable();   // Last login IP address
 
-                $table->string('attachment')->nullable();
+                $table->string('profile_photo_path')->nullable();
                 $table->rememberToken();
                 $table->timestamps();
                 $table->softDeletes();

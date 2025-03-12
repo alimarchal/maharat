@@ -23,6 +23,7 @@ class User extends Authenticatable
         'company_id',
         'department_id',
         'branch_id',
+        'employee_id',
         'firstname',
         'lastname',
         'name',
@@ -40,7 +41,7 @@ class User extends Authenticatable
         'api_token',
         'is_active',
         'is_admin',
-        'attachment',
+        'profile_photo_path',
     ];
 
     protected $hidden = [
@@ -133,7 +134,9 @@ class User extends Authenticatable
     public function updateSubordinateHierarchyLevels()
     {
         $this->children->each(function ($child) {
-            $child->hierarchy_level = $this->hierarchy_level + 1;
+            dump($this->hierarchy_level); // Debugging
+            $child->hierarchy_level = $this->hierarchy_level === null ? null : $this->hierarchy_level + 1;
+            dump($child->hierarchy_level); // Debugging
             $child->save();
             $child->updateSubordinateHierarchyLevels();
         });

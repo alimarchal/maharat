@@ -17,9 +17,11 @@ class UserObserver
             if ($parent) {
                 $user->hierarchy_level = $parent->hierarchy_level + 1;
             }
-        } else {
-            $user->hierarchy_level = 0; // Top level
-        }
+        } 
+        
+        // else {
+        //     $user->hierarchy_level = null; // Top level
+        // }
     }
 
     /**
