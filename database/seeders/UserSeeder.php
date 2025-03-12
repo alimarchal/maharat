@@ -98,7 +98,7 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Charlie Davis',
                 'password' => Hash::make('password'),
-                'parent_id' => $bob->id,
+                'parent_id' => $alice->id,
                 'hierarchy_level' => 1,
                 'designation_id' => $designationIds[2] ?? null,
                 'department_id' => $departmentIds[2] ?? null,
@@ -110,7 +110,7 @@ class UserSeeder extends Seeder
             [
                 'name' => 'David Brown',
                 'password' => Hash::make('password'),
-                'parent_id' => $charlie->id, // Assign dynamically
+                'parent_id' => $bob->id, // Assign dynamically
                 'hierarchy_level' => 2,
                 'designation_id' => $designationIds[3] ?? null,
                 'department_id' => $departmentIds[3] ?? null,
@@ -122,7 +122,7 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Eva Smith',
                 'password' => Hash::make('password'),
-                'parent_id' => $david->id,
+                'parent_id' => $bob->id,
                 'hierarchy_level' => 2,
                 'designation_id' => $designationIds[4] ?? null,
                 'department_id' => $departmentIds[4] ?? null,
@@ -134,7 +134,7 @@ class UserSeeder extends Seeder
             [
                 'name' => 'John Doe',
                 'password' => Hash::make('password'),
-                'parent_id' => $eva->id,
+                'parent_id' => $charlie->id,
                 'hierarchy_level' => 2,
                 'designation_id' => $designationIds[4] ?? null,
                 'department_id' => $departmentIds[4] ?? null,
