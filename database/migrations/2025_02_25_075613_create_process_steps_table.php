@@ -14,20 +14,16 @@ return new class extends Migration
         Schema::create('process_steps', function (Blueprint $table) {
             $table->id();
             $table->foreignId('process_id')->constrained()->onDelete('cascade');
-            $table->foreignId('user_id')->comment('Employee assigned to this workflow step')->constrained('users');
+            $table->foreignId('approver_id')->nullable()->comment('approver_id is user id employee who assigned to this workflow')->constrained('users');
+            $table->foreignId('designation_id')->nullable()->comment('Get ID From Process Step Designation')->constrained('process_step_designations', 'id');
             $table->integer('order')->default(0)->comment('Step sequence in workflow');
-            //$table->string('name')->nullable()->comment('Step name like "Manager Approval", "Finance Review"');
             $table->text('description')->nullable();
-            // $table->text('conditions')->nullable()->comment('Conditional logic for approval');
-            // $table->enum('status', ['Pending', 'In Progress', 'Approved', 'Rejected', 'Skipped'])->default('Pending');
-            // $table->json('required_fields')->nullable()->comment('Fields that must be filled before proceeding');
             $table->boolean('is_active')->default(true);
             $table->integer('timeout_days')->nullable()->comment('Auto-expire after X days');
             $table->foreignId('created_by')->nullable()->constrained('users', 'id');
             $table->foreignId('updated_by')->nullable()->constrained('users', 'id');
             $table->timestamps();
             $table->softDeletes();
-
             $table->index(['process_id', 'order']);
         });
     }

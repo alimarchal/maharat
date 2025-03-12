@@ -24,13 +24,10 @@ class StoreProcessStepRequest extends FormRequest
     {
         return [
             'process_id' => ['required', 'exists:processes,id'],
-            'user_id' => ['required', 'exists:users,id'],
+            'approver_id' => ['nullable', 'exists:users,id'],
+            'designation_id' => ['nullable', 'exists:process_step_designations,id'],
             'order' => ['required', 'integer', 'min:0'],
-            //'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            //'conditions' => ['nullable', 'string'],
-            //'status' => ['sometimes', 'string', Rule::in(['Pending', 'In Progress', 'Approved', 'Rejected', 'Skipped'])],
-           // 'required_fields' => ['nullable', 'json'],
             'is_active' => ['sometimes', 'boolean'],
             'timeout_days' => ['nullable', 'integer', 'min:1'],
         ];

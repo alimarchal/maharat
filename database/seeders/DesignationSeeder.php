@@ -13,6 +13,12 @@ class DesignationSeeder extends Seeder
     public function run(): void
     {
         $designations = [
+            'Direct Manager',
+            'Department Director',
+            'Managing Director',
+            'Manager',
+            'Supervisor',
+            'Warehouse Manager',
             'Software Engineer',
             'Project Manager',
             'HR Specialist',
@@ -23,7 +29,7 @@ class DesignationSeeder extends Seeder
         foreach ($designations as $designation) {
             Designation::updateOrCreate(
                 ['designation' => $designation],
-                ['designation' => $designation]  
+                ['designation' => $designation]
             );
         }
     }

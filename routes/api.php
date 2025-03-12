@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\LedgerController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
 use App\Http\Controllers\Api\V1\MaterialRequestItemController;
+use App\Http\Controllers\Api\V1\MaterialRequestTransactionController;
 use App\Http\Controllers\Api\V1\PaymentOrderController;
 use App\Http\Controllers\Api\V1\PaymentOrderLogController;
 use App\Http\Controllers\Api\V1\PermissionController;
@@ -100,6 +101,11 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('material-requests', MaterialRequestController::class);
     // Material Request Items routes
     Route::apiResource('material-request-items', MaterialRequestItemController::class);
+    Route::apiResource('material-request-transactions', MaterialRequestTransactionController::class);
+
+
+
+
     // RFQ routes
     Route::apiResource('rfqs', RfqController::class);
     // RFQ Items routes
