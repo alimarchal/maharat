@@ -112,10 +112,10 @@ const Users = () => {
         const file = e.target.files[0];
         if (file) {
             setPhoto(file);
-            setPhotoPreview(URL.createObjectURL(file)); // Create preview URL
+            setPhotoPreview(URL.createObjectURL(file)); 
             setFormData((prevData) => ({
                 ...prevData,
-                photo: file, 
+                profile_photo_path: file, 
             }));
         }
     };
@@ -139,14 +139,14 @@ const Users = () => {
             formDataToSend.append("description", formData.description);
             formDataToSend.append("parent_id", formData.parent_id ? parseInt(formData.parent_id) : null);
             formDataToSend.append("hierarchy_level", formData.hierarchy_level);
-            formDataToSend.append("password", "defaultPassword"); // Change this as needed
-            
+            formDataToSend.append("password", "defaultPassword"); 
+    
             if (photo) {
-                formDataToSend.append("photo", photo); // Attach image file
+                formDataToSend.append("profile_photo_path", photo); 
             }
     
             console.log("Submitting user data:", formDataToSend);
-            
+    
             const response = await axios.post("/api/v1/users", formDataToSend, {
                 headers: {
                     "Content-Type": "multipart/form-data",
@@ -173,7 +173,8 @@ const Users = () => {
                 hierarchy_level: 0,
             });
     
-            setPhoto(null); // Reset photo
+            setPhoto(null); 
+            setPhotoPreview(null); 
             setErrors({});
             router.visit("/chart");
         } catch (error) {

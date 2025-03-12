@@ -50,7 +50,7 @@ class UserController extends Controller
         // Handle profile photo
         if ($request->hasFile('profile_photo_path')) {
             $file = $request->file('profile_photo_path');
-            $path = $file->store('photos', 'public'); 
+            $path = $file->store('profile_photos', 'public'); 
             $validated['profile_photo_path'] = asset("storage/$path"); 
         }
 

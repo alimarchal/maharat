@@ -38,7 +38,7 @@ class StoreUserRequest extends FormRequest
             'mobile' => 'nullable|string|max:20',
             'is_salesman_linked' => 'nullable|string',
             'language' => 'nullable|string|max:10',
-            'profile_photo_path' => 'nullable|file|image|max:10240', // 10MB max
+            'profile_photo_path' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240', // 10MB max
         ];
     }
 }
