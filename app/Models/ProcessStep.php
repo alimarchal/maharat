@@ -18,7 +18,7 @@ class ProcessStep extends Model
      */
     protected $fillable = [
         'process_id',
-        'user_id',
+        'approver_id',
         'designation_id',
         'order',
         'description',

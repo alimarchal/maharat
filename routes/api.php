@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Api\V1\BrandController;
+use App\Http\Controllers\Api\V1\BudgetController;
 use App\Http\Controllers\Api\V1\ChartOfAccountController;
 use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\CostCenterController;
@@ -232,6 +233,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('request-budgets', RequestBudgetController::class);
     Route::post('request-budgets/{id}/restore', [RequestBudgetController::class, 'restore']);
     Route::patch('request-budgets/{requestBudget}/status', [RequestBudgetController::class, 'updateStatus']);
+
+    Route::apiResource('budgets', BudgetController::class);
+    Route::post('budgets/{id}/restore', [BudgetController::class, 'restore']);
 
 
     // Maharat Invoice

@@ -24,7 +24,7 @@ class UpdateProcessStepRequest extends FormRequest
     {
         return [
             'process_id' => ['sometimes', 'exists:processes,id'],
-            'user_id' => ['sometimes', 'exists:users,id'],
+            'approver_id' => ['sometimes', 'exists:users,id'],
             'order' => ['sometimes', 'integer', 'min:0'],
             'name' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
