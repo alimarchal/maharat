@@ -19,23 +19,20 @@ class StatusController extends Controller
 {
     public function index(): JsonResponse|ResourceCollection
     {
-        try {
-            // Get all payment type statuses
-            $paymentTypes = Status::where('type', 'payment_type')
-                ->select('id', 'name')
-                ->get();
+        $statuses = QueryBuilder::for(Status::class)
+            ->allowedFilters(['created_at',AllowedFilter::exact('type')])
+            ->allowedSorts(StatusParameters::ALLOWED_SORTS)
+            ->paginate()
+            ->appends(request()->query());
 
+        if ($statuses->isEmpty()) {
             return response()->json([
-                'data' => $paymentTypes,
-                'message' => 'Statuses retrieved successfully'
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Error fetching statuses: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Failed to fetch statuses',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'No statuses found',
+                'data' => []
+            ], Response::HTTP_OK);
         }
+
+        return StatusResource::collection($statuses);
     }
 
     public function authorize(): bool
