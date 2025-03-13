@@ -21,8 +21,8 @@ const CompanyProfile = () => {
         license_number: "",
         iban_number: "",
         bank_name: "",
-        bank_number: "",
-        sabb_swift_code: "",
+        branch: "",
+        swift_code: "",
     });
 
     const [errors, setErrors] = useState({});
@@ -56,8 +56,8 @@ const CompanyProfile = () => {
                     license_number: company.license_number ?? "",
                     iban_number: company.iban_number ?? "",
                     bank_name: company.bank_name ?? "",
-                    bank_number: company.bank_number ?? "",
-                    sabb_swift_code: company.sabb_swift_code ?? "",
+                    branch: company.branch ?? "",
+                    swift_code: company.sabb_swift_code ?? "",
                 });
                 setCompanyId(company.id);
             }
@@ -107,10 +107,8 @@ const CompanyProfile = () => {
         if (!formData.iban_number)
             tempErrors.iban_number = "IBAN number is required";
         if (!formData.bank_name) tempErrors.bank_name = "Bank name is required";
-        if (!formData.bank_number)
-            tempErrors.bank_number = "Bank number is required";
-        if (!formData.sabb_swift_code)
-            tempErrors.sabb_swift_code = "SABB Swift Code is required";
+        if (!formData.swift_code)
+            tempErrors.swift_code = "Swift Code is required";
         setErrors(tempErrors);
         return Object.keys(tempErrors).length === 0;
     };
@@ -316,27 +314,22 @@ const CompanyProfile = () => {
                 </div>
                 <div>
                     <InputFloating
-                        label="Bank Number"
-                        name="bank_number"
-                        value={formData.bank_number}
+                        label="Branch"
+                        name="branch"
+                        value={formData.branch}
                         onChange={handleChange}
                     />
-                    {errors.bank_number && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.bank_number}
-                        </p>
-                    )}
                 </div>
                 <div>
                     <InputFloating
-                        label="SABB Swift Code"
-                        name="sabb_swift_code"
-                        value={formData.sabb_swift_code}
+                        label="Swift Code"
+                        name="swift_code"
+                        value={formData.swift_code}
                         onChange={handleChange}
                     />
-                    {errors.sabb_swift_code && (
+                    {errors.swift_code && (
                         <p className="text-red-500 text-sm mt-1">
-                            {errors.sabb_swift_code}
+                            {errors.swift_code}
                         </p>
                     )}
                 </div>
