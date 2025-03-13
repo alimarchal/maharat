@@ -358,7 +358,7 @@ export default function MainDashboard({ roles }) {
         {
             text: "Request a Budget",
             icon: faFileSignature,
-            onClick: () => router.visit("/request-budget"),
+            onClick: () => router.visit("/request-budgets"),
         },
     ];
 

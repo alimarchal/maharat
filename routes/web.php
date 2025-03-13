@@ -251,8 +251,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/budget/details/{id}', function () { 
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/ViewBudget']); 
     })->name('budget.view');
-    Route::get('/request-budget', function () { 
-        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/BudgetRequestForm']); 
+
+    Route::get('/request-budgets', function () { 
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/RequestBudgetTable']); 
+    })->name('budget.index');
+    Route::get('/request-budgets/create', function () { 
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/BudgetRequestForm']); 
     })->name('budget.create');
 
     Route::get('/material-requests', function () { 

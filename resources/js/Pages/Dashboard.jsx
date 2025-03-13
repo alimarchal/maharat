@@ -37,7 +37,7 @@ import ViewIncomeStatement from "./Dashboard/BudgetAndAccounts/IncomeStatement/V
 import BudgetTable from "./Dashboard/BudgetAndAccounts/Budget/BudgetTable";
 import ViewBudget from "./Dashboard/BudgetAndAccounts/Budget/ViewBudget";
 import ViewBalanceSheet from "./Dashboard/BudgetAndAccounts/BalanceSheet/ViewBalanceSheet";
-import BudgetRequestForm from "./Dashboard/BudgetAndAccounts/Budget/BudgetRequestForm";
+import BudgetRequestForm from "./Dashboard/BudgetAndAccounts/RequestABudget/BudgetRequestForm";
 import MaharatInvoicesTable from "./Dashboard/Finance/MaharatInvoices/MaharatInvoicesTable";
 import ApproveBudgetForm from "./Dashboard/MyTasks/ApproveBudgetRequest/ApproveBudgetForm";
 import SubCostCenterTable from "./Dashboard/BudgetAndAccounts/SubCostCenter/SubCostCenterTable";
@@ -50,6 +50,7 @@ import CustomersTable from "./Dashboard/Customers/CustomersTable";
 import CreateCustomer from "./Dashboard/Customers/CreateCustomers";
 import SuppliersTable from "./Dashboard/Suppliers/SuppliersTable";
 import CreateSuppliers from "./Dashboard/Suppliers/CreateSuppliers";
+import RequestBudgetTable from "./Dashboard/BudgetAndAccounts/RequestABudget/RequestBudgetTable";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -116,7 +117,9 @@ export default function Dashboard({ auth, page }) {
             return <BudgetTable />;
         if (page === "BudgetAndAccounts/Budget/ViewBudget")
             return <ViewBudget />;
-        if (page === "BudgetAndAccounts/Budget/BudgetRequestForm")
+        if (page === "BudgetAndAccounts/RequestABudget/RequestBudgetTable")
+            return <RequestBudgetTable />;
+        if (page === "BudgetAndAccounts/RequestABudget/BudgetRequestForm")
             return <BudgetRequestForm />;
         if (page === "Warehouse/ReceivedMaterialRequest/ReceivedMRsTable")
             return <ReceivedMRsTable />;
