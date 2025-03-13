@@ -126,7 +126,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     // Process step routes
     Route::apiResource('process-steps', ProcessStepController::class);
-    Route::get('process-steps/{processStep}/user/{user}', [ProcessStepController::class, 'getApproverIdViaDesignation']);
+    Route::get('process-steps/{processStep}/user/{user?}', [ProcessStepController::class, 'getApproverIdViaDesignation']);
     Route::patch('process-steps/{processStep}/status', [ProcessStepController::class, 'updateStatus']);
     Route::patch('process-steps/{processStep}/toggle-active', [ProcessStepController::class, 'toggleActive']);
     Route::post('process-steps/reorder', [ProcessStepController::class, 'reorder']);
