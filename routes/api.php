@@ -15,7 +15,6 @@ use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryTransactionController;
 use App\Http\Controllers\Api\V1\InventoryTransferController;
 use App\Http\Controllers\Api\V1\InvoiceController;
-use App\Http\Controllers\Api\V1\LedgerController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
 use App\Http\Controllers\Api\V1\MaterialRequestItemController;
 use App\Http\Controllers\Api\V1\MaterialRequestTransactionController;
@@ -28,6 +27,7 @@ use App\Http\Controllers\Api\V1\ProductCategoryController;
 use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\QuotationController;
 use App\Http\Controllers\Api\V1\QuotationDocumentController;
+use App\Http\Controllers\Api\V1\RequestBudgetController;
 use App\Http\Controllers\Api\V1\RfqController;
 use App\Http\Controllers\Api\V1\RfqItemController;
 use App\Http\Controllers\Api\V1\RoleController;
@@ -228,6 +228,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('fiscal-periods/{fiscalPeriod}/close', [FiscalPeriodController::class, 'close']);
     Route::post('fiscal-periods/{fiscalPeriod}/reopen', [FiscalPeriodController::class, 'reopen']);
     Route::apiResource('fiscal-periods', FiscalPeriodController::class);
+    // Request Budget Routes
+    Route::apiResource('request-budgets', RequestBudgetController::class);
+    Route::post('request-budgets/{id}/restore', [RequestBudgetController::class, 'restore']);
+    Route::patch('request-budgets/{requestBudget}/status', [RequestBudgetController::class, 'updateStatus']);
 
 
     // Maharat Invoice
