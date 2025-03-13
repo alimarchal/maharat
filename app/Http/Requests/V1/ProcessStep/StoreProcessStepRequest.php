@@ -25,7 +25,7 @@ class StoreProcessStepRequest extends FormRequest
         return [
             'process_id' => ['required', 'exists:processes,id'],
             'approver_id' => ['nullable', 'exists:users,id'],
-            'designation_id' => ['nullable', 'exists:process_step_designations,id'],
+            'designation_id' => ['nullable', 'exists:designations,id'],
             'order' => ['required', 'integer', 'min:0'],
             'description' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
