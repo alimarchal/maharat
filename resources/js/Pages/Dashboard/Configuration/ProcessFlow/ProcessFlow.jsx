@@ -14,28 +14,27 @@ const ProcessFlow = () => {
     const [processes, setProcesses] = useState([]);
     const [selectedProcess, setSelectedProcess] = useState(null);
     const [users, setUsers] = useState([]);
+    const [designations, setDesignations] = useState([]);
 
     useEffect(() => {
-        const fetchProcesses = async () => {
+        const fetchData = async () => {
             try {
-                const response = await axios.get("/api/v1/processes");
-                setProcesses(response.data.data);
+                const [processRes, usersRes, designationsRes] =
+                    await Promise.all([
+                        axios.get("/api/v1/processes"),
+                        axios.get("/api/v1/users"),
+                        axios.get("/api/v1/designations"),
+                    ]);
+                setProcesses(processRes.data.data);
+                setUsers(usersRes.data.data);
+                console.log("D:", designationsRes.data.data);
+                setDesignations(designationsRes.data.data);
             } catch (error) {
-                console.error("Error fetching processes:", error);
+                console.error("Error fetching data:", error);
             }
         };
 
-        const fetchUsers = async () => {
-            try {
-                const response = await axios.get("/api/v1/users");
-                setUsers(response.data.data);
-            } catch (error) {
-                console.error("Error fetching users:", error);
-            }
-        };
-
-        fetchProcesses();
-        fetchUsers();
+        fetchData();
     }, []);
 
     const handleProcessChange = async (e) => {
@@ -54,8 +53,8 @@ const ProcessFlow = () => {
                     setRows(
                         processSteps.map((step, index) => ({
                             id: index + 1,
-                            employee: step.user_id,
-                            designation: step.user_designation || "N/A",
+                            approver_id: step.approver_id || "",
+                            designation_id: step.designation_id || "",
                             taskDescription: step.description || "",
                             step_id: step.id,
                         }))
@@ -64,8 +63,8 @@ const ProcessFlow = () => {
                     setRows([
                         {
                             id: 1,
-                            employee: "",
-                            designation: "",
+                            approver_id: "",
+                            designation_id: "",
                             taskDescription: "",
                         },
                     ]);
@@ -75,8 +74,8 @@ const ProcessFlow = () => {
                 setRows([
                     {
                         id: 1,
-                        employee: "",
-                        designation: "",
+                        approver_id: "",
+                        designation_id: "",
                         taskDescription: "",
                     },
                 ]);
@@ -86,26 +85,35 @@ const ProcessFlow = () => {
         }
     };
 
-    const handleEmployeeChange = async (index, employeeId) => {
-        if (!employeeId) return;
+    const handleApproverChange = (index, value) => {
+        const updatedRows = [...rows];
 
-        try {
-            const response = await axios.get(`/api/v1/users/hierarchy/${employeeId}`);
-            const updatedRows = [...rows];
+        if (value.startsWith("user-")) {
             updatedRows[index] = {
                 ...updatedRows[index],
-                employee: Number(employeeId),
-                designation: response.data.designation || "N/A",
+                approver_id: Number(value.replace("user-", "")),
+                designation_id: "",
             };
-            setRows(updatedRows);
-        } catch (error) {
-            console.error("Error fetching employee designation:", error);
+        } else if (value.startsWith("designation-")) {
+            updatedRows[index] = {
+                ...updatedRows[index],
+                approver_id: "",
+                designation_id: Number(value.replace("designation-", "")),
+            };
+        } else {
+            updatedRows[index] = {
+                ...updatedRows[index],
+                approver_id: "",
+                designation_id: "",
+            };
         }
+
+        setRows(updatedRows);
     };
 
     const handleTaskDescriptionChange = (index, value) => {
         const updatedRows = [...rows];
-        updatedRows[index] = { ...updatedRows[index], taskDescription: value };
+        updatedRows[index].taskDescription = value;
         setRows(updatedRows);
     };
 
@@ -114,8 +122,8 @@ const ProcessFlow = () => {
             ...rows,
             {
                 id: rows.length + 1,
-                employee: "",
-                designation: "",
+                approver_id: "",
+                designation_id: "",
                 taskDescription: "",
             },
         ]);
@@ -123,16 +131,17 @@ const ProcessFlow = () => {
 
     const removeRow = async (index) => {
         const rowToDelete = rows[index];
-
-        const newRows = rows.filter((_, i) => i !== index);
+        const newRows = rows
+            .filter((_, i) => i !== index)
+            .map((row, i) => ({ ...row, id: i + 1 }));
         setRows(
             newRows.length > 0
-                ? newRows.map((row, i) => ({ ...row, id: i + 1 }))
+                ? newRows
                 : [
                       {
                           id: 1,
-                          employee: "",
-                          designation: "",
+                          approver_id: "",
+                          designation_id: "",
                           taskDescription: "",
                       },
                   ]
@@ -140,7 +149,9 @@ const ProcessFlow = () => {
 
         if (rowToDelete.step_id) {
             try {
-                await axios.delete(`/api/v1/process-steps/${rowToDelete.id}`);
+                await axios.delete(
+                    `/api/v1/process-steps/${rowToDelete.step_id}`
+                );
             } catch (error) {
                 alert("Failed to delete process step. Please try again.");
             }
@@ -154,24 +165,22 @@ const ProcessFlow = () => {
         }
 
         for (const row of rows) {
-            if (!row.employee || !row.taskDescription) {
+            if (
+                (!row.approver_id && !row.designation_id) ||
+                !row.taskDescription
+            ) {
                 alert("Please fill all fields for each row before submitting.");
                 return;
             }
         }
 
         try {
-            if (rows.some((row) => row.step_id)) {
-                await axios.delete(
-                    `/api/v1/process-steps/${selectedProcess.id}`
-                );
-            }
-
             const promises = rows.map((row, index) => {
                 return axios.post("/api/v1/process-steps", {
                     process_id: selectedProcess.id,
                     order: index + 1,
-                    user_id: row.employee,
+                    approver_id: row.approver_id || null,
+                    designation_id: row.designation_id || null,
                     description: row.taskDescription,
                 });
             });
@@ -246,9 +255,6 @@ const ProcessFlow = () => {
                                         </th>
                                         <th className="py-3 px-4">Approver</th>
                                         <th className="py-3 px-4">
-                                            Designation
-                                        </th>
-                                        <th className="py-3 px-4">
                                             Task Description
                                         </th>
                                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
@@ -266,25 +272,43 @@ const ProcessFlow = () => {
                                                 <SelectFloating
                                                     label="Approver"
                                                     name="approver"
-                                                    value={row.employee}
+                                                    value={
+                                                        row.approver_id !==
+                                                            "" &&
+                                                        row.approver_id !== null
+                                                            ? `user-${row.approver_id}`
+                                                            : row.designation_id !==
+                                                                  "" &&
+                                                              row.designation_id !==
+                                                                  null
+                                                            ? `designation-${row.designation_id}`
+                                                            : ""
+                                                    }
                                                     onChange={(e) =>
-                                                        handleEmployeeChange(
+                                                        handleApproverChange(
                                                             index,
-                                                            Number(
-                                                                e.target.value
-                                                            )
+                                                            e.target.value
                                                         )
                                                     }
-                                                    options={users.map(
-                                                        (user) => ({
-                                                            id: user.id,
-                                                            label: user.name,
-                                                        })
-                                                    )}
+                                                    options={[
+                                                        {
+                                                            id: "",
+                                                            label: "Select an approver",
+                                                        },
+                                                        ...users.map(
+                                                            (user) => ({
+                                                                id: `user-${user.id}`,
+                                                                label: user.name,
+                                                            })
+                                                        ),
+                                                        ...designations.map(
+                                                            (des) => ({
+                                                                id: `designation-${des.id}`,
+                                                                label: des.designation,
+                                                            })
+                                                        ),
+                                                    ]}
                                                 />
-                                            </td>
-                                            <td className="py-3 px-4 text-gray-700">
-                                                {row.designation || "N/A"}
                                             </td>
                                             <td className="py-3 px-4">
                                                 <input

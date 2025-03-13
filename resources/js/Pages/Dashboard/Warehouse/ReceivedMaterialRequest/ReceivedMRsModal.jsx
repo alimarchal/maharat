@@ -54,7 +54,7 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave }) => {
             <div className="bg-white p-8 rounded-2xl w-[90%] lg:w-1/2">
                 <div className="flex justify-between border-b pb-2 mb-4">
                     <h2 className="text-3xl font-bold text-[#2C323C]">
-                        Issue Request to
+                        Issue Material to
                     </h2>
                     <button
                         onClick={onClose}
@@ -143,7 +143,7 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave }) => {
                                 onChange={handleChange}
                                 options={[
                                     { id: "pending", label: "Pending" },
-                                    { id: "issued", label: "Issued" },
+                                    { id: "issued", label: "Issue Material" },
                                 ]}
                             />
                             {errors.status && (
