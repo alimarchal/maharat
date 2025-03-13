@@ -103,8 +103,8 @@ class UserSeeder extends Seeder
             ['email' => 'bob@example.com', 'firstname' => 'Bob', 'lastname' => 'Williams', 'name' => 'Bob Williams', 'parent_id' => 5, 'hierarchy_level' => 1],
             ['email' => 'charlie@example.com', 'firstname' => 'Charlie', 'lastname' => 'Davis', 'name' => 'Charlie Davis', 'parent_id' => 5, 'hierarchy_level' => 1],
             ['email' => 'david@example.com', 'firstname' => 'David', 'lastname' => 'Brown', 'name' => 'David Brown', 'parent_id' => 6, 'hierarchy_level' => 2],
-            ['email' => 'eva@example.com', 'firstname' => 'Eva', 'lastname' => 'Smith', 'name' => 'Eva Smith', 'parent_id' => 6, 'hierarchy_level' => 2],
-            ['email' => 'john@example.com', 'firstname' => 'John', 'lastname' => 'Doe', 'name' => 'John Doe', 'parent_id' => 7, 'hierarchy_level' => 2],
+            ['email' => 'eva@example.com', 'firstname' => 'Eva', 'lastname' => 'Smith', 'name' => 'Eva Smith', 'parent_id' => 7, 'hierarchy_level' => 2],
+            ['email' => 'john@example.com', 'firstname' => 'John', 'lastname' => 'Doe', 'name' => 'John Doe', 'parent_id' => 6, 'hierarchy_level' => 2],
             ['email' => 'seniorofficer@example.com', 'firstname' => 'Senior', 'lastname' => 'Officer', 'name' => 'Senior Officer', 'parent_id' => 8, 'hierarchy_level' => 3],
         ];
 
