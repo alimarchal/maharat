@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Process;
 use App\Models\ProcessStep;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -15,21 +14,15 @@ class ProcessStepSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::table('process_steps')->delete();
+        DB::table('process_steps')->delete(); 
 
-        // Ensure process exists
-        $process = Process::firstOrCreate([
-            'id' => 1
-        ], [
-            'title' => 'Sample Process',
-            'status' => 'Active', 
-            'is_active' => true,  
-            'created_by' => 1,
-            'updated_by' => 1,
-        ]);
+        $process = Process::where('title', 'Material Request')->first();
 
-        // Now insert process steps
-        $p = [
+        if (!$process) {
+            throw new \Exception('Process not found. Run ProcessSeeder first.');
+        }
+
+        $steps = [
             [
                 'process_id' => $process->id,
                 'designation_id' => 5,
@@ -72,8 +65,9 @@ class ProcessStepSeeder extends Seeder
             ],
         ];
 
-        foreach ($p as $pr) {
-            ProcessStep::create($pr);
+        foreach ($steps as $step) {
+            ProcessStep::create($step);
         }
     }
 }
+
