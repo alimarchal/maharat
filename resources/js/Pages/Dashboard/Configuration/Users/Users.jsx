@@ -93,14 +93,39 @@ const Users = () => {
             ...formData,
             [name]: type === "checkbox" ? checked : value,
         });
+
+        // Clear the error for the field being updated
+        setErrors((prevErrors) => ({
+            ...prevErrors,
+            [name]: "",
+        }));
     };
 
     const validateForm = () => {
         let newErrors = {};
+    
+        // Required fields
+        if (!formData.employee_id) newErrors.employee_id = "Employee ID is required.";
         if (!formData.username) newErrors.username = "Username is required.";
+        if (!formData.first_name) newErrors.first_name = "First name is required.";
+        if (!formData.last_name) newErrors.last_name = "Last name is required.";
         if (!formData.email) newErrors.email = "Email is required.";
         if (!formData.mobile) newErrors.mobile = "Mobile number is required.";
-
+        if (!formData.designation_id) newErrors.designation_id = "Designation is required.";
+        if (!formData.department_id) newErrors.department_id = "Department is required.";
+    
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (formData.email && !emailRegex.test(formData.email)) {
+            newErrors.email = "Email must be in a valid format (e.g., example@domain.com).";
+        }
+    
+        // Mobile number validation
+        const mobileRegex = /^05\d{8}$/;
+        if (formData.mobile && !mobileRegex.test(formData.mobile)) {
+            newErrors.mobile = "Mobile number must start with '05' and be 10 digits long.";
+        }
+    
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -128,7 +153,9 @@ const Users = () => {
             const formDataToSend = new FormData();
             formDataToSend.append("employee_id", formData.employee_id);
             formDataToSend.append("username", formData.username);
-            formDataToSend.append("name", `${formData.first_name} ${formData.last_name}`);
+            formDataToSend.append("first_name", formData.first_name); 
+            formDataToSend.append("last_name", formData.last_name);
+            formDataToSend.append("name", `${formData.first_name} ${formData.last_name}`); 
             formDataToSend.append("email", formData.email);
             formDataToSend.append("landline", formData.landline);
             formDataToSend.append("mobile", formData.mobile);
@@ -139,10 +166,10 @@ const Users = () => {
             formDataToSend.append("description", formData.description);
             formDataToSend.append("parent_id", formData.parent_id ? parseInt(formData.parent_id) : null);
             formDataToSend.append("hierarchy_level", formData.hierarchy_level);
-            formDataToSend.append("password", "defaultPassword"); 
+            formDataToSend.append("password", "defaultPassword");
     
             if (photo) {
-                formDataToSend.append("profile_photo_path", photo); 
+                formDataToSend.append("profile_photo_path", photo);
             }
     
             console.log("Submitting user data:", formDataToSend);
@@ -173,15 +200,18 @@ const Users = () => {
                 hierarchy_level: 0,
             });
     
-            setPhoto(null); 
-            setPhotoPreview(null); 
+            setPhoto(null);
+            setPhotoPreview(null);
             setErrors({});
             router.visit("/chart");
         } catch (error) {
             console.log("API Error Details:", error.response?.data);
+            if (error.response?.data?.errors) {
+                setErrors(error.response.data.errors); // Set backend validation errors
+            }
             console.error("Error saving user", error);
         }
-    };    
+    };
 
     return (
         <div className="w-full">
@@ -210,44 +240,49 @@ const Users = () => {
                 </div>
 
                 <div className="flex justify-end">
-                <label className="border-2 border-gray-300 bg-white rounded-full w-40 h-40 flex items-center justify-center cursor-pointer relative shadow-md overflow-hidden mb-4">
-                    <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-white">
-                        {photoPreview ? (
-                            <img 
+                    <label className="border-2 border-gray-300 bg-white rounded-full w-40 h-40 flex items-center justify-center cursor-pointer relative shadow-md overflow-hidden mb-4">
+                        <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-white">
+                            {photoPreview ? (
+                                <img 
                                 src={URL.createObjectURL(photo)} 
-                                alt="Profile" 
-                                className="w-[100%] h-[100%] object-cover rounded-full" 
-                            />
-                        ) : (
-                            <div className="flex flex-col items-center justify-center w-full h-full">
-                                <FontAwesomeIcon icon={faCamera} className="text-gray-500 text-4xl mb-2" />
-                                <span className="text-gray-700 text-sm">
-                                    Add Profile Picture
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                    <input
-                        type="file"
-                        name="photo"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        className="hidden"
-                    />
-                </label>
-            </div>
+                                    alt="Profile" 
+                                    className="w-[100%] h-[100%] object-cover rounded-full" 
+                                />
+                            ) : (
+                                <div className="flex flex-col items-center justify-center w-full h-full">
+                                    <FontAwesomeIcon icon={faCamera} className="text-gray-500 text-4xl mb-2" />
+                                    <span className="text-gray-700 text-sm">
+                                        Add Profile Picture
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                        <input
+                            type="file"
+                            name="photo"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            className="hidden"
+                        />
+                    </label>
+                </div>
 
             </div>
 
             <form onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="flex flex-col">
                     <InputFloating
                         label="Maharat Employee ID"
                         name="employee_id"
                         value={formData.employee_id}
                         onChange={handleChange}
                     />
-                    <div>
+                    {errors.employee_id && (
+                        <p className="text-red-500 text-sm mt-1">{errors.employee_id}</p>
+                    )}
+                </div>
+                <div className="flex flex-col">
                         <InputFloating
                             label="Username"
                             name="username"
@@ -262,18 +297,32 @@ const Users = () => {
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="flex flex-col">
                     <InputFloating
                         label="First Name"
                         name="first_name"
                         value={formData.first_name}
                         onChange={handleChange}
                     />
+                    {errors.first_name && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.first_name}
+                            </p>
+                        )}
+                        </div>
+                        <div className="flex flex-col">
                     <InputFloating
                         label="Last Name"
                         name="last_name"
                         value={formData.last_name}
                         onChange={handleChange}
                     />
+                    {errors.last_name && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.last_name}
+                            </p>
+                        )}
+                        </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
@@ -322,6 +371,11 @@ const Users = () => {
                                 label: designation.designation,
                             }))}
                         />
+                        {errors.designation_id && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.designation_id}
+                                </p>
+                            )}
                     </div>
                     <div>
                         <SelectFloating
@@ -334,6 +388,11 @@ const Users = () => {
                                 label: department.name,
                             }))}
                         />
+                        {errors.department_id && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.department_id}
+                                </p>
+                            )}
                     </div>
                     <div>
                         <InputFloating
