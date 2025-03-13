@@ -7,26 +7,17 @@ import axios from "axios";
 import { router, usePage } from '@inertiajs/react';
 
 const Users = () => {
-    // Get props from Inertia page
     const { props } = usePage();
     const urlParams = new URLSearchParams(window.location.search);
-    
-    // Extract hierarchy data from URL parameters
+    const id = urlParams.get('id'); // Get the ID from the URL
     const hierarchy_level = urlParams.get('hierarchy_level') ? parseInt(urlParams.get('hierarchy_level')) : undefined;
     const parent_id = urlParams.get('parent_id') ? parseInt(urlParams.get('parent_id')) : null;
-
-    // Log the received information
-    console.log("URL Parameters:", {
-        raw_url_params: window.location.search,
-        hierarchy_level: hierarchy_level,
-        parent_id: parent_id
-    });
 
     const [formData, setFormData] = useState({
         employee_id: "",
         username: "",
-        first_name: "",
-        last_name: "",
+        firstname: "",
+        lastname: "",
         email: "",
         landline: "",
         mobile: "",
@@ -36,7 +27,7 @@ const Users = () => {
         language: "",
         employee_type: "",
         description: "",
-        parent_id: parent_id ?? null, 
+        parent_id: parent_id ?? null,
         hierarchy_level: hierarchy_level !== undefined ? hierarchy_level : 0,
     });
 
@@ -44,21 +35,57 @@ const Users = () => {
     const [departments, setDepartments] = useState([]);
     const [reportingManager, setReportingManager] = useState("");
     const [errors, setErrors] = useState({});
+    const [isEditing, setIsEditing] = useState(false); // Track if we're editing an existing user
+    const [photo, setPhoto] = useState(null);
+    const [photoPreview, setPhotoPreview] = useState(null);
 
     // Fetch designations, departments, and reporting manager on component mount
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [designationsResponse, departmentsResponse, reportingManagerResponse] = await Promise.all([
+                const [designationsResponse, departmentsResponse] = await Promise.all([
                     axios.get('/api/v1/designations'),
                     axios.get('/api/v1/departments'),
-                    parent_id ? axios.get(`/api/v1/users/${parent_id}`) : Promise.resolve(null),
                 ]);
 
                 setDesignations(designationsResponse.data.data);
                 setDepartments(departmentsResponse.data.data);
 
-                if (reportingManagerResponse) {
+                // If an ID is present, fetch the user data for editing
+                if (id) {
+                    const userResponse = await axios.get(`/api/v1/users/${id}`);
+                    const userData = userResponse.data.data;
+
+                    setFormData({
+                        employee_id: userData.employee_id,
+                        username: userData.username,
+                        firstname: userData.firstname,
+                        lastname: userData.lastname,
+                        email: userData.email,
+                        landline: userData.landline,
+                        mobile: userData.mobile,
+                        photo: userData.photo,
+                        designation_id: userData.designation_id,
+                        department_id: userData.department_id,
+                        language: userData.language,
+                        employee_type: userData.employee_type,
+                        description: userData.description,
+                        parent_id: userData.parent_id,
+                        hierarchy_level: userData.hierarchy_level,
+                    });
+
+                    console.log("Fetched User Data:", userData);
+
+                    // Fetch reporting manager name
+                    if (userData.parent_id) {
+                        const reportingManagerResponse = await axios.get(`/api/v1/users/${userData.parent_id}`);
+                        setReportingManager(reportingManagerResponse.data.data.name);
+                    }
+
+                    setIsEditing(true); // Set editing mode to true
+                } else if (parent_id) {
+                    // Fetch reporting manager name for new user
+                    const reportingManagerResponse = await axios.get(`/api/v1/users/${parent_id}`);
                     setReportingManager(reportingManagerResponse.data.data.name);
                 }
             } catch (error) {
@@ -67,25 +94,7 @@ const Users = () => {
         };
 
         fetchData();
-    }, [parent_id]);
-
-    // Update formData when props change
-    useEffect(() => {
-        console.log("useEffect triggered with URL params:", { parent_id, hierarchy_level });
-        
-        if (parent_id !== undefined || hierarchy_level !== undefined) {
-            console.log("Updating form data with new hierarchy information:", {
-                parent_id: parent_id,
-                hierarchy_level: hierarchy_level
-            });
-            
-            setFormData(prevData => ({
-                ...prevData,
-                parent_id: parent_id || prevData.parent_id,
-                hierarchy_level: hierarchy_level !== undefined ? hierarchy_level : prevData.hierarchy_level
-            }));
-        }
-    }, [parent_id, hierarchy_level]);
+    }, [id, parent_id]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -103,112 +112,134 @@ const Users = () => {
 
     const validateForm = () => {
         let newErrors = {};
-    
+
         // Required fields
         if (!formData.employee_id) newErrors.employee_id = "Employee ID is required.";
         if (!formData.username) newErrors.username = "Username is required.";
-        if (!formData.first_name) newErrors.first_name = "First name is required.";
-        if (!formData.last_name) newErrors.last_name = "Last name is required.";
+        if (!formData.firstname) newErrors.firstname = "First name is required.";
+        if (!formData.lastname) newErrors.lastname = "Last name is required.";
         if (!formData.email) newErrors.email = "Email is required.";
         if (!formData.mobile) newErrors.mobile = "Mobile number is required.";
+        if (!formData.landline) newErrors.landline = "Landline (extension) is required.";
         if (!formData.designation_id) newErrors.designation_id = "Designation is required.";
         if (!formData.department_id) newErrors.department_id = "Department is required.";
-    
+
+        // Employee ID validation (must start with "MAH-" followed by 6 digits)
+        const employeeIdRegex = /^MAH-\d{6}$/;
+        if (formData.employee_id && !employeeIdRegex.test(formData.employee_id)) {
+            newErrors.employee_id = "Employee ID must start with 'MAH-' followed by 6 digits (e.g., MAH-123456).";
+        }
+
         // Email format validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (formData.email && !emailRegex.test(formData.email)) {
             newErrors.email = "Email must be in a valid format (e.g., example@domain.com).";
         }
-    
-        // Mobile number validation
+
+        // Mobile number validation (must start with '05' and be 10 digits long)
         const mobileRegex = /^05\d{8}$/;
         if (formData.mobile && !mobileRegex.test(formData.mobile)) {
             newErrors.mobile = "Mobile number must start with '05' and be 10 digits long.";
         }
-    
+
+        // Landline (extension) validation (must start with '011' followed by 7 digits)
+        const landlineRegex = /^011\d{7}$/;
+        if (formData.landline && !landlineRegex.test(formData.landline)) {
+            newErrors.landline = "Landline must start with '011' followed by 7 digits (e.g., 0111234567).";
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
-
-    const [photo, setPhoto] = useState(null);
-    const [photoPreview, setPhotoPreview] = useState(null); // To store the image preview
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
             setPhoto(file);
-            setPhotoPreview(URL.createObjectURL(file)); 
+            setPhotoPreview(URL.createObjectURL(file));
             setFormData((prevData) => ({
                 ...prevData,
-                profile_photo_path: file, 
+                profile_photo_path: file,
             }));
         }
     };
-  
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
     
         try {
             const formDataToSend = new FormData();
-            formDataToSend.append("employee_id", formData.employee_id);
-            formDataToSend.append("username", formData.username);
-            formDataToSend.append("first_name", formData.first_name); 
-            formDataToSend.append("last_name", formData.last_name);
-            formDataToSend.append("name", `${formData.first_name} ${formData.last_name}`); 
-            formDataToSend.append("email", formData.email);
-            formDataToSend.append("landline", formData.landline);
-            formDataToSend.append("mobile", formData.mobile);
-            formDataToSend.append("designation_id", formData.designation_id);
-            formDataToSend.append("department_id", formData.department_id);
-            formDataToSend.append("language", formData.language);
-            formDataToSend.append("employee_type", formData.employee_type);
-            formDataToSend.append("description", formData.description);
-            formDataToSend.append("parent_id", formData.parent_id ? parseInt(formData.parent_id) : null);
-            formDataToSend.append("hierarchy_level", formData.hierarchy_level);
-            formDataToSend.append("password", "defaultPassword");
-    
+            
+            // For debugging - log the raw formData before sending
+            console.log("FORM DATA BEFORE SUBMIT:", {
+                firstname: formData.firstname,
+                lastname: formData.lastname,
+                username: formData.username,
+                employee_id: formData.employee_id
+            });
+            
+            // Map the form fields explicitly and prevent empty fields
+            formDataToSend.append("firstname", formData.firstname || '');
+            formDataToSend.append("lastname", formData.lastname || '');
+            formDataToSend.append("name", `${formData.firstname} ${formData.lastname}`);
+            formDataToSend.append("email", formData.email || '');
+            formDataToSend.append("landline", formData.landline || '');
+            formDataToSend.append("mobile", formData.mobile || '');
+            formDataToSend.append("designation_id", formData.designation_id || '');
+            formDataToSend.append("department_id", formData.department_id || '');
+            formDataToSend.append("language", formData.language || '');
+            formDataToSend.append("employee_id", formData.employee_id || '');
+            formDataToSend.append("username", formData.username || '');
+            formDataToSend.append("parent_id", formData.parent_id || '');
+            formDataToSend.append("hierarchy_level", formData.hierarchy_level || 0);
+            
+            // Optional fields
+            if (formData.employee_type) formDataToSend.append("employee_type", formData.employee_type);
+            if (formData.description) formDataToSend.append("description", formData.description);
+            
+            // Append the photo if it exists
             if (photo) {
                 formDataToSend.append("profile_photo_path", photo);
             }
     
-            console.log("Submitting user data:", formDataToSend);
-    
-            const response = await axios.post("/api/v1/users", formDataToSend, {
+            // Make the PATCH request
+            const apiUrl = `/api/v1/users/${id}`;
+            console.log("Making PATCH request to:", apiUrl);
+            
+            // Try using a PUT request instead (since apiResource generates PUT)
+            // You can also try switching between PATCH and PUT to see if one works
+            let response = await axios.put(apiUrl, formDataToSend, {
                 headers: {
-                    "Content-Type": "multipart/form-data",
-                },
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                }
             });
-    
-            console.log("API Response:", response.data);
-            alert("User added successfully!");
-    
-            setFormData({
-                employee_id: "",
-                username: "",
-                first_name: "",
-                last_name: "",
-                email: "",
-                landline: "",
-                mobile: "",
-                designation_id: "",
-                department_id: "",
-                language: "",
-                employee_type: "",
-                description: "",
-                parent_id: "",
-                hierarchy_level: 0,
+            
+            console.log("Response Status:", response.status);
+            console.log("Response Data:", response.data);
+            
+            // Optional: Add a small delay before fetching updated data
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Fetch the user data again to confirm update
+            const refreshResponse = await axios.get(apiUrl);
+            console.log("Fresh user data after update:", refreshResponse.data);
+            
+            // Compare original vs updated data
+            console.log("CHANGES VERIFICATION:", {
+                'original_lastname': formData.lastname,
+                'updated_lastname': refreshResponse.data.data.lastname,
+                'original_username': formData.username,
+                'updated_username': refreshResponse.data.data.username,
+                'original_employee_id': formData.employee_id,
+                'updated_employee_id': refreshResponse.data.data.employee_id
             });
-    
-            setPhoto(null);
-            setPhotoPreview(null);
-            setErrors({});
+            
+            alert(isEditing ? "User updated successfully!" : "User added successfully!");
             router.visit("/chart");
         } catch (error) {
-            console.log("API Error Details:", error.response?.data);
-            if (error.response?.data?.errors) {
-                setErrors(error.response.data.errors); // Set backend validation errors
-            }
+            console.log("API Error Details:", error);
             console.error("Error saving user", error);
         }
     };
@@ -226,14 +257,14 @@ const Users = () => {
 
                     <div className="flex items-center gap-4 relative">
                         <h2 className="text-2xl font-medium text-[#6E66AC] whitespace-nowrap">
-                            Add a User
+                            {isEditing ? "Edit User" : "Add a User"}
                         </h2>
-                        <div 
+                        <div
                             className="h-[3px] absolute left-0"
                             style={{
                                 background: "linear-gradient(to right, #9B9DA200, #9B9DA2)",
-                                width: "calc(100% + 16rem)", 
-                                marginLeft: "calc(100% - 26rem)" 
+                                width: "calc(100% + 16rem)",
+                                marginLeft: "calc(100% - 26rem)"
                             }}
                         ></div>
                     </div>
@@ -243,10 +274,10 @@ const Users = () => {
                     <label className="border-2 border-gray-300 bg-white rounded-full w-40 h-40 flex items-center justify-center cursor-pointer relative shadow-md overflow-hidden mb-4">
                         <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-white">
                             {photoPreview ? (
-                                <img 
-                                src={URL.createObjectURL(photo)} 
-                                    alt="Profile" 
-                                    className="w-[100%] h-[100%] object-cover rounded-full" 
+                                <img
+                                    src={photoPreview}
+                                    alt="Profile"
+                                    className="w-[100%] h-[100%] object-cover rounded-full"
                                 />
                             ) : (
                                 <div className="flex flex-col items-center justify-center w-full h-full">
@@ -266,7 +297,6 @@ const Users = () => {
                         />
                     </label>
                 </div>
-
             </div>
 
             <form onSubmit={handleSubmit}>
@@ -300,26 +330,26 @@ const Users = () => {
                 <div className="flex flex-col">
                     <InputFloating
                         label="First Name"
-                        name="first_name"
-                        value={formData.first_name}
+                        name="firstname"
+                        value={formData.firstname}
                         onChange={handleChange}
                     />
-                    {errors.first_name && (
+                    {errors.firstname && (
                             <p className="text-red-500 text-sm mt-1">
-                                {errors.first_name}
+                                {errors.firstname}
                             </p>
                         )}
                         </div>
                         <div className="flex flex-col">
                     <InputFloating
                         label="Last Name"
-                        name="last_name"
-                        value={formData.last_name}
+                        name="lastname"
+                        value={formData.lastname}
                         onChange={handleChange}
                     />
-                    {errors.last_name && (
+                    {errors.lastname && (
                             <p className="text-red-500 text-sm mt-1">
-                                {errors.last_name}
+                                {errors.lastname}
                             </p>
                         )}
                         </div>
@@ -339,12 +369,19 @@ const Users = () => {
                             </p>
                         )}
                     </div>
+                    <div>
                     <InputFloating
                         label="Extension Number"
                         name="landline"
                         value={formData.landline}
                         onChange={handleChange}
                     />
+                    {errors.username && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.username}
+                            </p>
+                        )}
+                    </div>
                     <div>
                         <InputFloating
                             label="Mobile Number"

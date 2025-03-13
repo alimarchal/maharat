@@ -8,7 +8,7 @@ use App\Http\Controllers\PasswordResetLinkController;
 use App\Models\Status;
 use App\Http\Controllers\StatusController;
 use App\Http\Controllers\UnitController;
-use App\Http\Controllers\ProductCategoryController;
+use App\Http\Controllers\Api\V1\ProductCategoryController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\RFQController;
 use App\Models\Quotation;

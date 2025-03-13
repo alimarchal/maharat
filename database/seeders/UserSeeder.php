@@ -19,7 +19,6 @@ class UserSeeder extends Seeder
         $departmentIds = Department::pluck('id')->toArray();
         $designationIds = Designation::pluck('id')->toArray();
 
-        // Ensure departments and designations exist before proceeding
         if (empty($departmentIds)) {
             throw new \Exception("No departments found! Run DepartmentSeeder first.");
         }
@@ -28,11 +27,23 @@ class UserSeeder extends Seeder
             throw new \Exception("No designations found! Run DesignationSeeder first.");
         }
 
+        // Helper functions
+        $generateEmployeeId = fn() => 'MAH-' . str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
+        $generateLandline = fn() => '011' . mt_rand(1000000, 9999999);
+        $generateMobile = fn() => '05' . mt_rand(10000000, 99999999);
+        $generateUsername = fn($name) => strtolower(str_replace(' ', '_', $name));
+
         // Create Admin
         $admin = User::firstOrCreate(
             ['email' => 'admin@example.com'],
             [
                 'name' => 'Sami Al Musalli',
+                'firstname' => 'Sami',
+                'lastname' => 'Al Musalli',
+                'username' => $generateUsername('Sami Al Musalli'),
+                'employee_id' => $generateEmployeeId(),
+                'landline' => $generateLandline(),
+                'mobile' => $generateMobile(),
                 'password' => Hash::make('password'),
             ]
         );
@@ -43,6 +54,12 @@ class UserSeeder extends Seeder
             ['email' => 'director@example.com'],
             [
                 'name' => 'Department Director',
+                'firstname' => 'Department',
+                'lastname' => 'Director',
+                'username' => $generateUsername('Department Director'),
+                'employee_id' => $generateEmployeeId(),
+                'landline' => $generateLandline(),
+                'mobile' => $generateMobile(),
                 'password' => Hash::make('password'),
             ]
         );
@@ -53,6 +70,12 @@ class UserSeeder extends Seeder
             ['email' => 'manager@example.com'],
             [
                 'name' => 'Team Manager',
+                'firstname' => 'Team',
+                'lastname' => 'Manager',
+                'username' => $generateUsername('Team Manager'),
+                'employee_id' => $generateEmployeeId(),
+                'landline' => $generateLandline(),
+                'mobile' => $generateMobile(),
                 'password' => Hash::make('password'),
             ]
         );
@@ -63,94 +86,47 @@ class UserSeeder extends Seeder
             ['email' => 'supervisor@example.com'],
             [
                 'name' => 'Team Supervisor',
+                'firstname' => 'Team',
+                'lastname' => 'Supervisor',
+                'username' => $generateUsername('Team Supervisor'),
+                'employee_id' => $generateEmployeeId(),
+                'landline' => $generateLandline(),
+                'mobile' => $generateMobile(),
                 'password' => Hash::make('password'),
             ]
         );
         $supervisor->assignRole('Supervisor');
 
-        // Create fixed users
-        $alice = User::firstOrCreate(
-            ['email' => 'alice@example.com'],
-            [
-                'name' => 'Alice Johnson',
-                'password' => Hash::make('password'),
-                'parent_id' => null,
-                'hierarchy_level' => 0, // Ensure it remains NULL
-                'designation_id' => $designationIds[0] ?? null,
-                'department_id' => $departmentIds[0] ?? null,
-            ]
-        );
+        // Fixed Users
+        $users = [
+            ['email' => 'alice@example.com', 'firstname' => 'Alice', 'lastname' => 'Johnson', 'name' => 'Alice Johnson', 'parent_id' => null, 'hierarchy_level' => 0],
+            ['email' => 'bob@example.com', 'firstname' => 'Bob', 'lastname' => 'Williams', 'name' => 'Bob Williams', 'parent_id' => 5, 'hierarchy_level' => 1],
+            ['email' => 'charlie@example.com', 'firstname' => 'Charlie', 'lastname' => 'Davis', 'name' => 'Charlie Davis', 'parent_id' => 5, 'hierarchy_level' => 1],
+            ['email' => 'david@example.com', 'firstname' => 'David', 'lastname' => 'Brown', 'name' => 'David Brown', 'parent_id' => 6, 'hierarchy_level' => 2],
+            ['email' => 'eva@example.com', 'firstname' => 'Eva', 'lastname' => 'Smith', 'name' => 'Eva Smith', 'parent_id' => 6, 'hierarchy_level' => 2],
+            ['email' => 'john@example.com', 'firstname' => 'John', 'lastname' => 'Doe', 'name' => 'John Doe', 'parent_id' => 7, 'hierarchy_level' => 2],
+            ['email' => 'seniorofficer@example.com', 'firstname' => 'Senior', 'lastname' => 'Officer', 'name' => 'Senior Officer', 'parent_id' => 8, 'hierarchy_level' => 3],
+        ];
 
-        $bob = User::firstOrCreate(
-            ['email' => 'bob@example.com'],
-            [
-                'name' => 'Bob Williams',
-                'password' => Hash::make('password'),
-                'parent_id' => $alice->id, // Assign dynamically
-                'hierarchy_level' => 1,
-                'designation_id' => $designationIds[1] ?? null,
-                'department_id' => $departmentIds[1] ?? null,
-            ]
-        );
+        foreach ($users as $data) {
 
-        $charlie = User::firstOrCreate(
-            ['email' => 'charlie@example.com'],
-            [
-                'name' => 'Charlie Davis',
-                'password' => Hash::make('password'),
-                'parent_id' => $alice->id,
-                'hierarchy_level' => 1,
-                'designation_id' => $designationIds[2] ?? null,
-                'department_id' => $departmentIds[2] ?? null,
-            ]
-        );
-
-        $david = User::firstOrCreate(
-            ['email' => 'david@example.com'],
-            [
-                'name' => 'David Brown',
-                'password' => Hash::make('password'),
-                'parent_id' => $bob->id, // Assign dynamically
-                'hierarchy_level' => 2,
-                'designation_id' => $designationIds[3] ?? null,
-                'department_id' => $departmentIds[3] ?? null,
-            ]
-        );
-
-        $eva = User::firstOrCreate(
-            ['email' => 'eva@example.com'],
-            [
-                'name' => 'Eva Smith',
-                'password' => Hash::make('password'),
-                'parent_id' => $bob->id,
-                'hierarchy_level' => 2,
-                'designation_id' => $designationIds[4] ?? null,
-                'department_id' => $departmentIds[4] ?? null,
-            ]
-        );
-
-        $john = User::firstOrCreate(
-            ['email' => 'john@example.com'],
-            [
-                'name' => 'John Doe',
-                'password' => Hash::make('password'),
-                'parent_id' => $charlie->id,
-                'hierarchy_level' => 2,
-                'designation_id' => $designationIds[4] ?? null,
-                'department_id' => $departmentIds[4] ?? null,
-            ]
-        );
-
-        // Normal User Check The Process Step for getApproverIdViaDesignation
-        $officer = User::firstOrCreate(
-            ['email' => 'officer@example.com'],
-            [
-                'name' => 'Officer',
-                'password' => Hash::make('password'),
-                'parent_id' => $john->id,
-                'designation_id' => $designationIds[6] ?? null,
-                'department_id' => $departmentIds[4] ?? null,
-            ]
-        );
+            User::firstOrCreate(
+                ['email' => $data['email']],
+                [
+                    'name' => $data['name'],
+                    'firstname' => $data['firstname'],
+                    'lastname' => $data['lastname'],
+                    'username' => $generateUsername($data['name']),
+                    'employee_id' => $generateEmployeeId(),
+                    'landline' => $generateLandline(),
+                    'mobile' => $generateMobile(),
+                    'password' => Hash::make('password'),
+                    'parent_id' => $data['parent_id'] ?? null,
+                    'hierarchy_level' => $data['hierarchy_level'] ?? null,
+                    'designation_id' => $designationIds[array_rand($designationIds)] ?? null,
+                    'department_id' => $departmentIds[array_rand($departmentIds)] ?? null,
+                ]
+            );
+        }
     }
 }

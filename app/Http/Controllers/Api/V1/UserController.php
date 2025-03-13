@@ -74,26 +74,52 @@ class UserController extends Controller
      */
     public function update(UpdateUserRequest $request, User $user)
     {
+        // Log request info
+        \Log::info("Update request received for user ID: {$user->id}", [
+            'user_original' => $user->toArray(),
+            'request_data' => $request->all(),
+        ]);
+        
+        // Validate the request 
         $validated = $request->validated();
-
-        if (isset($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
+        \Log::info("Validated data:", $validated);
+        
+        if (empty($validated)) {
+            \Log::warning("Empty validated data - no fields passed validation!");
+            return response()->json(['error' => 'No valid fields to update'], 422);
         }
-
-        // Handle file upload first
-        if ($request->hasFile('attachment')) {
-            // Remove old file if it exists
-            if ($user->attachment && Storage::disk('public')->exists($user->attachment)) {
-                Storage::disk('public')->delete($user->attachment);
+        
+        // Manually check for specific fields
+        if (isset($validated['lastname'])) {
+            \Log::info("Lastname will be changed from '{$user->lastname}' to '{$validated['lastname']}'");
+        }
+        
+        if (isset($validated['username'])) {
+            \Log::info("Username will be changed from '{$user->username}' to '{$validated['username']}'");
+        }
+        
+        // Try direct update
+        try {
+            $result = $user->update($validated);
+            \Log::info("Update operation result: " . ($result ? "Success" : "Failed"));
+            
+            // Refresh and check if data was actually updated
+            $user->refresh();
+            \Log::info("User data after update:", $user->toArray());
+            
+            // Manually check if fields were updated
+            if (isset($validated['lastname']) && $user->lastname !== $validated['lastname']) {
+                \Log::error("Database update failed - lastname was not updated!");
             }
-
-            $path = $request->file('attachment')->store('user-profiles', 'public');
-            $validated['attachment'] = $path; // Include path in the data being updated
+            
+            return new UserResource($user);
+        } catch (\Exception $e) {
+            \Log::error("Exception during update: " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
-
-        $user->update($validated);
-
-        return new UserResource($user);
     }
     /**
      * Remove the specified resource from storage.
@@ -104,7 +130,6 @@ class UserController extends Controller
 
         return response()->noContent();
     }
-
 
     /**
      * Get the hierarchical structure under a user
