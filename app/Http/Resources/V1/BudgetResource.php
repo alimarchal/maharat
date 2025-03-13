@@ -5,7 +5,7 @@ namespace App\Http\Resources\V1;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class ProcessStepResource extends JsonResource
+class BudgetResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -16,22 +16,24 @@ class ProcessStepResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'process_id' => $this->process_id,
-            //'user_id' => $this->approver_id,
-            'approver_id' => $this->approver_id, // get approver id here from up line
-            'designation_id' => $this->designation_id,
-            'order' => $this->order,
+            'fiscal_period_id' => $this->fiscal_period_id,
+            'department_id' => $this->department_id,
+            'cost_center_id' => $this->cost_center_id,
             'description' => $this->description,
-            'is_active' => $this->is_active,
-            'timeout_days' => $this->timeout_days,
+            'total_revenue_planned' => $this->total_revenue_planned,
+            'total_revenue_actual' => $this->total_revenue_actual,
+            'total_expense_planned' => $this->total_expense_planned,
+            'total_expense_actual' => $this->total_expense_actual,
+            'status' => $this->status,
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
 
             // Include related resources when loaded
-            'process' => new ProcessResource($this->whenLoaded('process')),
-            'user' => new UserResource($this->whenLoaded('user')),
+            'fiscal_period' => new FiscalPeriodResource($this->whenLoaded('fiscalPeriod')),
+            'department' => new DepartmentResource($this->whenLoaded('department')),
+            'cost_center' => new CostCenterResource($this->whenLoaded('costCenter')),
             'creator' => new UserResource($this->whenLoaded('creator')),
             'updater' => new UserResource($this->whenLoaded('updater')),
         ];

@@ -13,6 +13,8 @@ return new class extends Migration
     {
         Schema::create('request_budgets', function (Blueprint $table) {
             $table->id();
+
+            $table->foreignId('budget_id')->nullable()->constrained('budgets', 'id')->comment('Reference to the approved budget that resulted from this request');
             $table->foreignId('fiscal_period_id')->nullable()->comment('fiscal_periods is actual year')->constrained('fiscal_periods', 'id');
             $table->foreignId('department_id')->nullable()->constrained('departments', 'id');
             $table->foreignId('cost_center_id')->nullable()->constrained('cost_centers', 'id');

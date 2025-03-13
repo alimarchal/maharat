@@ -20,8 +20,6 @@ class CompanySeeder extends Seeder
                 'contact_number' => '+966112233445',
                 'country' => 'Saudi Arabia',
                 'city' => 'Riyadh',
-                'currency' => 'SAR',
-                'timezone' => 'UTC+03:00',
             ],
             [
                 'name' => 'Beta Solutions',
@@ -30,8 +28,6 @@ class CompanySeeder extends Seeder
                 'contact_number' => '+966556677889',
                 'country' => 'Saudi Arabia',
                 'city' => 'Jeddah',
-                'currency' => 'SAR',
-                'timezone' => 'UTC+03:00',
             ],
             [
                 'name' => 'Gamma Corp',
@@ -40,8 +36,6 @@ class CompanySeeder extends Seeder
                 'contact_number' => '+966998877665',
                 'country' => 'Saudi Arabia',
                 'city' => 'Dammam',
-                'currency' => 'SAR',
-                'timezone' => 'UTC+03:00',
             ],
             [
                 'name' => 'Delta Enterprises',
@@ -50,8 +44,6 @@ class CompanySeeder extends Seeder
                 'contact_number' => '+966334455667',
                 'country' => 'Saudi Arabia',
                 'city' => 'Medina',
-                'currency' => 'SAR',
-                'timezone' => 'UTC+03:00',
             ],
             [
                 'name' => 'Epsilon Industries',
@@ -60,8 +52,6 @@ class CompanySeeder extends Seeder
                 'contact_number' => '+966112244668',
                 'country' => 'Saudi Arabia',
                 'city' => 'Mecca',
-                'currency' => 'SAR',
-                'timezone' => 'UTC+03:00',
             ],
         ];
 

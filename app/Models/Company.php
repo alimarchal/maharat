@@ -10,53 +10,27 @@ class Company extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $table = 'companies';
-
     protected $fillable = [
         'name',
-        'website',
         'name_ar',
         'email',
         'contact_number',
-        'fax',
+        'address',
+        'website',
         'country',
         'city',
-        'states_provinces',
-        'district',
         'postal_code',
-        'street_name',
-        'additional_street',
-        'building_number',
-        'additional_number',
-        'short_address',
-        'business_category',
-        'id_type',
-        'id_number',
+        'bank',
+        'branch',
+        'swift',
+        'account_name',
+        'account_no',
+        'iban',
+        'license_no',
+        'var',
+        'cr_no',
         'logo_path',
         'stamp_path',
-        'fiscal_year_start',
-        'fiscal_year_end',
-        'price_decimals',
-        'quantity_decimals',
-        'amount_decimals',
-        'gazt_amount_decimals',
-        'currency',
-        'timezone',
-        'session_expired_time',
-        'stop_login',
-        'loyalty_use_phone_as_card',
-        'zatca_environment',
-    ];
-
-    protected $casts = [
-        'fiscal_year_start' => 'date',
-        'fiscal_year_end' => 'date',
-        'price_decimals' => 'decimal:2',
-        'quantity_decimals' => 'decimal:2',
-        'amount_decimals' => 'decimal:2',
-        'gazt_amount_decimals' => 'decimal:2',
-        'stop_login' => 'boolean',
-        'loyalty_use_phone_as_card' => 'boolean',
     ];
 
     // Relationships - add as needed

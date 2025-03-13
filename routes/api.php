@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Api\V1\BrandController;
+use App\Http\Controllers\Api\V1\BudgetController;
 use App\Http\Controllers\Api\V1\ChartOfAccountController;
 use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\CostCenterController;
@@ -54,11 +55,8 @@ use App\Http\Controllers\Api\V1\RfqCategoryController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
-// Route::post('/register', [AuthController::class, 'register']); Disable now only use users
 Route::post('/logout', [AuthController::class, 'logout'])->middleware(['auth:sanctum']);
 Route::post('/check-email', [AuthController::class, 'checkEmail']);
-Route::get('/statuses', [StatusController::class, 'index']);
-//Route::post('/statuses', [StatusController::class, 'store']);
 
 // API V1 routes
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
@@ -134,7 +132,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // Form Data Routes
     Route::get('/warehouses', [WarehouseController::class, 'index']);
     Route::get('/product-categories', [ProductCategoryController::class, 'index']);
-    Route::get('/statuses', [StatusController::class, 'index']);
     Route::get('/units', [UnitController::class, 'index']);
     Route::get('/brands', [BrandController::class, 'index']);
 
@@ -233,6 +230,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('request-budgets/{id}/restore', [RequestBudgetController::class, 'restore']);
     Route::patch('request-budgets/{requestBudget}/status', [RequestBudgetController::class, 'updateStatus']);
 
+    Route::apiResource('budgets', BudgetController::class);
+    Route::post('budgets/{id}/restore', [BudgetController::class, 'restore']);
+
 
     // Maharat Invoice
 
@@ -278,7 +278,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/form-data', [RfqController::class, 'getFormData']);
     Route::get('/warehouses', [WarehouseController::class, 'index']);
     Route::get('/product-categories', [ProductCategoryController::class, 'index']);
-    Route::get('/statuses', [StatusController::class, 'index']);
     Route::get('/units', [UnitController::class, 'index']);
     Route::get('/brands', [BrandController::class, 'index']);
 });
