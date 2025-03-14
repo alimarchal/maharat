@@ -1,15 +1,30 @@
 import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import SelectFloating from "../../../../Components/SelectFloating";
 import axios from "axios";
+import { router } from "@inertiajs/react";
 
 const ReviewTask = () => {
+    const { id } = useParams();
+
     const [formData, setFormData] = useState({
+        task_id: "",
         description: "",
         action: "",
-        employee: "",
+        user_id: "",
     });
+
     const [employees, setEmployees] = useState([]);
     const [errors, setErrors] = useState({});
+
+    useEffect(() => {
+        if (id) {
+            setFormData((prevData) => ({
+                ...prevData,
+                task_id: id,
+            }));
+        }
+    }, [id]);
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -32,17 +47,14 @@ const ReviewTask = () => {
         if (!formData.description)
             newErrors.description = "Description is required";
         if (!formData.action) newErrors.action = "Action is required";
-        if (formData.action === "refer" && !formData.employee)
-            newErrors.employee = "Employee is required";
+        if (formData.action === "refer" && !formData.user_id)
+            newErrors.user_id = "User is required";
 
         setErrors(newErrors);
         if (Object.keys(newErrors).length === 0) {
             try {
-                const response = await axios.post(
-                    "/api/v1/review-task",
-                    formData
-                );
-                console.log("Task submitted successfully:", response.data);
+                await axios.post("/api/v1/task-descriptions", formData);
+                router.visit("/tasks");
             } catch (error) {
                 console.error("Error submitting task:", error);
             }
@@ -109,18 +121,18 @@ const ReviewTask = () => {
                         {formData.action === "refer" && (
                             <div className="w-full">
                                 <SelectFloating
-                                    label="Employee"
-                                    name="employee"
-                                    value={formData.employee}
+                                    label="User"
+                                    name="user_id"
+                                    value={formData.user_id}
                                     onChange={handleChange}
                                     options={employees.map((emp) => ({
                                         id: emp.id,
                                         label: emp.name,
                                     }))}
                                 />
-                                {errors.employee && (
+                                {errors.user_id && (
                                     <p className="text-red-500 text-sm mt-1">
-                                        {errors.employee}
+                                        {errors.user_id}
                                     </p>
                                 )}
                             </div>
