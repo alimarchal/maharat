@@ -186,13 +186,12 @@ export default function GRN({ auth }) {
                 <div className="w-full overflow-hidden">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-[32px] font-bold text-[#2C323C]">Good Receiving Notes</h2>
-                        <button
-                            type="button"
-                            className="p-2 text-base sm:text-lg flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] transition-all duration-300 hover:border-[#009FDC] hover:bg-[#009FDC] hover:text-white hover:scale-105"
-                            onClick={addItem}
+                        <Link
+                            href="/receive-goods"
+                            className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
                         >
-                            <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add a GRN
-                        </button>
+                            Receive Goods
+                        </Link>
                     </div>
 
                     <div className="w-full overflow-hidden">
@@ -313,12 +312,6 @@ export default function GRN({ auth }) {
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <div className="flex justify-center space-x-3">
-                                                    <button
-                                                        onClick={() => router.visit("/dummy-page")} 
-                                                        className="text-gray-600 hover:text-gray-600"
-                                                    >
-                                                        <FontAwesomeIcon icon={faEye} className="h-5 w-5" />
-                                                    </button>
                                                     {editingId === grn.id ? (
                                                         <button
                                                             onClick={() => handleSave(grn.id)}
@@ -353,14 +346,30 @@ export default function GRN({ auth }) {
                             )}
                         </table>
 
-                        <div className="flex justify-end mt-4">
+                        {!loading && !error && (
+                        <div className="flex justify-center items-center relative w-full my-8">
+                            <div
+                            className="absolute top-1/2 left-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
+                            style={{
+                                background: "linear-gradient(to right, #9B9DA2, #9B9DA200)",
+                            }}
+                            ></div>
                             <button
-                                onClick={handleSaveAll}
-                                className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium"
+                            type="button"
+                            className="p-2 text-base sm:text-lg flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] transition-all duration-300 hover:border-[#009FDC] hover:bg-[#009FDC] hover:text-white hover:scale-105"
+                            onClick={addItem}
                             >
-                                Save
+                            <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add a GRN
                             </button>
+                            <div
+                            className="absolute top-1/2 right-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
+                            style={{
+                                background: "linear-gradient(to left, #9B9DA2, #9B9DA200)",
+                            }}
+                            ></div>
                         </div>
+                        )}
+
 
                         {!loading && !error && grns.length > 0 && (
                             <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
@@ -396,6 +405,17 @@ export default function GRN({ auth }) {
                                     Next
                                 </button>
                             </div>
+                        )}
+
+                        {!loading && !error && (
+                        <div className="flex justify-end mt-4">
+                            <button
+                            onClick={handleSaveAll}
+                            className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium"
+                            >
+                            Save
+                            </button>
+                        </div>
                         )}
                     </div>
                 </div>
