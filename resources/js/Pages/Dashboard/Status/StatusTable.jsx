@@ -15,7 +15,7 @@ const StatusTable = () => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/statuses?page=${currentPage}`
+                    `/api/v1/statuses?page=${currentPage}`
                 );
                 const data = await response.json();
 
