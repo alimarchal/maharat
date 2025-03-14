@@ -224,25 +224,55 @@ const MakeRequest = () => {
         setLoading(true);
 
         try {
-            if (requestId) {
-                await axios.put(
-                    `/api/v1/material-requests/${requestId}`,
-                    formData,
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                            Accept: "application/json",
-                        },
-                    }
-                );
-            } else {
-                await axios.post("/api/v1/material-requests", formData, {
-                    headers: {
-                        "Content-Type": "application/json",
-                        Accept: "application/json",
-                    },
-                });
+            const url = requestId
+                ? `/api/v1/material-requests/${requestId}`
+                : "/api/v1/material-requests";
+            const method = requestId ? "put" : "post";
+
+            const materialRequest = await axios[method](url, formData);
+            const materialRequestId = materialRequest.data.data.id;
+
+            const processResponse = await axios.get(
+                "/api/v1/processes?include=steps,creator,updater&filter[title]=Material Request"
+            );
+            const processList = processResponse.data.data;
+
+            if (!processList?.length) {
+                console.error("No processes found.");
+                return;
             }
+            const process = processList[0];
+            if (!process?.steps?.length) {
+                console.error("No process steps found.");
+                return;
+            }
+            const processStep = process.steps[0];
+
+            const transactionPayload = {
+                material_request_id: materialRequestId,
+                requester_id: user_id,
+                assigned_to:
+                    processStep.approver_id || processStep.designation_id,
+                order: String(processStep.order),
+                description: processStep.description,
+                status: "Pending",
+            };
+            await axios.post(
+                "/api/v1/material-request-transactions",
+                transactionPayload
+            );
+
+            const taskPayload = {
+                process_step_id: processStep.id,
+                process_user_id:
+                    processStep.approver_id || processStep.designation_id,
+                assigned_at: new Date().toISOString(),
+                urgency: "Normal",
+                assigned_user_id: user_id,
+                read_status: null,
+            };
+            await axios.post("/api/v1/tasks", taskPayload);
+
             router.visit("/my-requests");
         } catch (error) {
             console.error("Error submitting request:", error);
