@@ -14,7 +14,7 @@ class Task extends Model
 
     protected $fillable = [
         'process_step_id',
-        'process_user_id',
+        'process_id',
         'assigned_at',
         'deadline',
         'urgency',
