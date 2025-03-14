@@ -4,13 +4,18 @@ import { Link, router } from "@inertiajs/react";
 import InputFloating from "../../Components/InputFloating";
 
 const LoginPage = () => {
+    const [formData, setFormData] = useState({
+        email: "",
+        password: "",
+    });
+    
     const [activeBoxes, setActiveBoxes] = useState([0, 1, 2, 3, 4, 5]);
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState("");
     const [isFocused, setIsFocused] = useState(false);
     const [password, setPassword] = useState("");
     const [isFocused1, setIsFocused1] = useState(false);
-    const [errors, setErrors] = useState("");
+    const [errors, setErrors] = useState({});
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -92,52 +97,53 @@ const LoginPage = () => {
     };
 
     const validateForm = () => {
-        let errors = {};
-        if (!email) {
-            errors.email = "Email is required";
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            errors.email = "Invalid email format";
+        let newErrors = {};
+
+        if (!formData.email.trim()) {
+            newErrors.email = "Email is required";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            newErrors.email = "Invalid email format";
         }
-        if (!password) {
-            errors.password = "Password is required";
+
+        if (!formData.password.trim()) {
+            newErrors.password = "Password is required";
         }
-        return errors;
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        setErrors({});
 
-        const validationErrors = validateForm();
-        if (Object.keys(validationErrors).length > 0) {
-            setErrors(validationErrors);
-            return;
-        }
+        if (!validateForm()) return;
 
-        router.post(
-            "/login",
-            { email, password },
-            {
-                onSuccess: () => router.visit("/dashboard"),
-                onError: (errors) => {
-                    console.log("Login Errors:", errors);
+        router.post("/login", formData, {
+            onSuccess: () => {
+                router.visit("/dashboard");
+            },
+            onError: (errorResponse) => {
 
-                    if (errors.failed) {
-                        setErrors(errors.failed); // "These credentials do not match our records."
-                    } else if (errors.password) {
-                        setErrors(errors.password); // "The provided password is incorrect."
-                    } else if (errors.throttle) {
-                        setErrors(errors.throttle); // "Too many login attempts. Please try again in X seconds."
-                    } else if (errors.email) {
-                        setErrors(errors.email); // "Invalid email format"
-                    } else {
-                        setErrors(
-                            "Invalid email or password. Please try again."
-                        );
-                    }
-                },
-            }
-        );
+                let newErrors = {};
+
+                if (errorResponse.failed) {
+                    newErrors.email =
+                        "These credentials do not match our records.";
+                } else if (errorResponse.password) {
+                    newErrors.password = "Incorrect password.";
+                } else if (errorResponse.throttle) {
+                    newErrors.email =
+                        "Too many login attempts. Try again later.";
+                } else if (errorResponse.email) {
+                    newErrors.email = "Invalid email format.";
+                } else {
+                    newErrors.general =
+                        "Invalid email or password. Please try again.";
+                }
+
+                setErrors(newErrors);
+            },
+        });
     };
 
     return (
@@ -276,14 +282,20 @@ const LoginPage = () => {
                                 control system.
                             </p>
 
-                            <form className="flex flex-col text-center space-y-4 md:space-y-6">
+                            <form
+                                onSubmit={handleSubmit}
+                                className="flex flex-col space-y-4 md:space-y-6"
+                            >
                                 <div>
                                     <InputFloating
                                         label="Email"
                                         name="email"
-                                        value={email}
+                                        value={formData.email}
                                         onChange={(e) =>
-                                            setEmail(e.target.value)
+                                            setFormData({
+                                                ...formData,
+                                                email: e.target.value,
+                                            })
                                         }
                                     />
                                     {errors.email && (
@@ -299,9 +311,12 @@ const LoginPage = () => {
                                         type={
                                             showPassword ? "text" : "password"
                                         }
-                                        value={password}
+                                        value={formData.password}
                                         onChange={(e) =>
-                                            setPassword(e.target.value)
+                                            setFormData({
+                                                ...formData,
+                                                password: e.target.value,
+                                            })
                                         }
                                     />
                                     <button
@@ -327,7 +342,6 @@ const LoginPage = () => {
                                 <div className="relative">
                                     <button
                                         type="submit"
-                                        onClick={handleSubmit}
                                         className="w-full py-3 px-4 text-white font-medium rounded-full transition duration-150"
                                         style={{
                                             backgroundColor: "#009FDC",
@@ -339,14 +353,14 @@ const LoginPage = () => {
                                         Login
                                     </button>
 
-                                    {errors && (
+                                    {errors.general && (
                                         <p className="text-red-500 text-sm mt-2 text-center">
-                                            {errors}
+                                            {errors.general}
                                         </p>
                                     )}
                                 </div>
 
-                                <div>
+                                <div className="text-center">
                                     <Link
                                         href="forgot-password"
                                         className="text-[#009FDC] hover:text-[#0077B6] text-sm"
