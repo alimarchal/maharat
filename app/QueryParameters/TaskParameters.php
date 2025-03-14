@@ -6,7 +6,7 @@ class TaskParameters
 {
     const ALLOWED_FILTERS = [
         'process_step_id',
-        'process_user_id',
+        'process_id',
         'assigned_user_id',
         'urgency',
         'assigned_at',
@@ -18,7 +18,7 @@ class TaskParameters
     const ALLOWED_SORTS = [
         'id',
         'process_step_id',
-        'process_user_id',
+        'process_id',
         'assigned_at',
         'deadline',
         'urgency',

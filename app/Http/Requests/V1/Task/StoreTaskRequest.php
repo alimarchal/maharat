@@ -16,7 +16,7 @@ class StoreTaskRequest extends FormRequest
     {
         return [
             'process_step_id' => ['required', 'exists:process_steps,id'],
-            'process_user_id' => ['required', 'exists:processes,id'],
+            'process_id' => ['required', 'exists:processes,id'],
             'assigned_at' => ['nullable', 'date'],
             'deadline' => ['nullable', 'date', 'after_or_equal:assigned_at'],
             'urgency' => ['required', Rule::in(['Normal', 'Medium', 'High', 'Low', 'ASAP'])],
