@@ -27,6 +27,13 @@ function OrganizationNode({
         setAnchorEl(null);
     };
 
+    const handleEdit = () => {
+        if (node.id) {
+            router.visit(`/users?id=${node.id}`);
+        }
+        handleClose();
+    };
+
     return (
         <Card variant="outlined" className="org-node">
             <div className="node-header">
@@ -83,6 +90,11 @@ function OrganizationNode({
             )}
 
             <Menu open={Boolean(anchorEl)} anchorEl={anchorEl} onClose={handleClose}>
+                {node.name && (
+                    <MenuItem onClick={handleEdit}>
+                        Edit
+                    </MenuItem>
+                )}
                 <MenuItem onClick={() => { onAddPosition(); handleClose(); }}>
                     Add Position
                 </MenuItem>
