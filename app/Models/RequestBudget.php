@@ -18,6 +18,8 @@ class RequestBudget extends Model
         'sub_cost_center',
         'previous_year_budget_amount',
         'requested_amount',
+        'previous_year_revenue',
+        'current_year_revenue',
         'approved_amount',
         'urgency',
         'attachment_path',

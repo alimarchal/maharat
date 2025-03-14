@@ -25,6 +25,8 @@ class StoreRequestBudgetRequest extends FormRequest
             'department_id' => ['required', 'exists:departments,id'],
             'cost_center_id' => ['required', 'exists:cost_centers,id'],
             'sub_cost_center' => ['nullable', 'exists:cost_centers,id'],
+            'previous_year_revenue' => ['nullable', 'numeric', 'min:0'],
+            'current_year_revenue' => ['nullable', 'numeric', 'min:0'],
             'previous_year_budget_amount' => ['nullable', 'numeric', 'min:0'],
             'requested_amount' => ['required', 'numeric', 'min:0'],
             'approved_amount' => ['nullable', 'numeric', 'min:0'],

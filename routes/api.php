@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
 use App\Http\Controllers\Api\V1\MaterialRequestItemController;
 use App\Http\Controllers\Api\V1\MaterialRequestTransactionController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PaymentOrderController;
 use App\Http\Controllers\Api\V1\PaymentOrderLogController;
 use App\Http\Controllers\Api\V1\PermissionController;
@@ -260,6 +261,22 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::apiResource('designations', DesignationController::class);
     Route::post('designations/{id}/restore', [DesignationController::class, 'restore']);
+
+
+
+    // Get all notifications (for authenticated user by default or specific user)
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    // Create new notification(s)
+    Route::post('/notifications', [NotificationController::class, 'store']);
+    // Get notifications for a specific user
+    Route::get('/users/{userId}/notifications', [NotificationController::class, 'userNotifications']);
+    // Mark specific notification as read
+    Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    // Mark all notifications as read
+    Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    // Get unread notifications for a specific user
+    Route::get('/users/{userId}/notifications/unread', [NotificationController::class, 'userUnreadNotifications']);
+
 
 });
 
