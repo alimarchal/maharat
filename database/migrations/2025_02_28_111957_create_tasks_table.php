@@ -20,6 +20,7 @@ return new class extends Migration
             $table->enum('urgency', ['Normal', 'Medium', 'High', 'Low', 'ASAP'])->default('Normal');
             $table->foreignId('assigned_user_id')->nullable()->comment('From')->constrained('users', 'id');
             $table->dateTime('read_status')->nullable();
+            $table->enum('status',['Pending','Approved','Rejected','Referred'])->default('Pending');
             $table->softDeletes();
             $table->timestamps();
         });

@@ -20,6 +20,7 @@ class StoreTaskRequest extends FormRequest
             'assigned_at' => ['nullable', 'date'],
             'deadline' => ['nullable', 'date', 'after_or_equal:assigned_at'],
             'urgency' => ['required', Rule::in(['Normal', 'Medium', 'High', 'Low', 'ASAP'])],
+            'status' => ['sometimes', Rule::in(['Pending','Approved','Rejected','Referred'])],
             'assigned_user_id' => ['required', 'exists:users,id'],
             'read_status' => ['nullable', 'date'],
             'descriptions' => ['nullable', 'array'],

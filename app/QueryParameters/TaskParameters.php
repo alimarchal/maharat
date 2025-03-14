@@ -13,6 +13,7 @@ class TaskParameters
         'deadline',
         'read_status',
         'created_at',
+        'status',
     ];
 
     const ALLOWED_SORTS = [
@@ -26,6 +27,7 @@ class TaskParameters
         'read_status',
         'created_at',
         'updated_at',
+        'status',
     ];
 
     const ALLOWED_INCLUDES = [

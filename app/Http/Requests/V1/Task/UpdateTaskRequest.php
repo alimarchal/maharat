@@ -22,6 +22,7 @@ class UpdateTaskRequest extends FormRequest
             'urgency' => ['sometimes', 'required', Rule::in(['Normal', 'Medium', 'High', 'Low', 'ASAP'])],
             'assigned_user_id' => ['sometimes', 'required', 'exists:users,id'],
             'read_status' => ['nullable', 'date'],
+            'status' => ['sometimes', Rule::in(['Pending','Approved','Rejected','Referred'])],
         ];
     }
 }

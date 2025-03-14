@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\CostCenterController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\DepartmentController;
 use App\Http\Controllers\Api\V1\DesignationController;
+use App\Http\Controllers\Api\V1\ExternalInvoiceController;
 use App\Http\Controllers\Api\V1\FiscalPeriodController;
 use App\Http\Controllers\Api\V1\GrnController;
 use App\Http\Controllers\Api\V1\GrnReceiveGoodController;
@@ -260,7 +261,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('designations/{id}/restore', [DesignationController::class, 'restore']);
 
 
-
     // Get all notifications (for authenticated user by default or specific user)
     Route::get('/notifications', [NotificationController::class, 'index']);
     // Create new notification(s)
@@ -274,6 +274,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // Get unread notifications for a specific user
     Route::get('/users/{userId}/notifications/unread', [NotificationController::class, 'userUnreadNotifications']);
 
+    // External Invoices
+    Route::apiResource('external-invoices', ExternalInvoiceController::class);
+    Route::post('external-invoices/{id}/restore', [ExternalInvoiceController::class, 'restore']);
 
 });
 
