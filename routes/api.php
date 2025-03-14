@@ -170,8 +170,13 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('purchase-orders', PurchaseOrderController::class);
     // GRN routes
     Route::apiResource('grns', GrnController::class);
-    // GRN Receive Goods routes (delivery note from third or second party)
+    Route::post('/grns/save-all', [GrnController::class, 'saveAll']); 
+    
+    // GRN Receive Goods routes
     Route::apiResource('grn-receive-goods', GrnReceiveGoodController::class);
+    
+    // Category Routes
+    Route::get('/categories', [CategoryController::class, 'index']);
 
 
     // Start Inventory

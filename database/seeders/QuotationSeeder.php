@@ -7,6 +7,7 @@ use App\Models\Rfq;
 use App\Models\Supplier;
 use App\Models\Status;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class QuotationSeeder extends Seeder
 {
@@ -24,15 +25,36 @@ class QuotationSeeder extends Seeder
             return;
         }
 
+        // Disable foreign key checks to delete records safely
+        DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+
+        // Delete all records in dependent tables first
+        DB::table('grns')->delete();
+        DB::table('purchase_orders')->delete();
+
+        // Now delete records from quotations table
+        DB::table('quotations')->delete();
+
+        // Reset the auto-increment value to 1 to start fresh
+        DB::statement('ALTER TABLE quotations AUTO_INCREMENT = 1');
+
+        // Now we can insert records safely
+
+        // Start quotation ID from 1
+        $quotationId = 1;
+
         foreach ($rfqs as $rfq) {
             // Create 1-3 quotations per RFQ
             $numberOfQuotations = rand(1, 3);
-            
+
             for ($i = 0; $i < $numberOfQuotations; $i++) {
+                // Generate a unique quotation number
+                $quotationNumber = 'QUO-' . date('Y') . '-' . str_pad($quotationId, 5, '0', STR_PAD_LEFT);
+
                 Quotation::create([
                     'rfq_id' => $rfq->id,
                     'supplier_id' => $suppliers->random()->id ?? null,
-                    'quotation_number' => 'QUO-' . date('Y') . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT),
+                    'quotation_number' => $quotationNumber,
                     'issue_date' => $rfq->issue_date,
                     'valid_until' => $rfq->closing_date,
                     'total_amount' => rand(1000, 50000),
@@ -42,7 +64,14 @@ class QuotationSeeder extends Seeder
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
+
+                $quotationId++; // Increment ID
             }
         }
+
+        // Re-enable foreign key checks
+        DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+
+        $this->command->info('Quotations seeded successfully.');
     }
 }
