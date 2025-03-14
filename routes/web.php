@@ -10,7 +10,7 @@ use App\Http\Controllers\StatusController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\Api\V1\ProductCategoryController;
 use App\Http\Controllers\QuotationController;
-use App\Http\Controllers\RFQController;
+use App\Http\Controllers\RfqController;
 use App\Models\Quotation;
 use App\Http\Controllers\QuotationPDFController;
 
@@ -21,85 +21,85 @@ Route::get('/', function () {
 
 // Dashboard Routes (Protected by Auth & Email Verification)
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', function () { 
-        return Inertia::render('Dashboard'); 
+    Route::get('/dashboard', function () {
+        return Inertia::render('Dashboard');
     })->name('dashboard');
 
-    Route::get('/my-requests', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Requests/RequestIndex']); 
+    Route::get('/my-requests', function () {
+        return Inertia::render('Dashboard', ['page' => 'Requests/RequestIndex']);
     })->name('requests.index');
-    Route::get('/my-requests/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest']); 
+    Route::get('/my-requests/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest']);
     })->name('requests.create');
-    Route::get('/my-requests/{id}/edit', function ($id) { 
-        return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest', 'requestId' => $id]); 
+    Route::get('/my-requests/{id}/edit', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest', 'requestId' => $id]);
     })->name('requests.edit');
 
-    Route::get('/warehouse', function () { 
-        return Inertia::render('Dashboard/Warehouse/Warehouse'); 
+    Route::get('/warehouse', function () {
+        return Inertia::render('Dashboard/Warehouse/Warehouse');
     })->name('warehouse.index');
 
-    Route::get('/rfq', [RFQController::class, 'index'])->name('rfq.index');
-    Route::get('/rfq/create', [RFQController::class, 'create'])->name('rfq.create');
-    Route::post('/rfq', [RFQController::class, 'store'])->name('rfq.store');
-    Route::get('/rfq/{quotation}', [RFQController::class, 'show'])->name('rfq.show');
-    Route::get('/rfq/{quotation}/pdf', [RFQController::class, 'generatePDF'])->name('rfq.pdf');
+    Route::get('/rfq', [RfqController::class, 'index'])->name('rfq.index');
+    Route::get('/rfq/create', [RfqController::class, 'create'])->name('rfq.create');
+    Route::post('/rfq', [RfqController::class, 'store'])->name('rfq.store');
+    Route::get('/rfq/{quotation}', [RfqController::class, 'show'])->name('rfq.show');
+    Route::get('/rfq/{quotation}/pdf', [RfqController::class, 'generatePDF'])->name('rfq.pdf');
 
     Route::get('/statuses', [StatusController::class, 'index'])->name('statuses.index');
-    Route::get('/status', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Status/StatusIndex']); 
+    Route::get('/status', function () {
+        return Inertia::render('Dashboard', ['page' => 'Status/StatusIndex']);
     })->name('status.index');
-    Route::get('/status/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Status/CreateStatus']); 
+    Route::get('/status/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'Status/CreateStatus']);
     })->name('status.create');
-    Route::get('/status/{id}/edit', function ($id) { 
-        return Inertia::render('Dashboard', ['page' => 'Status/CreateStatus', 'statusId' => $id]); 
+    Route::get('/status/{id}/edit', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'Status/CreateStatus', 'statusId' => $id]);
     })->name('status.edit');
 
     Route::get('/units', [UnitController::class, 'index'])->name('units.index');
-    Route::get('/units', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Units/UnitIndex']); 
+    Route::get('/units', function () {
+        return Inertia::render('Dashboard', ['page' => 'Units/UnitIndex']);
     })->name('unit.index');
-    Route::get('/units/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Units/CreateUnit']); 
+    Route::get('/units/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'Units/CreateUnit']);
     })->name('unit.create');
-    Route::get('/units/{id}/edit', function ($id) { 
-        return Inertia::render('Dashboard', ['page' => 'Units/CreateUnit', 'unitId' => $id]); 
+    Route::get('/units/{id}/edit', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'Units/CreateUnit', 'unitId' => $id]);
     })->name('units.edit');
 
     Route::get('/product-categories', [ProductCategoryController::class, 'index'])->name('category.index');
-    Route::get('/category', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Warehouse/Category/CategoryIndex']); 
+    Route::get('/category', function () {
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/Category/CategoryIndex']);
     })->name('category.index');
-    Route::get('/category/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Warehouse/Category/CreateCategory']); 
+    Route::get('/category/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/Category/CreateCategory']);
     })->name('category.create');
-    Route::get('/category/{id}/edit', function ($id) { 
-        return Inertia::render('Dashboard', ['page' => 'Warehouse/Category/CreateCategory', 'categoryId' => $id]); 
+    Route::get('/category/{id}/edit', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/Category/CreateCategory', 'categoryId' => $id]);
     })->name('category.edit');
 
-    Route::get('/items', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Warehouse/Products/ProductIndex']); 
+    Route::get('/items', function () {
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/Products/ProductIndex']);
     })->name('product.index');
-    Route::get('/items/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Warehouse/Products/CreateProduct']); 
+    Route::get('/items/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/Products/CreateProduct']);
     })->name('product.create');
-    Route::get('/items/{id}/edit', function ($id) { 
-        return Inertia::render('Dashboard', ['page' => 'Warehouse/Products/CreateProduct', 'productId' => $id]); 
+    Route::get('/items/{id}/edit', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/Products/CreateProduct', 'productId' => $id]);
     })->name('product.edit');
 
-    Route::get('/warehouse-management', function () { 
-        return Inertia::render('Dashboard', ['page' => 'WarehouseManagement/WarehouseIndex']); 
+    Route::get('/warehouse-management', function () {
+        return Inertia::render('Dashboard', ['page' => 'WarehouseManagement/WarehouseIndex']);
     })->name('warehouse.index');
-    Route::get('/warehouse-management/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'WarehouseManagement/CreateWarehouse']); 
+    Route::get('/warehouse-management/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'WarehouseManagement/CreateWarehouse']);
     })->name('warehouse.create');
-    Route::get('/warehouse-management/{id}/edit', function ($id) { 
-        return Inertia::render('Dashboard', ['page' => 'WarehouseManagement/CreateWarehouse', 'warehouseId' => $id]); 
+    Route::get('/warehouse-management/{id}/edit', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'WarehouseManagement/CreateWarehouse', 'warehouseId' => $id]);
     })->name('warehouse.edit');
 
     Route::get('/quotations', function () { return Inertia::render('Dashboard/Quotations/Quotation'); })->name('dashboard.quotations.index');
-    
+
     Route::get('/quotations/create', function () { return Inertia::render('Dashboard/RFQ/AddQuotationForm'); })->name('dashboard.quotations.create');
 
     Route::get('/rfq', function () { return Inertia::render('Dashboard/RFQ/RFQ'); })->name('rfq');
@@ -128,10 +128,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/external-invoices', function () { return Inertia::render('Dashboard/Invoices/Invoices'); })->name('invoices');
 
-    Route::get('/chart', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Configuration/OrganizationalChart/Chart']); 
+    Route::get('/chart', function () {
+        return Inertia::render('Dashboard', ['page' => 'Configuration/OrganizationalChart/Chart']);
     })->name('chart.index');
-    
+
     Route::get('/users', function () { return Inertia::render('Dashboard/Users/Users'); })->name('users');
 
     //Route::get('/chart', function () { return Inertia::render('Dashboard/OrganizationalChart/Chart'); })->name('chart');
@@ -139,148 +139,148 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/rfq-status', function () { return Inertia::render('Dashboard/RFQ/RFQStatus'); })->name('rfq-status');
 
     Route::get('/inventory-tracking', function () { return Inertia::render('Dashboard/Inventory/Inventory'); })->name('inventory-tracking');
-    
+
     // RFQ Routes
-    Route::get('/dashboard/quotations', [RFQController::class, 'index'])->name('dashboard.quotations.index');
-    Route::get('/dashboard/quotations/create', [RFQController::class, 'create'])->name('dashboard.quotations.create');
-    Route::post('/dashboard/quotations', [RFQController::class, 'store'])->name('dashboard.quotations.store');
-    Route::get('/dashboard/quotations/{quotation}', [RFQController::class, 'show'])->name('dashboard.quotations.show');
-    Route::get('/dashboard/quotations/{quotation}/edit', [RFQController::class, 'edit'])->name('dashboard.quotations.edit');
-    Route::put('/dashboard/quotations/{quotation}', [RFQController::class, 'update'])->name('dashboard.quotations.update');
-    Route::delete('/dashboard/quotations/{quotation}', [RFQController::class, 'destroy'])->name('dashboard.quotations.destroy');
+    Route::get('/dashboard/quotations', [RfqController::class, 'index'])->name('dashboard.quotations.index');
+    Route::get('/dashboard/quotations/create', [RfqController::class, 'create'])->name('dashboard.quotations.create');
+    Route::post('/dashboard/quotations', [RfqController::class, 'store'])->name('dashboard.quotations.store');
+    Route::get('/dashboard/quotations/{quotation}', [RfqController::class, 'show'])->name('dashboard.quotations.show');
+    Route::get('/dashboard/quotations/{quotation}/edit', [RfqController::class, 'edit'])->name('dashboard.quotations.edit');
+    Route::put('/dashboard/quotations/{quotation}', [RfqController::class, 'update'])->name('dashboard.quotations.update');
+    Route::delete('/dashboard/quotations/{quotation}', [RfqController::class, 'destroy'])->name('dashboard.quotations.destroy');
     Route::get('/quotations/{id}/pdf', function ($id) {
         return Inertia::render('Dashboard/Quotations/QuotationPDF', [
             'quotation' => Quotation::with(['rfq', 'supplier', 'status', 'documents'])->findOrFail($id)
         ]);
     })->name('quotations.pdf');
 
-    Route::get('/company-profile', function () { 
-        return Inertia::render('Dashboard', ['page' => 'CompanyProfile/CompanyProfile']); 
+    Route::get('/company-profile', function () {
+        return Inertia::render('Dashboard', ['page' => 'CompanyProfile/CompanyProfile']);
     })->name('company.create');
 
-    Route::get('/process-flow', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Configuration/ProcessFlow/ProcessFlow']); 
+    Route::get('/process-flow', function () {
+        return Inertia::render('Dashboard', ['page' => 'Configuration/ProcessFlow/ProcessFlow']);
     })->name('process.index');
-    Route::get('/process-flow/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Configuration/ProcessFlow/CreateProcessFlow']); 
+    Route::get('/process-flow/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'Configuration/ProcessFlow/CreateProcessFlow']);
     })->name('process.create');
 
-    Route::get('/roles-permissions', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Configuration/RolePermission/RolesPermissions']); 
+    Route::get('/roles-permissions', function () {
+        return Inertia::render('Dashboard', ['page' => 'Configuration/RolePermission/RolesPermissions']);
     })->name('permission.index');
 
-    Route::get('/notification-settings', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Configuration/NotificationSettings/Notification']); 
+    Route::get('/notification-settings', function () {
+        return Inertia::render('Dashboard', ['page' => 'Configuration/NotificationSettings/Notification']);
     })->name('notification.index');
 
-    Route::get('/users', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Configuration/Users/Users']); 
+    Route::get('/users', function () {
+        return Inertia::render('Dashboard', ['page' => 'Configuration/Users/Users']);
     })->name('users.index');
 
-    Route::get('/tasks', function () { 
-        return Inertia::render('Dashboard', ['page' => 'MyTasks/Tasks/TasksTable']); 
+    Route::get('/tasks', function () {
+        return Inertia::render('Dashboard', ['page' => 'MyTasks/Tasks/TasksTable']);
     })->name('tasks.index');
-    Route::get('/tasks/new', function () { 
-        return Inertia::render('Dashboard', ['page' => 'MyTasks/Tasks/ReviewTask']); 
+    Route::get('/tasks/{id}/new', function () {
+        return Inertia::render('Dashboard', ['page' => 'MyTasks/Tasks/ReviewTask']);
     })->name('tasks.create');
 
-    Route::get('/approve-budget', function () { 
-        return Inertia::render('Dashboard', ['page' => 'MyTasks/ApproveBudgetRequest/ApproveBudgetForm']); 
+    Route::get('/approve-budget', function () {
+        return Inertia::render('Dashboard', ['page' => 'MyTasks/ApproveBudgetRequest/ApproveBudgetForm']);
     })->name('approveBudgets.create');
 
-    Route::get('/maharat-invoices', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Finance/MaharatInvoices/MaharatInvoicesTable']); 
+    Route::get('/maharat-invoices', function () {
+        return Inertia::render('Dashboard', ['page' => 'Finance/MaharatInvoices/MaharatInvoicesTable']);
     })->name('maharatInvoices.index');
-    Route::get('/maharat-invoices/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Finance/MaharatInvoices/CreateMaharatInvoice']); 
+    Route::get('/maharat-invoices/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'Finance/MaharatInvoices/CreateMaharatInvoice']);
     })->name('maharatInvoices.create');
 
-    Route::get('/accounts', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Finance/Accounts/AccountsTable']); 
+    Route::get('/accounts', function () {
+        return Inertia::render('Dashboard', ['page' => 'Finance/Accounts/AccountsTable']);
     })->name('accounts.index');
 
-    Route::get('/payment-orders', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/PaymentOrderTable']); 
+    Route::get('/payment-orders', function () {
+        return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/PaymentOrderTable']);
     })->name('paymentOrder.index');
-    Route::get('/payment-orders/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/CreatePaymentOrderTable']); 
+    Route::get('/payment-orders/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/CreatePaymentOrderTable']);
     })->name('PaymentOrder.create');
-    Route::get('/payment-orders/{id}/create-payment-order', function ($id) { 
-        return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/CreatePaymentOrder']); 
+    Route::get('/payment-orders/{id}/create-payment-order', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/CreatePaymentOrder']);
     })->name('createPaymentOrder.create');
 
-    Route::get('/account-receivables', function () { 
-        return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ReceivableTable']); 
+    Route::get('/account-receivables', function () {
+        return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ReceivableTable']);
     })->name('receivable.index');
-    Route::get('/account-receivables/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'AccountReceivables/CreateReceivable']); 
+    Route::get('/account-receivables/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'AccountReceivables/CreateReceivable']);
     })->name('receivable.create');
-    Route::get('/account-receivables/view/{id}', function () { 
-        return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ViewReceivable']); 
+    Route::get('/account-receivables/view/{id}', function () {
+        return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ViewReceivable']);
     })->name('receivable.view');
 
-    Route::get('/account-payables', function () { 
-        return Inertia::render('Dashboard', ['page' => 'AccountPayables/PayablesTable']); 
+    Route::get('/account-payables', function () {
+        return Inertia::render('Dashboard', ['page' => 'AccountPayables/PayablesTable']);
     })->name('payables.index');
-    Route::get('/account-payables/view/{id}', function () { 
-        return Inertia::render('Dashboard', ['page' => 'AccountPayables/ViewPayable']); 
+    Route::get('/account-payables/view/{id}', function () {
+        return Inertia::render('Dashboard', ['page' => 'AccountPayables/ViewPayable']);
     })->name('payables.view');
 
-    Route::get('/cost-centers', function () { 
-        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/CostCenter/CostCenterTable']); 
+    Route::get('/cost-centers', function () {
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/CostCenter/CostCenterTable']);
     })->name('costCenter.index');
 
-    Route::get('/cost-centers/sub-cost-centers', function () { 
-        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/SubCostCenter/SubCostCenterTable']); 
+    Route::get('/cost-centers/sub-cost-centers', function () {
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/SubCostCenter/SubCostCenterTable']);
     })->name('subCostCenter.index');
 
-    Route::get('/income-statement', function () { 
-        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/IncomeStatement/IncomeStatementTable']); 
+    Route::get('/income-statement', function () {
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/IncomeStatement/IncomeStatementTable']);
     })->name('statement.index');
-    Route::get('/income-statement/details/{id}', function () { 
-        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/IncomeStatement/ViewIncomeStatement']); 
+    Route::get('/income-statement/details/{id}', function () {
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/IncomeStatement/ViewIncomeStatement']);
     })->name('statement.view');
 
-    Route::get('/balance-sheet', function () { 
-        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/BalanceSheet/ViewBalanceSheet']); 
+    Route::get('/balance-sheet', function () {
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/BalanceSheet/ViewBalanceSheet']);
     })->name('balance.index');
 
-    Route::get('/budget', function () { 
-        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/BudgetTable']); 
+    Route::get('/budget', function () {
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/BudgetTable']);
     })->name('budget.index');
-    Route::get('/budget/details/{id}', function () { 
-        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/ViewBudget']); 
+    Route::get('/budget/details/{id}', function () {
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/ViewBudget']);
     })->name('budget.view');
 
-    Route::get('/request-budgets', function () { 
-        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/RequestBudgetTable']); 
+    Route::get('/request-budgets', function () {
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/RequestBudgetTable']);
     })->name('budget.index');
-    Route::get('/request-budgets/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/BudgetRequestForm']); 
+    Route::get('/request-budgets/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/BudgetRequestForm']);
     })->name('budget.create');
 
-    Route::get('/material-requests', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Warehouse/ReceivedMaterialRequest/ReceivedMRsTable']); 
+    Route::get('/material-requests', function () {
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/ReceivedMaterialRequest/ReceivedMRsTable']);
     })->name('material.index');
 
-    Route::get('/customers', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Customers/CustomersTable']); 
+    Route::get('/customers', function () {
+        return Inertia::render('Dashboard', ['page' => 'Customers/CustomersTable']);
     })->name('customer.index');
-    Route::get('/customers/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Customers/CreateCustomers']); 
+    Route::get('/customers/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'Customers/CreateCustomers']);
     })->name('customer.create');
-    Route::get('/customers/{id}/edit', function ($id) { 
-        return Inertia::render('Dashboard', ['page' => 'Customers/CreateCustomers', 'customerId' => $id]); 
+    Route::get('/customers/{id}/edit', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'Customers/CreateCustomers', 'customerId' => $id]);
     })->name('customer.edit');
 
-    Route::get('/suppliers', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Suppliers/SuppliersTable']); 
+    Route::get('/suppliers', function () {
+        return Inertia::render('Dashboard', ['page' => 'Suppliers/SuppliersTable']);
     })->name('supplier.index');
-    Route::get('/suppliers/create', function () { 
-        return Inertia::render('Dashboard', ['page' => 'Suppliers/CreateSuppliers']); 
+    Route::get('/suppliers/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'Suppliers/CreateSuppliers']);
     })->name('supplier.create');
-    Route::get('/suppliers/{id}/edit', function ($id) { 
-        return Inertia::render('Dashboard', ['page' => 'Suppliers/CreateSuppliers', 'supplierId' => $id]); 
+    Route::get('/suppliers/{id}/edit', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'Suppliers/CreateSuppliers', 'supplierId' => $id]);
     })->name('supplier.edit');
 
     // Profile routes
@@ -291,7 +291,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // Forgot Password Route (Guest Only)
 Route::middleware('guest')->group(function () {
-    Route::get('/forgot-password', function () { 
+    Route::get('/forgot-password', function () {
         return Inertia::render('Auth/ForgotPassword');
     })->name('password.request');
 

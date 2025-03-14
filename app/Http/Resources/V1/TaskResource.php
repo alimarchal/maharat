@@ -12,10 +12,11 @@ class TaskResource extends JsonResource
         return [
             'id' => $this->id,
             'process_step_id' => $this->process_step_id,
-            'process_user_id' => $this->process_user_id,
+            'process_id' => $this->process_id,
             'assigned_at' => $this->assigned_at?->toISOString(),
             'deadline' => $this->deadline?->toISOString(),
             'urgency' => $this->urgency,
+            'status' => $this->status,
             'assigned_user_id' => $this->assigned_user_id,
             'read_status' => $this->read_status?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),

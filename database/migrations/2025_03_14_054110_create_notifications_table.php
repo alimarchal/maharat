@@ -12,10 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('notifications', function (Blueprint $table) {
-            $table->char('id',36)->primary()->unique();
-            $table->string('type');
+            $table->char('id', 36)->comment("Its hash it will created by auto using api")->primary();
+            $table->string('type')->comment("Channel: When calling api you have to send request  type: system_alert or type: sms");
+            // morphs is polymorphism relationship it's store auto Laravel Model App\Models\User api storing user id
             $table->morphs('notifiable');
-            $table->text('data');
+            $table->text('data')->comment('data in json any example available in postman');
             $table->timestamp('read_at')->nullable();
             $table->timestamps();
         });

@@ -27,7 +27,6 @@ const ProcessFlow = () => {
                     ]);
                 setProcesses(processRes.data.data);
                 setUsers(usersRes.data.data);
-                console.log("D:", designationsRes.data.data);
                 setDesignations(designationsRes.data.data);
             } catch (error) {
                 console.error("Error fetching data:", error);
@@ -91,20 +90,20 @@ const ProcessFlow = () => {
         if (value.startsWith("user-")) {
             updatedRows[index] = {
                 ...updatedRows[index],
-                approver_id: Number(value.replace("user-", "")),
-                designation_id: "",
+                approver_id: parseInt(value.replace("user-", ""), 10),
+                designation_id: null,
             };
         } else if (value.startsWith("designation-")) {
             updatedRows[index] = {
                 ...updatedRows[index],
-                approver_id: "",
-                designation_id: Number(value.replace("designation-", "")),
+                designation_id: parseInt(value.replace("designation-", ""), 10),
+                approver_id: null,
             };
         } else {
             updatedRows[index] = {
                 ...updatedRows[index],
-                approver_id: "",
-                designation_id: "",
+                approver_id: null,
+                designation_id: null,
             };
         }
 
@@ -164,29 +163,58 @@ const ProcessFlow = () => {
             return;
         }
 
-        for (const row of rows) {
-            if (
-                (!row.approver_id && !row.designation_id) ||
-                !row.taskDescription
-            ) {
-                alert("Please fill all fields for each row before submitting.");
-                return;
-            }
+        const isFirstRowEmpty =
+            !rows[0].approver_id &&
+            !rows[0].designation_id &&
+            !rows[0].taskDescription;
+
+        if (isFirstRowEmpty) {
+            alert("Please enter at least one valid process step.");
+            return;
         }
 
         try {
-            const promises = rows.map((row, index) => {
-                return axios.post("/api/v1/process-steps", {
+            const createPromises = [];
+            const updatePromises = [];
+
+            rows.forEach((row, index) => {
+                const payload = {
                     process_id: selectedProcess.id,
                     order: index + 1,
-                    approver_id: row.approver_id || null,
-                    designation_id: row.designation_id || null,
                     description: row.taskDescription,
-                });
+                };
+
+                if (row.approver_id) {
+                    payload.approver_id = row.approver_id;
+                } else if (row.designation_id) {
+                    payload.designation_id = row.designation_id;
+                }
+
+                if (row.step_id) {
+                    updatePromises.push(
+                        axios.put(
+                            `/api/v1/process-steps/${row.step_id}`,
+                            payload
+                        )
+                    );
+                } else {
+                    createPromises.push(
+                        axios.post("/api/v1/process-steps", payload)
+                    );
+                }
             });
 
-            await Promise.all(promises);
-            alert("Process flow updated successfully!");
+            await Promise.all([...createPromises, ...updatePromises]);
+
+            if (createPromises.length && updatePromises.length) {
+                alert(
+                    "Process flow updated and new steps created successfully!"
+                );
+            } else if (createPromises.length) {
+                alert("New process flow steps created successfully!");
+            } else if (updatePromises.length) {
+                alert("Process flow updated successfully!");
+            }
             handleProcessChange({ target: { value: selectedProcess.id } });
         } catch (error) {
             alert("Failed to update process flow. Please try again.");
@@ -368,7 +396,7 @@ const ProcessFlow = () => {
                                     onClick={handleSubmit}
                                     className="bg-[#009FDC] text-white px-6 py-2 rounded-lg text-lg font-medium hover:bg-[#007CB8] transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
                                 >
-                                    Submit
+                                    Save
                                 </button>
                             </div>
                         </div>

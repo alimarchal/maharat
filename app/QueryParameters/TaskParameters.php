@@ -6,19 +6,20 @@ class TaskParameters
 {
     const ALLOWED_FILTERS = [
         'process_step_id',
-        'process_user_id',
+        'process_id',
         'assigned_user_id',
         'urgency',
         'assigned_at',
         'deadline',
         'read_status',
         'created_at',
+        'status',
     ];
 
     const ALLOWED_SORTS = [
         'id',
         'process_step_id',
-        'process_user_id',
+        'process_id',
         'assigned_at',
         'deadline',
         'urgency',
@@ -26,6 +27,7 @@ class TaskParameters
         'read_status',
         'created_at',
         'updated_at',
+        'status',
     ];
 
     const ALLOWED_INCLUDES = [

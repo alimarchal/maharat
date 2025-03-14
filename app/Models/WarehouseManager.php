@@ -1,72 +1,29 @@
 <?php
 
-namespace Database\Seeders;
+namespace App\Models;
 
-use App\Models\Warehouse;
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
-class WarehouseManagerSeeder extends Seeder
+class WarehouseManager extends Model
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'warehouse_id',
+        'manager_id',
+        'type',
+    ];
+
+    public function warehouse(): BelongsTo
     {
-        // Check if the warehouses table exists
-        if (!Schema::hasTable('warehouse_managers')) {
-            $this->command->warn('The warehouse_managers table does not exist. Skipping WarehouseManagerSeeder.');
-            return;
-        }
+        return $this->belongsTo(Warehouse::class);
+    }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;'); // Disable foreign key checks
-
-        try {
-            // Clear any existing warehouse manager data to prevent duplication
-            DB::table('warehouse_managers')->truncate();
-            
-            $warehouseManagers = [
-                [
-                    'warehouse_id' => 101,
-                    'manager_id' => 1, 
-                    'type' => 'Manager',
-                    'created_at' => Carbon::now(),
-                    'updated_at' => Carbon::now(),
-                ],
-                [
-                    'warehouse_id' => 102,
-                    'manager_id' => 1,
-                    'type' => 'Assistant',
-                    'created_at' => Carbon::now(),
-                    'updated_at' => Carbon::now(),
-                ],
-                [
-                    'warehouse_id' => 103,
-                    'manager_id' => 1,
-                    'type' => 'Manager',
-                    'created_at' => Carbon::now(),
-                    'updated_at' => Carbon::now(),
-                ],
-                [
-                    'warehouse_id' => 104,
-                    'manager_id' => 1,
-                    'type' => 'Assistant',
-                    'created_at' => Carbon::now(),
-                    'updated_at' => Carbon::now(),
-                ],
-            ];
-
-            // Insert warehouse manager data into the database
-            DB::table('warehouse_managers')->insert($warehouseManagers);
-
-            DB::statement('SET FOREIGN_KEY_CHECKS=1;'); 
-
-            $this->command->info('Warehouse managers seeded successfully.');
-        } catch (\Exception $e) {
-            DB::statement('SET FOREIGN_KEY_CHECKS=1;'); 
-            $this->command->error('Error seeding warehouse managers: ' . $e->getMessage());
-        }
+    public function manager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'manager_id');
     }
 }

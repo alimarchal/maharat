@@ -14,12 +14,13 @@ class Task extends Model
 
     protected $fillable = [
         'process_step_id',
-        'process_user_id',
+        'process_id',
         'assigned_at',
         'deadline',
         'urgency',
         'assigned_user_id',
-        'read_status'
+        'read_status',
+        'tasks'
     ];
 
     protected $casts = [
@@ -35,7 +36,7 @@ class Task extends Model
 
     public function process(): BelongsTo
     {
-        return $this->belongsTo(Process::class, 'process_user_id');
+        return $this->belongsTo(Process::class, 'process_id');
     }
 
     public function assignedUser(): BelongsTo

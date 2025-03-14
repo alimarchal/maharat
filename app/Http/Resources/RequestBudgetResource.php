@@ -24,6 +24,8 @@ class RequestBudgetResource extends JsonResource
             'department_id' => $this->department_id,
             'cost_center_id' => $this->cost_center_id,
             'sub_cost_center' => $this->sub_cost_center,
+            'previous_year_revenue' => $this->previous_year_revenue,
+            'current_year_revenue' => $this->current_year_revenue,
             'previous_year_budget_amount' => $this->previous_year_budget_amount,
             'requested_amount' => $this->requested_amount,
             'approved_amount' => $this->approved_amount,

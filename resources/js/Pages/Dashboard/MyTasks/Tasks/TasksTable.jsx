@@ -18,7 +18,7 @@ const TasksTable = () => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/tasks?page=${currentPage}`
+                    `/api/v1/tasks?include=processStep,process,assignedUser,descriptions&page=${currentPage}`
                 );
                 const data = await response.json();
                 if (response.ok) {
@@ -41,12 +41,6 @@ const TasksTable = () => {
         <div className="w-full overflow-hidden">
             <div className="flex justify-between items-center mb-8">
                 <h2 className="text-3xl font-bold text-[#2C323C]">My Tasks</h2>
-                <Link
-                    href={`/tasks/new`}
-                    className="flex text-gray-400 items-center hover:text-[#2C323C]"
-                >
-                    Go to New Task
-                </Link>
                 <div className="flex justify-between items-center gap-4">
                     <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
                         {filters.map((filter) => (
@@ -71,8 +65,7 @@ const TasksTable = () => {
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             Task Name
                         </th>
-                        <th className="py-3 px-4">Type</th>
-                        <th className="py-3 px-4">Assigned</th>
+                        <th className="py-3 px-4">Created At</th>
                         <th className="py-3 px-4">Deadline</th>
                         <th className="py-3 px-4">Urgency</th>
                         <th className="py-3 px-4">From</th>
@@ -84,14 +77,14 @@ const TasksTable = () => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="7" className="text-center py-12">
+                            <td colSpan="6" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="7"
+                                colSpan="6"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -107,12 +100,26 @@ const TasksTable = () => {
                             .map((req) => (
                                 <tr
                                     key={req}
-                                    className="border-b border-gray-200 hover:bg-gray-100"
+                                    className="border-b border-gray-200"
                                 >
-                                    <td className="py-3 px-4">{req.name}</td>
-                                    <td className="py-3 px-4">{req.type}</td>
                                     <td className="py-3 px-4">
-                                        {req.assigned}
+                                        {req.process?.title}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        <div className="flex flex-col">
+                                            {req.assigned_at
+                                                ? new Date(
+                                                      req.assigned_at
+                                                  ).toLocaleDateString()
+                                                : "N/A"}
+                                            <span className="text-gray-400">
+                                                {req.assigned_at
+                                                    ? new Date(
+                                                          req.assigned_at
+                                                      ).toLocaleTimeString()
+                                                    : ""}
+                                            </span>
+                                        </div>
                                     </td>
                                     <td className="py-3 px-4">
                                         <div className="flex flex-col">
@@ -131,21 +138,26 @@ const TasksTable = () => {
                                         </div>
                                     </td>
                                     <td className="py-3 px-4">{req.urgency}</td>
-                                    <td className="py-3 px-4">{req.from}</td>
+                                    <td className="py-3 px-4">
+                                        {req.assigned_user?.name}
+                                    </td>
                                     <td className="py-3 px-4 flex space-x-3">
                                         <button className="text-[#9B9DA2] hover:text-gray-500">
                                             <FontAwesomeIcon icon={faEye} />
                                         </button>
-                                        <button className="border border-[#9B9DA2] text-[#9B9DA2] p-2 rounded-full flex items-center hover:border-gray-500 hover:text-gray-500 transition">
+                                        <Link
+                                            href={`/tasks/${req.id}/new`}
+                                            className="flex items-center justify-center w-8 h-8 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200"
+                                        >
                                             <FontAwesomeIcon icon={faPlus} />
-                                        </button>
+                                        </Link>
                                     </td>
                                 </tr>
                             ))
                     ) : (
                         <tr>
                             <td
-                                colSpan="7"
+                                colSpan="6"
                                 className="text-center text-gray-700 font-medium py-4"
                             >
                                 No tasks found.
@@ -167,16 +179,16 @@ const TasksTable = () => {
                             onClick={() => setCurrentPage(page)}
                             className={`px-3 py-1 ${
                                 currentPage === page
-                                    ? "bg-blue-500 text-white"
-                                    : "border border-gray-300 bg-white"
-                            } rounded-full hover:bg-blue-600 transition`}
+                                    ? "bg-[#009FDC] text-white"
+                                    : "border border-[#B9BBBD] bg-white"
+                            } rounded-full hover:bg-[#0077B6] transition`}
                         >
                             {page}
                         </button>
                     ))}
                     <button
                         onClick={() => setCurrentPage(currentPage + 1)}
-                        className={`px-3 py-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition ${
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
                             currentPage >= lastPage
                                 ? "opacity-50 cursor-not-allowed"
                                 : ""

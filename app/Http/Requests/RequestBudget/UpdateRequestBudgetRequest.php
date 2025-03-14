@@ -25,6 +25,8 @@ class UpdateRequestBudgetRequest extends FormRequest
             'department_id' => ['sometimes', 'exists:departments,id'],
             'cost_center_id' => ['sometimes', 'exists:cost_centers,id'],
             'sub_cost_center' => ['nullable', 'exists:cost_centers,id'],
+            'previous_year_revenue' => ['nullable', 'numeric', 'min:0'],
+            'current_year_revenue' => ['nullable', 'numeric', 'min:0'],
             'previous_year_budget_amount' => ['nullable', 'numeric', 'min:0'],
             'requested_amount' => ['sometimes', 'numeric', 'min:0'],
             'approved_amount' => ['nullable', 'numeric', 'min:0'],

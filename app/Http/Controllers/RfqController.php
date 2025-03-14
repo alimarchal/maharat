@@ -8,7 +8,7 @@ use Inertia\Inertia;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Rfq;
 
-class RFQController extends Controller
+class RfqController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -17,7 +17,7 @@ class RFQController extends Controller
     {
         // Add dd() to debug
         dd('RFQ Index reached');
-        
+
         return Inertia::render('Dashboard/Quotations/Quotation', [
             'quotations' => Quotation::all() // Make sure this variable is passed
         ]);
@@ -30,7 +30,7 @@ class RFQController extends Controller
     {
         // Add dd() to debug
         dd('RFQ Create reached');
-        
+
         return Inertia::render('Dashboard/Quotations/AddQuotationForm');
     }
 
@@ -60,17 +60,17 @@ class RFQController extends Controller
         ]);
 
         $rfq = Rfq::create($validated);
-        
+
         foreach ($validated['items'] as $index => $item) {
             $itemData = $item;
-            
+
             // Handle file attachment
             if ($request->hasFile("items.{$index}.attachment")) {
                 $file = $request->file("items.{$index}.attachment");
                 $path = $file->store('rfq-attachments', 'public');
                 $itemData['attachment'] = $path;
             }
-            
+
             $rfq->items()->create($itemData);
         }
 

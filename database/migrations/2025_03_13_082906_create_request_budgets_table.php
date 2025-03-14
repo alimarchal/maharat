@@ -19,6 +19,8 @@ return new class extends Migration
             $table->foreignId('department_id')->nullable()->constrained('departments', 'id');
             $table->foreignId('cost_center_id')->nullable()->constrained('cost_centers', 'id');
             $table->foreignId('sub_cost_center')->nullable()->constrained('cost_centers', 'id');
+            $table->decimal('previous_year_revenue', 15, 2)->nullable();
+            $table->decimal('current_year_revenue', 15, 2)->nullable();
             $table->decimal('previous_year_budget_amount', 15, 2)->nullable();
             $table->decimal('requested_amount', 15, 2)->nullable();
             $table->decimal('approved_amount', 15, 2)->nullable();
