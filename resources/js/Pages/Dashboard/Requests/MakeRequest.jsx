@@ -264,8 +264,7 @@ const MakeRequest = () => {
 
             const taskPayload = {
                 process_step_id: processStep.id,
-                process_user_id:
-                    processStep.approver_id || processStep.designation_id,
+                process_id: processStep.process_id,
                 assigned_at: new Date().toISOString(),
                 urgency: "Normal",
                 assigned_user_id: user_id,
