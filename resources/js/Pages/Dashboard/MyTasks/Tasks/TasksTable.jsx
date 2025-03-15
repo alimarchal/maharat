@@ -68,6 +68,7 @@ const TasksTable = () => {
                         <th className="py-3 px-4">Created At</th>
                         <th className="py-3 px-4">Deadline</th>
                         <th className="py-3 px-4">Urgency</th>
+                        <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">From</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
                             Actions
@@ -77,14 +78,14 @@ const TasksTable = () => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="6" className="text-center py-12">
+                            <td colSpan="7" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="6"
+                                colSpan="7"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -95,7 +96,7 @@ const TasksTable = () => {
                             .filter(
                                 (req) =>
                                     selectedFilter === "All" ||
-                                    req.status?.name === selectedFilter
+                                    req.status === selectedFilter
                             )
                             .map((req) => (
                                 <tr
@@ -138,6 +139,7 @@ const TasksTable = () => {
                                         </div>
                                     </td>
                                     <td className="py-3 px-4">{req.urgency}</td>
+                                    <td className="py-3 px-4">{req.status}</td>
                                     <td className="py-3 px-4">
                                         {req.assigned_user?.name}
                                     </td>
@@ -147,7 +149,7 @@ const TasksTable = () => {
                                         </button>
                                         <Link
                                             href={`/tasks/${req.id}/new`}
-                                            className="flex items-center justify-center w-8 h-8 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200"
+                                            className="flex items-center justify-center w-6 h-6 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200"
                                         >
                                             <FontAwesomeIcon icon={faPlus} />
                                         </Link>
@@ -157,7 +159,7 @@ const TasksTable = () => {
                     ) : (
                         <tr>
                             <td
-                                colSpan="6"
+                                colSpan="7"
                                 className="text-center text-gray-700 font-medium py-4"
                             >
                                 No tasks found.

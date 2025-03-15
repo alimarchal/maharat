@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
 import SelectFloating from "../../../../Components/SelectFloating";
 import axios from "axios";
-import { router } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 
 const ReviewTask = () => {
-    const { id } = useParams();
+    const { id } = usePage().props;
 
     const [formData, setFormData] = useState({
         task_id: "",
@@ -47,7 +46,7 @@ const ReviewTask = () => {
         if (!formData.description)
             newErrors.description = "Description is required";
         if (!formData.action) newErrors.action = "Action is required";
-        if (formData.action === "refer" && !formData.user_id)
+        if (formData.action === "Refer" && !formData.user_id)
             newErrors.user_id = "User is required";
 
         setErrors(newErrors);
@@ -107,9 +106,9 @@ const ReviewTask = () => {
                                 value={formData.action}
                                 onChange={handleChange}
                                 options={[
-                                    { id: "approve", label: "Approve" },
-                                    { id: "reject", label: "Reject" },
-                                    { id: "refer", label: "Refer" },
+                                    { id: "Approve", label: "Approve" },
+                                    { id: "Reject", label: "Reject" },
+                                    { id: "Refer", label: "Refer" },
                                 ]}
                             />
                             {errors.action && (
@@ -118,7 +117,7 @@ const ReviewTask = () => {
                                 </p>
                             )}
                         </div>
-                        {formData.action === "refer" && (
+                        {formData.action === "Refer" && (
                             <div className="w-full">
                                 <SelectFloating
                                     label="User"
