@@ -51,7 +51,8 @@ class TaskParameters
     const ALLOWED_INCLUDES = [
         'processStep',
         'process',
-        'assignedUser',
+        'assignedFromUser',
+        'assignedToUser',
         'descriptions',
     ];
 }
