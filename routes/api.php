@@ -294,9 +294,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('rfq-approval-transactions', RfqApprovalTransactionController::class);
     Route::apiResource('po-approval-transactions', PoApprovalTransactionController::class);
     Route::apiResource('budget-approval-transactions', BudgetApprovalTransactionController::class);
-    //Route::apiResource('payment-order-approval-transactions', PaymentOrderApprovalTransactionController::class);
-    //Route::apiResource('mahrat-invoice-approval-transactions', MahratInvoiceApprovalTransactionController::class);
-    //Route::apiResource('budget-request-approval-transactions', BudgetRequestApprovalTransactionController::class);
+    Route::apiResource('payment-order-approval-trans', PaymentOrderApprovalTransactionController::class);
+    Route::apiResource('mahrat-invoice-approval-trans', MahratInvoiceApprovalTransactionController::class);
+    Route::apiResource('budget-request-approval-trans', BudgetRequestApprovalTransactionController::class);
 
 
 
