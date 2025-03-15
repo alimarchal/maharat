@@ -180,8 +180,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/tasks', function () {
         return Inertia::render('Dashboard', ['page' => 'MyTasks/Tasks/TasksTable']);
     })->name('tasks.index');
-    Route::get('/tasks/{id}/new', function () {
-        return Inertia::render('Dashboard', ['page' => 'MyTasks/Tasks/ReviewTask']);
+    Route::get('/tasks/{id}/new', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'MyTasks/Tasks/ReviewTask', 'id' => $id]);
     })->name('tasks.create');
 
     Route::get('/approve-budget', function () {

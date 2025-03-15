@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import { Link } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { usePage } from "@inertiajs/react";
 
 const RequestTable = ({ selectedFilter }) => {
+    const user_id = usePage().props.auth.user.id;
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -15,7 +17,7 @@ const RequestTable = ({ selectedFilter }) => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/material-requests?include=requester,warehouse,status,items.product,items.unit,items.category,items.urgencyStatus&page=${currentPage}`
+                    `/api/v1/material-requests?include=requester,warehouse,status,items.product,items.unit,items.category,items.urgencyStatus&page=${currentPage}&filter[requester_id]=${user_id}`
                 );
                 const data = await response.json();
 
