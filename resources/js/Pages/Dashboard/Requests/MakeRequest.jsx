@@ -267,7 +267,8 @@ const MakeRequest = () => {
                 process_id: processStep.process_id,
                 assigned_at: new Date().toISOString(),
                 urgency: "Normal",
-                assigned_user_id: user_id,
+                assigned_to_user_id: user_id,
+                assigned_from_user_id: process?.created_by,
                 read_status: null,
             };
             await axios.post("/api/v1/tasks", taskPayload);
