@@ -40,9 +40,14 @@ class Task extends Model
         return $this->belongsTo(Process::class, 'process_id');
     }
 
-    public function assignedUser(): BelongsTo
+    public function assignedFromUser(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'assigned_user_id');
+        return $this->belongsTo(User::class, 'assigned_from_user_id');
+    }
+
+    public function assignedToUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to_user_id');
     }
 
     public function descriptions(): HasMany

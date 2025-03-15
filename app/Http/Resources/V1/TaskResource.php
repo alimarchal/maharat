@@ -26,7 +26,8 @@ class TaskResource extends JsonResource
             // Include related resources when loaded
             'process_step' => $this->whenLoaded('processStep'),
             'process' => $this->whenLoaded('process'),
-            'assigned_user' => new UserResource($this->whenLoaded('assignedUser')),
+            'assigned_from_user' => new UserResource($this->whenLoaded('assignedFromUser')),
+            'assigned_to_user' => new UserResource($this->whenLoaded('assignedToUser')),
             'descriptions' => TaskDescriptionResource::collection($this->whenLoaded('descriptions')),
         ];
     }

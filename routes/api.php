@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Api\V1\BrandController;
+use App\Http\Controllers\Api\V1\BudgetApprovalTransactionController;
 use App\Http\Controllers\Api\V1\BudgetController;
+use App\Http\Controllers\Api\V1\BudgetRequestApprovalTransactionController;
 use App\Http\Controllers\Api\V1\ChartOfAccountController;
 use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\CostCenterController;
@@ -17,13 +19,16 @@ use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryTransactionController;
 use App\Http\Controllers\Api\V1\InventoryTransferController;
 use App\Http\Controllers\Api\V1\InvoiceController;
+use App\Http\Controllers\Api\V1\MahratInvoiceApprovalTransactionController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
 use App\Http\Controllers\Api\V1\MaterialRequestItemController;
 use App\Http\Controllers\Api\V1\MaterialRequestTransactionController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\PaymentOrderApprovalTransactionController;
 use App\Http\Controllers\Api\V1\PaymentOrderController;
 use App\Http\Controllers\Api\V1\PaymentOrderLogController;
 use App\Http\Controllers\Api\V1\PermissionController;
+use App\Http\Controllers\Api\V1\PoApprovalTransactionController;
 use App\Http\Controllers\Api\V1\ProcessController;
 use App\Http\Controllers\Api\V1\ProcessStepController;
 use App\Http\Controllers\Api\V1\ProductCategoryController;
@@ -31,6 +36,7 @@ use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\QuotationController;
 use App\Http\Controllers\Api\V1\QuotationDocumentController;
 use App\Http\Controllers\Api\V1\RequestBudgetController;
+use App\Http\Controllers\Api\V1\RfqApprovalTransactionController;
 use App\Http\Controllers\Api\V1\RfqController;
 use App\Http\Controllers\Api\V1\RfqItemController;
 use App\Http\Controllers\Api\V1\RoleController;
@@ -172,11 +178,11 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('purchase-orders', PurchaseOrderController::class);
     // GRN routes
     Route::apiResource('grns', GrnController::class);
-    Route::post('/grns/save-all', [GrnController::class, 'saveAll']); 
-    
+    Route::post('/grns/save-all', [GrnController::class, 'saveAll']);
+
     // GRN Receive Goods routes
     Route::apiResource('grn-receive-goods', GrnReceiveGoodController::class);
-    
+
     // Category Routes
     Route::get('/categories', [CategoryController::class, 'index']);
 
@@ -282,6 +288,20 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // External Invoices
     Route::apiResource('external-invoices', ExternalInvoiceController::class);
     Route::post('external-invoices/{id}/restore', [ExternalInvoiceController::class, 'restore']);
+
+
+
+    Route::apiResource('rfq-approval-transactions', RfqApprovalTransactionController::class);
+    Route::apiResource('po-approval-transactions', PoApprovalTransactionController::class);
+    Route::apiResource('budget-approval-transactions', BudgetApprovalTransactionController::class);
+    Route::apiResource('payment-order-approval-transactions', PaymentOrderApprovalTransactionController::class);
+    Route::apiResource('mahrat-invoice-approval-transactions', MahratInvoiceApprovalTransactionController::class);
+    Route::apiResource('budget-request-approval-transactions', BudgetRequestApprovalTransactionController::class);
+
+
+
+
+
 
 });
 

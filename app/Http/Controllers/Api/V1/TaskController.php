@@ -56,7 +56,7 @@ class TaskController extends Controller
             return response()->json([
                 'message' => 'Task created successfully',
                 'data' => new TaskResource($task->load([
-                    'processStep', 'process', 'assignedUser', 'descriptions'
+                    'processStep', 'process', 'assignedFromUser', 'assignedToUser', 'descriptions'
                 ]))
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
