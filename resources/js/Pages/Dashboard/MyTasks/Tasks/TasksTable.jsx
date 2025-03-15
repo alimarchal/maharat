@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
+import { usePage } from "@inertiajs/react";
 
 const TasksTable = () => {
+    const user_id = usePage().props.auth.user.id;
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -18,7 +20,7 @@ const TasksTable = () => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/tasks?include=processStep,process,assignedUser,descriptions&page=${currentPage}`
+                    `/api/v1/tasks?include=processStep,process,assignedFromUser,assignedToUser,descriptions&page=${currentPage}&filter[assigned_from_user_id]=${user_id}`
                 );
                 const data = await response.json();
                 if (response.ok) {
@@ -141,7 +143,7 @@ const TasksTable = () => {
                                     <td className="py-3 px-4">{req.urgency}</td>
                                     <td className="py-3 px-4">{req.status}</td>
                                     <td className="py-3 px-4">
-                                        {req.assigned_user?.name}
+                                        {req.assigned_from_user?.name}
                                     </td>
                                     <td className="py-3 px-4 flex space-x-3">
                                         <button className="text-[#9B9DA2] hover:text-gray-500">
