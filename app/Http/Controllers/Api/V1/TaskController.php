@@ -13,6 +13,7 @@ use App\QueryParameters\TaskParameters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
 class TaskController extends Controller
@@ -20,7 +21,7 @@ class TaskController extends Controller
     public function index(): JsonResponse
     {
         $tasks = QueryBuilder::for(Task::class)
-            ->allowedFilters(TaskParameters::ALLOWED_FILTERS)
+            ->allowedFilters(TaskParameters::getAllFilters())
             ->allowedSorts(TaskParameters::ALLOWED_SORTS)
             ->allowedIncludes(TaskParameters::ALLOWED_INCLUDES)
             ->paginate()
