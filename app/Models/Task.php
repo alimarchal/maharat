@@ -18,7 +18,8 @@ class Task extends Model
         'assigned_at',
         'deadline',
         'urgency',
-        'assigned_user_id',
+        'assigned_from_user_id',
+        'assigned_to_user_id',
         'read_status',
         'tasks'
     ];

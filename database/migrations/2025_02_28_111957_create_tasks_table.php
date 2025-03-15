@@ -18,7 +18,8 @@ return new class extends Migration
             $table->dateTime('assigned_at')->nullable();
             $table->dateTime('deadline')->nullable();
             $table->enum('urgency', ['Normal', 'Medium', 'High', 'Low', 'ASAP'])->default('Normal');
-            $table->foreignId('assigned_user_id')->nullable()->comment('From')->constrained('users', 'id');
+            $table->foreignId('assigned_from_user_id')->nullable()->comment('from')->constrained('users', 'id');
+            $table->foreignId('assigned_to_user_id')->nullable()->comment('to')->constrained('users', 'id');
             $table->dateTime('read_status')->nullable();
             $table->enum('status',['Pending','Approved','Rejected','Referred'])->default('Pending');
             $table->softDeletes();

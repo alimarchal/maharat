@@ -20,7 +20,8 @@ class UpdateTaskRequest extends FormRequest
             'assigned_at' => ['nullable', 'date'],
             'deadline' => ['nullable', 'date', 'after_or_equal:assigned_at'],
             'urgency' => ['sometimes', 'required', Rule::in(['Normal', 'Medium', 'High', 'Low', 'ASAP'])],
-            'assigned_user_id' => ['sometimes', 'required', 'exists:users,id'],
+            'assigned_from_user_id' => ['sometimes', 'required', 'exists:users,id'],
+            'assigned_to_user_id' => ['sometimes', 'required', 'exists:users,id'],
             'read_status' => ['nullable', 'date'],
             'status' => ['sometimes', Rule::in(['Pending','Approved','Rejected','Referred'])],
         ];
