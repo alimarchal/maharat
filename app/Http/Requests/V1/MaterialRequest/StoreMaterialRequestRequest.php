@@ -16,6 +16,9 @@ class StoreMaterialRequestRequest extends FormRequest
         return [
             'requester_id' => ['required', 'exists:users,id'],
             'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'department_id' => ['nullable', 'exists:departments,id'],
+            'cost_center_id' => ['nullable', 'exists:cost_centers,id'],
+            'sub_cost_center_id' => ['nullable', 'exists:cost_centers,id'],
             'expected_delivery_date' => ['required', 'date', 'after_or_equal:today'],
             'status_id' => ['required', 'exists:statuses,id'],
 

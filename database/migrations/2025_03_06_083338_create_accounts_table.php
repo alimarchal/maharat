@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('chart_of_account_id')->nullable()->constrained('chart_of_accounts', 'id');
             $table->foreignId('cost_center_id')->nullable()->constrained('cost_centers')->nullOnDelete();
+            $table->foreignId('department_id')->nullable()->constrained('departments', 'id');
             $table->string('name')->nullable();
             $table->string('description')->nullable();
             $table->enum('status', ['Approved', 'Pending'])->default('Approved');

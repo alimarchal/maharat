@@ -25,6 +25,7 @@ class StoreAccountRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'cost_center_id' => ['nullable', 'exists:cost_centers,id'],
+            'department_id' => ['nullable', 'exists:departments,id'],
             'status' => ['nullable', 'in:Approved,Pending'],
         ];
     }

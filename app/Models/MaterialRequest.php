@@ -14,6 +14,9 @@ class MaterialRequest extends Model
     protected $fillable = [
         'requester_id',
         'warehouse_id',
+        'department_id',
+        'cost_center_id',
+        'sub_cost_center_id',
         'expected_delivery_date',
         'status_id',
     ];
@@ -40,5 +43,30 @@ class MaterialRequest extends Model
     public function items(): HasMany
     {
         return $this->hasMany(MaterialRequestItem::class);
+    }
+
+
+    /**
+     * Get the department associated with the material request.
+     */
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    /**
+     * Get the primary cost center associated with the material request.
+     */
+    public function costCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class, 'cost_center_id');
+    }
+
+    /**
+     * Get the secondary cost center associated with the material request.
+     */
+    public function subCostCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class, 'sub_cost_center_id');
     }
 }

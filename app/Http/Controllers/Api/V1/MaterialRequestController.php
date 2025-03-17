@@ -57,6 +57,9 @@ class MaterialRequestController extends Controller
                     $materialRequest->load([
                         'requester',
                         'warehouse',
+                        'department',
+                        'costCenter',
+                        'subCostCenter',
                         'status',
                         'items.product',
                         'items.unit',
@@ -96,6 +99,9 @@ class MaterialRequestController extends Controller
                     $materialRequest->load([
                         'requester',
                         'warehouse',
+                        'department',
+                        'costCenter',
+                        'subCostCenter',
                         'status',
                         'items.product',
                         'items.unit',
