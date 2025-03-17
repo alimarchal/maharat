@@ -5,6 +5,9 @@ class RfqParameters
 {
     public const ALLOWED_FILTERS = [
         'rfq_number',
+        'department_id',
+        'cost_center_id',
+        'sub_cost_center_id',
         'organization_name',
         'organization_email',
         'city',
@@ -21,6 +24,9 @@ class RfqParameters
 
     public const ALLOWED_SORTS = [
         'rfq_number',
+        'department_id',
+        'cost_center_id',
+        'sub_cost_center_id',
         'organization_name',
         'request_date',
         'expected_delivery_date',
@@ -30,6 +36,9 @@ class RfqParameters
 
     public const ALLOWED_INCLUDES = [
         'requester',
+        'department',
+        'costCenter',
+        'subCostCenter',
         'company',
         'warehouse',
         'status',

@@ -20,6 +20,7 @@ class Rfq extends Model
 
     protected $fillable = [
         'rfq_number',
+        'payment_type',
         'organization_name',
         'organization_email',
         'city',
@@ -33,7 +34,10 @@ class Rfq extends Model
         'quotation_sent_at',
         'quotation_document',
         'status_id',
-        'supplier_id'
+        'supplier_id',
+        'department_id',
+        'cost_center_id',
+        'sub_cost_center_id',
     ];
 
     protected $casts = [
@@ -108,5 +112,30 @@ class Rfq extends Model
     public function quotations()
     {
         return $this->hasMany(Quotation::class, 'rfq_id', 'id');
+    }
+
+
+    /**
+     * Get the department associated with the material request.
+     */
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    /**
+     * Get the primary cost center associated with the material request.
+     */
+    public function costCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class, 'cost_center_id');
+    }
+
+    /**
+     * Get the secondary cost center associated with the material request.
+     */
+    public function subCostCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class, 'sub_cost_center_id');
     }
 }

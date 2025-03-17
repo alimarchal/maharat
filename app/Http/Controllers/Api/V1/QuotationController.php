@@ -108,6 +108,34 @@ class QuotationController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function uploadTerms(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:pdf|max:2048',
+            'quotation_id' => 'required|exists:quotations,id',
+        ]);
+
+        $quotation = Quotation::findOrFail($request->quotation_id);
+
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $filePath = $file->storeAs('public/documents', $fileName); 
+
+            // Save file path to database
+            $quotation->terms_and_conditions = $filePath;
+            $quotation->save();
+
+            return response()->json([
+                'success' => true,
+                'file_path' => asset('storage/documents/' . $fileName), 
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'File upload failed.']);
+    }
+
+
     public function destroy($id)
     {
         $quotation = Quotation::findOrFail($id);
