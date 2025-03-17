@@ -6,47 +6,48 @@ import SelectFloating from "../../../../Components/SelectFloating";
 
 const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
     const [formData, setFormData] = useState({
-        requestNumber: "",
+        material_request_id: "",
         items: "",
-        costCenter: "",
-        subCostCenter: "",
-        department: "",
+        cost_center_id: "",
+        sub_cost_center_id: "",
+        department_id: "",
         priority: "",
         status: "",
         description: "",
     });
 
     useEffect(() => {
-        if (requestData) {
+        if (isOpen && requestData) {
             setFormData({
-                requestNumber: requestData.id || "",
+                material_request_id: requestData.id || "",
                 items:
                     requestData.items
                         ?.map((item) => item.product?.name)
                         .join(", ") || "",
-                costCenter: requestData.cost_center || "",
-                subCostCenter: requestData.sub_cost_center || "",
-                department: requestData.department || "",
-                priority: requestData.items?.[0]?.urgency_status?.name || "",
+                cost_center_id: requestData.costCenter?.id || "",
+                sub_cost_center_id: requestData.subCostCenter?.id || "",
+                department_id: requestData.department?.id || "",
+                priority: "",
                 status: "",
-                description: requestData.description || "",
+                description: "",
             });
         }
-    }, [requestData]);
+    }, [isOpen, requestData]);
 
     const [errors, setErrors] = useState({});
 
     const validateForm = () => {
         let newErrors = {};
-        if (!formData.requestNumber)
-            newErrors.requestNumber = "Request Number is required";
+        if (!formData.material_request_id)
+            newErrors.material_request_id = "Request Number is required";
         if (!formData.items) newErrors.items = "Items field is required";
-        if (!formData.costCenter)
-            newErrors.costCenter = "Cost Center is required";
+        if (!formData.cost_center_id)
+            newErrors.cost_center_id = "Cost Center is required";
+        if (!formData.priority) newErrors.priority = "Priority is required";
         if (!formData.status) newErrors.status = "Status is required";
-        if (formData.status === "pending" && !formData.description)
+        if (formData.status === "Pending" && !formData.description)
             newErrors.description =
-                "Description is required when status is pending";
+                "Description is required when status is Pending";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -86,14 +87,14 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
                         <div>
                             <InputFloating
                                 label="Request Number"
-                                name="requestNumber"
-                                value={formData.requestNumber}
+                                name="material_request_id"
+                                value={formData.material_request_id}
                                 onChange={handleChange}
                                 disabled
                             />
-                            {errors.requestNumber && (
+                            {errors.material_request_id && (
                                 <p className="text-red-500 text-sm mt-1">
-                                    {errors.requestNumber}
+                                    {errors.material_request_id}
                                 </p>
                             )}
                         </div>
@@ -114,39 +115,54 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
                         <div>
                             <InputFloating
                                 label="Cost Center"
-                                name="costCenter"
-                                value={formData.costCenter}
+                                name="cost_center_id"
+                                value={formData.cost_center_id}
                                 onChange={handleChange}
                             />
-                            {errors.costCenter && (
+                            {errors.cost_center_id && (
                                 <p className="text-red-500 text-sm mt-1">
-                                    {errors.costCenter}
+                                    {errors.cost_center_id}
                                 </p>
                             )}
                         </div>
-                        <InputFloating
-                            label="Sub Cost Center"
-                            name="subCostCenter"
-                            value={formData.subCostCenter}
-                            onChange={handleChange}
-                        />
-                        <InputFloating
-                            label="Department"
-                            name="department"
-                            value={formData.department}
-                            onChange={handleChange}
-                        />
-                        <InputFloating
-                            label="Priority"
-                            name="priority"
-                            value={formData.priority}
-                            onChange={handleChange}
-                            disabled
-                        />
+                        <div>
+                            <InputFloating
+                                label="Sub Cost Center"
+                                name="sub_cost_center_id"
+                                value={formData.sub_cost_center_id}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div>
+                            <InputFloating
+                                label="Department"
+                                name="department_id"
+                                value={formData.department_id}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div>
+                            <SelectFloating
+                                label="Priority"
+                                name="priority"
+                                value={formData.priority}
+                                onChange={handleChange}
+                                options={[
+                                    { id: "High", label: "High" },
+                                    { id: "Medium", label: "Medium" },
+                                    { id: "Low", label: "Low" },
+                                ]}
+                            />
+                            {errors.priority && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.priority}
+                                </p>
+                            )}
+                        </div>
                     </div>
                     <div
                         className={`grid ${
-                            formData.status === "pending"
+                            formData.status === "Pending"
                                 ? "grid-cols-1 md:grid-cols-2"
                                 : "grid-cols-1"
                         } gap-6`}
@@ -158,8 +174,11 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
                                 value={formData.status}
                                 onChange={handleChange}
                                 options={[
-                                    { id: "pending", label: "Pending" },
-                                    { id: "issued", label: "Issue Material" },
+                                    { id: "Pending", label: "Pending" },
+                                    {
+                                        id: "Issue Material",
+                                        label: "Issue Material",
+                                    },
                                 ]}
                             />
                             {errors.status && (
@@ -168,7 +187,7 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
                                 </p>
                             )}
                         </div>
-                        {formData.status === "pending" && (
+                        {formData.status === "Pending" && (
                             <div>
                                 <InputFloating
                                     label="Description"

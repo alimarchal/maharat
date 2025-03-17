@@ -20,10 +20,9 @@ const ReceivedMRsTable = () => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/material-requests?include=requester,warehouse,status,items.product,items.unit,items.category,items.urgencyStatus&page=${currentPage}`
+                    `/api/v1/material-requests?include=requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus&page=${currentPage}`
                 );
                 const data = await response.json();
-
                 if (response.ok) {
                     setRequests(data.data || []);
                     setLastPage(data.meta?.last_page || 1);
@@ -53,13 +52,15 @@ const ReceivedMRsTable = () => {
         Normal: "text-green-500",
     };
 
-    const handleSave = async (newRequests) => {
+    const handleSave = async (newRequest) => {
         try {
             const response = await axios.post(
-                "/api/v1/material-requests",
-                newRequests
+                "/api/v1/issue-materials",
+                newRequest
             );
-            setRequests([...newRequests, response.data]);
+            if (response.data) {
+                setRequests((prevRequests) => [...prevRequests, response.data]);
+            }
             setIsModalOpen(false);
         } catch (error) {
             console.error("Error saving requests:", error);
@@ -153,13 +154,13 @@ const ReceivedMRsTable = () => {
                                         </div>
                                     </td>
                                     <td className="py-3 px-4">
-                                        {req.cost_center || "N/A"}
+                                        {req.costCenter?.name || "N/A"}
                                     </td>
                                     <td className="py-3 px-4">
-                                        {req.sub_cost_center || "N/A"}
+                                        {req.subCostCenter?.name || "N/A"}
                                     </td>
                                     <td className="py-3 px-4">
-                                        {req.department || "N/A"}
+                                        {req.department?.name || "N/A"}
                                     </td>
                                     <td
                                         className={`py-3 px-4 ${

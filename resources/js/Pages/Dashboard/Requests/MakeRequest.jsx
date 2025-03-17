@@ -24,6 +24,9 @@ const MakeRequest = () => {
                 urgency: "",
                 photo: null,
                 description: "",
+                cost_center_id: "",
+                sub_cost_center_id: "",
+                department_id: "",
             },
         ],
     });
@@ -34,31 +37,66 @@ const MakeRequest = () => {
     const [units, setUnits] = useState([]);
     const [warehouses, setWarehouses] = useState([]);
     const [statuses, setStatuses] = useState([]);
+    const [costCenters, setCostCenters] = useState([]);
+    const [subCostCenters, setSubCostCenters] = useState([]);
+    const [departments, setDepartments] = useState([]);
     const [filteredProducts, setFilteredProducts] = useState({});
+    const [filteredSubCostCenters, setFilteredSubCostCenters] = useState({});
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [productsRes, categoriesRes, unitsRes, warehousesRes] =
-                    await Promise.all([
-                        axios.get("/api/v1/products"),
-                        axios.get("/api/v1/product-categories"),
-                        axios.get("/api/v1/units"),
-                        axios.get("/api/v1/warehouses"),
-                    ]);
+                const [
+                    productsRes,
+                    categoriesRes,
+                    unitsRes,
+                    warehousesRes,
+                    costCentersRes,
+                    departmentsRes,
+                ] = await Promise.all([
+                    axios.get("/api/v1/products"),
+                    axios.get("/api/v1/product-categories"),
+                    axios.get("/api/v1/units"),
+                    axios.get("/api/v1/warehouses"),
+                    axios.get("/api/v1/cost-centers"),
+                    axios.get("/api/v1/departments"),
+                ]);
 
                 setProducts(productsRes.data.data);
                 setCategories(categoriesRes.data.data);
                 setUnits(unitsRes.data.data);
                 setWarehouses(warehousesRes.data.data);
+                setCostCenters(costCentersRes.data.data);
+                setSubCostCenters(costCentersRes.data.data);
+                setDepartments(departmentsRes.data.data);
                 fetchAllStatuses();
+
+                // Process cost centers to identify parent-child relationships
+                const costCenterData = costCentersRes.data.data;
+                processSubCostCenters(costCenterData);
             } catch (error) {
                 console.error("Error fetching data:", error);
             }
         };
         fetchData();
     }, []);
+
+    // Process sub cost centers based on parent_id
+    const processSubCostCenters = (costCenterData) => {
+        const subCostCenterMap = {};
+
+        costCenterData.forEach((costCenter) => {
+            if (costCenter.parent_id) {
+                if (!subCostCenterMap[costCenter.parent_id]) {
+                    subCostCenterMap[costCenter.parent_id] = [];
+                }
+                subCostCenterMap[costCenter.parent_id].push(costCenter);
+            }
+        });
+
+        setFilteredSubCostCenters(subCostCenterMap);
+    };
 
     useEffect(() => {
         if (products.length === 0) return;
@@ -104,7 +142,7 @@ const MakeRequest = () => {
         if (requestId) {
             axios
                 .get(
-                    `/api/v1/material-requests/${requestId}?include=requester,warehouse,status,items.product,items.unit,items.category,items.urgencyStatus`
+                    `/api/v1/material-requests/${requestId}?include=requester,warehouse,status,items.product,items.unit,items.category,items.urgencyStatus,items.costCenter,items.department`
                 )
                 .then((response) => {
                     const requestData = response.data.data;
@@ -127,6 +165,9 @@ const MakeRequest = () => {
                             urgency: item.urgency_status?.id || "",
                             photo: item.photo || null,
                             description: item.description || "",
+                            cost_center_id: item.cost_center?.id || "",
+                            sub_cost_center_id: item.sub_cost_center?.id || "",
+                            department_id: item.department?.id || "",
                         })),
                     });
                 })
@@ -159,6 +200,15 @@ const MakeRequest = () => {
             if (!item.description.trim())
                 newErrors[`items.${index}.description`] =
                     "Description is required";
+            if (!item.cost_center_id)
+                newErrors[`items.${index}.cost_center_id`] =
+                    "Cost Center is required";
+            if (!item.sub_cost_center_id)
+                newErrors[`items.${index}.sub_cost_center_id`] =
+                    "Sub Cost Center is required";
+            if (!item.department_id)
+                newErrors[`items.${index}.department_id`] =
+                    "Department is required";
         });
 
         setErrors(newErrors);
@@ -178,6 +228,10 @@ const MakeRequest = () => {
 
             if (name === "category_id") {
                 newItems[index].product_id = "";
+            }
+
+            if (name === "cost_center_id") {
+                newItems[index].sub_cost_center_id = "";
             }
 
             return { ...prev, items: newItems };
@@ -206,6 +260,9 @@ const MakeRequest = () => {
                     urgency: "",
                     photo: null,
                     description: "",
+                    cost_center_id: "",
+                    sub_cost_center_id: "",
+                    department_id: "",
                 },
             ],
         }));
@@ -287,6 +344,11 @@ const MakeRequest = () => {
         return filteredProducts[categoryId] || [];
     };
 
+    const getAvailableSubCostCenters = (index, costCenterId) => {
+        if (!costCenterId) return [];
+        return filteredSubCostCenters[costCenterId] || [];
+    };
+
     return (
         <>
             <h2 className="text-3xl font-bold text-[#2C323C]">
@@ -315,7 +377,7 @@ const MakeRequest = () => {
                 {formData.items.map((item, index) => (
                     <div
                         key={index}
-                        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                        className="grid grid-cols-1 md:grid-cols-3 gap-4"
                     >
                         <div>
                             <SelectFloating
@@ -368,6 +430,64 @@ const MakeRequest = () => {
                             {errors[`items.${index}.unit_id`] && (
                                 <p className="text-red-500 text-sm">
                                     {errors[`items.${index}.unit_id`]}
+                                </p>
+                            )}
+                        </div>
+                        <div>
+                            <SelectFloating
+                                label="Cost Center"
+                                name="cost_center_id"
+                                value={item.cost_center_id}
+                                onChange={(e) => handleItemChange(index, e)}
+                                options={costCenters.map((cc) => ({
+                                    id: cc.id,
+                                    label: cc.name,
+                                }))}
+                            />
+                            {errors[`items.${index}.cost_center_id`] && (
+                                <p className="text-red-500 text-sm">
+                                    {errors[`items.${index}.cost_center_id`]}
+                                </p>
+                            )}
+                        </div>
+                        <div>
+                            <SelectFloating
+                                label="Sub Cost Center"
+                                name="sub_cost_center_id"
+                                value={item.sub_cost_center_id}
+                                onChange={(e) => handleItemChange(index, e)}
+                                options={getAvailableSubCostCenters(
+                                    index,
+                                    item.cost_center_id
+                                ).map((scc) => ({
+                                    id: scc.id,
+                                    label: scc.name,
+                                }))}
+                            />
+                            {errors[`items.${index}.sub_cost_center_id`] && (
+                                <p className="text-red-500 text-sm">
+                                    {
+                                        errors[
+                                            `items.${index}.sub_cost_center_id`
+                                        ]
+                                    }
+                                </p>
+                            )}
+                        </div>
+                        <div>
+                            <SelectFloating
+                                label="Department"
+                                name="department_id"
+                                value={item.department_id}
+                                onChange={(e) => handleItemChange(index, e)}
+                                options={departments.map((dept) => ({
+                                    id: dept.id,
+                                    label: dept.name,
+                                }))}
+                            />
+                            {errors[`items.${index}.department_id`] && (
+                                <p className="text-red-500 text-sm">
+                                    {errors[`items.${index}.department_id`]}
                                 </p>
                             )}
                         </div>
@@ -429,7 +549,7 @@ const MakeRequest = () => {
                                 />
                             </label>
                         </div>
-                        <div className="md:col-span-2">
+                        <div className="md:col-span-3">
                             <div className="flex justify-start items-center gap-2">
                                 <div className="w-full">
                                     <div className="relative w-full">
