@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryTransactionController;
 use App\Http\Controllers\Api\V1\InventoryTransferController;
 use App\Http\Controllers\Api\V1\InvoiceController;
+use App\Http\Controllers\Api\V1\IssueMaterialController;
 use App\Http\Controllers\Api\V1\MahratInvoiceApprovalTransactionController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
 use App\Http\Controllers\Api\V1\MaterialRequestItemController;
@@ -299,6 +300,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('budget-request-approval-trans', BudgetRequestApprovalTransactionController::class);
 
 
+    Route::apiResource('issue-materials', IssueMaterialController::class);
+    Route::post('issue-materials/{id}/restore', [IssueMaterialController::class, 'restore'])->name('issue-materials.restore');
 
 
 
