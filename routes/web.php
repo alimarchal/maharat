@@ -138,7 +138,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/rfq-status', function () { return Inertia::render('Dashboard/RFQ/RFQStatus'); })->name('rfq-status');
 
-    Route::get('/inventory-tracking', function () { return Inertia::render('Dashboard/Inventory/Inventory'); })->name('inventory-tracking');
+    Route::get('/inventory-tracking', function () {
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/Inventory/Inventory']);
+    })->name('inventory.index');
 
     // RFQ Routes
     Route::get('/dashboard/quotations', [RfqController::class, 'index'])->name('dashboard.quotations.index');
