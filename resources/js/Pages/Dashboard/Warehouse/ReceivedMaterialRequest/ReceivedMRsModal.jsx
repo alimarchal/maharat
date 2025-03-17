@@ -60,11 +60,12 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
+
         try {
             onSave(formData);
             onClose();
         } catch (error) {
-            setErrors(error.response?.data.errors || {});
+            setErrors(error.response?.data?.errors);
         }
     };
 
@@ -118,6 +119,7 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
                                 name="cost_center_id"
                                 value={formData.cost_center_id}
                                 onChange={handleChange}
+                                disabled
                             />
                             {errors.cost_center_id && (
                                 <p className="text-red-500 text-sm mt-1">
@@ -131,6 +133,7 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
                                 name="sub_cost_center_id"
                                 value={formData.sub_cost_center_id}
                                 onChange={handleChange}
+                                disabled
                             />
                         </div>
                         <div>
@@ -139,6 +142,7 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
                                 name="department_id"
                                 value={formData.department_id}
                                 onChange={handleChange}
+                                disabled
                             />
                         </div>
                         <div>
