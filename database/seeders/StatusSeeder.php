@@ -52,10 +52,11 @@ class StatusSeeder extends Seeder
 
 
 
-            ['type' => 'Quotation Status', 'name' => 'Pending'],
-            ['type' => 'Quotation Status', 'name' => 'Accepted'],
+            ['type' => 'Quotation Status', 'name' => 'Pending'], 
+            ['type' => 'Quotation Status', 'name' => 'Active'],
             ['type' => 'Quotation Status', 'name' => 'Rejected'],
             ['type' => 'Quotation Status', 'name' => 'Expired'],
+            ['type' => 'Quotation Status', 'name' => 'Approved'],
 
             ['type' => 'Workflow Material Request', 'name' => 'Normal Purchase Process'],
             ['type' => 'Workflow Material Request', 'name' => 'Single Source Purchase Process'],

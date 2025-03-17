@@ -13,6 +13,7 @@ class Account extends Model
 
     protected $fillable = [
         'chart_of_account_id',
+        'department_id',
         'name',
         'description',
         'cost_center_id',

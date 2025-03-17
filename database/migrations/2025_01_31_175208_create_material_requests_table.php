@@ -15,6 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('requester_id')->constrained('users');
             $table->foreignId('warehouse_id')->constrained('warehouses');
+            $table->foreignId('department_id')->nullable()->constrained('departments', 'id');
+            $table->foreignId('cost_center_id')->nullable()->constrained('cost_centers', 'id');
+            $table->foreignId('sub_cost_center_id')->nullable()->constrained('cost_centers', 'id');
             $table->date('expected_delivery_date');
             $table->foreignId('status_id')->constrained('statuses', 'id');
             $table->timestamps();

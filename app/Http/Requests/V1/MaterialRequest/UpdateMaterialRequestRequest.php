@@ -16,6 +16,9 @@ class UpdateMaterialRequestRequest extends FormRequest
         return [
             'requester_id' => ['sometimes', 'required', 'exists:users,id'],
             'warehouse_id' => ['sometimes', 'required', 'exists:warehouses,id'],
+            'department_id' => ['nullable', 'exists:departments,id'],
+            'cost_center_id' => ['nullable', 'exists:cost_centers,id'],
+            'sub_cost_center_id' => ['nullable', 'exists:cost_centers,id'],
             'expected_delivery_date' => ['sometimes', 'required', 'date', 'after_or_equal:today'],
             'status_id' => ['sometimes', 'required', 'exists:statuses,id'],
         ];
