@@ -11,6 +11,9 @@ const BudgetTable = () => {
     const [budgets, setBudgets] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [selectedFilter, setSelectedFilter] = useState("All");
+    
+    const filters = ["All", "Pending", "Referred", "Rejected", "Approved"];
 
     const staticBudgetData = [
         {
@@ -60,8 +63,29 @@ const BudgetTable = () => {
     }, []);
 
     return (
-        <div className="w-full">
-            <h2 className="text-3xl font-bold text-[#2C323C] mb-6">Budgets</h2>
+        <div className="min-h-screen">
+            <div className="flex justify-between items-center mb-8">
+                <h2 className="text-3xl font-bold text-[#2C323C]">
+                    Budgets
+                </h2>
+                <div className="flex justify-between items-center gap-4">
+                    <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
+                        {filters.map((filter) => (
+                            <button
+                                key={filter}
+                                className={`px-6 py-2 rounded-full text-xl transition ${
+                                    selectedFilter === filter
+                                        ? "bg-[#009FDC] text-white"
+                                        : "text-[#9B9DA2]"
+                                }`}
+                                onClick={() => setSelectedFilter(filter)}
+                            >
+                                {filter}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                </div>
 
             <table className="w-full border-collapse">
                 <thead className="bg-[#C7E7DE] text-[#2C323C] text-center text-xl font-medium">
