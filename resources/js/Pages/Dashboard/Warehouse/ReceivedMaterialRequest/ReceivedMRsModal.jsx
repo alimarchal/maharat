@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import InputFloating from "../../../../Components/InputFloating";
 import SelectFloating from "../../../../Components/SelectFloating";
 
-const ReceivedMRsModal = ({ isOpen, onClose, onSave }) => {
+const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
     const [formData, setFormData] = useState({
         requestNumber: "",
         items: "",
@@ -15,6 +15,24 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave }) => {
         status: "",
         description: "",
     });
+
+    useEffect(() => {
+        if (requestData) {
+            setFormData({
+                requestNumber: requestData.id || "",
+                items:
+                    requestData.items
+                        ?.map((item) => item.product?.name)
+                        .join(", ") || "",
+                costCenter: requestData.cost_center || "",
+                subCostCenter: requestData.sub_cost_center || "",
+                department: requestData.department || "",
+                priority: requestData.items?.[0]?.urgency_status?.name || "",
+                status: "",
+                description: requestData.description || "",
+            });
+        }
+    }, [requestData]);
 
     const [errors, setErrors] = useState({});
 
@@ -54,7 +72,7 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave }) => {
             <div className="bg-white p-8 rounded-2xl w-[90%] lg:w-1/2">
                 <div className="flex justify-between border-b pb-2 mb-4">
                     <h2 className="text-3xl font-bold text-[#2C323C]">
-                        Issue Material to
+                        Issue Material to {requestData?.requester?.name}
                     </h2>
                     <button
                         onClick={onClose}
@@ -71,6 +89,7 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave }) => {
                                 name="requestNumber"
                                 value={formData.requestNumber}
                                 onChange={handleChange}
+                                disabled
                             />
                             {errors.requestNumber && (
                                 <p className="text-red-500 text-sm mt-1">
@@ -84,6 +103,7 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave }) => {
                                 name="items"
                                 value={formData.items}
                                 onChange={handleChange}
+                                disabled
                             />
                             {errors.items && (
                                 <p className="text-red-500 text-sm mt-1">
@@ -116,16 +136,12 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave }) => {
                             value={formData.department}
                             onChange={handleChange}
                         />
-                        <SelectFloating
+                        <InputFloating
                             label="Priority"
                             name="priority"
                             value={formData.priority}
                             onChange={handleChange}
-                            options={[
-                                { id: "high", label: "High" },
-                                { id: "medium", label: "Medium" },
-                                { id: "low", label: "Low" },
-                            ]}
+                            disabled
                         />
                     </div>
                     <div

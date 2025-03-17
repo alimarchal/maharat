@@ -10,42 +10,10 @@ const ReceivedMRsTable = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [isModalOpen, setIsModalOpen] = useState(false);
-
+    const [selectedRequest, setSelectedRequest] = useState(null);
     const [selectedFilter, setSelectedFilter] = useState("All");
-    const filters = ["All", "New", "Pending", "Issued"];
 
-    const staticRequests = [
-        {
-            id: 1,
-            user_name: "Ahsan",
-            items: [
-                {
-                    product: { name: "Steel Rod" },
-                    urgency_status: { name: "High" },
-                },
-            ],
-            costCenter: "Construction",
-            subCostCenter: "Building A",
-            department: "Engineering",
-            status: { name: "Pending" },
-            created_at: "2024-03-06T10:30:00Z",
-        },
-        {
-            id: 2,
-            user_name: "Ali",
-            items: [
-                {
-                    product: { name: "Cement" },
-                    urgency_status: { name: "Medium" },
-                },
-            ],
-            costCenter: "Infrastructure",
-            subCostCenter: "Roads",
-            department: "Logistics",
-            status: { name: "Issued" },
-            created_at: "2024-03-05T14:00:00Z",
-        },
-    ];
+    const filters = ["All", "New", "Pending", "Issued"];
 
     useEffect(() => {
         const fetchRequests = async () => {
@@ -60,16 +28,10 @@ const ReceivedMRsTable = () => {
                     setRequests(data.data || []);
                     setLastPage(data.meta?.last_page || 1);
                 } else {
-                    setError(
-                        data.message ||
-                            "Failed to fetch received material requests."
-                    );
+                    setError(data.message || "Failed to fetch requests.");
                 }
             } catch (err) {
-                console.error(
-                    "Error fetching received material requests:",
-                    err
-                );
+                console.error("Error fetching requests:", err);
                 setError("Error loading received material requests.");
             } finally {
                 setLoading(false);
@@ -108,7 +70,7 @@ const ReceivedMRsTable = () => {
         <div className="w-full overflow-hidden">
             <div className="flex justify-between items-center mb-8">
                 <h2 className="text-3xl font-bold text-[#2C323C]">
-                    Received Material Requests
+                    User Material Requests
                 </h2>
                 <div className="flex justify-between items-center gap-4">
                     <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
@@ -165,8 +127,8 @@ const ReceivedMRsTable = () => {
                                 {error}
                             </td>
                         </tr>
-                    ) : staticRequests.length > 0 ? (
-                        staticRequests
+                    ) : requests.length > 0 ? (
+                        requests
                             .filter(
                                 (req) =>
                                     selectedFilter === "All" ||
@@ -176,7 +138,7 @@ const ReceivedMRsTable = () => {
                                 <tr key={req.id}>
                                     <td className="py-3 px-4">MR-{req.id}</td>
                                     <td className="py-3 px-4">
-                                        {req.user_name}
+                                        {req.requester?.name || "N/A"}
                                     </td>
                                     <td className="py-3 px-4">
                                         <div className="flex flex-col">
@@ -191,30 +153,32 @@ const ReceivedMRsTable = () => {
                                         </div>
                                     </td>
                                     <td className="py-3 px-4">
-                                        {req.costCenter}
+                                        {req.cost_center || "N/A"}
                                     </td>
                                     <td className="py-3 px-4">
-                                        {req.subCostCenter}
+                                        {req.sub_cost_center || "N/A"}
                                     </td>
                                     <td className="py-3 px-4">
-                                        {req.department}
+                                        {req.department || "N/A"}
                                     </td>
                                     <td
                                         className={`py-3 px-4 ${
                                             priorityColors[
                                                 req.items?.[0]?.urgency_status
                                                     ?.name
-                                            ]
+                                            ] || "text-gray-500"
                                         }`}
                                     >
-                                        {req.items?.[0]?.urgency_status?.name}
+                                        {req.items?.[0]?.urgency_status?.name ||
+                                            "N/A"}
                                     </td>
                                     <td
                                         className={`py-3 px-4 font-semibold ${
-                                            statusColors[req.status?.name]
+                                            statusColors[req.status?.name] ||
+                                            "text-gray-500"
                                         }`}
                                     >
-                                        {req.status?.name}
+                                        {req.status?.name || "N/A"}
                                     </td>
                                     <td className="py-3 px-4">
                                         <div className="flex flex-col">
@@ -237,7 +201,10 @@ const ReceivedMRsTable = () => {
                                             <FontAwesomeIcon icon={faEye} />
                                         </button>
                                         <button
-                                            onClick={() => setIsModalOpen(true)}
+                                            onClick={() => {
+                                                setSelectedRequest(req);
+                                                setIsModalOpen(true);
+                                            }}
                                             className="text-[#9B9DA2] hover:text-gray-500"
                                         >
                                             <FontAwesomeIcon
@@ -253,7 +220,7 @@ const ReceivedMRsTable = () => {
                                 colSpan="9"
                                 className="text-center text-[#2C323C] font-medium py-4"
                             >
-                                No Material Requests found.
+                                No User Material Requests found.
                             </td>
                         </tr>
                     )}
@@ -266,6 +233,7 @@ const ReceivedMRsTable = () => {
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
                     onSave={handleSave}
+                    requestData={selectedRequest}
                 />
             )}
         </div>
