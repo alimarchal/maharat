@@ -47,7 +47,7 @@ class UserSeeder extends Seeder
                 'parent_id' => null,
                 'hierarchy_level' => 0,
                 'designation_id' => 1,
-                'department_id' => $departmentIds[array_rand($departmentIds)] ?? null,
+                'department_id' => 1,
                 'password' => Hash::make('password'),
             ]
         );
