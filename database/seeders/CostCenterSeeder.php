@@ -14,8 +14,12 @@ class CostCenterSeeder extends Seeder
     public function run(): void
     {
         // Delete existing records
+        DB::table('material_requests')->whereIn('cost_center_id', DB::table('cost_centers')->pluck('id'))->delete();
+
+        // Now, delete cost centers safely
         DB::table('cost_centers')->delete();
-        DB::statement('ALTER TABLE cost_centers AUTO_INCREMENT = 1'); // Reset Auto Increment
+        DB::statement('ALTER TABLE cost_centers AUTO_INCREMENT = 1');
+
 
         // Sample cost center records
         $costCenters = [

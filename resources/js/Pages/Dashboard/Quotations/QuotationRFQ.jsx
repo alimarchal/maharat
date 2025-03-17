@@ -11,7 +11,14 @@ import { usePage } from '@inertiajs/react';
 const FileDisplay = ({ file }) => {
     if (!file) return null;
 
-    const fileUrl = file.file_path; 
+    // Make sure fileUrl is properly formed - this is the key issue
+    const fileUrl = file.file_path ? 
+        file.file_path.includes('http') ? 
+            file.file_path : // It's already a full URL
+            `/storage/${file.file_path.replace('public/', '')}` // Convert public path to storage path
+        : null;
+
+    console.log("File URL for display:", fileUrl); // Add this debug line
 
     return (
         <div className="flex flex-col items-center justify-center space-y-2">
@@ -122,27 +129,34 @@ export default function QuotationRFQ({ auth }) {
         try {
             let companyId = null;
             if (editData.company_name) {
-                // Find the company ID by name from the companies list
                 const company = companies.find(c => c.name === editData.company_name);
                 companyId = company ? company.id : null;
             }
     
+            const isNewRecord = id.toString().includes('new-');
+            
             const updatedData = {
                 ...editData,
-                company_id: companyId, // Include the company_id
+                company_id: companyId,
+                rfq_company_id: companyId,
                 issue_date: formatDateForInput(editData.issue_date),
                 valid_until: formatDateForInput(editData.valid_until),
-                rfq_id: rfqId // Include the RFQ ID in the form data
+                rfq_id: rfqId,
+                update_rfq: true
             };
     
-            const response = await axios.put(`/api/v1/quotations/${id}`, updatedData);
+            // For new records, use POST instead of PUT
+            let response;
+            if (isNewRecord) {
+                delete updatedData.id; // Remove the temporary ID
+                response = await axios.post('/api/v1/quotations', updatedData);
+            } else {
+                response = await axios.put(`/api/v1/quotations/${id}`, updatedData);
+            }
     
             if (response.data.success) {
-                setQuotations(prevQuotations =>
-                    prevQuotations.map(q => (q.id === id ? { ...q, ...updatedData } : q))
-                );
-                setEditingId(null);
                 fetchQuotations(); // Reload data
+                setEditingId(null);
             } else {
                 console.error('Update failed:', response.data);
                 setError('Failed to save changes');
@@ -176,8 +190,8 @@ export default function QuotationRFQ({ auth }) {
 
     const addItem = () => {
         const newQuotation = {
-            id: Date.now(),
-            quotation_number: 'QUO-2025-', 
+            id: `new-${Date.now()}`, 
+            quotation_number: '', 
             company_name: '',
             original_name: '',
             file_path: '',
@@ -185,6 +199,7 @@ export default function QuotationRFQ({ auth }) {
             valid_until: '',
             total_amount: '',
             terms_and_conditions: '',
+            rfq_id: rfqId
         };
         setQuotations([...quotations, newQuotation]);
         setEditingId(newQuotation.id);

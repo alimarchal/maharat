@@ -90,11 +90,14 @@ class QuotationController extends Controller
         $quotation = Quotation::findOrFail($id);
 
         // Update the fields in the quotations table
-        $quotation->update($request->except(['company_name', 'original_name', 'file_path']));
+        $quotation->update($request->except(['company_name', 'original_name', 'file_path', 'update_rfq', 'rfq_company_id']));
 
         // Check if the request contains organization_name and update the related RFQ
-        if ($request->has('organization_name') && $quotation->rfq) {
-            $quotation->rfq->update(['organization_name' => $request->input('organization_name')]);
+        if ($request->has('update_rfq') && $request->input('update_rfq') && $request->has('rfq_company_id')) {
+            $rfqId = $quotation->rfq_id;
+            DB::table('rfqs')->where('id', $rfqId)->update([
+                'company_id' => $request->input('rfq_company_id')
+            ]);
         }
 
         // Check if the request contains original_name or file_path and update related documents
@@ -150,7 +153,7 @@ class QuotationController extends Controller
 
             $quotations = Quotation::with([
                 'rfq' => function ($query) {
-                    $query->select('rfq_number', 'organization_name');
+                    $query->select('rfq_number', 'company_id');
                 },
                 'documents' => function ($query) {
                     $query->select('quotation_id', 'original_name', 'file_path');
