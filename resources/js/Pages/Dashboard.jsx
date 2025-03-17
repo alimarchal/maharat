@@ -51,6 +51,7 @@ import CreateCustomer from "./Dashboard/Customers/CreateCustomers";
 import SuppliersTable from "./Dashboard/Suppliers/SuppliersTable";
 import CreateSuppliers from "./Dashboard/Suppliers/CreateSuppliers";
 import RequestBudgetTable from "./Dashboard/BudgetAndAccounts/RequestABudget/RequestBudgetTable";
+import InventoryTracking from "./Dashboard/Warehouse/Inventory/Inventory";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -130,6 +131,8 @@ export default function Dashboard({ auth, page }) {
         if (page === "Customers/CreateCustomers") return <CreateCustomer />;
         if (page === "Suppliers/SuppliersTable") return <SuppliersTable />;
         if (page === "Suppliers/CreateSuppliers") return <CreateSuppliers />;
+        if (page === "Warehouse/Inventory/Inventory")
+            return <InventoryTracking />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };

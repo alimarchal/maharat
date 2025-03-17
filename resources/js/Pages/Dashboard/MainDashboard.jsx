@@ -308,7 +308,7 @@ export default function MainDashboard({ roles }) {
 
     const warehouseDropdownItems = [
         {
-            text: "Received Material Request",
+            text: "User Material Requests",
             icon: faFileAlt,
             onClick: () => router.visit("/material-requests"),
         },
