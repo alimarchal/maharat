@@ -83,8 +83,10 @@ class RfqController extends Controller
      */
     public function show(Quotation $quotation)
     {
+        $quotation->load(['supplier', 'status', 'items', 'rfq.company']); // Ensure RFQ and its company are loaded
+
         return Inertia::render('Quotations/ViewQuotation', [
-            'quotation' => $quotation->load(['supplier', 'status', 'items'])
+            'quotation' => $quotation
         ]);
     }
 

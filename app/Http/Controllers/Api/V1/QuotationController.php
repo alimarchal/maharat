@@ -37,7 +37,7 @@ class QuotationController extends Controller
             ->paginate()
             ->appends(request()->query());
 
-        $quotations = Quotation::with('documents')->paginate(10);
+            $quotations = Quotation::with(['rfq.company', 'documents', 'status'])->paginate(10);
         
         return $quotations->isEmpty()
             ? response()->json(['message' => 'No quotations found', 'data' => []], Response::HTTP_OK)
