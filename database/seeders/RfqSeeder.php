@@ -23,7 +23,7 @@ class RfqSeeder extends Seeder
         }
 
         DB::beginTransaction();
-        
+
         try {
             // Delete existing RFQs safely
             DB::table('rfqs')->delete();
@@ -52,6 +52,9 @@ class RfqSeeder extends Seeder
                     'id' => 1, // Explicit ID for reference in other seeders
                     'rfq_number' => 'RFQ-2025-001',
                     'requester_id' => 1,
+                    'department_id' => 1,
+                    'cost_center_id' => 1,
+                    'sub_cost_center_id' => 1,
                     'company_id' => 1,
                     'warehouse_id' => $warehouses['Dubai Main Warehouse'] ?? 101,
                     'organization_name' => 'Tech Solutions Ltd.',
@@ -83,6 +86,9 @@ class RfqSeeder extends Seeder
                     'id' => 2,
                     'rfq_number' => 'RFQ-2025-002',
                     'requester_id' => 3,
+                    'department_id' => 1,
+                    'cost_center_id' => 1,
+                    'sub_cost_center_id' => 1,
                     'company_id' => 2,
                     'warehouse_id' => $warehouses['Karachi Distribution Center'] ?? 102,
                     'organization_name' => 'Fast Supplies Pvt Ltd.',
@@ -114,6 +120,9 @@ class RfqSeeder extends Seeder
                     'id' => 3,
                     'rfq_number' => 'RFQ-2025-003',
                     'requester_id' => 4,
+                    'department_id' => 1,
+                    'cost_center_id' => 1,
+                    'sub_cost_center_id' => 1,
                     'company_id' => 3,
                     'warehouse_id' => $warehouses['Lahore Storage Facility'] ?? 103,
                     'organization_name' => 'Global Traders',
@@ -145,6 +154,9 @@ class RfqSeeder extends Seeder
                     'id' => 4,
                     'rfq_number' => 'RFQ-2025-004',
                     'requester_id' => 5,
+                    'department_id' => 1,
+                    'cost_center_id' => 1,
+                    'sub_cost_center_id' => 1,
                     'company_id' => 4,
                     'warehouse_id' => $warehouses['Abu Dhabi Logistics Hub'] ?? 104,
                     'organization_name' => 'Elite Constructions',
@@ -181,7 +193,7 @@ class RfqSeeder extends Seeder
                 // Fallback to DB facade if model insertion fails
                 DB::table('rfqs')->insert($rfqs);
             }
-            
+
             DB::commit();
             $this->command->info('RFQs seeded successfully.');
         } catch (\Exception $e) {

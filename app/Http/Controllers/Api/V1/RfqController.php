@@ -21,7 +21,7 @@ class RfqController extends Controller
     public function index()
     {
         try {
-            $rfqs = Rfq::with(['requester', 'status', 'items'])
+            $rfqs = Rfq::with(['requester', 'status', 'items','department','costCenter','subCostCenter',])
                 ->orderBy('created_at', 'desc')
                 ->paginate(10);
 
@@ -95,6 +95,9 @@ class RfqController extends Controller
                 'data' => new RfqResource(
                     $rfq->load([
                         'requester',
+                        'department',
+                        'costCenter',
+                        'subCostCenter',
                         'company',
                         'warehouse',
                         'status',
@@ -177,6 +180,9 @@ class RfqController extends Controller
                 'data' => new RfqResource(
                     $rfq->load([
                         'requester',
+                        'department',
+                        'costCenter',
+                        'subCostCenter',
                         'company',
                         'warehouse',
                         'status',

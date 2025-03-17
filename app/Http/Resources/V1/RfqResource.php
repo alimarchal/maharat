@@ -17,6 +17,9 @@ class RfqResource extends JsonResource
         return [
             'id' => $this->id,
             'rfq_number' => $this->rfq_number,
+            'department_id' => $this->department_id,
+            'cost_center_id' => $this->cost_center_id,
+            'sub_cost_center_id' => $this->sub_cost_center_id,
             'organization_name' => $this->organization_name,
             'organization_email' => $this->organization_email,
             'city' => $this->city,
@@ -31,6 +34,9 @@ class RfqResource extends JsonResource
             'quotation_document' => $this->quotation_document,
 
             // Relationships
+            'department' => new DepartmentResource($this->whenLoaded('department')),
+            'costCenter' => new CostCenterResource($this->whenLoaded('costCenter')),
+            'subCostCenter' => new CostCenterResource($this->whenLoaded('subCostCenter')),
             'requester' => new UserResource($this->whenLoaded('requester')),
             'company' => new CompanyResource($this->whenLoaded('company')),
             'warehouse' => new WarehouseResource($this->whenLoaded('warehouse')),
