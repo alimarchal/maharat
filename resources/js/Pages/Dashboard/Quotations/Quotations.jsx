@@ -45,7 +45,7 @@ const Quotations = ({ auth }) => {
                     if (rfqResponse.data.data.company_id) {
                         try {
                             const companyResponse = await axios.get(`/api/v1/companies/${rfqResponse.data.data.company_id}`);
-                            companyName = companyResponse.data.data.name;
+                            const companyName = companyResponse.data.data.name;
                             console.log("Company API Response:", companyResponse.data);
                         } catch (companyError) {
                             console.error("Failed to fetch company:", companyError);

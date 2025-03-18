@@ -1,98 +1,61 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { Link } from "@inertiajs/react";
+import axios from "axios";
 import SubCostCenterModal from "./SubCostCenterModal";
 
 const SubCostCenterTable = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [selectedFilter, setSelectedFilter] = useState("All");
+    const [subCostCenters, setSubCostCenters] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [selectedSubCostCenter, setSelectedSubCostCenter] = useState(null);
+
     const filters = ["All", "Approved", "Pending"];
 
-    const [subCostCenters, setSubCostCenters] = useState([
-        {
-            id: "01",
-            name: "Management",
-            type: "Fixed",
-            department: "Management",
-            manager: "Sami",
-            status: "Approved",
-            description: "General Management",
-        },
-        {
-            id: "02",
-            name: "IT",
-            type: "Variable",
-            department: "Engineering",
-            manager: "Khalid",
-            status: "Pending",
-            description: "Engineering",
-        },
-        {
-            id: "03",
-            name: "Marketing",
-            type: "Support",
-            department: "Marketing",
-            manager: "Fatima",
-            status: "Approved",
-            description: "Marketing",
-        },
-        {
-            id: "04",
-            name: "Training",
-            type: "Direct",
-            department: "Training",
-            manager: "Yasir",
-            status: "Pending",
-            description: "Training",
-        },
-        {
-            id: "05",
-            name: "Maintenance",
-            type: "Variable",
-            department: "Building",
-            manager: "Abdul Karim",
-            status: "Approved",
-            description: "Building",
-        },
-        {
-            id: "06",
-            name: "HR",
-            type: "Expense",
-            department: "Human Resource",
-            manager: "Abdul Aziz",
-            status: "Pending",
-            description: "Human Resource",
-        },
-        {
-            id: "07",
-            name: "OPR",
-            type: "Fixed",
-            department: "Operations",
-            manager: "Zahid",
-            status: "Approved",
-            description: "Operations",
-        },
-    ]);
-
-    const handleSave = async (newSubCostCenter) => {
+    const fetchSubCostCenters = async () => {
         try {
-            const response = await axios.post(
-                "/api/v1/sub-cost-centers",
-                newSubCostCenter
+            setLoading(true);
+            const response = await axios.get(
+                "/api/v1/cost-centers?include=parent,children,department,manager,budgetOwner"
             );
-            setSubCostCenters([...newSubCostCenter, response.data]);
-            setIsModalOpen(false);
+            setSubCostCenters(response.data.data);
+            setError(null);
         } catch (error) {
-            console.error("Error saving Sub cost center:", error);
+            console.error("Error fetching sub-cost centers:", error);
+            setError(
+                "Failed to load sub-cost centers. Please try again later."
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchSubCostCenters();
+    }, []);
+
+    const handleDelete = async (id) => {
+        if (
+            window.confirm(
+                "Are you sure you want to delete this Sub Cost Center?"
+            )
+        ) {
+            try {
+                await axios.delete(`/api/v1/cost-centers/${id}`);
+                fetchSubCostCenters();
+            } catch (error) {
+                console.error("Error deleting sub cost center:", error);
+            }
         }
     };
 
     return (
         <div className="w-full">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-3xl font-bold text-[#2C323C]">
+                <h2 className="text-3xl font-bold text-[#2C323C] mb-4">
                     Sub Cost Centers
                 </h2>
                 <div className="flex justify-between items-center gap-4">
@@ -120,6 +83,7 @@ const SubCostCenterTable = () => {
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             ID
                         </th>
+                        <th className="py-3 px-4">Parent ID</th>
                         <th className="py-3 px-4">Name</th>
                         <th className="py-3 px-4">Type</th>
                         <th className="py-3 px-4">Department/Unit</th>
@@ -132,35 +96,83 @@ const SubCostCenterTable = () => {
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                    {subCostCenters
-                        .filter(
-                            (center) =>
-                                selectedFilter === "All" ||
-                                center.status === selectedFilter
-                        )
-                        .map((center) => (
-                            <tr key={center.id}>
-                                <td className="py-3 px-4">{center.id}</td>
-                                <td className="py-3 px-4">{center.name}</td>
-                                <td className="py-3 px-4">{center.type}</td>
-                                <td className="py-3 px-4">
-                                    {center.department}
-                                </td>
-                                <td className="py-3 px-4">{center.manager}</td>
-                                <td className="py-3 px-4">{center.status}</td>
-                                <td className="py-3 px-4">
-                                    {center.description}
-                                </td>
-                                <td className="py-3 px-4 flex space-x-3">
-                                    <Link className="text-[#9B9DA2] hover:text-gray-500">
-                                        <FontAwesomeIcon icon={faEdit} />
-                                    </Link>
-                                    <button className="text-[#9B9DA2] hover:text-gray-500">
-                                        <FontAwesomeIcon icon={faTrash} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
+                    {loading ? (
+                        <tr>
+                            <td colSpan="9" className="text-center py-12">
+                                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+                            </td>
+                        </tr>
+                    ) : error ? (
+                        <tr>
+                            <td
+                                colSpan="9"
+                                className="text-center text-red-500 font-medium py-4"
+                            >
+                                {error}
+                            </td>
+                        </tr>
+                    ) : subCostCenters.length > 0 ? (
+                        subCostCenters
+                            .filter(
+                                (center) =>
+                                    selectedFilter === "All" ||
+                                    center.status === selectedFilter
+                            )
+                            .map((center) => (
+                                <tr key={center.id}>
+                                    <td className="py-3 px-4">{center.id}</td>
+                                    <td className="py-3 px-4">
+                                        {center.parent_id || "No Parent"}
+                                    </td>
+                                    <td className="py-3 px-4">{center.name}</td>
+                                    <td className="py-3 px-4">
+                                        {center.cost_center_type || "N/A"}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {center.department?.name || "N/A"}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {center.manager?.name || "N/A"}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {center.status}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {center.description}
+                                    </td>
+                                    <td className="py-3 px-4 flex space-x-3">
+                                        <button
+                                            onClick={() => {
+                                                setSelectedSubCostCenter(
+                                                    center
+                                                );
+                                                setIsModalOpen(true);
+                                            }}
+                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                        >
+                                            <FontAwesomeIcon icon={faEdit} />
+                                        </button>
+                                        <button
+                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            onClick={() =>
+                                                handleDelete(center.id)
+                                            }
+                                        >
+                                            <FontAwesomeIcon icon={faTrash} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                    ) : (
+                        <tr>
+                            <td
+                                colSpan="9"
+                                className="text-center text-[#2C323C] font-medium py-4"
+                            >
+                                No Sub Cost Centers found.
+                            </td>
+                        </tr>
+                    )}
                 </tbody>
             </table>
 
@@ -175,7 +187,10 @@ const SubCostCenterTable = () => {
                 <button
                     type="button"
                     className="p-2 text-base sm:text-lg flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] transition-all duration-300 hover:border-[#009FDC] hover:bg-[#009FDC] hover:text-white hover:scale-105"
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={() => {
+                        setSelectedSubCostCenter(null);
+                        setIsModalOpen(true);
+                    }}
                 >
                     <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add a Sub
                     Cost Center
@@ -190,13 +205,15 @@ const SubCostCenterTable = () => {
             </div>
 
             {/* Render the modal */}
-            {isModalOpen && (
-                <SubCostCenterModal
-                    isOpen={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
-                    onSave={handleSave}
-                />
-            )}
+            <SubCostCenterModal
+                isOpen={isModalOpen}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setSelectedSubCostCenter(null);
+                }}
+                subCostCenterData={selectedSubCostCenter}
+                fetchSubCostCenters={fetchSubCostCenters}
+            />
         </div>
     );
 };
