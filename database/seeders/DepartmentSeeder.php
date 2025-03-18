@@ -13,6 +13,7 @@ class DepartmentSeeder extends Seeder
     public function run(): void
     {
         $departments = [
+            ['name' => 'General Management', 'code' => 'GM'],
             ['name' => 'Human Resources', 'code' => 'HR'],
             ['name' => 'Finance', 'code' => 'FIN'],
             ['name' => 'Engineering', 'code' => 'ENG'],

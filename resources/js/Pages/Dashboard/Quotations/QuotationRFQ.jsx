@@ -6,26 +6,31 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import { DocumentArrowDownIcon } from '@heroicons/react/24/outline';
+import { usePage } from '@inertiajs/react';
 
 const FileDisplay = ({ file }) => {
     if (!file) return null;
 
-    // Use the file_path directly from the API response
-    const fileUrl = file.file_path; 
+    // Make sure fileUrl is properly formed - this is the key issue
+    const fileUrl = file.file_path ? 
+        file.file_path.includes('http') ? 
+            file.file_path : // It's already a full URL
+            `/storage/${file.file_path.replace('public/', '')}` // Convert public path to storage path
+        : null;
+
+    console.log("File URL for display:", fileUrl); // Add this debug line
 
     return (
         <div className="flex flex-col items-center justify-center space-y-2">
-            {/* Clickable PDF Icon */}
             <DocumentArrowDownIcon 
                 className="h-10 w-10 text-gray-500 cursor-pointer hover:text-gray-700 transition-colors"
-                onClick={() => fileUrl && window.open(fileUrl, '_blank')} // Opens file in a new tab
+                onClick={() => fileUrl && window.open(fileUrl, '_blank')}
             />
             
-            {/* File Name */}
             {file.original_name && (
                 <span 
                     className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
-                    onClick={() => fileUrl && window.open(fileUrl, '_blank')} // Opens file when name is clicked
+                    onClick={() => fileUrl && window.open(fileUrl, '_blank')}
                 >
                     {file.original_name}
                 </span>
@@ -35,6 +40,10 @@ const FileDisplay = ({ file }) => {
 };
 
 export default function QuotationRFQ({ auth }) {
+    const { props } = usePage();
+    const urlParams = new URLSearchParams(window.location.search);
+    const rfqId = urlParams.get('rfq_id');
+
     const [quotations, setQuotations] = useState([]);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -42,26 +51,29 @@ export default function QuotationRFQ({ auth }) {
     const [attachments, setAttachments] = useState({});
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
-    const [rfqId, setRfqId] = useState(null);
     const [editingId, setEditingId] = useState(null);
     const [editData, setEditData] = useState({});
+    const [companies, setCompanies] = useState([]);
 
     const fetchQuotations = async () => {
         setLoading(true);
         setProgress(0);
     
         try {
-            const response = await axios.get(`/api/v1/quotations?page=${currentPage}`);
+            const response = await axios.get(`/api/v1/quotations?page=${currentPage}&rfq_id=${rfqId}`);
     
-            // Ensure documents array is properly assigned
-            const updatedQuotations = response.data.data.map(quotation => ({
-                ...quotation,
-                documents: quotation.documents || [] // Ensure documents array exists
-            }));
+            console.log("Fetched Quotations:", response.data.data); // Debugging line
+            console.log("RFQ ID being filtered:", rfqId); // Debugging line
+    
+            const updatedQuotations = response.data.data
+                .filter(q => q.rfq_id == rfqId) // Ensure strict filtering
+                .map(quotation => ({
+                    ...quotation,
+                    documents: quotation.documents || []
+                }));
     
             setQuotations(updatedQuotations);
             setLastPage(response.data.meta.last_page);
-            setRfqId(response.data.data[0]?.rfq_id || '');
             setError("");
     
             setProgress(100);
@@ -73,11 +85,21 @@ export default function QuotationRFQ({ auth }) {
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
         }
-    };        
+    }
+
+    const fetchCompanies = async () => {
+        try {
+            const response = await axios.get('/api/v1/companies');
+            setCompanies(response.data.data);
+        } catch (error) {
+            console.error('Error fetching companies:', error);
+        }
+    };
 
     useEffect(() => {
         fetchQuotations();
-    }, [currentPage]);
+        fetchCompanies();
+    }, [currentPage, rfqId]);
 
     const handleFileChange = async (index, e) => {
         const file = e.target.files[0];
@@ -105,21 +127,35 @@ export default function QuotationRFQ({ auth }) {
 
     const handleSave = async (id) => {
         try {
+            let companyId = null;
+            if (editData.company_name) {
+                const company = companies.find(c => c.name === editData.company_name);
+                companyId = company ? company.id : null;
+            }
+    
+            const isNewRecord = id.toString().includes('new-');
+            
             const updatedData = {
                 ...editData,
+                company_id: companyId,
+                rfq_company_id: companyId,
                 issue_date: formatDateForInput(editData.issue_date),
-                valid_until: formatDateForInput(editData.valid_until)
+                valid_until: formatDateForInput(editData.valid_until),
+                rfq_id: rfqId,
+                update_rfq: true
             };
     
-            console.log("Sending Data:", updatedData); // Debugging
-    
-            const response = await axios.put(`/api/v1/quotations/${id}`, updatedData);
-            console.log("Response:", response.data); // Debugging
+            // For new records, use POST instead of PUT
+            let response;
+            if (isNewRecord) {
+                delete updatedData.id; // Remove the temporary ID
+                response = await axios.post('/api/v1/quotations', updatedData);
+            } else {
+                response = await axios.put(`/api/v1/quotations/${id}`, updatedData);
+            }
     
             if (response.data.success) {
-                setQuotations(prevQuotations =>
-                    prevQuotations.map(q => (q.id === id ? { ...q, ...updatedData } : q))
-                );
+                fetchQuotations(); // Reload data
                 setEditingId(null);
             } else {
                 console.error('Update failed:', response.data);
@@ -140,12 +176,11 @@ export default function QuotationRFQ({ auth }) {
         if (!confirm("Are you sure you want to delete this record?")) return;
 
         try {
-            // Check if it's a temporary ID (newly added record)
             if (id.toString().length > 10) {
                 setQuotations(prevQuotations => prevQuotations.filter(q => q.id !== id));
             } else {
                 await axios.delete(`/api/v1/quotations/${id}`);
-                fetchQuotations(); // Refresh the data after deletion
+                fetchQuotations();
             }
         } catch (error) {
             console.error('Delete error:', error);
@@ -155,8 +190,8 @@ export default function QuotationRFQ({ auth }) {
 
     const addItem = () => {
         const newQuotation = {
-            id: Date.now(), // Temporary ID for new row
-            quotation_number: '',
+            id: `new-${Date.now()}`, 
+            quotation_number: '', 
             company_name: '',
             original_name: '',
             file_path: '',
@@ -164,6 +199,7 @@ export default function QuotationRFQ({ auth }) {
             valid_until: '',
             total_amount: '',
             terms_and_conditions: '',
+            rfq_id: rfqId
         };
         setQuotations([...quotations, newQuotation]);
         setEditingId(newQuotation.id);
@@ -173,7 +209,7 @@ export default function QuotationRFQ({ auth }) {
     const formatDateForInput = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
-        return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format for input
+        return date.toISOString().split('T')[0];
     };
 
     const formatDateForDisplay = (dateString) => {
@@ -193,9 +229,9 @@ export default function QuotationRFQ({ auth }) {
         }
     
         const formData = new FormData();
-        formData.append('document', file);  // Ensure the file is correctly appended
+        formData.append('document', file);
         formData.append('quotation_id', quotationId);
-        formData.append('type', 'quotation'); // Make sure 'type' is always sent
+        formData.append('type', 'quotation');
     
         try {
             const quotation = quotations.find(q => q.id === quotationId);
@@ -203,27 +239,25 @@ export default function QuotationRFQ({ auth }) {
     
             let response;
             if (existingDocument) {
-                // Use PUT for updating existing document
                 response = await axios.post(`/api/v1/quotation-documents/${existingDocument.id}?_method=PUT`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 });
             } else {
-                // Use POST for new document
                 response = await axios.post('/api/v1/quotation-documents', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 });
             }
     
             console.log("File upload response:", response.data);
-            fetchQuotations(); // Refresh the list after successful upload
+            fetchQuotations();
         } catch (error) {
             console.error("Upload Error:", error.response?.data || error.message);
             setError("Failed to upload document: " + (error.response?.data?.message || error.message));
         }
-    };       
+    };
 
     const toggleEditMode = (quotationId) => {
-        setEditingId(editingId === quotationId ? null : quotationId); // Toggle edit mode
+        setEditingId(editingId === quotationId ? null : quotationId);
     };
 
     return (
@@ -241,8 +275,6 @@ export default function QuotationRFQ({ auth }) {
                 </div>
                 <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2 mb-6">
                     <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Home</Link>
-                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                    <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Procurement Center</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                     <Link href="/quotation" className="hover:text-[#009FDC] text-xl">Quotations</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
@@ -295,34 +327,53 @@ export default function QuotationRFQ({ auth }) {
                             )}
 
                             {!loading && (
-                            <tbody className="bg-transparent divide-y divide-gray-200">
-                                {quotations.length > 0 ? (
-                                    quotations.map((quotation, index) => (
-                                        <tr key={quotation.id}>
-                                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                {editingId === quotation.id ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editData.quotation_number || ''}
-                                                        onChange={(e) => setEditData({ ...editData, quotation_number: e.target.value })}
-                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
-                                                    />
-                                                ) : (
-                                                    quotation.quotation_number
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                {editingId === quotation.id ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editData.company_name || ''}
-                                                        onChange={(e) => setEditData({ ...editData, company_name: e.target.value })}
-                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
-                                                    />
-                                                ) : (
-                                                    quotation.company_name
-                                                )}
-                                            </td>
+                            <tbody className="bg-transparent divide-y divide-gray-200 px-6 py-4 text-center">
+                            {quotations.length > 0 ? (
+                                quotations.map((quotation) => (
+                                    <tr key={quotation.id}>
+                                        {/* Quotation Number */}
+                                        <td className="px-4 py-4 text-center break-words whitespace-normal min-w-[120px] max-w-[150px]">
+                                            {editingId === quotation.id ? (
+                                                <input
+                                                    type="text"
+                                                    value={editData.quotation_number || ''}
+                                                    onChange={(e) =>
+                                                        setEditData({ ...editData, quotation_number: e.target.value })
+                                                    }
+                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center break-words"
+                                                    style={{ wordWrap: "break-word", overflowWrap: "break-word" }}
+                                                />
+                                            ) : (
+                                                <span className="inline-block break-words w-full">
+                                                    {quotation.quotation_number}
+                                                </span>
+                                            )}
+                                        </td>
+                        
+                                        {/* Company Name Dropdown */}
+                                        <td className="px-4 py-4 text-center break-words whitespace-normal min-w-[150px] max-w-[170px]">
+                                            {editingId === quotation.id ? (
+                                                <select
+                                                    value={editData.company_name || ''}
+                                                    onChange={(e) =>
+                                                        setEditData({ ...editData, company_name: e.target.value })
+                                                    }
+                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
+                                                    style={{ width: "100%" }}
+                                                >
+                                                    {companies.map((company) => (
+                                                        <option key={company.id} value={company.name}>
+                                                            {company.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <span className="inline-block break-words w-full">
+                                                    {quotation.company_name}
+                                                </span>
+                                            )}
+                                        </td>
+                        
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 {editingId === quotation.id ? (
                                                     <input
@@ -348,19 +399,55 @@ export default function QuotationRFQ({ auth }) {
                                                 )}
                                             </td>
 
-                                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                {editingId === quotation.id ? (
+                                            <td className="px-6 py-4 whitespace-normal break-words text-center min-w-[120px]">
+                                            {editingId === quotation.id ? (
+                                                <div className="flex items-center justify-center space-x-2">
+                                                    {/* Decrement Button */}
+                                                    <button
+                                                        onClick={() =>
+                                                            setEditData((prev) => ({
+                                                                ...prev,
+                                                                total_amount: Math.max(0, parseInt(prev.total_amount || 0) - 1),
+                                                            }))
+                                                        }
+                                                        className="text-gray-600 hover:text-gray-900"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path fillRule="evenodd" d="M4 10a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </button>
+
+                                                    {/* Input Field */}
                                                     <input
                                                         type="number"
-                                                        value={editData.total_amount || ''}
-                                                        onChange={(e) => setEditData({ ...editData, total_amount: e.target.value })}
-                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center [&::-webkit-inner-spin-button]:hidden"
-                                                        style={{ textAlign: '-webkit-center' }}
+                                                        value={parseInt(editData.total_amount || 0)}
+                                                        onChange={(e) => {
+                                                            const value = Math.max(0, Math.floor(e.target.value)); // Ensure whole number & no negatives
+                                                            setEditData({ ...editData, total_amount: value });
+                                                        }}
+                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-[70px] text-center [&::-webkit-inner-spin-button]:hidden"
                                                     />
-                                                ) : (
-                                                    quotation.total_amount
-                                                )}
-                                            </td>
+
+                                                    {/* Increment Button */}
+                                                    <button
+                                                        onClick={() =>
+                                                            setEditData((prev) => ({
+                                                                ...prev,
+                                                                total_amount: parseInt(prev.total_amount || 0) + 1,
+                                                            }))
+                                                        }
+                                                        className="text-gray-600 hover:text-gray-900"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="break-words min-w-[100px] inline-block">{parseInt(quotation.total_amount || 0).toLocaleString()}</span>
+                                            )}
+                                        </td>
+
                                             <td className="px-6 py-4 text-center">
                                             <div className="flex flex-col items-center justify-center w-full">
                                                 {quotation.documents && quotation.documents.length > 0 ? (
@@ -391,7 +478,7 @@ export default function QuotationRFQ({ auth }) {
                                                 )}
                                             </div>
                                         </td>
-
+                                        
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 <div className="flex justify-center space-x-3">
                                                     {editingId === quotation.id ? (

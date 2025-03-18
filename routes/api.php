@@ -163,7 +163,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/quotations/update-batch', [QuotationController::class, 'updateBatch']);
     Route::post('/quotations/upload-terms', [QuotationController::class, 'uploadTerms']);
 
-
     // Task Routes
     Route::apiResource('tasks', TaskController::class);
     Route::put('tasks/{task}/mark-as-read', [TaskController::class, 'markAsRead']);
@@ -173,7 +172,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('task-descriptions', TaskDescriptionController::class);
     Route::get('task-descriptions/action/{action}', [TaskDescriptionController::class, 'getByAction']);
     Route::get('task-descriptions/task/{taskId}', [TaskDescriptionController::class, 'getByTaskId']);
-
 
     // Purchase Orders API Routes
     Route::apiResource('purchase-orders', PurchaseOrderController::class);

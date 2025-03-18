@@ -69,9 +69,9 @@ class Rfq extends Model
         return $this->belongsTo(User::class, 'requester_id');
     }
 
-    public function company(): BelongsTo
+    public function company()
     {
-        return $this->belongsTo(Company::class);
+        return $this->belongsTo(Company::class, 'company_id');
     }
 
     public function warehouse(): BelongsTo

@@ -37,7 +37,7 @@ class QuotationController extends Controller
             ->paginate()
             ->appends(request()->query());
 
-        $quotations = Quotation::with('documents')->paginate(10);
+            $quotations = Quotation::with(['rfq.company', 'documents', 'status'])->paginate(10);
         
         return $quotations->isEmpty()
             ? response()->json(['message' => 'No quotations found', 'data' => []], Response::HTTP_OK)
@@ -90,11 +90,14 @@ class QuotationController extends Controller
         $quotation = Quotation::findOrFail($id);
 
         // Update the fields in the quotations table
-        $quotation->update($request->except(['company_name', 'original_name', 'file_path']));
+        $quotation->update($request->except(['company_name', 'original_name', 'file_path', 'update_rfq', 'rfq_company_id']));
 
         // Check if the request contains organization_name and update the related RFQ
-        if ($request->has('organization_name') && $quotation->rfq) {
-            $quotation->rfq->update(['organization_name' => $request->input('organization_name')]);
+        if ($request->has('update_rfq') && $request->input('update_rfq') && $request->has('rfq_company_id')) {
+            $rfqId = $quotation->rfq_id;
+            DB::table('rfqs')->where('id', $rfqId)->update([
+                'company_id' => $request->input('rfq_company_id')
+            ]);
         }
 
         // Check if the request contains original_name or file_path and update related documents
@@ -107,6 +110,34 @@ class QuotationController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    public function uploadTerms(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:pdf|max:2048',
+            'quotation_id' => 'required|exists:quotations,id',
+        ]);
+
+        $quotation = Quotation::findOrFail($request->quotation_id);
+
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $filePath = $file->storeAs('public/documents', $fileName); 
+
+            // Save file path to database
+            $quotation->terms_and_conditions = $filePath;
+            $quotation->save();
+
+            return response()->json([
+                'success' => true,
+                'file_path' => asset('storage/documents/' . $fileName), 
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'File upload failed.']);
+    }
+
 
     public function destroy($id)
     {
@@ -122,7 +153,7 @@ class QuotationController extends Controller
 
             $quotations = Quotation::with([
                 'rfq' => function ($query) {
-                    $query->select('rfq_number', 'organization_name');
+                    $query->select('rfq_number', 'company_id');
                 },
                 'documents' => function ($query) {
                     $query->select('quotation_id', 'original_name', 'file_path');

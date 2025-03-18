@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeftLong, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 
-const RFQ = ({ auth }) => {
+const Quotations = ({ auth }) => {
     const [quotations, setQuotations] = useState([]);
     const [filteredQuotations, setFilteredQuotations] = useState([]);
     const [error, setError] = useState("");
@@ -21,16 +21,16 @@ const RFQ = ({ auth }) => {
     const fetchQuotations = async () => {
         setLoading(true);
         setProgress(0);
-
-        // Smoothly increase progress
+    
         const interval = setInterval(() => {
             setProgress((oldProgress) => (oldProgress >= 90 ? 90 : oldProgress + 10));
-        }, 300); 
-
+        }, 300);
+    
         try {
             const response = await axios.get(`/api/v1/quotations?page=${currentPage}`);
             const quotationsData = response.data.data;
-
+            console.log("Quotations API Response:", response.data);
+    
             const quotationsWithDetails = await Promise.all(
                 quotationsData.map(async (quotation) => {
                     const [statusResponse, rfqResponse] = await Promise.all([
@@ -38,21 +38,34 @@ const RFQ = ({ auth }) => {
                         axios.get(`/api/v1/rfqs/${quotation.rfq_id}`)
                     ]);
 
+                    console.log("RFQ API Response:", rfqResponse.data);
+    
+                    const companyName = quotation.rfq?.company?.name || "N/A"; 
+    
+                    if (rfqResponse.data.data.company_id) {
+                        try {
+                            const companyResponse = await axios.get(`/api/v1/companies/${rfqResponse.data.data.company_id}`);
+                            companyName = companyResponse.data.data.name;
+                            console.log("Company API Response:", companyResponse.data);
+                        } catch (companyError) {
+                            console.error("Failed to fetch company:", companyError);
+                        }
+                    }
+    
                     return {
                         ...quotation,
-                        organization_name: rfqResponse.data.data.organization_name,
+                        company_name: companyName, // Store the company name
                         status_type: statusResponse.data.data.type,
                         status_name: statusResponse.data.data.name,
                     };
                 })
             );
-
+    
             setQuotations(quotationsWithDetails);
             applyFilter(selectedFilter, quotationsWithDetails);
             setLastPage(response.data.meta.last_page);
             setError("");
-
-            // Ensure full progress bar before hiding
+    
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
         } catch (error) {
@@ -65,7 +78,7 @@ const RFQ = ({ auth }) => {
         } finally {
             clearInterval(interval);
         }
-    };
+    };    
 
     // Apply filter function
     const applyFilter = (filter, data = quotations) => {
@@ -148,8 +161,6 @@ const RFQ = ({ auth }) => {
                 <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2 mb-6">
                     <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Home</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                    <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Procurement Center</Link>
-                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                     <span className="text-[#009FDC] text-xl">Quotations</span>
                 </div>
 
@@ -225,10 +236,12 @@ const RFQ = ({ auth }) => {
                                         {quotation.rfq_id}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {quotation.organization_name}
+                                        {quotation.company_name}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {quotation.total_amount}
+                                        {Number(quotation.total_amount).toLocaleString("en-US", {
+                                            maximumFractionDigits: 0,
+                                        })}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
                                         {quotation.valid_until ? new Date(quotation.valid_until).toLocaleDateString('en-GB', {
@@ -285,4 +298,4 @@ const RFQ = ({ auth }) => {
     );
 };
 
-export default RFQ;
+export default Quotations;

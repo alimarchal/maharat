@@ -39,6 +39,12 @@ class Company extends Model
         return $this->hasMany(User::class);
     }
 
+    public function rfqs()
+    {
+        return $this->hasMany(RFQ::class, 'company_id');
+    }
+
+
     public function departments()
     {
         return $this->hasMany(Department::class);

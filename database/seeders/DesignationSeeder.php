@@ -13,12 +13,10 @@ class DesignationSeeder extends Seeder
     public function run(): void
     {
 
-
         $designations = [
             'Managing Director',
             'Department Director',
             'Manager',
-            'Direct Manager',
             'Supervisor',
             'Warehouse Manager',
             'Officer',
