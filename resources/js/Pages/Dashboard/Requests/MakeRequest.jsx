@@ -557,7 +557,7 @@ const MakeRequest = () => {
 
                 <div className="flex items-center w-full gap-4">
                     <h3 className="text-2xl font-medium text-[#6E66AC] whitespace-nowrap">
-                        Warehouse Info
+                        Other Info
                     </h3>
                     <div
                         className="h-[3px] flex-grow"
