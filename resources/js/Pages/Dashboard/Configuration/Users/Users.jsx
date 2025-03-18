@@ -10,6 +10,7 @@ const Users = () => {
     const { props } = usePage();
     const urlParams = new URLSearchParams(window.location.search);
     const id = urlParams.get('id'); // Get the ID from the URL
+    console.log("🔍 User ID from URL:", id);
     const hierarchy_level = urlParams.get('hierarchy_level') ? parseInt(urlParams.get('hierarchy_level')) : undefined;
     const parent_id = urlParams.get('parent_id') ? parseInt(urlParams.get('parent_id')) : null;
 
@@ -40,78 +41,103 @@ const Users = () => {
     const [photoPreview, setPhotoPreview] = useState(null);
 
     // Fetch designations, departments, and reporting manager on component mount
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [designationsResponse, departmentsResponse] = await Promise.all([
-                    axios.get('/api/v1/designations'),
-                    axios.get('/api/v1/departments'),
-                ]);
+    // Replace the existing useEffect in Users.jsx with this fixed version
+useEffect(() => {
+    const fetchData = async () => {
+        try {
+            const [designationsResponse, departmentsResponse] = await Promise.all([
+                axios.get('/api/v1/designations'),
+                axios.get('/api/v1/departments'),
+            ]);
 
-                setDesignations(designationsResponse.data.data);
-                setDepartments(departmentsResponse.data.data);
+            setDesignations(designationsResponse.data.data);
+            setDepartments(departmentsResponse.data.data);
 
-                let userData = null;
-                if (id) {
-                    const userResponse = await axios.get(`/api/v1/users/${id}`);
-                    userData = userResponse.data.data;
+            let userData = null;
+            
+            // If we're editing an existing user
+            if (id) {
+                const userResponse = await axios.get(`/api/v1/users/${id}`);
+                userData = userResponse.data.data;
 
-                    console.log("Fetched User Data:", userData); // Debug log
+                console.log("Fetched User Data:", userData); // Debug log
 
-                    setFormData({
-                        employee_id: userData.employee_id,
-                        username: userData.username,
-                        firstname: userData.firstname,
-                        lastname: userData.lastname,
-                        email: userData.email,
-                        landline: userData.landline,
-                        mobile: userData.mobile,
-                        photo: userData.photo,
-                        designation_id: userData.designation_id,
-                        department_id: userData.department_id,
-                        language: userData.language,
-                        employee_type: userData.employee_type,
-                        description: userData.description,
-                        parent_id: userData.parent_id,
-                        hierarchy_level: userData.hierarchy_level,
-                    });
+                setFormData({
+                    employee_id: userData.employee_id,
+                    username: userData.username,
+                    firstname: userData.firstname,
+                    lastname: userData.lastname,
+                    email: userData.email,
+                    landline: userData.landline,
+                    mobile: userData.mobile,
+                    photo: userData.photo,
+                    designation_id: userData.designation_id,
+                    department_id: userData.department_id,
+                    language: userData.language,
+                    employee_type: userData.employee_type,
+                    description: userData.description,
+                    parent_id: userData.parent_id,
+                    hierarchy_level: userData.hierarchy_level,
+                });
 
-                    setIsEditing(true);
-                }
-
+                setIsEditing(true);
+                
+                // If user has a parent_id, fetch the reporting manager's info
                 if (userData?.parent_id) {
-                    // Fetch Reporting Manager Name when parent_id exists
                     const reportingManagerResponse = await axios.get(`/api/v1/users/${userData.parent_id}`);
                     console.log("Reporting Manager Response:", reportingManagerResponse.data); // Debug log
                     setReportingManager(reportingManagerResponse.data.data.name);
-                } else if (parent_id === null) {
-                    // Fetch the top-level manager (hierarchy_level = 0) when parent_id is null
-                    const topLevelManagerResponse = await axios.get(`/api/v1/users`, {
+                }
+            } 
+            // If we're creating a new user with specified hierarchy and parent
+            else if (hierarchy_level !== undefined || parent_id !== null) {
+                // Set the initial form data based on URL parameters
+                setFormData(prevData => ({
+                    ...prevData,
+                    parent_id: parent_id,
+                    hierarchy_level: hierarchy_level
+                }));
+                
+                // If parent_id is provided, fetch the reporting manager's name
+                if (parent_id) {
+                    const reportingManagerResponse = await axios.get(`/api/v1/users/${parent_id}`);
+                    console.log("Reporting Manager Response:", reportingManagerResponse.data);
+                    setReportingManager(reportingManagerResponse.data.data.name);
+                } 
+                // If hierarchy_level is 1 and no parent_id, fetch the top-level manager (hierarchy_level = 0)
+                else if (hierarchy_level === 1) {
+                    console.log("Fetching top-level manager for hierarchy level 1");
+                    const topLevelManagerResponse = await axios.get('/api/v1/users', {
                         params: {
-                            hierarchy_level: 0,
-                        },
+                            hierarchy_level: 0
+                        }
                     });
-
-                    console.log("Top-Level Manager Response:", topLevelManagerResponse.data); // Debug log
-
-                    if (Array.isArray(topLevelManagerResponse.data.data) && topLevelManagerResponse.data.data.length > 0) {
+                    
+                    console.log("Top-Level Manager Response:", topLevelManagerResponse.data);
+                    
+                    if (Array.isArray(topLevelManagerResponse.data.data) && 
+                        topLevelManagerResponse.data.data.length > 0) {
+                        
                         const topLevelManager = topLevelManagerResponse.data.data[0];
                         setReportingManager(topLevelManager.name);
-                        setFormData((prevFormData) => ({
-                            ...prevFormData,
-                            parent_id: topLevelManager.id, // Set parent_id to the top-level manager's ID
+                        
+                        setFormData(prevData => ({
+                            ...prevData,
+                            parent_id: topLevelManager.id
                         }));
                     } else {
                         console.warn("No top-level manager found with hierarchy_level = 0");
                     }
                 }
-            } catch (error) {
-                console.error("Error fetching data:", error);
             }
-        };
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            console.error("Error details:", error.response ? error.response.data : error.message);
+        }
+    };
 
-        fetchData();
-    }, [id, parent_id]);    
+    fetchData();
+}, [id, hierarchy_level, parent_id]);      
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -184,19 +210,14 @@ const Users = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
-
+    
         try {
             const formDataToSend = new FormData();
-
-            // For debugging - log the raw formData before sending
-            console.log("FORM DATA BEFORE SUBMIT:", {
-                firstname: formData.firstname,
-                lastname: formData.lastname,
-                username: formData.username,
-                employee_id: formData.employee_id
-            });
-
-            // Map the form fields explicitly and prevent empty fields
+    
+            // Debugging log before sending
+            console.log("📌 FORM DATA BEFORE SUBMIT:", formData);
+    
+            // Append form fields
             formDataToSend.append("firstname", formData.firstname || '');
             formDataToSend.append("lastname", formData.lastname || '');
             formDataToSend.append("name", `${formData.firstname} ${formData.lastname}`);
@@ -208,43 +229,42 @@ const Users = () => {
             formDataToSend.append("language", formData.language || '');
             formDataToSend.append("employee_id", formData.employee_id || '');
             formDataToSend.append("username", formData.username || '');
-            formDataToSend.append("parent_id", formData.parent_id || '');
             formDataToSend.append("hierarchy_level", formData.hierarchy_level || 0);
-
+    
+            // Handle parent_id correctly (null if not set)
+            if (formData.parent_id !== undefined && formData.parent_id !== null) {
+                formDataToSend.append("parent_id", formData.parent_id);
+            }
+    
             // Optional fields
             if (formData.employee_type) formDataToSend.append("employee_type", formData.employee_type);
             if (formData.description) formDataToSend.append("description", formData.description);
-
-            // Append the photo if it exists
+    
+            // Append photo if available
             if (photo) {
                 formDataToSend.append("profile_photo_path", photo);
             }
-
-            // Make the PATCH request
+    
             const apiUrl = `/api/v1/users/${id}`;
-            console.log("Making PATCH request to:", apiUrl);
-
-            // Try using a PUT request instead (since apiResource generates PUT)
-            // You can also try switching between PATCH and PUT to see if one works
-            let response = await axios.put(apiUrl, formDataToSend, {
+            console.log("📌 Making PATCH request to:", apiUrl);
+    
+            // PATCH request (instead of PUT)
+            const response = await axios.patch(apiUrl, formDataToSend, {
                 headers: {
-                    "Content-Type": "application/json",
+                    "Content-Type": "multipart/form-data",
                     "Accept": "application/json"
                 }
             });
-
-            console.log("Response Status:", response.status);
-            console.log("Response Data:", response.data);
-
-            // Optional: Add a small delay before fetching updated data
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Fetch the user data again to confirm update
+    
+            console.log("✅ Response Status:", response.status);
+            console.log("✅ Response Data:", response.data);
+    
+            // Fetch updated user data for verification
             const refreshResponse = await axios.get(apiUrl);
-            console.log("Fresh user data after update:", refreshResponse.data);
-
+            console.log("🔄 Fresh user data after update:", refreshResponse.data);
+    
             // Compare original vs updated data
-            console.log("CHANGES VERIFICATION:", {
+            console.log("🔍 CHANGES VERIFICATION:", {
                 'original_lastname': formData.lastname,
                 'updated_lastname': refreshResponse.data.data.lastname,
                 'original_username': formData.username,
@@ -252,14 +272,29 @@ const Users = () => {
                 'original_employee_id': formData.employee_id,
                 'updated_employee_id': refreshResponse.data.data.employee_id
             });
-
+    
             alert(isEditing ? "User updated successfully!" : "User added successfully!");
             router.visit("/chart");
         } catch (error) {
-            console.log("API Error Details:", error);
-            console.error("Error saving user", error);
+            console.error("❌ Error saving user:", error);
+    
+            if (error.response && error.response.data) {
+                console.error("❌ Server Response Error:", error.response.data);
+    
+                if (error.response.data.errors) {
+                    const errorMessages = Object.values(error.response.data.errors)
+                        .flat()
+                        .join('\n');
+                    alert(`Validation errors:\n${errorMessages}`);
+                } else if (error.response.data.message) {
+                    alert(`Error: ${error.response.data.message}`);
+                }
+            } else {
+                alert("An error occurred while saving the user. Please try again.");
+            }
         }
     };
+    
 
     return (
         <div className="w-full">
