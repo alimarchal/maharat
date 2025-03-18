@@ -274,9 +274,9 @@ class ProcessStepController extends Controller
         }
 
         // Check if process step has designation_id set
-        if (empty($processStep->designation_id)) {
+        if (empty($processStep->designation_id) || $processStep->designation_id  == 3) {
             return response()->json([
-                'success' => false,
+                'success' => true,
                 'message' => 'Approver is a direct manager.',
                 'parent_id' => $user->parent_id,
                 'user' => User::findOrFail($user->parent_id),

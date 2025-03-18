@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\DepartmentController;
 use App\Http\Controllers\Api\V1\DesignationController;
 use App\Http\Controllers\Api\V1\ExternalInvoiceController;
+use App\Http\Controllers\Api\V1\FinancialTransactionController;
 use App\Http\Controllers\Api\V1\FiscalPeriodController;
 use App\Http\Controllers\Api\V1\GrnController;
 use App\Http\Controllers\Api\V1\GrnReceiveGoodController;
@@ -249,7 +250,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('customers', CustomerController::class);
     Route::post('customers/{id}/restore', [CustomerController::class, 'restore']);
 
-    // Invoices routes
+    // Maharat Invoices
     Route::apiResource('invoices', InvoiceController::class);
     Route::post('invoices/{id}/restore', [InvoiceController::class, 'restore']);
 
@@ -301,6 +302,12 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('issue-materials', IssueMaterialController::class);
     Route::post('issue-materials/{id}/restore', [IssueMaterialController::class, 'restore'])->name('issue-materials.restore');
 
+    Route::apiResource('financial-transactions', FinancialTransactionController::class);
+    Route::post('financial-transactions/{id}/restore', [FinancialTransactionController::class, 'restore']);
+    Route::post('financial-transactions/{financialTransaction}/approve', [FinancialTransactionController::class, 'approve']);
+    Route::post('financial-transactions/{financialTransaction}/post', [FinancialTransactionController::class, 'post']);
+    Route::post('financial-transactions/{financialTransaction}/cancel', [FinancialTransactionController::class, 'cancel']);
+    Route::post('financial-transactions/{financialTransaction}/reverse', [FinancialTransactionController::class, 'reverse']);
 
 
 

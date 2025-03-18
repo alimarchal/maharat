@@ -23,7 +23,8 @@ class Invoice extends Model
         'tax_amount',
         'total_amount',
         'currency',
-        'notes'
+        'notes',
+        'account_code_id',
     ];
 
     protected $casts = [

@@ -20,7 +20,7 @@ const TasksTable = () => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/tasks?include=processStep,process,assignedFromUser,assignedToUser,descriptions&page=${currentPage}&filter[assigned_from_user_id]=${user_id}`
+                    `/api/v1/tasks?include=processStep,process,assignedFromUser,assignedToUser,descriptions&page=${currentPage}&filter[assigned_to_user_id]=${user_id}`
                 );
                 const data = await response.json();
                 if (response.ok) {
