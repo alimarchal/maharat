@@ -249,7 +249,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('customers', CustomerController::class);
     Route::post('customers/{id}/restore', [CustomerController::class, 'restore']);
 
-    // Invoices routes
+    // Maharat Invoices
     Route::apiResource('invoices', InvoiceController::class);
     Route::post('invoices/{id}/restore', [InvoiceController::class, 'restore']);
 

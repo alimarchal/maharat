@@ -17,6 +17,7 @@ class DesignationSeeder extends Seeder
             'Managing Director',
             'Department Director',
             'Manager',
+            'Direct Manager',
             'Supervisor',
             'Warehouse Manager',
             'Officer',
