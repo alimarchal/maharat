@@ -147,7 +147,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::get('/rfq-status-logs', [RfqStatusLogController::class, 'index']);
     Route::put('/rfq-status-logs/{id}', [RfqStatusLogController::class, 'update']);
-    Route::delete('/rfq-status-logs/{id}', [RfqStatusLogController::class, 'destroy']);
+    Route::delete('/rfqs/{id}', [RfqController::class, 'destroy']);
 
     Route::get('/statuses/payment-types', [StatusController::class, 'getPaymentTypes']);
 

@@ -275,28 +275,24 @@ class RfqController extends Controller
 //            ], Response::HTTP_INTERNAL_SERVER_ERROR);
 //        }
 //    }
-    public function destroy(Rfq $rfq): JsonResponse
+    public function destroy($id)
     {
+        $rfq = Rfq::where('id', $id)->first();
+
+        if (!$rfq) {
+            return response()->json(['message' => 'RFQ not found'], 404);
+        }
+
+        DB::beginTransaction();
         try {
-            DB::beginTransaction();
-
-            // Delete related items first
             $rfq->items()->delete();
-
-            // Delete the RFQ
             $rfq->delete();
-
             DB::commit();
 
-            return response()->json([
-                'message' => 'RFQ deleted successfully'
-            ], Response::HTTP_OK);
+            return response()->json(['message' => 'RFQ deleted successfully'], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'message' => 'Failed to delete RFQ',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json(['message' => 'Failed to delete RFQ', 'error' => $e->getMessage()], 500);
         }
     }
 
