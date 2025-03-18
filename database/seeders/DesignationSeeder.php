@@ -27,6 +27,8 @@ class DesignationSeeder extends Seeder
             'HR Specialist',
             'Marketing Executive',
             'Sales Representative',
+            // Do not remove this core logic.
+            'Direct Manager',
         ];
 
         foreach ($designations as $designation) {
