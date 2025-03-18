@@ -4,9 +4,8 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faArrowLeftLong,
-    faEdit,
     faTrash,
-    faCheck,
+    faFilePdf,
     faChevronRight,
 } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
@@ -16,21 +15,57 @@ const RFQ = ({ auth }) => {
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
-    const [editingId, setEditingId] = useState(null);
-    const [editData, setEditData] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [progress, setProgress] = useState(0); // For loading bar
 
     const fetchRFQLogs = async () => {
+        setLoading(true);
+        setProgress(0); // Reset progress
         try {
-            const response = await axios.get(
-                `/api/v1/rfq-status-logs?page=${currentPage}`
-            );
-            setRfqLogs(response.data.data);
-            setLastPage(response.data.meta.last_page);
-            setError("");
+            const response = await axios.get(`/api/v1/rfqs?page=${currentPage}`);
+            console.log("API Response:", response.data);
+
+            if (response.data && response.data.data) {
+                // Simulate progress for loading bar
+                const interval = setInterval(() => {
+                    setProgress((prev) => {
+                        if (prev >= 100) {
+                            clearInterval(interval);
+                            return 100;
+                        }
+                        return prev + 10;
+                    });
+                }, 200);
+
+                // Fetch requester names for each RFQ log
+                const logsWithRequesterNames = await Promise.all(
+                    response.data.data.map(async (log) => {
+                        if (log.requester_id) {
+                            const userResponse = await axios.get(`/api/v1/users/${log.requester_id}`);
+                            log.requester_name = userResponse.data.data.name; // Ensure this is a string
+                        }
+                        return log;
+                    })
+                );
+
+                setRfqLogs(logsWithRequesterNames);
+                setLastPage(response.data.meta.last_page);
+                setError("");
+            } else {
+                console.error("Invalid response format:", response.data);
+                setError("Received invalid data format from API");
+            }
+
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
         } catch (error) {
             console.error("API Error:", error);
             setError("Failed to load RFQ logs");
             setRfqLogs([]);
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
+        } finally {
+            clearInterval(interval);
         }
     };
 
@@ -38,43 +73,16 @@ const RFQ = ({ auth }) => {
         fetchRFQLogs();
     }, [currentPage]);
 
-    const handleEdit = (log) => {
-        setEditingId(log.id);
-        setEditData(log);
-    };
-
-    const handleSave = async (id) => {
-        try {
-            const response = await axios.put(
-                `/api/v1/rfq-status-logs/${id}`,
-                editData
-            );
-            if (response.data) {
-                setEditingId(null);
-                fetchRFQLogs(); // Refresh the data
-            }
-        } catch (error) {
-            console.error("Save error:", error);
-            setError("Failed to save changes");
-        }
-    };
-
     const handleDelete = async (id) => {
         if (!confirm("Are you sure you want to delete this record?")) return;
 
         try {
-            await axios.delete(`/api/v1/rfq-status-logs/${id}`);
+            await axios.delete(`/api/v1/rfqs/${id}`);
             fetchRFQLogs(); // Refresh data
         } catch (error) {
             console.error("Error deleting record:", error);
+            setError("Failed to delete record");
         }
-    };
-
-    const handleChange = (field, value) => {
-        setEditData((prev) => ({
-            ...prev,
-            [field]: value,
-        }));
     };
 
     const formatDateTime = (dateString) => {
@@ -139,7 +147,7 @@ const RFQ = ({ auth }) => {
                 </div>
 
                 {/* RFQs Logs Heading and Make New RFQ Button */}
-                <div className="flex justify-between items-center mb-12">
+                <div className="flex justify-between items-center mb-6">
                     <h2 className="text-[32px] font-bold text-[#2C323C] whitespace-nowrap">
                         RFQ Logs
                     </h2>
@@ -159,9 +167,24 @@ const RFQ = ({ auth }) => {
                     </div>
                 </div>
 
+                {/* Loading Bar */}
+                {loading && (
+                    <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
+                        <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
+                            <div
+                                className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
+                                style={{ width: `${progress}%` }}
+                            ></div>
+                            <span className="absolute text-white">
+                                {progress < 60 ? "Please Wait, Fetching Details..." : `${progress}%`}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 {/* RFQs Table */}
                 <div className="w-full overflow-hidden">
-                    {error && (
+                    {!loading && error && (
                         <div
                             className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
                             role="alert"
@@ -169,150 +192,80 @@ const RFQ = ({ auth }) => {
                             <span className="block sm:inline">{error}</span>
                         </div>
                     )}
-                    <table className="w-full">
-                        <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
-                            <tr>
-                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">
-                                    RFQ#
-                                </th>
-                                <th className="py-3 px-4 text-center">
-                                    Supplier
-                                </th>
-                                <th className="py-3 px-4 text-center">
-                                    Amount
-                                </th>
-                                <th className="py-3 px-4 text-center">
-                                    Status
-                                </th>
-                                <th className="py-3 px-4 text-center">
-                                    Date & Time
-                                </th>
-                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
 
-                        <tbody className="bg-transparent divide-y divide-gray-200">
-                            {rfqLogs.map((log) => (
-                                <tr key={log.id}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {log.rfq_id}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {editingId === log.id ? (
-                                            <input
-                                                type="text"
-                                                value={
-                                                    editData.supplier_name || ""
-                                                }
-                                                onChange={(e) =>
-                                                    handleChange(
-                                                        "supplier_name",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                className="bg-transparent border-none focus:outline-none focus:ring-0 w-20 text-center text-base"
-                                            />
-                                        ) : (
-                                            log.supplier_name || "N/A"
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center w-[250px]">
-                                        {editingId === log.id ? (
-                                            <input
-                                                type="number"
-                                                value={editData.amount || ""}
-                                                onChange={(e) => {
-                                                    const value = Math.max(
-                                                        0,
-                                                        Number(e.target.value)
-                                                    ); // Prevent negative values
-                                                    handleChange(
-                                                        "amount",
-                                                        value
-                                                    );
-                                                }}
-                                                className="bg-transparent border-none focus:outline-none focus:ring-0 w-[150px] text-center text-base"
-                                                min="0"
-                                            />
-                                        ) : (
-                                            <span className="text-base inline-block w-[150px] truncate">
-                                                {log.amount || "0"}
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <span
-                                            className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${
-                                                log.status_name === "Active"
-                                                    ? "bg-green-100 text-green-800"
-                                                    : log.status_name ===
-                                                      "Rejected"
-                                                    ? "bg-red-100 text-red-800"
-                                                    : log.status_name ===
-                                                      "Expired"
-                                                    ? "bg-gray-100 text-gray-800"
-                                                    : "bg-yellow-100 text-yellow-800"
-                                            }`}
-                                        >
-                                            {log.status_name}
-                                        </span>
-                                    </td>
-
-                                    {/* Format Date & Time */}
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {formatDateTime(log.created_at)}
-                                    </td>
-
-                                    {/* Centered Buttons */}
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <div className="flex justify-center space-x-3">
-                                            {editingId === log.id ? (
-                                                <button
-                                                    onClick={() =>
-                                                        handleSave(log.id)
-                                                    }
-                                                    className="text-green-600 hover:text-green-900"
+                    {!loading ? (
+                        rfqLogs.length === 0 ? (
+                            <div className="text-center py-4">No RFQ logs found</div>
+                        ) : (
+                            <table className="w-full">
+                                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                                    <tr>
+                                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">
+                                            RFQ#
+                                        </th>
+                                        <th className="py-3 px-4 text-center">Requested By</th>
+                                        <th className="py-3 px-4 text-center">Status</th>
+                                        <th className="py-3 px-4 text-center">Date & Time</th>
+                                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-transparent divide-y divide-gray-200">
+                                    {rfqLogs.map((log) => (
+                                        <tr key={log.id}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">{log.rfq_number || "N/A"}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">{log.requester?.name || "N/A"}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                {typeof log.status?.name === "object" ? (
+                                                    <span className="text-red-500">Invalid Status</span> // Debugging UI
+                                                ) : (
+                                                    <span
+                                                        className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${
+                                                            log.status?.name === "Active"
+                                                                ? "bg-green-100 text-green-800"
+                                                                : log.status?.name === "Rejected"
+                                                                ? "bg-red-100 text-red-800"
+                                                                : log.status?.name === "Expired"
+                                                                ? "bg-gray-100 text-gray-800"
+                                                                : "bg-yellow-100 text-yellow-800"
+                                                        }`}
+                                                    >
+                                                        {log.status?.name || "Pending"}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                {formatDateTime(log.created_at)}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <div className="flex justify-center space-x-3 w-full">
+                                                <a
+                                                    href={log.attachments || "#"}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className={`text-blue-600 hover:text-blue-900 ${!log.attachments ? "invisible" : ""}`}
                                                 >
-                                                    <FontAwesomeIcon
-                                                        icon={faCheck}
-                                                        className="h-5 w-5"
-                                                    />
-                                                </button>
-                                            ) : (
+                                                    <FontAwesomeIcon icon={faFilePdf} className="h-5 w-5" />
+                                                </a>
                                                 <button
-                                                    onClick={() =>
-                                                        handleEdit(log)
-                                                    }
-                                                    className="text-gray-600 hover:text-gray-600"
+                                                    onClick={() => handleDelete(log.id)}
+                                                    className="text-red-600 hover:text-red-900"
                                                 >
-                                                    <FontAwesomeIcon
-                                                        icon={faEdit}
-                                                        className="h-5 w-5"
-                                                    />
+                                                    <FontAwesomeIcon icon={faTrash} className="h-5 w-5" />
                                                 </button>
-                                            )}
-                                            <button
-                                                onClick={() =>
-                                                    handleDelete(log.id)
-                                                }
-                                                className="text-red-600 hover:text-red-900"
-                                            >
-                                                <FontAwesomeIcon
-                                                    icon={faTrash}
-                                                    className="h-5 w-5"
-                                                />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                            </div>
+                                        </td>
+
+
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )
+                    ) : null}
+
 
                     {/* Pagination */}
-                    {!error && rfqLogs.length > 0 && (
+                    {!loading && !error && rfqLogs.length > 0 && (
                         <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                             <button
                                 onClick={() => setCurrentPage(currentPage - 1)}

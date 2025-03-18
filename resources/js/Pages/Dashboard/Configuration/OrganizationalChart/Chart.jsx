@@ -64,14 +64,18 @@ function OrganizationNode({
                 <Button
                     startIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={() => {
-                        // Log the data being sent
+                        const currentLevel = node.hierarchy_level ?? 0; // Default to 0 if undefined
+                        const newHierarchyLevel = currentLevel === 0 ? 1 : currentLevel + 1;
+                        const parentId = currentLevel === 0 ? null : node.id ?? null; // Ensure null if undefined
+
                         console.log("Sending to Users.jsx:", {
-                            hierarchy_level: node.hierarchy_level,
-                            parent_id: node.id
+                            hierarchy_level: newHierarchyLevel,
+                            parent_id: parentId
                         });
-                            
+
                         // Use query parameters instead of props
-                        router.visit(`/users?hierarchy_level=${node.hierarchy_level}&parent_id=${node.id}`);
+                        router.visit(`/users?hierarchy_level=${newHierarchyLevel}&parent_id=${parentId}`);
+
                     }}
                     sx={{ textTransform: "none", color: "#009FDC", fontSize: "0.85rem" }}
                 >
@@ -147,8 +151,9 @@ function OrgChartTree({
             }
     
             // Assign the fetched parent_id and increment hierarchy level
-            const parentId = parentData.id;
-            const nextLevel = parentData.hierarchy_level + 1;
+            const nextLevel = parentData.hierarchy_level === 0 ? 1 : parentData.hierarchy_level + 1;
+            const parentId = parentData.hierarchy_level === 0 ? null : parentData.id;
+
     
             console.log("Adding position under parent:", {
                 parent_id: parentId,

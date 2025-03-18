@@ -103,18 +103,14 @@ class UserSeeder extends Seeder
 
         // Fixed Users
         $users = [
-            ['email' => 'alice@example.com', 'firstname' => 'Alice', 'lastname' => 'Johnson', 'name' => 'Alice Johnson', 'parent_id' => 1, 'hierarchy_level' => 1],
-            ['email' => 'bob@example.com', 'firstname' => 'Bob', 'lastname' => 'Williams', 'name' => 'Bob Williams', 'parent_id' => 1, 'hierarchy_level' => 1],
-            ['email' => 'charlie@example.com', 'firstname' => 'Charlie', 'lastname' => 'Davis', 'name' => 'Charlie Davis', 'parent_id' => 5, 'hierarchy_level' => 2],
-            ['email' => 'david@example.com', 'firstname' => 'David', 'lastname' => 'Brown', 'name' => 'David Brown', 'parent_id' => 5, 'hierarchy_level' => 2],
-            ['email' => 'eva@example.com', 'firstname' => 'Eva', 'lastname' => 'Smith', 'name' => 'Eva Smith', 'parent_id' => 5, 'hierarchy_level' => 2],
-            ['email' => 'john@example.com', 'firstname' => 'John', 'lastname' => 'Doe', 'name' => 'John Doe', 'parent_id' => 6, 'hierarchy_level' => 2],
-            ['email' => 'alex.jordan@example.com', 'firstname' => 'Alex', 'lastname' => 'Jordan', 'name' => 'Alex Jordan', 'parent_id' => 6, 'hierarchy_level' => 2],
-            ['email' => 'mia.carter@example.com', 'firstname' => 'Mia', 'lastname' => 'Carter', 'name' => 'Mia Carter', 'parent_id' => 7, 'hierarchy_level' => 3],
-            ['email' => 'ethan.smith@example.com', 'firstname' => 'Ethan', 'lastname' => 'Smith', 'name' => 'Ethan Smith', 'parent_id' => 8, 'hierarchy_level' => 3],
-            ['email' => 'olivia.brown@example.com', 'firstname' => 'Olivia', 'lastname' => 'Brown', 'name' => 'Olivia Brown', 'parent_id' => 9, 'hierarchy_level' => 3],
-            ['email' => 'daniel.lee@example.com', 'firstname' => 'Daniel', 'lastname' => 'Lee', 'name' => 'Daniel Lee', 'parent_id' => 10, 'hierarchy_level' => 3],
-            ['email' => 'sophia.martin@example.com', 'firstname' => 'Sophia', 'lastname' => 'Martin', 'name' => 'Sophia Martin', 'parent_id' => 11, 'hierarchy_level' => 3],
+                ['email' => 'omar@example.com', 'firstname' => 'Omar', 'lastname' => 'Saud', 'name' => 'Omar Saud', 'parent_id' => 1, 'hierarchy_level' => 1, 'designation_id' => 3, 'department_id' => 4],
+                ['email' => 'khalid@example.com', 'firstname' => 'Khalid', 'lastname' => 'Farooq', 'name' => 'Khalid Farooq', 'parent_id' => 1, 'hierarchy_level' => 1, 'designation_id' => 3, 'department_id' => 3],
+                ['email' => 'yousef@example.com', 'firstname' => 'Yousef', 'lastname' => 'Qahtani', 'name' => 'Yousef Qahtani', 'parent_id' => 1, 'hierarchy_level' => 1, 'designation_id' => 3, 'department_id' => 5],
+                ['email' => 'ibrahim@example.com', 'firstname' => 'Ibrahim', 'lastname' => 'Mansour', 'name' => 'Ibrahim Mansour', 'parent_id' => 1, 'hierarchy_level' => 1, 'designation_id' => 3, 'department_id' => 6],
+                ['email' => 'mohammed@example.com', 'firstname' => 'Mohammed', 'lastname' => 'Sheikh', 'name' => 'Mohammed Sheikh', 'parent_id' => 6, 'hierarchy_level' => 2, 'designation_id' => 4, 'department_id' => 3],
+                ['email' => 'fatima@example.com', 'firstname' => 'Fatima', 'lastname' => 'Khalid', 'name' => 'Fatima Khalid', 'parent_id' => 6, 'hierarchy_level' => 2, 'designation_id' => 5, 'department_id' => 6],
+                ['email' => 'abdullah@example.com', 'firstname' => 'Abdullah', 'lastname' => 'Mohsen', 'name' => 'Abdullah Mohsen', 'parent_id' => 9, 'hierarchy_level' => 3, 'designation_id' => 6, 'department_id' => 4],
+                ['email' => 'salman@example.com', 'firstname' => 'Salman', 'lastname' => 'Rashid', 'name' => 'Salman Rashid', 'parent_id' => 10, 'hierarchy_level' => 3, 'designation_id' => 7, 'department_id' => 4],        
         ];
 
         $filteredDesignationIds = array_filter($designationIds, fn($id) => $id !== 1);
@@ -135,8 +131,9 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password'),
                     'parent_id' => $data['parent_id'] ?? null,
                     'hierarchy_level' => $data['hierarchy_level'] ?? null,
-                    'designation_id' => !empty($filteredDesignationIds) ? $filteredDesignationIds[array_rand($filteredDesignationIds)] : null,
-                    'department_id' => !empty($filteredDepartmentIds) ? $filteredDepartmentIds[array_rand($filteredDepartmentIds)] : null,
+                    'designation_id' => isset($data['designation_id']) ? $data['designation_id'] : (!empty($filteredDesignationIds) ? $filteredDesignationIds[array_rand($filteredDesignationIds)] : null),
+                    'department_id' => isset($data['department_id']) ? $data['department_id'] : (!empty($filteredDepartmentIds) ? $filteredDepartmentIds[array_rand($filteredDepartmentIds)] : null),
+
                 ]
             );
         }
