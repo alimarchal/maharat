@@ -40,7 +40,7 @@ const Quotations = ({ auth }) => {
 
                     console.log("RFQ API Response:", rfqResponse.data);
     
-                    const companyName = quotation.rfq?.company?.name || "N/A"; 
+                    let companyName = quotation.rfq?.company?.name || "N/A"; 
     
                     if (rfqResponse.data.data.company_id) {
                         try {

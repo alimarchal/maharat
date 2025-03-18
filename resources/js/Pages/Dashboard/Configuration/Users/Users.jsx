@@ -51,10 +51,12 @@ const Users = () => {
                 setDesignations(designationsResponse.data.data);
                 setDepartments(departmentsResponse.data.data);
 
-                // If an ID is present, fetch the user data for editing
+                let userData = null;
                 if (id) {
                     const userResponse = await axios.get(`/api/v1/users/${id}`);
-                    const userData = userResponse.data.data;
+                    userData = userResponse.data.data;
+
+                    console.log("Fetched User Data:", userData); // Debug log
 
                     setFormData({
                         employee_id: userData.employee_id,
@@ -74,19 +76,34 @@ const Users = () => {
                         hierarchy_level: userData.hierarchy_level,
                     });
 
-                    console.log("Fetched User Data:", userData);
+                    setIsEditing(true);
+                }
 
-                    // Fetch reporting manager name
-                    if (userData.parent_id) {
-                        const reportingManagerResponse = await axios.get(`/api/v1/users/${userData.parent_id}`);
-                        setReportingManager(reportingManagerResponse.data.data.name);
-                    }
-
-                    setIsEditing(true); // Set editing mode to true
-                } else if (parent_id) {
-                    // Fetch reporting manager name for new user
-                    const reportingManagerResponse = await axios.get(`/api/v1/users/${parent_id}`);
+                if (userData?.parent_id) {
+                    // Fetch Reporting Manager Name when parent_id exists
+                    const reportingManagerResponse = await axios.get(`/api/v1/users/${userData.parent_id}`);
+                    console.log("Reporting Manager Response:", reportingManagerResponse.data); // Debug log
                     setReportingManager(reportingManagerResponse.data.data.name);
+                } else if (parent_id === null) {
+                    // Fetch the top-level manager (hierarchy_level = 0) when parent_id is null
+                    const topLevelManagerResponse = await axios.get(`/api/v1/users`, {
+                        params: {
+                            hierarchy_level: 0,
+                        },
+                    });
+
+                    console.log("Top-Level Manager Response:", topLevelManagerResponse.data); // Debug log
+
+                    if (Array.isArray(topLevelManagerResponse.data.data) && topLevelManagerResponse.data.data.length > 0) {
+                        const topLevelManager = topLevelManagerResponse.data.data[0];
+                        setReportingManager(topLevelManager.name);
+                        setFormData((prevFormData) => ({
+                            ...prevFormData,
+                            parent_id: topLevelManager.id, // Set parent_id to the top-level manager's ID
+                        }));
+                    } else {
+                        console.warn("No top-level manager found with hierarchy_level = 0");
+                    }
                 }
             } catch (error) {
                 console.error("Error fetching data:", error);
@@ -94,7 +111,7 @@ const Users = () => {
         };
 
         fetchData();
-    }, [id, parent_id]);
+    }, [id, parent_id]);    
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -167,10 +184,10 @@ const Users = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
-    
+
         try {
             const formDataToSend = new FormData();
-            
+
             // For debugging - log the raw formData before sending
             console.log("FORM DATA BEFORE SUBMIT:", {
                 firstname: formData.firstname,
@@ -178,7 +195,7 @@ const Users = () => {
                 username: formData.username,
                 employee_id: formData.employee_id
             });
-            
+
             // Map the form fields explicitly and prevent empty fields
             formDataToSend.append("firstname", formData.firstname || '');
             formDataToSend.append("lastname", formData.lastname || '');
@@ -193,20 +210,20 @@ const Users = () => {
             formDataToSend.append("username", formData.username || '');
             formDataToSend.append("parent_id", formData.parent_id || '');
             formDataToSend.append("hierarchy_level", formData.hierarchy_level || 0);
-            
+
             // Optional fields
             if (formData.employee_type) formDataToSend.append("employee_type", formData.employee_type);
             if (formData.description) formDataToSend.append("description", formData.description);
-            
+
             // Append the photo if it exists
             if (photo) {
                 formDataToSend.append("profile_photo_path", photo);
             }
-    
+
             // Make the PATCH request
             const apiUrl = `/api/v1/users/${id}`;
             console.log("Making PATCH request to:", apiUrl);
-            
+
             // Try using a PUT request instead (since apiResource generates PUT)
             // You can also try switching between PATCH and PUT to see if one works
             let response = await axios.put(apiUrl, formDataToSend, {
@@ -215,17 +232,17 @@ const Users = () => {
                     "Accept": "application/json"
                 }
             });
-            
+
             console.log("Response Status:", response.status);
             console.log("Response Data:", response.data);
-            
+
             // Optional: Add a small delay before fetching updated data
             await new Promise(resolve => setTimeout(resolve, 500));
-            
+
             // Fetch the user data again to confirm update
             const refreshResponse = await axios.get(apiUrl);
             console.log("Fresh user data after update:", refreshResponse.data);
-            
+
             // Compare original vs updated data
             console.log("CHANGES VERIFICATION:", {
                 'original_lastname': formData.lastname,
@@ -235,7 +252,7 @@ const Users = () => {
                 'original_employee_id': formData.employee_id,
                 'updated_employee_id': refreshResponse.data.data.employee_id
             });
-            
+
             alert(isEditing ? "User updated successfully!" : "User added successfully!");
             router.visit("/chart");
         } catch (error) {
