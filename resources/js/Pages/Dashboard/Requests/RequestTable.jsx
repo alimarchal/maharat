@@ -17,7 +17,7 @@ const RequestTable = ({ selectedFilter }) => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/material-requests?include=requester,warehouse,status,items.product,items.unit,items.category,items.urgencyStatus&page=${currentPage}&filter[requester_id]=${user_id}`
+                    `/api/v1/material-requests?include=requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus&page=${currentPage}&filter[requester_id]=${user_id}`
                 );
                 const data = await response.json();
 
@@ -83,6 +83,10 @@ const RequestTable = ({ selectedFilter }) => {
                             Request #
                         </th>
                         <th className="py-3 px-4">Items</th>
+                        <th className="py-3 px-4">Warehouse Name</th>
+                        <th className="py-3 px-4">Cost Center</th>
+                        <th className="py-3 px-4">Sub Cost Center</th>
+                        <th className="py-3 px-4">Department</th>
                         <th className="py-3 px-4">Priority</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">Date & Time</th>
@@ -95,14 +99,14 @@ const RequestTable = ({ selectedFilter }) => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="6" className="text-center py-12">
+                            <td colSpan="10" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="6"
+                                colSpan="10"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -129,6 +133,18 @@ const RequestTable = ({ selectedFilter }) => {
                                                 </span>
                                             ))}
                                         </div>
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {req.warehouse?.name || "N/A"}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {req.costCenter?.name || "N/A"}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {req.subCostCenter?.name || "N/A"}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {req.department?.name || "N/A"}
                                     </td>
                                     <td
                                         className={`py-3 px-4 ${
@@ -185,10 +201,10 @@ const RequestTable = ({ selectedFilter }) => {
                     ) : (
                         <tr>
                             <td
-                                colSpan="6"
+                                colSpan="10"
                                 className="text-center text-[#2C323C] font-medium py-4"
                             >
-                                No Requests found.
+                                No Material Requests found.
                             </td>
                         </tr>
                     )}
