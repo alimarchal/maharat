@@ -164,4 +164,3 @@ class User extends Authenticatable
 
      */
 }
-

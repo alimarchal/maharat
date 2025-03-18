@@ -309,13 +309,17 @@ const MakeRequest = () => {
                 transactionPayload
             );
 
+            const processResponseViaUser = await axios.get(
+                `/api/v1/process-steps/${processStep?.order}/user/${user_id}`
+            );
+            const assignUser = processResponseViaUser?.data;
+
             const taskPayload = {
                 process_step_id: processStep.id,
                 process_id: processStep.process_id,
                 assigned_at: new Date().toISOString(),
                 urgency: "Normal",
-                assigned_to_user_id:
-                    processStep.approver_id || processStep.designation_id,
+                assigned_to_user_id: assignUser.user?.user?.id,
                 assigned_from_user_id: user_id,
                 read_status: null,
             };

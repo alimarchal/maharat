@@ -217,10 +217,17 @@ useEffect(() => {
             // Debugging log before sending
             console.log("📌 FORM DATA BEFORE SUBMIT:", formData);
     
-            // Append form fields
+            // IMPORTANT: Send both versions of these fields to ensure compatibility
+            // with both validation rules AND database column names
             formDataToSend.append("firstname", formData.firstname || '');
             formDataToSend.append("lastname", formData.lastname || '');
+            formDataToSend.append("first_name", formData.firstname || '');
+            formDataToSend.append("last_name", formData.lastname || '');
+            
+            // Make sure the name field is constructed properly
             formDataToSend.append("name", `${formData.firstname} ${formData.lastname}`);
+            
+            // Other fields
             formDataToSend.append("email", formData.email || '');
             formDataToSend.append("landline", formData.landline || '');
             formDataToSend.append("mobile", formData.mobile || '');
@@ -245,33 +252,57 @@ useEffect(() => {
                 formDataToSend.append("profile_photo_path", photo);
             }
     
-            const apiUrl = `/api/v1/users/${id}`;
-            console.log("📌 Making PATCH request to:", apiUrl);
+            let response;
     
-            // PATCH request (instead of PUT)
-            const response = await axios.patch(apiUrl, formDataToSend, {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                    "Accept": "application/json"
-                }
+            // Debug logging - view exactly what's being sent
+            const formObject = {};
+            formDataToSend.forEach((value, key) => {
+                formObject[key] = value;
             });
+            console.log("📤 FORM DATA BEING SENT:", formObject);
+    
+            // If we have an ID, we're updating an existing user
+            if (id) {
+                // For update operations
+                const apiUrl = `/api/v1/users/${id}`;
+                console.log("📌 Making PATCH request to:", apiUrl);
+                
+                // Add a _method field to properly handle PATCH with FormData
+                formDataToSend.append("_method", "PATCH");
+                
+                // Use POST with _method=PATCH for better compatibility
+                response = await axios.post(apiUrl, formDataToSend, {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                        "Accept": "application/json"
+                    }
+                });
+                
+                // Fetch updated user data for verification
+                const refreshResponse = await axios.get(apiUrl);
+                console.log("🔄 Fresh user data after update:", refreshResponse.data);
+            } else {
+                // For create operations - we add only what's needed for a new user
+                const apiUrl = "/api/v1/users";  // No ID in URL for creation
+                console.log("📌 Making POST request to:", apiUrl);
+                
+                // Add required fields for new user creation
+                // We need a password for new users
+                formDataToSend.append("password", "Password123"); // Default password
+                
+                // Use a simple POST for creation
+                response = await axios.post(apiUrl, formDataToSend, {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                        "Accept": "application/json"
+                    }
+                });
+                
+                console.log("✅ New user created:", response.data);
+            }
     
             console.log("✅ Response Status:", response.status);
             console.log("✅ Response Data:", response.data);
-    
-            // Fetch updated user data for verification
-            const refreshResponse = await axios.get(apiUrl);
-            console.log("🔄 Fresh user data after update:", refreshResponse.data);
-    
-            // Compare original vs updated data
-            console.log("🔍 CHANGES VERIFICATION:", {
-                'original_lastname': formData.lastname,
-                'updated_lastname': refreshResponse.data.data.lastname,
-                'original_username': formData.username,
-                'updated_username': refreshResponse.data.data.username,
-                'original_employee_id': formData.employee_id,
-                'updated_employee_id': refreshResponse.data.data.employee_id
-            });
     
             alert(isEditing ? "User updated successfully!" : "User added successfully!");
             router.visit("/chart");
@@ -288,13 +319,14 @@ useEffect(() => {
                     alert(`Validation errors:\n${errorMessages}`);
                 } else if (error.response.data.message) {
                     alert(`Error: ${error.response.data.message}`);
+                } else if (error.response.data.error) {
+                    alert(`Error: ${error.response.data.error}`);
                 }
             } else {
                 alert("An error occurred while saving the user. Please try again.");
             }
         }
     };
-    
 
     return (
         <div className="w-full">
