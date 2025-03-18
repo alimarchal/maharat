@@ -2,12 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-    faArrowLeftLong,
-    faTrash,
-    faFilePdf,
-    faChevronRight,
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeftLong, faTrash, faFilePdf, faChevronRight, faFileExcel, faPen, faEdit } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 
 const RFQ = ({ auth }) => {
@@ -64,8 +59,6 @@ const RFQ = ({ auth }) => {
             setRfqLogs([]);
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
-        } finally {
-            clearInterval(interval);
         }
     };
 
@@ -75,15 +68,21 @@ const RFQ = ({ auth }) => {
 
     const handleDelete = async (id) => {
         if (!confirm("Are you sure you want to delete this record?")) return;
-
+    
         try {
-            await axios.delete(`/api/v1/rfqs/${id}`);
-            fetchRFQLogs(); // Refresh data
+            const response = await axios.delete(`/api/v1/rfqs/${id}`);
+    
+            if (response.status === 200) {
+                fetchRFQLogs(); 
+            } else {
+                console.error("Delete request failed:", response);
+                setError("Failed to delete RFQ. Please try again.");
+            }
         } catch (error) {
-            console.error("Error deleting record:", error);
-            setError("Failed to delete record");
+            console.error("Error deleting record:", error.response?.data || error);
+            setError("Failed to delete RFQ. Please try again.");
         }
-    };
+    };        
 
     const formatDateTime = (dateString) => {
         const optionsDate = { year: "numeric", month: "long", day: "numeric" };
@@ -238,23 +237,48 @@ const RFQ = ({ auth }) => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                             <div className="flex justify-center space-x-3 w-full">
+                                                {/* Edit Icon */}
+                                                <button
+                                                    className="text-gray-600"
+                                                    onClick={() => {
+                                                        console.log("Navigating to /quotation/create with ID:", log.id);
+                                                        router.visit(`/quotations/create/${log.id}`); // Force navigation
+                                                    }}
+                                                >
+                                                    <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
+                                                </button>
+
+                                                {/* PDF Icon */}
                                                 <a
                                                     href={log.attachments || "#"}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className={`text-blue-600 hover:text-blue-900 ${!log.attachments ? "invisible" : ""}`}
+                                                    target={log.attachments ? "_blank" : ""}
+                                                    rel={log.attachments ? "noopener noreferrer" : ""}
+                                                    className={`text-blue-600 ${!log.attachments ? "opacity-50 cursor-not-allowed" : ""}`}
+                                                    onClick={(e) => !log.attachments && e.preventDefault()} // Prevent click if no file
                                                 >
                                                     <FontAwesomeIcon icon={faFilePdf} className="h-5 w-5" />
                                                 </a>
+
+                                                {/* Excel Icon */}
+                                                <a
+                                                    href={log.excel_attachment || "#"}
+                                                    target={log.excel_attachment ? "_blank" : ""}
+                                                    rel={log.excel_attachment ? "noopener noreferrer" : ""}
+                                                    className={`text-green-600 ${!log.excel_attachment ? "opacity-50 cursor-not-allowed" : ""}`}
+                                                    onClick={(e) => !log.excel_attachment && e.preventDefault()} // Prevent click if no file
+                                                >
+                                                    <FontAwesomeIcon icon={faFileExcel} className="h-5 w-5" />
+                                                </a>
+
+                                                {/* Delete Icon */}
                                                 <button
                                                     onClick={() => handleDelete(log.id)}
-                                                    className="text-red-600 hover:text-red-900"
+                                                    className="text-red-600"
                                                 >
                                                     <FontAwesomeIcon icon={faTrash} className="h-5 w-5" />
                                                 </button>
                                             </div>
                                         </td>
-
 
                                         </tr>
                                     ))}
