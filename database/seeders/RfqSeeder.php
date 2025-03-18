@@ -85,7 +85,7 @@ class RfqSeeder extends Seeder
                 [
                     'id' => 2,
                     'rfq_number' => 'RFQ-2025-002',
-                    'requester_id' => 3,
+                    'requester_id' => 8,
                     'department_id' => 1,
                     'cost_center_id' => 1,
                     'sub_cost_center_id' => 1,
@@ -119,7 +119,7 @@ class RfqSeeder extends Seeder
                 [
                     'id' => 3,
                     'rfq_number' => 'RFQ-2025-003',
-                    'requester_id' => 4,
+                    'requester_id' => 10,
                     'department_id' => 1,
                     'cost_center_id' => 1,
                     'sub_cost_center_id' => 1,
