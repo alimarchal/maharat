@@ -32,6 +32,7 @@ class StoreUserRequest extends FormRequest
             'first_name' => 'required|string',
             'last_name' => 'required|string',
             'name' => 'required|string',
+            'username' => 'required|string|max:255|unique:users',
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
             'landline' => 'nullable|string|max:10',
@@ -42,5 +43,55 @@ class StoreUserRequest extends FormRequest
             'description' => 'nullable|string',
             'profile_photo_path' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240', // 10MB max
         ];
+    }
+
+    /**
+     * Get custom attributes for validator errors.
+     *
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'first_name' => 'first name',
+            'last_name' => 'last name',
+        ];
+    }
+
+    /**
+     * Prepare the data for validation.
+     *
+     * @return void
+     */
+    protected function prepareForValidation()
+    {
+        // If firstname/lastname are provided but first_name/last_name are not,
+        // copy the values to maintain compatibility
+        $this->merge([
+            'first_name' => $this->first_name ?? $this->firstname ?? null,
+            'last_name' => $this->last_name ?? $this->lastname ?? null,
+        ]);
+    }
+
+    /**
+     * Get the validated data from the request.
+     * This method maps validation field names to database column names
+     *
+     * @return array
+     */
+    public function validated($key = null, $default = null)
+    {
+        $validated = parent::validated($key, $default);
+        
+        // Map first_name to firstname and last_name to lastname
+        if (isset($validated['first_name'])) {
+            $validated['firstname'] = $validated['first_name'];
+        }
+        
+        if (isset($validated['last_name'])) {
+            $validated['lastname'] = $validated['last_name'];
+        }
+        
+        return $validated;
     }
 }
