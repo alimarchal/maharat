@@ -11,6 +11,7 @@ class FinancialTransactionParameters
         'reference_number',
         'amount',
         'description',
+        'status',
     ];
 
     public const ALLOWED_FILTERS_EXACT = [
