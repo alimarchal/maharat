@@ -43,33 +43,91 @@ class RfqController extends Controller
     private function getNewRFQNumber()
     {
         $currentYear = date('Y');
+
+        // Fetch the latest RFQ number that follows the correct pattern
         $latestRfq = Rfq::where('rfq_number', 'like', "RFQ-$currentYear-%")
-            ->orderBy('rfq_number', 'desc')
+            ->orderByRaw("CAST(SUBSTRING_INDEX(rfq_number, '-', -1) AS UNSIGNED) DESC")
             ->first();
 
-        // Fetch the latest RFQ based on ID (most recent entry)
-        $latestRfq = Rfq::orderBy('id', 'desc')->first();
+        // Log what we fetched
+        Log::info("Latest RFQ from database:", ['rfq' => $latestRfq]);
 
         $lastNumber = 0;
-        
-        // Check if there's an existing RFQ and extract the last number
-        if ($latestRfq && preg_match('/RFQ-\d{4}-(\d{4})/', $latestRfq->rfq_number, $matches)) {
-            $lastNumber = intval($matches[1]);
+
+        // Ensure we got a valid RFQ and extract its last numeric part
+        if ($latestRfq && isset($latestRfq->rfq_number)) {
+            // Extract the last number part using a regex pattern
+            if (preg_match('/RFQ-\d{4}-(\d+)/', $latestRfq->rfq_number, $matches)) {
+                $lastNumber = intval($matches[1]); // Convert to integer
+                Log::info("Extracted last number from RFQ:", ['lastNumber' => $lastNumber]);
+            } else {
+                Log::warning("Regex did not match, RFQ format might be incorrect.");
+            }
+        } else {
+            Log::warning("No valid RFQ found in the database, starting from 0001.");
         }
 
         // Generate new number with 4 digits
         $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
         $rfqNumber = "RFQ-$currentYear-$newNumber";
 
-        Log::info("Generated new RFQ number: $rfqNumber");
+        Log::info("Generated new RFQ number:", ['rfqNumber' => $rfqNumber]);
 
         return $rfqNumber;
+    }
+
+    public function show(string $id)
+    {
+        try {
+            Log::info("Fetching RFQ with ID: $id");
+            
+            // Find the RFQ with all necessary relationships
+            $rfq = Rfq::with([
+                'status', 
+                'items.unit', 
+                'items.brand', 
+                'warehouse'
+            ])->findOrFail($id);
+                
+            // Get category info for this RFQ
+            $category = DB::table('rfq_categories')
+                ->where('rfq_id', $id)
+                ->join('product_categories', 'rfq_categories.category_id', '=', 'product_categories.id')
+                ->select('product_categories.*')
+                ->first();
+                
+            // If category exists, append it to RFQ
+            if ($category) {
+                $rfq->category_id = $category->id;
+                $rfq->category_name = $category->name;
+            }
+            
+            // For each item, make sure it includes the specification field as the original filename
+            foreach ($rfq->items as $item) {
+                // If attachment exists but no specifications (original filename)
+                if ($item->attachment && empty($item->specifications)) {
+                    // Use the filename part of the attachment path
+                    $item->specifications = basename($item->attachment);
+                }
+            }
+                
+            Log::info("RFQ found and being returned");
+            return response()->json([
+                'data' => new RfqResource($rfq)
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            Log::error("Error fetching RFQ $id: " . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to fetch RFQ',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function store(Request $request)
     {
         Log::info('RFQ Creation request received');
-        Log::info('Request data:', $request->all());
+        Log::info('Request data:', $request->except(['attachments'])); // Log everything except file data
         
         DB::beginTransaction();
         try {
@@ -87,21 +145,20 @@ class RfqController extends Controller
                 'status_id' => $request->input('status_id', 47),
                 'rfq_number' => $rfq_number,
                 'warehouse_id' => $request->input('warehouse_id'),
-                // Set default requester_id to authenticated user if not provided
-                'requester_id' => auth()->id() ?? 1
+                'requester_id' => auth()->id() ?? 1,
+                'created_at' => now(),
+                'updated_at' => now()
             ];
             
             Log::info('Creating RFQ with data:', $rfqData);
             
-            // Create RFQ with an explicit insert to make sure we have an ID
-            $rfq = new Rfq();
-            foreach ($rfqData as $key => $value) {
-                $rfq->$key = $value;
-            }
-            $rfq->save();
+            // Insert RFQ directly with query builder
+            $rfqId = DB::table('rfqs')->insertGetId($rfqData);
             
-            // Get the ID from the newly created RFQ
-            $rfqId = $rfq->id;
+            if (!$rfqId) {
+                throw new \Exception("Failed to create RFQ record");
+            }
+            
             Log::info("RFQ created with ID: $rfqId");
             
             // Only attach category if it's a valid ID
@@ -109,9 +166,8 @@ class RfqController extends Controller
             if (!empty($categoryId)) {
                 Log::info("Attaching category ID: $categoryId to RFQ ID: $rfqId");
                 
-                // Try-catch specifically for category attachment
                 try {
-                    // Direct DB query to attach category with hard-coded values for debugging
+                    // Direct DB query to attach category
                     $inserted = DB::table('rfq_categories')->insert([
                         'rfq_id' => $rfqId,
                         'category_id' => (int)$categoryId,
@@ -126,12 +182,13 @@ class RfqController extends Controller
                 }
             }
 
-            // Create RFQ items with direct DB insertion for more reliability
+            // Create RFQ items
             if ($request->has('items') && is_array($request->input('items'))) {
                 foreach ($request->input('items') as $index => $item) {
                     try {
+                        // Build item data
                         $itemData = [
-                            'rfq_id' => $rfqId, // Use the actual rfqId, not a placeholder
+                            'rfq_id' => $rfqId,
                             'item_name' => $item['item_name'] ?? null,
                             'description' => $item['description'] ?? null,
                             'unit_id' => $item['unit_id'] ?? null,
@@ -146,8 +203,16 @@ class RfqController extends Controller
                         // Handle file upload if exists
                         if ($request->hasFile("attachments.{$index}")) {
                             $file = $request->file("attachments.{$index}");
+                            $originalName = $file->getClientOriginalName();
                             $path = $file->store('rfq-attachments', 'public');
+                            
+                            // Store file path in attachment column
                             $itemData['attachment'] = $path;
+                            
+                            // Store original filename in specifications column
+                            $itemData['specifications'] = $originalName;
+                            
+                            Log::info("Saved file with original name: $originalName at path: $path");
                         }
                         
                         // Remove null values
@@ -157,9 +222,9 @@ class RfqController extends Controller
                         
                         Log::info("Creating RFQ item for RFQ ID: $rfqId", $itemData);
                         
-                        // Direct DB insert instead of using the relationship
-                        $itemInserted = DB::table('rfq_items')->insert($itemData);
-                        Log::info("Item insertion result: " . ($itemInserted ? "Success" : "Failed"));
+                        // Direct DB insert
+                        $itemId = DB::table('rfq_items')->insertGetId($itemData);
+                        Log::info("Item created with ID: $itemId");
                         
                     } catch (\Exception $itemException) {
                         Log::error("Error creating item: " . $itemException->getMessage());
@@ -172,7 +237,7 @@ class RfqController extends Controller
             try {
                 DB::table('rfq_status_logs')->insert([
                     'rfq_id' => $rfqId,
-                    'status_id' => $rfq->status_id,
+                    'status_id' => $request->input('status_id', 47),
                     'changed_by' => auth()->id() ?? 1,
                     'remarks' => 'RFQ Created',
                     'created_at' => now(),
@@ -186,13 +251,15 @@ class RfqController extends Controller
             DB::commit();
             Log::info('RFQ created successfully with ID: ' . $rfqId);
 
+            // Get the new RFQ to return
+            $rfq = Rfq::with(['status', 'warehouse', 'items.unit', 'items.brand'])
+                ->findOrFail($rfqId);
+
             // Return response with loaded relationships
             return response()->json([
                 'success' => true,
                 'message' => 'RFQ created successfully',
-                'data' => new RfqResource(
-                    $rfq->load(['status', 'warehouse', 'items.unit', 'items.brand'])
-                )
+                'data' => new RfqResource($rfq)
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -206,103 +273,85 @@ class RfqController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
-    
-    public function show(string $id)
-    {
-        try {
-            Log::info("Fetching RFQ with ID: $id");
-            
-            $rfq = Rfq::with(['status', 'items.unit', 'items.brand', 'warehouse'])
-                ->findOrFail($id);
-                
-            // Get category info for this RFQ
-            $category = DB::table('rfq_categories')
-                ->where('rfq_id', $id)
-                ->join('product_categories', 'rfq_categories.category_id', '=', 'product_categories.id')
-                ->select('product_categories.*')
-                ->first();
-                
-            // If category exists, append it to RFQ
-            if ($category) {
-                $rfq->category_id = $category->id;
-                $rfq->category_name = $category->name;
-            }
-                
-            Log::info("RFQ found and being returned");
-            return response()->json([
-                'data' => new RfqResource($rfq)
-            ], Response::HTTP_OK);
-        } catch (\Exception $e) {
-            Log::error("Error fetching RFQ $id: " . $e->getMessage());
-            return response()->json([
-                'message' => 'Failed to fetch RFQ',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
 
     public function update(Request $request, $id)
-    {
-        Log::info("RFQ Update request received for ID: $id");
-        Log::info('Request data:', $request->all());
-        
-        DB::beginTransaction();
-        try {
-            // Find the RFQ
-            $rfq = Rfq::findOrFail($id);
-            $oldStatus = $rfq->status_id;
+{
+    Log::info("RFQ Update request received for ID: $id");
+    Log::info('Request data:', $request->except(['attachments']));
 
-            // Get data to update RFQ table
-            $updateData = [
-                'organization_email' => $request->input('organization_email'),
-                'city' => $request->input('city'),
-                'warehouse_id' => $request->input('warehouse_id'),
-                'request_date' => $request->input('request_date'),
-                'closing_date' => $request->input('closing_date'),
-                'rfq_number' => $request->input('rfq_number'),
-                'payment_type' => $request->input('payment_type'),
-                'contact_number' => $request->input('contact_number'),
-                'status_id' => $request->input('status_id', 47),
-            ];
+    // First verify the RFQ exists
+    $rfq = Rfq::find($id);
+    if (!$rfq) {
+        return response()->json([
+            'success' => false,
+            'message' => "RFQ with ID $id not found"
+        ], 404);
+    }
 
-            // Filter out null/empty values
-            $updateData = array_filter($updateData, function($value) {
-                return $value !== null && $value !== '';
-            });
+    DB::beginTransaction();
+    try {
+        $oldStatus = $rfq->status_id;
 
-            Log::info('Updating RFQ with data:', $updateData);
-            
-            // Update the RFQ record
-            $updated = $rfq->update($updateData);
-            Log::info("RFQ update result: " . ($updated ? 'success' : 'failed'));
-            
-            // Handle category if provided
-            $categoryId = $request->input('category_id');
-            if (!empty($categoryId)) {
-                Log::info("Updating category for RFQ ID: $id to category ID: $categoryId");
-                
-                // Delete existing categories
-                $deleted = DB::table('rfq_categories')->where('rfq_id', $id)->delete();
-                Log::info("Deleted $deleted existing categories");
-                
-                // Insert new category
-                $inserted = DB::table('rfq_categories')->insert([
-                    'rfq_id' => $id,
-                    'category_id' => $categoryId,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-                Log::info("Category insert result: " . ($inserted ? 'success' : 'failed'));
-            }
+        // Prepare data for updating
+        $updateData = [
+            'organization_email' => $request->input('organization_email'),
+            'city' => $request->input('city'),
+            'warehouse_id' => $request->input('warehouse_id'),
+            'request_date' => $request->input('request_date'),
+            'closing_date' => $request->input('closing_date'),
+            'rfq_number' => $request->input('rfq_number'),
+            'payment_type' => $request->input('payment_type'),
+            'contact_number' => $request->input('contact_number'),
+            'status_id' => $request->input('status_id', 47),
+        ];
 
-            // Handle items if provided
-            if ($request->has('items') && is_array($request->input('items'))) {
-                $itemCount = count($request->input('items'));
-                Log::info("Processing $itemCount items");
-                $existingItemIds = [];
+        // Remove null/empty values
+        $updateData = array_filter($updateData, fn($value) => $value !== null && $value !== '');
 
-                foreach ($request->input('items') as $index => $item) {
-                    Log::info("Processing item at index $index");
+        Log::info('Updating RFQ with data:', $updateData);
+
+        // Update RFQ record
+        $updated = DB::table('rfqs')
+            ->where('id', $id)
+            ->update($updateData);
+
+        Log::info("RFQ update result: " . ($updated ? "Updated $updated rows" : "No changes made"));
+
+        // ⚠️ If nothing was updated, return failure response
+        if ($updated === 0) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'No changes were made to the RFQ'
+            ], 400);
+        }
+
+        // Process category update
+        $categoryId = $request->input('category_id');
+        if (!empty($categoryId)) {
+            Log::info("Updating category for RFQ ID: $id to category ID: $categoryId");
+
+            // Delete existing category records
+            $deleted = DB::table('rfq_categories')->where('rfq_id', $id)->delete();
+            Log::info("Deleted $deleted existing categories");
+
+            // Insert new category
+            $inserted = DB::table('rfq_categories')->insert([
+                'rfq_id' => $id,
+                'category_id' => $categoryId,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            Log::info("Category insert result: " . ($inserted ? 'Success' : 'Failed'));
+        }
+
+        // Process items if provided
+        if ($request->has('items') && is_array($request->input('items'))) {
+            $existingItemIds = [];
+
+            foreach ($request->input('items') as $index => $item) {
+                try {
+                    Log::info("Processing item at index $index", $item);
                     
                     $itemData = [
                         'rfq_id' => $id,
@@ -312,91 +361,85 @@ class RfqController extends Controller
                         'quantity' => $item['quantity'] ?? null,
                         'brand_id' => $item['brand_id'] ?? null,
                         'expected_delivery_date' => $item['expected_delivery_date'] ?? null,
-                        'status_id' => $item['status_id'] ?? 47
+                        'status_id' => $item['status_id'] ?? 47,
+                        'updated_at' => now()
                     ];
 
-                    // Handle file upload if exists
-                    if ($request->hasFile("attachments.{$index}")) {
-                        Log::info("Attachment found for item $index");
-                        $file = $request->file("attachments.{$index}");
-                        $path = $file->store('rfq-attachments', 'public');
-                        $itemData['attachment'] = $path;
-                    }
+                    $itemData = array_filter($itemData, fn($value) => $value !== null);
 
-                    // Remove null values
-                    $itemData = array_filter($itemData, function ($value) {
-                        return $value !== null;
-                    });
-
-                    // If item has an ID, update it; otherwise create a new one
                     if (isset($item['id']) && !empty($item['id'])) {
                         $itemId = $item['id'];
                         Log::info("Updating existing item with ID: $itemId");
-                        
-                        // Use direct query for update for better visibility
+
                         $updated = DB::table('rfq_items')
                             ->where('id', $itemId)
-                            ->where('rfq_id', $id)
                             ->update($itemData);
-                            
-                        Log::info("Item update result: " . ($updated ? 'success' : 'failed'));
+
+                        Log::info("Item update result: " . ($updated ? "Updated $updated rows" : "Failed"));
                         $existingItemIds[] = $itemId;
                     } else {
                         Log::info("Creating new item");
-                        // Ensure rfq_id is included
-                        $itemData['rfq_id'] = $id;
-                        
-                        // Use direct query for insert
+                        $itemData['created_at'] = now();
+
                         $newItemId = DB::table('rfq_items')->insertGetId($itemData);
                         Log::info("New item created with ID: $newItemId");
                         $existingItemIds[] = $newItemId;
                     }
-                }
-
-                // Remove items that were not included in the update
-                if (!empty($existingItemIds)) {
-                    $deleted = DB::table('rfq_items')
-                        ->where('rfq_id', $id)
-                        ->whereNotIn('id', $existingItemIds)
-                        ->delete();
-                    Log::info("Removed $deleted items not in the update");
+                } catch (\Exception $itemErr) {
+                    Log::error("Error processing item: " . $itemErr->getMessage());
                 }
             }
 
-            // Record status change if status was updated
-            if ($oldStatus != $rfq->status_id) {
-                $rfq->statusLogs()->create([
-                    'status_id' => $rfq->status_id,
-                    'changed_by' => auth()->id() ?? 1,
-                    'remarks' => 'RFQ Status Updated'
-                ]);
+            // Remove items that were not included in the update
+            if (!empty($existingItemIds)) {
+                $deleted = DB::table('rfq_items')
+                    ->where('rfq_id', $id)
+                    ->whereNotIn('id', $existingItemIds)
+                    ->delete();
+                Log::info("Removed $deleted items not in the update");
             }
-
-            DB::commit();
-            Log::info("RFQ $id updated successfully");
-
-            // Reload RFQ with fresh data
-            $refreshedRfq = Rfq::with(['status', 'warehouse', 'items.unit', 'items.brand'])
-                ->findOrFail($id);
-
-            // Return response with loaded relationships and success flag
-            return response()->json([
-                'success' => true,
-                'message' => 'RFQ updated successfully',
-                'data' => new RfqResource($refreshedRfq)
-            ], Response::HTTP_OK);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Failed to update RFQ $id: " . $e->getMessage());
-            Log::error($e->getTraceAsString());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update RFQ',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+
+        // Record status change if needed
+        if ($oldStatus != $rfq->status_id) {
+            try {
+                DB::table('rfq_status_logs')->insert([
+                    'rfq_id' => $id,
+                    'status_id' => $request->input('status_id', 47),
+                    'changed_by' => auth()->id() ?? 1,
+                    'remarks' => 'RFQ Status Updated',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            } catch (\Exception $logErr) {
+                Log::error("Error creating status log: " . $logErr->getMessage());
+            }
+        }
+
+        DB::commit();
+        Log::info("RFQ $id updated successfully");
+
+        // Reload RFQ with fresh data
+        $refreshedRfq = Rfq::with(['status', 'warehouse', 'items.unit', 'items.brand'])
+            ->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'RFQ updated successfully',
+            'data' => new RfqResource($refreshedRfq)
+        ], Response::HTTP_OK);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error("Failed to update RFQ $id: " . $e->getMessage());
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to update RFQ',
+            'error' => $e->getMessage()
+        ], Response::HTTP_INTERNAL_SERVER_ERROR);
     }
+}
+
 
     public function destroy($id)
     {

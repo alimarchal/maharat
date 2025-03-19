@@ -39,7 +39,7 @@ export const fetchRFQData = async (rfqId, setFormData, setIsEditing, setLoading,
         let rfqItemsData = [];
         try {
             const rfqItemsResponse = await axios.get(`/api/v1/rfq-items?rfq_id=${rfqId}`);
-            rfqItemsData = rfqItemsResponse.data?.data || [];
+            rfqItemsData = rfqResponse.data?.data?.items || rfqItemsResponse.data?.data || [];
             console.log("RFQ items data:", rfqItemsData);
         } catch (itemsError) {
             console.error("Error fetching RFQ items:", itemsError);
@@ -84,18 +84,30 @@ export const fetchRFQData = async (rfqId, setFormData, setIsEditing, setLoading,
         
         // Format items or provide a default empty item
         formattedData.items = rfqItemsData.length > 0 
-            ? rfqItemsData.map(item => ({
-                id: getSafeValue(item, 'id'),
-                item_name: getSafeValue(item, 'item_name'),
-                description: getSafeValue(item, 'description'),
-                unit_id: getSafeValue(item, 'unit_id'),
-                quantity: getSafeValue(item, 'quantity'),
-                brand_id: getSafeValue(item, 'brand_id'),
-                attachment: getSafeValue(item, 'attachment'),
-                expected_delivery_date: getSafeValue(item, 'expected_delivery_date')?.split('T')[0] || '',
-                rfq_id: rfqId,
-                status_id: getSafeValue(item, 'status_id', 47)
-            })) 
+            ? rfqItemsData.map(item => {
+                // Create enhanced file object if attachment exists
+                let attachmentObj = null;
+                if (item.attachment) {
+                    attachmentObj = {
+                        attachment: item.attachment,
+                        specifications: item.specifications || basename(item.attachment) // Original filename or extract from path
+                    };
+                }
+                
+                return {
+                    id: getSafeValue(item, 'id'),
+                    item_name: getSafeValue(item, 'item_name'),
+                    description: getSafeValue(item, 'description'),
+                    unit_id: getSafeValue(item, 'unit_id'),
+                    quantity: getSafeValue(item, 'quantity'),
+                    brand_id: getSafeValue(item, 'brand_id'),
+                    attachment: attachmentObj || getSafeValue(item, 'attachment'),
+                    specifications: getSafeValue(item, 'specifications'),
+                    expected_delivery_date: getSafeValue(item, 'expected_delivery_date')?.split('T')[0] || '',
+                    rfq_id: rfqId,
+                    status_id: getSafeValue(item, 'status_id', 47)
+                };
+            }) 
             : [{
                 item_name: "",
                 description: "",
@@ -103,6 +115,7 @@ export const fetchRFQData = async (rfqId, setFormData, setIsEditing, setLoading,
                 quantity: "",
                 brand_id: "",
                 attachment: null,
+                specifications: "",
                 expected_delivery_date: "",
                 rfq_id: rfqId,
                 status_id: 47
@@ -134,6 +147,7 @@ export const fetchRFQData = async (rfqId, setFormData, setIsEditing, setLoading,
                 quantity: "",
                 brand_id: "",
                 attachment: null,
+                specifications: "",
                 expected_delivery_date: "",
                 status_id: 47
             }],
@@ -141,6 +155,11 @@ export const fetchRFQData = async (rfqId, setFormData, setIsEditing, setLoading,
         });
     }
 };
+
+// Helper to extract filename from path
+function basename(path) {
+    return path.split('/').pop();
+}
 
 /**
  * Fetches all lookup data needed for the form (units, brands, categories, etc.)
