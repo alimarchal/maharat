@@ -5,6 +5,7 @@ import { router, usePage } from "@inertiajs/react";
 
 const ReviewTask = () => {
     const { id } = usePage().props;
+    const logged_user = usePage().props.auth.user.id;
 
     const [formData, setFormData] = useState({
         task_id: "",
@@ -41,7 +42,6 @@ const ReviewTask = () => {
             const response = await axios.get(
                 `/api/v1/tasks/${taskId}?include=processStep,process,assignedFromUser,assignedToUser,descriptions`
             );
-            console.log("Res:", response.data.data);
             setTaskData(response.data.data);
         } catch (error) {
             console.error("Error fetching task details:", error);
@@ -68,16 +68,14 @@ const ReviewTask = () => {
                     formData
                 );
                 const taskDescription = response.data.data;
-                console.log("Res:", taskDescription);
                 const transactionPayload = {
-                    material_request_id: materialRequestId,
-                    requester_id: user_id,
-                    assigned_to:
-                        processStep.approver_id || processStep.designation_id,
-                    order: String(processStep.order),
+                    material_request_id: taskDescription.task?.process_id,
+                    requester_id: logged_user,
+                    assigned_to: taskDescription.task?.assigned_to_user_id,
+                    // order: String(taskDescription.task?.order),
                     description: taskDescription.description,
                     status: taskDescription.action,
-                    referred_to: taskDescription?.user_id,
+                    referred_to: taskDescription?.user_id || null,
                 };
                 await axios.post(
                     "/api/v1/material-request-transactions",

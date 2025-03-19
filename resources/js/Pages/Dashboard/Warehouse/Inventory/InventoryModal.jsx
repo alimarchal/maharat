@@ -27,51 +27,68 @@ const InventoryModal = ({
     const [isExistingProduct, setIsExistingProduct] = useState(false);
 
     useEffect(() => {
-        const fetchWarehouses = async () => {
-            try {
-                const response = await axios.get("/api/v1/warehouses");
-                setWarehouses(response.data.data);
-            } catch (error) {
-                console.error("Error fetching warehouses:", error);
+        if (isOpen) {
+            if (inventoryData) {
+                setFormData({
+                    warehouse_id: inventoryData.warehouse_id || "",
+                    product_id: inventoryData.product_id || "",
+                    quantity: inventoryData.quantity || "",
+                    reorder_level: inventoryData.reorder_level || "",
+                    description: inventoryData.description || "",
+                    transaction_type: "",
+                });
+            } else {
+                setFormData({
+                    warehouse_id: "",
+                    product_id: "",
+                    quantity: "",
+                    reorder_level: "",
+                    description: "",
+                    transaction_type: "",
+                });
             }
-        };
-
-        const fetchProducts = async () => {
-            try {
-                const response = await axios.get("/api/v1/products");
-                setProducts(response.data.data);
-            } catch (error) {
-                console.error("Error fetching products:", error);
-            }
-        };
-
-        fetchWarehouses();
-        fetchProducts();
-    }, []);
+            setErrors({});
+        }
+    }, [isOpen, inventoryData]);
 
     useEffect(() => {
-        if (inventoryData) {
-            setFormData({
-                warehouse_id: inventoryData.warehouse_id || "",
-                product_id: inventoryData.product_id || "",
-                quantity: inventoryData.quantity || "",
-                reorder_level: inventoryData.reorder_level || "",
-                description: inventoryData.description || "",
-                transaction_type: "",
-            });
+        if (isOpen) {
+            const fetchWarehouses = async () => {
+                try {
+                    const response = await axios.get("/api/v1/warehouses");
+                    setWarehouses(response.data.data);
+                } catch (error) {
+                    console.error("Error fetching warehouses:", error);
+                }
+            };
+
+            const fetchProducts = async () => {
+                try {
+                    const response = await axios.get("/api/v1/products");
+                    setProducts(response.data.data);
+                } catch (error) {
+                    console.error("Error fetching products:", error);
+                }
+            };
+
+            fetchWarehouses();
+            fetchProducts();
         }
-    }, [inventoryData]);
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (formData.product_id && products.length > 0) {
+            const existingProduct = products.some(
+                (product) =>
+                    product.id.toString() === formData.product_id.toString()
+            );
+            setIsExistingProduct(existingProduct);
+        }
+    }, [formData.product_id, products]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
-
-        if (name === "product_id") {
-            const existingProduct = products.some(
-                (product) => product.id.toString() === value
-            );
-            setIsExistingProduct(existingProduct);
-        }
     };
 
     const validateForm = () => {
@@ -112,11 +129,15 @@ const InventoryModal = ({
                 await axios.post(apiUrl, formData);
             }
 
-            fetchInventories();
+            await fetchInventories();
             onClose();
         } catch (error) {
-            setErrors(error.response?.data.errors || {});
             console.error("Error saving inventory:", error);
+            setErrors(
+                error.response?.data?.errors || {
+                    general: "Error saving inventory. Please try again.",
+                }
+            );
         } finally {
             setLoading(false);
         }
@@ -132,6 +153,7 @@ const InventoryModal = ({
                         {inventoryData ? "Edit Inventory" : "Add Inventory"}
                     </h2>
                     <button
+                        type="button"
                         onClick={onClose}
                         className="text-red-500 hover:text-red-800"
                     >
@@ -139,6 +161,11 @@ const InventoryModal = ({
                     </button>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {errors.general && (
+                        <p className="text-red-500 text-sm text-center">
+                            {errors.general}
+                        </p>
+                    )}
                     <div
                         className={`grid grid-cols-1 ${
                             isExistingProduct

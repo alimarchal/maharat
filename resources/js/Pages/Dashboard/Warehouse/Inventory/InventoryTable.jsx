@@ -42,6 +42,11 @@ const InventoryTable = () => {
         }
     };
 
+    const handleModalClose = () => {
+        setIsModalOpen(false);
+        setSelectedInventory(null);
+    };
+
     return (
         <div className="w-full">
             <h2 className="text-3xl font-bold text-[#2C323C] mb-4">
@@ -162,12 +167,9 @@ const InventoryTable = () => {
             {/* Render the modal */}
             <InventoryModal
                 isOpen={isModalOpen}
-                onClose={() => {
-                    setIsModalOpen(false);
-                    setSelectedInventory(null);
-                }}
+                onClose={handleModalClose}
                 inventoryData={selectedInventory}
-                fetchinventories={fetchInventories}
+                fetchInventories={fetchInventories}
             />
         </div>
     );
