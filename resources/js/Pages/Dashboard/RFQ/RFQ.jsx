@@ -84,6 +84,16 @@ const RFQ = ({ auth }) => {
         }
     };        
 
+    const handleEdit = (rfqId) => {
+        if (rfqId) {
+            console.log("Editing RFQ with ID:", rfqId);
+            // Navigate to the quotation form with the RFQ ID
+            router.visit(`/quotations/create?rfqId=${rfqId}`);
+        } else {
+            console.error("No ID found for RFQ log");
+        }
+    };
+
     const formatDateTime = (dateString) => {
         const optionsDate = { year: "numeric", month: "long", day: "numeric" };
         const optionsTime = {
@@ -240,10 +250,7 @@ const RFQ = ({ auth }) => {
                                                 {/* Edit Icon */}
                                                 <button
                                                     className="text-gray-600"
-                                                    onClick={() => {
-                                                        console.log("Navigating to /quotation/create with ID:", log.id);
-                                                        router.visit(`/quotations/create/${log.id}`); // Force navigation
-                                                    }}
+                                                    onClick={() => handleEdit(log.id)}
                                                 >
                                                     <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
                                                 </button>

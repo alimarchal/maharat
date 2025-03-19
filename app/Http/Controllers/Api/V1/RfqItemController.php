@@ -21,9 +21,17 @@ class RfqItemController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $items = QueryBuilder::for(RfqItem::class)
-            ->with(['unit', 'brand'])
-            ->get();
+        $rfqId = $request->query('rfq_id'); // Get rfq_id from request
+
+        $query = QueryBuilder::for(RfqItem::class)
+            ->with(['unit', 'brand']);
+
+        // Apply filtering if rfq_id is provided
+        if ($rfqId) {
+            $query->where('rfq_id', $rfqId);
+        }
+
+        $items = $query->get(); // Or use paginate(10) for better performance
 
         return response()->json([
             'data' => RfqItemResource::collection($items)

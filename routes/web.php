@@ -13,6 +13,7 @@ use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\RfqController;
 use App\Models\Quotation;
 use App\Http\Controllers\QuotationPDFController;
+use Illuminate\Http\Request;
 
 // Redirect root to login
 Route::get('/', function () {
@@ -100,11 +101,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/quotations', function () { return Inertia::render('Dashboard/Quotations/Quotation'); })->name('dashboard.quotations.index');
 
-    Route::get('/quotations/create/{id}', function ($id) { 
-        return Inertia::render('Dashboard/RFQ/AddQuotationForm', ['id' => $id]); 
-    })->name('dashboard.quotations.create');    
+    Route::get('/quotations/create', function (Request $request) {
+        return Inertia::render('Dashboard/RFQ/AddQuotationForm', [
+            'rfqId' => $request->query('rfqId')
+        ]);
+    })->name('quotations.create');   
 
-    Route::get('/rfq', function () { return Inertia::render('Dashboard/RFQ/RFQ'); })->name('rfq');
+    Route::get('/rfq', function () {
+        return Inertia::render('Dashboard/RFQ/RFQ');
+    })->name('rfq.index');
 
     Route::get('/quotation', function () { return Inertia::render('Dashboard/Quotations/Quotations'); })->name('Quotation');
 
