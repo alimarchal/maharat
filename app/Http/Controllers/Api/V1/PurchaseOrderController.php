@@ -71,7 +71,15 @@ class PurchaseOrderController extends Controller
             return response()->json([
                 'message' => 'Purchase order created successfully',
                 'data' => new PurchaseOrderResource(
-                    $purchaseOrder->load(['quotation', 'supplier', 'user'])
+                    $purchaseOrder->load([
+                        'quotation',
+                        'supplier',
+                        'user',
+                        'department',
+                        'costCenter',
+                        'subCostCenter',
+                        'warehouse',
+                        ])
                 )
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
@@ -128,7 +136,14 @@ class PurchaseOrderController extends Controller
             return response()->json([
                 'message' => 'Purchase order updated successfully',
                 'data' => new PurchaseOrderResource(
-                    $purchaseOrder->load(['quotation', 'supplier'])
+                    $purchaseOrder->load([
+                        'quotation',
+                        'supplier',
+                        'department',
+                        'costCenter',
+                        'subCostCenter',
+                        'warehouse',
+                    ])
                 )
             ], Response::HTTP_OK);
         } catch (\Exception $e) {

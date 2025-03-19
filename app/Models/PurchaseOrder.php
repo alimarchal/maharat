@@ -15,6 +15,10 @@ class PurchaseOrder extends Model
 
     protected $fillable = [
         'purchase_order_no',
+        'warehouse_id',
+        'department_id',
+        'cost_center_id',
+        'sub_cost_center_id',
         'quotation_id',
         'supplier_id',
         'user_id',
@@ -51,5 +55,36 @@ class PurchaseOrder extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    /**
+     * Get the department associated with the material request.
+     */
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    /**
+     * Get the primary cost center associated with the material request.
+     */
+    public function costCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class, 'cost_center_id');
+    }
+
+    /**
+     * Get the secondary cost center associated with the material request.
+     */
+    public function subCostCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class, 'sub_cost_center_id');
     }
 }

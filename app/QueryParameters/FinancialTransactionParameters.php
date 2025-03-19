@@ -4,15 +4,12 @@ namespace App\QueryParameters;
 
 class FinancialTransactionParameters
 {
-    public const ALLOWED_FILTERS = [
-        'transaction_date',
-        'entry_type',
-        'status',
-        'reference_number',
-        'amount',
-        'description',
-        'status',
+
+    public const CUSTOM_FILTERS = [
+        'date_range' => \App\QueryFilters\DateRangeFilter::class,
     ];
+
+    public const ALLOWED_FILTERS = ['transaction_date', 'entry_type','status','reference_number','amount','description',];
 
     public const ALLOWED_FILTERS_EXACT = [
         'id',
@@ -23,6 +20,7 @@ class FinancialTransactionParameters
         'cost_center_id',
         'sub_cost_center_id',
         'fiscal_period_id',
+        'status',
         'created_by',
         'updated_by',
         'approved_by',

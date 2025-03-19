@@ -28,6 +28,10 @@ class PurchaseOrderResource extends JsonResource
             'updated_at' => $this->updated_at,
 
 //            // Include related resources when loaded
+            'department' => new DepartmentResource($this->whenLoaded('department')),
+            'costCenter' => new CostCenterResource($this->whenLoaded('costCenter')),
+            'subCostCenter' => new CostCenterResource($this->whenLoaded('subCostCenter')),
+            'warehouse' => new WarehouseResource($this->whenLoaded('warehouse')),
             'quotation' => new QuotationResource($this->whenLoaded('quotation')),
             'supplier' => new SupplierResource($this->whenLoaded('supplier')),
             'created_by' => new UserResource($this->whenLoaded('user')),

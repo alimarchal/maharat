@@ -8,21 +8,21 @@ const CompanyProfile = () => {
         name: "",
         email: "",
         contact_number: "",
+        address: "",
+        website: "",
         country: "",
         city: "",
         postal_code: "",
-        short_address: "",
-        website: "",
-        logo: null,
-        vat_no: "",
-        cr_no: "",
+        bank: "",
+        branch: "",
+        swift: "",
         account_name: "",
         account_no: "",
-        license_number: "",
-        iban_number: "",
-        bank_name: "",
-        branch: "",
-        swift_code: "",
+        iban: "",
+        license_no: "",
+        var: "",
+        cr_no: "",
+        logo_path: null,
     });
 
     const [errors, setErrors] = useState({});
@@ -43,21 +43,21 @@ const CompanyProfile = () => {
                     name: company.name ?? "",
                     email: company.email ?? "",
                     contact_number: company.contact_number ?? "",
+                    address: company.address ?? "",
+                    website: company.website ?? "",
                     country: company.country ?? "",
                     city: company.city ?? "",
                     postal_code: company.postal_code ?? "",
-                    short_address: company.short_address ?? "",
-                    website: company.website ?? "",
-                    logo: company.logo_path ?? null,
-                    vat_no: company.vat_no ?? "",
-                    cr_no: company.cr_no ?? "",
+                    bank: company.bank ?? "",
+                    branch: company.branch ?? "",
+                    swift: company.swift ?? "",
                     account_name: company.account_name ?? "",
                     account_no: company.account_no ?? "",
-                    license_number: company.license_number ?? "",
-                    iban_number: company.iban_number ?? "",
-                    bank_name: company.bank_name ?? "",
-                    branch: company.branch ?? "",
-                    swift_code: company.sabb_swift_code ?? "",
+                    iban: company.iban ?? "",
+                    license_no: company.license_no ?? "",
+                    var: company.var ?? "",
+                    cr_no: company.cr_no ?? "",
+                    logo_path: company.logo_path ?? null,
                 });
                 setCompanyId(company.id);
             }
@@ -79,7 +79,7 @@ const CompanyProfile = () => {
         if (file) {
             setFormData((prevData) => ({
                 ...prevData,
-                logo: file,
+                logo_path: file,
             }));
         }
     };
@@ -94,57 +94,38 @@ const CompanyProfile = () => {
         if (!formData.city) tempErrors.city = "City is required";
         if (!formData.postal_code)
             tempErrors.postal_code = "Postal code is required";
-        if (!formData.short_address)
-            tempErrors.short_address = "Short address is required";
-        if (!formData.vat_no) tempErrors.vat_no = "VAT number is required";
+        if (!formData.address) tempErrors.address = "Address is required";
+        if (!formData.var) tempErrors.var = "VAT number is required";
         if (!formData.cr_no) tempErrors.cr_no = "CR number is required";
         if (!formData.account_name)
             tempErrors.account_name = "Account name is required";
         if (!formData.account_no)
             tempErrors.account_no = "Account number is required";
-        if (!formData.license_number)
-            tempErrors.license_number = "License number is required";
-        if (!formData.iban_number)
-            tempErrors.iban_number = "IBAN number is required";
-        if (!formData.bank_name) tempErrors.bank_name = "Bank name is required";
-        if (!formData.swift_code)
-            tempErrors.swift_code = "Swift Code is required";
+        if (!formData.license_no)
+            tempErrors.license_no = "License number is required";
+        if (!formData.iban) tempErrors.iban = "IBAN number is required";
+        if (!formData.bank) tempErrors.bank = "Bank name is required";
+        if (!formData.swift) tempErrors.swift = "Swift Code is required";
         setErrors(tempErrors);
         return Object.keys(tempErrors).length === 0;
     };
 
-    const prepareFormData = () => {
-        const formDataToSend = new FormData();
-
-        Object.keys(formData).forEach((key) => {
-            if (key === "logo" && formData[key] instanceof File) {
-                formDataToSend.append(key, formData[key]);
-            } else if (formData[key] !== null && formData[key] !== undefined) {
-                formDataToSend.append(key, formData[key]);
-            }
-        });
-
-        return formDataToSend;
-    };
-
-    const handleSave = async () => {
+    const handleSubmit = async (e) => {
+        e.preventDefault();
         if (!validate()) return;
         setIsSubmitting(true);
 
         try {
-            const formDataToSend = prepareFormData();
-            let response;
+            const payload = { ...formData };
 
+            let response;
             if (companyId) {
                 response = await axios.put(
                     `/api/v1/companies/${companyId}`,
-                    formDataToSend
+                    payload
                 );
             } else {
-                response = await axios.post(
-                    "/api/v1/companies",
-                    formDataToSend
-                );
+                response = await axios.post("/api/v1/companies", payload);
                 setCompanyId(response.data.data.id);
             }
 
@@ -165,277 +146,289 @@ const CompanyProfile = () => {
                 Make changes in Maharat profile
             </p>
 
-            <div className="flex flex-col items-center mb-8">
-                <div className="relative">
-                    <div className="w-36 h-36 border-2 border-green-500 rounded-full flex items-center justify-center bg-white">
-                        {formData.logo ? (
-                            <img
-                                src={
-                                    typeof formData.logo === "string"
-                                        ? formData.logo
-                                        : URL.createObjectURL(formData.logo)
-                                }
-                                alt="Company Logo"
-                                className="w-24 h-24 object-contain"
-                            />
-                        ) : (
-                            <img
-                                src="/images/MCTC Logo.png"
-                                alt="Company Logo"
-                                className="w-24 h-24 object-contain"
-                            />
+            <form onSubmit={handleSubmit}>
+                <div className="flex flex-col items-center mb-8">
+                    <div className="relative">
+                        <div className="w-36 h-36 border-2 border-green-500 rounded-full flex items-center justify-center bg-white">
+                            {formData.logo_path ? (
+                                <img
+                                    src={
+                                        typeof formData.logo_path === "string"
+                                            ? formData.logo_path
+                                            : URL.createObjectURL(
+                                                  formData.logo_path
+                                              )
+                                    }
+                                    alt="Company Logo"
+                                    className="w-24 h-24 object-contain"
+                                />
+                            ) : (
+                                <img
+                                    src="/images/MCTC Logo.png"
+                                    alt="Company Logo"
+                                    className="w-24 h-24 object-contain"
+                                />
+                            )}
+                        </div>
+                        <input
+                            type="file"
+                            className="hidden"
+                            id="logoUpload"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                        />
+                        <label
+                            htmlFor="logoUpload"
+                            className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 bg-white w-8 h-8 flex items-center justify-center rounded-full shadow-md cursor-pointer hover:bg-gray-200 border border-gray-200"
+                        >
+                            <FaCamera className="text-gray-500" />
+                        </label>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <InputFloating
+                            label="Organization Name"
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                        />
+                        {errors.name && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.name}
+                            </p>
                         )}
                     </div>
-                    <input
-                        type="file"
-                        className="hidden"
-                        id="logoUpload"
-                        accept="image/*"
-                        onChange={handleFileChange}
+                    <div>
+                        <InputFloating
+                            label="Maharat Email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                        />
+                        {errors.email && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.email}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="Contact Number"
+                            name="contact_number"
+                            value={formData.contact_number}
+                            onChange={handleChange}
+                        />
+                        {errors.contact_number && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.contact_number}
+                            </p>
+                        )}
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
+                    <div>
+                        <InputFloating
+                            label="Address"
+                            name="address"
+                            value={formData.address}
+                            onChange={handleChange}
+                        />
+                        {errors.address && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.address}
+                            </p>
+                        )}
+                    </div>
+                    <InputFloating
+                        label="Company Website"
+                        name="website"
+                        value={formData.website}
+                        onChange={handleChange}
                     />
-                    <label
-                        htmlFor="logoUpload"
-                        className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 bg-white w-8 h-8 flex items-center justify-center rounded-full shadow-md cursor-pointer hover:bg-gray-200 border border-gray-200"
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
+                    <div>
+                        <InputFloating
+                            label="Country"
+                            name="country"
+                            value={formData.country}
+                            onChange={handleChange}
+                        />
+                        {errors.country && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.country}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="City"
+                            name="city"
+                            value={formData.city}
+                            onChange={handleChange}
+                        />
+                        {errors.city && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.city}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="Postal Code"
+                            name="postal_code"
+                            value={formData.postal_code}
+                            onChange={handleChange}
+                        />
+                        {errors.postal_code && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.postal_code}
+                            </p>
+                        )}
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <InputFloating
+                            label="Bank Name"
+                            name="bank"
+                            value={formData.bank}
+                            onChange={handleChange}
+                        />
+                        {errors.bank && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.bank}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="Branch"
+                            name="branch"
+                            value={formData.branch}
+                            onChange={handleChange}
+                        />
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="Swift Code"
+                            name="swift"
+                            value={formData.swift}
+                            onChange={handleChange}
+                        />
+                        {errors.swift && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.swift}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="Account Name"
+                            name="account_name"
+                            value={formData.account_name}
+                            onChange={handleChange}
+                        />
+                        {errors.account_name && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.account_name}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="Account Number"
+                            name="account_no"
+                            value={formData.account_no}
+                            onChange={handleChange}
+                        />
+                        {errors.account_no && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.account_no}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="IBAN Number"
+                            name="iban"
+                            value={formData.iban}
+                            onChange={handleChange}
+                        />
+                        {errors.iban && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.iban}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="License Number"
+                            name="license_no"
+                            value={formData.license_no}
+                            onChange={handleChange}
+                        />
+                        {errors.license_no && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.license_no}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="VAT Number"
+                            name="var"
+                            value={formData.var}
+                            onChange={handleChange}
+                        />
+                        {errors.var && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.var}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="CR Number"
+                            name="cr_no"
+                            value={formData.cr_no}
+                            onChange={handleChange}
+                        />
+                        {errors.cr_no && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.cr_no}
+                            </p>
+                        )}
+                    </div>
+                </div>
+                <div className="flex justify-end my-6 space-x-4">
+                    <button
+                        type="button"
+                        className={`px-8 py-2 text-xl font-medium border border-[#009FDC] text-[#009FDC] rounded-full transition duration-300 ${
+                            !companyId || isSubmitting
+                                ? "opacity-50 cursor-not-allowed"
+                                : "hover:bg-[#009FDC] hover:text-white"
+                        }`}
+                        disabled={!companyId || isSubmitting}
+                        onClick={handleSubmit}
                     >
-                        <FaCamera className="text-gray-500" />
-                    </label>
+                        {isSubmitting ? "Updating..." : "Edit"}
+                    </button>
+                    <button
+                        type="submit"
+                        className={`px-8 py-2 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 ${
+                            companyId || isSubmitting
+                                ? "opacity-50 cursor-not-allowed"
+                                : "hover:bg-[#007BB5]"
+                        }`}
+                        disabled={companyId || isSubmitting}
+                    >
+                        {isSubmitting ? "Saving..." : "Save"}
+                    </button>
                 </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <InputFloating
-                        label="Organization Name"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                    />
-                    {errors.name && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.name}
-                        </p>
-                    )}
-                </div>
-                <div>
-                    <InputFloating
-                        label="Maharat Email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                    />
-                    {errors.email && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.email}
-                        </p>
-                    )}
-                </div>
-                <div>
-                    <InputFloating
-                        label="Contact Number"
-                        name="contact_number"
-                        value={formData.contact_number}
-                        onChange={handleChange}
-                    />
-                    {errors.contact_number && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.contact_number}
-                        </p>
-                    )}
-                </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
-                <div>
-                    <InputFloating
-                        label="Address"
-                        name="short_address"
-                        value={formData.short_address}
-                        onChange={handleChange}
-                    />
-                    {errors.short_address && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.short_address}
-                        </p>
-                    )}
-                </div>
-                <InputFloating
-                    label="Company Website"
-                    name="website"
-                    value={formData.website}
-                    onChange={handleChange}
-                />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
-                <div>
-                    <InputFloating
-                        label="Country"
-                        name="country"
-                        value={formData.country}
-                        onChange={handleChange}
-                    />
-                    {errors.country && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.country}
-                        </p>
-                    )}
-                </div>
-                <div>
-                    <InputFloating
-                        label="City"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleChange}
-                    />
-                    {errors.city && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.city}
-                        </p>
-                    )}
-                </div>
-                <InputFloating
-                    label="Postal Code"
-                    name="postal_code"
-                    value={formData.postal_code}
-                    onChange={handleChange}
-                />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <InputFloating
-                        label="Bank Name"
-                        name="bank_name"
-                        value={formData.bank_name}
-                        onChange={handleChange}
-                    />
-                    {errors.bank_name && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.bank_name}
-                        </p>
-                    )}
-                </div>
-                <div>
-                    <InputFloating
-                        label="Branch"
-                        name="branch"
-                        value={formData.branch}
-                        onChange={handleChange}
-                    />
-                </div>
-                <div>
-                    <InputFloating
-                        label="Swift Code"
-                        name="swift_code"
-                        value={formData.swift_code}
-                        onChange={handleChange}
-                    />
-                    {errors.swift_code && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.swift_code}
-                        </p>
-                    )}
-                </div>
-                <div>
-                    <InputFloating
-                        label="Account Name"
-                        name="account_name"
-                        value={formData.account_name}
-                        onChange={handleChange}
-                    />
-                    {errors.account_name && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.account_name}
-                        </p>
-                    )}
-                </div>
-                <div>
-                    <InputFloating
-                        label="Account Number"
-                        name="account_no"
-                        value={formData.account_no}
-                        onChange={handleChange}
-                    />
-                    {errors.account_no && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.account_no}
-                        </p>
-                    )}
-                </div>
-                <div>
-                    <InputFloating
-                        label="IBAN Number"
-                        name="iban_number"
-                        value={formData.iban_number}
-                        onChange={handleChange}
-                    />
-                    {errors.iban_number && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.iban_number}
-                        </p>
-                    )}
-                </div>
-                <div>
-                    <InputFloating
-                        label="License Number"
-                        name="license_number"
-                        value={formData.license_number}
-                        onChange={handleChange}
-                    />
-                    {errors.license_number && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.license_number}
-                        </p>
-                    )}
-                </div>
-                <div>
-                    <InputFloating
-                        label="VAT Number"
-                        name="vat_no"
-                        value={formData.vat_no}
-                        onChange={handleChange}
-                    />
-                    {errors.vat_no && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.vat_no}
-                        </p>
-                    )}
-                </div>
-                <div>
-                    <InputFloating
-                        label="CR Number"
-                        name="cr_no"
-                        value={formData.cr_no}
-                        onChange={handleChange}
-                    />
-                    {errors.cr_no && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.cr_no}
-                        </p>
-                    )}
-                </div>
-            </div>
-            <div className="flex justify-end my-6 space-x-4">
-                <button
-                    className={`px-8 py-2 text-xl font-medium border border-[#009FDC] text-[#009FDC] rounded-full transition duration-300 ${
-                        companyId
-                            ? "hover:bg-[#009FDC] hover:text-white"
-                            : "opacity-50 cursor-not-allowed"
-                    }`}
-                    onClick={handleSave}
-                    disabled={!companyId || isSubmitting}
-                >
-                    {isSubmitting ? "Updating..." : "Edit"}
-                </button>
-                <button
-                    className={`px-8 py-2 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 ${
-                        companyId
-                            ? "opacity-50 cursor-not-allowed"
-                            : "hover:bg-[#007BB5]"
-                    }`}
-                    onClick={handleSave}
-                    disabled={companyId || isSubmitting}
-                >
-                    {isSubmitting ? "Saving..." : "Save"}
-                </button>
-            </div>
+            </form>
         </div>
     );
 };

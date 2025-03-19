@@ -43,6 +43,9 @@ class RfqController extends Controller
     private function getNewRFQNumber()
     {
         $currentYear = date('Y');
+        $latestRfq = Rfq::where('rfq_number', 'like', "RFQ-$currentYear-%")
+            ->orderBy('rfq_number', 'desc')
+            ->first();
 
         // Fetch the latest RFQ based on ID (most recent entry)
         $latestRfq = Rfq::orderBy('id', 'desc')->first();

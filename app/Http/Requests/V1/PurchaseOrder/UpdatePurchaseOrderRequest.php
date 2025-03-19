@@ -30,6 +30,10 @@ class UpdatePurchaseOrderRequest extends FormRequest
                 Rule::unique('purchase_orders')->ignore($this->purchaseOrder)
             ],
             'quotation_id' => 'nullable|exists:quotations,id',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
+            'department_id' => 'nullable|exists:departments,id',
+            'cost_center_id' => 'nullable|exists:cost_centers,id',
+            'sub_cost_center_id' => 'nullable|exists:cost_centers,id',
             'supplier_id' => 'sometimes|required|exists:suppliers,id',
             'purchase_order_date' => 'sometimes|required|date',
             'amount' => 'sometimes|required|numeric|min:0',
