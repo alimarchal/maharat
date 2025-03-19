@@ -198,10 +198,10 @@ const SubCostCenterModal = ({
                                 value={formData.cost_center_type}
                                 onChange={handleChange}
                                 options={[
-                                    { id: "fixed", label: "Fixed" },
-                                    { id: "variable", label: "Variable" },
-                                    { id: "support", label: "Support" },
-                                    { id: "direct", label: "Direct" },
+                                    { id: "Fixed", label: "Fixed" },
+                                    { id: "Variable", label: "Variable" },
+                                    { id: "Support", label: "Support" },
+                                    { id: "Direct", label: "Direct" },
                                 ]}
                             />
                             {errors.cost_center_type && (
