@@ -49,7 +49,7 @@ const InventoryTable = () => {
 
     return (
         <div className="w-full">
-            <h2 className="text-3xl font-bold text-[#2C323C] mb-4">
+            <h2 className="text-3xl font-bold text-[#2C323C] mb-8">
                 Inventory Tracking
             </h2>
 
@@ -96,16 +96,16 @@ const InventoryTable = () => {
                                     {inventory.product?.name || "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {inventory.quantity}
+                                    {parseInt(inventory.quantity)}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {inventory.reorder_level}
+                                    {parseInt(inventory.reorder_level)}
                                 </td>
                                 <td className="py-3 px-4">
                                     {inventory.description}
                                 </td>
                                 <td className="py-3 px-4 flex space-x-3">
-                                    <button
+                                    {/* <button
                                         onClick={() => {
                                             setSelectedInventory(inventory);
                                             setIsModalOpen(true);
@@ -113,7 +113,7 @@ const InventoryTable = () => {
                                         className="text-[#9B9DA2] hover:text-gray-500"
                                     >
                                         <FontAwesomeIcon icon={faEdit} />
-                                    </button>
+                                    </button> */}
 
                                     <button
                                         className="text-[#9B9DA2] hover:text-gray-500"
