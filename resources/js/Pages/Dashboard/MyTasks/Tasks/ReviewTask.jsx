@@ -13,15 +13,14 @@ const ReviewTask = () => {
         user_id: "",
     });
 
+    const [taskData, setTaskData] = useState(null);
     const [employees, setEmployees] = useState([]);
     const [errors, setErrors] = useState({});
 
     useEffect(() => {
         if (id) {
-            setFormData((prevData) => ({
-                ...prevData,
-                task_id: id,
-            }));
+            setFormData((prevData) => ({ ...prevData, task_id: id }));
+            fetchTaskDetails(id);
         }
     }, [id]);
 
@@ -36,6 +35,18 @@ const ReviewTask = () => {
         };
         fetchUsers();
     }, []);
+
+    const fetchTaskDetails = async (taskId) => {
+        try {
+            const response = await axios.get(
+                `/api/v1/tasks/${taskId}?include=processStep,process,assignedFromUser,assignedToUser,descriptions`
+            );
+            console.log("Res:", response.data.data);
+            setTaskData(response.data.data);
+        } catch (error) {
+            console.error("Error fetching task details:", error);
+        }
+    };
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -52,7 +63,26 @@ const ReviewTask = () => {
         setErrors(newErrors);
         if (Object.keys(newErrors).length === 0) {
             try {
-                await axios.post("/api/v1/task-descriptions", formData);
+                const response = await axios.post(
+                    "/api/v1/task-descriptions",
+                    formData
+                );
+                const taskDescription = response.data.data;
+                console.log("Res:", taskDescription);
+                const transactionPayload = {
+                    material_request_id: materialRequestId,
+                    requester_id: user_id,
+                    assigned_to:
+                        processStep.approver_id || processStep.designation_id,
+                    order: String(processStep.order),
+                    description: taskDescription.description,
+                    status: taskDescription.action,
+                    referred_to: taskDescription?.user_id,
+                };
+                await axios.post(
+                    "/api/v1/material-request-transactions",
+                    transactionPayload
+                );
                 router.visit("/tasks");
             } catch (error) {
                 console.error("Error submitting task:", error);
@@ -62,16 +92,126 @@ const ReviewTask = () => {
 
     return (
         <div className="flex flex-col items-center w-full">
-            <div className="w-full">
-                <div className="flex flex-col items-center">
-                    <img
-                        src="/images/review-task.png"
-                        alt="Document Preview"
-                        className="w-full lg:max-w-xl border rounded-2xl shadow"
-                    />
-                </div>
+            <div className="w-full bg-white shadow-lg rounded-2xl p-6">
+                <h2 className="text-3xl font-bold text-[#2C323C] mb-6">
+                    Task Review Details
+                </h2>
+                {taskData ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="bg-gray-50 p-6 rounded-2xl shadow">
+                            <h3 className="text-lg font-semibold mb-4">
+                                Process Details
+                            </h3>
+                            <div className="text-[#2C323C] text-base font-medium">
+                                <p>
+                                    Title:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.process?.title}
+                                    </span>
+                                </p>
+                                <p>
+                                    Status:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.process?.status}
+                                    </span>
+                                </p>
+                                <p>
+                                    Description:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.process_step?.description}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
 
-                <div className="my-6 grid grid-cols-1 lg:grid-cols-2 items-start gap-4 w-full">
+                        <div className="bg-gray-50 p-6 rounded-2xl shadow">
+                            <h3 className="text-lg font-semibold mb-4">
+                                Status
+                            </h3>
+                            <div className="text-[#2C323C] text-base font-medium">
+                                <p>
+                                    Status:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.status}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 p-6 rounded-2xl shadow">
+                            <h3 className="text-lg font-semibold mb-4">
+                                Assigned From
+                            </h3>
+                            <div className="text-[#2C323C] text-base font-medium">
+                                <p>
+                                    Name
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.assigned_from_user?.name}
+                                    </span>
+                                </p>
+                                <p>
+                                    Designation:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {
+                                            taskData.assigned_from_user
+                                                ?.designation?.designation
+                                        }
+                                    </span>
+                                </p>
+                                <p>
+                                    Email:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.assigned_from_user?.email}
+                                    </span>
+                                </p>
+                                <p>
+                                    Mobile:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.assigned_from_user?.mobile}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 p-6 rounded-2xl shadow">
+                            <h3 className="text-lg font-semibold mb-4">
+                                Assigned To
+                            </h3>
+                            <div className="text-[#2C323C] text-base font-medium">
+                                <p>
+                                    Name
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.assigned_to_user?.name}
+                                    </span>
+                                </p>
+                                <p>
+                                    Designation:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {
+                                            taskData.assigned_to_user
+                                                ?.designation?.designation
+                                        }
+                                    </span>
+                                </p>
+                                <p>
+                                    Email:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.assigned_to_user?.email}
+                                    </span>
+                                </p>
+                                <p>
+                                    Mobile:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.assigned_to_user?.mobile}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+                )}
+            </div>
+            <div className="w-full my-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-4 w-full">
                     <div className="relative w-full">
                         <textarea
                             name="description"
