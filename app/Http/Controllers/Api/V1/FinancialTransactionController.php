@@ -13,7 +13,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
+
 
 class FinancialTransactionController extends Controller
 {
@@ -22,11 +24,27 @@ class FinancialTransactionController extends Controller
      */
     public function index(): JsonResponse|FinancialTransactionCollection
     {
+        // Create the custom filters array
+        $customFilters = [];
+        foreach (FinancialTransactionParameters::CUSTOM_FILTERS as $filterName => $filterClass) {
+            $customFilters[] = AllowedFilter::custom($filterName, new $filterClass);
+        }
+
+        // Create exact filters array
+        $exactFilters = [];
+        foreach (FinancialTransactionParameters::ALLOWED_FILTERS_EXACT as $filter) {
+            $exactFilters[] = AllowedFilter::exact($filter);
+        }
+
+        // Combine all filters into a single array
+        $allFilters = array_merge(
+            FinancialTransactionParameters::ALLOWED_FILTERS,
+            $exactFilters,
+            $customFilters
+        );
+
         $transactions = QueryBuilder::for(FinancialTransaction::class)
-            ->allowedFilters(FinancialTransactionParameters::ALLOWED_FILTERS)
-            ->allowedFilters(
-                FinancialTransactionParameters::ALLOWED_FILTERS_EXACT
-            )
+            ->allowedFilters($allFilters)
             ->allowedSorts(FinancialTransactionParameters::ALLOWED_SORTS)
             ->allowedIncludes(FinancialTransactionParameters::ALLOWED_INCLUDES)
             ->paginate()

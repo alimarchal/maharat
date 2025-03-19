@@ -38,6 +38,7 @@ return new class extends Migration
             $table->index('transaction_date');
             $table->index('status');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
