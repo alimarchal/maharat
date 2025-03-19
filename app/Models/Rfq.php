@@ -16,7 +16,7 @@ class Rfq extends Model
     protected $table = 'rfqs';
 
     protected $primaryKey = 'id';
-    public $incrementing = false;
+    public $incrementing = true;
 
     protected $fillable = [
         'rfq_number',

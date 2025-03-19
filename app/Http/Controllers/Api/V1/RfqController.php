@@ -48,7 +48,7 @@ class RfqController extends Controller
         // Generate RFQ Number
         $currentYear = date('Y');
         $latestRfq = Rfq::where('rfq_number', 'like', "RFQ-$currentYear-%")
-            ->latest()
+            ->orderBy('rfq_number', 'desc')
             ->first();
 
         $lastNumber = $latestRfq ? intval(substr($latestRfq->rfq_number, -3)) : 0;
