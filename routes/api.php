@@ -110,6 +110,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('material-request-transactions', MaterialRequestTransactionController::class);
 
     // RFQ routes
+    Route::get('/rfqs/form-data', [RfqController::class, 'getFormData']);
     Route::apiResource('rfqs', RfqController::class);
     // RFQ Items routes
     Route::apiResource('rfq-items', RfqItemController::class);
@@ -155,6 +156,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::put('/api/v1/rfq-items', [RfqItemController::class, 'update']);
 
     Route::get('/rfq-categories/{rfq_id}', [RfqCategoryController::class, 'show']);
+    Route::put('/rfq-categories/{rfq_id}', [RfqCategoryController::class, 'update']);
 
     Route::get('/quotations-by-rfq/{rfq_id}', [QuotationController::class, 'getQuotationsByRfq']);
     Route::post('/upload-terms', [QuotationController::class, 'uploadTerms']);
@@ -332,11 +334,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/brands', [BrandController::class, 'index']);
 });
 
-Route::get('download/{filename}', function ($filename) {
+Route::get('download/{[filename]}', function ($filename) {
     $path = storage_path('app/public/rfq-attachments/' . $filename);
 
     if (!file_exists($path)) {
-        abort(404);
+        return response()->json(['error' => 'File not found'], 404);
     }
 
     return response()->file($path);

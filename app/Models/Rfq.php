@@ -38,6 +38,8 @@ class Rfq extends Model
         'department_id',
         'cost_center_id',
         'sub_cost_center_id',
+        'warehouse_id',
+        'requester_id',
     ];
 
     protected $casts = [
@@ -55,14 +57,13 @@ class Rfq extends Model
      */
     public function categories(): BelongsToMany
     {
-        return $this->belongsToMany(ProductCategory::class, 'rfq_categories', 'rfq_id', 'category_id')
-            ->using(RfqCategory::class)
-            ->withTimestamps();
+        return $this->belongsToMany(
+            ProductCategory::class, 
+            'rfq_categories', 
+            'rfq_id', 
+            'category_id'
+        )->withTimestamps();
     }
-//    public function categories()
-//    {
-//        return $this->belongsToMany(ProductCategory::class, 'rfq_categories', 'rfq_id', 'category_id');
-//    }
 
     public function requester(): BelongsTo
     {
@@ -113,7 +114,6 @@ class Rfq extends Model
     {
         return $this->hasMany(Quotation::class, 'rfq_id', 'id');
     }
-
 
     /**
      * Get the department associated with the material request.

@@ -1,25 +1,43 @@
 import { useState, useEffect } from "react";
 import { Head } from "@inertiajs/react";
-import { router, Link } from "@inertiajs/react";
+import { router, Link, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import axios from "axios";
-import { PaperClipIcon, DocumentTextIcon, DocumentArrowDownIcon, EnvelopeIcon, TrashIcon, CheckIcon } from "@heroicons/react/24/outline";
+import { 
+    DocumentTextIcon, 
+    DocumentArrowDownIcon, 
+    EnvelopeIcon,
+    TrashIcon 
+} from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeftLong, faChevronRight, } from "@fortawesome/free-solid-svg-icons";
-import { DocumentIcon } from "@heroicons/react/24/outline";
+import { faArrowLeftLong, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { fetchRFQData, fetchLookupData, getSafeValue } from "./rfqUtils";
 
-export default function AddQuotationForm({ auth, quotationId = null }) {
+export default function AddQuotationForm({ auth }) {
+    const { rfqId } = usePage().props;
+    const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         organization_email: "",
         city: "",
-        category_name: "",
-        warehouse: "",
-        issue_date: "",
+        category_id: "",
+        warehouse_id: "",
+        issue_date: new Date().toISOString().split('T')[0],
         closing_date: "",
-        rfq_id: "",
+        rfq_id: "", 
         payment_type: "",
         contact_no: "",
-        items: [],
+        items: [{
+            item_name: "",
+            description: "",
+            unit_id: "",
+            quantity: "",
+            brand_id: "",
+            attachment: null,
+            expected_delivery_date: "",
+            rfq_id: null,
+            status_id: 47
+        }],
+        status_id: 47,
     });
 
     const [warehouses, setWarehouses] = useState([]);
@@ -28,154 +46,419 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
     const [units, setUnits] = useState([]);
     const [brands, setBrands] = useState([]);
     const [attachments, setAttachments] = useState({});
-    const [rfqs, setRfqs] = useState([]);
     const [unitNames, setUnitNames] = useState({});
     const [brandNames, setBrandNames] = useState({});
-    const [editingRow, setEditingRow] = useState(null);
-    const [rfqItems, setRfqItems] = useState([]);
+    const [warehouseNames, setWarehouseNames] = useState({});
+    const [categoryNames, setCategoryNames] = useState({});
+    const [paymentTypeNames, setPaymentTypeNames] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
+    useEffect(() => {
+        if (rfqId) {
+            setLoading(true);
+            setIsEditing(true);
+            
+            // Directly fetch RFQ data
+            axios.get(`/api/v1/rfqs/${rfqId}`)
+                .then(async response => {
+                    const rfqData = response.data?.data;
+                    
+                    if (!rfqData) {
+                        setError("RFQ not found or has invalid data format");
+                        setLoading(false);
+                        return;
+                    }
+                    
+                    console.log("Raw RFQ data from API:", rfqData);
+                    
+                    // For category, we need to fetch from rfq_categories
+                    let categoryId = rfqData.category_id ? String(rfqData.category_id) : "";
+                    
+                    // If category_id is empty, try to fetch from rfq_categories relationship
+                    if (!categoryId && rfqId) {
+                        try {
+                            const categoryResponse = await axios.get(`/api/v1/rfq-categories/${rfqId}`);
+                            console.log("Category data:", categoryResponse.data);
+                            
+                            if (categoryResponse.data && 
+                                categoryResponse.data.data && 
+                                categoryResponse.data.data.length > 0) {
+                                categoryId = String(categoryResponse.data.data[0].category_id);
+                            }
+                        } catch (err) {
+                            console.error("Error fetching category:", err);
+                        }
+                    }
+                    
+                    // Extract items from the response
+                    const rfqItems = rfqData.items || [];
+                    
+                    // Format the items for the form
+                    const formattedItems = rfqItems.map(item => {
+                        // Process attachment info properly
+                        let attachmentObj = null;
+                        if (item.attachment) {
+                            attachmentObj = {
+                                attachment: item.attachment,
+                                specifications: item.specifications || item.attachment.split('/').pop()
+                            };
+                        }
+                        
+                        return {
+                            id: item.id,
+                            item_name: item.item_name || '',
+                            description: item.description || '',
+                            unit_id: item.unit_id ? String(item.unit_id) : '',
+                            quantity: item.quantity || '',
+                            brand_id: item.brand_id ? String(item.brand_id) : '',
+                            attachment: attachmentObj,
+                            specifications: item.specifications || '',
+                            expected_delivery_date: item.expected_delivery_date?.split('T')[0] || '',
+                            rfq_id: rfqId,
+                            status_id: item.status_id ? String(item.status_id) : '47'
+                        };
+                    });
+                    
+                    // If no items, add a default empty one
+                    if (formattedItems.length === 0) {
+                        formattedItems.push({
+                            item_name: "",
+                            description: "",
+                            unit_id: "",
+                            quantity: "",
+                            brand_id: "",
+                            attachment: null,
+                            expected_delivery_date: "",
+                            rfq_id: rfqId,
+                            status_id: "47"
+                        });
+                    }
+                    
+                    // Format the main form data
+                    // Fix: Ensure all IDs are strings with explicit conversion
+                    const formattedData = {
+                        organization_email: rfqData.organization_email || '',
+                        city: rfqData.city || '',
+                        category_id: categoryId, // Already converted to string above
+                        warehouse_id: rfqData.warehouse_id ? String(rfqData.warehouse_id) : '',
+                        issue_date: rfqData.request_date?.split('T')[0] || new Date().toISOString().split('T')[0],
+                        closing_date: rfqData.closing_date?.split('T')[0] || '',
+                        rfq_id: rfqData.rfq_number || '',
+                        payment_type: rfqData.payment_type ? String(rfqData.payment_type) : '',
+                        contact_no: rfqData.contact_number || '',
+                        status_id: rfqData.status_id ? String(rfqData.status_id) : '47',
+                        items: formattedItems
+                    };
+                    
+                    console.log("Setting form data:", formattedData);
+                    setFormData(formattedData);
+                    setLoading(false);
+                })
+                .catch(error => {
+                    console.error("Error fetching RFQ data:", error);
+                    setError("Failed to load RFQ data: " + (error.response?.data?.message || error.message || "Unknown error"));
+                    setLoading(false);
+                });
+        } else {
+            // In create mode, get new RFQ number
+            axios.get('/api/v1/rfqs/form-data')
+                .then(response => {
+                    if (response.data && response.data.rfq_number) {
+                        setFormData(prev => ({
+                            ...prev,
+                            rfq_id: response.data.rfq_number,
+                            issue_date: response.data.request_date || new Date().toISOString().split('T')[0]
+                        }));
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching new RFQ number:", error);
+                })
+                .finally(() => {
+                    setLoading(false);
+                });
+        }
+    }, [rfqId]);
+
+    // Fetch lookup data (categories, warehouses, etc.)
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [
-                    rfqsResponse, 
-                    warehousesRes, 
-                    categoriesRes, 
-                    statusesRes,
-                    unitsRes, 
-                    brandsRes
-                ] = await Promise.all([
-                    axios.get('/api/v1/rfqs'),
-                    axios.get('/api/v1/warehouses'),
-                    axios.get('/api/v1/product-categories'),
-                    axios.get('/api/v1/statuses'),
-                    axios.get('/api/v1/units'),
-                    axios.get('/api/v1/brands')
-                ]);
-
-                // Set RFQs data
-                if (rfqsResponse.data.data.length > 0) {
-                    const rfq = rfqsResponse.data.data[0];
-                    setFormData({
-                        ...formData,
-                        organization_email: rfq.organization_email,
-                        city: rfq.city,
-                        rfq_id: rfq.rfq_number,
-                        issue_date: rfq.request_date?.split('T')[0] || '',
-                        closing_date: rfq.closing_date?.split('T')[0] || '',
-                        contact_no: rfq.contact_number,
-                        items: rfq.items || []
-                    });
-                }
+                setLoading(true);
                 
-                // Filter payment types from statuses
-                const paymentTypes = statusesRes.data.data.filter(
-                    status => status.type === 'payment_type'
+                // Define the API endpoints to fetch
+                const endpoints = [
+                    { name: 'units', url: '/api/v1/units' },
+                    { name: 'brands', url: '/api/v1/brands' },
+                    { name: 'categories', url: '/api/v1/product-categories' },
+                    { name: 'warehouses', url: '/api/v1/warehouses' },
+                    { name: 'statuses', url: '/api/v1/statuses' },
+                ];
+    
+                // Fetch each endpoint and handle potential errors individually
+                const results = await Promise.all(
+                    endpoints.map(async (endpoint) => {
+                        try {
+                            const response = await axios.get(endpoint.url);
+                            return { 
+                                name: endpoint.name,
+                                data: response.data?.data || [] 
+                            };
+                        } catch (error) {
+                            console.warn(`Failed to fetch ${endpoint.name}:`, error);
+                            return { name: endpoint.name, data: [] };
+                        }
+                    })
                 );
-                
-                setWarehouses(warehousesRes.data.data || []);
-                setCategories(categoriesRes.data.data || []);
-                setPaymentTypes(paymentTypes);
-                setUnits(unitsRes.data.data || []);
-                setBrands(brandsRes.data.data || []);
+    
+                // Apply results to state
+                results.forEach(result => {
+                    switch(result.name) {
+                        case 'units':
+                            setUnits(result.data);
+                            
+                            // Create lookup map for units
+                            const unitLookup = {};
+                            result.data.forEach(unit => {
+                                if (unit && unit.id) {
+                                    unitLookup[String(unit.id)] = unit.name; // Ensure keys are strings
+                                }
+                            });
+                            setUnitNames(unitLookup);
+                            break;
+                            
+                        case 'brands':
+                            setBrands(result.data);
+                            
+                            // Create lookup map for brands
+                            const brandLookup = {};
+                            result.data.forEach(brand => {
+                                if (brand && brand.id) {
+                                    brandLookup[String(brand.id)] = brand.name; // Ensure keys are strings
+                                }
+                            });
+                            setBrandNames(brandLookup);
+                            break;
+                            
+                        case 'categories':
+                            setCategories(result.data);
+                            
+                            // Create lookup map for categories
+                            const categoryLookup = {};
+                            result.data.forEach(category => {
+                                if (category && category.id) {
+                                    categoryLookup[String(category.id)] = category.name; // Ensure keys are strings
+                                }
+                            });
+                            setCategoryNames(categoryLookup);
+                            break;
+                            
+                        case 'warehouses':
+                            setWarehouses(result.data);
+                            
+                            // Create lookup map for warehouses
+                            const warehouseLookup = {};
+                            result.data.forEach(warehouse => {
+                                if (warehouse && warehouse.id) {
+                                    warehouseLookup[String(warehouse.id)] = warehouse.name; // Ensure keys are strings
+                                }
+                            });
+                            setWarehouseNames(warehouseLookup);
+                            break;
+                        
+                        case 'statuses':
+                            // Filter payment types from statuses
+                            const paymentTypes = result.data.filter(
+                                status => status.type === 'payment_type' || status.type?.includes('payment')
+                            );
+                            setPaymentTypes(paymentTypes.length > 0 ? paymentTypes : result.data.slice(0, 3));
+                            
+                            // Create lookup map for payment types
+                            const paymentTypeLookup = {};
+                            paymentTypes.forEach(type => {
+                                if (type && type.id) {
+                                    paymentTypeLookup[String(type.id)] = type.name; // Ensure keys are strings
+                                }
+                            });
+                            setPaymentTypeNames(paymentTypeLookup);
+                            break;
+                            
+                        default:
+                            break;
+                    }
+                });
+    
+                // Log lookup information after loading
+                console.log("Category mapping:", categoryNames);
+                console.log("Warehouse mapping:", warehouseNames);
+                console.log("Payment type mapping:", paymentTypeNames);
+                console.log("Form data after loading lookup data:", formData);
+    
+                setLoading(false);
             } catch (error) {
-                console.error("Error fetching data:", error);
+                console.error('Error fetching lookup data:', error);
+                setError('Failed to load reference data. Some options may be unavailable.');
+                
+                // Set empty arrays for all data to prevent further errors
+                setUnits([]);
+                setBrands([]);
+                setCategories([]);
+                setWarehouses([]);
+                setPaymentTypes([]);
+                setUnitNames({});
+                setBrandNames({});
+                setWarehouseNames({});
+                setCategoryNames({});
+                setPaymentTypeNames({});
+                
+                setLoading(false);
             }
         };
-
+    
         fetchData();
     }, []);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // Get RFQ items with their relationships
-                const rfqItemsResponse = await axios.get('/api/v1/rfq-items');
-                setRfqItems(rfqItemsResponse.data.data);
-
-                // Get units and brands for dropdowns
-                const [unitsRes, brandsRes] = await Promise.all([
-                    axios.get('/api/v1/units'),
-                    axios.get('/api/v1/brands')
-                ]);
-                
-                setUnits(unitsRes.data.data);
-                setBrands(brandsRes.data.data);
-                
-                // Create lookup maps
-                const unitLookup = {};
-                unitsRes.data.data.forEach(unit => {
-                    unitLookup[unit.id] = unit.name;
-                });
-                setUnitNames(unitLookup);
-
-                const brandLookup = {};
-                brandsRes.data.data.forEach(brand => {
-                    brandLookup[brand.id] = brand.name;
-                });
-                setBrandNames(brandLookup);
-
-            } catch (error) {
-                console.error('Error fetching data:', error);
-            }
-        };
-
-        fetchData();
-    }, []);    
-
-    useEffect(() => {
-        if (quotationId) {
-            axios.get(`/api/v1/rfq-items/${quotationId}`)
-                .then(response => {
-                    const item = response.data.data;
-                    setFormData(prevData => ({
-                        ...prevData,
-                        items: [{
-                            ...item,
-                            unit_id: item.unit?.id,
-                            brand_id: item.brand?.id,
-                        }]
-                    }));
-                })
-                .catch(error => console.error('Error fetching data:', error));
-        }
-    }, [quotationId]);
-
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        const formDataObj = new FormData();
-
-        // Append main form fields
-        Object.keys(formData).forEach((key) => {
-            if (key !== "items") {
-                formDataObj.append(key, formData[key]);
+    
+        try {
+            const formDataObj = new FormData();
+    
+            // Basic validation
+            if (!formData.organization_email || !formData.city || 
+                !formData.issue_date || !formData.closing_date) {
+                alert("Please fill out all required fields in the top section.");
+                return;
             }
-        });
-
-        // Append items and their attachments
-        formData.items.forEach((item, index) => {
-            Object.keys(item).forEach((key) => {
-                formDataObj.append(`items[${index}][${key}]`, item[key]);
+    
+            // Main fields - add null/type checking
+            formDataObj.append('organization_email', formData.organization_email || '');
+            formDataObj.append('city', formData.city || '');
+            
+            // For numeric values, ensure we have valid numbers or send empty string
+            const categoryId = formData.category_id || ''; // Don't convert to int if we have an empty string
+            const warehouseId = formData.warehouse_id || ''; // Don't convert to int if we have an empty string
+            const paymentType = formData.payment_type || ''; // Don't convert to int if we have an empty string
+            const statusId = formData.status_id || '47';
+            
+            formDataObj.append('category_id', categoryId);
+            formDataObj.append('warehouse_id', warehouseId);
+            formDataObj.append('request_date', formData.issue_date || '');
+            formDataObj.append('closing_date', formData.closing_date || '');
+            
+            // Always include rfq_number for both creating and editing
+            formDataObj.append('rfq_number', formData.rfq_id || '');
+            
+            formDataObj.append('payment_type', paymentType);
+            formDataObj.append('contact_number', formData.contact_no || '');
+            formDataObj.append('status_id', statusId);
+            
+            // Log what's being sent
+            console.log("Sending main form fields:", {
+                organization_email: formData.organization_email,
+                city: formData.city,
+                category_id: categoryId,
+                warehouse_id: warehouseId,
+                request_date: formData.issue_date,
+                closing_date: formData.closing_date,
+                rfq_number: formData.rfq_id,
+                payment_type: paymentType,
+                contact_number: formData.contact_no,
+                status_id: statusId
             });
-
-            if (attachments[index]) {
-                formDataObj.append(
-                    `items[${index}][attachment]`,
-                    attachments[index]
-                );
+    
+            // Filter and validate items - allow items without category/warehouse/payment for update
+            const validItems = formData.items.filter(item => 
+                item.item_name && item.quantity
+            );
+            
+            if (validItems.length === 0) {
+                alert("Please add at least one item with all required fields filled out.");
+                return;
             }
-        });
-
-        router.post(route("rfq.store"), formDataObj, {
-            forceFormData: true,
-            onSuccess: () => {
+            
+            // Process each valid item
+            validItems.forEach((item, index) => {
+                // Add ID if it exists (for updating existing items)
+                if (item.id) {
+                    formDataObj.append(`items[${index}][id]`, item.id);
+                }
+                
+                // Add main item fields
+                formDataObj.append(`items[${index}][item_name]`, item.item_name || '');
+                formDataObj.append(`items[${index}][description]`, item.description || '');
+                formDataObj.append(`items[${index}][quantity]`, item.quantity || '');
+                formDataObj.append(`items[${index}][expected_delivery_date]`, item.expected_delivery_date || '');
+                
+                // Add unit_id, brand_id, status_id - without parseInt which could convert empty strings to NaN
+                formDataObj.append(`items[${index}][unit_id]`, item.unit_id || '');
+                formDataObj.append(`items[${index}][brand_id]`, item.brand_id || '');
+                formDataObj.append(`items[${index}][status_id]`, item.status_id || '47');
+                
+                // Always add rfq_id to each item
+                formDataObj.append(`items[${index}][rfq_id]`, rfqId || null);
+            });
+            
+            // Handle attachments (files)
+            console.log("Attachments to be sent:", attachments);
+            if (attachments && Object.keys(attachments).length > 0) {
+                Object.keys(attachments).forEach(index => {
+                    if (attachments[index]) {
+                        // Find the corresponding item index in validItems
+                        const itemIndex = validItems.findIndex((_, i) => i.toString() === index.toString());
+                        if (itemIndex !== -1) {
+                            formDataObj.append(`attachments[${itemIndex}]`, attachments[index]);
+                            console.log(`Added attachment for item ${itemIndex}:`, attachments[index].name);
+                        }
+                    }
+                });
+            }
+            
+            // For PUT requests in Laravel, you need to include the _method field
+            if (rfqId) {
+                formDataObj.append('_method', 'PUT');
+            }
+            
+            // Use the appropriate URL based on whether creating or editing
+            const url = rfqId ? `/api/v1/rfqs/${rfqId}` : '/api/v1/rfqs';
+            
+            // Always use POST for FormData with method spoofing for PUT
+            console.log(`Making ${rfqId ? 'PUT' : 'POST'} request to ${url}`);
+            
+            // Print out all formDataObj keys and values for debugging
+            for (let pair of formDataObj.entries()) {
+                console.log(pair[0], pair[1]);
+            }
+            
+            const response = await axios.post(url, formDataObj, {
+                headers: { 
+                    'Content-Type': 'multipart/form-data',
+                    'Accept': 'application/json'
+                },
+            });
+    
+            if (response.data && response.data.success === true) {
+                alert(rfqId ? "RFQ updated successfully!" : "RFQ created successfully!");
                 router.visit(route("rfq.index"));
-            },
-            onError: (errors) => {
-                console.error("Validation errors:", errors);
-            },
-        });
+            } else {
+                console.error("Response didn't indicate success:", response.data);
+                alert("Failed to save RFQ: " + (response.data.message || "Unknown error"));
+            }
+        } catch (error) {
+            console.error("Error saving RFQ:", error);
+            console.error("Error details:", error.response?.data || error.message);
+            
+            if (error.response?.data?.errors) {
+                // Handle validation errors
+                const errorMessages = Object.values(error.response.data.errors)
+                    .flat()
+                    .join('\n');
+                alert(`Validation Error:\n${errorMessages}`);
+            } else {
+                alert(error.response?.data?.message || "Failed to save RFQ. Check console for details.");
+            }
+        }
     };
 
     const addItem = () => {
@@ -186,11 +469,13 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
                 {
                     item_name: "",
                     description: "",
-                    unit: "---",
+                    unit_id: "",
                     quantity: "",
-                    brand: "---",
+                    brand_id: "",
                     attachment: null,
                     expected_delivery_date: "",
+                    rfq_id: rfqId || null,
+                    status_id: 47
                 },
             ],
         }));
@@ -199,14 +484,11 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
     const handleItemChange = (index, field, value) => {
         const updatedItems = [...formData.items];
         if (field === 'quantity') {
-            // Allow empty string for typing
             if (value === '') {
                 updatedItems[index][field] = '';
             } else {
-                // Convert to number and prevent negative values
                 const numValue = parseFloat(value);
                 if (numValue < 0) return;
-                // Format to 1 decimal place
                 updatedItems[index][field] = numValue.toFixed(1);
             }
         } else {
@@ -218,36 +500,35 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
     const handleFileChange = (index, e) => {
         const file = e.target.files[0];
         if (file) {
-            // Store the actual file object
+            // Store the file object for FormData submission
             setAttachments(prev => ({
                 ...prev,
                 [index]: file
             }));
             
-            // Update the form data with the file info
+            // For display and storage in formData state
+            // We store the file object but when saved to database it will be stored as path
+            // in the format "rfq-attachments/hash" 
             const updatedItems = [...formData.items];
             updatedItems[index].attachment = file;
-            setFormData({ ...formData, items: updatedItems });
-
-            // Optionally create a temporary URL for immediate display
             updatedItems[index].tempUrl = URL.createObjectURL(file);
-        }
-    };
-
-    const handleCSVUpload = (event) => {
-        const file = event.target.files[0];
-        if (file && file.type === "text/csv") {
-            // Handle CSV file upload
-        } else {
-            alert("Please upload a valid CSV file.");
+            // Also store original filename in specifications
+            updatedItems[index].specifications = file.name;
+            setFormData({ ...formData, items: updatedItems });
         }
     };
 
     const handleRemoveItem = (index) => {
+        if (formData.items.length <= 1) {
+            alert("You must have at least one item.");
+            return;
+        }
+        
         setFormData((prev) => ({
             ...prev,
             items: prev.items.filter((_, i) => i !== index),
         }));
+        
         setAttachments((prev) => {
             const newAttachments = { ...prev };
             delete newAttachments[index];
@@ -255,90 +536,79 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
         });
     };
 
-    const handleSave = async (e) => {
-        if (e) e.preventDefault();
-        
-        try {
-            const formDataToSend = new FormData();
-            
-            // Add basic form data
-            Object.keys(formData).forEach(key => {
-                if (key !== 'items' && formData[key] !== null) {
-                    formDataToSend.append(key, formData[key]);
-                }
-            });
-
-            // Add items as a JSON string
-            if (formData.items && formData.items.length > 0) {
-                formDataToSend.append('items', JSON.stringify(formData.items));
-            }
-
-            // Add attachments separately
-            if (attachments) {
-                Object.keys(attachments).forEach(index => {
-                    formDataToSend.append(`attachments[${index}]`, attachments[index]);
-                });
-            }
-
-            const response = await axios.post('/api/v1/rfq-items', formDataToSend, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    'Accept': 'application/json'
-                }
-            });
-
-            if (response.data.success) {
-                alert('Items saved successfully!');
-                router.visit(route('rfq.index'));
-            }
-        } catch (error) {
-            console.error('Save error:', error);
-            alert(error.response?.data?.message || 'Failed to save items');
-        }
-    };    
+    const handleFormInputChange = (field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
 
     const handleDownloadPDF = async () => {
         try {
             // First save the quotation if it hasn't been saved
-            if (!formData.id) {
-                await handleSave();
+            if (!rfqId) {
+                await handleSubmit();
+                return; // The save function will redirect
             }
 
-            // Option 1: View PDF in new tab
-            window.open(route('quotations.pdf.view', formData.id), '_blank');
-
-            // Option 2: Direct download
-            // window.location.href = route('quotations.pdf.download', formData.id);
+            // Open PDF in new tab
+            window.open(route('rfq.pdf', rfqId), '_blank');
         } catch (error) {
             console.error('Error handling PDF:', error);
             alert('Failed to process PDF request');
         }
     };
 
-    // Add this component for file display
-    const FileDisplay = ({ file, onFileClick }) => {
-        const fileName = file ? (
-            typeof file === 'object' && file.name 
-                ? file.name 
-                : typeof file === 'string' 
-                    ? decodeURIComponent(file.split('/').pop()) 
-                    : file.name
-        ) : null;
-
-        const fileUrl = file ? (
-            typeof file === 'object' && file.url 
-                ? `/api/download/${fileName}` 
-                : typeof file === 'string' 
-                    ? `/api/download/${fileName}` 
-                    : null
-        ) : null;
-
+    // Helper component for file display
+    const FileDisplay = ({ file }) => {
+        // Get the display filename - prioritize specifications field which contains the original filename
+        let fileName = null;
+        let fileUrl = null;
+        
+        if (file) {
+            // For new files uploaded in the current session
+            if (typeof file === 'object' && file.name) {
+                fileName = file.name;
+                fileUrl = file.tempUrl || null;
+            }
+            // For files with specifications field from the database
+            else if (typeof file === 'object' && file.specifications) {
+                fileName = file.specifications;
+                // If attachment is a string path
+                if (typeof file.attachment === 'string') {
+                    // Use the full path stored in the database for download
+                    fileUrl = `/download/${encodeURIComponent(file.attachment)}`;
+                }
+            }
+            // For simple string paths from database
+            else if (typeof file === 'string') {
+                // For stored path like "rfq-attachments/filename.pdf"
+                // Extract just the filename for display but use full path for URL
+                fileName = file.split('/').pop();
+                fileUrl = `/download/${encodeURIComponent(file)}`;
+            }
+            // For objects with attachment property
+            else if (typeof file === 'object' && file.attachment) {
+                // If attachment is a string (path)
+                if (typeof file.attachment === 'string') {
+                    // Display just filename but use full path for download
+                    fileName = file.attachment.split('/').pop();
+                    fileUrl = `/download/${encodeURIComponent(file.attachment)}`;
+                } else {
+                    // If attachment is another object (shouldn't happen, but just in case)
+                    fileName = "Attachment";
+                }
+            }
+        }
+    
         return (
             <div className="flex flex-col items-center justify-center space-y-2">
-                <DocumentArrowDownIcon 
-                    className="h-6 w-6 text-gray-400 cursor-pointer" 
-                    onClick={() => fileUrl && window.open(fileUrl, '_blank')}
-                />
+                {fileName && (
+                    <DocumentArrowDownIcon 
+                        className="h-6 w-6 text-gray-400 cursor-pointer" 
+                        onClick={() => fileUrl && window.open(fileUrl, '_blank')}
+                    />
+                )}
                 {fileName && (
                     <span 
                         className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
@@ -351,372 +621,393 @@ export default function AddQuotationForm({ auth, quotationId = null }) {
         );
     };
 
+    if (loading) {
+        return (
+            <AuthenticatedLayout user={auth.user}>
+                <Head title={isEditing ? "Edit RFQ" : "Create RFQ"} />
+                <div className="min-h-screen p-6">
+                    <div className="flex justify-center items-center h-screen">
+                        <div className="text-center">
+                            <h2 className="text-xl font-semibold mb-4">Loading...</h2>
+                            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                        </div>
+                    </div>
+                </div>
+            </AuthenticatedLayout>
+        );
+    }
+
+    if (error) {
+        return (
+            <AuthenticatedLayout user={auth.user}>
+                <Head title="Error Loading RFQ" />
+                <div className="min-h-screen p-6">
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                        <h2 className="text-xl font-bold mb-2">Error</h2>
+                        <p>{error}</p>
+                        <div className="mt-4">
+                            <button 
+                                onClick={() => router.visit("/rfq")}
+                                className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                            >
+                                Return to RFQ List
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </AuthenticatedLayout>
+        );
+    }
+
     return (
         <AuthenticatedLayout user={auth.user}>
-            <Head title="Create Quotation" />
+            <Head title={isEditing ? "Edit RFQ" : "Create RFQ"} />
             <div className="min-h-screen p-6">
                 <div className="flex justify-between items-center mb-4">
                     <button
                         onClick={() => router.visit("/rfq")}
                         className="flex items-center text-black text-2xl font-medium hover:text-gray-800 p-2"
                     >
-                        <FontAwesomeIcon
-                            icon={faArrowLeftLong}
-                            className="mr-2 text-2xl"
-                        />
+                        <FontAwesomeIcon icon={faArrowLeftLong} className="mr-2 text-2xl" />
                         Back
                     </button>
                 </div>
 
-                {/* Header with Back Button */}
+                {/* Breadcrumbs */}
                 <div className="flex items-center justify-between mb-6 space-x-4">
                     <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2">
-                        <Link
-                            href="/dashboard"
-                            className="hover:text-[#009FDC] text-xl"
-                        >
-                            Home
-                        </Link>
-                        <FontAwesomeIcon
-                            icon={faChevronRight}
-                            className="text-xl text-[#9B9DA2]"
-                        />
-                        <Link
-                            href="/purchase"
-                            className="hover:text-[#009FDC] text-xl"
-                        >
-                            Procurement Center
-                        </Link>
-                        <FontAwesomeIcon
-                            icon={faChevronRight}
-                            className="text-xl text-[#9B9DA2]"
-                        />
-                        <Link
-                            href="/rfq"
-                            className="hover:text-[#009FDC] text-xl"
-                        >
-                            RFQs
-                        </Link>
-                        <FontAwesomeIcon
-                            icon={faChevronRight}
-                            className="text-xl text-[#9B9DA2]"
-                        />
+                        <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Home</Link>
+                        <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
+                        <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Procurement Center</Link>
+                        <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
+                        <Link href="/rfq" className="hover:text-[#009FDC] text-xl">RFQs</Link>
+                        <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                         <span className="text-[#009FDC] text-xl">
-                            New RFQ Request
+                            {isEditing ? "Edit RFQ" : "New RFQ Request"}
                         </span>
                     </div>
-                    <label className="text-green-600 px-4 py-2 cursor-pointer flex items-center space-x-2 border border-green-600 rounded-lg">
-                        {/* CSV Icon with Thin, Readable Text */}
-                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6 2C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2H6Z" />
-                            <path d="M13 9V3.5L18.5 9H13Z" />
-                            <text x="5.5" y="16.5" fontSize="6" fontWeight="400" fill="currentColor">CSV</text>
-                        </svg>
-                        <span className="text-green-600">Upload CSV File</span>
-                        <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} />
-                    </label>
                 </div>
 
+                {/* Header */}
                 <div className="flex justify-between items-center mb-6">
                     <div>
                         <h2 className="text-xl font-semibold">
-                            Request for a Quotation
+                            {isEditing ? "Edit Request for Quotation" : "Request for a Quotation"}
                         </h2>
                         <p className="text-gray-500 text-sm">
                             Share Requirements and Receive Tailored Estimates
                         </p>
                     </div>
-                    <img
-                        src="/images/MCTC Logo.png"
-                        alt="Maharat Logo"
-                        className="h-12"
-                    />
+                    <img src="/images/MCTC Logo.png" alt="Maharat Logo" className="h-12" />
                 </div>
 
-                {/* Info Grid */}
-                <div className="bg-blue-50 rounded-lg p-6 grid grid-cols-2 gap-6 shadow-md text-lg">
-                    {/* Left Column */}
-                    <div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-center">
-                        <span className="font-medium text-gray-600">
-                            Organization Email:
-                        </span>
-                        <span className="text-black">
-                            {formData.organization_email}
-                        </span>
+                {/* Form */}
+                <form onSubmit={handleSubmit}>
+                    {/* Info Grid */}
+                    <div className="bg-blue-50 rounded-lg p-6 grid grid-cols-2 gap-6 shadow-md text-lg">
+                        {/* Left Column */}
+                        <div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-center">
+                            <span className="font-medium text-gray-600">Organization Email:</span>
+                            <input
+                                type="email"
+                                value={formData.organization_email}
+                                onChange={(e) => handleFormInputChange('organization_email', e.target.value)}
+                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                required
+                            />
 
-                        <span className="font-medium text-gray-600">City:</span>
-                        <span className="text-black">{formData.city}</span>
+                            <span className="font-medium text-gray-600">City:</span>
+                            <input
+                                type="text"
+                                value={formData.city}
+                                onChange={(e) => handleFormInputChange('city', e.target.value)}
+                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                required
+                            />
 
-                        <span className="font-medium text-gray-600">
-                            Category Name:
-                        </span>
-                        <div className="relative w-full">
-                            <select
-                                value={formData.category_name}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        category_name: e.target.value,
-                                    })
-                                }
-                                className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none outline-none focus:ring-0 w-full appearance-none pl-0 pr-6 cursor-pointer"
-                                style={{ colorScheme: "light" }}
-                            >
-                                {categories.map((category) => (
-                                    <option
-                                        key={category.id}
-                                        value={category.name}
-                                        className="text-[#009FDC] bg-blue-50"
-                                    >
-                                        {category.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <span className="font-medium text-gray-600">
-                            Warehouse:
-                        </span>
-                        <div className="relative w-full">
-                            <select
-                                value={formData.warehouse}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        warehouse: e.target.value,
-                                    })
-                                }
-                                className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none outline-none focus:ring-0 w-full appearance-none pl-0 pr-6 cursor-pointer"
-                                style={{ colorScheme: "light" }}
-                            >
-                                {warehouses.map((warehouse) => (
-                                    <option
-                                        key={warehouse.id}
-                                        value={warehouse.name}
-                                        className="text-[#009FDC] bg-blue-50"
-                                    >
-                                        {warehouse.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Right Column */}
-                    <div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-center">
-                        <span className="font-medium text-gray-600">Issue Date:</span> 
-                        <span className="text-black">{formData.issue_date}</span>
-
-                        <span className="font-medium text-gray-600">Closing Date:</span> 
-                        <span className="text-black">{formData.closing_date}</span>
-
-                        <span className="font-medium text-gray-600">RFQ#:</span> 
-                        <span className="text-black">{formData.rfq_id}</span>
-
-                        <span className="font-medium text-gray-600">
-                            Payment Type:
-                        </span>
-                        <div className="relative w-full">
-                            <select
-                                value={formData.payment_type}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        payment_type: e.target.value,
-                                    })
-                                }
-                                className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none outline-none focus:ring-0 w-full appearance-none pl-0 pr-6 cursor-pointer"
-                                style={{ colorScheme: "light" }}
-                            >
-                                <option value="">Select Payment Type</option>
-                                {paymentTypes.map((type) => (
-                                    <option key={type.id} value={type.id}>
-                                        {type.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <span className="font-medium text-gray-600">
-                            Contact No#:
-                        </span>
-                        <span className="text-black">
-                            {formData.contact_no}
-                        </span>
-                    </div>
-                </div>
-
-                {/* Item Table */}
-                <table className="w-full mt-4 table-fixed border-collapse">
-                    <thead>
-                        <tr>
-                            <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Item Name</th>
-                            <th className="px-2 py-2 text-center w-[11%] bg-[#C7E7DE]">Description</th>
-                            <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">Unit</th>
-                            <th className="px-2 py-2 text-center w-[9%] bg-[#C7E7DE]">Quantity</th>
-                            <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">Brand</th>
-                            <th className="px-2 py-2 text-center w-[9%] bg-[#C7E7DE]">Attachment</th>
-                            <th className="px-2 py-2 text-center w-[13%] bg-[#C7E7DE]">Expected Delivery Date</th>
-                            <th className="px-2 py-2 text-center w-[6%] bg-[#C7E7DE]">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {formData.items.map((item, index) => (
-                            <tr key={index}>
-                                <td className="px-6 py-4 text-center align-middle">
-                                    <input
-                                        type="text"
-                                        value={item.item_name || ''}
-                                        onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
-                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center"
-                                        style={{ background: 'none', outline: 'none', textAlign: 'center' }}
-                                    />
-                                </td>
-                                <td className="px-6 py-4 text-center align-middle">
-                                    <textarea
-                                        value={item.description || ''}
-                                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal resize-none text-center"
-                                        style={{ background: 'none', outline: 'none', overflow: 'hidden', textAlign: 'center' }}
-                                        rows="1"
-                                        onInput={e => {
-                                            e.target.style.height = 'auto';
-                                            e.target.style.height = e.target.scrollHeight + 'px';
-                                        }}
-                                    />
-                                </td>
-                                <td className="px-6 py-4 text-center align-middle">
-                                    <select
-                                        value={item.unit_id || ''}
-                                        onChange={(e) => handleItemChange(index, 'unit_id', e.target.value)}
-                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent"
-                                        style={{ background: 'none', outline: 'none', textAlign: 'center', paddingRight: '1rem' }}
-                                    >
-                                        <option value="" className="bg-white text-gray-600 hover:text-gray-900">Select Unit</option>
-                                        {units.map((unit) => (
-                                            <option 
-                                                key={unit.id} 
-                                                value={unit.id} 
-                                                className="bg-transparent text-gray-600 hover:text-gray-900"
-                                                style={{ backgroundColor: 'transparent' }}
-                                            >
-                                                {unit.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </td>
-                                <td className="px-6 py-4 text-center align-middle">
-                                    <input
-                                        type="number"
-                                        step="0.1"
-                                        min="0"
-                                        value={item.quantity}
-                                        onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                                        onBlur={() => handleQuantityBlur(index)}
-                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm whitespace-normal text-center"
-                                        style={{ background: 'none', outline: 'none', textAlign: 'center' }}
-                                    />
-                                </td>
-                                <td className="px-6 py-4 text-center align-middle">
-                                    <select
-                                        value={item.brand_id || ''}
-                                        onChange={(e) => handleItemChange(index, 'brand_id', e.target.value)}
-                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent"
-                                        style={{ background: 'none', outline: 'none', textAlign: 'center', paddingRight: '1rem' }}
-                                    >
-                                        <option value="" className="bg-white text-gray-600 hover:text-gray-900">Select Brand</option>
-                                        {brands.map((brand) => (
-                                            <option 
-                                                key={brand.id} 
-                                                value={brand.id} 
-                                                className="bg-transparent text-gray-600 hover:text-gray-900"
-                                                style={{ backgroundColor: 'transparent' }}
-                                            >
-                                                {brand.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </td>
-                                <td className="px-6 py-4 text-center">
-                                    <div className="flex flex-col items-center justify-center w-full">
-                                        <FileDisplay 
-                                            file={item.attachment} 
-                                            onFileClick={(url) => window.open(url, '_blank')}
-                                        />
-                                        <input
-                                            type="file"
-                                            onChange={(e) => handleFileChange(index, e)}
-                                            className="hidden"
-                                            id={`file-input-${index}`}
-                                            accept=".pdf,.doc,.docx"
-                                        />
-                                        <label 
-                                            htmlFor={`file-input-${index}`}
-                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer break-words whitespace-normal text-center"
+                            <span className="font-medium text-gray-600">Category:</span>
+                            <div className="relative w-full">
+                                <select
+                                    value={formData.category_id || ''}
+                                    onChange={(e) => handleFormInputChange('category_id', e.target.value)}
+                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none focus:ring-0 focus:outline-none w-full appearance-none cursor-pointer"
+                                    style={{ colorScheme: "light" }}
+                                    required
+                                >
+                                    <option value="">Select Category</option>
+                                    {categories.map((category) => (
+                                        <option
+                                            key={category.id}
+                                            value={String(category.id)}
+                                            className="text-[#009FDC] bg-blue-50"
+                                            selected={String(category.id) === String(formData.category_id)}
                                         >
-                                            {item.attachment ? 'Replace file' : 'Attach file'}
-                                        </label>
+                                            {category.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {/* Debug info - can be removed in production */}
+                                {isEditing && formData.category_id && (
+                                    <div className="text-xs text-gray-500">
+                                        ID: {formData.category_id}, Name: {categoryNames[formData.category_id] || 'Not found'}
                                     </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <input
-                                        type="date"
-                                        value={item.expected_delivery_date || ''}
-                                        onChange={(e) => handleItemChange(index, 'expected_delivery_date', e.target.value)}
-                                        className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
-                                    />
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <button
-                                        onClick={() => handleRemoveItem(index)}
-                                        className="text-red-600 hover:text-red-900"
-                                    >
-                                        <TrashIcon className="h-5 w-5" />
-                                    </button>
-                                </td>
+                                )}
+                            </div>
+
+                            <span className="font-medium text-gray-600">Warehouse:</span>
+                            <div className="relative w-full">
+                                <select
+                                    value={formData.warehouse_id || ''}
+                                    onChange={(e) => handleFormInputChange('warehouse_id', e.target.value)}
+                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none focus:ring-0 focus:outline-none w-full appearance-none cursor-pointer"
+                                    style={{ colorScheme: "light" }}
+                                    required
+                                >
+                                    <option value="">Select Warehouse</option>
+                                    {warehouses.map((warehouse) => (
+                                        <option
+                                            key={warehouse.id}
+                                            value={String(warehouse.id)}
+                                            className="text-[#009FDC] bg-blue-50"
+                                            selected={String(warehouse.id) === String(formData.warehouse_id)}
+                                        >
+                                            {warehouse.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {/* Debug info - can be removed in production */}
+                                {isEditing && formData.warehouse_id && (
+                                    <div className="text-xs text-gray-500">
+                                        ID: {formData.warehouse_id}, Name: {warehouseNames[formData.warehouse_id] || 'Not found'}
+                                    </div>
+                                )}
+                            </div>
+                            </div>
+
+
+                        {/* Right Column */}
+                        <div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-center">
+                            <span className="font-medium text-gray-600">Issue Date:</span> 
+                            <input
+                                type="date"
+                                value={formData.issue_date}
+                                onChange={(e) => handleFormInputChange('issue_date', e.target.value)}
+                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                required
+                            />
+
+                            <span className="font-medium text-gray-600">Closing Date:</span> 
+                            <input
+                                type="date"
+                                value={formData.closing_date}
+                                onChange={(e) => handleFormInputChange('closing_date', e.target.value)}
+                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                required
+                            />
+
+                            <span className="font-medium text-gray-600">RFQ#:</span> 
+                            <input
+                                type="text"
+                                value={formData.rfq_id}
+                                onChange={(e) => handleFormInputChange('rfq_id', e.target.value)}
+                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                readOnly={!isEditing} // Make it readonly for new RFQs
+                                placeholder={isEditing ? "" : "Auto-generated by system"}
+                                required={isEditing} // Only required when editing
+                            />
+
+                            <span className="font-medium text-gray-600">Payment Type:</span>
+                            <div className="relative w-full">
+                                <select
+                                    value={formData.payment_type || ''}
+                                    onChange={(e) => handleFormInputChange('payment_type', e.target.value)}
+                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none focus:ring-0 focus:outline-none w-full appearance-none cursor-pointer"
+                                    style={{ colorScheme: "light" }}
+                                    required
+                                >
+                                    <option value="">Select Payment Type</option>
+                                    {paymentTypes.map((type) => (
+                                        <option 
+                                            key={type.id} 
+                                            value={String(type.id)} 
+                                            className="text-[#009FDC] bg-blue-50"
+                                            selected={String(type.id) === String(formData.payment_type)}
+                                        >
+                                            {type.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {/* Debug info - can be removed in production */}
+                                {isEditing && formData.payment_type && (
+                                    <div className="text-xs text-gray-500">
+                                        ID: {formData.payment_type}, Name: {paymentTypeNames[formData.payment_type] || 'Not found'}
+                                    </div>
+                                )}
+                            </div>
+
+                            <span className="font-medium text-gray-600">Contact No#:</span>
+                            <input
+                                type="text"
+                                value={formData.contact_no}
+                                onChange={(e) => handleFormInputChange('contact_no', e.target.value)}
+                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                required
+                            />
+                        </div>
+                        </div>
+
+                    {/* Item Table */}
+                    <table className="w-full mt-4 table-fixed border-collapse">
+                        <thead>
+                            <tr>
+                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Item Name</th>
+                                <th className="px-2 py-2 text-center w-[15%] bg-[#C7E7DE]">Description</th>
+                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Unit</th>
+                                <th className="px-2 py-2 text-center w-[8%] bg-[#C7E7DE]">Quantity</th>
+                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Brand</th>
+                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Attachment</th>
+                                <th className="px-2 py-2 text-center w-[14%] bg-[#C7E7DE]">Expected Delivery Date</th>
+                                <th className="px-2 py-2 text-center w-[6%] bg-[#C7E7DE]">Action</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {formData.items.map((item, index) => (
+                                <tr key={index}>
+                                    <td className="px-6 py-6 text-center align-middle">
+                                        <input
+                                            type="text"
+                                            value={item.item_name || ''}
+                                            onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
+                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center min-h-[3rem]"
+                                            style={{ background: 'none', outline: 'none', textAlign: 'center' }}
+                                            required
+                                        />
+                                    </td>
+                                    <td className="px-6 py-6 text-center align-middle">
+                                        <textarea
+                                            value={item.description || ''}
+                                            onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal resize-none text-center min-h-[3rem]"
+                                            style={{ 
+                                                background: 'none', 
+                                                outline: 'none', 
+                                                overflow: 'hidden', 
+                                                textAlign: 'center',
+                                                wordWrap: 'break-word',
+                                                whiteSpace: 'normal'
+                                            }}
+                                            rows="2"
+                                            required
+                                            onInput={e => {
+                                                e.target.style.height = 'auto';
+                                                e.target.style.height = (e.target.scrollHeight) + 'px';
+                                            }}
+                                        />
+                                    </td>
+                                    <td className="px-6 py-6 text-center align-middle">
+                                        <select
+                                            value={item.unit_id || ''}
+                                            onChange={(e) => handleItemChange(index, 'unit_id', e.target.value)}
+                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent"
+                                            style={{ background: 'none', outline: 'none', textAlign: 'center', paddingRight: '1rem' }}
+                                            required
+                                        >
+                                            <option value="">Select Unit</option>
+                                            {units.map((unit) => (
+                                                <option key={unit.id} value={unit.id}>{unit.name}</option>
+                                            ))}
+                                        </select>
+                                    </td>
+                                    <td className="px-6 py-6 text-center align-middle">
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            min="0"
+                                            value={item.quantity}
+                                            onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm whitespace-normal text-center"
+                                            style={{ background: 'none', outline: 'none', textAlign: 'center' }}
+                                            required
+                                        />
+                                    </td>
+                                    <td className="px-6 py-6 text-center align-middle">
+                                        <select
+                                            value={item.brand_id || ''}
+                                            onChange={(e) => handleItemChange(index, 'brand_id', e.target.value)}
+                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent"
+                                            style={{ background: 'none', outline: 'none', textAlign: 'center', paddingRight: '1rem' }}
+                                            required
+                                        >
+                                            <option value="">Select Brand</option>
+                                            {brands.map((brand) => (
+                                                <option key={brand.id} value={brand.id}>{brand.name}</option>
+                                            ))}
+                                        </select>
+                                    </td>
+                                    <td className="px-6 py-6 text-center">
+                                        <div className="flex flex-col items-center justify-center w-full">
+                                            <FileDisplay file={item.attachment} />
+                                            <input
+                                                type="file"
+                                                onChange={(e) => handleFileChange(index, e)}
+                                                className="hidden"
+                                                id={`file-input-${index}`}
+                                                accept=".pdf,.doc,.docx"
+                                            />
+                                            <label 
+                                                htmlFor={`file-input-${index}`}
+                                                className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer break-words whitespace-normal text-center"
+                                            >
+                                                {item.attachment ? 'Replace file' : 'Attach file'}
+                                            </label>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-6 whitespace-nowrap">
+                                        <input
+                                            type="date"
+                                            value={item.expected_delivery_date || ''}
+                                            onChange={(e) => handleItemChange(index, 'expected_delivery_date', e.target.value)}
+                                            className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
+                                            required
+                                        />
+                                    </td>
+                                    <td className="px-6 py-6 whitespace-nowrap">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveItem(index)}
+                                            className="text-red-600 hover:text-red-900"
+                                            disabled={formData.items.length <= 1}
+                                        >
+                                            <TrashIcon className="h-5 w-5" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
 
+                    {/* Add Item Button */}
+                    <div className="mt-4 flex justify-center">
+                        <button
+                            type="button"
+                            onClick={addItem}
+                            className="text-blue-600 flex items-center"
+                        >
+                            + Add Item
+                        </button>
+                    </div>
 
-                {/* Add Item Button */}
-                <div className="mt-4 flex justify-center">
-                    <button
-                        type="button"
-                        onClick={addItem}
-                        className="text-blue-600 flex items-center"
-                    >
-                        + Add Item
-                    </button>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="mt-8 flex justify-end space-x-4">
-                    <button
-                        type="button"
-                        onClick={handleSave}
-                        className="inline-flex items-center px-4 py-2 border border-green-600 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50"
-                    >
-                        <DocumentTextIcon className="h-5 w-5 mr-2" />
-                        Save RFQ
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleDownloadPDF}
-                        className="inline-flex items-center px-4 py-2 border border-blue-600 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50"
-                    >
-                        <DocumentArrowDownIcon className="h-5 w-5 mr-2" />
-                        Download PDF
-                    </button>
-                    <button
-                        type="submit"
-                        className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-blue-700"
-                    >
-                        <EnvelopeIcon className="h-5 w-5 mr-2" />
-                        Send RFQ by Mail
-                    </button>
-                </div>
+                    {/* Action Buttons */}
+                    <div className="mt-8 flex justify-end space-x-4">
+                        <button
+                            type="submit"
+                            className="inline-flex items-center px-4 py-2 border border-green-600 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50"
+                        >
+                            <DocumentTextIcon className="h-5 w-5 mr-2" />
+                            {isEditing ? "Update RFQ" : "Save RFQ"}
+                        </button>
+                    </div>
+                </form>
             </div>
         </AuthenticatedLayout>
     );

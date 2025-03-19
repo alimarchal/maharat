@@ -19,7 +19,7 @@ const RFQ = ({ auth }) => {
         try {
             const response = await axios.get(`/api/v1/rfqs?page=${currentPage}`);
             console.log("API Response:", response.data);
-
+    
             if (response.data && response.data.data) {
                 // Simulate progress for loading bar
                 const interval = setInterval(() => {
@@ -31,9 +31,9 @@ const RFQ = ({ auth }) => {
                         return prev + 10;
                     });
                 }, 200);
-
+    
                 // Fetch requester names for each RFQ log
-                const logsWithRequesterNames = await Promise.all(
+                let logsWithRequesterNames = await Promise.all(
                     response.data.data.map(async (log) => {
                         if (log.requester_id) {
                             const userResponse = await axios.get(`/api/v1/users/${log.requester_id}`);
@@ -42,7 +42,10 @@ const RFQ = ({ auth }) => {
                         return log;
                     })
                 );
-
+    
+                // **Sort by created_at in ascending order**
+                logsWithRequesterNames.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    
                 setRfqLogs(logsWithRequesterNames);
                 setLastPage(response.data.meta.last_page);
                 setError("");
@@ -50,7 +53,7 @@ const RFQ = ({ auth }) => {
                 console.error("Invalid response format:", response.data);
                 setError("Received invalid data format from API");
             }
-
+    
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
         } catch (error) {
@@ -60,7 +63,7 @@ const RFQ = ({ auth }) => {
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
         }
-    };
+    };    
 
     useEffect(() => {
         fetchRFQLogs();
@@ -83,6 +86,16 @@ const RFQ = ({ auth }) => {
             setError("Failed to delete RFQ. Please try again.");
         }
     };        
+
+    const handleEdit = (rfqId) => {
+        if (rfqId) {
+            console.log("Editing RFQ with ID:", rfqId);
+            // Navigate to the quotation form with the RFQ ID
+            router.visit(`/quotations/create?rfqId=${rfqId}`);
+        } else {
+            console.error("No ID found for RFQ log");
+        }
+    };
 
     const formatDateTime = (dateString) => {
         const optionsDate = { year: "numeric", month: "long", day: "numeric" };
@@ -240,10 +253,7 @@ const RFQ = ({ auth }) => {
                                                 {/* Edit Icon */}
                                                 <button
                                                     className="text-gray-600"
-                                                    onClick={() => {
-                                                        console.log("Navigating to /quotation/create with ID:", log.id);
-                                                        router.visit(`/quotations/create/${log.id}`); // Force navigation
-                                                    }}
+                                                    onClick={() => handleEdit(log.id)}
                                                 >
                                                     <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
                                                 </button>

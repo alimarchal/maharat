@@ -13,6 +13,7 @@ use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\RfqController;
 use App\Models\Quotation;
 use App\Http\Controllers\QuotationPDFController;
+use Illuminate\Http\Request;
 
 // Redirect root to login
 Route::get('/', function () {
@@ -100,11 +101,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/quotations', function () { return Inertia::render('Dashboard/Quotations/Quotation'); })->name('dashboard.quotations.index');
 
-    Route::get('/quotations/create/{id}', function ($id) { 
-        return Inertia::render('Dashboard/RFQ/AddQuotationForm', ['id' => $id]); 
-    })->name('dashboard.quotations.create');    
+    Route::get('/quotations/create', function (Request $request) {
+        return Inertia::render('Dashboard/RFQ/AddQuotationForm', [
+            'rfqId' => $request->query('rfqId')
+        ]);
+    })->name('quotations.create');   
 
-    Route::get('/rfq', function () { return Inertia::render('Dashboard/RFQ/RFQ'); })->name('rfq');
+    Route::get('/rfq', function () {
+        return Inertia::render('Dashboard/RFQ/RFQ');
+    })->name('rfq.index');
 
     Route::get('/quotation', function () { return Inertia::render('Dashboard/Quotations/Quotations'); })->name('Quotation');
 
@@ -320,5 +325,60 @@ Route::get('/quotations/rfq/{rfqId}', function ($rfqId) {
         ]
     ]);
 })->name('quotations.rfq');
+
+Route::get('/download/{filename}', function ($filename) {
+    $decodedFilename = urldecode($filename);
+    
+    // Check if the filename is a path or just a name
+    $filePath = strpos($decodedFilename, '/') !== false 
+        ? storage_path('app/public/' . $decodedFilename) 
+        : storage_path('app/public/rfq-attachments/' . $decodedFilename);
+
+    // If file doesn't exist, try without the public prefix
+    if (!file_exists($filePath)) {
+        $filePath = strpos($decodedFilename, '/') !== false
+            ? storage_path('app/' . $decodedFilename)
+            : storage_path('app/rfq-attachments/' . $decodedFilename);
+    }
+
+    if (!file_exists($filePath)) {
+        // Log to help debug missing files
+        \Log::error("File not found: $decodedFilename (looked at path: $filePath)");
+        abort(404, 'File not found');
+    }
+
+    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+    $mimeType = '';
+    
+    // Set appropriate content type
+    switch (strtolower($extension)) {
+        case 'pdf':
+            $mimeType = 'application/pdf';
+            break;
+        case 'doc':
+            $mimeType = 'application/msword';
+            break;
+        case 'docx':
+            $mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            break;
+        case 'jpg':
+        case 'jpeg':
+            $mimeType = 'image/jpeg';
+            break;
+        case 'png':
+            $mimeType = 'image/png';
+            break;
+        default:
+            $mimeType = 'application/octet-stream';
+    }
+    
+    // Use the original filename for the download
+    $headers = [
+        'Content-Type' => $mimeType,
+        'Content-Disposition' => 'inline; filename="' . basename($decodedFilename) . '"',
+    ];
+
+    return response()->file($filePath, $headers);
+})->where('filename', '.*')->name('file.download');
 
 require __DIR__.'/auth.php';
