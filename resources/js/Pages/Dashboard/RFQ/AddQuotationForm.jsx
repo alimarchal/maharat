@@ -206,7 +206,6 @@ export default function AddQuotationForm({ auth }) {
                     { name: 'brands', url: '/api/v1/brands' },
                     { name: 'categories', url: '/api/v1/product-categories' },
                     { name: 'warehouses', url: '/api/v1/warehouses' },
-                    { name: 'statuses', url: '/api/v1/statuses' },
                 ];
     
                 // Fetch each endpoint and handle potential errors individually
@@ -280,27 +279,124 @@ export default function AddQuotationForm({ auth }) {
                             setWarehouseNames(warehouseLookup);
                             break;
                         
-                        case 'statuses':
-                            // Filter payment types from statuses
-                            const paymentTypes = result.data.filter(
-                                status => status.type === 'payment_type' || status.type?.includes('payment')
-                            );
-                            setPaymentTypes(paymentTypes.length > 0 ? paymentTypes : result.data.slice(0, 3));
+                        default:
+                            break;
+                    }
+                });
+    
+                // Fetch ALL statuses separately with pagination handling
+                try {
+                    // Try to get all statuses in one request with a large page size
+                    const statusesResponse = await axios.get('/api/v1/statuses', {
+                        params: {
+                            per_page: 100 // Request up to 100 records per page
+                        }
+                    });
+                    
+                    console.log("Statuses response with per_page=100:", statusesResponse.data);
+                    
+                    let allStatuses = [];
+                    
+                    if (statusesResponse.data && statusesResponse.data.data) {
+                        allStatuses = statusesResponse.data.data;
+                        
+                        // Check if we have pagination metadata
+                        const meta = statusesResponse.data.meta;
+                        if (meta) {
+                            console.log("Pagination metadata:", meta);
+                            
+                            // If we have pagination info and there are more pages
+                            if (meta.last_page && meta.last_page > 1 && meta.current_page === 1) {
+                                // Fetch all remaining pages
+                                const remainingRequests = [];
+                                
+                                for (let page = 2; page <= meta.last_page; page++) {
+                                    remainingRequests.push(
+                                        axios.get('/api/v1/statuses', {
+                                            params: {
+                                                per_page: 100,
+                                                page: page
+                                            }
+                                        })
+                                    );
+                                }
+                                
+                                console.log(`Fetching ${remainingRequests.length} additional pages of statuses...`);
+                                
+                                // Execute all remaining requests
+                                const remainingResponses = await Promise.all(remainingRequests);
+                                
+                                // Combine all results
+                                remainingResponses.forEach(response => {
+                                    if (response.data && response.data.data) {
+                                        allStatuses = [...allStatuses, ...response.data.data];
+                                    }
+                                });
+                            }
+                        }
+                        
+                        console.log(`Total statuses fetched: ${allStatuses.length}`);
+                        
+                        // Filter for payment types
+                        const paymentTypes = allStatuses.filter(status => 
+                            status.type && status.type.toLowerCase() === 'payment'
+                        );
+                        
+                        console.log("Filtered payment types:", paymentTypes);
+                        
+                        // If we found payment types, use them
+                        if (paymentTypes.length > 0) {
+                            setPaymentTypes(paymentTypes);
                             
                             // Create lookup map for payment types
                             const paymentTypeLookup = {};
                             paymentTypes.forEach(type => {
                                 if (type && type.id) {
-                                    paymentTypeLookup[String(type.id)] = type.name; // Ensure keys are strings
+                                    paymentTypeLookup[String(type.id)] = type.name;
                                 }
                             });
                             setPaymentTypeNames(paymentTypeLookup);
-                            break;
+                        } else {
+                            // If no payment types found, use all statuses instead
+                            console.log("No payment types found, using all statuses instead");
+                            setPaymentTypes(allStatuses);
                             
-                        default:
-                            break;
+                            // Create lookup map for all statuses
+                            const statusesLookup = {};
+                            allStatuses.forEach(status => {
+                                if (status && status.id) {
+                                    statusesLookup[String(status.id)] = `${status.name} (${status.type})`;
+                                }
+                            });
+                            setPaymentTypeNames(statusesLookup);
+                        }
                     }
-                });
+                } catch (error) {
+                    console.error("Error fetching all statuses:", error);
+                    
+                    // Fallback: Try to fetch statuses again with the original method
+                    try {
+                        const fallbackResponse = await axios.get('/api/v1/statuses');
+                        if (fallbackResponse.data && fallbackResponse.data.data) {
+                            const fallbackStatuses = fallbackResponse.data.data;
+                            console.log("Fallback: using initial statuses:", fallbackStatuses);
+                            
+                            setPaymentTypes(fallbackStatuses);
+                            
+                            const fallbackLookup = {};
+                            fallbackStatuses.forEach(status => {
+                                if (status && status.id) {
+                                    fallbackLookup[String(status.id)] = `${status.name} (${status.type})`;
+                                }
+                            });
+                            setPaymentTypeNames(fallbackLookup);
+                        }
+                    } catch (fallbackError) {
+                        console.error("Fallback fetch also failed:", fallbackError);
+                        setPaymentTypes([]);
+                        setPaymentTypeNames({});
+                    }
+                }
     
                 // Log lookup information after loading
                 console.log("Category mapping:", categoryNames);
@@ -758,7 +854,7 @@ export default function AddQuotationForm({ auth }) {
                                 type="email"
                                 value={formData.organization_email}
                                 onChange={(e) => handleFormInputChange('organization_email', e.target.value)}
-                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                className="text-black bg-blue-50 focus:ring-0 w-full outline-none border-none text-lg"
                                 required
                             />
 
@@ -767,69 +863,54 @@ export default function AddQuotationForm({ auth }) {
                                 type="text"
                                 value={formData.city}
                                 onChange={(e) => handleFormInputChange('city', e.target.value)}
-                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                className="text-black bg-blue-50 focus:ring-0 w-full outline-none border-none text-lg"
                                 required
                             />
 
                             <span className="font-medium text-gray-600">Category:</span>
-                            <div className="relative w-full">
+                            <div className="relative ml-3">
                                 <select
-                                    value={formData.category_id || ''}
+                                    value={formData.category_id}
                                     onChange={(e) => handleFormInputChange('category_id', e.target.value)}
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none focus:ring-0 focus:outline-none w-full appearance-none cursor-pointer"
-                                    style={{ colorScheme: "light" }}
+                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
                                     required
                                 >
-                                    <option value="">Select Category</option>
-                                    {categories.map((category) => (
-                                        <option
-                                            key={category.id}
-                                            value={String(category.id)}
-                                            className="text-[#009FDC] bg-blue-50"
-                                            selected={String(category.id) === String(formData.category_id)}
-                                        >
-                                            {category.name}
-                                        </option>
-                                    ))}
+                                    <option value="">
+                                        {categories.length > 0 && categories[0].name ? categories[0].name : "Select Category"}
+                                    </option>
+                                    {categories
+                                        .filter((category) => category.name && category.id !== (categories[0]?.id || ""))
+                                        .map((category) => (
+                                            <option key={category.id} value={category.id} className="text-[#009FDC] bg-blue-50">
+                                                {category.name}
+                                            </option>
+                                        ))}
                                 </select>
-                                {/* Debug info - can be removed in production */}
-                                {isEditing && formData.category_id && (
-                                    <div className="text-xs text-gray-500">
-                                        ID: {formData.category_id}, Name: {categoryNames[formData.category_id] || 'Not found'}
-                                    </div>
-                                )}
                             </div>
 
                             <span className="font-medium text-gray-600">Warehouse:</span>
-                            <div className="relative w-full">
+                            <div className="relative ml-3">
                                 <select
-                                    value={formData.warehouse_id || ''}
+                                    value={formData.warehouse_id}
                                     onChange={(e) => handleFormInputChange('warehouse_id', e.target.value)}
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none focus:ring-0 focus:outline-none w-full appearance-none cursor-pointer"
-                                    style={{ colorScheme: "light" }}
+                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
                                     required
                                 >
-                                    <option value="">Select Warehouse</option>
-                                    {warehouses.map((warehouse) => (
-                                        <option
-                                            key={warehouse.id}
-                                            value={String(warehouse.id)}
-                                            className="text-[#009FDC] bg-blue-50"
-                                            selected={String(warehouse.id) === String(formData.warehouse_id)}
-                                        >
-                                            {warehouse.name}
-                                        </option>
-                                    ))}
+                                    {warehouses.length > 0 && warehouses[0].name ? (
+                                        <option value={warehouses[0].id}>{warehouses[0].name}</option>
+                                    ) : (
+                                        <option value="">Select Warehouse</option>
+                                    )}
+                                    {warehouses
+                                        .filter((warehouse) => warehouse.name && warehouse.id !== (warehouses[0]?.id || ""))
+                                        .map((warehouse) => (
+                                            <option key={warehouse.id} value={warehouse.id} className="text-[#009FDC] bg-blue-50">
+                                                {warehouse.name}
+                                            </option>
+                                        ))}
                                 </select>
-                                {/* Debug info - can be removed in production */}
-                                {isEditing && formData.warehouse_id && (
-                                    <div className="text-xs text-gray-500">
-                                        ID: {formData.warehouse_id}, Name: {warehouseNames[formData.warehouse_id] || 'Not found'}
-                                    </div>
-                                )}
                             </div>
-                            </div>
-
+                        </div>
 
                         {/* Right Column */}
                         <div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-center">
@@ -838,7 +919,7 @@ export default function AddQuotationForm({ auth }) {
                                 type="date"
                                 value={formData.issue_date}
                                 onChange={(e) => handleFormInputChange('issue_date', e.target.value)}
-                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                className="text-black bg-blue-50 focus:ring-0 outline-none border-none w-40 ml-2 text-lg"
                                 required
                             />
 
@@ -847,7 +928,7 @@ export default function AddQuotationForm({ auth }) {
                                 type="date"
                                 value={formData.closing_date}
                                 onChange={(e) => handleFormInputChange('closing_date', e.target.value)}
-                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                className="text-black bg-blue-50 focus:ring-0 outline-none border-none w-40 ml-2 text-lg"
                                 required
                             />
 
@@ -856,39 +937,33 @@ export default function AddQuotationForm({ auth }) {
                                 type="text"
                                 value={formData.rfq_id}
                                 onChange={(e) => handleFormInputChange('rfq_id', e.target.value)}
-                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
-                                readOnly={!isEditing} // Make it readonly for new RFQs
+                                className="text-black bg-blue-50 focus:ring-0 outline-none border-none w-full ml-2 text-lg"
+                                readOnly={!isEditing} 
                                 placeholder={isEditing ? "" : "Auto-generated by system"}
-                                required={isEditing} // Only required when editing
+                                required={isEditing}
                             />
 
                             <span className="font-medium text-gray-600">Payment Type:</span>
-                            <div className="relative w-full">
+                            <div className="relative ml-5"> {/* Adjusted to align */}
                                 <select
-                                    value={formData.payment_type || ''}
+                                    value={formData.payment_type}
                                     onChange={(e) => handleFormInputChange('payment_type', e.target.value)}
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none focus:ring-0 focus:outline-none w-full appearance-none cursor-pointer"
-                                    style={{ colorScheme: "light" }}
+                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-48 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
                                     required
                                 >
-                                    <option value="">Select Payment Type</option>
-                                    {paymentTypes.map((type) => (
-                                        <option 
-                                            key={type.id} 
-                                            value={String(type.id)} 
-                                            className="text-[#009FDC] bg-blue-50"
-                                            selected={String(type.id) === String(formData.payment_type)}
-                                        >
-                                            {type.name}
-                                        </option>
-                                    ))}
+                                    {paymentTypes.length > 0 && paymentTypes[0].name ? (
+                                        <option value={paymentTypes[0].id}>{paymentTypes[0].name}</option>
+                                    ) : (
+                                        <option value="">Select Payment Type</option>
+                                    )}
+                                    {paymentTypes
+                                        .filter((type) => type.name && type.id !== (paymentTypes[0]?.id || ""))
+                                        .map((type) => (
+                                            <option key={type.id} value={type.id} className="text-[#009FDC] bg-blue-50">
+                                                {type.name}
+                                            </option>
+                                        ))}
                                 </select>
-                                {/* Debug info - can be removed in production */}
-                                {isEditing && formData.payment_type && (
-                                    <div className="text-xs text-gray-500">
-                                        ID: {formData.payment_type}, Name: {paymentTypeNames[formData.payment_type] || 'Not found'}
-                                    </div>
-                                )}
                             </div>
 
                             <span className="font-medium text-gray-600">Contact No#:</span>
@@ -896,11 +971,11 @@ export default function AddQuotationForm({ auth }) {
                                 type="text"
                                 value={formData.contact_no}
                                 onChange={(e) => handleFormInputChange('contact_no', e.target.value)}
-                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                className="text-black bg-blue-50 focus:ring-0 outline-none border-none w-full ml-2 text-lg"
                                 required
                             />
                         </div>
-                        </div>
+                    </div>
 
                     {/* Item Table */}
                     <table className="w-full mt-4 table-fixed border-collapse">
