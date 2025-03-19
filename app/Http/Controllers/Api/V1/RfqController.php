@@ -16,7 +16,7 @@ class RfqController extends Controller
     public function index()
     {
         try {
-            $rfqs = Rfq::with(['status', 'items', 'department', 'costCenter', 'subCostCenter'])
+            $rfqs = Rfq::with(['status', 'items', 'department', 'costCenter', 'subCostCenter', 'requester'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(10);
 
@@ -76,42 +76,45 @@ class RfqController extends Controller
         return $rfqNumber;
     }
 
-    public function show(string $id)
+    public function show(string $id): JsonResponse
     {
         try {
             Log::info("Fetching RFQ with ID: $id");
-            
+
             // Find the RFQ with all necessary relationships
-            $rfq = Rfq::with([
-                'status', 
-                'items.unit', 
-                'items.brand', 
-                'warehouse'
-            ])->findOrFail($id);
-                
+            $rfq = QueryBuilder::for(Rfq::class)
+                ->allowedIncludes(RfqParameters::ALLOWED_INCLUDES)
+                ->with([
+                    'status',
+                    'items.unit',
+                    'items.brand',
+                    'warehouse',
+                    'requester' 
+                ])
+                ->findOrFail($id);
+
             // Get category info for this RFQ
             $category = DB::table('rfq_categories')
                 ->where('rfq_id', $id)
                 ->join('product_categories', 'rfq_categories.category_id', '=', 'product_categories.id')
                 ->select('product_categories.*')
                 ->first();
-                
+
             // If category exists, append it to RFQ
             if ($category) {
                 $rfq->category_id = $category->id;
                 $rfq->category_name = $category->name;
             }
-            
-            // For each item, make sure it includes the specification field as the original filename
+
+            // Ensure each item includes the specification field as the original filename
             foreach ($rfq->items as $item) {
-                // If attachment exists but no specifications (original filename)
                 if ($item->attachment && empty($item->specifications)) {
-                    // Use the filename part of the attachment path
                     $item->specifications = basename($item->attachment);
                 }
             }
-                
+
             Log::info("RFQ found and being returned");
+
             return response()->json([
                 'data' => new RfqResource($rfq)
             ], Response::HTTP_OK);
