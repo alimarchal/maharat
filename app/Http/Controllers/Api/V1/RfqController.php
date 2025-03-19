@@ -44,13 +44,12 @@ class RfqController extends Controller
     {
         $currentYear = date('Y');
 
-        // Fetch latest RFQ for the current year
-        $latestRfq = Rfq::where('rfq_number', 'like', "RFQ-$currentYear-%")
-            ->orderBy('id', 'desc') // Ensure it's the most recent entry
-            ->first();
+        // Fetch the latest RFQ based on ID (most recent entry)
+        $latestRfq = Rfq::orderBy('id', 'desc')->first();
 
-        // Extract last numeric part safely (4 digits)
         $lastNumber = 0;
+        
+        // Check if there's an existing RFQ and extract the last number
         if ($latestRfq && preg_match('/RFQ-\d{4}-(\d{4})/', $latestRfq->rfq_number, $matches)) {
             $lastNumber = intval($matches[1]);
         }
