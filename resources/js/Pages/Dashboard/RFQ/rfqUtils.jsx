@@ -33,6 +33,9 @@ export const fetchRFQData = async (rfqId, setFormData, setIsEditing, setLoading,
             return;
         }
         
+        // Log the raw data to check the actual values
+        console.log("Raw RFQ data from API:", rfqData);
+        
         setIsEditing(true);
         
         // Fetch RFQ items
@@ -45,42 +48,44 @@ export const fetchRFQData = async (rfqId, setFormData, setIsEditing, setLoading,
             console.error("Error fetching RFQ items:", itemsError);
         }
         
-        // Get category ID from the response data
+        // Get category ID from the response data - Convert to string to ensure proper comparison in dropdowns
         let categoryId = null;
         
         // Check if category_id is directly available
         if (rfqData.category_id) {
-            categoryId = rfqData.category_id;
+            categoryId = String(rfqData.category_id);
         } 
         // Check if categories is available as a relationship
         else if (rfqData.categories && rfqData.categories.length > 0) {
-            categoryId = rfqData.categories[0].id;
+            categoryId = String(rfqData.categories[0].id);
         }
         // If still not found, check for categories via a separate API call
         else {
             try {
                 const categoryResponse = await axios.get(`/api/v1/rfq-categories/${rfqId}`);
                 if (categoryResponse.data && categoryResponse.data.data && categoryResponse.data.data.length > 0) {
-                    categoryId = categoryResponse.data.data[0].category_id;
+                    categoryId = String(categoryResponse.data.data[0].category_id);
                 }
             } catch (categoryError) {
                 console.warn("Could not fetch category info:", categoryError);
             }
         }
         
-        // Format the data for the form
+        // Format the data for the form, with explicit type conversion
         const formattedData = {
             organization_email: getSafeValue(rfqData, 'organization_email'),
             city: getSafeValue(rfqData, 'city'),
             category_id: categoryId,
-            warehouse_id: getSafeValue(rfqData, 'warehouse_id'),
+            warehouse_id: String(getSafeValue(rfqData, 'warehouse_id')),
             issue_date: getSafeValue(rfqData, 'request_date')?.split('T')[0] || new Date().toISOString().split('T')[0],
             closing_date: getSafeValue(rfqData, 'closing_date')?.split('T')[0] || '',
             rfq_id: getSafeValue(rfqData, 'rfq_number', `RFQ-${new Date().getFullYear()}-`),
-            payment_type: getSafeValue(rfqData, 'payment_type'),
+            payment_type: String(getSafeValue(rfqData, 'payment_type')),
             contact_no: getSafeValue(rfqData, 'contact_number'),
-            status_id: getSafeValue(rfqData, 'status_id', 47)
+            status_id: String(getSafeValue(rfqData, 'status_id', 47))
         };
+        
+        console.log("Formatted form data with converted IDs:", formattedData);
         
         // Format items or provide a default empty item
         formattedData.items = rfqItemsData.length > 0 
@@ -98,14 +103,14 @@ export const fetchRFQData = async (rfqId, setFormData, setIsEditing, setLoading,
                     id: getSafeValue(item, 'id'),
                     item_name: getSafeValue(item, 'item_name'),
                     description: getSafeValue(item, 'description'),
-                    unit_id: getSafeValue(item, 'unit_id'),
+                    unit_id: String(getSafeValue(item, 'unit_id')), // Convert to string
                     quantity: getSafeValue(item, 'quantity'),
-                    brand_id: getSafeValue(item, 'brand_id'),
+                    brand_id: String(getSafeValue(item, 'brand_id')), // Convert to string
                     attachment: attachmentObj || getSafeValue(item, 'attachment'),
                     specifications: getSafeValue(item, 'specifications'),
                     expected_delivery_date: getSafeValue(item, 'expected_delivery_date')?.split('T')[0] || '',
                     rfq_id: rfqId,
-                    status_id: getSafeValue(item, 'status_id', 47)
+                    status_id: String(getSafeValue(item, 'status_id', 47)) // Convert to string
                 };
             }) 
             : [{
@@ -118,10 +123,10 @@ export const fetchRFQData = async (rfqId, setFormData, setIsEditing, setLoading,
                 specifications: "",
                 expected_delivery_date: "",
                 rfq_id: rfqId,
-                status_id: 47
+                status_id: "47"
             }];
             
-        console.log("Formatted RFQ data:", formattedData);
+        console.log("Final form data to be set:", formattedData);
         setFormData(formattedData);
         setLoading(false);
     } catch (error) {
@@ -149,9 +154,9 @@ export const fetchRFQData = async (rfqId, setFormData, setIsEditing, setLoading,
                 attachment: null,
                 specifications: "",
                 expected_delivery_date: "",
-                status_id: 47
+                status_id: "47"
             }],
-            status_id: 47,
+            status_id: "47",
         });
     }
 };

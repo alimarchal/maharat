@@ -334,7 +334,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/brands', [BrandController::class, 'index']);
 });
 
-Route::get('download/{filename}', function ($filename) {
+Route::get('download/{[filename]}', function ($filename) {
     $path = storage_path('app/public/rfq-attachments/' . $filename);
 
     if (!file_exists($path)) {

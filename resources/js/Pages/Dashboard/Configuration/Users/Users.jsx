@@ -215,7 +215,7 @@ useEffect(() => {
             const formDataToSend = new FormData();
     
             // Debugging log before sending
-            console.log("📌 FORM DATA BEFORE SUBMIT:", formData);
+            console.log("FORM DATA BEFORE SUBMIT:", formData);
     
             // IMPORTANT: Send both versions of these fields to ensure compatibility
             // with both validation rules AND database column names
@@ -259,13 +259,13 @@ useEffect(() => {
             formDataToSend.forEach((value, key) => {
                 formObject[key] = value;
             });
-            console.log("📤 FORM DATA BEING SENT:", formObject);
+            console.log("FORM DATA BEING SENT:", formObject);
     
             // If we have an ID, we're updating an existing user
             if (id) {
                 // For update operations
                 const apiUrl = `/api/v1/users/${id}`;
-                console.log("📌 Making PATCH request to:", apiUrl);
+                console.log("Making PATCH request to:", apiUrl);
                 
                 // Add a _method field to properly handle PATCH with FormData
                 formDataToSend.append("_method", "PATCH");
@@ -284,7 +284,7 @@ useEffect(() => {
             } else {
                 // For create operations - we add only what's needed for a new user
                 const apiUrl = "/api/v1/users";  // No ID in URL for creation
-                console.log("📌 Making POST request to:", apiUrl);
+                console.log("Making POST request to:", apiUrl);
                 
                 // Add required fields for new user creation
                 // We need a password for new users
@@ -298,19 +298,19 @@ useEffect(() => {
                     }
                 });
                 
-                console.log("✅ New user created:", response.data);
+                console.log("New user created:", response.data);
             }
     
-            console.log("✅ Response Status:", response.status);
-            console.log("✅ Response Data:", response.data);
+            console.log("Response Status:", response.status);
+            console.log("Response Data:", response.data);
     
             alert(isEditing ? "User updated successfully!" : "User added successfully!");
             router.visit("/chart");
         } catch (error) {
-            console.error("❌ Error saving user:", error);
+            console.error("Error saving user:", error);
     
             if (error.response && error.response.data) {
-                console.error("❌ Server Response Error:", error.response.data);
+                console.error("Server Response Error:", error.response.data);
     
                 if (error.response.data.errors) {
                     const errorMessages = Object.values(error.response.data.errors)

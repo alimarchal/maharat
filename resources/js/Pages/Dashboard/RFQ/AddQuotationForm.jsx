@@ -48,13 +48,118 @@ export default function AddQuotationForm({ auth }) {
     const [attachments, setAttachments] = useState({});
     const [unitNames, setUnitNames] = useState({});
     const [brandNames, setBrandNames] = useState({});
+    const [warehouseNames, setWarehouseNames] = useState({});
+    const [categoryNames, setCategoryNames] = useState({});
+    const [paymentTypeNames, setPaymentTypeNames] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Fetch RFQ data if rfqId is provided (editing mode)
     useEffect(() => {
         if (rfqId) {
-            fetchRFQData(rfqId, setFormData, setIsEditing, setLoading, setError);
+            setLoading(true);
+            setIsEditing(true);
+            
+            // Directly fetch RFQ data
+            axios.get(`/api/v1/rfqs/${rfqId}`)
+                .then(async response => {
+                    const rfqData = response.data?.data;
+                    
+                    if (!rfqData) {
+                        setError("RFQ not found or has invalid data format");
+                        setLoading(false);
+                        return;
+                    }
+                    
+                    console.log("Raw RFQ data from API:", rfqData);
+                    
+                    // For category, we need to fetch from rfq_categories
+                    let categoryId = rfqData.category_id ? String(rfqData.category_id) : "";
+                    
+                    // If category_id is empty, try to fetch from rfq_categories relationship
+                    if (!categoryId && rfqId) {
+                        try {
+                            const categoryResponse = await axios.get(`/api/v1/rfq-categories/${rfqId}`);
+                            console.log("Category data:", categoryResponse.data);
+                            
+                            if (categoryResponse.data && 
+                                categoryResponse.data.data && 
+                                categoryResponse.data.data.length > 0) {
+                                categoryId = String(categoryResponse.data.data[0].category_id);
+                            }
+                        } catch (err) {
+                            console.error("Error fetching category:", err);
+                        }
+                    }
+                    
+                    // Extract items from the response
+                    const rfqItems = rfqData.items || [];
+                    
+                    // Format the items for the form
+                    const formattedItems = rfqItems.map(item => {
+                        // Process attachment info properly
+                        let attachmentObj = null;
+                        if (item.attachment) {
+                            attachmentObj = {
+                                attachment: item.attachment,
+                                specifications: item.specifications || item.attachment.split('/').pop()
+                            };
+                        }
+                        
+                        return {
+                            id: item.id,
+                            item_name: item.item_name || '',
+                            description: item.description || '',
+                            unit_id: item.unit_id ? String(item.unit_id) : '',
+                            quantity: item.quantity || '',
+                            brand_id: item.brand_id ? String(item.brand_id) : '',
+                            attachment: attachmentObj,
+                            specifications: item.specifications || '',
+                            expected_delivery_date: item.expected_delivery_date?.split('T')[0] || '',
+                            rfq_id: rfqId,
+                            status_id: item.status_id ? String(item.status_id) : '47'
+                        };
+                    });
+                    
+                    // If no items, add a default empty one
+                    if (formattedItems.length === 0) {
+                        formattedItems.push({
+                            item_name: "",
+                            description: "",
+                            unit_id: "",
+                            quantity: "",
+                            brand_id: "",
+                            attachment: null,
+                            expected_delivery_date: "",
+                            rfq_id: rfqId,
+                            status_id: "47"
+                        });
+                    }
+                    
+                    // Format the main form data
+                    // Fix: Ensure all IDs are strings with explicit conversion
+                    const formattedData = {
+                        organization_email: rfqData.organization_email || '',
+                        city: rfqData.city || '',
+                        category_id: categoryId, // Already converted to string above
+                        warehouse_id: rfqData.warehouse_id ? String(rfqData.warehouse_id) : '',
+                        issue_date: rfqData.request_date?.split('T')[0] || new Date().toISOString().split('T')[0],
+                        closing_date: rfqData.closing_date?.split('T')[0] || '',
+                        rfq_id: rfqData.rfq_number || '',
+                        payment_type: rfqData.payment_type ? String(rfqData.payment_type) : '',
+                        contact_no: rfqData.contact_number || '',
+                        status_id: rfqData.status_id ? String(rfqData.status_id) : '47',
+                        items: formattedItems
+                    };
+                    
+                    console.log("Setting form data:", formattedData);
+                    setFormData(formattedData);
+                    setLoading(false);
+                })
+                .catch(error => {
+                    console.error("Error fetching RFQ data:", error);
+                    setError("Failed to load RFQ data: " + (error.response?.data?.message || error.message || "Unknown error"));
+                    setLoading(false);
+                });
         } else {
             // In create mode, get new RFQ number
             axios.get('/api/v1/rfqs/form-data')
@@ -78,17 +183,140 @@ export default function AddQuotationForm({ auth }) {
 
     // Fetch lookup data (categories, warehouses, etc.)
     useEffect(() => {
-        fetchLookupData(
-            setLoading, 
-            setError, 
-            setUnits, 
-            setBrands, 
-            setCategories, 
-            setWarehouses, 
-            setPaymentTypes, 
-            setUnitNames, 
-            setBrandNames
-        );
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                
+                // Define the API endpoints to fetch
+                const endpoints = [
+                    { name: 'units', url: '/api/v1/units' },
+                    { name: 'brands', url: '/api/v1/brands' },
+                    { name: 'categories', url: '/api/v1/product-categories' },
+                    { name: 'warehouses', url: '/api/v1/warehouses' },
+                    { name: 'statuses', url: '/api/v1/statuses' },
+                ];
+    
+                // Fetch each endpoint and handle potential errors individually
+                const results = await Promise.all(
+                    endpoints.map(async (endpoint) => {
+                        try {
+                            const response = await axios.get(endpoint.url);
+                            return { 
+                                name: endpoint.name,
+                                data: response.data?.data || [] 
+                            };
+                        } catch (error) {
+                            console.warn(`Failed to fetch ${endpoint.name}:`, error);
+                            return { name: endpoint.name, data: [] };
+                        }
+                    })
+                );
+    
+                // Apply results to state
+                results.forEach(result => {
+                    switch(result.name) {
+                        case 'units':
+                            setUnits(result.data);
+                            
+                            // Create lookup map for units
+                            const unitLookup = {};
+                            result.data.forEach(unit => {
+                                if (unit && unit.id) {
+                                    unitLookup[String(unit.id)] = unit.name; // Ensure keys are strings
+                                }
+                            });
+                            setUnitNames(unitLookup);
+                            break;
+                            
+                        case 'brands':
+                            setBrands(result.data);
+                            
+                            // Create lookup map for brands
+                            const brandLookup = {};
+                            result.data.forEach(brand => {
+                                if (brand && brand.id) {
+                                    brandLookup[String(brand.id)] = brand.name; // Ensure keys are strings
+                                }
+                            });
+                            setBrandNames(brandLookup);
+                            break;
+                            
+                        case 'categories':
+                            setCategories(result.data);
+                            
+                            // Create lookup map for categories
+                            const categoryLookup = {};
+                            result.data.forEach(category => {
+                                if (category && category.id) {
+                                    categoryLookup[String(category.id)] = category.name; // Ensure keys are strings
+                                }
+                            });
+                            setCategoryNames(categoryLookup);
+                            break;
+                            
+                        case 'warehouses':
+                            setWarehouses(result.data);
+                            
+                            // Create lookup map for warehouses
+                            const warehouseLookup = {};
+                            result.data.forEach(warehouse => {
+                                if (warehouse && warehouse.id) {
+                                    warehouseLookup[String(warehouse.id)] = warehouse.name; // Ensure keys are strings
+                                }
+                            });
+                            setWarehouseNames(warehouseLookup);
+                            break;
+                        
+                        case 'statuses':
+                            // Filter payment types from statuses
+                            const paymentTypes = result.data.filter(
+                                status => status.type === 'payment_type' || status.type?.includes('payment')
+                            );
+                            setPaymentTypes(paymentTypes.length > 0 ? paymentTypes : result.data.slice(0, 3));
+                            
+                            // Create lookup map for payment types
+                            const paymentTypeLookup = {};
+                            paymentTypes.forEach(type => {
+                                if (type && type.id) {
+                                    paymentTypeLookup[String(type.id)] = type.name; // Ensure keys are strings
+                                }
+                            });
+                            setPaymentTypeNames(paymentTypeLookup);
+                            break;
+                            
+                        default:
+                            break;
+                    }
+                });
+    
+                // Log lookup information after loading
+                console.log("Category mapping:", categoryNames);
+                console.log("Warehouse mapping:", warehouseNames);
+                console.log("Payment type mapping:", paymentTypeNames);
+                console.log("Form data after loading lookup data:", formData);
+    
+                setLoading(false);
+            } catch (error) {
+                console.error('Error fetching lookup data:', error);
+                setError('Failed to load reference data. Some options may be unavailable.');
+                
+                // Set empty arrays for all data to prevent further errors
+                setUnits([]);
+                setBrands([]);
+                setCategories([]);
+                setWarehouses([]);
+                setPaymentTypes([]);
+                setUnitNames({});
+                setBrandNames({});
+                setWarehouseNames({});
+                setCategoryNames({});
+                setPaymentTypeNames({});
+                
+                setLoading(false);
+            }
+        };
+    
+        fetchData();
     }, []);
 
     const handleSubmit = async (e) => {
@@ -98,9 +326,8 @@ export default function AddQuotationForm({ auth }) {
             const formDataObj = new FormData();
     
             // Basic validation
-            if (!formData.organization_email || !formData.city || !formData.category_id || 
-                !formData.warehouse_id || !formData.issue_date || !formData.closing_date ||
-                !formData.payment_type) {
+            if (!formData.organization_email || !formData.city || 
+                !formData.issue_date || !formData.closing_date) {
                 alert("Please fill out all required fields in the top section.");
                 return;
             }
@@ -110,10 +337,10 @@ export default function AddQuotationForm({ auth }) {
             formDataObj.append('city', formData.city || '');
             
             // For numeric values, ensure we have valid numbers or send empty string
-            const categoryId = formData.category_id ? parseInt(formData.category_id, 10) : '';
-            const warehouseId = formData.warehouse_id ? parseInt(formData.warehouse_id, 10) : '';
-            const paymentType = formData.payment_type ? parseInt(formData.payment_type, 10) : '';
-            const statusId = formData.status_id ? parseInt(formData.status_id, 10) : 47;
+            const categoryId = formData.category_id || ''; // Don't convert to int if we have an empty string
+            const warehouseId = formData.warehouse_id || ''; // Don't convert to int if we have an empty string
+            const paymentType = formData.payment_type || ''; // Don't convert to int if we have an empty string
+            const statusId = formData.status_id || '47';
             
             formDataObj.append('category_id', categoryId);
             formDataObj.append('warehouse_id', warehouseId);
@@ -141,9 +368,9 @@ export default function AddQuotationForm({ auth }) {
                 status_id: statusId
             });
     
-            // Filter and validate items
+            // Filter and validate items - allow items without category/warehouse/payment for update
             const validItems = formData.items.filter(item => 
-                item.item_name && item.unit_id && item.quantity && item.expected_delivery_date
+                item.item_name && item.quantity
             );
             
             if (validItems.length === 0) {
@@ -164,29 +391,26 @@ export default function AddQuotationForm({ auth }) {
                 formDataObj.append(`items[${index}][quantity]`, item.quantity || '');
                 formDataObj.append(`items[${index}][expected_delivery_date]`, item.expected_delivery_date || '');
                 
-                // Add unit_id, brand_id, status_id - make sure they're integers
-                if (item.unit_id) {
-                    formDataObj.append(`items[${index}][unit_id]`, parseInt(item.unit_id, 10));
-                }
-                
-                if (item.brand_id) {
-                    formDataObj.append(`items[${index}][brand_id]`, parseInt(item.brand_id, 10));
-                }
-                
-                // Default to status_id 47 if not set
-                formDataObj.append(`items[${index}][status_id]`, item.status_id ? parseInt(item.status_id, 10) : 47);
+                // Add unit_id, brand_id, status_id - without parseInt which could convert empty strings to NaN
+                formDataObj.append(`items[${index}][unit_id]`, item.unit_id || '');
+                formDataObj.append(`items[${index}][brand_id]`, item.brand_id || '');
+                formDataObj.append(`items[${index}][status_id]`, item.status_id || '47');
                 
                 // Always add rfq_id to each item
                 formDataObj.append(`items[${index}][rfq_id]`, rfqId || null);
             });
             
             // Handle attachments (files)
+            console.log("Attachments to be sent:", attachments);
             if (attachments && Object.keys(attachments).length > 0) {
                 Object.keys(attachments).forEach(index => {
-                    const itemIndex = validItems.findIndex((_, i) => i.toString() === index.toString());
-                    if (itemIndex !== -1 && attachments[index]) {
-                        formDataObj.append(`attachments[${itemIndex}]`, attachments[index]);
-                        console.log(`Added attachment for item ${itemIndex}:`, attachments[index].name);
+                    if (attachments[index]) {
+                        // Find the corresponding item index in validItems
+                        const itemIndex = validItems.findIndex((_, i) => i.toString() === index.toString());
+                        if (itemIndex !== -1) {
+                            formDataObj.append(`attachments[${itemIndex}]`, attachments[index]);
+                            console.log(`Added attachment for item ${itemIndex}:`, attachments[index].name);
+                        }
                     }
                 });
             }
@@ -202,8 +426,16 @@ export default function AddQuotationForm({ auth }) {
             // Always use POST for FormData with method spoofing for PUT
             console.log(`Making ${rfqId ? 'PUT' : 'POST'} request to ${url}`);
             
+            // Print out all formDataObj keys and values for debugging
+            for (let pair of formDataObj.entries()) {
+                console.log(pair[0], pair[1]);
+            }
+            
             const response = await axios.post(url, formDataObj, {
-                headers: { 'Content-Type': 'multipart/form-data' },
+                headers: { 
+                    'Content-Type': 'multipart/form-data',
+                    'Accept': 'application/json'
+                },
             });
     
             if (response.data && response.data.success === true) {
@@ -268,14 +500,20 @@ export default function AddQuotationForm({ auth }) {
     const handleFileChange = (index, e) => {
         const file = e.target.files[0];
         if (file) {
+            // Store the file object for FormData submission
             setAttachments(prev => ({
                 ...prev,
                 [index]: file
             }));
             
+            // For display and storage in formData state
+            // We store the file object but when saved to database it will be stored as path
+            // in the format "rfq-attachments/hash" 
             const updatedItems = [...formData.items];
             updatedItems[index].attachment = file;
             updatedItems[index].tempUrl = URL.createObjectURL(file);
+            // Also store original filename in specifications
+            updatedItems[index].specifications = file.name;
             setFormData({ ...formData, items: updatedItems });
         }
     };
@@ -338,20 +576,24 @@ export default function AddQuotationForm({ auth }) {
                 fileName = file.specifications;
                 // If attachment is a string path
                 if (typeof file.attachment === 'string') {
-                    fileUrl = `/download/${encodeURIComponent(file.attachment.split('/').pop())}`;
+                    // Use the full path stored in the database for download
+                    fileUrl = `/download/${encodeURIComponent(file.attachment)}`;
                 }
             }
             // For simple string paths from database
             else if (typeof file === 'string') {
+                // For stored path like "rfq-attachments/filename.pdf"
+                // Extract just the filename for display but use full path for URL
                 fileName = file.split('/').pop();
-                fileUrl = `/download/${encodeURIComponent(fileName)}`;
+                fileUrl = `/download/${encodeURIComponent(file)}`;
             }
             // For objects with attachment property
             else if (typeof file === 'object' && file.attachment) {
-                // If attachment is a string
+                // If attachment is a string (path)
                 if (typeof file.attachment === 'string') {
+                    // Display just filename but use full path for download
                     fileName = file.attachment.split('/').pop();
-                    fileUrl = `/download/${encodeURIComponent(fileName)}`;
+                    fileUrl = `/download/${encodeURIComponent(file.attachment)}`;
                 } else {
                     // If attachment is another object (shouldn't happen, but just in case)
                     fileName = "Attachment";
@@ -470,7 +712,7 @@ export default function AddQuotationForm({ auth }) {
                                 type="email"
                                 value={formData.organization_email}
                                 onChange={(e) => handleFormInputChange('organization_email', e.target.value)}
-                                className="text-black bg-blue-50 border-b border-gray-300 focus:border-blue-500 focus:ring-0 w-full"
+                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
                                 required
                             />
 
@@ -479,7 +721,7 @@ export default function AddQuotationForm({ auth }) {
                                 type="text"
                                 value={formData.city}
                                 onChange={(e) => handleFormInputChange('city', e.target.value)}
-                                className="text-black bg-blue-50 border-b border-gray-300 focus:border-blue-500 focus:ring-0 w-full"
+                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
                                 required
                             />
 
@@ -488,7 +730,7 @@ export default function AddQuotationForm({ auth }) {
                                 <select
                                     value={formData.category_id || ''}
                                     onChange={(e) => handleFormInputChange('category_id', e.target.value)}
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-b border-gray-300 focus:border-blue-500 focus:ring-0 w-full appearance-none pl-0 pr-6 cursor-pointer"
+                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none focus:ring-0 focus:outline-none w-full appearance-none cursor-pointer"
                                     style={{ colorScheme: "light" }}
                                     required
                                 >
@@ -496,13 +738,20 @@ export default function AddQuotationForm({ auth }) {
                                     {categories.map((category) => (
                                         <option
                                             key={category.id}
-                                            value={category.id}
+                                            value={String(category.id)}
                                             className="text-[#009FDC] bg-blue-50"
+                                            selected={String(category.id) === String(formData.category_id)}
                                         >
                                             {category.name}
                                         </option>
                                     ))}
                                 </select>
+                                {/* Debug info - can be removed in production */}
+                                {isEditing && formData.category_id && (
+                                    <div className="text-xs text-gray-500">
+                                        ID: {formData.category_id}, Name: {categoryNames[formData.category_id] || 'Not found'}
+                                    </div>
+                                )}
                             </div>
 
                             <span className="font-medium text-gray-600">Warehouse:</span>
@@ -510,7 +759,7 @@ export default function AddQuotationForm({ auth }) {
                                 <select
                                     value={formData.warehouse_id || ''}
                                     onChange={(e) => handleFormInputChange('warehouse_id', e.target.value)}
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-b border-gray-300 focus:border-blue-500 focus:ring-0 w-full appearance-none pl-0 pr-6 cursor-pointer"
+                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none focus:ring-0 focus:outline-none w-full appearance-none cursor-pointer"
                                     style={{ colorScheme: "light" }}
                                     required
                                 >
@@ -518,15 +767,23 @@ export default function AddQuotationForm({ auth }) {
                                     {warehouses.map((warehouse) => (
                                         <option
                                             key={warehouse.id}
-                                            value={warehouse.id}
+                                            value={String(warehouse.id)}
                                             className="text-[#009FDC] bg-blue-50"
+                                            selected={String(warehouse.id) === String(formData.warehouse_id)}
                                         >
                                             {warehouse.name}
                                         </option>
                                     ))}
                                 </select>
+                                {/* Debug info - can be removed in production */}
+                                {isEditing && formData.warehouse_id && (
+                                    <div className="text-xs text-gray-500">
+                                        ID: {formData.warehouse_id}, Name: {warehouseNames[formData.warehouse_id] || 'Not found'}
+                                    </div>
+                                )}
                             </div>
-                        </div>
+                            </div>
+
 
                         {/* Right Column */}
                         <div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-center">
@@ -535,7 +792,7 @@ export default function AddQuotationForm({ auth }) {
                                 type="date"
                                 value={formData.issue_date}
                                 onChange={(e) => handleFormInputChange('issue_date', e.target.value)}
-                                className="text-black bg-blue-50 border-b border-gray-300 focus:border-blue-500 focus:ring-0 w-full"
+                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
                                 required
                             />
 
@@ -544,7 +801,7 @@ export default function AddQuotationForm({ auth }) {
                                 type="date"
                                 value={formData.closing_date}
                                 onChange={(e) => handleFormInputChange('closing_date', e.target.value)}
-                                className="text-black bg-blue-50 border-b border-gray-300 focus:border-blue-500 focus:ring-0 w-full"
+                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
                                 required
                             />
 
@@ -553,7 +810,7 @@ export default function AddQuotationForm({ auth }) {
                                 type="text"
                                 value={formData.rfq_id}
                                 onChange={(e) => handleFormInputChange('rfq_id', e.target.value)}
-                                className="text-black bg-blue-50 border-b border-gray-300 focus:border-blue-500 focus:ring-0 w-full"
+                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
                                 readOnly={!isEditing} // Make it readonly for new RFQs
                                 placeholder={isEditing ? "" : "Auto-generated by system"}
                                 required={isEditing} // Only required when editing
@@ -564,17 +821,28 @@ export default function AddQuotationForm({ auth }) {
                                 <select
                                     value={formData.payment_type || ''}
                                     onChange={(e) => handleFormInputChange('payment_type', e.target.value)}
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-b border-gray-300 focus:border-blue-500 focus:ring-0 w-full appearance-none pl-0 pr-6 cursor-pointer"
+                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none focus:ring-0 focus:outline-none w-full appearance-none cursor-pointer"
                                     style={{ colorScheme: "light" }}
                                     required
                                 >
                                     <option value="">Select Payment Type</option>
                                     {paymentTypes.map((type) => (
-                                        <option key={type.id} value={type.id} className="text-[#009FDC] bg-blue-50">
+                                        <option 
+                                            key={type.id} 
+                                            value={String(type.id)} 
+                                            className="text-[#009FDC] bg-blue-50"
+                                            selected={String(type.id) === String(formData.payment_type)}
+                                        >
                                             {type.name}
                                         </option>
                                     ))}
                                 </select>
+                                {/* Debug info - can be removed in production */}
+                                {isEditing && formData.payment_type && (
+                                    <div className="text-xs text-gray-500">
+                                        ID: {formData.payment_type}, Name: {paymentTypeNames[formData.payment_type] || 'Not found'}
+                                    </div>
+                                )}
                             </div>
 
                             <span className="font-medium text-gray-600">Contact No#:</span>
@@ -582,54 +850,61 @@ export default function AddQuotationForm({ auth }) {
                                 type="text"
                                 value={formData.contact_no}
                                 onChange={(e) => handleFormInputChange('contact_no', e.target.value)}
-                                className="text-black bg-blue-50 border-b border-gray-300 focus:border-blue-500 focus:ring-0 w-full"
+                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
                                 required
                             />
                         </div>
-                    </div>
+                        </div>
 
                     {/* Item Table */}
                     <table className="w-full mt-4 table-fixed border-collapse">
                         <thead>
                             <tr>
                                 <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Item Name</th>
-                                <th className="px-2 py-2 text-center w-[11%] bg-[#C7E7DE]">Description</th>
-                                <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">Unit</th>
-                                <th className="px-2 py-2 text-center w-[9%] bg-[#C7E7DE]">Quantity</th>
-                                <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">Brand</th>
-                                <th className="px-2 py-2 text-center w-[9%] bg-[#C7E7DE]">Attachment</th>
-                                <th className="px-2 py-2 text-center w-[13%] bg-[#C7E7DE]">Expected Delivery Date</th>
+                                <th className="px-2 py-2 text-center w-[15%] bg-[#C7E7DE]">Description</th>
+                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Unit</th>
+                                <th className="px-2 py-2 text-center w-[8%] bg-[#C7E7DE]">Quantity</th>
+                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Brand</th>
+                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Attachment</th>
+                                <th className="px-2 py-2 text-center w-[14%] bg-[#C7E7DE]">Expected Delivery Date</th>
                                 <th className="px-2 py-2 text-center w-[6%] bg-[#C7E7DE]">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {formData.items.map((item, index) => (
                                 <tr key={index}>
-                                    <td className="px-6 py-4 text-center align-middle">
+                                    <td className="px-6 py-6 text-center align-middle">
                                         <input
                                             type="text"
                                             value={item.item_name || ''}
                                             onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center"
+                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center min-h-[3rem]"
                                             style={{ background: 'none', outline: 'none', textAlign: 'center' }}
                                             required
                                         />
                                     </td>
-                                    <td className="px-6 py-4 text-center align-middle">
+                                    <td className="px-6 py-6 text-center align-middle">
                                         <textarea
                                             value={item.description || ''}
                                             onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal resize-none text-center"
-                                            style={{ background: 'none', outline: 'none', overflow: 'hidden', textAlign: 'center' }}
-                                            rows="1"
+                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal resize-none text-center min-h-[3rem]"
+                                            style={{ 
+                                                background: 'none', 
+                                                outline: 'none', 
+                                                overflow: 'hidden', 
+                                                textAlign: 'center',
+                                                wordWrap: 'break-word',
+                                                whiteSpace: 'normal'
+                                            }}
+                                            rows="2"
                                             required
                                             onInput={e => {
                                                 e.target.style.height = 'auto';
-                                                e.target.style.height = e.target.scrollHeight + 'px';
+                                                e.target.style.height = (e.target.scrollHeight) + 'px';
                                             }}
                                         />
                                     </td>
-                                    <td className="px-6 py-4 text-center align-middle">
+                                    <td className="px-6 py-6 text-center align-middle">
                                         <select
                                             value={item.unit_id || ''}
                                             onChange={(e) => handleItemChange(index, 'unit_id', e.target.value)}
@@ -643,7 +918,7 @@ export default function AddQuotationForm({ auth }) {
                                             ))}
                                         </select>
                                     </td>
-                                    <td className="px-6 py-4 text-center align-middle">
+                                    <td className="px-6 py-6 text-center align-middle">
                                         <input
                                             type="number"
                                             step="0.1"
@@ -655,7 +930,7 @@ export default function AddQuotationForm({ auth }) {
                                             required
                                         />
                                     </td>
-                                    <td className="px-6 py-4 text-center align-middle">
+                                    <td className="px-6 py-6 text-center align-middle">
                                         <select
                                             value={item.brand_id || ''}
                                             onChange={(e) => handleItemChange(index, 'brand_id', e.target.value)}
@@ -669,7 +944,7 @@ export default function AddQuotationForm({ auth }) {
                                             ))}
                                         </select>
                                     </td>
-                                    <td className="px-6 py-4 text-center">
+                                    <td className="px-6 py-6 text-center">
                                         <div className="flex flex-col items-center justify-center w-full">
                                             <FileDisplay file={item.attachment} />
                                             <input
@@ -687,7 +962,7 @@ export default function AddQuotationForm({ auth }) {
                                             </label>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-6 py-6 whitespace-nowrap">
                                         <input
                                             type="date"
                                             value={item.expected_delivery_date || ''}
@@ -696,7 +971,7 @@ export default function AddQuotationForm({ auth }) {
                                             required
                                         />
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-6 py-6 whitespace-nowrap">
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveItem(index)}

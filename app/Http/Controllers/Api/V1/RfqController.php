@@ -10,6 +10,8 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use App\Models\Status;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\JsonResponse;
+use Spatie\QueryBuilder\QueryBuilder;
 
 class RfqController extends Controller
 {
@@ -76,22 +78,19 @@ class RfqController extends Controller
         return $rfqNumber;
     }
 
-    public function show(string $id): JsonResponse
+    public function show(string $id)
     {
         try {
             Log::info("Fetching RFQ with ID: $id");
 
             // Find the RFQ with all necessary relationships
-            $rfq = QueryBuilder::for(Rfq::class)
-                ->allowedIncludes(RfqParameters::ALLOWED_INCLUDES)
-                ->with([
-                    'status',
-                    'items.unit',
-                    'items.brand',
-                    'warehouse',
-                    'requester' 
-                ])
-                ->findOrFail($id);
+            $rfq = Rfq::with([
+                'status',
+                'items.unit',
+                'items.brand',
+                'warehouse',
+                'requester'
+            ])->findOrFail($id);
 
             // Get category info for this RFQ
             $category = DB::table('rfq_categories')
