@@ -3,12 +3,7 @@ import { Head } from "@inertiajs/react";
 import { router, Link, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import axios from "axios";
-import { 
-    DocumentTextIcon, 
-    DocumentArrowDownIcon, 
-    EnvelopeIcon,
-    TrashIcon 
-} from "@heroicons/react/24/outline";
+import { DocumentTextIcon, DocumentArrowDownIcon, EnvelopeIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeftLong, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { fetchRFQData, fetchLookupData, getSafeValue } from "./rfqUtils";
@@ -95,14 +90,32 @@ export default function AddQuotationForm({ auth }) {
                     const rfqItems = rfqData.items || [];
                     
                     // Format the items for the form
+                    // Format the items for the form
                     const formattedItems = rfqItems.map(item => {
-                        // Process attachment info properly
                         let attachmentObj = null;
                         if (item.attachment) {
-                            attachmentObj = {
-                                attachment: item.attachment,
-                                specifications: item.specifications || item.attachment.split('/').pop()
-                            };
+                            if (typeof item.attachment === 'string') {
+                                // Extract just the path part, removing any domain
+                                let path = item.attachment;
+                                
+                                // If it's a full URL, extract just the path portion
+                                if (path.startsWith('http')) {
+                                    const urlObj = new URL(path);
+                                    path = urlObj.pathname; // This gives just the path part: /storage/rfq-attachments/...
+                                }
+                                
+                                // Create object with relative path
+                                attachmentObj = {
+                                    url: path, // Just the path, not the full URL
+                                    name: item.specifications || path.split('/').pop()
+                                };
+                            } else if (typeof item.attachment === 'object') {
+                                // Handle object attachment
+                                attachmentObj = {
+                                    url: item.attachment.url || item.attachment.path || '',
+                                    name: item.specifications || item.attachment.name || 'Attachment'
+                                };
+                            }
                         }
                         
                         return {
@@ -332,54 +345,20 @@ export default function AddQuotationForm({ auth }) {
                 return;
             }
     
-            // Main fields - add null/type checking
+            // Main fields
             formDataObj.append('organization_email', formData.organization_email || '');
             formDataObj.append('city', formData.city || '');
-            
-            // For numeric values, ensure we have valid numbers or send empty string
-            const categoryId = formData.category_id || ''; // Don't convert to int if we have an empty string
-            const warehouseId = formData.warehouse_id || ''; // Don't convert to int if we have an empty string
-            const paymentType = formData.payment_type || ''; // Don't convert to int if we have an empty string
-            const statusId = formData.status_id || '47';
-            
-            formDataObj.append('category_id', categoryId);
-            formDataObj.append('warehouse_id', warehouseId);
+            formDataObj.append('category_id', formData.category_id || '');
+            formDataObj.append('warehouse_id', formData.warehouse_id || '');
             formDataObj.append('request_date', formData.issue_date || '');
             formDataObj.append('closing_date', formData.closing_date || '');
-            
-            // Always include rfq_number for both creating and editing
             formDataObj.append('rfq_number', formData.rfq_id || '');
-            
-            formDataObj.append('payment_type', paymentType);
+            formDataObj.append('payment_type', formData.payment_type || '');
             formDataObj.append('contact_number', formData.contact_no || '');
-            formDataObj.append('status_id', statusId);
-            
-            // Log what's being sent
-            console.log("Sending main form fields:", {
-                organization_email: formData.organization_email,
-                city: formData.city,
-                category_id: categoryId,
-                warehouse_id: warehouseId,
-                request_date: formData.issue_date,
-                closing_date: formData.closing_date,
-                rfq_number: formData.rfq_id,
-                payment_type: paymentType,
-                contact_number: formData.contact_no,
-                status_id: statusId
-            });
+            formDataObj.append('status_id', formData.status_id || '47');
     
-            // Filter and validate items - allow items without category/warehouse/payment for update
-            const validItems = formData.items.filter(item => 
-                item.item_name && item.quantity
-            );
-            
-            if (validItems.length === 0) {
-                alert("Please add at least one item with all required fields filled out.");
-                return;
-            }
-            
-            // Process each valid item
-            validItems.forEach((item, index) => {
+            // Process each valid item and its attachments
+            formData.items.forEach((item, index) => {
                 // Add ID if it exists (for updating existing items)
                 if (item.id) {
                     formDataObj.append(`items[${index}][id]`, item.id);
@@ -390,47 +369,34 @@ export default function AddQuotationForm({ auth }) {
                 formDataObj.append(`items[${index}][description]`, item.description || '');
                 formDataObj.append(`items[${index}][quantity]`, item.quantity || '');
                 formDataObj.append(`items[${index}][expected_delivery_date]`, item.expected_delivery_date || '');
-                
-                // Add unit_id, brand_id, status_id - without parseInt which could convert empty strings to NaN
                 formDataObj.append(`items[${index}][unit_id]`, item.unit_id || '');
                 formDataObj.append(`items[${index}][brand_id]`, item.brand_id || '');
                 formDataObj.append(`items[${index}][status_id]`, item.status_id || '47');
-                
-                // Always add rfq_id to each item
                 formDataObj.append(`items[${index}][rfq_id]`, rfqId || null);
-            });
-            
-            // Handle attachments (files)
-            console.log("Attachments to be sent:", attachments);
-            if (attachments && Object.keys(attachments).length > 0) {
-                Object.keys(attachments).forEach(index => {
+    
+                // Handle file attachment
+                formData.items.forEach((item, index) => {
+                    Object.keys(item).forEach((key) => {
+                        formDataObj.append(`items[${index}][${key}]`, item[key]);
+                    });
+        
                     if (attachments[index]) {
-                        // Find the corresponding item index in validItems
-                        const itemIndex = validItems.findIndex((_, i) => i.toString() === index.toString());
-                        if (itemIndex !== -1) {
-                            formDataObj.append(`attachments[${itemIndex}]`, attachments[index]);
-                            console.log(`Added attachment for item ${itemIndex}:`, attachments[index].name);
-                        }
+                        formDataObj.append(
+                            `items[${index}][attachment]`,
+                            attachments[index]
+                        );
                     }
                 });
-            }
-            
-            // For PUT requests in Laravel, you need to include the _method field
+            });
+    
+            // For PUT requests in Laravel
             if (rfqId) {
                 formDataObj.append('_method', 'PUT');
             }
-            
+    
             // Use the appropriate URL based on whether creating or editing
             const url = rfqId ? `/api/v1/rfqs/${rfqId}` : '/api/v1/rfqs';
-            
-            // Always use POST for FormData with method spoofing for PUT
-            console.log(`Making ${rfqId ? 'PUT' : 'POST'} request to ${url}`);
-            
-            // Print out all formDataObj keys and values for debugging
-            for (let pair of formDataObj.entries()) {
-                console.log(pair[0], pair[1]);
-            }
-            
+    
             const response = await axios.post(url, formDataObj, {
                 headers: { 
                     'Content-Type': 'multipart/form-data',
@@ -450,7 +416,6 @@ export default function AddQuotationForm({ auth }) {
             console.error("Error details:", error.response?.data || error.message);
             
             if (error.response?.data?.errors) {
-                // Handle validation errors
                 const errorMessages = Object.values(error.response.data.errors)
                     .flat()
                     .join('\n');
@@ -500,21 +465,19 @@ export default function AddQuotationForm({ auth }) {
     const handleFileChange = (index, e) => {
         const file = e.target.files[0];
         if (file) {
-            // Store the file object for FormData submission
+            // Store the actual file object
             setAttachments(prev => ({
                 ...prev,
                 [index]: file
             }));
             
-            // For display and storage in formData state
-            // We store the file object but when saved to database it will be stored as path
-            // in the format "rfq-attachments/hash" 
+            // Update the form data with the file info
             const updatedItems = [...formData.items];
             updatedItems[index].attachment = file;
-            updatedItems[index].tempUrl = URL.createObjectURL(file);
-            // Also store original filename in specifications
-            updatedItems[index].specifications = file.name;
             setFormData({ ...formData, items: updatedItems });
+
+            // Optionally create a temporary URL for immediate display
+            updatedItems[index].tempUrl = URL.createObjectURL(file);
         }
     };
 
@@ -543,76 +506,159 @@ export default function AddQuotationForm({ auth }) {
         }));
     };
 
+    const handleSave = async (e) => {
+        if (e) e.preventDefault();
+        
+        try {
+            const formDataToSend = new FormData();
+            
+            // Add basic form data
+            Object.keys(formData).forEach(key => {
+                if (key !== 'items' && formData[key] !== null) {
+                    formDataToSend.append(key, formData[key]);
+                }
+            });
+
+            // Add items as a JSON string
+            if (formData.items && formData.items.length > 0) {
+                formDataToSend.append('items', JSON.stringify(formData.items));
+            }
+
+            // Add attachments separately
+            if (attachments) {
+                Object.keys(attachments).forEach(index => {
+                    formDataToSend.append(`attachments[${index}]`, attachments[index]);
+                });
+            }
+
+            const response = await axios.post('/api/v1/rfq-items', formDataToSend, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.data.success) {
+                alert('Items saved successfully!');
+                router.visit(route('rfq.index'));
+            }
+        } catch (error) {
+            console.error('Save error:', error);
+            alert(error.response?.data?.message || 'Failed to save items');
+        }
+    }; 
+
     const handleDownloadPDF = async () => {
         try {
             // First save the quotation if it hasn't been saved
-            if (!rfqId) {
-                await handleSubmit();
-                return; // The save function will redirect
+            if (!formData.id) {
+                await handleSave();
             }
 
-            // Open PDF in new tab
-            window.open(route('rfq.pdf', rfqId), '_blank');
+            // Option 1: View PDF in new tab
+            window.open(route('quotations.pdf.view', formData.id), '_blank');
+
+            // Option 2: Direct download
+            // window.location.href = route('quotations.pdf.download', formData.id);
         } catch (error) {
             console.error('Error handling PDF:', error);
             alert('Failed to process PDF request');
         }
     };
 
-    // Helper component for file display
-    const FileDisplay = ({ file }) => {
-        // Get the display filename - prioritize specifications field which contains the original filename
-        let fileName = null;
-        let fileUrl = null;
-        
-        if (file) {
-            // For new files uploaded in the current session
-            if (typeof file === 'object' && file.name) {
-                fileName = file.name;
-                fileUrl = file.tempUrl || null;
-            }
-            // For files with specifications field from the database
-            else if (typeof file === 'object' && file.specifications) {
-                fileName = file.specifications;
-                // If attachment is a string path
-                if (typeof file.attachment === 'string') {
-                    // Use the full path stored in the database for download
-                    fileUrl = `/download/${encodeURIComponent(file.attachment)}`;
-                }
-            }
-            // For simple string paths from database
-            else if (typeof file === 'string') {
-                // For stored path like "rfq-attachments/filename.pdf"
-                // Extract just the filename for display but use full path for URL
-                fileName = file.split('/').pop();
-                fileUrl = `/download/${encodeURIComponent(file)}`;
-            }
-            // For objects with attachment property
-            else if (typeof file === 'object' && file.attachment) {
-                // If attachment is a string (path)
-                if (typeof file.attachment === 'string') {
-                    // Display just filename but use full path for download
-                    fileName = file.attachment.split('/').pop();
-                    fileUrl = `/download/${encodeURIComponent(file.attachment)}`;
-                } else {
-                    // If attachment is another object (shouldn't happen, but just in case)
-                    fileName = "Attachment";
-                }
-            }
+    // Add this component for file display
+    // Modify the FileDisplay component with enhanced debugging
+    const FileDisplay = ({ file, onFileClick }) => {
+        // If no file, show empty state
+        if (!file) {
+            return (
+                <div className="flex flex-col items-center justify-center space-y-2">
+                    <DocumentArrowDownIcon className="h-6 w-6 text-gray-400" />
+                    <span className="text-sm text-gray-500">No file attached</span>
+                </div>
+            );
         }
     
+        // Get current origin (this is synchronous and doesn't need state)
+        const origin = window.location.origin;
+        
+        // Handle different file data structures
+        let fileName = '';
+        let fileUrl = null;
+        
+        // Case 1: File is a string URL (path)
+        if (typeof file === 'string') {
+            // Extract filename
+            fileName = file.split('/').pop();
+            try {
+                fileName = decodeURIComponent(fileName);
+            } catch (e) {
+                console.error('Error decoding filename:', e);
+            }
+            
+            // Ensure the path starts with a slash
+            const path = file.startsWith('/') ? file : `/${file}`;
+            fileUrl = `${origin}${path}`;
+        } 
+        // Case 2: File is a File object
+        else if (file instanceof File) {
+            fileName = file.name;
+            fileUrl = URL.createObjectURL(file);
+        } 
+        // Case 3: File is an object with properties
+        else if (file && typeof file === 'object') {
+            // For objects with url property
+            if (file.url) {
+                // Extract filename
+                fileName = file.name || file.url.split('/').pop();
+                try {
+                    fileName = decodeURIComponent(fileName);
+                } catch (e) {
+                    console.error('Error decoding filename:', e);
+                }
+                
+                // Convert to absolute URL using current origin
+                if (file.url.startsWith('http')) {
+                    // Already absolute URL
+                    fileUrl = file.url;
+                } else {
+                    // Relative path - prepend the current origin
+                    const path = file.url.startsWith('/') ? file.url : `/${file.url}`;
+                    fileUrl = `${origin}${path}`;
+                }
+            } else {
+                // Fallback with just the filename
+                fileName = file.name || 'Attachment';
+                fileUrl = `${origin}/storage/rfq-attachments/${fileName}`;
+            }
+        }
+        
+        console.log('FileDisplay final URL:', { 
+            origin,
+            fileName, 
+            fileUrl 
+        });
+        
         return (
             <div className="flex flex-col items-center justify-center space-y-2">
-                {fileName && (
-                    <DocumentArrowDownIcon 
-                        className="h-6 w-6 text-gray-400 cursor-pointer" 
-                        onClick={() => fileUrl && window.open(fileUrl, '_blank')}
-                    />
-                )}
+                <DocumentArrowDownIcon 
+                    className="h-6 w-6 text-blue-500 cursor-pointer hover:text-blue-700" 
+                    onClick={() => {
+                        if (fileUrl) {
+                            console.log("Opening file URL:", fileUrl);
+                            window.open(fileUrl, '_blank');
+                        }
+                    }}
+                />
                 {fileName && (
                     <span 
                         className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
-                        onClick={() => fileUrl && window.open(fileUrl, '_blank')}
+                        onClick={() => {
+                            if (fileUrl) {
+                                console.log("Opening file URL:", fileUrl);
+                                window.open(fileUrl, '_blank');
+                            }
+                        }}
                     >
                         {fileName}
                     </span>
@@ -944,24 +990,27 @@ export default function AddQuotationForm({ auth }) {
                                             ))}
                                         </select>
                                     </td>
-                                    <td className="px-6 py-6 text-center">
-                                        <div className="flex flex-col items-center justify-center w-full">
-                                            <FileDisplay file={item.attachment} />
-                                            <input
-                                                type="file"
-                                                onChange={(e) => handleFileChange(index, e)}
-                                                className="hidden"
-                                                id={`file-input-${index}`}
-                                                accept=".pdf,.doc,.docx"
-                                            />
-                                            <label 
-                                                htmlFor={`file-input-${index}`}
-                                                className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer break-words whitespace-normal text-center"
-                                            >
-                                                {item.attachment ? 'Replace file' : 'Attach file'}
-                                            </label>
-                                        </div>
-                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                    <div className="flex flex-col items-center justify-center w-full">
+                                        <FileDisplay 
+                                            file={item.attachment} 
+                                            onFileClick={(url) => window.open(url, '_blank')}
+                                        />
+                                        <input
+                                            type="file"
+                                            onChange={(e) => handleFileChange(index, e)}
+                                            className="hidden"
+                                            id={`file-input-${index}`}
+                                            accept=".pdf,.doc,.docx"
+                                        />
+                                        <label 
+                                            htmlFor={`file-input-${index}`}
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer break-words whitespace-normal text-center"
+                                        >
+                                            {item.attachment ? 'Replace file' : 'Attach file'}
+                                        </label>
+                                    </div>
+                                </td>
                                     <td className="px-6 py-6 whitespace-nowrap">
                                         <input
                                             type="date"
@@ -1000,7 +1049,8 @@ export default function AddQuotationForm({ auth }) {
                     {/* Action Buttons */}
                     <div className="mt-8 flex justify-end space-x-4">
                         <button
-                            type="submit"
+                            type="button"
+                            onClick={handleSave}
                             className="inline-flex items-center px-4 py-2 border border-green-600 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50"
                         >
                             <DocumentTextIcon className="h-5 w-5 mr-2" />

@@ -334,12 +334,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/brands', [BrandController::class, 'index']);
 });
 
-Route::get('download/{[filename]}', function ($filename) {
-    $path = storage_path('app/public/rfq-attachments/' . $filename);
-
-    if (!file_exists($path)) {
-        return response()->json(['error' => 'File not found'], 404);
+Route::get('/api/files/{path}', function ($path) {
+    $fullPath = 'rfq-attachments/' . $path;
+    
+    if (Storage::disk('public')->exists($fullPath)) {
+        return Storage::disk('public')->download($fullPath);
     }
-
-    return response()->file($path);
-})->where('filename', '.*')->name('file.download');
+    
+    abort(404, 'File not found');
+})->where('path', '.*')->name('file.download');

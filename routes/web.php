@@ -326,59 +326,29 @@ Route::get('/quotations/rfq/{rfqId}', function ($rfqId) {
     ]);
 })->name('quotations.rfq');
 
-Route::get('/download/{filename}', function ($filename) {
-    $decodedFilename = urldecode($filename);
+Route::get('/debug-storage', function () {
+    $path = 'rfq-attachments/PassportMADA.pdf';
     
-    // Check if the filename is a path or just a name
-    $filePath = strpos($decodedFilename, '/') !== false 
-        ? storage_path('app/public/' . $decodedFilename) 
-        : storage_path('app/public/rfq-attachments/' . $decodedFilename);
-
-    // If file doesn't exist, try without the public prefix
-    if (!file_exists($filePath)) {
-        $filePath = strpos($decodedFilename, '/') !== false
-            ? storage_path('app/' . $decodedFilename)
-            : storage_path('app/rfq-attachments/' . $decodedFilename);
-    }
-
-    if (!file_exists($filePath)) {
-        // Log to help debug missing files
-        \Log::error("File not found: $decodedFilename (looked at path: $filePath)");
-        abort(404, 'File not found');
-    }
-
-    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-    $mimeType = '';
+    // Check if the file exists in storage
+    $exists = Storage::disk('public')->exists($path);
     
-    // Set appropriate content type
-    switch (strtolower($extension)) {
-        case 'pdf':
-            $mimeType = 'application/pdf';
-            break;
-        case 'doc':
-            $mimeType = 'application/msword';
-            break;
-        case 'docx':
-            $mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-            break;
-        case 'jpg':
-        case 'jpeg':
-            $mimeType = 'image/jpeg';
-            break;
-        case 'png':
-            $mimeType = 'image/png';
-            break;
-        default:
-            $mimeType = 'application/octet-stream';
-    }
+    // Get the full path to the file
+    $fullPath = Storage::disk('public')->path($path);
     
-    // Use the original filename for the download
-    $headers = [
-        'Content-Type' => $mimeType,
-        'Content-Disposition' => 'inline; filename="' . basename($decodedFilename) . '"',
+    // Check if it's readable
+    $isReadable = is_readable($fullPath);
+    
+    // Get the URL
+    $url = Storage::disk('public')->url($path);
+    
+    return [
+        'file_exists' => $exists,
+        'full_path' => $fullPath, 
+        'is_readable' => $isReadable,
+        'url' => $url,
+        'storage_path' => storage_path('app/public'),
+        'public_path' => public_path('storage')
     ];
-
-    return response()->file($filePath, $headers);
-})->where('filename', '.*')->name('file.download');
+});
 
 require __DIR__.'/auth.php';
