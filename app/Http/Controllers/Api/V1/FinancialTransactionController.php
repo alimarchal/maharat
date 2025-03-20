@@ -47,7 +47,7 @@ class FinancialTransactionController extends Controller
             ->allowedFilters($allFilters)
             ->allowedSorts(FinancialTransactionParameters::ALLOWED_SORTS)
             ->allowedIncludes(FinancialTransactionParameters::ALLOWED_INCLUDES)
-            ->paginate()
+            ->paginate(10000)
             ->appends(request()->query());
 
         if ($transactions->isEmpty()) {
