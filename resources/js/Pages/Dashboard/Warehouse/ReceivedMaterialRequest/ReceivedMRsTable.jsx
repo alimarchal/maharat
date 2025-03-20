@@ -59,6 +59,23 @@ const ReceivedMRsTable = () => {
                 "/api/v1/issue-materials",
                 newRequest
             );
+
+            if (response.data.data?.status === "Issue Material") {
+                const stockOutPayload = {
+                    warehouse_id: selectedRequest?.warehouse_id,
+                    product_id: selectedRequest?.items[0]?.product_id,
+                    quantity: selectedRequest?.items[0]?.quantity,
+                    reorder_level: selectedRequest?.items[0]?.quantity,
+                    description: selectedRequest?.items[0]?.description,
+                    transaction_type: "stock_out",
+                };
+
+                await axios.post(
+                    `/api/v1/inventories/product/${selectedRequest?.items[0]?.product_id}/stock-out`,
+                    stockOutPayload
+                );
+            }
+
             if (response.data) {
                 await fetchRequests();
             }
