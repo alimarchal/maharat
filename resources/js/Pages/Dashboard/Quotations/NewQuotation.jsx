@@ -29,10 +29,15 @@ export default function NewQuotation({ auth }) {
     
             const rfqsWithDetails = await Promise.all(
                 rfqsData.map(async (rfq) => {
-                    const categoryResponse = await axios.get(`/api/v1/rfq-categories/${rfq.id}`);
+                    const [categoryResponse, rfqDetailsResponse] = await Promise.all([
+                        axios.get(`/api/v1/rfq-categories/${rfq.id}`),
+                        axios.get(`/api/v1/rfqs/${rfq.id}`)
+                    ]);
+            
                     return {
                         ...rfq,
-                        category_name: categoryResponse.data.data.category_name
+                        category_name: categoryResponse.data.data.category_name,
+                        rfq_number: rfqDetailsResponse.data.data.rfq_number 
                     };
                 })
             );
@@ -83,6 +88,8 @@ export default function NewQuotation({ auth }) {
                 <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2 mb-6">
                     <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Home</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
+                    <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Procurement Center</Link>
+                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                     <Link href="/quotation" className="hover:text-[#009FDC] text-xl">Quotations</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                     <span className="text-[#009FDC] text-xl"> Add Quotation </span>
@@ -130,7 +137,7 @@ export default function NewQuotation({ auth }) {
                                 {rfqs.map((rfq) => (
                                     <tr key={rfq.id}>
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            {rfq.id}
+                                            {rfq.rfq_number || "N/A"}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
                                             {rfq.created_at ? new Date(rfq.created_at).toLocaleDateString('en-GB', {

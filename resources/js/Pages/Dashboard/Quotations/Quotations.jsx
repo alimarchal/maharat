@@ -57,6 +57,7 @@ const Quotations = ({ auth }) => {
                         company_name: companyName, // Store the company name
                         status_type: statusResponse.data.data.type,
                         status_name: statusResponse.data.data.name,
+                        rfq_number: rfqResponse.data.data.rfq_number || "N/A"
                     };
                 })
             );
@@ -161,6 +162,8 @@ const Quotations = ({ auth }) => {
                 <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2 mb-6">
                     <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Home</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
+                    <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Procurement Center</Link>
+                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                     <span className="text-[#009FDC] text-xl">Quotations</span>
                 </div>
 
@@ -185,7 +188,7 @@ const Quotations = ({ auth }) => {
                         </div>
                         <Link
                             href={`/suppliers`}
-                            className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                            className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
                         >
                             Add Suppliers
                         </Link>
@@ -239,7 +242,7 @@ const Quotations = ({ auth }) => {
                                         {quotation.quotation_number}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {quotation.rfq_id}
+                                        {quotation.rfq_number}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
                                         {quotation.company_name}

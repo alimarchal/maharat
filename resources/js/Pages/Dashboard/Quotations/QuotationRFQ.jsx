@@ -54,6 +54,7 @@ export default function QuotationRFQ({ auth }) {
     const [editingId, setEditingId] = useState(null);
     const [editData, setEditData] = useState({});
     const [companies, setCompanies] = useState([]);
+    const [rfqNumber, setRfqNumber] = useState("");
 
     const fetchQuotations = async () => {
         setLoading(true);
@@ -87,6 +88,17 @@ export default function QuotationRFQ({ auth }) {
         }
     }
 
+    const fetchRfqNumber = async () => {
+        if (!rfqId) return;
+        try {
+            const response = await axios.get(`/api/v1/rfqs/${rfqId}`);
+            setRfqNumber(response.data.data.rfq_number); 
+        } catch (error) {
+            console.error("Error fetching RFQ number:", error);
+            setRfqNumber("N/A"); 
+        }
+    };
+
     const fetchCompanies = async () => {
         try {
             const response = await axios.get('/api/v1/companies');
@@ -99,6 +111,7 @@ export default function QuotationRFQ({ auth }) {
     useEffect(() => {
         fetchQuotations();
         fetchCompanies();
+        fetchRfqNumber();
     }, [currentPage, rfqId]);
 
     const handleFileChange = async (index, e) => {
@@ -289,7 +302,7 @@ export default function QuotationRFQ({ auth }) {
                         <h2 className="text-[32px] font-bold text-[#2C323C]">Add Quotation to RFQ</h2>
                     </div>
 
-                    <p className="text-purple-600 text-2xl mb-6">RFQ# {rfqId}</p>
+                    <p className="text-purple-600 text-2xl mb-6">{rfqNumber}</p>
 
                     <div className="w-full overflow-hidden">
                         {error && (
