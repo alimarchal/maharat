@@ -23,13 +23,16 @@ class PurchaseOrder extends Model
         'supplier_id',
         'user_id',
         'purchase_order_date',
+        'expiry_date',
         'amount',
         'attachment',
+        'original_name',
         'status'
     ];
 
     protected $casts = [
         'purchase_order_date' => 'date',
+        'expiry_date' => 'date',
         'amount' => 'decimal:2'
     ];
 

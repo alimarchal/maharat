@@ -22,8 +22,10 @@ return new class extends Migration
             $table->foreignId('quotation_id')->nullable()->constrained('quotations', 'id');
             $table->foreignId('supplier_id')->nullable()->comment('Supplier who submitted the quotation')->constrained();
             $table->date('purchase_order_date')->useCurrent()->comment("Purchase Order Date");
+            $table->date('expiry_date')->nullable()->comment("Purchase Order Expiry Date");
             $table->decimal('amount',15,2)->default(0)->comment("Amount");
             $table->string('attachment')->nullable()->comment("Attachment");
+            $table->string('original_name')->nullable()->comment('Original filename');
             $table->enum('status',['Approved','Draft', 'Rejected'])->default('Approved');
             $table->softDeletes();
             $table->timestamps();
