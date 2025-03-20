@@ -41,6 +41,7 @@ class Rfq extends Model
         'warehouse_id',
         'requester_id',
         'payment_options',
+        'category_id'
     ];
 
     protected $casts = [

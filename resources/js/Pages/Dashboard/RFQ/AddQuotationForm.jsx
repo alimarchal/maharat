@@ -428,14 +428,16 @@ export default function AddQuotationForm({ auth }) {
         try {
             const formDataObj = new FormData();
     
-            // Basic validation
-            if (!formData.organization_email || !formData.city || 
-                !formData.issue_date || !formData.closing_date) {
-                alert("Please fill out all required fields in the top section.");
-                return;
-            }
+            // Log initial form data for debugging
+            console.log('Submitting Form Data:', {
+                ...formData,
+                items: formData.items.map(item => ({
+                    ...item,
+                    hasAttachment: !!item.attachment
+                }))
+            });
     
-            // Main fields
+            // Append main RFQ data
             formDataObj.append('organization_email', formData.organization_email || '');
             formDataObj.append('city', formData.city || '');
             formDataObj.append('category_id', formData.category_id || '');
@@ -447,38 +449,36 @@ export default function AddQuotationForm({ auth }) {
             formDataObj.append('contact_number', formData.contact_no || '');
             formDataObj.append('status_id', formData.status_id || '48');
     
+            // Process and append items
             formData.items.forEach((item, index) => {
+                // Append item details
                 if (item.id) {
                     formDataObj.append(`items[${index}][id]`, item.id);
                 }
-                
-                // Add main item fields
+    
                 formDataObj.append(`items[${index}][item_name]`, item.item_name || '');
                 formDataObj.append(`items[${index}][description]`, item.description || '');
-                formDataObj.append(`items[${index}][quantity]`, item.quantity || '');
-                formDataObj.append(`items[${index}][expected_delivery_date]`, item.expected_delivery_date || '');
                 formDataObj.append(`items[${index}][unit_id]`, item.unit_id || '');
+                formDataObj.append(`items[${index}][quantity]`, item.quantity || '');
                 formDataObj.append(`items[${index}][brand_id]`, item.brand_id || '');
+                formDataObj.append(`items[${index}][expected_delivery_date]`, item.expected_delivery_date || '');
                 formDataObj.append(`items[${index}][status_id]`, item.status_id || '48');
                 formDataObj.append(`items[${index}][rfq_id]`, rfqId || null);
     
                 // Handle file attachment
-                formData.items.forEach((item, index) => {
-                    Object.keys(item).forEach((key) => {
-                        formDataObj.append(`items[${index}][${key}]`, item[key]);
-                    });
-        
-                    if (attachments[index]) {
-                        formDataObj.append(
-                            `items[${index}][attachment]`,
-                            attachments[index]
-                        );
-                    }
-                });
+                if (attachments[index]) {
+                    formDataObj.append(`items[${index}][attachment]`, attachments[index]);
+                }
             });
-
+    
+            // For PUT requests in Laravel
             if (rfqId) {
                 formDataObj.append('_method', 'PUT');
+            }
+    
+            // Log FormData contents for debugging
+            for (let pair of formDataObj.entries()) {
+                console.log(pair[0] + ': ' + pair[1]);
             }
     
             const url = rfqId ? `/api/v1/rfqs/${rfqId}` : '/api/v1/rfqs';
@@ -492,7 +492,6 @@ export default function AddQuotationForm({ auth }) {
     
             if (response.data && response.data.success === true) {
                 alert(rfqId ? "RFQ updated successfully!" : "RFQ created successfully!");
-                //router.visit(route("rfq.index"));
             } else {
                 console.error("Response didn't indicate success:", response.data);
                 alert("Failed to save RFQ: " + (response.data.message || "Unknown error"));
@@ -896,7 +895,7 @@ export default function AddQuotationForm({ auth }) {
                             <select
                                 value={formData.warehouse_id || ""}
                                 onChange={(e) => handleFormInputChange('warehouse_id', e.target.value)}
-                                className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
+                                className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-72 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
                                 required
                             >
                                 <option value="">Select Warehouse</option>
