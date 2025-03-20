@@ -14,9 +14,9 @@ class CompanySeeder extends Seeder
     {
         $companies = [
             [
-                'name' => 'Alpha Tech',
-                'name_ar' => 'ألفا تك',
-                'email' => 'contact@alphatech.com',
+                'name' => 'Maharat',
+                'name_ar' => 'مهارات',
+                'email' => 'smartprocure@maharat.com',
                 'contact_number' => '+966112233445',
                 'country' => 'Saudi Arabia',
                 'city' => 'Riyadh',
