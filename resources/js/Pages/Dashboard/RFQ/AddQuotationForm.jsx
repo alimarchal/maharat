@@ -86,11 +86,8 @@ export default function AddQuotationForm({ auth }) {
                         }
                     }
                     
-                    // Extract items from the response
                     const rfqItems = rfqData.items || [];
                     
-                    // Format the items for the form
-                    // Format the items for the form
                     const formattedItems = rfqItems.map(item => {
                         let attachmentObj = null;
                         if (item.attachment) {
@@ -101,12 +98,12 @@ export default function AddQuotationForm({ auth }) {
                                 // If it's a full URL, extract just the path portion
                                 if (path.startsWith('http')) {
                                     const urlObj = new URL(path);
-                                    path = urlObj.pathname; // This gives just the path part: /storage/rfq-attachments/...
+                                    path = urlObj.pathname; // This gives just the path part: /storage/rfq-attachments/
                                 }
                                 
                                 // Create object with relative path
                                 attachmentObj = {
-                                    url: path, // Just the path, not the full URL
+                                    url: path, 
                                     name: item.specifications || path.split('/').pop()
                                 };
                             } else if (typeof item.attachment === 'object') {
@@ -149,22 +146,21 @@ export default function AddQuotationForm({ auth }) {
                     }
                     
                     // Format the main form data
-                    // Fix: Ensure all IDs are strings with explicit conversion
                     const formattedData = {
                         organization_email: rfqData.organization_email || '',
                         city: rfqData.city || '',
-                        // Use the category from the nested categories array
+
                         category_id: rfqData.categories && rfqData.categories.length > 0 
                             ? String(rfqData.categories[0].id) 
                             : '',
-                        // Use the warehouse ID from the nested warehouse object
+
                         warehouse_id: rfqData.warehouse 
                             ? String(rfqData.warehouse.id) 
                             : '',
                         issue_date: rfqData.request_date?.split('T')[0] || new Date().toISOString().split('T')[0],
                         closing_date: rfqData.closing_date?.split('T')[0] || '',
                         rfq_id: rfqData.rfq_number || '',
-                        // Use the payment type ID from the nested payment_type object
+
                         payment_type: rfqData.payment_type 
                             ? String(rfqData.payment_type.id) 
                             : '',
@@ -203,13 +199,13 @@ export default function AddQuotationForm({ auth }) {
         }
     }, [rfqId]);
 
-    // Fetch lookup data (categories, warehouses, etc.)
+    // Fetch lookup data 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
                 
-                // Define the API endpoints to fetch
+                // Define the API endpoints 
                 const endpoints = [
                     { name: 'units', url: '/api/v1/units' },
                     { name: 'brands', url: '/api/v1/brands' },
@@ -243,7 +239,7 @@ export default function AddQuotationForm({ auth }) {
                             const unitLookup = {};
                             result.data.forEach(unit => {
                                 if (unit && unit.id) {
-                                    unitLookup[String(unit.id)] = unit.name; // Ensure keys are strings
+                                    unitLookup[String(unit.id)] = unit.name; 
                                 }
                             });
                             setUnitNames(unitLookup);
@@ -256,7 +252,7 @@ export default function AddQuotationForm({ auth }) {
                             const brandLookup = {};
                             result.data.forEach(brand => {
                                 if (brand && brand.id) {
-                                    brandLookup[String(brand.id)] = brand.name; // Ensure keys are strings
+                                    brandLookup[String(brand.id)] = brand.name; 
                                 }
                             });
                             setBrandNames(brandLookup);
@@ -269,7 +265,7 @@ export default function AddQuotationForm({ auth }) {
                             const categoryLookup = {};
                             result.data.forEach(category => {
                                 if (category && category.id) {
-                                    categoryLookup[String(category.id)] = category.name; // Ensure keys are strings
+                                    categoryLookup[String(category.id)] = category.name; 
                                 }
                             });
                             setCategoryNames(categoryLookup);
@@ -282,7 +278,7 @@ export default function AddQuotationForm({ auth }) {
                             const warehouseLookup = {};
                             result.data.forEach(warehouse => {
                                 if (warehouse && warehouse.id) {
-                                    warehouseLookup[String(warehouse.id)] = warehouse.name; // Ensure keys are strings
+                                    warehouseLookup[String(warehouse.id)] = warehouse.name; 
                                 }
                             });
                             setWarehouseNames(warehouseLookup);
@@ -293,12 +289,10 @@ export default function AddQuotationForm({ auth }) {
                     }
                 });
     
-                // Fetch ALL statuses separately with pagination handling
                 try {
-                    // Try to get all statuses in one request with a large page size
                     const statusesResponse = await axios.get('/api/v1/statuses', {
                         params: {
-                            per_page: 100 // Request up to 100 records per page
+                            per_page: 100 
                         }
                     });
                     
@@ -309,14 +303,11 @@ export default function AddQuotationForm({ auth }) {
                     if (statusesResponse.data && statusesResponse.data.data) {
                         allStatuses = statusesResponse.data.data;
                         
-                        // Check if we have pagination metadata
                         const meta = statusesResponse.data.meta;
                         if (meta) {
                             console.log("Pagination metadata:", meta);
                             
-                            // If we have pagination info and there are more pages
                             if (meta.last_page && meta.last_page > 1 && meta.current_page === 1) {
-                                // Fetch all remaining pages
                                 const remainingRequests = [];
                                 
                                 for (let page = 2; page <= meta.last_page; page++) {
@@ -332,10 +323,8 @@ export default function AddQuotationForm({ auth }) {
                                 
                                 console.log(`Fetching ${remainingRequests.length} additional pages of statuses...`);
                                 
-                                // Execute all remaining requests
                                 const remainingResponses = await Promise.all(remainingRequests);
                                 
-                                // Combine all results
                                 remainingResponses.forEach(response => {
                                     if (response.data && response.data.data) {
                                         allStatuses = [...allStatuses, ...response.data.data];
@@ -353,11 +342,10 @@ export default function AddQuotationForm({ auth }) {
                         
                         console.log("Filtered payment types:", paymentTypes);
                         
-                        // If we found payment types, use them
                         if (paymentTypes.length > 0) {
                             setPaymentTypes(paymentTypes);
                             
-                            // Create lookup map for payment types
+                            // lookup map for payment types
                             const paymentTypeLookup = {};
                             paymentTypes.forEach(type => {
                                 if (type && type.id) {
@@ -366,7 +354,6 @@ export default function AddQuotationForm({ auth }) {
                             });
                             setPaymentTypeNames(paymentTypeLookup);
                         } else {
-                            // If no payment types found, use all statuses instead
                             console.log("No payment types found, using all statuses instead");
                             setPaymentTypes(allStatuses);
                             
@@ -383,7 +370,6 @@ export default function AddQuotationForm({ auth }) {
                 } catch (error) {
                     console.error("Error fetching all statuses:", error);
                     
-                    // Fallback: Try to fetch statuses again with the original method
                     try {
                         const fallbackResponse = await axios.get('/api/v1/statuses');
                         if (fallbackResponse.data && fallbackResponse.data.data) {
@@ -407,7 +393,6 @@ export default function AddQuotationForm({ auth }) {
                     }
                 }
     
-                // Log lookup information after loading
                 console.log("Category mapping:", categoryNames);
                 console.log("Warehouse mapping:", warehouseNames);
                 console.log("Payment type mapping:", paymentTypeNames);
@@ -418,7 +403,6 @@ export default function AddQuotationForm({ auth }) {
                 console.error('Error fetching lookup data:', error);
                 setError('Failed to load reference data. Some options may be unavailable.');
                 
-                // Set empty arrays for all data to prevent further errors
                 setUnits([]);
                 setBrands([]);
                 setCategories([]);
@@ -462,9 +446,7 @@ export default function AddQuotationForm({ auth }) {
             formDataObj.append('contact_number', formData.contact_no || '');
             formDataObj.append('status_id', formData.status_id || '47');
     
-            // Process each valid item and its attachments
             formData.items.forEach((item, index) => {
-                // Add ID if it exists (for updating existing items)
                 if (item.id) {
                     formDataObj.append(`items[${index}][id]`, item.id);
                 }
@@ -494,12 +476,10 @@ export default function AddQuotationForm({ auth }) {
                 });
             });
 
-            // For PUT requests in Laravel
             if (rfqId) {
                 formDataObj.append('_method', 'PUT');
             }
     
-            // Use the appropriate URL based on whether creating or editing
             const url = rfqId ? `/api/v1/rfqs/${rfqId}` : '/api/v1/rfqs';
     
             const response = await axios.post(url, formDataObj, {
@@ -655,15 +635,14 @@ export default function AddQuotationForm({ auth }) {
 
     const handleDownloadPDF = async () => {
         try {
-            // First save the quotation if it hasn't been saved
             if (!formData.id) {
                 await handleSave();
             }
 
-            // Option 1: View PDF in new tab
+            // View PDF in new tab
             window.open(route('quotations.pdf.view', formData.id), '_blank');
 
-            // Option 2: Direct download
+            // Direct download
             // window.location.href = route('quotations.pdf.download', formData.id);
         } catch (error) {
             console.error('Error handling PDF:', error);
@@ -675,32 +654,26 @@ export default function AddQuotationForm({ auth }) {
         e.preventDefault();
         
         try {
-            // Attempt to submit the RFQ
             await handleSubmit(e);
         } catch (error) {
             console.error("Error saving RFQ:", error);
             alert("RFQ save failed. Please check your data and try again.");
-            return; // Stop execution if RFQ submission fails
+            return; 
         }
     
         try {
-            // Attempt to save attachments/PDFs
             await handleSave();
         } catch (error) {
             console.error("Error saving item table or attachments:", error);
             alert("Item table or attachments save failed. Please try again.");
-            return; // Stop execution if saving attachments fails
+            return; 
         }
     
-        // If both succeed, show success message and redirect
         alert("RFQ successfully saved with all attachments!");
         router.visit(route("rfq.index"));
     };
 
-    // Add this component for file display
-    // Modify the FileDisplay component with enhanced debugging
     const FileDisplay = ({ file, onFileClick }) => {
-        // If no file, show empty state
         if (!file) {
             return (
                 <div className="flex flex-col items-center justify-center space-y-2">
@@ -710,16 +683,13 @@ export default function AddQuotationForm({ auth }) {
             );
         }
     
-        // Get current origin (this is synchronous and doesn't need state)
         const origin = window.location.origin;
         
-        // Handle different file data structures
         let fileName = '';
         let fileUrl = null;
         
         // Case 1: File is a string URL (path)
         if (typeof file === 'string') {
-            // Extract filename
             fileName = file.split('/').pop();
             try {
                 fileName = decodeURIComponent(fileName);
@@ -727,20 +697,19 @@ export default function AddQuotationForm({ auth }) {
                 console.error('Error decoding filename:', e);
             }
             
-            // Ensure the path starts with a slash
             const path = file.startsWith('/') ? file : `/${file}`;
             fileUrl = `${origin}${path}`;
         } 
+
         // Case 2: File is a File object
         else if (file instanceof File) {
             fileName = file.name;
             fileUrl = URL.createObjectURL(file);
         } 
+
         // Case 3: File is an object with properties
         else if (file && typeof file === 'object') {
-            // For objects with url property
             if (file.url) {
-                // Extract filename
                 fileName = file.name || file.url.split('/').pop();
                 try {
                     fileName = decodeURIComponent(fileName);
@@ -748,17 +717,15 @@ export default function AddQuotationForm({ auth }) {
                     console.error('Error decoding filename:', e);
                 }
                 
-                // Convert to absolute URL using current origin
+                // Convert to absolute URL 
                 if (file.url.startsWith('http')) {
-                    // Already absolute URL
                     fileUrl = file.url;
                 } else {
-                    // Relative path - prepend the current origin
+                    // Relative path 
                     const path = file.url.startsWith('/') ? file.url : `/${file.url}`;
                     fileUrl = `${origin}${path}`;
                 }
             } else {
-                // Fallback with just the filename
                 fileName = file.name || 'Attachment';
                 fileUrl = `${origin}/storage/rfq-attachments/${fileName}`;
             }
@@ -1155,7 +1122,7 @@ export default function AddQuotationForm({ auth }) {
                     {/* Action Buttons */}
                     <div className="mt-8 flex justify-end space-x-4">
                     <button
-                        type="submit" // Change to submit type
+                        type="submit" 
                         className="inline-flex items-center px-4 py-2 border border-green-600 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50"
                     >
                         <DocumentTextIcon className="h-5 w-5 mr-2" />
