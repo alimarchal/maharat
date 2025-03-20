@@ -484,7 +484,7 @@ export default function AddQuotationForm({ auth }) {
                     }
                 });
             });
-    
+
             // For PUT requests in Laravel
             if (rfqId) {
                 formDataObj.append('_method', 'PUT');
@@ -502,7 +502,7 @@ export default function AddQuotationForm({ auth }) {
     
             if (response.data && response.data.success === true) {
                 alert(rfqId ? "RFQ updated successfully!" : "RFQ created successfully!");
-                router.visit(route("rfq.index"));
+                //router.visit(route("rfq.index"));
             } else {
                 console.error("Response didn't indicate success:", response.data);
                 alert("Failed to save RFQ: " + (response.data.message || "Unknown error"));
@@ -660,6 +660,32 @@ export default function AddQuotationForm({ auth }) {
             console.error('Error handling PDF:', error);
             alert('Failed to process PDF request');
         }
+    };
+
+    const handleSaveAndSubmit = async (e) => {
+        e.preventDefault();
+        
+        try {
+            // Attempt to submit the RFQ
+            await handleSubmit(e);
+        } catch (error) {
+            console.error("Error saving RFQ:", error);
+            alert("RFQ save failed. Please check your data and try again.");
+            return; // Stop execution if RFQ submission fails
+        }
+    
+        try {
+            // Attempt to save attachments/PDFs
+            await handleSave();
+        } catch (error) {
+            console.error("Error saving item table or attachments:", error);
+            alert("Item table or attachments save failed. Please try again.");
+            return; // Stop execution if saving attachments fails
+        }
+    
+        // If both succeed, show success message and redirect
+        alert("RFQ successfully saved with all attachments!");
+        router.visit(route("rfq.index"));
     };
 
     // Add this component for file display
@@ -844,7 +870,7 @@ export default function AddQuotationForm({ auth }) {
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSaveAndSubmit}>
                     {/* Info Grid */}
                     <div className="bg-blue-50 rounded-lg p-6 grid grid-cols-2 gap-6 shadow-md text-lg">
                         {/* Left Column */}
@@ -869,46 +895,36 @@ export default function AddQuotationForm({ auth }) {
 
                             <span className="font-medium text-gray-600">Category:</span>
                             <div className="relative ml-3">
-                                <select
-                                    value={formData.category_id}
-                                    onChange={(e) => handleFormInputChange('category_id', e.target.value)}
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
-                                    required
-                                >
-                                    <option value="">
-                                        {categories.length > 0 && categories[0].name ? categories[0].name : "Select Category"}
+                            <select
+                                value={formData.category_id}
+                                onChange={(e) => handleFormInputChange('category_id', e.target.value)}
+                                className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
+                                required
+                            >
+                                {!isEditing && <option value="">Select Category</option>}
+                                {categories.map((category) => (
+                                    <option key={category.id} value={category.id} className="text-[#009FDC] bg-blue-50">
+                                        {category.name}
                                     </option>
-                                    {categories
-                                        .filter((category) => category.name && category.id !== (categories[0]?.id || ""))
-                                        .map((category) => (
-                                            <option key={category.id} value={category.id} className="text-[#009FDC] bg-blue-50">
-                                                {category.name}
-                                            </option>
-                                        ))}
-                                </select>
+                                ))}
+                            </select>
                             </div>
 
                             <span className="font-medium text-gray-600">Warehouse:</span>
                             <div className="relative ml-3">
-                                <select
-                                    value={formData.warehouse_id}
-                                    onChange={(e) => handleFormInputChange('warehouse_id', e.target.value)}
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
-                                    required
-                                >
-                                    {warehouses.length > 0 && warehouses[0].name ? (
-                                        <option value={warehouses[0].id}>{warehouses[0].name}</option>
-                                    ) : (
-                                        <option value="">Select Warehouse</option>
-                                    )}
-                                    {warehouses
-                                        .filter((warehouse) => warehouse.name && warehouse.id !== (warehouses[0]?.id || ""))
-                                        .map((warehouse) => (
-                                            <option key={warehouse.id} value={warehouse.id} className="text-[#009FDC] bg-blue-50">
-                                                {warehouse.name}
-                                            </option>
-                                        ))}
-                                </select>
+                            <select
+                                value={formData.warehouse_id}
+                                onChange={(e) => handleFormInputChange('warehouse_id', e.target.value)}
+                                className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
+                                required
+                            >
+                                {!isEditing && <option value="">Select Warehouse</option>}
+                                {warehouses.map((warehouse) => (
+                                    <option key={warehouse.id} value={warehouse.id} className="text-[#009FDC] bg-blue-50">
+                                        {warehouse.name}
+                                    </option>
+                                ))}
+                            </select>
                             </div>
                         </div>
 
@@ -945,25 +961,19 @@ export default function AddQuotationForm({ auth }) {
 
                             <span className="font-medium text-gray-600">Payment Type:</span>
                             <div className="relative ml-5"> {/* Adjusted to align */}
-                                <select
-                                    value={formData.payment_type}
-                                    onChange={(e) => handleFormInputChange('payment_type', e.target.value)}
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-48 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
-                                    required
-                                >
-                                    {paymentTypes.length > 0 && paymentTypes[0].name ? (
-                                        <option value={paymentTypes[0].id}>{paymentTypes[0].name}</option>
-                                    ) : (
-                                        <option value="">Select Payment Type</option>
-                                    )}
-                                    {paymentTypes
-                                        .filter((type) => type.name && type.id !== (paymentTypes[0]?.id || ""))
-                                        .map((type) => (
-                                            <option key={type.id} value={type.id} className="text-[#009FDC] bg-blue-50">
-                                                {type.name}
-                                            </option>
-                                        ))}
-                                </select>
+                            <select
+                                value={formData.payment_type}
+                                onChange={(e) => handleFormInputChange('payment_type', e.target.value)}
+                                className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-0 cursor-pointer outline-none border-none"
+                                required
+                            >
+                                {!isEditing && <option value="">Select Payment Type</option>}
+                                {paymentTypes.map((type) => (
+                                    <option key={type.id} value={type.id} className="text-[#009FDC] bg-blue-50">
+                                        {type.name}
+                                    </option>
+                                ))}
+                            </select>
                             </div>
 
                             <span className="font-medium text-gray-600">Contact No#:</span>
@@ -1123,14 +1133,13 @@ export default function AddQuotationForm({ auth }) {
 
                     {/* Action Buttons */}
                     <div className="mt-8 flex justify-end space-x-4">
-                        <button
-                            type="button"
-                            onClick={handleSave}
-                            className="inline-flex items-center px-4 py-2 border border-green-600 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50"
-                        >
-                            <DocumentTextIcon className="h-5 w-5 mr-2" />
-                            {isEditing ? "Update RFQ" : "Save RFQ"}
-                        </button>
+                    <button
+                        type="submit" // Change to submit type
+                        className="inline-flex items-center px-4 py-2 border border-green-600 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50"
+                    >
+                        <DocumentTextIcon className="h-5 w-5 mr-2" />
+                        {isEditing ? "Update RFQ" : "Save RFQ"}
+                    </button>
                     </div>
                 </form>
             </div>
