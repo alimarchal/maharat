@@ -40,6 +40,7 @@ class Rfq extends Model
         'sub_cost_center_id',
         'warehouse_id',
         'requester_id',
+        'payment_options',
     ];
 
     protected $casts = [
@@ -77,12 +78,12 @@ class Rfq extends Model
 
     public function warehouse(): BelongsTo
     {
-        return $this->belongsTo(Warehouse::class);
+        return $this->belongsTo(Warehouse::class, 'warehouse_id');
     }
 
     public function status(): BelongsTo
     {
-        return $this->belongsTo(Status::class);
+        return $this->belongsTo(Status::class, 'status_id');
     }
 
     public function requestType(): BelongsTo
@@ -97,7 +98,7 @@ class Rfq extends Model
 
     public function items(): HasMany
     {
-        return $this->hasMany(RfqItem::class);
+        return $this->hasMany(RfqItem::class, 'rfq_id');
     }
 
     public function statusLogs(): HasMany

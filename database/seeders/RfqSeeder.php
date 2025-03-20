@@ -36,16 +36,6 @@ class RfqSeeder extends Seeder
                 $this->command->warn('Could not load Warehouse model. Using fixed warehouse IDs.');
             }
 
-            // If no warehouses were found, use fixed IDs
-            if (empty($warehouses)) {
-                $warehouses = [
-                    'Dubai Main Warehouse' => 101,
-                    'Karachi Distribution Center' => 102,
-                    'Lahore Storage Facility' => 103,
-                    'Abu Dhabi Logistics Hub' => 104
-                ];
-            }
-
             // Define RFQ data with explicit IDs
             $rfqs = [
                 [
@@ -56,7 +46,7 @@ class RfqSeeder extends Seeder
                     'cost_center_id' => 1,
                     'sub_cost_center_id' => 1,
                     'company_id' => 1,
-                    'warehouse_id' => $warehouses['Dubai Main Warehouse'] ?? 101,
+                    'warehouse_id' => 201,
                     'organization_name' => 'Tech Solutions Ltd.',
                     'organization_email' => 'contact@techsolutions.com',
                     'city' => 'Karachi',
@@ -68,7 +58,7 @@ class RfqSeeder extends Seeder
                     'closing_date' => '2025-03-15',
                     'attachments' => 'uploads/rfq/rfq_001.pdf',
                     'notes' => 'Urgent request for IT equipment.',
-                    'status_id' => 46,
+                    'status_id' => 47,
                     'assigned_to' => 5,
                     'assigned_at' => Carbon::now(),
                     'approved_at' => Carbon::now(),
@@ -90,7 +80,7 @@ class RfqSeeder extends Seeder
                     'cost_center_id' => 1,
                     'sub_cost_center_id' => 1,
                     'company_id' => 2,
-                    'warehouse_id' => $warehouses['Karachi Distribution Center'] ?? 102,
+                    'warehouse_id' => 202,
                     'organization_name' => 'Fast Supplies Pvt Ltd.',
                     'organization_email' => 'sales@fastsupplies.com',
                     'city' => 'Lahore',
@@ -102,7 +92,7 @@ class RfqSeeder extends Seeder
                     'closing_date' => '2025-03-18',
                     'attachments' => null,
                     'notes' => 'Request for bulk order of office furniture.',
-                    'status_id' => 47,
+                    'status_id' => 48,
                     'assigned_to' => 6,
                     'assigned_at' => Carbon::now(),
                     'approved_at' => null,
@@ -124,7 +114,7 @@ class RfqSeeder extends Seeder
                     'cost_center_id' => 1,
                     'sub_cost_center_id' => 1,
                     'company_id' => 3,
-                    'warehouse_id' => $warehouses['Lahore Storage Facility'] ?? 103,
+                    'warehouse_id' => 204,
                     'organization_name' => 'Global Traders',
                     'organization_email' => 'info@globaltraders.com',
                     'city' => 'Islamabad',
@@ -136,7 +126,7 @@ class RfqSeeder extends Seeder
                     'closing_date' => '2025-03-20',
                     'attachments' => 'uploads/rfq/rfq_003.pdf',
                     'notes' => 'Request for medical supplies.',
-                    'status_id' => 48,
+                    'status_id' => 49,
                     'assigned_to' => 8,
                     'assigned_at' => Carbon::now(),
                     'approved_at' => Carbon::now(),
@@ -158,7 +148,7 @@ class RfqSeeder extends Seeder
                     'cost_center_id' => 1,
                     'sub_cost_center_id' => 1,
                     'company_id' => 4,
-                    'warehouse_id' => $warehouses['Abu Dhabi Logistics Hub'] ?? 104,
+                    'warehouse_id' => 203,
                     'organization_name' => 'Elite Constructions',
                     'organization_email' => 'contact@eliteconstructions.com',
                     'city' => 'Faisalabad',
@@ -170,7 +160,7 @@ class RfqSeeder extends Seeder
                     'closing_date' => '2025-03-22',
                     'attachments' => null,
                     'notes' => 'Request for heavy machinery parts.',
-                    'status_id' => 49,
+                    'status_id' => 50,
                     'assigned_to' => 9,
                     'assigned_at' => Carbon::now(),
                     'approved_at' => null,

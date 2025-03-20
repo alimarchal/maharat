@@ -40,6 +40,7 @@ class RfqResource extends JsonResource
             'requester' => new UserResource($this->whenLoaded('requester')),
             'company' => new CompanyResource($this->whenLoaded('company')),
             'warehouse' => new WarehouseResource($this->whenLoaded('warehouse')),
+            'categories' => ProductCategoryResource::collection($this->whenLoaded('categories')),
             'status' => new StatusResource($this->whenLoaded('status')),
             'request_type' => new StatusResource($this->whenLoaded('requestType')),
             'payment_type' => new StatusResource($this->whenLoaded('paymentType')),

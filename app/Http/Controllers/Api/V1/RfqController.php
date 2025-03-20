@@ -18,7 +18,7 @@ class RfqController extends Controller
     public function index()
     {
         try {
-            $rfqs = Rfq::with(['status', 'items', 'department', 'costCenter', 'subCostCenter', 'requester'])
+            $rfqs = Rfq::with(['status', 'items', 'department', 'costCenter', 'subCostCenter', 'requester', 'warehouse', 'paymentType', 'categories'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(10);
 
@@ -37,6 +37,56 @@ class RfqController extends Controller
             Log::error('Failed to fetch RFQs: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Failed to fetch RFQs',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function show(string $id)
+    {
+        try {
+            Log::info("Fetching RFQ with ID: $id");
+
+            // Find the RFQ with all necessary relationships
+            $rfq = Rfq::with([
+                'status',
+                'items.unit',
+                'items.brand',
+                'warehouse',
+                'requester',
+                'paymentType',
+                'categories'
+            ])->findOrFail($id);
+
+            // Get category info for this RFQ
+            $category = DB::table('rfq_categories')
+                ->where('rfq_id', $id)
+                ->join('product_categories', 'rfq_categories.category_id', '=', 'product_categories.id')
+                ->select('product_categories.*')
+                ->first();
+
+            // If category exists, append it to RFQ
+            if ($category) {
+                $rfq->category_id = $category->id;
+                $rfq->category_name = $category->name;
+            }
+
+            // Ensure each item includes the specification field as the original filename
+            foreach ($rfq->items as $item) {
+                if ($item->attachment && empty($item->specifications)) {
+                    $item->specifications = basename($item->attachment);
+                }
+            }
+
+            Log::info("RFQ found and being returned");
+
+            return response()->json([
+                'data' => new RfqResource($rfq)
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            Log::error("Error fetching RFQ $id: " . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to fetch RFQ',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -76,54 +126,6 @@ class RfqController extends Controller
         Log::info("Generated new RFQ number:", ['rfqNumber' => $rfqNumber]);
 
         return $rfqNumber;
-    }
-
-    public function show(string $id)
-    {
-        try {
-            Log::info("Fetching RFQ with ID: $id");
-
-            // Find the RFQ with all necessary relationships
-            $rfq = Rfq::with([
-                'status',
-                'items.unit',
-                'items.brand',
-                'warehouse',
-                'requester'
-            ])->findOrFail($id);
-
-            // Get category info for this RFQ
-            $category = DB::table('rfq_categories')
-                ->where('rfq_id', $id)
-                ->join('product_categories', 'rfq_categories.category_id', '=', 'product_categories.id')
-                ->select('product_categories.*')
-                ->first();
-
-            // If category exists, append it to RFQ
-            if ($category) {
-                $rfq->category_id = $category->id;
-                $rfq->category_name = $category->name;
-            }
-
-            // Ensure each item includes the specification field as the original filename
-            foreach ($rfq->items as $item) {
-                if ($item->attachment && empty($item->specifications)) {
-                    $item->specifications = basename($item->attachment);
-                }
-            }
-
-            Log::info("RFQ found and being returned");
-
-            return response()->json([
-                'data' => new RfqResource($rfq)
-            ], Response::HTTP_OK);
-        } catch (\Exception $e) {
-            Log::error("Error fetching RFQ $id: " . $e->getMessage());
-            return response()->json([
-                'message' => 'Failed to fetch RFQ',
-                'error' => $e->getMessage()
-            ], 500);
-        }
     }
 
     public function store(Request $request)

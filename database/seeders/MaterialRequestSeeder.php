@@ -28,7 +28,7 @@ class MaterialRequestSeeder extends Seeder
         $materialRequests = [
             [
                 'requester_id' => 1,
-                'warehouse_id' => 101,
+                'warehouse_id' => 201,
                 'department_id' => 1,
                 'cost_center_id' => 1,
                 'sub_cost_center_id' => 1,
@@ -39,7 +39,7 @@ class MaterialRequestSeeder extends Seeder
             ],
             [
                 'requester_id' => 2,
-                'warehouse_id' => 102,
+                'warehouse_id' => 202,
                 'department_id' => 1,
                 'cost_center_id' => 1,
                 'sub_cost_center_id' => 1,
@@ -50,7 +50,7 @@ class MaterialRequestSeeder extends Seeder
             ],
             [
                 'requester_id' => 3,
-                'warehouse_id' => 103,
+                'warehouse_id' => 203,
                 'department_id' => 1,
                 'cost_center_id' => 1,
                 'sub_cost_center_id' => 1,

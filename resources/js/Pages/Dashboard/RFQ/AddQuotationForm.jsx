@@ -3,12 +3,7 @@ import { Head } from "@inertiajs/react";
 import { router, Link, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import axios from "axios";
-import { 
-    DocumentTextIcon, 
-    DocumentArrowDownIcon, 
-    EnvelopeIcon,
-    TrashIcon 
-} from "@heroicons/react/24/outline";
+import { DocumentTextIcon, DocumentArrowDownIcon, EnvelopeIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeftLong, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { fetchRFQData, fetchLookupData, getSafeValue } from "./rfqUtils";
@@ -91,18 +86,33 @@ export default function AddQuotationForm({ auth }) {
                         }
                     }
                     
-                    // Extract items from the response
                     const rfqItems = rfqData.items || [];
                     
-                    // Format the items for the form
                     const formattedItems = rfqItems.map(item => {
-                        // Process attachment info properly
                         let attachmentObj = null;
                         if (item.attachment) {
-                            attachmentObj = {
-                                attachment: item.attachment,
-                                specifications: item.specifications || item.attachment.split('/').pop()
-                            };
+                            if (typeof item.attachment === 'string') {
+                                // Extract just the path part, removing any domain
+                                let path = item.attachment;
+                                
+                                // If it's a full URL, extract just the path portion
+                                if (path.startsWith('http')) {
+                                    const urlObj = new URL(path);
+                                    path = urlObj.pathname; // This gives just the path part: /storage/rfq-attachments/
+                                }
+                                
+                                // Create object with relative path
+                                attachmentObj = {
+                                    url: path, 
+                                    name: item.specifications || path.split('/').pop()
+                                };
+                            } else if (typeof item.attachment === 'object') {
+                                // Handle object attachment
+                                attachmentObj = {
+                                    url: item.attachment.url || item.attachment.path || '',
+                                    name: item.specifications || item.attachment.name || 'Attachment'
+                                };
+                            }
                         }
                         
                         return {
@@ -136,18 +146,26 @@ export default function AddQuotationForm({ auth }) {
                     }
                     
                     // Format the main form data
-                    // Fix: Ensure all IDs are strings with explicit conversion
                     const formattedData = {
                         organization_email: rfqData.organization_email || '',
                         city: rfqData.city || '',
-                        category_id: categoryId, // Already converted to string above
-                        warehouse_id: rfqData.warehouse_id ? String(rfqData.warehouse_id) : '',
+
+                        category_id: rfqData.categories && rfqData.categories.length > 0 
+                            ? String(rfqData.categories[0].id) 
+                            : '',
+
+                        warehouse_id: rfqData.warehouse 
+                            ? String(rfqData.warehouse.id) 
+                            : '',
                         issue_date: rfqData.request_date?.split('T')[0] || new Date().toISOString().split('T')[0],
                         closing_date: rfqData.closing_date?.split('T')[0] || '',
                         rfq_id: rfqData.rfq_number || '',
-                        payment_type: rfqData.payment_type ? String(rfqData.payment_type) : '',
+
+                        payment_type: rfqData.payment_type 
+                            ? String(rfqData.payment_type.id) 
+                            : '',
                         contact_no: rfqData.contact_number || '',
-                        status_id: rfqData.status_id ? String(rfqData.status_id) : '47',
+                        status_id: rfqData.status?.id ? String(rfqData.status.id) : '47',
                         items: formattedItems
                     };
                     
@@ -181,19 +199,18 @@ export default function AddQuotationForm({ auth }) {
         }
     }, [rfqId]);
 
-    // Fetch lookup data (categories, warehouses, etc.)
+    // Fetch lookup data 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
                 
-                // Define the API endpoints to fetch
+                // Define the API endpoints 
                 const endpoints = [
                     { name: 'units', url: '/api/v1/units' },
                     { name: 'brands', url: '/api/v1/brands' },
                     { name: 'categories', url: '/api/v1/product-categories' },
                     { name: 'warehouses', url: '/api/v1/warehouses' },
-                    { name: 'statuses', url: '/api/v1/statuses' },
                 ];
     
                 // Fetch each endpoint and handle potential errors individually
@@ -222,7 +239,7 @@ export default function AddQuotationForm({ auth }) {
                             const unitLookup = {};
                             result.data.forEach(unit => {
                                 if (unit && unit.id) {
-                                    unitLookup[String(unit.id)] = unit.name; // Ensure keys are strings
+                                    unitLookup[String(unit.id)] = unit.name; 
                                 }
                             });
                             setUnitNames(unitLookup);
@@ -235,7 +252,7 @@ export default function AddQuotationForm({ auth }) {
                             const brandLookup = {};
                             result.data.forEach(brand => {
                                 if (brand && brand.id) {
-                                    brandLookup[String(brand.id)] = brand.name; // Ensure keys are strings
+                                    brandLookup[String(brand.id)] = brand.name; 
                                 }
                             });
                             setBrandNames(brandLookup);
@@ -248,7 +265,7 @@ export default function AddQuotationForm({ auth }) {
                             const categoryLookup = {};
                             result.data.forEach(category => {
                                 if (category && category.id) {
-                                    categoryLookup[String(category.id)] = category.name; // Ensure keys are strings
+                                    categoryLookup[String(category.id)] = category.name; 
                                 }
                             });
                             setCategoryNames(categoryLookup);
@@ -261,35 +278,121 @@ export default function AddQuotationForm({ auth }) {
                             const warehouseLookup = {};
                             result.data.forEach(warehouse => {
                                 if (warehouse && warehouse.id) {
-                                    warehouseLookup[String(warehouse.id)] = warehouse.name; // Ensure keys are strings
+                                    warehouseLookup[String(warehouse.id)] = warehouse.name; 
                                 }
                             });
                             setWarehouseNames(warehouseLookup);
                             break;
                         
-                        case 'statuses':
-                            // Filter payment types from statuses
-                            const paymentTypes = result.data.filter(
-                                status => status.type === 'payment_type' || status.type?.includes('payment')
-                            );
-                            setPaymentTypes(paymentTypes.length > 0 ? paymentTypes : result.data.slice(0, 3));
-                            
-                            // Create lookup map for payment types
-                            const paymentTypeLookup = {};
-                            paymentTypes.forEach(type => {
-                                if (type && type.id) {
-                                    paymentTypeLookup[String(type.id)] = type.name; // Ensure keys are strings
-                                }
-                            });
-                            setPaymentTypeNames(paymentTypeLookup);
-                            break;
-                            
                         default:
                             break;
                     }
                 });
     
-                // Log lookup information after loading
+                try {
+                    const statusesResponse = await axios.get('/api/v1/statuses', {
+                        params: {
+                            per_page: 100 
+                        }
+                    });
+                    
+                    console.log("Statuses response with per_page=100:", statusesResponse.data);
+                    
+                    let allStatuses = [];
+                    
+                    if (statusesResponse.data && statusesResponse.data.data) {
+                        allStatuses = statusesResponse.data.data;
+                        
+                        const meta = statusesResponse.data.meta;
+                        if (meta) {
+                            console.log("Pagination metadata:", meta);
+                            
+                            if (meta.last_page && meta.last_page > 1 && meta.current_page === 1) {
+                                const remainingRequests = [];
+                                
+                                for (let page = 2; page <= meta.last_page; page++) {
+                                    remainingRequests.push(
+                                        axios.get('/api/v1/statuses', {
+                                            params: {
+                                                per_page: 100,
+                                                page: page
+                                            }
+                                        })
+                                    );
+                                }
+                                
+                                console.log(`Fetching ${remainingRequests.length} additional pages of statuses...`);
+                                
+                                const remainingResponses = await Promise.all(remainingRequests);
+                                
+                                remainingResponses.forEach(response => {
+                                    if (response.data && response.data.data) {
+                                        allStatuses = [...allStatuses, ...response.data.data];
+                                    }
+                                });
+                            }
+                        }
+                        
+                        console.log(`Total statuses fetched: ${allStatuses.length}`);
+                        
+                        // Filter for payment types
+                        const paymentTypes = allStatuses.filter(status => 
+                            status.type && status.type.toLowerCase() === 'payment'
+                        );
+                        
+                        console.log("Filtered payment types:", paymentTypes);
+                        
+                        if (paymentTypes.length > 0) {
+                            setPaymentTypes(paymentTypes);
+                            
+                            // lookup map for payment types
+                            const paymentTypeLookup = {};
+                            paymentTypes.forEach(type => {
+                                if (type && type.id) {
+                                    paymentTypeLookup[String(type.id)] = type.name;
+                                }
+                            });
+                            setPaymentTypeNames(paymentTypeLookup);
+                        } else {
+                            console.log("No payment types found, using all statuses instead");
+                            setPaymentTypes(allStatuses);
+                            
+                            // Create lookup map for all statuses
+                            const statusesLookup = {};
+                            allStatuses.forEach(status => {
+                                if (status && status.id) {
+                                    statusesLookup[String(status.id)] = `${status.name} (${status.type})`;
+                                }
+                            });
+                            setPaymentTypeNames(statusesLookup);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error fetching all statuses:", error);
+                    
+                    try {
+                        const fallbackResponse = await axios.get('/api/v1/statuses');
+                        if (fallbackResponse.data && fallbackResponse.data.data) {
+                            const fallbackStatuses = fallbackResponse.data.data;
+                            console.log("Fallback: using initial statuses:", fallbackStatuses);
+                            
+                            setPaymentTypes(fallbackStatuses);
+                            
+                            const fallbackLookup = {};
+                            fallbackStatuses.forEach(status => {
+                                if (status && status.id) {
+                                    fallbackLookup[String(status.id)] = `${status.name} (${status.type})`;
+                                }
+                            });
+                            setPaymentTypeNames(fallbackLookup);
+                        }
+                    } catch (fallbackError) {
+                        console.error("Fallback fetch also failed:", fallbackError);
+                        setPaymentTypes([]);
+                        setPaymentTypeNames({});
+                    }
+                }
+    
                 console.log("Category mapping:", categoryNames);
                 console.log("Warehouse mapping:", warehouseNames);
                 console.log("Payment type mapping:", paymentTypeNames);
@@ -300,7 +403,6 @@ export default function AddQuotationForm({ auth }) {
                 console.error('Error fetching lookup data:', error);
                 setError('Failed to load reference data. Some options may be unavailable.');
                 
-                // Set empty arrays for all data to prevent further errors
                 setUnits([]);
                 setBrands([]);
                 setCategories([]);
@@ -332,55 +434,19 @@ export default function AddQuotationForm({ auth }) {
                 return;
             }
     
-            // Main fields - add null/type checking
+            // Main fields
             formDataObj.append('organization_email', formData.organization_email || '');
             formDataObj.append('city', formData.city || '');
-            
-            // For numeric values, ensure we have valid numbers or send empty string
-            const categoryId = formData.category_id || ''; // Don't convert to int if we have an empty string
-            const warehouseId = formData.warehouse_id || ''; // Don't convert to int if we have an empty string
-            const paymentType = formData.payment_type || ''; // Don't convert to int if we have an empty string
-            const statusId = formData.status_id || '47';
-            
-            formDataObj.append('category_id', categoryId);
-            formDataObj.append('warehouse_id', warehouseId);
+            formDataObj.append('category_id', formData.category_id || '');
+            formDataObj.append('warehouse_id', formData.warehouse_id || '');
             formDataObj.append('request_date', formData.issue_date || '');
             formDataObj.append('closing_date', formData.closing_date || '');
-            
-            // Always include rfq_number for both creating and editing
             formDataObj.append('rfq_number', formData.rfq_id || '');
-            
-            formDataObj.append('payment_type', paymentType);
+            formDataObj.append('payment_type', formData.payment_type || '');
             formDataObj.append('contact_number', formData.contact_no || '');
-            formDataObj.append('status_id', statusId);
-            
-            // Log what's being sent
-            console.log("Sending main form fields:", {
-                organization_email: formData.organization_email,
-                city: formData.city,
-                category_id: categoryId,
-                warehouse_id: warehouseId,
-                request_date: formData.issue_date,
-                closing_date: formData.closing_date,
-                rfq_number: formData.rfq_id,
-                payment_type: paymentType,
-                contact_number: formData.contact_no,
-                status_id: statusId
-            });
+            formDataObj.append('status_id', formData.status_id || '47');
     
-            // Filter and validate items - allow items without category/warehouse/payment for update
-            const validItems = formData.items.filter(item => 
-                item.item_name && item.quantity
-            );
-            
-            if (validItems.length === 0) {
-                alert("Please add at least one item with all required fields filled out.");
-                return;
-            }
-            
-            // Process each valid item
-            validItems.forEach((item, index) => {
-                // Add ID if it exists (for updating existing items)
+            formData.items.forEach((item, index) => {
                 if (item.id) {
                     formDataObj.append(`items[${index}][id]`, item.id);
                 }
@@ -390,47 +456,32 @@ export default function AddQuotationForm({ auth }) {
                 formDataObj.append(`items[${index}][description]`, item.description || '');
                 formDataObj.append(`items[${index}][quantity]`, item.quantity || '');
                 formDataObj.append(`items[${index}][expected_delivery_date]`, item.expected_delivery_date || '');
-                
-                // Add unit_id, brand_id, status_id - without parseInt which could convert empty strings to NaN
                 formDataObj.append(`items[${index}][unit_id]`, item.unit_id || '');
                 formDataObj.append(`items[${index}][brand_id]`, item.brand_id || '');
                 formDataObj.append(`items[${index}][status_id]`, item.status_id || '47');
-                
-                // Always add rfq_id to each item
                 formDataObj.append(`items[${index}][rfq_id]`, rfqId || null);
-            });
-            
-            // Handle attachments (files)
-            console.log("Attachments to be sent:", attachments);
-            if (attachments && Object.keys(attachments).length > 0) {
-                Object.keys(attachments).forEach(index => {
+    
+                // Handle file attachment
+                formData.items.forEach((item, index) => {
+                    Object.keys(item).forEach((key) => {
+                        formDataObj.append(`items[${index}][${key}]`, item[key]);
+                    });
+        
                     if (attachments[index]) {
-                        // Find the corresponding item index in validItems
-                        const itemIndex = validItems.findIndex((_, i) => i.toString() === index.toString());
-                        if (itemIndex !== -1) {
-                            formDataObj.append(`attachments[${itemIndex}]`, attachments[index]);
-                            console.log(`Added attachment for item ${itemIndex}:`, attachments[index].name);
-                        }
+                        formDataObj.append(
+                            `items[${index}][attachment]`,
+                            attachments[index]
+                        );
                     }
                 });
-            }
-            
-            // For PUT requests in Laravel, you need to include the _method field
+            });
+
             if (rfqId) {
                 formDataObj.append('_method', 'PUT');
             }
-            
-            // Use the appropriate URL based on whether creating or editing
+    
             const url = rfqId ? `/api/v1/rfqs/${rfqId}` : '/api/v1/rfqs';
-            
-            // Always use POST for FormData with method spoofing for PUT
-            console.log(`Making ${rfqId ? 'PUT' : 'POST'} request to ${url}`);
-            
-            // Print out all formDataObj keys and values for debugging
-            for (let pair of formDataObj.entries()) {
-                console.log(pair[0], pair[1]);
-            }
-            
+    
             const response = await axios.post(url, formDataObj, {
                 headers: { 
                     'Content-Type': 'multipart/form-data',
@@ -440,7 +491,7 @@ export default function AddQuotationForm({ auth }) {
     
             if (response.data && response.data.success === true) {
                 alert(rfqId ? "RFQ updated successfully!" : "RFQ created successfully!");
-                router.visit(route("rfq.index"));
+                //router.visit(route("rfq.index"));
             } else {
                 console.error("Response didn't indicate success:", response.data);
                 alert("Failed to save RFQ: " + (response.data.message || "Unknown error"));
@@ -450,7 +501,6 @@ export default function AddQuotationForm({ auth }) {
             console.error("Error details:", error.response?.data || error.message);
             
             if (error.response?.data?.errors) {
-                // Handle validation errors
                 const errorMessages = Object.values(error.response.data.errors)
                     .flat()
                     .join('\n');
@@ -500,21 +550,19 @@ export default function AddQuotationForm({ auth }) {
     const handleFileChange = (index, e) => {
         const file = e.target.files[0];
         if (file) {
-            // Store the file object for FormData submission
+            // Store the actual file object
             setAttachments(prev => ({
                 ...prev,
                 [index]: file
             }));
             
-            // For display and storage in formData state
-            // We store the file object but when saved to database it will be stored as path
-            // in the format "rfq-attachments/hash" 
+            // Update the form data with the file info
             const updatedItems = [...formData.items];
             updatedItems[index].attachment = file;
-            updatedItems[index].tempUrl = URL.createObjectURL(file);
-            // Also store original filename in specifications
-            updatedItems[index].specifications = file.name;
             setFormData({ ...formData, items: updatedItems });
+
+            // Optionally create a temporary URL for immediate display
+            updatedItems[index].tempUrl = URL.createObjectURL(file);
         }
     };
 
@@ -543,76 +591,172 @@ export default function AddQuotationForm({ auth }) {
         }));
     };
 
-    const handleDownloadPDF = async () => {
+    const handleSave = async (e) => {
+        if (e) e.preventDefault();
+        
         try {
-            // First save the quotation if it hasn't been saved
-            if (!rfqId) {
-                await handleSubmit();
-                return; // The save function will redirect
+            const formDataToSend = new FormData();
+            
+            // Add basic form data
+            Object.keys(formData).forEach(key => {
+                if (key !== 'items' && formData[key] !== null) {
+                    formDataToSend.append(key, formData[key]);
+                }
+            });
+
+            // Add items as a JSON string
+            if (formData.items && formData.items.length > 0) {
+                formDataToSend.append('items', JSON.stringify(formData.items));
             }
 
-            // Open PDF in new tab
-            window.open(route('rfq.pdf', rfqId), '_blank');
+            // Add attachments separately
+            if (attachments) {
+                Object.keys(attachments).forEach(index => {
+                    formDataToSend.append(`attachments[${index}]`, attachments[index]);
+                });
+            }
+
+            const response = await axios.post('/api/v1/rfq-items', formDataToSend, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.data.success) {
+                alert('Items saved successfully!');
+                router.visit(route('rfq.index'));
+            }
+        } catch (error) {
+            console.error('Save error:', error);
+            alert(error.response?.data?.message || 'Failed to save items');
+        }
+    }; 
+
+    const handleDownloadPDF = async () => {
+        try {
+            if (!formData.id) {
+                await handleSave();
+            }
+
+            // View PDF in new tab
+            window.open(route('quotations.pdf.view', formData.id), '_blank');
+
+            // Direct download
+            // window.location.href = route('quotations.pdf.download', formData.id);
         } catch (error) {
             console.error('Error handling PDF:', error);
             alert('Failed to process PDF request');
         }
     };
 
-    // Helper component for file display
-    const FileDisplay = ({ file }) => {
-        // Get the display filename - prioritize specifications field which contains the original filename
-        let fileName = null;
-        let fileUrl = null;
+    const handleSaveAndSubmit = async (e) => {
+        e.preventDefault();
         
-        if (file) {
-            // For new files uploaded in the current session
-            if (typeof file === 'object' && file.name) {
-                fileName = file.name;
-                fileUrl = file.tempUrl || null;
-            }
-            // For files with specifications field from the database
-            else if (typeof file === 'object' && file.specifications) {
-                fileName = file.specifications;
-                // If attachment is a string path
-                if (typeof file.attachment === 'string') {
-                    // Use the full path stored in the database for download
-                    fileUrl = `/download/${encodeURIComponent(file.attachment)}`;
-                }
-            }
-            // For simple string paths from database
-            else if (typeof file === 'string') {
-                // For stored path like "rfq-attachments/filename.pdf"
-                // Extract just the filename for display but use full path for URL
-                fileName = file.split('/').pop();
-                fileUrl = `/download/${encodeURIComponent(file)}`;
-            }
-            // For objects with attachment property
-            else if (typeof file === 'object' && file.attachment) {
-                // If attachment is a string (path)
-                if (typeof file.attachment === 'string') {
-                    // Display just filename but use full path for download
-                    fileName = file.attachment.split('/').pop();
-                    fileUrl = `/download/${encodeURIComponent(file.attachment)}`;
-                } else {
-                    // If attachment is another object (shouldn't happen, but just in case)
-                    fileName = "Attachment";
-                }
-            }
+        try {
+            await handleSubmit(e);
+        } catch (error) {
+            console.error("Error saving RFQ:", error);
+            alert("RFQ save failed. Please check your data and try again.");
+            return; 
         }
     
+        try {
+            await handleSave();
+        } catch (error) {
+            console.error("Error saving item table or attachments:", error);
+            alert("Item table or attachments save failed. Please try again.");
+            return; 
+        }
+    
+        alert("RFQ successfully saved with all attachments!");
+        router.visit(route("rfq.index"));
+    };
+
+    const FileDisplay = ({ file, onFileClick }) => {
+        if (!file) {
+            return (
+                <div className="flex flex-col items-center justify-center space-y-2">
+                    <DocumentArrowDownIcon className="h-6 w-6 text-gray-400" />
+                    <span className="text-sm text-gray-500">No file attached</span>
+                </div>
+            );
+        }
+    
+        const origin = window.location.origin;
+        
+        let fileName = '';
+        let fileUrl = null;
+        
+        // Case 1: File is a string URL (path)
+        if (typeof file === 'string') {
+            fileName = file.split('/').pop();
+            try {
+                fileName = decodeURIComponent(fileName);
+            } catch (e) {
+                console.error('Error decoding filename:', e);
+            }
+            
+            const path = file.startsWith('/') ? file : `/${file}`;
+            fileUrl = `${origin}${path}`;
+        } 
+
+        // Case 2: File is a File object
+        else if (file instanceof File) {
+            fileName = file.name;
+            fileUrl = URL.createObjectURL(file);
+        } 
+
+        // Case 3: File is an object with properties
+        else if (file && typeof file === 'object') {
+            if (file.url) {
+                fileName = file.name || file.url.split('/').pop();
+                try {
+                    fileName = decodeURIComponent(fileName);
+                } catch (e) {
+                    console.error('Error decoding filename:', e);
+                }
+                
+                // Convert to absolute URL 
+                if (file.url.startsWith('http')) {
+                    fileUrl = file.url;
+                } else {
+                    // Relative path 
+                    const path = file.url.startsWith('/') ? file.url : `/${file.url}`;
+                    fileUrl = `${origin}${path}`;
+                }
+            } else {
+                fileName = file.name || 'Attachment';
+                fileUrl = `${origin}/storage/rfq-attachments/${fileName}`;
+            }
+        }
+        
+        console.log('FileDisplay final URL:', { 
+            origin,
+            fileName, 
+            fileUrl 
+        });
+        
         return (
             <div className="flex flex-col items-center justify-center space-y-2">
-                {fileName && (
-                    <DocumentArrowDownIcon 
-                        className="h-6 w-6 text-gray-400 cursor-pointer" 
-                        onClick={() => fileUrl && window.open(fileUrl, '_blank')}
-                    />
-                )}
+                <DocumentArrowDownIcon 
+                    className="h-6 w-6 text-blue-500 cursor-pointer hover:text-blue-700" 
+                    onClick={() => {
+                        if (fileUrl) {
+                            console.log("Opening file URL:", fileUrl);
+                            window.open(fileUrl, '_blank');
+                        }
+                    }}
+                />
                 {fileName && (
                     <span 
                         className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
-                        onClick={() => fileUrl && window.open(fileUrl, '_blank')}
+                        onClick={() => {
+                            if (fileUrl) {
+                                console.log("Opening file URL:", fileUrl);
+                                window.open(fileUrl, '_blank');
+                            }
+                        }}
                     >
                         {fileName}
                     </span>
@@ -702,7 +846,7 @@ export default function AddQuotationForm({ auth }) {
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSaveAndSubmit}>
                     {/* Info Grid */}
                     <div className="bg-blue-50 rounded-lg p-6 grid grid-cols-2 gap-6 shadow-md text-lg">
                         {/* Left Column */}
@@ -712,7 +856,7 @@ export default function AddQuotationForm({ auth }) {
                                 type="email"
                                 value={formData.organization_email}
                                 onChange={(e) => handleFormInputChange('organization_email', e.target.value)}
-                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                className="text-black bg-blue-50 focus:ring-0 w-full outline-none border-none text-lg"
                                 required
                             />
 
@@ -721,69 +865,52 @@ export default function AddQuotationForm({ auth }) {
                                 type="text"
                                 value={formData.city}
                                 onChange={(e) => handleFormInputChange('city', e.target.value)}
-                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                className="text-black bg-blue-50 focus:ring-0 w-full outline-none border-none text-lg"
                                 required
                             />
 
                             <span className="font-medium text-gray-600">Category:</span>
-                            <div className="relative w-full">
-                                <select
-                                    value={formData.category_id || ''}
-                                    onChange={(e) => handleFormInputChange('category_id', e.target.value)}
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none focus:ring-0 focus:outline-none w-full appearance-none cursor-pointer"
-                                    style={{ colorScheme: "light" }}
-                                    required
+                            <div className="relative ml-3">
+                            <select
+                                value={formData.category_id || ""}
+                                onChange={(e) => handleFormInputChange('category_id', e.target.value)}
+                                className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
+                                required
+                            >
+                                <option value="">Select Category</option>
+                                {categories.map((category) => (
+                                <option 
+                                    key={category.id} 
+                                    value={category.id.toString()} 
+                                    className="text-[#009FDC] bg-blue-50"
                                 >
-                                    <option value="">Select Category</option>
-                                    {categories.map((category) => (
-                                        <option
-                                            key={category.id}
-                                            value={String(category.id)}
-                                            className="text-[#009FDC] bg-blue-50"
-                                            selected={String(category.id) === String(formData.category_id)}
-                                        >
-                                            {category.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {/* Debug info - can be removed in production */}
-                                {isEditing && formData.category_id && (
-                                    <div className="text-xs text-gray-500">
-                                        ID: {formData.category_id}, Name: {categoryNames[formData.category_id] || 'Not found'}
-                                    </div>
-                                )}
+                                    {category.name}
+                                </option>
+                                ))}
+                            </select>
                             </div>
 
                             <span className="font-medium text-gray-600">Warehouse:</span>
-                            <div className="relative w-full">
-                                <select
-                                    value={formData.warehouse_id || ''}
-                                    onChange={(e) => handleFormInputChange('warehouse_id', e.target.value)}
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none focus:ring-0 focus:outline-none w-full appearance-none cursor-pointer"
-                                    style={{ colorScheme: "light" }}
-                                    required
+                            <div className="relative ml-3">
+                            <select
+                                value={formData.warehouse_id || ""}
+                                onChange={(e) => handleFormInputChange('warehouse_id', e.target.value)}
+                                className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
+                                required
+                            >
+                                <option value="">Select Warehouse</option>
+                                {warehouses.map((warehouse) => (
+                                <option 
+                                    key={warehouse.id} 
+                                    value={warehouse.id.toString()} 
+                                    className="text-[#009FDC] bg-blue-50"
                                 >
-                                    <option value="">Select Warehouse</option>
-                                    {warehouses.map((warehouse) => (
-                                        <option
-                                            key={warehouse.id}
-                                            value={String(warehouse.id)}
-                                            className="text-[#009FDC] bg-blue-50"
-                                            selected={String(warehouse.id) === String(formData.warehouse_id)}
-                                        >
-                                            {warehouse.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {/* Debug info - can be removed in production */}
-                                {isEditing && formData.warehouse_id && (
-                                    <div className="text-xs text-gray-500">
-                                        ID: {formData.warehouse_id}, Name: {warehouseNames[formData.warehouse_id] || 'Not found'}
-                                    </div>
-                                )}
+                                    {warehouse.name}
+                                </option>
+                                ))}
+                            </select>
                             </div>
-                            </div>
-
+                        </div>
 
                         {/* Right Column */}
                         <div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-center">
@@ -792,7 +919,7 @@ export default function AddQuotationForm({ auth }) {
                                 type="date"
                                 value={formData.issue_date}
                                 onChange={(e) => handleFormInputChange('issue_date', e.target.value)}
-                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                className="text-black bg-blue-50 focus:ring-0 outline-none border-none w-40 ml-2 text-lg"
                                 required
                             />
 
@@ -801,7 +928,7 @@ export default function AddQuotationForm({ auth }) {
                                 type="date"
                                 value={formData.closing_date}
                                 onChange={(e) => handleFormInputChange('closing_date', e.target.value)}
-                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                className="text-black bg-blue-50 focus:ring-0 outline-none border-none w-40 ml-2 text-lg"
                                 required
                             />
 
@@ -810,39 +937,31 @@ export default function AddQuotationForm({ auth }) {
                                 type="text"
                                 value={formData.rfq_id}
                                 onChange={(e) => handleFormInputChange('rfq_id', e.target.value)}
-                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
-                                readOnly={!isEditing} // Make it readonly for new RFQs
+                                className="text-black bg-blue-50 focus:ring-0 outline-none border-none w-full ml-2 text-lg"
+                                readOnly={!isEditing} 
                                 placeholder={isEditing ? "" : "Auto-generated by system"}
-                                required={isEditing} // Only required when editing
+                                required={isEditing}
                             />
 
                             <span className="font-medium text-gray-600">Payment Type:</span>
-                            <div className="relative w-full">
-                                <select
-                                    value={formData.payment_type || ''}
-                                    onChange={(e) => handleFormInputChange('payment_type', e.target.value)}
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 border-none focus:ring-0 focus:outline-none w-full appearance-none cursor-pointer"
-                                    style={{ colorScheme: "light" }}
-                                    required
+                            <div className="relative ml-5"> 
+                            <select
+                                value={formData.payment_type || ""}
+                                onChange={(e) => handleFormInputChange('payment_type', e.target.value)}
+                                className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
+                                required
+                            >
+                                <option value="">Select Payment Type</option>
+                                {paymentTypes.map((type) => (
+                                <option 
+                                    key={type.id} 
+                                    value={type.id.toString()} 
+                                    className="text-[#009FDC] bg-blue-50"
                                 >
-                                    <option value="">Select Payment Type</option>
-                                    {paymentTypes.map((type) => (
-                                        <option 
-                                            key={type.id} 
-                                            value={String(type.id)} 
-                                            className="text-[#009FDC] bg-blue-50"
-                                            selected={String(type.id) === String(formData.payment_type)}
-                                        >
-                                            {type.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {/* Debug info - can be removed in production */}
-                                {isEditing && formData.payment_type && (
-                                    <div className="text-xs text-gray-500">
-                                        ID: {formData.payment_type}, Name: {paymentTypeNames[formData.payment_type] || 'Not found'}
-                                    </div>
-                                )}
+                                    {type.name}
+                                </option>
+                                ))}
+                            </select>
                             </div>
 
                             <span className="font-medium text-gray-600">Contact No#:</span>
@@ -850,11 +969,11 @@ export default function AddQuotationForm({ auth }) {
                                 type="text"
                                 value={formData.contact_no}
                                 onChange={(e) => handleFormInputChange('contact_no', e.target.value)}
-                                className="text-black bg-blue-50 border-none focus:ring-0 focus:outline-none w-full"
+                                className="text-black bg-blue-50 focus:ring-0 outline-none border-none w-full ml-2 text-lg"
                                 required
                             />
                         </div>
-                        </div>
+                    </div>
 
                     {/* Item Table */}
                     <table className="w-full mt-4 table-fixed border-collapse">
@@ -944,24 +1063,27 @@ export default function AddQuotationForm({ auth }) {
                                             ))}
                                         </select>
                                     </td>
-                                    <td className="px-6 py-6 text-center">
-                                        <div className="flex flex-col items-center justify-center w-full">
-                                            <FileDisplay file={item.attachment} />
-                                            <input
-                                                type="file"
-                                                onChange={(e) => handleFileChange(index, e)}
-                                                className="hidden"
-                                                id={`file-input-${index}`}
-                                                accept=".pdf,.doc,.docx"
-                                            />
-                                            <label 
-                                                htmlFor={`file-input-${index}`}
-                                                className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer break-words whitespace-normal text-center"
-                                            >
-                                                {item.attachment ? 'Replace file' : 'Attach file'}
-                                            </label>
-                                        </div>
-                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                    <div className="flex flex-col items-center justify-center w-full">
+                                        <FileDisplay 
+                                            file={item.attachment} 
+                                            onFileClick={(url) => window.open(url, '_blank')}
+                                        />
+                                        <input
+                                            type="file"
+                                            onChange={(e) => handleFileChange(index, e)}
+                                            className="hidden"
+                                            id={`file-input-${index}`}
+                                            accept=".pdf,.doc,.docx"
+                                        />
+                                        <label 
+                                            htmlFor={`file-input-${index}`}
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer break-words whitespace-normal text-center"
+                                        >
+                                            {item.attachment ? 'Replace file' : 'Attach file'}
+                                        </label>
+                                    </div>
+                                </td>
                                     <td className="px-6 py-6 whitespace-nowrap">
                                         <input
                                             type="date"
@@ -999,13 +1121,13 @@ export default function AddQuotationForm({ auth }) {
 
                     {/* Action Buttons */}
                     <div className="mt-8 flex justify-end space-x-4">
-                        <button
-                            type="submit"
-                            className="inline-flex items-center px-4 py-2 border border-green-600 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50"
-                        >
-                            <DocumentTextIcon className="h-5 w-5 mr-2" />
-                            {isEditing ? "Update RFQ" : "Save RFQ"}
-                        </button>
+                    <button
+                        type="submit" 
+                        className="inline-flex items-center px-4 py-2 border border-green-600 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50"
+                    >
+                        <DocumentTextIcon className="h-5 w-5 mr-2" />
+                        {isEditing ? "Update RFQ" : "Save RFQ"}
+                    </button>
                     </div>
                 </form>
             </div>
