@@ -18,6 +18,17 @@ const Quotations = ({ auth }) => {
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
 
+    // A safe API get function that handles null values and possible errors
+    const safeApiGet = async (url) => {
+        try {
+            const response = await axios.get(url);
+            return { success: true, data: response.data };
+        } catch (error) {
+            console.error(`Error fetching from ${url}:`, error);
+            return { success: false, error };
+        }
+    };
+
     const fetchQuotations = async () => {
         setLoading(true);
         setProgress(0);
@@ -28,50 +39,57 @@ const Quotations = ({ auth }) => {
     
         try {
             const response = await axios.get(`/api/v1/quotations?page=${currentPage}`);
-            const quotationsData = response.data.data;
             console.log("Quotations API Response:", response.data);
+            
+            const quotationsData = response.data.data || [];
+            const meta = response.data.meta || {};
+            const responseLastPage = meta.last_page || 1;
     
             const quotationsWithDetails = await Promise.all(
                 quotationsData.map(async (quotation) => {
-                    const [statusResponse, rfqResponse] = await Promise.all([
-                        axios.get(`/api/v1/statuses/${quotation.status_id}`),
-                        axios.get(`/api/v1/rfqs/${quotation.rfq_id}`)
-                    ]);
-
-                    console.log("RFQ API Response:", rfqResponse.data);
-    
-                    let companyName = quotation.rfq?.company?.name || "N/A"; 
-    
-                    if (rfqResponse.data.data.company_id) {
-                        try {
-                            const companyResponse = await axios.get(`/api/v1/companies/${rfqResponse.data.data.company_id}`);
-                            const companyName = companyResponse.data.data.name;
-                            console.log("Company API Response:", companyResponse.data);
-                        } catch (companyError) {
-                            console.error("Failed to fetch company:", companyError);
+                    // Initialize with default values
+                    let statusData = { type: 'unknown', name: 'Unknown' };
+                    let rfqData = { rfq_number: 'N/A' };
+                    
+                    // Use the company_name directly from quotation data
+                    const companyName = quotation.company_name || 'N/A';
+                    
+                    // Fetch status if needed
+                    if (quotation.status_id) {
+                        const statusResponse = await safeApiGet(`/api/v1/statuses/${quotation.status_id}`);
+                        if (statusResponse.success) {
+                            statusData = statusResponse.data.data;
+                        }
+                    }
+                    
+                    // Fetch RFQ if needed
+                    if (quotation.rfq_id) {
+                        const rfqResponse = await safeApiGet(`/api/v1/rfqs/${quotation.rfq_id}`);
+                        if (rfqResponse.success) {
+                            rfqData = rfqResponse.data.data || {};
                         }
                     }
     
                     return {
                         ...quotation,
-                        company_name: companyName, // Store the company name
-                        status_type: statusResponse.data.data.type,
-                        status_name: statusResponse.data.data.name,
-                        rfq_number: rfqResponse.data.data.rfq_number || "N/A"
+                        company_name: companyName,
+                        status_type: statusData.type,
+                        status_name: statusData.name,
+                        rfq_number: rfqData.rfq_number || "N/A"
                     };
                 })
             );
     
             setQuotations(quotationsWithDetails);
             applyFilter(selectedFilter, quotationsWithDetails);
-            setLastPage(response.data.meta.last_page);
+            setLastPage(responseLastPage);
             setError("");
     
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
         } catch (error) {
             console.error("API Error:", error);
-            setError("Failed to load quotations");
+            setError("Failed to load quotations. Please try again later.");
             setQuotations([]);
             setFilteredQuotations([]);
             setProgress(100);
@@ -122,7 +140,7 @@ const Quotations = ({ auth }) => {
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
             clearInterval(interval);
-        }, 3000); 
+        }, 500); // Reduced timing for better UX
     };
 
     useEffect(() => {
@@ -130,6 +148,8 @@ const Quotations = ({ auth }) => {
     }, [currentPage]);
 
     const formatDateTime = (dateString) => {
+        if (!dateString) return "N/A";
+        
         const optionsDate = { year: "numeric", month: "long", day: "numeric" };
         const optionsTime = { hour: "2-digit", minute: "2-digit", hour12: true };
     
@@ -145,6 +165,25 @@ const Quotations = ({ auth }) => {
             </div>
         );
     };
+
+    // Calculate pagination values safely
+    const getPaginationData = () => {
+        const totalItems = filteredQuotations.length;
+        const itemsPerPage = 10;
+        const calculatedLastPage = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+        
+        // Ensure current page is within valid range
+        const validCurrentPage = Math.min(Math.max(1, currentPage), calculatedLastPage);
+        
+        return {
+            totalItems,
+            itemsPerPage,
+            lastPage: calculatedLastPage,
+            currentPage: validCurrentPage
+        };
+    };
+
+    const paginationData = getPaginationData();
 
     return (
         <AuthenticatedLayout user={auth.user}>
@@ -236,53 +275,61 @@ const Quotations = ({ auth }) => {
 
                         {!loading && (
                         <tbody className="bg-transparent divide-y divide-gray-200">
-                            {filteredQuotations.map((quotation) => (
-                                <tr key={quotation.id}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {quotation.quotation_number}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {quotation.rfq_number}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {quotation.company_name}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {Number(quotation.total_amount).toLocaleString("en-US", {
-                                            maximumFractionDigits: 0,
-                                        })}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {quotation.valid_until ? new Date(quotation.valid_until).toLocaleDateString('en-GB', {
-                                            day: '2-digit',
-                                            month: '2-digit',
-                                            year: 'numeric'
-                                        }) : ''}
+                            {filteredQuotations.length > 0 ? (
+                                filteredQuotations.map((quotation) => (
+                                    <tr key={quotation.id}>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            {quotation.quotation_number || 'N/A'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            {quotation.rfq_number || 'N/A'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            {quotation.company_name || 'N/A'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            {Number(quotation.total_amount || 0).toLocaleString("en-US", {
+                                                maximumFractionDigits: 0,
+                                            })}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            {quotation.valid_until ? new Date(quotation.valid_until).toLocaleDateString('en-GB', {
+                                                day: '2-digit',
+                                                month: '2-digit',
+                                                year: 'numeric'
+                                            }) : 'N/A'}
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                                        No quotations found matching the current filter.
                                     </td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                         )}
                     </table>
 
-                    {/* Pagination */}
-                    {!loading && !error && filteredQuotations.length > 0 && Math.ceil(filteredQuotations.length / 10) > 1 && (
+                    {/* Pagination - Using safely calculated pagination data */}
+                    {!loading && !error && filteredQuotations.length > 0 && paginationData.lastPage > 1 && (
                         <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                             <button
-                                onClick={() => setCurrentPage(currentPage - 1)}
+                                onClick={() => setCurrentPage(paginationData.currentPage - 1)}
                                 className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                    currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
+                                    paginationData.currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
                                 }`}
-                                disabled={currentPage <= 1}
+                                disabled={paginationData.currentPage <= 1}
                             >
                                 Previous
                             </button>
-                            {Array.from({ length: Math.ceil(filteredQuotations.length / 10) }, (_, index) => index + 1).map((page) => (
+                            {Array.from({ length: paginationData.lastPage }, (_, index) => index + 1).map((page) => (
                                 <button
                                     key={page}
                                     onClick={() => setCurrentPage(page)}
                                     className={`px-3 py-1 ${
-                                        currentPage === page
+                                        paginationData.currentPage === page
                                             ? "bg-[#009FDC] text-white"
                                             : "border border-[#B9BBBD] bg-white text-black"
                                     } rounded-full`}
@@ -291,11 +338,11 @@ const Quotations = ({ auth }) => {
                                 </button>
                             ))}
                             <button
-                                onClick={() => setCurrentPage(currentPage + 1)}
+                                onClick={() => setCurrentPage(paginationData.currentPage + 1)}
                                 className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                    currentPage >= Math.ceil(filteredQuotations.length / 10) ? "opacity-50 cursor-not-allowed" : ""
+                                    paginationData.currentPage >= paginationData.lastPage ? "opacity-50 cursor-not-allowed" : ""
                                 }`}
-                                disabled={currentPage >= Math.ceil(filteredQuotations.length / 10)}
+                                disabled={paginationData.currentPage >= paginationData.lastPage}
                             >
                                 Next
                             </button>

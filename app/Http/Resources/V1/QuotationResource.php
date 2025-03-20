@@ -12,6 +12,7 @@ class QuotationResource extends JsonResource
      *
      * @return array<string, mixed>
      */
+        
     public function toArray(Request $request): array
     {
         return [
@@ -19,7 +20,7 @@ class QuotationResource extends JsonResource
             'rfq_id' => $this->rfq_id,
             'supplier_id' => $this->supplier_id,
             'quotation_number' => $this->quotation_number,
-            'company_name' => $this->rfq ? $this->rfq->organization_name : 'N/A',
+            'company_name' => $this->rfq && $this->rfq->company ? $this->rfq->company->name : 'N/A',
             'issue_date' => $this->issue_date,
             'valid_until' => $this->valid_until,
             'total_amount' => $this->total_amount,
