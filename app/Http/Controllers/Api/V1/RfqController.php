@@ -102,7 +102,7 @@ class RfqController extends Controller
             ->first();
 
         // Log what we fetched
-        Log::info("Latest RFQ from database:", ['rfq' => $latestRfq]);
+        //Log::info("Latest RFQ from database:", ['rfq' => $latestRfq]);
 
         $lastNumber = 0;
 
@@ -111,9 +111,9 @@ class RfqController extends Controller
             // Extract the last number part using a regex pattern
             if (preg_match('/RFQ-\d{4}-(\d+)/', $latestRfq->rfq_number, $matches)) {
                 $lastNumber = intval($matches[1]); // Convert to integer
-                Log::info("Extracted last number from RFQ:", ['lastNumber' => $lastNumber]);
+                //Log::info("Extracted last number from RFQ:", ['lastNumber' => $lastNumber]);
             } else {
-                Log::warning("Regex did not match, RFQ format might be incorrect.");
+                //Log::warning("Regex did not match, RFQ format might be incorrect.");
             }
         } else {
             Log::warning("No valid RFQ found in the database, starting from 0001.");
@@ -132,12 +132,12 @@ class RfqController extends Controller
     {
         Log::info('RFQ Creation request received');
         Log::info('Request data:', $request->except(['attachments'])); // Log everything except file data
-        
+
         DB::beginTransaction();
         try {
             // Generate a unique RFQ number
             $rfq_number = $this->getNewRFQNumber();
-            
+
             // Create base RFQ data array
             $rfqData = [
                 'organization_email' => $request->input('organization_email'),
@@ -153,23 +153,23 @@ class RfqController extends Controller
                 'created_at' => now(),
                 'updated_at' => now()
             ];
-            
+
             Log::info('Creating RFQ with data:', $rfqData);
-            
+
             // Insert RFQ directly with query builder
             $rfqId = DB::table('rfqs')->insertGetId($rfqData);
-            
+
             if (!$rfqId) {
                 throw new \Exception("Failed to create RFQ record");
             }
-            
+
             Log::info("RFQ created with ID: $rfqId");
-            
+
             // Only attach category if it's a valid ID
             $categoryId = $request->input('category_id');
             if (!empty($categoryId)) {
                 Log::info("Attaching category ID: $categoryId to RFQ ID: $rfqId");
-                
+
                 try {
                     // Direct DB query to attach category
                     $inserted = DB::table('rfq_categories')->insert([
@@ -178,7 +178,7 @@ class RfqController extends Controller
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
-                    
+
                     Log::info("Category attachment result: " . ($inserted ? "Success" : "Failed"));
                 } catch (\Exception $categoryException) {
                     Log::error("Error attaching category: " . $categoryException->getMessage());
@@ -203,33 +203,33 @@ class RfqController extends Controller
                             'created_at' => now(),
                             'updated_at' => now()
                         ];
-                        
+
                         // Handle file upload if exists
                         if ($request->hasFile("attachments.{$index}")) {
                             $file = $request->file("attachments.{$index}");
                             $originalName = $file->getClientOriginalName();
                             $path = $file->store('rfq-attachments', 'public');
-                            
+
                             // Store file path in attachment column
                             $itemData['attachment'] = $path;
-                            
+
                             // Store original filename in specifications column
                             $itemData['specifications'] = $originalName;
-                            
+
                             Log::info("Saved file with original name: $originalName at path: $path");
                         }
-                        
+
                         // Remove null values
                         $itemData = array_filter($itemData, function ($value) {
                             return $value !== null;
                         });
-                        
+
                         Log::info("Creating RFQ item for RFQ ID: $rfqId", $itemData);
-                        
+
                         // Direct DB insert
                         $itemId = DB::table('rfq_items')->insertGetId($itemData);
                         Log::info("Item created with ID: $itemId");
-                        
+
                     } catch (\Exception $itemException) {
                         Log::error("Error creating item: " . $itemException->getMessage());
                         // Continue with other items
@@ -269,7 +269,7 @@ class RfqController extends Controller
             DB::rollBack();
             Log::error('RFQ Creation Error: ' . $e->getMessage());
             Log::error($e->getTraceAsString());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create RFQ',
@@ -408,7 +408,7 @@ class RfqController extends Controller
     public function destroy($id)
     {
         Log::info("RFQ Delete request received for ID: $id");
-        
+
         $rfq = Rfq::where('id', $id)->first();
 
         if (!$rfq) {
@@ -420,13 +420,13 @@ class RfqController extends Controller
         try {
             // Delete categories
             DB::table('rfq_categories')->where('rfq_id', $id)->delete();
-            
+
             // Delete items
             $rfq->items()->delete();
-            
+
             // Delete RFQ
             $rfq->delete();
-            
+
             DB::commit();
             Log::info("RFQ $id deleted successfully");
 
@@ -434,9 +434,9 @@ class RfqController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Failed to delete RFQ $id: " . $e->getMessage());
-            
+
             return response()->json([
-                'message' => 'Failed to delete RFQ', 
+                'message' => 'Failed to delete RFQ',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -447,7 +447,7 @@ class RfqController extends Controller
         try {
             // Get a new RFQ number
             $rfqNumber = $this->getNewRFQNumber();
-            
+
             // Prepare response data
             $responseData = [
                 'organization_email' => '',
@@ -457,18 +457,18 @@ class RfqController extends Controller
                 'expected_delivery_date' => now()->addDays(7)->format('Y-m-d'),
                 'status_id' => 47
             ];
-            
+
             // Try to get authenticated user data if available
             if (auth()->check() && auth()->user()->company) {
                 $responseData['organization_email'] = auth()->user()->company->email ?? '';
                 $responseData['city'] = auth()->user()->company->city ?? '';
             }
-            
+
             Log::info('Form data generated successfully', $responseData);
             return response()->json($responseData);
         } catch (\Exception $e) {
             Log::error('Failed to fetch form data: ' . $e->getMessage());
-            
+
             return response()->json([
                 'message' => 'Failed to fetch RFQ',
                 'error' => $e->getMessage()

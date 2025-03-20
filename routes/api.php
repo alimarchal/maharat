@@ -336,10 +336,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 Route::get('/api/files/{path}', function ($path) {
     $fullPath = 'rfq-attachments/' . $path;
-    
+
     if (Storage::disk('public')->exists($fullPath)) {
         return Storage::disk('public')->download($fullPath);
     }
-    
+
     abort(404, 'File not found');
 })->where('path', '.*')->name('file.download');
