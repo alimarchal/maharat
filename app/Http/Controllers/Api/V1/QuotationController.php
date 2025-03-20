@@ -25,8 +25,31 @@ class QuotationController extends Controller
             ->orderBy('quotation_number', 'desc')
             ->first();
 
-        $newNumber = $lastQuotation ? ((int) substr($lastQuotation->quotation_number, -5)) + 1 : 1;
-        return sprintf("QUO-%s-%05d", $year, $newNumber);
+        $newNumber = 1;
+        
+        if ($lastQuotation && preg_match('/QUO-\d{4}-(\d+)/', $lastQuotation->quotation_number, $matches)) {
+            $newNumber = (int)$matches[1] + 1;
+        }
+        
+        return sprintf("QUO-%s-%04d", $year, $newNumber);
+    }
+    
+    public function getNextQuotationNumber(): JsonResponse
+    {
+        try {
+            $nextNumber = $this->generateQuotationNumber();
+            \Log::info('Generated next quotation number: ' . $nextNumber);
+            return response()->json([
+                'success' => true,
+                'next_number' => $nextNumber
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to generate next quotation number: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate next quotation number: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function index(): JsonResponse|ResourceCollection
@@ -40,7 +63,8 @@ class QuotationController extends Controller
         }
         
         // Paginate the results
-        $quotations = $query->paginate(10)->appends(request()->query());
+        $quotations = $query->get(); // Fetch all records instead of paginating
+        return QuotationResource::collection($quotations);
         
         return $quotations->isEmpty()
             ? response()->json(['message' => 'No quotations found', 'data' => []], Response::HTTP_OK)
@@ -49,58 +73,55 @@ class QuotationController extends Controller
 
     public function store(Request $request)
     {
+        // Validate basic quotation fields
         $request->validate([
-            'document' => 'required|file|max:10240',
-            'quotation_id' => 'required|exists:quotations,id',
-            'type' => 'required|string'
+            'quotation_number' => 'nullable|string|max:255',
+            'rfq_id' => 'required|exists:rfqs,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
+            'issue_date' => 'nullable|date',
+            'valid_until' => 'nullable|date',
+            'total_amount' => 'nullable|numeric',
+            'notes' => 'nullable|string'
         ]);
 
         try {
-            // Get the uploaded file
-            $file = $request->file('document');
-            $originalName = $file->getClientOriginalName();
-            
-            // Store file
-            $path = $file->store('quotations');
-            
-            // Find existing document for this quotation
-            $existingDocument = QuotationDocument::where('quotation_id', $request->quotation_id)->first();
-            
-            if ($existingDocument) {
-                // Delete the old file if it exists
-                if (Storage::exists($existingDocument->file_path)) {
-                    Storage::delete($existingDocument->file_path);
-                }
-                
-                // Update the existing record
-                $existingDocument->update([
-                    'file_path' => $path,
-                    'original_name' => $originalName,
-                    'type' => $request->type
-                ]);
-                
-                $document = $existingDocument;
+            // Generate quotation number if not provided
+            if (empty($request->quotation_number)) {
+                $quotationNumber = $this->generateQuotationNumber();
             } else {
-                // Create a new document record
-                $document = QuotationDocument::create([
-                    'quotation_id' => $request->quotation_id,
-                    'file_path' => $path,
-                    'original_name' => $originalName,
-                    'type' => $request->type
+                $quotationNumber = $request->quotation_number;
+            }
+            
+            // Create the quotation record
+            $quotation = Quotation::create([
+                'quotation_number' => $quotationNumber,
+                'rfq_id' => $request->rfq_id,
+                'supplier_id' => $request->supplier_id,
+                'issue_date' => $request->issue_date,
+                'valid_until' => $request->valid_until,
+                'total_amount' => $request->total_amount,
+                'notes' => $request->notes
+            ]);
+            
+            // If RFQ company ID is provided, update the RFQ record
+            if ($request->has('update_rfq') && $request->input('update_rfq') && $request->has('rfq_company_id')) {
+                DB::table('rfqs')->where('id', $request->rfq_id)->update([
+                    'company_id' => $request->input('rfq_company_id')
                 ]);
             }
             
             return response()->json([
                 'success' => true,
-                'message' => 'Document uploaded successfully',
-                'data' => $document
-            ]);
+                'message' => 'Quotation created successfully',
+                'data' => new QuotationResource($quotation->load(['rfq', 'supplier', 'documents']))
+            ], Response::HTTP_CREATED);
             
         } catch (\Exception $e) {
+            Log::error('Failed to create quotation: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Error uploading document: ' . $e->getMessage()
-            ], 500);
+                'message' => 'Failed to create quotation: ' . $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 

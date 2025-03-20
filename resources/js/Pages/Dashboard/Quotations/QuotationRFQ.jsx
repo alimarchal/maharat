@@ -168,15 +168,6 @@ export default function QuotationRFQ({ auth }) {
         }
     };
 
-    useEffect(() => {
-        // First fetch companies and suppliers to build our maps
-        Promise.all([fetchCompanies(), fetchSuppliers()])
-            .then(() => {
-                fetchQuotations();
-                fetchRfqNumber();
-            });
-    }, [currentPage, rfqId]);
-
     const handleFileChange = async (index, e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -200,6 +191,18 @@ export default function QuotationRFQ({ auth }) {
             setError("Failed to upload file");
         }
     };
+
+    useEffect(() => {
+        // If we have an rfqId, fetch the quotations and RFQ number
+        if (rfqId) {
+            // First fetch companies and suppliers to build our maps
+            Promise.all([fetchCompanies(), fetchSuppliers()])
+                .then(() => {
+                    fetchQuotations();
+                    fetchRfqNumber();
+                });
+        }
+    }, [currentPage, rfqId]);
 
     const handleSave = async (id) => {
         try {
@@ -228,18 +231,26 @@ export default function QuotationRFQ({ auth }) {
                 update_rfq: true
             };
     
-            let response;
+            // For new records, the system should generate the quotation number
             if (isNewRecord) {
                 delete updatedData.id;
+                // Let the server generate the quotation number by setting it to empty
+                updatedData.quotation_number = '';
+            }
+    
+            let response;
+            if (isNewRecord) {
                 response = await axios.post('/api/v1/quotations', updatedData);
             } else {
                 response = await axios.put(`/api/v1/quotations/${id}`, updatedData);
             }
     
             if (response.data.success) {
+                // Get the actual quotation ID (either the new one from response or the existing one)
+                const quotationId = isNewRecord ? response.data.data.id : id;
+                
                 // Handle temporary documents if they exist
                 if (tempDocuments[id]) {
-                    const quotationId = isNewRecord ? response.data.data.id : id;
                     await uploadDocumentToServer(quotationId, tempDocuments[id]);
                     
                     // Clear the temporary document
@@ -259,7 +270,7 @@ export default function QuotationRFQ({ auth }) {
             }
         } catch (error) {
             console.error('Save error:', error.response ? error.response.data : error.message);
-            setError('Failed to save changes');
+            setError('Failed to save changes: ' + (error.response?.data?.message || error.message));
         }
     };
 
@@ -375,7 +386,7 @@ export default function QuotationRFQ({ auth }) {
 
     return (
         <AuthenticatedLayout user={auth.user}>
-            <div className="min-h-screen p-6">
+            <div className="min-h-screen w-full bg-[#C4E4F0] bg-opacity-5 p-6">
                 {/* Back Button and Breadcrumbs */}
                 <div className="flex justify-between items-center mb-4">
                     <button
@@ -396,49 +407,52 @@ export default function QuotationRFQ({ auth }) {
                     <span className="text-[#009FDC] text-xl"> Add Quotation to RFQ </span>
                 </div>
                 <Head title="Add Quotation to RFQ" />
-
-                <div className="w-full overflow-hidden">
+    
+                <div className="w-full">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-[32px] font-bold text-[#2C323C]">Add Quotation to RFQ</h2>
                     </div>
-
+    
                     <p className="text-purple-600 text-2xl mb-6">{rfqNumber}</p>
 
-                    <div className="w-full overflow-hidden">
-                        {error && (
+                    {/* Loading Bar */}
+                    {(loading || attachingFile) && (
+                        <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
+                            <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
+                                <div
+                                    className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
+                                    style={{ width: attachingFile ? '50%' : `${progress}%` }}
+                                ></div>
+                                <span className="absolute text-white">
+                                    {attachingFile ? "Attaching File..." : (progress < 60 ? "Please Wait, Processing..." : `${progress}%`)}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+    
+                    <div className="w-full">
+                        {!loading && error && (
                             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
                                 <span className="block sm:inline">{error}</span>
                             </div>
                         )}
                         
+                       
                         <table className="w-full">
+                        {!loading && (
                             <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
-                                <tr>
-                                    <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">Quotation#</th>
-                                    <th className="py-3 px-4 text-center">Company</th>
-                                    <th className="py-3 px-4 text-center">Supplier</th>
-                                    <th className="py-3 px-4 text-center">Issue Date</th>
-                                    <th className="py-3 px-4 text-center">Expiry Date</th>
-                                    <th className="py-3 px-4 text-center">Amount</th>
-                                    <th className="py-3 px-4 text-center">Attachment</th>
-                                    <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Actions</th>
-                                </tr>
+                            <tr>
+                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center w-[10%]">Quotation#</th>
+                                <th className="py-3 px-4 text-center w-[18%]">Company</th>
+                                <th className="py-3 px-4 text-center w-[18%]">Supplier</th>
+                                <th className="py-3 px-4 text-center w-[8%]">Issue Date</th>
+                                <th className="py-3 px-4 text-center w-[12%]">Expiry Date</th>
+                                <th className="py-3 px-4 text-center w-[2%]">Amount</th>
+                                <th className="py-3 px-4 text-center w-[12%]">Attachment</th>
+                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center w-[8%]">Actions</th>
+                            </tr>
                             </thead>
-
-                            {/* Loading Bar */}
-                            {(loading || attachingFile) && (
-                                <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
-                                    <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
-                                        <div
-                                            className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
-                                            style={{ width: attachingFile ? '50%' : `${progress}%` }}
-                                        ></div>
-                                        <span className="absolute text-white">
-                                            {attachingFile ? "Attaching File..." : (progress < 60 ? "Please Wait, Processing..." : `${progress}%`)}
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
+                        )}
 
                             {!loading && !attachingFile && (
                             <tbody className="bg-transparent divide-y divide-gray-200 px-6 py-4 text-center">
@@ -448,22 +462,25 @@ export default function QuotationRFQ({ auth }) {
                                         {/* Quotation Number */}
                                         <td className="px-4 py-4 text-center break-words whitespace-normal min-w-[120px] max-w-[150px]">
                                             {editingId === quotation.id ? (
-                                                <input
-                                                    type="text"
-                                                    value={editData.quotation_number || ''}
-                                                    onChange={(e) =>
-                                                        setEditData({ ...editData, quotation_number: e.target.value })
-                                                    }
-                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center break-words"
-                                                    style={{ wordWrap: "break-word", overflowWrap: "break-word" }}
-                                                />
+                                                quotation.id.toString().includes('new-') ? (
+                                                    /* For new records, show the next generated number with the same styling as regular display */
+                                                    <span className="inline-block break-words w-full text-[17px] text-black">
+                                                        {editData.next_quotation_number || quotation.next_quotation_number || `QUO-${new Date().getFullYear()}-00001`}
+                                                    </span>
+                                                ) : (
+                                                    /* For existing records in edit mode, make it look exactly like regular text */
+                                                    <span className="inline-block break-words w-full text-[17px] text-black">
+                                                        {editData.quotation_number}
+                                                    </span>
+                                                )
                                             ) : (
-                                                <span className="inline-block break-words w-full">
+                                                /* Regular display mode */
+                                                <span className="inline-block break-words w-full text-[17px] text-black">
                                                     {quotation.quotation_number}
                                                 </span>
                                             )}
                                         </td>
-                        
+
                                         {/* Company Name Dropdown */}
                                         <td className="px-4 py-4 text-center break-words whitespace-normal min-w-[150px] max-w-[170px]">
                                             {editingId === quotation.id ? (
@@ -472,8 +489,8 @@ export default function QuotationRFQ({ auth }) {
                                                     onChange={(e) =>
                                                         setEditData({ ...editData, company_name: e.target.value })
                                                     }
-                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
-                                                    style={{ width: "100%" }}
+                                                    className="text-[17px] text-black bg-transparent border-none focus:ring-0 w-full text-center break-words"
+                                                    style={{ wordWrap: "break-word", overflowWrap: "break-word" }}
                                                 >
                                                     <option value="">Select a company</option>
                                                     {companies.map((company) => (
@@ -483,12 +500,12 @@ export default function QuotationRFQ({ auth }) {
                                                     ))}
                                                 </select>
                                             ) : (
-                                                <span className="inline-block break-words w-full">
+                                                <span className="inline-block break-words w-full text-[17px] text-black">
                                                     {quotation.company_name || 'No company'}
                                                 </span>
                                             )}
                                         </td>
-                                        
+
                                         {/* Supplier Name Dropdown */}
                                         <td className="px-4 py-4 text-center break-words whitespace-normal min-w-[150px] max-w-[170px]">
                                             {editingId === quotation.id ? (
@@ -497,8 +514,8 @@ export default function QuotationRFQ({ auth }) {
                                                     onChange={(e) =>
                                                         setEditData({ ...editData, supplier_name: e.target.value })
                                                     }
-                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
-                                                    style={{ width: "100%" }}
+                                                    className="text-[17px] text-black bg-transparent border-none focus:ring-0 w-full text-center break-words"
+                                                    style={{ wordWrap: "break-word", overflowWrap: "break-word" }}
                                                 >
                                                     <option value="">Select a supplier</option>
                                                     {suppliers.map((supplier) => (
@@ -508,12 +525,12 @@ export default function QuotationRFQ({ auth }) {
                                                     ))}
                                                 </select>
                                             ) : (
-                                                <span className="inline-block break-words w-full">
+                                                <span className="inline-block break-words w-full text-[17px] text-black">
                                                     {quotation.supplier_name || 'No supplier'}
                                                 </span>
                                             )}
                                         </td>
-                        
+
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
                                             {editingId === quotation.id ? (
                                                 <input

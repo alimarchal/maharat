@@ -115,7 +115,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 <main className="flex-1 lg:ml-36 transition-all">
                     {header && <header className="p-6 mb-4">{header}</header>}
-                    {children}
+                        {children}
                 </main>
             </div>
         </div>

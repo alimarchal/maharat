@@ -44,6 +44,7 @@ const Quotations = ({ auth }) => {
             const quotationsData = response.data.data || [];
             const meta = response.data.meta || {};
             const responseLastPage = meta.last_page || 1;
+            const totalItems = meta.total || quotationsData.length;
     
             const quotationsWithDetails = await Promise.all(
                 quotationsData.map(async (quotation) => {
@@ -81,8 +82,8 @@ const Quotations = ({ auth }) => {
             );
     
             setQuotations(quotationsWithDetails);
-            applyFilter(selectedFilter, quotationsWithDetails);
             setLastPage(responseLastPage);
+            applyFilter(selectedFilter, quotationsWithDetails);
             setError("");
     
             setProgress(100);
@@ -168,8 +169,8 @@ const Quotations = ({ auth }) => {
 
     // Calculate pagination values safely
     const getPaginationData = () => {
-        const totalItems = filteredQuotations.length;
         const itemsPerPage = 10;
+        const totalItems = quotations.length; // Use full quotations list, not filtered
         const calculatedLastPage = Math.max(1, Math.ceil(totalItems / itemsPerPage));
         
         // Ensure current page is within valid range
@@ -240,14 +241,30 @@ const Quotations = ({ auth }) => {
                     </div>
                 </div>
 
+                {/* Loading Bar */}
+                {loading && (
+                    <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
+                        <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
+                            <div
+                                className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
+                                style={{ width: `${progress}%` }}
+                            ></div>
+                            <span className="absolute text-white">
+                                {progress < 60 ? "Please Wait, Fetching Details..." : `${progress}%`}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 {/* Quotations Table */}
                 <div className="w-full overflow-hidden">
-                    {error && (
+                    {!loading && error && (
                         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
                             <span className="block sm:inline">{error}</span>
                         </div>
                     )}
                     <table className="w-full">
+                    {!loading && (
                         <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                             <tr>
                                 <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">Quotation#</th>
@@ -257,21 +274,7 @@ const Quotations = ({ auth }) => {
                                 <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Expiry Date</th>
                             </tr>
                         </thead>
-
-                        {/* Loading Bar */}
-                        {loading && (
-                            <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
-                                <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
-                                    <div
-                                        className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
-                                        style={{ width: `${progress}%` }}
-                                    ></div>
-                                    <span className="absolute text-white">
-                                        {progress < 60 ? "Please Wait, Fetching Details..." : `${progress}%`}
-                                    </span>
-                                </div>
-                            </div>
-                        )}
+                    )}
 
                         {!loading && (
                         <tbody className="bg-transparent divide-y divide-gray-200">
@@ -313,41 +316,41 @@ const Quotations = ({ auth }) => {
                     </table>
 
                     {/* Pagination - Using safely calculated pagination data */}
-                    {!loading && !error && filteredQuotations.length > 0 && paginationData.lastPage > 1 && (
-                        <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    {!loading && !error && quotations.length > 0 && paginationData.lastPage > 1 && (
+                    <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                        <button
+                            onClick={() => setCurrentPage(paginationData.currentPage - 1)}
+                            className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
+                                paginationData.currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
+                            disabled={paginationData.currentPage <= 1}
+                        >
+                            Previous
+                        </button>
+                        {Array.from({ length: paginationData.lastPage }, (_, index) => index + 1).map((page) => (
                             <button
-                                onClick={() => setCurrentPage(paginationData.currentPage - 1)}
-                                className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                    paginationData.currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
-                                }`}
-                                disabled={paginationData.currentPage <= 1}
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={`px-3 py-1 ${
+                                    paginationData.currentPage === page
+                                        ? "bg-[#009FDC] text-white"
+                                        : "border border-[#B9BBBD] bg-white text-black"
+                                } rounded-full`}
                             >
-                                Previous
+                                {page}
                             </button>
-                            {Array.from({ length: paginationData.lastPage }, (_, index) => index + 1).map((page) => (
-                                <button
-                                    key={page}
-                                    onClick={() => setCurrentPage(page)}
-                                    className={`px-3 py-1 ${
-                                        paginationData.currentPage === page
-                                            ? "bg-[#009FDC] text-white"
-                                            : "border border-[#B9BBBD] bg-white text-black"
-                                    } rounded-full`}
-                                >
-                                    {page}
-                                </button>
-                            ))}
-                            <button
-                                onClick={() => setCurrentPage(paginationData.currentPage + 1)}
-                                className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                    paginationData.currentPage >= paginationData.lastPage ? "opacity-50 cursor-not-allowed" : ""
-                                }`}
-                                disabled={paginationData.currentPage >= paginationData.lastPage}
-                            >
-                                Next
-                            </button>
-                        </div>
-                    )}
+                        ))}
+                        <button
+                            onClick={() => setCurrentPage(paginationData.currentPage + 1)}
+                            className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
+                                paginationData.currentPage >= paginationData.lastPage ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
+                            disabled={paginationData.currentPage >= paginationData.lastPage}
+                        >
+                            Next
+                        </button>
+                    </div>
+                )}
                 </div>
             </div>
         </AuthenticatedLayout>

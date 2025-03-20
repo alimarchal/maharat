@@ -165,6 +165,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('/quotations/by-rfq/{rfqId}', [QuotationController::class, 'getByRfqId']);
     Route::post('/quotations/update-batch', [QuotationController::class, 'updateBatch']);
     Route::post('/quotations/upload-terms', [QuotationController::class, 'uploadTerms']);
+    Route::get('/quotations/next-number', [QuotationController::class, 'getNextQuotationNumber']);
 
     // Task Routes
     Route::apiResource('tasks', TaskController::class);
