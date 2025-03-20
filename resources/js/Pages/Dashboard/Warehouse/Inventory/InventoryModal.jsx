@@ -162,7 +162,7 @@ const InventoryModal = ({
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {errors.general && (
-                        <p className="text-red-500 text-sm text-center">
+                        <p className="text-red-500 text-base text-center mb-4">
                             {errors.general}
                         </p>
                     )}
