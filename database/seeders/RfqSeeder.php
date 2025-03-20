@@ -36,16 +36,6 @@ class RfqSeeder extends Seeder
                 $this->command->warn('Could not load Warehouse model. Using fixed warehouse IDs.');
             }
 
-            // If no warehouses were found, use fixed IDs
-            if (empty($warehouses)) {
-                $warehouses = [
-                    'Dubai Main Warehouse' => 101,
-                    'Karachi Distribution Center' => 102,
-                    'Lahore Storage Facility' => 103,
-                    'Abu Dhabi Logistics Hub' => 104
-                ];
-            }
-
             // Define RFQ data with explicit IDs
             $rfqs = [
                 [
@@ -56,7 +46,7 @@ class RfqSeeder extends Seeder
                     'cost_center_id' => 1,
                     'sub_cost_center_id' => 1,
                     'company_id' => 1,
-                    'warehouse_id' => $warehouses['Dubai Main Warehouse'] ?? 101,
+                    'warehouse_id' => 201,
                     'organization_name' => 'Tech Solutions Ltd.',
                     'organization_email' => 'contact@techsolutions.com',
                     'city' => 'Karachi',
@@ -90,7 +80,7 @@ class RfqSeeder extends Seeder
                     'cost_center_id' => 1,
                     'sub_cost_center_id' => 1,
                     'company_id' => 2,
-                    'warehouse_id' => $warehouses['Karachi Distribution Center'] ?? 102,
+                    'warehouse_id' => 202,
                     'organization_name' => 'Fast Supplies Pvt Ltd.',
                     'organization_email' => 'sales@fastsupplies.com',
                     'city' => 'Lahore',
@@ -124,7 +114,7 @@ class RfqSeeder extends Seeder
                     'cost_center_id' => 1,
                     'sub_cost_center_id' => 1,
                     'company_id' => 3,
-                    'warehouse_id' => $warehouses['Lahore Storage Facility'] ?? 103,
+                    'warehouse_id' => 204,
                     'organization_name' => 'Global Traders',
                     'organization_email' => 'info@globaltraders.com',
                     'city' => 'Islamabad',
@@ -158,7 +148,7 @@ class RfqSeeder extends Seeder
                     'cost_center_id' => 1,
                     'sub_cost_center_id' => 1,
                     'company_id' => 4,
-                    'warehouse_id' => $warehouses['Abu Dhabi Logistics Hub'] ?? 104,
+                    'warehouse_id' => 203,
                     'organization_name' => 'Elite Constructions',
                     'organization_email' => 'contact@eliteconstructions.com',
                     'city' => 'Faisalabad',

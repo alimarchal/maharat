@@ -24,28 +24,28 @@ class WarehouseManagerSeeder extends Seeder
         // Sample warehouse manager data
         $warehouseManagers = [
             [
-                'warehouse_id' => 101,
+                'warehouse_id' => 201,
                 'manager_id' => 1, // Ensure that manager_id = 1 exists
                 'type' => 'Manager',
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
             ],
             [
-                'warehouse_id' => 102,
+                'warehouse_id' => 202,
                 'manager_id' => 1,
                 'type' => 'Assistant',
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
             ],
             [
-                'warehouse_id' => 103,
+                'warehouse_id' => 203,
                 'manager_id' => 1,
                 'type' => 'Manager',
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
             ],
             [
-                'warehouse_id' => 104,
+                'warehouse_id' => 204,
                 'manager_id' => 1,
                 'type' => 'Assistant',
                 'created_at' => Carbon::now(),

@@ -23,7 +23,7 @@ class InventorySeeder extends Seeder
         $inventories = [
             [
                 'user_id' => 1,
-                'warehouse_id' => 101,
+                'warehouse_id' => 201,
                 'product_id' => 201,
                 'quantity' => 500.0000,
                 'reorder_level' => 50.0000,
@@ -33,7 +33,7 @@ class InventorySeeder extends Seeder
             ],
             [
                 'user_id' => 2,
-                'warehouse_id' => 102,
+                'warehouse_id' => 202,
                 'product_id' => 202,
                 'quantity' => 1200.0000,
                 'reorder_level' => 100.0000,
@@ -43,7 +43,7 @@ class InventorySeeder extends Seeder
             ],
             [
                 'user_id' => 3,
-                'warehouse_id' => 103,
+                'warehouse_id' => 203,
                 'product_id' => 203,
                 'quantity' => 750.0000,
                 'reorder_level' => 80.0000,
