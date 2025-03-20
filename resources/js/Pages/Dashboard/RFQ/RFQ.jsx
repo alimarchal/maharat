@@ -161,15 +161,9 @@ const RFQ = ({ auth }) => {
                 {/* RFQs Logs Heading and Make New RFQ Button */}
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-[32px] font-bold text-[#2C323C] whitespace-nowrap">
-                        RFQ Logs
+                        Request for Quotation Log
                     </h2>
                     <div className="flex justify-start gap-2">
-                        <Link
-                            href={`/suppliers`}
-                            className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                        >
-                            Add Suppliers
-                        </Link>
                         <Link
                             href="/quotations/create"
                             className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"

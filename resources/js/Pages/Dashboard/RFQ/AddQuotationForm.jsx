@@ -3,10 +3,11 @@ import { Head } from "@inertiajs/react";
 import { router, Link, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import axios from "axios";
-import { DocumentTextIcon, DocumentArrowDownIcon, EnvelopeIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { DocumentTextIcon, DocumentArrowDownIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeftLong, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeftLong, faChevronRight, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { fetchRFQData, fetchLookupData, getSafeValue } from "./rfqUtils";
+import { FaTrash } from "react-icons/fa";
 
 export default function AddQuotationForm({ auth }) {
     const { rfqId } = usePage().props;
@@ -30,9 +31,9 @@ export default function AddQuotationForm({ auth }) {
             attachment: null,
             expected_delivery_date: "",
             rfq_id: null,
-            status_id: 47
+            status_id: 48
         }],
-        status_id: 47,
+        status_id: 48,
     });
 
     const [warehouses, setWarehouses] = useState([]);
@@ -126,7 +127,7 @@ export default function AddQuotationForm({ auth }) {
                             specifications: item.specifications || '',
                             expected_delivery_date: item.expected_delivery_date?.split('T')[0] || '',
                             rfq_id: rfqId,
-                            status_id: item.status_id ? String(item.status_id) : '47'
+                            status_id: item.status_id ? String(item.status_id) : '48'
                         };
                     });
                     
@@ -141,7 +142,7 @@ export default function AddQuotationForm({ auth }) {
                             attachment: null,
                             expected_delivery_date: "",
                             rfq_id: rfqId,
-                            status_id: "47"
+                            status_id: "48"
                         });
                     }
                     
@@ -165,7 +166,7 @@ export default function AddQuotationForm({ auth }) {
                             ? String(rfqData.payment_type.id) 
                             : '',
                         contact_no: rfqData.contact_number || '',
-                        status_id: rfqData.status?.id ? String(rfqData.status.id) : '47',
+                        status_id: rfqData.status?.id ? String(rfqData.status.id) : '48',
                         items: formattedItems
                     };
                     
@@ -427,14 +428,16 @@ export default function AddQuotationForm({ auth }) {
         try {
             const formDataObj = new FormData();
     
-            // Basic validation
-            if (!formData.organization_email || !formData.city || 
-                !formData.issue_date || !formData.closing_date) {
-                alert("Please fill out all required fields in the top section.");
-                return;
-            }
+            // Log initial form data for debugging
+            console.log('Submitting Form Data:', {
+                ...formData,
+                items: formData.items.map(item => ({
+                    ...item,
+                    hasAttachment: !!item.attachment
+                }))
+            });
     
-            // Main fields
+            // Append main RFQ data
             formDataObj.append('organization_email', formData.organization_email || '');
             formDataObj.append('city', formData.city || '');
             formDataObj.append('category_id', formData.category_id || '');
@@ -444,40 +447,38 @@ export default function AddQuotationForm({ auth }) {
             formDataObj.append('rfq_number', formData.rfq_id || '');
             formDataObj.append('payment_type', formData.payment_type || '');
             formDataObj.append('contact_number', formData.contact_no || '');
-            formDataObj.append('status_id', formData.status_id || '47');
+            formDataObj.append('status_id', formData.status_id || '48');
     
+            // Process and append items
             formData.items.forEach((item, index) => {
+                // Append item details
                 if (item.id) {
                     formDataObj.append(`items[${index}][id]`, item.id);
                 }
-                
-                // Add main item fields
+    
                 formDataObj.append(`items[${index}][item_name]`, item.item_name || '');
                 formDataObj.append(`items[${index}][description]`, item.description || '');
-                formDataObj.append(`items[${index}][quantity]`, item.quantity || '');
-                formDataObj.append(`items[${index}][expected_delivery_date]`, item.expected_delivery_date || '');
                 formDataObj.append(`items[${index}][unit_id]`, item.unit_id || '');
+                formDataObj.append(`items[${index}][quantity]`, item.quantity || '');
                 formDataObj.append(`items[${index}][brand_id]`, item.brand_id || '');
-                formDataObj.append(`items[${index}][status_id]`, item.status_id || '47');
+                formDataObj.append(`items[${index}][expected_delivery_date]`, item.expected_delivery_date || '');
+                formDataObj.append(`items[${index}][status_id]`, item.status_id || '48');
                 formDataObj.append(`items[${index}][rfq_id]`, rfqId || null);
     
                 // Handle file attachment
-                formData.items.forEach((item, index) => {
-                    Object.keys(item).forEach((key) => {
-                        formDataObj.append(`items[${index}][${key}]`, item[key]);
-                    });
-        
-                    if (attachments[index]) {
-                        formDataObj.append(
-                            `items[${index}][attachment]`,
-                            attachments[index]
-                        );
-                    }
-                });
+                if (attachments[index]) {
+                    formDataObj.append(`items[${index}][attachment]`, attachments[index]);
+                }
             });
-
+    
+            // For PUT requests in Laravel
             if (rfqId) {
                 formDataObj.append('_method', 'PUT');
+            }
+    
+            // Log FormData contents for debugging
+            for (let pair of formDataObj.entries()) {
+                console.log(pair[0] + ': ' + pair[1]);
             }
     
             const url = rfqId ? `/api/v1/rfqs/${rfqId}` : '/api/v1/rfqs';
@@ -491,7 +492,6 @@ export default function AddQuotationForm({ auth }) {
     
             if (response.data && response.data.success === true) {
                 alert(rfqId ? "RFQ updated successfully!" : "RFQ created successfully!");
-                //router.visit(route("rfq.index"));
             } else {
                 console.error("Response didn't indicate success:", response.data);
                 alert("Failed to save RFQ: " + (response.data.message || "Unknown error"));
@@ -525,7 +525,7 @@ export default function AddQuotationForm({ auth }) {
                     attachment: null,
                     expected_delivery_date: "",
                     rfq_id: rfqId || null,
-                    status_id: 47
+                    status_id: 48
                 },
             ],
         }));
@@ -895,7 +895,7 @@ export default function AddQuotationForm({ auth }) {
                             <select
                                 value={formData.warehouse_id || ""}
                                 onChange={(e) => handleFormInputChange('warehouse_id', e.target.value)}
-                                className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
+                                className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-72 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
                                 required
                             >
                                 <option value="">Select Warehouse</option>
@@ -993,12 +993,12 @@ export default function AddQuotationForm({ auth }) {
                             {formData.items.map((item, index) => (
                                 <tr key={index}>
                                     <td className="px-6 py-6 text-center align-middle">
-                                        <input
-                                            type="text"
+                                        <textarea
                                             value={item.item_name || ''}
                                             onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center min-h-[3rem]"
+                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center min-h-[3rem] resize-none overflow-hidden"
                                             style={{ background: 'none', outline: 'none', textAlign: 'center' }}
+                                            rows={1}
                                             required
                                         />
                                     </td>
@@ -1006,49 +1006,60 @@ export default function AddQuotationForm({ auth }) {
                                         <textarea
                                             value={item.description || ''}
                                             onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal resize-none text-center min-h-[3rem]"
+                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center min-h-[3rem] resize-none overflow-hidden"
                                             style={{ 
                                                 background: 'none', 
                                                 outline: 'none', 
-                                                overflow: 'hidden', 
                                                 textAlign: 'center',
                                                 wordWrap: 'break-word',
                                                 whiteSpace: 'normal'
                                             }}
-                                            rows="2"
+                                            rows="1"
                                             required
-                                            onInput={e => {
-                                                e.target.style.height = 'auto';
-                                                e.target.style.height = (e.target.scrollHeight) + 'px';
+                                            onInput={(e) => {
+                                                e.target.style.height = 'auto';  // Reset height
+                                                e.target.style.height = `${e.target.scrollHeight}px`;  // Adjust height dynamically
                                             }}
                                         />
                                     </td>
                                     <td className="px-6 py-6 text-center align-middle">
-                                        <select
-                                            value={item.unit_id || ''}
-                                            onChange={(e) => handleItemChange(index, 'unit_id', e.target.value)}
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent"
-                                            style={{ background: 'none', outline: 'none', textAlign: 'center', paddingRight: '1rem' }}
-                                            required
-                                        >
-                                            <option value="">Select Unit</option>
-                                            {units.map((unit) => (
-                                                <option key={unit.id} value={unit.id}>{unit.name}</option>
-                                            ))}
-                                        </select>
-                                    </td>
-                                    <td className="px-6 py-6 text-center align-middle">
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            min="0"
-                                            value={item.quantity}
-                                            onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm whitespace-normal text-center"
-                                            style={{ background: 'none', outline: 'none', textAlign: 'center' }}
-                                            required
-                                        />
-                                    </td>
+                                    <select
+                                        value={item.unit_id || ''}
+                                        onChange={(e) => handleItemChange(index, 'unit_id', e.target.value)}
+                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent cursor-pointer"
+                                        style={{
+                                            background: 'none',
+                                            outline: 'none',
+                                            textAlign: 'center',
+                                            paddingRight: '1rem',
+                                            appearance: 'none' /* Removes default dropdown arrow in most browsers */
+                                        }}
+                                        required
+                                    >
+                                        <option value="">Select Unit</option>
+                                        {units.map((unit) => (
+                                            <option key={unit.id} value={unit.id}>{unit.name}</option>
+                                        ))}
+                                    </select>
+                                </td>
+
+                                <td className="px-6 py-6 text-center align-middle">
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        value={item.quantity}
+                                        onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                        className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none"
+                                        style={{
+                                            background: 'none',
+                                            outline: 'none',
+                                            textAlign: 'center',
+                                        }}
+                                        required
+                                        onWheel={(e) => e.target.blur()} // Prevents changing value with mouse scroll
+                                    />
+                                </td>
                                     <td className="px-6 py-6 text-center align-middle">
                                         <select
                                             value={item.brand_id || ''}
@@ -1093,14 +1104,14 @@ export default function AddQuotationForm({ auth }) {
                                             required
                                         />
                                     </td>
-                                    <td className="px-6 py-6 whitespace-nowrap">
+                                    <td className="px-8 py-3 whitespace-nowrap text-right pl-2"> {/* Adjusted alignment */}
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveItem(index)}
-                                            className="text-red-600 hover:text-red-900"
+                                            className="text-red-600 hover:text-red-900 ml-2" // Added margin to move it right
                                             disabled={formData.items.length <= 1}
                                         >
-                                            <TrashIcon className="h-5 w-5" />
+                                            <FontAwesomeIcon icon={faTrash} className="h-5 w-5" />
                                         </button>
                                     </td>
                                 </tr>

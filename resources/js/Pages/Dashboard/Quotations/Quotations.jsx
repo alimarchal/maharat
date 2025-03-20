@@ -184,6 +184,12 @@ const Quotations = ({ auth }) => {
                             ))}
                         </div>
                         <Link
+                            href={`/suppliers`}
+                            className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                        >
+                            Add Suppliers
+                        </Link>
+                        <Link
                             href="/new-quotation"
                             className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
                         >
