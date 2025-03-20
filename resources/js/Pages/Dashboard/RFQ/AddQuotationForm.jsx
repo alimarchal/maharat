@@ -896,12 +896,21 @@ export default function AddQuotationForm({ auth }) {
                             <span className="font-medium text-gray-600">Category:</span>
                             <div className="relative ml-3">
                             <select
-                                value={formData.category_id}
-                                onChange={(e) => handleFormInputChange('category_id', e.target.value)}
+                                value={formData.category_id || ""} 
+                                onChange={(e) => {
+                                    handleFormInputChange('category_id', e.target.value);
+                                }}
                                 className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
                                 required
                             >
+                                {isEditing && formData.category_id && (
+                                    <option value={formData.category_id}>
+                                        {categories.find(category => category.id == formData.category_id)?.name || "Select Category"}
+                                    </option>
+                                )}
+
                                 {!isEditing && <option value="">Select Category</option>}
+
                                 {categories.map((category) => (
                                     <option key={category.id} value={category.id} className="text-[#009FDC] bg-blue-50">
                                         {category.name}
@@ -913,12 +922,19 @@ export default function AddQuotationForm({ auth }) {
                             <span className="font-medium text-gray-600">Warehouse:</span>
                             <div className="relative ml-3">
                             <select
-                                value={formData.warehouse_id}
+                                value={formData.warehouse_id || ""}
                                 onChange={(e) => handleFormInputChange('warehouse_id', e.target.value)}
                                 className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
                                 required
                             >
+                                {isEditing && formData.warehouse_id && (
+                                    <option value={formData.warehouse_id}>
+                                        {warehouses.find(warehouse => warehouse.id == formData.warehouse_id)?.name || "Select Warehouse"}
+                                    </option>
+                                )}
+
                                 {!isEditing && <option value="">Select Warehouse</option>}
+
                                 {warehouses.map((warehouse) => (
                                     <option key={warehouse.id} value={warehouse.id} className="text-[#009FDC] bg-blue-50">
                                         {warehouse.name}
@@ -960,14 +976,21 @@ export default function AddQuotationForm({ auth }) {
                             />
 
                             <span className="font-medium text-gray-600">Payment Type:</span>
-                            <div className="relative ml-5"> {/* Adjusted to align */}
+                            <div className="relative ml-5"> 
                             <select
-                                value={formData.payment_type}
+                                value={formData.payment_type || ""}
                                 onChange={(e) => handleFormInputChange('payment_type', e.target.value)}
-                                className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-0 cursor-pointer outline-none border-none"
+                                className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
                                 required
                             >
+                                {isEditing && formData.payment_type && (
+                                    <option value={formData.payment_type}>
+                                        {paymentTypes.find(type => type.id == formData.payment_type)?.name || "Select Payment Type"}
+                                    </option>
+                                )}
+
                                 {!isEditing && <option value="">Select Payment Type</option>}
+
                                 {paymentTypes.map((type) => (
                                     <option key={type.id} value={type.id} className="text-[#009FDC] bg-blue-50">
                                         {type.name}
