@@ -40,7 +40,7 @@ class RfqSeeder extends Seeder
             $rfqs = [
                 [
                     'id' => 1, // Explicit ID for reference in other seeders
-                    'rfq_number' => 'RFQ-2025-001',
+                    'rfq_number' => 'RFQ-2025-0001',
                     'requester_id' => 1,
                     'department_id' => 1,
                     'cost_center_id' => 1,
@@ -74,7 +74,7 @@ class RfqSeeder extends Seeder
                 ],
                 [
                     'id' => 2,
-                    'rfq_number' => 'RFQ-2025-002',
+                    'rfq_number' => 'RFQ-2025-0002',
                     'requester_id' => 8,
                     'department_id' => 1,
                     'cost_center_id' => 1,
@@ -108,7 +108,7 @@ class RfqSeeder extends Seeder
                 ],
                 [
                     'id' => 3,
-                    'rfq_number' => 'RFQ-2025-003',
+                    'rfq_number' => 'RFQ-2025-0003',
                     'requester_id' => 10,
                     'department_id' => 1,
                     'cost_center_id' => 1,
@@ -142,7 +142,7 @@ class RfqSeeder extends Seeder
                 ],
                 [
                     'id' => 4,
-                    'rfq_number' => 'RFQ-2025-004',
+                    'rfq_number' => 'RFQ-2025-0004',
                     'requester_id' => 5,
                     'department_id' => 1,
                     'cost_center_id' => 1,
