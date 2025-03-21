@@ -236,6 +236,9 @@ const DashboardCard = ({
 
 export default function MainDashboard({ roles }) {
     const isAdmin = roles && roles.includes("Admin");
+    const isUser = roles && roles.includes("User");
+    const isProcurementManager = roles && roles.includes("Procurement Manager");
+    const isWarehouseManager = roles && roles.includes("Warehouse Manager");
 
     const tasksDropdownItems = [
         {
@@ -435,26 +438,23 @@ export default function MainDashboard({ roles }) {
                     iconColor="text-[#665200]"
                     dropdownItems={tasksDropdownItems}
                 />
-
+                <DashboardCard
+                    icon={faShoppingCart}
+                    title="Procurement Center"
+                    subtitle="Procurement System"
+                    bgColor="bg-[#BFBCD8]"
+                    iconColor="text-[#393559]"
+                    dropdownItems={purchaseDropdownItems}
+                />
                 {isAdmin && (
-                    <>
-                        <DashboardCard
-                            icon={faShoppingCart}
-                            title="Procurement Center"
-                            subtitle="Procurement System"
-                            bgColor="bg-[#BFBCD8]"
-                            iconColor="text-[#393559]"
-                            dropdownItems={purchaseDropdownItems}
-                        />
-                        <DashboardCard
-                            icon={faBoxes}
-                            title="Finance Center"
-                            subtitle="Financials"
-                            bgColor="bg-[#C4E4F0]"
-                            iconColor="text-[#005372]"
-                            dropdownItems={financeDropdownItems}
-                        />
-                    </>
+                    <DashboardCard
+                        icon={faBoxes}
+                        title="Finance Center"
+                        subtitle="Financials"
+                        bgColor="bg-[#C4E4F0]"
+                        iconColor="text-[#005372]"
+                        dropdownItems={financeDropdownItems}
+                    />
                 )}
             </div>
 
