@@ -22,6 +22,7 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'role_id' => 'required|integer|exists:roles,id',
             'parent_id' => 'nullable|exists:users,id',
             'hierarchy_level' => 'nullable|integer',
             'designation_id' => 'required|exists:designations,id',
@@ -82,16 +83,16 @@ class StoreUserRequest extends FormRequest
     public function validated($key = null, $default = null)
     {
         $validated = parent::validated($key, $default);
-        
+
         // Map first_name to firstname and last_name to lastname
         if (isset($validated['first_name'])) {
             $validated['firstname'] = $validated['first_name'];
         }
-        
+
         if (isset($validated['last_name'])) {
             $validated['lastname'] = $validated['last_name'];
         }
-        
+
         return $validated;
     }
 }

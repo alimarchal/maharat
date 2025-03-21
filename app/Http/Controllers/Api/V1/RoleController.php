@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use Spatie\Permission\Models\Permission;
 
 class RoleController extends Controller
@@ -19,7 +20,7 @@ class RoleController extends Controller
 
         return response()->json([
             'data' => $roles
-        ]);
+        ], Response::HTTP_OK);
     }
 
     public function store(Request $request): JsonResponse

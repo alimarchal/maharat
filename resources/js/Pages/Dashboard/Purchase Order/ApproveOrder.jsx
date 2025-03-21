@@ -95,28 +95,41 @@ export default function ApproveOrder({ auth }) {
                 await fetchCompanies();
             }
 
-            // Fetch the quotation details
+            // Fetch the quotation details with company information
             const quotationResponse = await axios.get(`/api/v1/quotations/${quotationId}`);
-            setQuotationDetails(quotationResponse.data.data);
+            const quotationData = quotationResponse.data.data;
+            setQuotationDetails(quotationData);
             
-            // Get purchase orders
-            const poResponse = await axios.get('/api/v1/purchase-orders', {
-                params: {
+            // Get purchase orders with included relations and pagination
+                const poResponse = await axios.get('/api/v1/purchase-orders', {
+                    params: {
                     quotation_id: quotationId,
-                    include: 'quotation,company' // Add company to included relations
-                }
-            });
-            
-            if (poResponse.data && poResponse.data.data && poResponse.data.data.length > 0) {
-                const processedOrders = poResponse.data.data.map(order => {
+                    include: 'quotation,supplier',
+                    per_page: 10
+                    }
+                });
+                
+                if (poResponse.data && poResponse.data.data && poResponse.data.data.length > 0) {
+                const processedOrders = await Promise.all(poResponse.data.data.map(async (order) => {
                     let formattedOrder = {...order};
+                    let companyName = 'N/A';
                     
-                    // Get company details
-                    if (order.company) {
-                        formattedOrder.company_name = order.company.name;
-                        formattedOrder.company_id = order.company.id;
-                    } else if (order.quotation && order.quotation.company_name) {
-                        formattedOrder.company_name = order.quotation.company_name;
+                    // Try to get company name from different sources
+                    if (order.quotation && order.quotation.company_name) {
+                        companyName = order.quotation.company_name;
+                    } else if (quotationData.company_name) {
+                        companyName = quotationData.company_name;
+                    } else if (order.company_name) {
+                        companyName = order.company_name;
+                    }
+
+                    // Set company details
+                    formattedOrder.company_name = companyName;
+                    if (companies.length > 0) {
+                        const company = companies.find(c => c.name === companyName);
+                        if (company) {
+                            formattedOrder.company_id = company.id;
+                        }
                     }
                     
                     // Process attachment
@@ -130,11 +143,30 @@ export default function ApproveOrder({ auth }) {
                     }
                     
                     return formattedOrder;
-                });
+                }));
                 
                 setPurchaseOrders(processedOrders);
             } else {
-                // Create new PO if none exists...
+                // Create new PO if none exists
+                const newPurchaseOrder = {
+                    id: `new-${Date.now()}`,
+                    purchase_order_no: 'System Generated',
+                    quotation_id: quotationId,
+                    supplier_id: quotationData.supplier_id,
+                    purchase_order_date: '',
+                    expiry_date: quotationData.valid_until || '',
+                    amount: 0,
+                    status: 'Draft',
+                    company_name: quotationData.company_name || '',
+                    company_id: quotationData.company_id,
+                    quotation_number: quotationData.quotation_number || '',
+                    attachment: null,
+                    original_name: null
+                };
+                
+                setPurchaseOrders([newPurchaseOrder]);
+                setEditingId(newPurchaseOrder.id);
+                setEditData(newPurchaseOrder);
             }
             
             setProgress(100);
@@ -147,13 +179,13 @@ export default function ApproveOrder({ auth }) {
             setTimeout(() => setLoading(false), 500);
         }
     };
-
+            
     // Fetch companies for dropdown
     const fetchCompanies = async () => {
         try {
             const response = await axios.get('/api/v1/companies');
             if (response.data && response.data.data) {
-                setCompanies(response.data.data);
+            setCompanies(response.data.data);
                 console.log('Companies fetched:', response.data.data);
             } else {
                 console.error('Invalid companies data format:', response.data);
@@ -208,10 +240,11 @@ export default function ApproveOrder({ auth }) {
                 'id', 
                 'attachment', 
                 'original_name',
-                'purchase_order_no', // Add this to exclude PO number during update
+                'purchase_order_no',
                 'created_at',
                 'updated_at',
-                'user_id'
+                'user_id',
+                'company_name' // Exclude company_name as we'll handle it separately
             ];
             
             // Add all valid fields to the form data
@@ -223,26 +256,30 @@ export default function ApproveOrder({ auth }) {
                 }
             });
             
-            // Make sure critical fields are present
-            if (!formData.has('quotation_id') && quotationId) {
-                formData.append('quotation_id', quotationId);
+            // Handle company update chain (PO -> Quotation -> RFQ)
+            if (editData.company_name) {
+                const selectedCompany = companies.find(c => c.name === editData.company_name);
+                if (selectedCompany) {
+                    formData.append('company_id', selectedCompany.id);
+                    // Add flags and IDs for the update chain
+                    formData.append('update_quotation_company', true);
+                    formData.append('rfq_company_id', selectedCompany.id); // This will be used to update RFQ
+                    formData.append('quotation_id', quotationId); // Ensure quotation ID is included
+                    
+                    // First update the quotation with new company
+                    try {
+                        await axios.put(`/api/v1/quotations/${quotationId}`, {
+                            company_id: selectedCompany.id,
+                            rfq_company_id: selectedCompany.id,
+                            update_rfq: true // This flag tells the backend to update RFQ
+                        });
+                    } catch (error) {
+                        console.error('Failed to update quotation company:', error);
+                    }
+                }
             }
             
-            if (!formData.has('supplier_id') && quotationDetails?.supplier_id) {
-                formData.append('supplier_id', quotationDetails.supplier_id);
-            }
-            
-            // Add company_id if available
-            if (editData.company_id) {
-                formData.append('company_id', editData.company_id);
-            }
-            
-            // Handle temporary document if it exists
-            if (tempDocuments[id]) {
-                formData.append('attachment', tempDocuments[id]);
-                formData.append('original_name', tempDocuments[id].name);
-            }
-            
+            // Continue with the purchase order update
             try {
                 let response;
                 if (id.toString().includes('new-')) {
@@ -250,12 +287,8 @@ export default function ApproveOrder({ auth }) {
                         headers: { 'Content-Type': 'multipart/form-data' }
                     });
                 } else {
-                    // For existing records, use PUT
-                    response = await axios.post(`/api/v1/purchase-orders/${id}`, formData, {
-                        headers: { 
-                            'Content-Type': 'multipart/form-data',
-                            'X-HTTP-Method-Override': 'PUT'
-                        }
+                    response = await axios.put(`/api/v1/purchase-orders/${id}`, formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
                     });
                 }
                 
@@ -275,6 +308,7 @@ export default function ApproveOrder({ auth }) {
                 
                 alert('Purchase order saved successfully!');
                 
+                // Refresh data to show updated company
                 setTimeout(() => {
                     setAttachingFile(false);
                     fetchPurchaseOrders();
@@ -414,14 +448,7 @@ export default function ApproveOrder({ auth }) {
                     </div>
 
                     {quotationDetails && (
-                        <p className="text-purple-600 text-2xl mb-6">Quotation# {quotationDetails.quotation_number}</p>
-                    )}
-
-                    <div className="w-full overflow-hidden">
-                        {error && (
-                            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-                                <span className="block sm:inline">{error}</span>
-                            </div>
+                        <p className="text-purple-600 text-2xl mb-6">{quotationDetails.quotation_number}</p>
                         )}
                         
                         {/* Loading Bar */}
@@ -436,10 +463,18 @@ export default function ApproveOrder({ auth }) {
                                         {attachingFile ? "Saving Purchase Order..." : (progress < 60 ? "Please Wait, Fetching Details..." : `${progress}%`)}
                                     </span>
                                 </div>
+                        </div>
+                    )}
+
+                    <div className="w-full overflow-hidden">
+                        {!loading && error && (
+                            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                                <span className="block sm:inline">{error}</span>
                             </div>
                         )}
                         
                         <table className="w-full">
+                            {!loading && (
                             <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                                 <tr>
                                     <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">PO#</th>
@@ -451,6 +486,7 @@ export default function ApproveOrder({ auth }) {
                                     <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Actions</th>
                                 </tr>
                             </thead>
+                            )}
 
                             {!loading && !attachingFile && (
                             <tbody className="bg-transparent divide-y divide-gray-200">
@@ -640,15 +676,39 @@ export default function ApproveOrder({ auth }) {
                             )}
                         </table>
                         
-                        {/* Add Purchase Order Button - Only show when not loading */}
-                        {!loading && !attachingFile && (
-                            <div className="mt-4 flex justify-center">
+                        {/* Add pagination */}
+                        {!loading && purchaseOrders.length > 0 && (
+                            <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                                 <button
-                                    type="button"
-                                    onClick={addItem}
-                                    className="text-blue-600 flex items-center"
+                                    onClick={() => setCurrentPage(currentPage - 1)}
+                                    className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
+                                        currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
+                                    }`}
+                                    disabled={currentPage <= 1}
                                 >
-                                    + Add Purchase Order
+                                    Previous
+                                </button>
+                                {Array.from({ length: Math.ceil(purchaseOrders.length / 10) }, (_, index) => index + 1).map((page) => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`px-3 py-1 ${
+                                            currentPage === page
+                                                ? "bg-[#009FDC] text-white"
+                                                : "border border-[#B9BBBD] bg-white text-black"
+                                        } rounded-full`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => setCurrentPage(currentPage + 1)}
+                                    className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
+                                        currentPage >= Math.ceil(purchaseOrders.length / 10) ? "opacity-50 cursor-not-allowed" : ""
+                                    }`}
+                                    disabled={currentPage >= Math.ceil(purchaseOrders.length / 10)}
+                                >
+                                    Next
                                 </button>
                             </div>
                         )}

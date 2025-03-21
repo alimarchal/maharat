@@ -55,7 +55,7 @@ export default function ViewOrder({ auth }) {
             // Since we're getting a 500 error, let's debug the API endpoint
             console.log('Fetching purchase orders from API...');
             const response = await axios.get('/api/v1/purchase-orders', {
-                params: { page: currentPage, include: 'quotation' }
+                params: { page: currentPage, include: 'quotation', per_page: 10 }
             });
             
             console.log('API Response:', response.data);
@@ -141,6 +141,30 @@ export default function ViewOrder({ auth }) {
         });
     };
 
+    const getPaginationData = () => {
+        const itemsPerPage = 10;
+        const totalItems = purchaseOrders.length;
+        const calculatedLastPage = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+        
+        // Ensure current page is within valid range
+        const validCurrentPage = Math.min(Math.max(1, currentPage), calculatedLastPage);
+        
+        // Calculate start and end indices for current page
+        const startIndex = (validCurrentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        
+        // Get current page's data
+        const currentPageData = purchaseOrders.slice(startIndex, endIndex);
+        
+        return {
+            totalItems,
+            itemsPerPage,
+            lastPage: calculatedLastPage,
+            currentPage: validCurrentPage,
+            currentPageData
+        };
+    };
+
     return (
         <AuthenticatedLayout user={auth.user}>
             <div className="min-h-screen p-6">
@@ -215,7 +239,7 @@ export default function ViewOrder({ auth }) {
                             {!loading && (
                             <tbody className="bg-transparent divide-y divide-gray-200">
                                 {purchaseOrders.length > 0 ? (
-                                    purchaseOrders.map((order) => (
+                                    getPaginationData().currentPageData.map((order) => (
                                         <tr key={order.id}>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 {order.purchase_order_no || 'N/A'}
@@ -248,7 +272,7 @@ export default function ViewOrder({ auth }) {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="6" className="text-center py-4">No purchase orders available.</td>
+                                        <td colSpan="7" className="text-center py-4">No purchase orders available.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -256,23 +280,23 @@ export default function ViewOrder({ auth }) {
                         </table>
 
                         {/* Pagination */}
-                        {!loading && !error && purchaseOrders.length > 0 && lastPage > 1 && (
+                        {!loading && purchaseOrders.length > 0 && (
                             <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                                 <button
-                                    onClick={() => setCurrentPage(currentPage - 1)}
+                                    onClick={() => setCurrentPage(getPaginationData().currentPage - 1)}
                                     className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                        currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
+                                        getPaginationData().currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
                                     }`}
-                                    disabled={currentPage <= 1}
+                                    disabled={getPaginationData().currentPage <= 1}
                                 >
                                     Previous
                                 </button>
-                                {Array.from({ length: lastPage }, (_, index) => index + 1).map((page) => (
+                                {Array.from({ length: getPaginationData().lastPage }, (_, index) => index + 1).map((page) => (
                                     <button
                                         key={page}
                                         onClick={() => setCurrentPage(page)}
                                         className={`px-3 py-1 ${
-                                            currentPage === page
+                                            getPaginationData().currentPage === page
                                                 ? "bg-[#009FDC] text-white"
                                                 : "border border-[#B9BBBD] bg-white text-black"
                                         } rounded-full`}
@@ -281,11 +305,11 @@ export default function ViewOrder({ auth }) {
                                     </button>
                                 ))}
                                 <button
-                                    onClick={() => setCurrentPage(currentPage + 1)}
+                                    onClick={() => setCurrentPage(getPaginationData().currentPage + 1)}
                                     className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                        currentPage >= lastPage ? "opacity-50 cursor-not-allowed" : ""
+                                        getPaginationData().currentPage >= getPaginationData().lastPage ? "opacity-50 cursor-not-allowed" : ""
                                     }`}
-                                    disabled={currentPage >= lastPage}
+                                    disabled={getPaginationData().currentPage >= getPaginationData().lastPage}
                                 >
                                     Next
                                 </button>
