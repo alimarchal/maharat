@@ -6,168 +6,312 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import { DocumentArrowDownIcon } from '@heroicons/react/24/outline';
+import { usePage } from '@inertiajs/react';
 
-const FileDisplay = ({ file }) => {
-    if (!file) return null;
+const FileDisplay = ({ file, pendingFile }) => {
+    // If there's a pending file to be uploaded, show it as a preview with an indicator
+    if (pendingFile) {
+        // For local file preview, create a temporary URL
+        const tempUrl = URL.createObjectURL(pendingFile);
+        
+        return (
+            <div className="flex flex-col items-center justify-center space-y-2">
+                <DocumentArrowDownIcon 
+                    className="h-10 w-10 text-orange-500 cursor-pointer hover:text-orange-700 transition-colors"
+                    onClick={() => window.open(tempUrl, '_blank')}
+                />
+                <span className="text-sm text-orange-600 text-center break-words whitespace-normal w-full">
+                    {pendingFile.name} (Pending save)
+                </span>
+            </div>
+        );
+    }
 
-    // Use the file_path directly from the API response
-    const fileUrl = file.file_path; 
+    if (!file) return (
+        <span className="text-gray-500">No document attached</span>
+    );
+
+    // Show the existing file
+    const fileUrl = typeof file === 'object' ? file.file_path : file;
 
     return (
         <div className="flex flex-col items-center justify-center space-y-2">
-            {/* Clickable PDF Icon */}
             <DocumentArrowDownIcon 
                 className="h-10 w-10 text-gray-500 cursor-pointer hover:text-gray-700 transition-colors"
-                onClick={() => fileUrl && window.open(fileUrl, '_blank')} // Opens file in a new tab
+                onClick={() => fileUrl && window.open(fileUrl, '_blank')}
             />
             
-            {/* File Name */}
-            {file.original_name && (
-                <span 
-                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
-                    onClick={() => fileUrl && window.open(fileUrl, '_blank')} // Opens file when name is clicked
-                >
-                    {file.original_name}
-                </span>
-            )}
+            <span 
+                className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
+                onClick={() => fileUrl && window.open(fileUrl, '_blank')}
+            >
+                {typeof file === 'object' && file.original_name ? file.original_name : 'View Attachment'}
+            </span>
         </div>
     );
 };
 
-export default function QuotationRFQ({ auth }) {
-    const [quotations, setQuotations] = useState([]);
+export default function ApproveOrder({ auth }) {
+    const { props } = usePage();
+    const urlParams = new URLSearchParams(window.location.search);
+    const quotationId = urlParams.get('quotation_id');
+
+    const [purchaseOrders, setPurchaseOrders] = useState([]);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
-    const [attachments, setAttachments] = useState({});
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
-    const [rfqId, setRfqId] = useState(null);
     const [editingId, setEditingId] = useState(null);
     const [editData, setEditData] = useState({});
+    const [attachingFile, setAttachingFile] = useState(false);
+    const [tempDocuments, setTempDocuments] = useState({});
+    const [quotationDetails, setQuotationDetails] = useState(null);
+    const [companies, setCompanies] = useState([]);
 
-    const fetchQuotations = async () => {
+    const fetchPurchaseOrders = async () => {
+        if (!quotationId) {
+            setError("No quotation ID provided");
+            setLoading(false);
+            return;
+        }
+        
         setLoading(true);
         setProgress(0);
     
         try {
-            const response = await axios.get(`/api/v1/quotations?page=${currentPage}`);
-    
-            // Ensure documents array is properly assigned
-            const updatedQuotations = response.data.data.map(quotation => ({
-                ...quotation,
-                documents: quotation.documents || [] // Ensure documents array exists
-            }));
-    
-            setQuotations(updatedQuotations);
-            setLastPage(response.data.meta.last_page);
-            setRfqId(response.data.data[0]?.rfq_id || '');
-            setError("");
-    
+            // Fetch the quotation details first
+            const quotationResponse = await axios.get(`/api/v1/quotations/${quotationId}`);
+            setQuotationDetails(quotationResponse.data.data);
+            
+            let existingPurchaseOrders = [];
+            let hasExistingOrders = false;
+            
+            // Get existing purchase orders related to this quotation
+            try {
+                const poResponse = await axios.get('/api/v1/purchase-orders', {
+                    params: {
+                        quotation_id: quotationId
+                    }
+                });
+                
+                if (poResponse.data && poResponse.data.data && poResponse.data.data.length > 0) {
+                    // Use existing purchase orders from the API
+                    existingPurchaseOrders = poResponse.data.data;
+                    hasExistingOrders = true;
+                    setPurchaseOrders(existingPurchaseOrders);
+                }
+            } catch (error) {
+                console.error('Error fetching purchase orders:', error);
+                // Continue and create a new one below
+            }
+            
+            // If no existing purchase orders, create a new one
+            if (!hasExistingOrders) {
+                const newPurchaseOrder = {
+                    id: `new-${Date.now()}`,
+                    purchase_order_no: 'System Generated',  // This will be generated by backend
+                    quotation_id: quotationId,
+                    supplier_id: quotationResponse.data.data.supplier_id,
+                    purchase_order_date: '',
+                    expiry_date: quotationResponse.data.data.valid_until || '',
+                    amount: 0,
+                    status: 'Draft',
+                    company_name: quotationResponse.data.data.company_name || '',
+                    quotation_number: quotationResponse.data.data.quotation_number,
+                    attachment: null,
+                    original_name: null
+                };
+                
+                setPurchaseOrders([newPurchaseOrder]);
+                // Set editing mode on by default for the new record
+                setEditingId(newPurchaseOrder.id);
+                setEditData(newPurchaseOrder);
+            }
+            
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
         } catch (error) {
             console.error('API Error:', error);
-            setError("Failed to load quotations");
-            setQuotations([]);
+            setError(`Failed to load quotation: ${error.response?.data?.message || error.message}`);
+            setPurchaseOrders([]);
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
         }
-    };        
+    };
 
-    useEffect(() => {
-        fetchQuotations();
-    }, [currentPage]);
-
-    const handleFileChange = async (index, e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('quotation_id', quotations[index].id);
-
+    const fetchCompanies = async () => {
         try {
-            const response = await axios.post('/api/v1/quotations/upload-terms', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                }
-            });
-
-            const updatedQuotations = [...quotations];
-            updatedQuotations[index].terms_and_conditions = response.data.file_path;
-            setQuotations(updatedQuotations);
+            const response = await axios.get('/api/v1/companies');
+            setCompanies(response.data.data);
         } catch (error) {
-            console.error('Upload error:', error);
-            setError("Failed to upload file");
+            console.error('Error fetching companies:', error);
         }
     };
+
+    useEffect(() => {
+        // Load companies for dropdown
+        fetchCompanies();
+        
+        // Then fetch purchase orders
+        fetchPurchaseOrders();
+        
+        // Add event listener for beforeunload to warn about unsaved changes
+        const handleBeforeUnload = (e) => {
+            if (editingId !== null) {
+                // Cancel the event
+                e.preventDefault();
+                // Chrome requires returnValue to be set
+                e.returnValue = '';
+                return 'You have unsaved changes. Are you sure you want to leave?';
+            }
+        };
+        
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        
+        // Cleanup
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [quotationId]);
 
     const handleSave = async (id) => {
         try {
-            const updatedData = {
-                ...editData,
-                issue_date: formatDateForInput(editData.issue_date),
-                valid_until: formatDateForInput(editData.valid_until)
-            };
-    
-            console.log("Sending Data:", updatedData); // Debugging
-    
-            const response = await axios.put(`/api/v1/quotations/${id}`, updatedData);
-            console.log("Response:", response.data); // Debugging
-    
-            if (response.data.success) {
-                setQuotations(prevQuotations =>
-                    prevQuotations.map(q => (q.id === id ? { ...q, ...updatedData } : q))
-                );
+            setAttachingFile(true);
+            setProgress(0);
+            
+            const interval = setInterval(() => {
+                setProgress(oldProgress => Math.min(oldProgress + 5, 90));
+            }, 200);
+            
+            // Create FormData to handle file uploads
+            const formData = new FormData();
+            
+            // Required field status to avoid validation errors
+            if (!editData.status) {
+                formData.append('status', 'Draft');
+            }
+            
+            // Append basic purchase order fields
+            // For new records, don't include purchase_order_no - let backend generate it
+            Object.keys(editData).forEach(key => {
+                if (key !== 'id' && 
+                    key !== 'company_name' && 
+                    key !== 'quotation_number' && 
+                    !key.startsWith('new-') &&
+                    !(id.toString().includes('new-') && key === 'purchase_order_no')) {
+                    
+                    // Only append if the value exists
+                    if (editData[key] !== null && editData[key] !== undefined && editData[key] !== '') {
+                        formData.append(key, editData[key]);
+                    }
+                }
+            });
+            
+            // Make sure required fields are present
+            if (!formData.has('quotation_id') && quotationId) {
+                formData.append('quotation_id', quotationId);
+            }
+            
+            if (!formData.has('supplier_id') && quotationDetails?.supplier_id) {
+                formData.append('supplier_id', quotationDetails.supplier_id);
+            }
+            
+            // Handle temporary file if it exists
+            if (tempDocuments[id]) {
+                formData.append('attachment', tempDocuments[id]);
+                formData.append('original_name', tempDocuments[id].name);
+            }
+            
+            console.log('Saving purchase order with data:', Object.fromEntries(formData));
+            
+            let response;
+            try {
+                if (id.toString().includes('new-')) {
+                    // For new records, use POST
+                    response = await axios.post('/api/v1/purchase-orders', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                } else {
+                    // For existing records, use PUT
+                    response = await axios.put(`/api/v1/purchase-orders/${id}`, formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                }
+                
+                console.log('Save response:', response.data);
+                
+                // Reset editing state and refresh data
                 setEditingId(null);
-            } else {
-                console.error('Update failed:', response.data);
-                setError('Failed to save changes');
+                setError("");
+                
+                // Clear interval and set progress to 100%
+                clearInterval(interval);
+                setProgress(100);
+                
+                // Show success message
+                alert('Purchase order saved successfully!');
+                
+                // Wait a moment to show the 100% progress, then refresh data
+                setTimeout(() => {
+                    setAttachingFile(false);
+                    fetchPurchaseOrders();
+                }, 500);
+            } catch (error) {
+                clearInterval(interval);
+                console.error('Save error:', error.response?.data || error.message);
+                setError(`Failed to save purchase order: ${error.response?.data?.message || error.message}`);
+                setAttachingFile(false);
+                setProgress(0);
             }
         } catch (error) {
-            console.error('Save error:', error.response ? error.response.data : error.message);
-            setError('Failed to save changes');
+            console.error('Unexpected error:', error);
+            setError(`An unexpected error occurred: ${error.message}`);
+            setAttachingFile(false);
+            setProgress(0);
         }
     };
 
-    const handleEdit = (quotation) => {
-        setEditingId(quotation.id);
-        setEditData(quotation);
+    const handleEdit = (po) => {
+        setEditingId(po.id);
+        setEditData({...po});
     };
 
     const handleDelete = async (id) => {
-        if (!confirm("Are you sure you want to delete this record?")) return;
+        if (!confirm("Are you sure you want to delete this purchase order?")) return;
 
         try {
-            // Check if it's a temporary ID (newly added record)
-            if (id.toString().length > 10) {
-                setQuotations(prevQuotations => prevQuotations.filter(q => q.id !== id));
+            if (id.toString().includes('new-')) {
+                setPurchaseOrders(prevOrders => prevOrders.filter(po => po.id !== id));
             } else {
-                await axios.delete(`/api/v1/quotations/${id}`);
-                fetchQuotations(); // Refresh the data after deletion
+                await axios.delete(`/api/v1/purchase-orders/${id}`);
+                fetchPurchaseOrders();
             }
         } catch (error) {
             console.error('Delete error:', error);
-            setError('Failed to delete record');
+            setError('Failed to delete purchase order');
         }
     };
 
     const addItem = () => {
-        const newQuotation = {
-            id: Date.now(), // Temporary ID for new row
-            quotation_number: '',
+        const newPurchaseOrder = {
+            id: `new-${Date.now()}`,
+            purchase_order_no: 'System Generated',  // This will be generated by backend
+            quotation_id: quotationId,
+            supplier_id: quotationDetails?.supplier_id || null,
+            purchase_order_date: '',
+            expiry_date: '',
+            amount: 0,
+            status: 'Draft',
             company_name: '',
-            original_name: '',
-            file_path: '',
-            issue_date: '',
-            valid_until: '',
-            total_amount: '',
-            terms_and_conditions: '',
+            quotation_number: quotationDetails?.quotation_number || '',
+            attachment: null,
+            original_name: null
         };
-        setQuotations([...quotations, newQuotation]);
-        setEditingId(newQuotation.id);
-        setEditData(newQuotation);
+        
+        setPurchaseOrders([...purchaseOrders, newPurchaseOrder]);
+        setEditingId(newPurchaseOrder.id);
+        setEditData(newPurchaseOrder);
     };
 
     const formatDateForInput = (dateString) => {
@@ -178,52 +322,32 @@ export default function QuotationRFQ({ auth }) {
 
     const formatDateForDisplay = (dateString) => {
         if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        });
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                return "DD/MM/YYYY";
+            }
+            return date.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        } catch (error) {
+            return "DD/MM/YYYY";
+        }
     };
 
-    const handleFileUpload = async (quotationId, file) => {
+    const handleFileUpload = (poId, file) => {
         if (!file) {
             setError("No file selected.");
             return;
         }
-    
-        const formData = new FormData();
-        formData.append('document', file);  // Ensure the file is correctly appended
-        formData.append('quotation_id', quotationId);
-        formData.append('type', 'quotation'); // Make sure 'type' is always sent
-    
-        try {
-            const quotation = quotations.find(q => q.id === quotationId);
-            const existingDocument = quotation?.documents?.length > 0 ? quotation.documents[0] : null;
-    
-            let response;
-            if (existingDocument) {
-                // Use PUT for updating existing document
-                response = await axios.post(`/api/v1/quotation-documents/${existingDocument.id}?_method=PUT`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                });
-            } else {
-                // Use POST for new document
-                response = await axios.post('/api/v1/quotation-documents', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                });
-            }
-    
-            console.log("File upload response:", response.data);
-            fetchQuotations(); // Refresh the list after successful upload
-        } catch (error) {
-            console.error("Upload Error:", error.response?.data || error.message);
-            setError("Failed to upload document: " + (error.response?.data?.message || error.message));
-        }
-    };       
-
-    const toggleEditMode = (quotationId) => {
-        setEditingId(editingId === quotationId ? null : quotationId); // Toggle edit mode
+        
+        // Store the file temporarily - DO NOT upload immediately
+        setTempDocuments({
+            ...tempDocuments,
+            [poId]: file
+        });
     };
 
     return (
@@ -246,18 +370,20 @@ export default function QuotationRFQ({ auth }) {
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                     <Link href="/view-order" className="hover:text-[#009FDC] text-xl">Purchase Orders</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                    <Link href="/create-order" className="hover:text-[#009FDC] text-xl"> Create Purchase Order</Link>
+                    <Link href="/create-order" className="hover:text-[#009FDC] text-xl">Create Purchase Order</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                    <span className="text-[#009FDC] text-xl">Purchase Orders</span>
+                    <span className="text-[#009FDC] text-xl">Approve Purchase Order</span>
                 </div>
-                <Head title="Purchase Orders" />
+                <Head title="Approve Purchase Order" />
 
                 <div className="w-full overflow-hidden">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-[32px] font-bold text-[#2C323C]">Approve Purchase Orders</h2>
+                        <h2 className="text-[32px] font-bold text-[#2C323C]">Approve Purchase Order</h2>
                     </div>
 
-                    <p className="text-purple-600 text-2xl mb-6">PO# {rfqId}</p>
+                    {quotationDetails && (
+                        <p className="text-purple-600 text-2xl mb-6">Quotation# {quotationDetails.quotation_number}</p>
+                    )}
 
                     <div className="w-full overflow-hidden">
                         {error && (
@@ -266,10 +392,25 @@ export default function QuotationRFQ({ auth }) {
                             </div>
                         )}
                         
+                        {/* Loading Bar */}
+                        {(loading || attachingFile) && (
+                            <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
+                                <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
+                                    <div
+                                        className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
+                                        style={{ width: `${progress}%` }}
+                                    ></div>
+                                    <span className="absolute text-white">
+                                        {attachingFile ? "Saving Purchase Order..." : (progress < 60 ? "Please Wait, Fetching Details..." : `${progress}%`)}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                        
                         <table className="w-full">
                             <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                                 <tr>
-                                    <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">Quotation#</th>
+                                    <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">PO#</th>
                                     <th className="py-3 px-4 text-center">Company</th>
                                     <th className="py-3 px-4 text-center">Issue Date</th>
                                     <th className="py-3 px-4 text-center">Expiry Date</th>
@@ -279,138 +420,173 @@ export default function QuotationRFQ({ auth }) {
                                 </tr>
                             </thead>
 
-                            {/* Loading Bar */}
-                            {loading && (
-                                <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
-                                    <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
-                                        <div
-                                            className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
-                                            style={{ width: `${progress}%` }}
-                                        ></div>
-                                        <span className="absolute text-white">
-                                            {progress < 60 ? "Please Wait, Fetching Details..." : `${progress}%`}
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {!loading && (
+                            {!loading && !attachingFile && (
                             <tbody className="bg-transparent divide-y divide-gray-200">
-                                {quotations.length > 0 ? (
-                                    quotations.map((quotation, index) => (
-                                        <tr key={quotation.id}>
-                                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                {editingId === quotation.id ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editData.quotation_number || ''}
-                                                        onChange={(e) => setEditData({ ...editData, quotation_number: e.target.value })}
-                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
-                                                    />
-                                                ) : (
-                                                    quotation.quotation_number
-                                                )}
+                                {purchaseOrders.length > 0 ? (
+                                    purchaseOrders.map((po) => (
+                                        <tr key={po.id}>
+                                            <td className="px-6 py-4 text-center break-words whitespace-normal min-w-[120px] max-w-[150px]">
+                                                {/* PO Number is read-only as it's system generated */}
+                                                <span className="inline-block break-words w-full text-[17px] text-black">
+                                                    {po.purchase_order_no}
+                                                </span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                {editingId === quotation.id ? (
-                                                    <input
-                                                        type="text"
+                                            
+                                            <td className="px-6 py-4 text-center break-words whitespace-normal min-w-[150px] max-w-[170px]">
+                                                {editingId === po.id ? (
+                                                    <select
                                                         value={editData.company_name || ''}
-                                                        onChange={(e) => setEditData({ ...editData, company_name: e.target.value })}
-                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
-                                                    />
+                                                        onChange={(e) =>
+                                                            setEditData({ ...editData, company_name: e.target.value })
+                                                        }
+                                                        className="text-[17px] text-black bg-transparent border-none focus:ring-0 w-full text-center break-words"
+                                                        style={{ wordWrap: "break-word", overflowWrap: "break-word" }}
+                                                    >
+                                                        <option value="">Select a company</option>
+                                                        {companies.map((company) => (
+                                                            <option key={company.id} value={company.name}>
+                                                                {company.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
                                                 ) : (
-                                                    quotation.company_name
+                                                    <span className="inline-block break-words w-full text-[17px] text-black">
+                                                        {po.company_name || 'N/A'}
+                                                    </span>
                                                 )}
                                             </td>
+                                            
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                {editingId === quotation.id ? (
+                                                {editingId === po.id ? (
                                                     <input
                                                         type="date"
-                                                        value={editData.issue_date ? formatDateForInput(editData.issue_date) : ""}
-                                                        onChange={(e) => setEditData({ ...editData, issue_date: e.target.value })}
+                                                        value={editData.purchase_order_date ? formatDateForInput(editData.purchase_order_date) : ""}
+                                                        onChange={(e) => setEditData({ ...editData, purchase_order_date: e.target.value })}
                                                         className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
+                                                        placeholder="DD/MM/YYYY"
                                                     />
                                                 ) : (
-                                                    formatDateForDisplay(quotation.issue_date)
+                                                    formatDateForDisplay(po.purchase_order_date) || "DD/MM/YYYY"
                                                 )}
                                             </td>
+                                            
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                {editingId === quotation.id ? (
+                                                {editingId === po.id ? (
                                                     <input
                                                         type="date"
-                                                        value={editData.valid_until ? formatDateForInput(editData.valid_until) : ""}
-                                                        onChange={(e) => setEditData({ ...editData, valid_until: e.target.value })}
+                                                        value={editData.expiry_date ? formatDateForInput(editData.expiry_date) : ""}
+                                                        onChange={(e) => setEditData({ ...editData, expiry_date: e.target.value })}
                                                         className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
+                                                        placeholder="DD/MM/YYYY"
                                                     />
                                                 ) : (
-                                                    formatDateForDisplay(quotation.valid_until)
+                                                    formatDateForDisplay(po.expiry_date) || "DD/MM/YYYY"
                                                 )}
                                             </td>
-
-                                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                {editingId === quotation.id ? (
-                                                    <input
-                                                        type="number"
-                                                        value={editData.total_amount || ''}
-                                                        onChange={(e) => setEditData({ ...editData, total_amount: e.target.value })}
-                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center [&::-webkit-inner-spin-button]:hidden"
-                                                        style={{ textAlign: '-webkit-center' }}
-                                                    />
-                                                ) : (
-                                                    quotation.total_amount
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                            <div className="flex flex-col items-center justify-center w-full">
-                                                {quotation.documents && quotation.documents.length > 0 ? (
-                                                    quotation.documents.map((doc) => (
-                                                        <FileDisplay key={doc.id} file={doc} />
-                                                    ))
-                                                ) : (
-                                                    <span className="text-gray-500">No document attached</span>
-                                                )}
-
-                                                {editingId === quotation.id && (
-                                                    <>
-                                                        <input
-                                                            type="file"
-                                                            onChange={(e) => handleFileUpload(quotation.id, e.target.files[0])}
-                                                            className="hidden"
-                                                            id={`file-input-${quotation.id}`}
-                                                            accept=".pdf,.doc,.docx"
-                                                        />
-                                                        <label 
-                                                            htmlFor={`file-input-${quotation.id}`}
-                                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer break-words whitespace-normal text-center"
+                                            
+                                            <td className="px-6 py-4 whitespace-normal break-words text-center min-w-[120px]">
+                                                {editingId === po.id ? (
+                                                    <div className="flex items-center justify-center space-x-2">
+                                                        {/* Decrement Button */}
+                                                        <button
+                                                            onClick={() =>
+                                                                setEditData((prev) => ({
+                                                                    ...prev,
+                                                                    amount: Math.max(0, parseInt(prev.amount || 0) - 1),
+                                                                }))
+                                                            }
+                                                            className="text-gray-600 hover:text-gray-900"
                                                         >
-                                                            {(quotation.documents && Array.isArray(quotation.documents) && quotation.documents.length > 0) ? 'Replace file' : 'Attach file'}
-                                                        </label>
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                                <path fillRule="evenodd" d="M4 10a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z" clipRule="evenodd" />
+                                                            </svg>
+                                                        </button>
 
-                                                    </>
+                                                        {/* Input Field */}
+                                                        <input
+                                                            type="number"
+                                                            value={parseInt(editData.amount || 0)}
+                                                            onChange={(e) => {
+                                                                const value = Math.max(0, Math.floor(e.target.value)); // Ensure whole number & no negatives
+                                                                setEditData({ ...editData, amount: value });
+                                                            }}
+                                                            className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-[70px] text-center [&::-webkit-inner-spin-button]:hidden"
+                                                        />
+
+                                                        {/* Increment Button */}
+                                                        <button
+                                                            onClick={() =>
+                                                                setEditData((prev) => ({
+                                                                    ...prev,
+                                                                    amount: parseInt(prev.amount || 0) + 1,
+                                                                }))
+                                                            }
+                                                            className="text-gray-600 hover:text-gray-900"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="break-words min-w-[100px] inline-block">{parseInt(po.amount || 0).toLocaleString()}</span>
                                                 )}
-                                            </div>
-                                        </td>
+                                            </td>
+                                            
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex flex-col items-center justify-center w-full">
+                                                    {/* Show pending file preview or the existing document */}
+                                                    {tempDocuments[po.id] ? (
+                                                        <FileDisplay pendingFile={tempDocuments[po.id]} />
+                                                    ) : po.attachment ? (
+                                                        <FileDisplay file={po.attachment} />
+                                                    ) : (
+                                                        <span className="text-gray-500">No document attached</span>
+                                                    )}
 
+                                                    {editingId === po.id && (
+                                                        <>
+                                                            <input
+                                                                type="file"
+                                                                onChange={(e) => handleFileUpload(po.id, e.target.files[0])}
+                                                                className="hidden"
+                                                                id={`file-input-${po.id}`}
+                                                                accept=".pdf,.doc,.docx"
+                                                            />
+                                                            <label 
+                                                                htmlFor={`file-input-${po.id}`}
+                                                                className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
+                                                            >
+                                                                {tempDocuments[po.id] || po.attachment
+                                                                    ? 'Replace file' 
+                                                                    : 'Attach file'
+                                                                }
+                                                            </label>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 <div className="flex justify-center space-x-3">
-                                                    {editingId === quotation.id ? (
+                                                    {editingId === po.id ? (
                                                         <button
-                                                            onClick={() => handleSave(quotation.id)}
+                                                            onClick={() => handleSave(po.id)}
                                                             className="text-green-600 hover:text-green-900"
                                                         >
                                                             <FontAwesomeIcon icon={faCheck} className="h-5 w-5" />
                                                         </button>
                                                     ) : (
                                                         <button
-                                                            onClick={() => handleEdit(quotation)}
+                                                            onClick={() => handleEdit(po)}
                                                             className="text-gray-600 hover:text-gray-600"
                                                         >
                                                             <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
                                                         </button>
                                                     )}
+                                                    
                                                     <button
-                                                        onClick={() => handleDelete(quotation.id)}
+                                                        onClick={() => handleDelete(po.id)}
                                                         className="text-red-600 hover:text-red-900"
                                                     >
                                                         <FontAwesomeIcon icon={faTrash} className="h-5 w-5" />
@@ -421,60 +597,22 @@ export default function QuotationRFQ({ auth }) {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="4" className="text-center">No quotations available for this RFQ.</td>
+                                        <td colSpan="7" className="text-center py-4">No purchase order available.</td>
                                     </tr>
                                 )}
                             </tbody>
                             )}
                         </table>
-
-                        {/* Add Quotation Button - Only show on last page and if we're at the last record */}
-                        {!loading && currentPage === lastPage && quotations.length > 0 && 
-                         quotations[quotations.length - 1] === quotations.slice(-1)[0] && (
+                        
+                        {/* Add Purchase Order Button - Only show when not loading */}
+                        {!loading && !attachingFile && (
                             <div className="mt-4 flex justify-center">
                                 <button
                                     type="button"
                                     onClick={addItem}
                                     className="text-blue-600 flex items-center"
                                 >
-                                    + Add Quotation
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Pagination */}
-                        {!loading && !error && quotations.length > 0 && (
-                            <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
-                                <button
-                                    onClick={() => setCurrentPage(currentPage - 1)}
-                                    className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                        currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
-                                    }`}
-                                    disabled={currentPage <= 1}
-                                >
-                                    Previous
-                                </button>
-                                {Array.from({ length: lastPage }, (_, index) => index + 1).map((page) => (
-                                    <button
-                                        key={page}
-                                        onClick={() => setCurrentPage(page)}
-                                        className={`px-3 py-1 ${
-                                            currentPage === page
-                                                ? "bg-[#009FDC] text-white"
-                                                : "border border-[#B9BBBD] bg-white text-black"
-                                        } rounded-full`}
-                                    >
-                                        {page}
-                                    </button>
-                                ))}
-                                <button
-                                    onClick={() => setCurrentPage(currentPage + 1)}
-                                    className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                        currentPage >= lastPage ? "opacity-50 cursor-not-allowed" : ""
-                                    }`}
-                                    disabled={currentPage >= lastPage}
-                                >
-                                    Next
+                                    + Add Purchase Order
                                 </button>
                             </div>
                         )}
