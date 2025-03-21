@@ -47,7 +47,7 @@ class QuotationDocumentController extends Controller
             'type' => 'required|string'
         ]);
 
-        // Ensure the directory exists
+        // Ensure the directory exists directly in storage/app/public
         if (!Storage::exists('public/quotations')) {
             Storage::makeDirectory('public/quotations');
             Log::info('Storage directory created: public/quotations');
@@ -55,29 +55,58 @@ class QuotationDocumentController extends Controller
             Log::info('Storage directory already exists: public/quotations');
         }
 
-        // Store the file and log the path
-        $filePath = $request->file('document')->store('public/quotations');
-        Log::info('File stored at: ' . $filePath);
+        // Find existing document for this quotation
+        $existingDocument = QuotationDocument::where('quotation_id', $request->quotation_id)->first();
+        
+        // Store the file directly in storage/app/public/quotations (without double public)
+        $fileName = time() . '_' . $request->file('document')->getClientOriginalName();
+        $path = $request->file('document')->storeAs('public/quotations', $fileName);
+        Log::info('File stored at: ' . $path);
 
         // Remove 'public/' prefix so the file is accessible via `/storage/`
-        $relativePath = str_replace('public/', '', $filePath);
-
-        // Save to the database
-        $document = QuotationDocument::create([
-            'quotation_id' => $request->quotation_id,
-            'file_path' => $relativePath,
-            'original_name' => $request->file('document')->getClientOriginalName(),
-            'type' => $request->type
-        ]);
-
-        Log::info('Database entry created:', $document->toArray());
-
-        return response()->json([
-            'message' => 'File uploaded successfully',
-            'file_path' => asset('storage/' . $document->file_path)
-        ], 201);
+        $relativePath = str_replace('public/', '', $path);
+        
+        if ($existingDocument) {
+            // Delete old file if it exists
+            if ($existingDocument->file_path) {
+                $oldPath = 'public/' . $existingDocument->file_path;
+                if (Storage::exists($oldPath)) {
+                    Storage::delete($oldPath);
+                    Log::info('Old file deleted: ' . $oldPath);
+                }
+            }
+            
+            // Update existing record
+            $existingDocument->file_path = $relativePath;
+            $existingDocument->original_name = $request->file('document')->getClientOriginalName();
+            $existingDocument->type = $request->type;
+            $existingDocument->save();
+            
+            Log::info('Database entry updated:', $existingDocument->toArray());
+            
+            return response()->json([
+                'message' => 'File updated successfully',
+                'file_path' => asset('storage/' . $relativePath),
+                'document' => new QuotationDocumentResource($existingDocument)
+            ], 200);
+        } else {
+            // Create new record
+            $document = QuotationDocument::create([
+                'quotation_id' => $request->quotation_id,
+                'file_path' => $relativePath,
+                'original_name' => $request->file('document')->getClientOriginalName(),
+                'type' => $request->type
+            ]);
+            
+            Log::info('Database entry created:', $document->toArray());
+            
+            return response()->json([
+                'message' => 'File uploaded successfully',
+                'file_path' => asset('storage/' . $relativePath),
+                'document' => new QuotationDocumentResource($document)
+            ], 201);
+        }
     }
-
 
     public function show(string $id): JsonResponse
     {
@@ -99,32 +128,47 @@ class QuotationDocumentController extends Controller
 
         $quotationDocument = QuotationDocument::findOrFail($id);
 
-        // Delete old file
-        Storage::delete($quotationDocument->file_path);
+        // Delete old file if it exists
+        if ($quotationDocument->file_path) {
+            $oldPath = 'public/' . $quotationDocument->file_path;
+            if (Storage::exists($oldPath)) {
+                Storage::delete($oldPath);
+                Log::info('Old file deleted: ' . $oldPath);
+            }
+        }
 
-        // Upload new file
-        $filePath = $request->file('document')->store('quotations');
+        // Store the file directly in storage/app/public/quotations (without double public)
+        $fileName = time() . '_' . $request->file('document')->getClientOriginalName();
+        $path = $request->file('document')->storeAs('public/quotations', $fileName);
+        $relativePath = str_replace('public/', '', $path);
 
         // Update document details
         $quotationDocument->update([
-            'file_path' => $filePath,
+            'file_path' => $relativePath,
             'original_name' => $request->file('document')->getClientOriginalName(),
             'type' => $request->type
         ]);
 
         return response()->json([
             'message' => 'File updated successfully',
-            'file_path' => asset('storage/' . $filePath),
+            'file_path' => asset('storage/' . $relativePath),
             'document' => new QuotationDocumentResource($quotationDocument)
         ], 200);
     }
 
-
-    public function destroy(QuotationDocument $document): JsonResponse
+    public function destroy($id): JsonResponse
     {
         try {
+            $document = QuotationDocument::findOrFail($id);
+            
             // Delete the physical file
-            Storage::delete($document->file_path);
+            if ($document->file_path) {
+                $fullPath = 'public/' . $document->file_path;
+                if (Storage::exists($fullPath)) {
+                    Storage::delete($fullPath);
+                    Log::info('File deleted: ' . $fullPath);
+                }
+            }
 
             // Delete the record
             $document->delete();
@@ -133,6 +177,7 @@ class QuotationDocumentController extends Controller
                 'message' => 'Document deleted successfully'
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
+            Log::error('Failed to delete document: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Failed to delete document',
                 'error' => $e->getMessage()

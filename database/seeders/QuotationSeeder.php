@@ -49,7 +49,7 @@ class QuotationSeeder extends Seeder
 
             for ($i = 0; $i < $numberOfQuotations; $i++) {
                 // Generate a unique quotation number
-                $quotationNumber = 'QUO-' . date('Y') . '-' . str_pad($quotationId, 5, '0', STR_PAD_LEFT);
+                $quotationNumber = 'QUO-' . date('Y') . '-' . str_pad($quotationId, 4, '0', STR_PAD_LEFT);
 
                 Quotation::create([
                     'rfq_id' => $rfq->id,

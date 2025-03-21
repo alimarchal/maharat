@@ -36,12 +36,14 @@ class PurchaseOrderSeeder extends Seeder
                 [
                     'id' => 201,
                     'user_id' => 1,
-                    'purchase_order_no' => 'PO-2025-001',
+                    'purchase_order_no' => 'PO-2025-0001',
                     'quotation_id' => 2,
                     'supplier_id' => 1,
                     'purchase_order_date' => '2025-03-10',
+                    'expiry_date' => '2025-03-15',
                     'amount' => 15000.00,
                     'attachment' => null,
+                    'original_name' => null,
                     'status' => 'Approved',
                     'created_at' => Carbon::now(),
                     'updated_at' => Carbon::now(),
@@ -49,12 +51,14 @@ class PurchaseOrderSeeder extends Seeder
                 [
                     'id' => 202,
                     'user_id' => 2,
-                    'purchase_order_no' => 'PO-2025-002',
+                    'purchase_order_no' => 'PO-2025-0002',
                     'quotation_id' => 4,
                     'supplier_id' => 2,
                     'purchase_order_date' => '2025-03-11',
+                    'expiry_date' => '2025-03-16',
                     'amount' => 7500.50,
                     'attachment' => null,
+                    'original_name' => null,
                     'status' => 'Draft',
                     'created_at' => Carbon::now(),
                     'updated_at' => Carbon::now(),
@@ -62,12 +66,14 @@ class PurchaseOrderSeeder extends Seeder
                 [
                     'id' => 203,
                     'user_id' => 3,
-                    'purchase_order_no' => 'PO-2025-003',
+                    'purchase_order_no' => 'PO-2025-0003',
                     'quotation_id' => 6,
                     'supplier_id' => 3,
                     'purchase_order_date' => '2025-03-12',
+                    'expiry_date' => '2025-03-16',
                     'amount' => 20000.00,
                     'attachment' => null, 
+                    'original_name' => null,
                     'status' => 'Rejected',
                     'created_at' => Carbon::now(),
                     'updated_at' => Carbon::now(),
@@ -77,7 +83,7 @@ class PurchaseOrderSeeder extends Seeder
             // Use upsert to avoid duplicate ID errors
             DB::table('purchase_orders')->upsert($purchaseOrders, ['id'], [
                 'user_id', 'purchase_order_no', 'quotation_id', 'supplier_id', 
-                'purchase_order_date', 'amount', 'attachment', 'status', 'created_at', 'updated_at'
+                'purchase_order_date', 'expiry_date', 'amount', 'attachment', 'original_name', 'status', 'created_at', 'updated_at'
             ]);
 
             $this->command->info('Purchase orders seeded successfully.');
