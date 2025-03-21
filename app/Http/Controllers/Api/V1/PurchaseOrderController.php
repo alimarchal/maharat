@@ -14,30 +14,57 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
 use Illuminate\Support\Facades\Storage;
-
+use Illuminate\Http\Request;
 
 class PurchaseOrderController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse|ResourceCollection
+    public function index(Request $request): JsonResponse
     {
-        $purchaseOrders = QueryBuilder::for(PurchaseOrder::class)
-            ->allowedFilters(PurchaseOrderParameters::ALLOWED_FILTERS)
-            ->allowedSorts(PurchaseOrderParameters::ALLOWED_SORTS)
-            ->allowedIncludes(PurchaseOrderParameters::ALLOWED_INCLUDES)
-            ->paginate()
-            ->appends(request()->query());
+        try {
+            // Check if quotation_id is provided to filter results
+            $quotationId = $request->input('quotation_id');
+            
+            $query = PurchaseOrder::query();
+            
+            // Apply quotation_id filter if provided
+            if ($quotationId) {
+                $query->where('quotation_id', $quotationId);
+            }
+            
+            $purchaseOrders = $query->get();
 
-        if ($purchaseOrders->isEmpty()) {
             return response()->json([
-                'message' => 'No purchase orders found',
-                'data' => []
+                'data' => PurchaseOrderResource::collection($purchaseOrders)
             ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching purchase orders: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            return response()->json([
+                'message' => 'Error fetching purchase orders',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
 
-        return PurchaseOrderResource::collection($purchaseOrders);
+    public function getNextPurchaseOrderNumber(): JsonResponse
+    {
+        try {
+            $nextNumber = $this->generatePurchaseOrderNumber();
+            \Log::info('Generated next purchase order number: ' . $nextNumber);
+            return response()->json([
+                'success' => true,
+                'next_number' => $nextNumber
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to generate next purchase order number: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate next purchase order number: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -54,6 +81,7 @@ class PurchaseOrderController extends Controller
             // Add the authenticated user's ID as creator
             $validatedData['user_id'] = auth()->id();
 
+            // Generate unique purchase order number
             $validatedData['purchase_order_no'] = $this->generatePurchaseOrderNumber();
 
             // Create purchase order
@@ -63,6 +91,7 @@ class PurchaseOrderController extends Controller
             if ($request->hasFile('attachment')) {
                 $path = $request->file('attachment')->store('purchase-orders','public');
                 $purchaseOrder->attachment = $path;
+                $purchaseOrder->original_name = $request->file('attachment')->getClientOriginalName();
                 $purchaseOrder->save();
             }
 
@@ -84,24 +113,40 @@ class PurchaseOrderController extends Controller
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Failed to create purchase order: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
             return response()->json([
                 'message' => 'Failed to create purchase order',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+    
     /**
      * Display the specified resource.
      */
     public function show(string $id): JsonResponse
     {
-        $purchaseOrder = QueryBuilder::for(PurchaseOrder::class)
-            ->allowedIncludes(PurchaseOrderParameters::ALLOWED_INCLUDES)
-            ->findOrFail($id);
+        try {
+            $purchaseOrder = PurchaseOrder::with([
+                'quotation',
+                'supplier',
+                'user',
+                'department',
+                'costCenter',
+                'subCostCenter',
+                'warehouse',
+            ])->findOrFail($id);
 
-        return response()->json([
-            'data' => new PurchaseOrderResource($purchaseOrder)
-        ], Response::HTTP_OK);
+            return response()->json([
+                'data' => new PurchaseOrderResource($purchaseOrder)
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to retrieve purchase order',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
@@ -121,13 +166,14 @@ class PurchaseOrderController extends Controller
             // Handle file upload if provided
             if ($request->hasFile('attachment')) {
                 // Delete old file if exists
-                if ($purchaseOrder->attachment && Storage::exists($purchaseOrder->attachment)) {
-                    Storage::delete($purchaseOrder->attachment);
+                if ($purchaseOrder->attachment && Storage::disk('public')->exists($purchaseOrder->attachment)) {
+                    Storage::disk('public')->delete($purchaseOrder->attachment);
                 }
 
                 // Store new file
-                $path = $request->file('attachment')->store('purchase-orders');
+                $path = $request->file('attachment')->store('purchase-orders', 'public');
                 $purchaseOrder->attachment = $path;
+                $purchaseOrder->original_name = $request->file('attachment')->getClientOriginalName();
                 $purchaseOrder->save();
             }
 
@@ -181,24 +227,42 @@ class PurchaseOrderController extends Controller
 
     /**
      * Generate a unique purchase order number
-     * Format: PO-YYYY-XXXXX (e.g., PO-2025-00001)
+     * Format: PO-YYYY-XXXX (e.g., PO-2025-0001)
      */
     private function generatePurchaseOrderNumber(): string
     {
         $year = date('Y');
-        $lastOrder = PurchaseOrder::whereYear('created_at', $year)
-            ->orderBy('purchase_order_no', 'desc')
-            ->first();
-
-        if ($lastOrder) {
-            // Extract the numeric part and increment
-            $lastNumber = (int) substr($lastOrder->purchase_order_no, -5);
-            $newNumber = $lastNumber + 1;
+        
+        // Initialize random number to ensure uniqueness
+        $random = rand(1, 999);
+        
+        // Find the highest number for the current year
+        $highestPO = DB::table('purchase_orders')
+            ->where('purchase_order_no', 'like', "PO-{$year}-%")
+            ->orderByRaw('CAST(SUBSTRING_INDEX(purchase_order_no, "-", -1) AS UNSIGNED) DESC')
+            ->value('purchase_order_no');
+            
+        if ($highestPO) {
+            // Extract the numeric part
+            $parts = explode('-', $highestPO);
+            if (count($parts) === 3) {
+                $lastNumber = (int)$parts[2];
+                $newNumber = $lastNumber + 1 + $random;
+            } else {
+                $newNumber = 1 + $random;
+            }
         } else {
-            $newNumber = 1;
+            $newNumber = 1 + $random;
         }
-
-        // Format with leading zeros to maintain 5 digits
-        return sprintf("PO-%s-%04d", $year, $newNumber);
+        
+        $poNumber = sprintf("PO-%s-%04d", $year, $newNumber);
+        
+        // Double-check it's unique
+        while (DB::table('purchase_orders')->where('purchase_order_no', $poNumber)->exists()) {
+            $newNumber = $newNumber + rand(1, 999);
+            $poNumber = sprintf("PO-%s-%04d", $year, $newNumber);
+        }
+        
+        return $poNumber;
     }
 }

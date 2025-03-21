@@ -167,6 +167,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/quotations/upload-terms', [QuotationController::class, 'uploadTerms']);
     Route::get('/quotations/next-number', [QuotationController::class, 'getNextQuotationNumber']);
 
+    Route::get('/purchaseorder/next-number', [PurchaseOrderController::class, 'getNextPurchaseOrderNumber']);
+    Route::apiResource('purchase-orders', PurchaseOrderController::class);
+
     // Task Routes
     Route::apiResource('tasks', TaskController::class);
     Route::put('tasks/{task}/mark-as-read', [TaskController::class, 'markAsRead']);
