@@ -33,14 +33,17 @@ export default function NewQuotation({ auth }) {
                         axios.get(`/api/v1/rfq-categories/${rfq.id}`),
                         axios.get(`/api/v1/rfqs/${rfq.id}`)
                     ]);
-            
+    
                     return {
                         ...rfq,
                         category_name: categoryResponse.data.data.category_name,
-                        rfq_number: rfqDetailsResponse.data.data.rfq_number 
+                        rfq_number: rfqDetailsResponse.data.data.rfq_number
                     };
                 })
             );
+    
+            // **Sort RFQs by rfq_id in ascending order**
+            rfqsWithDetails.sort((a, b) => a.id - b.id);
     
             setRfqs(rfqsWithDetails);
             setLastPage(response.data.meta.last_page);
@@ -57,7 +60,7 @@ export default function NewQuotation({ auth }) {
         } finally {
             clearInterval(interval);
         }
-    };
+    };    
 
     const fetchCompanies = async () => {
         try {
@@ -101,24 +104,7 @@ export default function NewQuotation({ auth }) {
                         <h2 className="text-[32px] font-bold text-[#2C323C]">New Quotation</h2>
                     </div>
 
-                    <div className="w-full overflow-hidden">
-                        {error && (
-                            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                                <span className="block sm:inline">{error}</span>
-                            </div>
-                        )}
-                        
-                        <table className="w-full">
-                            <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
-                                <tr>
-                                    <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">RFQ#</th>
-                                    <th className="py-3 px-4 text-center">Date</th>
-                                    <th className="py-3 px-4 text-center">Category</th>
-                                    <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Action</th>
-                                </tr>
-                            </thead>
-
-                            {loading && (
+                    {loading && (
                             <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
                                 <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
                                     <div
@@ -130,6 +116,25 @@ export default function NewQuotation({ auth }) {
                                     </span>
                                 </div>
                             </div>
+                        )}
+
+                    <div className="w-full overflow-hidden">
+                        {!loading && error && (
+                            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                                <span className="block sm:inline">{error}</span>
+                            </div>
+                        )}
+                        
+                        <table className="w-full">
+                        {!loading && (
+                            <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                                <tr>
+                                    <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">RFQ#</th>
+                                    <th className="py-3 px-4 text-center">Date</th>
+                                    <th className="py-3 px-4 text-center">Category</th>
+                                    <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Action</th>
+                                </tr>
+                            </thead>
                         )}
 
                         {!loading && (

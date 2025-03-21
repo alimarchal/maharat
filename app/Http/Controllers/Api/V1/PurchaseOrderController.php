@@ -199,6 +199,6 @@ class PurchaseOrderController extends Controller
         }
 
         // Format with leading zeros to maintain 5 digits
-        return sprintf("PO-%s-%05d", $year, $newNumber);
+        return sprintf("PO-%s-%04d", $year, $newNumber);
     }
 }
