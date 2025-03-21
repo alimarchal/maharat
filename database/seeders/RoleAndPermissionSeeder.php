@@ -83,9 +83,20 @@ class RoleAndPermissionSeeder extends Seeder
             'guard_name' => 'web',
             'parent_role_id' => $supervisorRole->id
         ]);
+
+
+        Role::create(['name' => 'Procurement Officer','guard_name' => 'web']);
+        Role::create(['name' => 'Procurement Supervisor','guard_name' => 'web']);
+        Role::create(['name' => 'Maintenance Manager','guard_name' => 'web']);
+        Role::create(['name' => 'Warehouse Manager','guard_name' => 'web']);
+        Role::create(['name' => 'Department Director','guard_name' => 'web']);
+
         $userRole->givePermissionTo([
             'view_dashboard',
             'edit_profile'
         ]);
+
+        // Reset cached roles and permissions
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
     }
 }

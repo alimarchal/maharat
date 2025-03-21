@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Designation;
 use App\Models\Role;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -50,11 +51,12 @@ class UserController extends Controller
         // Handle profile photo
         if ($request->hasFile('profile_photo_path')) {
             $file = $request->file('profile_photo_path');
-            $path = $file->store('profile_photos', 'public'); 
-            $validated['profile_photo_path'] = asset("storage/$path"); 
+            $path = $file->store('profile_photos', 'public');
+            $validated['profile_photo_path'] = asset("storage/$path");
         }
 
         $user = User::create($validated);
+        $user->assignRole('User');
 
         return new UserResource($user);
     }
@@ -79,45 +81,45 @@ class UserController extends Controller
             'user_original' => $user->toArray(),
             'request_data' => $request->all(),
         ]);
-        
-        // Validate the request 
+
+        // Validate the request
         $validated = $request->validated();
         \Log::info("Validated data:", $validated);
-        
+
         if (empty($validated)) {
             \Log::warning("Empty validated data - no fields passed validation!");
             return response()->json(['error' => 'No valid fields to update'], 422);
         }
-        
+
         // Manually check for specific fields
         if (isset($validated['lastname'])) {
             \Log::info("Lastname will be changed from '{$user->lastname}' to '{$validated['lastname']}'");
         }
-        
+
         if (isset($validated['username'])) {
             \Log::info("Username will be changed from '{$user->username}' to '{$validated['username']}'");
         }
-        
+
         // Try direct update
         try {
             $result = $user->update($validated);
             \Log::info("Update operation result: " . ($result ? "Success" : "Failed"));
-            
+
             // Refresh and check if data was actually updated
             $user->refresh();
             \Log::info("User data after update:", $user->toArray());
-            
+
             // Manually check if fields were updated
             if (isset($validated['lastname']) && $user->lastname !== $validated['lastname']) {
                 \Log::error("Database update failed - lastname was not updated!");
             }
-            
+
             return new UserResource($user);
         } catch (\Exception $e) {
             \Log::error("Exception during update: " . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
     }
