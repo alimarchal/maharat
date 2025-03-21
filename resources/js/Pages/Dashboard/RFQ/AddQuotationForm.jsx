@@ -599,22 +599,12 @@ export default function AddQuotationForm({ auth }) {
             });
             const RFQResponse = response.data.data;
 
+            const loggedUser = auth.user?.id;
             const processResponse = await axios.get(
                 "/api/v1/processes?include=steps,creator,updater&filter[title]=RFQ Approval"
             );
             const processList = processResponse.data.data;
-
-            const loggedUser = auth.user?.id;
-
-            if (!processList?.length) {
-                console.error("No processes found.");
-                return;
-            }
             const process = processList[0];
-            if (!process?.steps?.length) {
-                console.error("No process steps found.");
-                return;
-            }
             const processStep = process.steps[0];
 
             const processResponseViaUser = await axios.get(
@@ -634,6 +624,16 @@ export default function AddQuotationForm({ auth }) {
                 "/api/v1/rfq-approval-transactions",
                 RFQApprovalTransactionPayload
             );
+
+            const taskPayload = {
+                process_step_id: processStep.id,
+                process_id: processStep.process_id,
+                assigned_at: new Date().toISOString(),
+                urgency: "Normal",
+                assigned_to_user_id: assignUser.user?.user?.id,
+                assigned_from_user_id: loggedUser,
+            };
+            await axios.post("/api/v1/tasks", taskPayload);
 
             if (response.data && response.data.success === true) {
                 alert(
