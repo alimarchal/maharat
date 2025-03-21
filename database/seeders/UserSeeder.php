@@ -110,7 +110,7 @@ class UserSeeder extends Seeder
                 ['email' => 'mohammed@example.com', 'firstname' => 'Mohammed', 'lastname' => 'Sheikh', 'name' => 'Mohammed Sheikh', 'parent_id' => 6, 'hierarchy_level' => 2, 'designation_id' => 4, 'department_id' => 3],
                 ['email' => 'fatima@example.com', 'firstname' => 'Fatima', 'lastname' => 'Khalid', 'name' => 'Fatima Khalid', 'parent_id' => 6, 'hierarchy_level' => 2, 'designation_id' => 5, 'department_id' => 6],
                 ['email' => 'abdullah@example.com', 'firstname' => 'Abdullah', 'lastname' => 'Mohsen', 'name' => 'Abdullah Mohsen', 'parent_id' => 9, 'hierarchy_level' => 3, 'designation_id' => 6, 'department_id' => 4],
-                ['email' => 'salman@example.com', 'firstname' => 'Salman', 'lastname' => 'Rashid', 'name' => 'Salman Rashid', 'parent_id' => 10, 'hierarchy_level' => 3, 'designation_id' => 7, 'department_id' => 4],        
+                ['email' => 'salman@example.com', 'firstname' => 'Salman', 'lastname' => 'Rashid', 'name' => 'Salman Rashid', 'parent_id' => 10, 'hierarchy_level' => 3, 'designation_id' => 7, 'department_id' => 4],
         ];
 
         $filteredDesignationIds = array_filter($designationIds, fn($id) => $id !== 1);
@@ -118,7 +118,7 @@ class UserSeeder extends Seeder
 
         foreach ($users as $data) {
 
-            User::firstOrCreate(
+            $user = User::firstOrCreate(
                 ['email' => $data['email']],
                 [
                     'name' => $data['name'],
@@ -136,6 +136,11 @@ class UserSeeder extends Seeder
 
                 ]
             );
+
+            $user->assignRole('User');
         }
+
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
     }
 }
