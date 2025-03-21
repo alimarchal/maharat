@@ -77,13 +77,23 @@ export default function QuotationRFQ({ auth }) {
     const fetchQuotations = async () => {
         setLoading(true);
         setProgress(0);
+
+        const interval = setInterval(() => {
+            setProgress((oldProgress) => (oldProgress >= 90 ? 90 : oldProgress + 10));
+        }, 300);
     
         try {
             // Add a cache-busting parameter to ensure fresh data
             const timestamp = new Date().getTime();
             const response = await axios.get(`/api/v1/quotations?page=${currentPage}&rfq_id=${rfqId}&t=${timestamp}`);
             
-            const updatedQuotations = response.data.data
+            console.log("API Response:", response.data); // Debug log
+            
+            // Safely get the quotations data with fallback to empty array
+            const quotationsData = response.data.data || [];
+            
+            // Filter and map the quotations
+            const updatedQuotations = quotationsData
                 .filter(q => q.rfq_id == rfqId)
                 .map(quotation => {
                     let companyName = '';
@@ -111,19 +121,28 @@ export default function QuotationRFQ({ auth }) {
                 });
     
             setQuotations(updatedQuotations);
-            setLastPage(response.data.meta.last_page);
+            
+            // Safely set the last page with fallback
+            const meta = response.data.meta || {};
+            const calculatedLastPage = Math.max(1, Math.ceil(updatedQuotations.length / 10));
+            setLastPage(meta.last_page || calculatedLastPage);
+            
             setError("");
-    
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
+            
         } catch (error) {
             console.error('API Error:', error);
-            setError("Failed to load quotations");
+            setError("Failed to load quotations: " + (error.response?.data?.message || error.message));
             setQuotations([]);
+            // Set lastPage to 1 when there's an error
+            setLastPage(1);
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
+        } finally {
+            clearInterval(interval);
         }
-    }
+    };
 
     const fetchRfqNumber = async () => {
         if (!rfqId) return;
