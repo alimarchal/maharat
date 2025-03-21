@@ -232,37 +232,19 @@ class PurchaseOrderController extends Controller
     private function generatePurchaseOrderNumber(): string
     {
         $year = date('Y');
-        
-        // Initialize random number to ensure uniqueness
-        $random = rand(1, 999);
-        
-        // Find the highest number for the current year
-        $highestPO = DB::table('purchase_orders')
-            ->where('purchase_order_no', 'like', "PO-{$year}-%")
-            ->orderByRaw('CAST(SUBSTRING_INDEX(purchase_order_no, "-", -1) AS UNSIGNED) DESC')
-            ->value('purchase_order_no');
-            
-        if ($highestPO) {
-            // Extract the numeric part
-            $parts = explode('-', $highestPO);
-            if (count($parts) === 3) {
-                $lastNumber = (int)$parts[2];
-                $newNumber = $lastNumber + 1 + $random;
-            } else {
-                $newNumber = 1 + $random;
-            }
-        } else {
-            $newNumber = 1 + $random;
+
+        // Find the last purchase order for the current year
+        $lastPurchaseOrder = PurchaseOrder::whereYear('created_at', $year)
+            ->orderBy('purchase_order_no', 'desc')
+            ->first();
+
+        $newNumber = 1; // Default to 1 if no purchase order exists
+
+        if ($lastPurchaseOrder && preg_match('/PO-\d{4}-(\d+)/', $lastPurchaseOrder->purchase_order_no, $matches)) {
+            $newNumber = (int)$matches[1] + 1;
         }
-        
-        $poNumber = sprintf("PO-%s-%04d", $year, $newNumber);
-        
-        // Double-check it's unique
-        while (DB::table('purchase_orders')->where('purchase_order_no', $poNumber)->exists()) {
-            $newNumber = $newNumber + rand(1, 999);
-            $poNumber = sprintf("PO-%s-%04d", $year, $newNumber);
-        }
-        
-        return $poNumber;
+
+        return sprintf("PO-%s-%04d", $year, $newNumber);
     }
+
 }
