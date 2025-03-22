@@ -26,7 +26,6 @@ import ReviewTask from "./Dashboard/MyTasks/Tasks/ReviewTask";
 import PaymentOrderTable from "./Dashboard/Finance/PaymentOrder/PaymentOrderTable";
 import CostCenterTable from "./Dashboard/BudgetAndAccounts/CostCenter/CostCenterTable";
 import CreatePaymentOrdersTable from "./Dashboard/Finance/PaymentOrder/CreatePaymentOrdersTable";
-import CreatePaymentOrder from "./Dashboard/Finance/PaymentOrder/CreatePaymentOrder";
 import ReceivableTable from "./Dashboard/Finance/AccountReceivables/ReceivableTable";
 import CreateReceivable from "./Dashboard/Finance/AccountReceivables/CreateReceivable";
 import ViewReceivable from "./Dashboard/Finance/AccountReceivables/ViewReceivable";
@@ -94,8 +93,6 @@ export default function Dashboard({ auth, page }) {
             return <PaymentOrderTable />;
         if (page === "Finance/PaymentOrder/CreatePaymentOrderTable")
             return <CreatePaymentOrdersTable />;
-        if (page === "Finance/PaymentOrder/CreatePaymentOrder")
-            return <CreatePaymentOrder />;
         if (page === "AccountReceivables/ReceivableTable")
             return <ReceivableTable />;
         if (page === "AccountReceivables/CreateReceivable")
