@@ -27,7 +27,7 @@ class InvoiceSeeder extends Seeder
         // Sample invoice records
         $invoices = [
             [
-                'invoice_number' => 'INV-2025-001',
+                'invoice_number' => 'INV-2025-0001',
                 'client_id' => 1,
                 'status' => 'Draft',
                 'payment_method' => 'Bank Transfer',
@@ -43,7 +43,7 @@ class InvoiceSeeder extends Seeder
                 'updated_at' => Carbon::now(),
             ],
             [
-                'invoice_number' => 'INV-2025-002',
+                'invoice_number' => 'INV-2025-0002',
                 'client_id' => 2,
                 'status' => 'Draft',
                 'payment_method' => 'Credit Card',
@@ -59,7 +59,7 @@ class InvoiceSeeder extends Seeder
                 'updated_at' => Carbon::now(),
             ],
             [
-                'invoice_number' => 'INV-2025-003',
+                'invoice_number' => 'INV-2025-0003',
                 'client_id' => 3,
                 'status' => 'Draft',
                 'payment_method' => 'Cash',

@@ -12,6 +12,7 @@ class Invoice extends Model
 
     protected $fillable = [
         'invoice_number',
+        'supplier_id',
         'vendor_id',
         'client_id',
         'status',
@@ -23,8 +24,9 @@ class Invoice extends Model
         'tax_amount',
         'total_amount',
         'currency',
-        'notes',
-        'account_code_id',
+        'status',
+        'issue_date',
+        'items'
     ];
 
     protected $casts = [
@@ -34,6 +36,10 @@ class Invoice extends Model
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'discounted_days' => 'integer',
+        'items' => 'array',
+        'vendor_id' => 'integer',
+        'client_id' => 'integer',
+        'issue_date' => 'date'
     ];
 
     /**
