@@ -223,61 +223,56 @@ export default function ApproveOrder({ auth }) {
         return () => {
             window.removeEventListener("beforeunload", handleBeforeUnload);
         };
-    }, [quotationId, currentPage]); // Add currentPage as dependency
+    }, [quotationId, currentPage]); // Keep currentPage as dependency
 
     const handleSave = async (id) => {
         try {
             setAttachingFile(true);
             setProgress(0);
-            setLoading(true);
 
             const interval = setInterval(() => {
                 setProgress((oldProgress) => Math.min(oldProgress + 5, 90));
             }, 200);
 
+            // Create FormData to handle file uploads
             const formData = new FormData();
-            formData.append('status', editData.status || 'Draft');
-            
-            // Fields to exclude from the form data
-            const fieldsToExclude = [
-                'id', 
-                'attachment', 
-                'original_name',
-                'purchase_order_no',
-                'created_at',
-                'updated_at',
-                'user_id',
-                'company_name'
-            ];
-            
-            // Add all valid fields to the form data
-            Object.keys(editData).forEach(key => {
-                if (!fieldsToExclude.includes(key) && !key.startsWith('new-')) {
-                    if (editData[key] !== null && editData[key] !== undefined && editData[key] !== '') {
+
+            // Required field status to avoid validation errors
+            if (!editData.status) {
+                formData.append("status", "Draft");
+            }
+
+            // Append basic purchase order fields
+            // For new records, don't include purchase_order_no - let backend generate it
+            Object.keys(editData).forEach((key) => {
+                if (
+                    key !== "id" &&
+                    key !== "company_name" &&
+                    key !== "quotation_number" &&
+                    !key.startsWith("new-") &&
+                    !(
+                        id.toString().includes("new-") &&
+                        key === "purchase_order_no"
+                    )
+                ) {
+                    // Only append if the value exists
+                    if (
+                        editData[key] !== null &&
+                        editData[key] !== undefined &&
+                        editData[key] !== ""
+                    ) {
                         formData.append(key, editData[key]);
                     }
                 }
             });
-            
-            // Handle company update chain (PO -> Quotation -> RFQ)
-            if (editData.company_name) {
-                const selectedCompany = companies.find(c => c.name === editData.company_name);
-                if (selectedCompany) {
-                    formData.append('company_id', selectedCompany.id);
-                    formData.append('update_quotation_company', true);
-                    formData.append('rfq_company_id', selectedCompany.id);
-                    formData.append('quotation_id', quotationId);
-                    
-                    try {
-                        await axios.put(`/api/v1/quotations/${quotationId}`, {
-                            company_id: selectedCompany.id,
-                            rfq_company_id: selectedCompany.id,
-                            update_rfq: true
-                        });
-                    } catch (error) {
-                        console.error('Failed to update quotation company:', error);
-                    }
-                }
+
+            // Make sure required fields are present
+            if (!formData.has("quotation_id") && quotationId) {
+                formData.append("quotation_id", quotationId);
+            }
+
+            if (!formData.has("supplier_id") && quotationDetails?.supplier_id) {
+                formData.append("supplier_id", quotationDetails.supplier_id);
             }
 
             // Handle temporary file if it exists
@@ -286,9 +281,13 @@ export default function ApproveOrder({ auth }) {
                 formData.append("original_name", tempDocuments[id].name);
             }
 
+            console.log(
+                "Saving purchase order with data:",
+                Object.fromEntries(formData)
+            );
+
             let response;
             try {
-                // Save the purchase order
                 if (id.toString().includes("new-")) {
                     response = await axios.post("/api/v1/purchase-orders", formData, {
                         headers: { "Content-Type": "multipart/form-data" },
@@ -300,97 +299,98 @@ export default function ApproveOrder({ auth }) {
                 }
                 const POResponse = response.data.data;
 
-                // Try to create approval process
                 try {
+                    // Get the logged-in user ID
                     const loggedUser = auth.user?.id;
-                    
-                    // Get process information
+
+                    // Get process information with error handling
                     const processResponse = await axios.get(
                         "/api/v1/processes?include=steps,creator,updater&filter[title]=Purchase Order Approval"
                     );
-                    
+
+                    // Check if we have valid process data
                     if (processResponse.data.data && processResponse.data.data.length > 0) {
                         const process = processResponse.data.data[0];
                         
+                        // Check if process has steps
                         if (process.steps && process.steps.length > 0) {
                             const processStep = process.steps[0];
-                            
-                            // Get user assignment
-                            const processResponseViaUser = await axios.get(
-                                `/api/v1/process-steps/${processStep.order}/user/${loggedUser}`
-                            );
-                            
-                            if (processResponseViaUser.data && processResponseViaUser.data.user) {
-                                const assignUser = processResponseViaUser.data;
 
-                                // Create approval transaction
-                                const POApprovalTransactionPayload = {
-                                    purchase_order_id: POResponse.id,
-                                    requester_id: loggedUser,
-                                    assigned_to: assignUser.user.user.id,
-                                    order: processStep.order,
-                                    description: processStep.description,
-                                    status: "Pending",
-                                };
-                                await axios.post("/api/v1/po-approval-transactions", POApprovalTransactionPayload);
+                            // Only proceed if we have a valid process step
+                            if (processStep && processStep.order) {
+                                const processResponseViaUser = await axios.get(
+                                    `/api/v1/process-steps/${processStep.order}/user/${loggedUser}`
+                                );
 
-                                // Create task
-                                const taskPayload = {
-                                    process_step_id: processStep.id,
-                                    process_id: processStep.process_id,
-                                    assigned_at: new Date().toISOString(),
-                                    urgency: "Normal",
-                                    assigned_to_user_id: assignUser.user.user.id,
-                                    assigned_from_user_id: loggedUser,
-                                };
-                                await axios.post("/api/v1/tasks", taskPayload);
+                                // Check if we have valid user assignment data
+                                if (processResponseViaUser?.data?.user?.user?.id) {
+                                    const assignUser = processResponseViaUser.data;
+
+                                    // Create approval transaction
+                                    const POApprovalTransactionPayload = {
+                                        purchase_order_id: POResponse.id,
+                                        requester_id: loggedUser,
+                                        assigned_to: assignUser.user.user.id,
+                                        order: processStep.order,
+                                        description: processStep.description,
+                                        status: "Pending",
+                                    };
+                                    await axios.post(
+                                        "/api/v1/po-approval-transactions",
+                                        POApprovalTransactionPayload
+                                    );
+
+                                    // Create task
+                                    const taskPayload = {
+                                        process_step_id: processStep.id,
+                                        process_id: processStep.process_id,
+                                        assigned_at: new Date().toISOString(),
+                                        urgency: "Normal",
+                                        assigned_to_user_id: assignUser.user.user.id,
+                                        assigned_from_user_id: loggedUser,
+                                    };
+                                    await axios.post("/api/v1/tasks", taskPayload);
+                                }
                             }
                         }
                     }
-
-                    // Move success handling here
-                    setEditingId(null);
-                    setError("");
-                    setProgress(100);
-                    
-                    // Clear interval before fetching updated data
-                    clearInterval(interval);
-                    
-                    // Wait a moment before fetching updated data
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    await fetchPurchaseOrders();
-                    
-                    alert("Purchase order saved successfully!");
                 } catch (approvalError) {
-                    console.error("Failed to create approval process:", approvalError);
-                    setEditingId(null);
-                    setError("");
-                    setProgress(100);
-                    
-                    // Clear interval before fetching updated data
-                    clearInterval(interval);
-                    
-                    // Wait a moment before fetching updated data
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    await fetchPurchaseOrders();
-                    
-                    alert("Purchase order saved successfully, but approval process could not be created.");
+                    console.error("Approval process error:", approvalError);
+                    // Don't throw the error - allow the purchase order to be saved even if approval process fails
                 }
 
+                // Reset editing state and refresh data
+                setEditingId(null);
+                setError("");
+
+                // Clear interval and set progress to 100%
+                clearInterval(interval);
+                setProgress(100);
+
+                // Show success message
+                alert("Purchase order saved successfully!");
+
+                // Wait a moment to show the 100% progress, then refresh data
+                setTimeout(() => {
+                    setAttachingFile(false);
+                    fetchPurchaseOrders();
+                }, 500);
             } catch (error) {
                 clearInterval(interval);
                 console.error("Save error:", error.response?.data || error.message);
-                setError(`Failed to save purchase order: ${error.response?.data?.message || error.message}`);
+                setError(
+                    `Failed to save purchase order: ${
+                        error.response?.data?.message || error.message
+                    }`
+                );
+                setAttachingFile(false);
                 setProgress(0);
             }
         } catch (error) {
             console.error("Unexpected error:", error);
             setError(`An unexpected error occurred: ${error.message}`);
-            setProgress(0);
-        } finally {
-            // Always reset these states
             setAttachingFile(false);
-            setLoading(false);
+            setProgress(0);
         }
     };
 
@@ -443,8 +443,19 @@ export default function ApproveOrder({ auth }) {
             attachment: null,
             original_name: null,
         };
-
-        setPurchaseOrders([...purchaseOrders, newPurchaseOrder]);
+        
+        // Add the new purchase order to the end of the list
+        setPurchaseOrders(prevOrders => [...prevOrders, newPurchaseOrder]);
+        
+        // Calculate the last page after adding the new item
+        const totalItems = purchaseOrders.length + 1;
+        const itemsPerPage = 10;
+        const newLastPage = Math.ceil(totalItems / itemsPerPage);
+        
+        // Set current page to the last page where the new item will appear
+        setCurrentPage(newLastPage);
+        
+        // Set editing state for the new item
         setEditingId(newPurchaseOrder.id);
         setEditData(newPurchaseOrder);
     };
