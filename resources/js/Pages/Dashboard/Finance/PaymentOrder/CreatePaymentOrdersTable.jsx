@@ -2,69 +2,50 @@ import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPaperclip, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
+import PaymentOrderModal from "./PaymentOrderModal";
 
 const CreatePaymentOrdersTable = () => {
-    const [formData, setFormData] = useState({
-        from_date: "",
-        to_date: "",
-    });
+    const [formData, setFormData] = useState({ from_date: "", to_date: "" });
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [lastPage, setLastPage] = useState(1);
 
-    const staticPaymentOrders = [
-        {
-            id: 1,
-            po_number: "MC-PO-2024001",
-            quotation_number: "QT-2024001",
-            company: "InfoTech",
-            amount: "1300.00",
-        },
-        {
-            id: 2,
-            po_number: "MC-PO-6788001",
-            quotation_number: "QT-6788001",
-            company: "EVLogic",
-            amount: "1500.00",
-        },
-        {
-            id: 3,
-            po_number: "MC-PO-3249801",
-            quotation_number: "QT-3249801",
-            company: "Compaq",
-            amount: "1700.00",
-        },
-        {
-            id: 4,
-            po_number: "MC-PO-2024001",
-            quotation_number: "QT-2024001",
-            company: "InnoTech",
-            amount: "1800.00",
-        },
-    ];
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState(null);
 
-    // useEffect(() => {
-    //     const fetchOrders = async () => {
-    //         setLoading(true);
-    //         try {
-    //             const response = await fetch("/api/v1/payment-orders");
-    //             const data = await response.json();
-    //             if (response.ok) {
-    //                 setOrders(data);
-    //             }
-    //         } catch (err) {
-    //             setError("Error loading payment orders.");
-    //         } finally {
-    //             setLoading(false);
-    //         }
-    //     };
+    useEffect(() => {
+        const fetchPurchaseOrders = async () => {
+            setLoading(true);
+            try {
+                const response = await fetch(
+                    `/api/v1/purchase-orders?include=quotation,supplier,user&page=${currentPage}`
+                );
+                const res = await response.json();
+                if (response.ok) {
+                    setOrders(res.data || []);
+                    setLastPage(res.meta?.last_page || 1);
+                } else {
+                    throw new Error("Failed to fetch payment orders");
+                }
+            } catch (err) {
+                setError("Error loading payment orders.");
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    //     fetchOrders();
-    // }, []);
+        fetchPurchaseOrders();
+    }, []);
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleOpenModal = (order) => {
+        setSelectedOrder(order);
+        setIsModalOpen(true);
     };
 
     return (
@@ -140,7 +121,7 @@ const CreatePaymentOrdersTable = () => {
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                    {!loading ? (
+                    {loading ? (
                         <tr>
                             <td colSpan="6" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
@@ -155,28 +136,47 @@ const CreatePaymentOrdersTable = () => {
                                 {error}
                             </td>
                         </tr>
-                    ) : staticPaymentOrders.length > 0 ? (
-                        staticPaymentOrders.map((order) => (
+                    ) : orders.length > 0 ? (
+                        orders.map((order) => (
                             <tr key={order.id}>
-                                <td className="py-3 px-4">{order.po_number}</td>
                                 <td className="py-3 px-4">
-                                    {order.quotation_number}
+                                    {order.purchase_order_no || "N/A"}
                                 </td>
-                                <td className="py-3 px-4">{order.company}</td>
-                                <td className="py-3 px-4">${order.amount}</td>
+                                <td className="py-3 px-4">
+                                    {order?.quotation?.quotation_number ||
+                                        "N/A"}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {order?.quotation?.company_name || "N/A"}
+                                </td>
+                                <td className="py-3 px-4">
+                                    ${order?.amount || "0.00"}
+                                </td>
                                 <td className="py-3 px-4 text-center text-[#009FDC] hover:text-blue-700 cursor-pointer">
-                                    <FontAwesomeIcon
-                                        icon={faPaperclip}
-                                        className="text-xl"
-                                    />
+                                    {order.attachment ? (
+                                        <a
+                                            href={`/uploads/${order.attachment}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <FontAwesomeIcon
+                                                icon={faPaperclip}
+                                                className="text-xl"
+                                            />
+                                        </a>
+                                    ) : (
+                                        <span className="text-gray-400">
+                                            No Attachment
+                                        </span>
+                                    )}
                                 </td>
                                 <td className="py-3 px-4 flex justify-center text-center">
-                                    <Link
-                                        href={`/payment-orders/${order.id}/create-payment-order`}
-                                        className="flex items-center justify-center w-8 h-8 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200"
+                                    <button
+                                        onClick={() => handleOpenModal(order)}
+                                        className="flex items-center justify-center w-6 h-6 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200"
                                     >
                                         <FontAwesomeIcon icon={faPlus} />
-                                    </Link>
+                                    </button>
                                 </td>
                             </tr>
                         ))
@@ -192,6 +192,15 @@ const CreatePaymentOrdersTable = () => {
                     )}
                 </tbody>
             </table>
+
+            {/* Render the modal */}
+            {isModalOpen && (
+                <PaymentOrderModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    selectedOrder={selectedOrder}
+                />
+            )}
         </div>
     );
 };

@@ -7,60 +7,30 @@ const PaymentOrderTable = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [lastPage, setLastPage] = useState(1);
 
-    const staticOrders = [
-        {
-            id: 1,
-            payment_order_number: "PO-1001",
-            po_number: "12345",
-            quotation_number: "Q-5678",
-            company: "ABC Ltd.",
-            amount: "5000",
-        },
-        {
-            id: 2,
-            payment_order_number: "PO-1002",
-            po_number: "67890",
-            quotation_number: "Q-91011",
-            company: "XYZ Corp.",
-            amount: "7000",
-        },
-        {
-            id: 3,
-            payment_order_number: "PO-1003",
-            po_number: "67898",
-            quotation_number: "Q-91034",
-            company: "Evelogics",
-            amount: "4000",
-        },
-        {
-            id: 4,
-            payment_order_number: "PO-1004",
-            po_number: "7567",
-            quotation_number: "Q-914657",
-            company: "Pims",
-            amount: "9000",
-        },
-    ];
+    useEffect(() => {
+        const fetchOrders = async () => {
+            setLoading(true);
+            try {
+                const response = await fetch(
+                    `/api/v1/payment-orders?include=user,purchaseOrder,purchaseOrder.supplier,purchaseOrder.quotation,logs&page=${currentPage}`
+                );
+                const res = await response.json();
+                if (response.ok) {
+                    setOrders(res?.data);
+                    setLastPage(res.meta?.last_page || 1);
+                }
+            } catch (err) {
+                setError("Error loading payment orders.");
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    // useEffect(() => {
-    //     const fetchOrders = async () => {
-    //         setLoading(true);
-    //         try {
-    //             const response = await fetch("/api/v1/payment-orders");
-    //             const data = await response.json();
-    //             if (response.ok) {
-    //                 setOrders(data);
-    //             }
-    //         } catch (err) {
-    //             setError("Error loading payment orders.");
-    //         } finally {
-    //             setLoading(false);
-    //         }
-    //     };
-
-    //     fetchOrders();
-    // }, []);
+        fetchOrders();
+    }, [currentPage]);
 
     return (
         <div className="w-full">
@@ -93,7 +63,7 @@ const PaymentOrderTable = () => {
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                    {!loading ? (
+                    {loading ? (
                         <tr>
                             <td colSpan="7" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
@@ -108,23 +78,45 @@ const PaymentOrderTable = () => {
                                 {error}
                             </td>
                         </tr>
-                    ) : staticOrders.length > 0 ? (
-                        staticOrders.map((order) => (
+                    ) : orders.length > 0 ? (
+                        orders.map((order) => (
                             <tr key={order.id}>
                                 <td className="py-3 px-4">
                                     {order.payment_order_number}
                                 </td>
-                                <td className="py-3 px-4">{order.po_number}</td>
                                 <td className="py-3 px-4">
-                                    {order.quotation_number}
+                                    {order.purchase_order?.purchase_order_no ||
+                                        "N/A"}
                                 </td>
-                                <td className="py-3 px-4">{order.company}</td>
-                                <td className="py-3 px-4">${order.amount}</td>
+                                <td className="py-3 px-4">
+                                    {order.quotation?.quotation_number || "N/A"}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {order.purchase_order?.quotation
+                                        ?.company_name || "N/A"}
+                                </td>
+                                <td className="py-3 px-4">
+                                    ${order.purchase_order?.amount || "N/A"}
+                                </td>
                                 <td className="py-3 px-4 text-center text-[#009FDC] hover:text-blue-800 cursor-pointer">
-                                    <FontAwesomeIcon icon={faPaperclip} />
+                                    {order.attachment ? (
+                                        <a
+                                            href={`/uploads/${order.attachment}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <FontAwesomeIcon
+                                                icon={faPaperclip}
+                                            />
+                                        </a>
+                                    ) : (
+                                        "N/A"
+                                    )}
                                 </td>
-                                <td className="py-3 px-4 text-center text-[#9B9DA2] hover:text-gray-800 cursor-pointer">
-                                    <FontAwesomeIcon icon={faEye} />
+                                <td className="py-3 px-4 flex space-x-3">
+                                    <Link className="text-[#9B9DA2] hover:text-gray-500">
+                                        <FontAwesomeIcon icon={faEye} />
+                                    </Link>
                                 </td>
                             </tr>
                         ))
@@ -140,6 +132,39 @@ const PaymentOrderTable = () => {
                     )}
                 </tbody>
             </table>
+
+            {/* Pagination */}
+            {!loading && !error && orders.length > 0 && (
+                <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    {Array.from(
+                        { length: lastPage },
+                        (_, index) => index + 1
+                    ).map((page) => (
+                        <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-1 ${
+                                currentPage === page
+                                    ? "bg-[#009FDC] text-white"
+                                    : "border border-[#B9BBBD] bg-white"
+                            } rounded-full hover:bg-[#0077B6] transition`}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage >= lastPage
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage >= lastPage}
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

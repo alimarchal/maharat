@@ -214,9 +214,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/payment-orders/create', function () {
         return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/CreatePaymentOrderTable']);
     })->name('PaymentOrder.create');
-    Route::get('/payment-orders/{id}/create-payment-order', function ($id) {
-        return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/CreatePaymentOrder']);
-    })->name('createPaymentOrder.create');
 
     Route::get('/account-receivables', function () {
         return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ReceivableTable']);
