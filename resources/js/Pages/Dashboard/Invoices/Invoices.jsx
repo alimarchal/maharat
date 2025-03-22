@@ -17,25 +17,40 @@ const Invoices = ({ auth }) => {
     const [suppliers, setSuppliers] = useState([]);
     const [customers, setCustomers] = useState([]);
 
+    const defaultItem = {
+        name: 'Default Item',
+        description: null,
+        quantity: 1,
+        unit_price: 0,
+        tax_rate: 0,
+        identification: null
+    };
+
     const fetchInvoices = async () => {
         setLoading(true);
-        setProgress(0); // Reset progress
+        setProgress(0);
+        let progressInterval;
         
         try {
-            // Simulate progress bar
-            const interval = setInterval(() => {
+            progressInterval = setInterval(() => {
                 setProgress((prev) => {
                     if (prev >= 90) {
-                        clearInterval(interval);
+                        clearInterval(progressInterval);
                         return 90;
                     }
                     return prev + 10;
                 });
             }, 200);
             
+            // Make sure we have suppliers data first
+            if (suppliers.length === 0) {
+                await fetchSuppliers();
+            }
+            
             const response = await axios.get(`/api/v1/invoices?page=${currentPage}`);
             
             if (response.data && response.data.data) {
+                console.log('Invoices data:', response.data.data);
                 setInvoices(response.data.data);
                 setLastPage(response.data.meta.last_page);
                 setError("");
@@ -52,6 +67,8 @@ const Invoices = ({ auth }) => {
             setInvoices([]);
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
+        } finally {
+            if (progressInterval) clearInterval(progressInterval);
         }
     };
 
@@ -88,40 +105,53 @@ const Invoices = ({ auth }) => {
         try {
             const isNewInvoice = id.toString().includes('new-');
             
-            let endpoint;
-            let method;
-            let payload = { 
-                ...editData,
+            // Prepare the payload with only essential fields
+            let payload = {
+                vendor_id: Number(editData.vendor_id),
+                client_id: editData.client_id ? Number(editData.client_id) : null,
+                status: 'Draft',
                 issue_date: editData.issue_date || new Date().toISOString().split('T')[0],
-                items: editData.items || [],
-                vendor_id: editData.vendor_id || null,
-                client_id: editData.client_id || null
+                currency: editData.currency || 'SAR',
+                total_amount: Number(editData.total_amount || 0),
+                subtotal: Number(editData.total_amount || 0),
+                tax_amount: 0,
+                account_code_id: 4
             };
-            
-            // Ensure amounts are integers
-            if (payload.total_amount) {
-                payload.total_amount = Math.floor(Number(payload.total_amount));
+
+            // Validate only required fields
+            if (!payload.vendor_id) {
+                setError('Supplier is required');
+                return;
             }
-            
+
+            console.log('Attempting to save invoice with payload:', payload);
+
+            let response;
             if (isNewInvoice) {
-                endpoint = '/api/v1/invoices';
-                method = 'post';
                 delete payload.id;
                 delete payload.invoice_number;
+                response = await axios.post('/api/v1/invoices', payload);
             } else {
-                endpoint = `/api/v1/invoices/${id}`;
-                method = 'put';
+                response = await axios.put(`/api/v1/invoices/${id}`, payload);
             }
-            
-            const response = await axios[method](endpoint, payload);
-            
+
+            console.log('Server response:', response.data);
+
             if (response.data) {
                 setEditingId(null);
-                fetchInvoices();
+                setError('');
+                await fetchInvoices();
             }
         } catch (error) {
             console.error('Save error:', error);
-            setError('Failed to save changes: ' + (error.response?.data?.message || error.message));
+            console.error('Error response:', error.response?.data);
+            
+            const errorMessage = error.response?.data?.error || 
+                               error.response?.data?.message || 
+                               error.message || 
+                               'An unknown error occurred';
+                               
+            setError('Failed to save changes: ' + errorMessage);
         }
     };
 
@@ -151,37 +181,56 @@ const Invoices = ({ auth }) => {
     };
 
     const formatDateTime = (dateString) => {
-        const optionsDate = { year: "numeric", month: "long", day: "numeric" };
-        const optionsTime = { hour: "2-digit", minute: "2-digit", hour12: true };
-    
-        const dateObj = new Date(dateString);
-        const formattedDate = dateObj.toLocaleDateString("en-US", optionsDate);
-        const formattedTime = dateObj.toLocaleTimeString("en-US", optionsTime);
-    
-        return (
-            <div>
-                {formattedDate}
-                <br />
-                <span className="text-gray-500">at {formattedTime}</span>
-            </div>
-        );
+        if (!dateString) {
+            return 'N/A';
+        }
+
+        try {
+            const optionsDate = { year: "numeric", month: "long", day: "numeric" };
+            const optionsTime = { hour: "2-digit", minute: "2-digit", hour12: true };
+        
+            const dateObj = new Date(dateString);
+            
+            // Check if date is valid
+            if (isNaN(dateObj.getTime())) {
+                console.error('Invalid date:', dateString);
+                return 'Invalid Date';
+            }
+
+            const formattedDate = dateObj.toLocaleDateString("en-US", optionsDate);
+            const formattedTime = dateObj.toLocaleTimeString("en-US", optionsTime);
+        
+            return (
+                <div>
+                    {formattedDate}
+                    <br />
+                    <span className="text-gray-500">at {formattedTime}</span>
+                </div>
+            );
+        } catch (error) {
+            console.error('Date formatting error:', error);
+            return 'Date Error';
+        }
     };
 
     const addInvoice = async () => {
-        const currentDate = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const currentDate = now.toISOString().split('T')[0];
+        
         const newInvoice = {
             id: `new-${Date.now()}`,
             invoice_number: "Auto-generated",
-            supplier_id: null,
             vendor_id: null,
             client_id: null,
-            total_amount: 0,
-            currency: 'SAR',
-            status: 'Pending',
+            status: 'Draft',
             issue_date: currentDate,
-            items: [],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            currency: 'SAR',
+            total_amount: 0,
+            subtotal: 0,
+            tax_amount: 0,
+            account_code_id: 4,
+            updated_at: now.toISOString(), // Add this for proper date/time display
+            created_at: now.toISOString()  // Add this for proper date/time display
         };
         
         setInvoices([...invoices, newInvoice]);
@@ -278,9 +327,10 @@ const Invoices = ({ auth }) => {
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 {editingId === invoice.id ? (
                                                     <select
-                                                        value={editData.supplier_id || ''}
-                                                        onChange={(e) => handleChange('supplier_id', e.target.value)}
+                                                        value={editData.vendor_id || ''}
+                                                        onChange={(e) => handleChange('vendor_id', e.target.value)}
                                                         className="bg-transparent border-none focus:outline-none focus:ring-0 w-full text-center text-base"
+                                                        required
                                                     >
                                                         <option value="">Select a supplier</option>
                                                         {suppliers.map((supplier) => (
@@ -290,7 +340,7 @@ const Invoices = ({ auth }) => {
                                                         ))}
                                                     </select>
                                                 ) : (
-                                                    suppliers.find(s => s.id == invoice.supplier_id)?.name || 'N/A'
+                                                    suppliers.find(s => s.id === invoice.vendor_id)?.name || 'N/A'
                                                 )}
                                             </td>
 

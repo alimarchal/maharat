@@ -95,46 +95,35 @@ class InvoiceController extends Controller
             DB::beginTransaction();
 
             // Get validated data
-            $invoiceData = $request->safe()->except('items');
-            $itemsData = $request->safe()->only('items')['items'];
+            $validatedData = $request->validated();
 
-            // Calculate totals
-            $totals = $this->calculateInvoiceTotals($itemsData);
-
-            // Create invoice with auto-generated invoice number
-            $invoiceData['invoice_number'] = $this->generateInvoiceNumber();
-            $invoiceData['subtotal'] = $totals['subtotal'];
-            $invoiceData['tax_amount'] = $totals['tax_amount'];
-            $invoiceData['total_amount'] = $totals['total_amount'];
-
-            $invoice = Invoice::create($invoiceData);
-
-            // Create invoice items
-            foreach ($itemsData as $item) {
-                $calculatedItem = $this->calculateItemTotals($item);
-
-                $invoice->items()->create([
-                    'name' => $item['name'],
-                    'description' => $item['description'] ?? null,
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'tax_rate' => $item['tax_rate'],
-                    'tax_amount' => $calculatedItem['tax_amount'],
-                    'subtotal' => $calculatedItem['subtotal'],
-                    'total' => $calculatedItem['total'],
-                    'identification' => $item['identification'] ?? null,
-                ]);
+            // Ensure numeric fields are properly cast
+            $numericFields = ['total_amount', 'subtotal', 'tax_amount', 'vendor_id', 'client_id'];
+            foreach ($numericFields as $field) {
+                if (isset($validatedData[$field])) {
+                    $validatedData[$field] = is_string($validatedData[$field]) 
+                        ? (float) $validatedData[$field] 
+                        : $validatedData[$field];
+                }
             }
+
+            // Add invoice number
+            $validatedData['invoice_number'] = $this->generateInvoiceNumber();
+
+            // Create invoice
+            $invoice = Invoice::create($validatedData);
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Invoice created successfully',
-                'data' => new InvoiceResource($invoice->load('vendor', 'client', 'items'))
+                'data' => new InvoiceResource($invoice->fresh())
             ], Response::HTTP_CREATED);
+
         } catch (\Exception $e) {
             DB::rollBack();
-
+            \Log::error('Invoice creation error: ' . $e->getMessage());
+            
             return response()->json([
                 'message' => 'Failed to create invoice',
                 'error' => $e->getMessage()
@@ -158,68 +147,33 @@ class InvoiceController extends Controller
         try {
             DB::beginTransaction();
 
-            // Update invoice data if provided
-            $invoiceData = $request->safe()->except('items');
-            if (!empty($invoiceData)) {
-                $invoice->update($invoiceData);
-            }
+            // Get validated data
+            $validatedData = $request->validated();
 
-            // Update or create items if provided
-            if ($request->has('items')) {
-                $itemsData = $request->safe()->only('items')['items'];
-                $existingItemIds = [];
-
-                foreach ($itemsData as $item) {
-                    $calculatedItem = $this->calculateItemTotals($item);
-
-                    $itemData = [
-                        'name' => $item['name'],
-                        'description' => $item['description'] ?? null,
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $item['unit_price'],
-                        'tax_rate' => $item['tax_rate'],
-                        'tax_amount' => $calculatedItem['tax_amount'],
-                        'subtotal' => $calculatedItem['subtotal'],
-                        'total' => $calculatedItem['total'],
-                        'identification' => $item['identification'] ?? null,
-                    ];
-
-                    // Update existing item or create new one
-                    if (isset($item['id'])) {
-                        $invoiceItem = $invoice->items()->findOrFail($item['id']);
-                        $invoiceItem->update($itemData);
-                        $existingItemIds[] = $item['id'];
-                    } else {
-                        $newItem = $invoice->items()->create($itemData);
-                        $existingItemIds[] = $newItem->id;
-                    }
+            // Ensure numeric fields are properly cast
+            $numericFields = ['total_amount', 'subtotal', 'tax_amount', 'vendor_id', 'client_id'];
+            foreach ($numericFields as $field) {
+                if (isset($validatedData[$field])) {
+                    $validatedData[$field] = is_string($validatedData[$field]) 
+                        ? (float) $validatedData[$field] 
+                        : $validatedData[$field];
                 }
-
-                // Delete items not included in the update
-                $invoice->items()->whereNotIn('id', $existingItemIds)->delete();
-
-                // Recalculate invoice totals
-                $items = $invoice->items()->get();
-                $subtotal = $items->sum('subtotal');
-                $taxAmount = $items->sum('tax_amount');
-                $totalAmount = $items->sum('total');
-
-                $invoice->update([
-                    'subtotal' => $subtotal,
-                    'tax_amount' => $taxAmount,
-                    'total_amount' => $totalAmount
-                ]);
             }
+
+            // Update invoice
+            $invoice->update($validatedData);
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Invoice updated successfully',
-                'data' => new InvoiceResource($invoice->load('vendor', 'client', 'items'))
+                'data' => new InvoiceResource($invoice->fresh())
             ], Response::HTTP_OK);
+
         } catch (\Exception $e) {
             DB::rollBack();
-
+            \Log::error('Invoice update error: ' . $e->getMessage());
+            
             return response()->json([
                 'message' => 'Failed to update invoice',
                 'error' => $e->getMessage()
