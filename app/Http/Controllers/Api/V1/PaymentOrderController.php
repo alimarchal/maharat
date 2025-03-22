@@ -23,7 +23,7 @@ class PaymentOrderController extends Controller
     {
         $latestOrder = PaymentOrder::orderBy('id', 'desc')->first();
         $nextId = $latestOrder ? $latestOrder->id + 1 : 1;
-        return 'PO-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+        return 'PMT-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
     }
 
     public function index(): JsonResponse|ResourceCollection
