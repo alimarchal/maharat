@@ -37,12 +37,8 @@ class SupplierController extends Controller
 
     public function store(StoreSupplierRequest $request)
     {
-        return 'sss';
         try {
             DB::beginTransaction();
-
-
-
 
             $supplier = Supplier::create($request->safe()->except(['contacts', 'addresses']));
 
