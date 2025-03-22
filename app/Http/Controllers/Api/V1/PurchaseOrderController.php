@@ -24,17 +24,22 @@ class PurchaseOrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            // Check if quotation_id is provided to filter results
             $quotationId = $request->input('quotation_id');
-            
-            $query = PurchaseOrder::query();
-            
+
+            // Start building the query
+            $query = QueryBuilder::for(PurchaseOrder::class)
+                ->allowedFilters(PurchaseOrderParameters::ALLOWED_FILTERS)
+                ->allowedSorts(PurchaseOrderParameters::ALLOWED_SORTS)
+                ->allowedIncludes(PurchaseOrderParameters::ALLOWED_INCLUDES);
+
             // Apply quotation_id filter if provided
             if ($quotationId) {
                 $query->where('quotation_id', $quotationId);
             }
-            
-            $purchaseOrders = $query->get();
+
+            // Now paginate the results after all conditions are applied
+            $purchaseOrders = $query->paginate()
+                ->appends(request()->query());
 
             return response()->json([
                 'data' => PurchaseOrderResource::collection($purchaseOrders)
@@ -48,7 +53,6 @@ class PurchaseOrderController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
-
     public function getNextPurchaseOrderNumber(): JsonResponse
     {
         try {
@@ -121,7 +125,7 @@ class PurchaseOrderController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
-    
+
     /**
      * Display the specified resource.
      */
