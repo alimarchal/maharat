@@ -195,42 +195,40 @@ export default function CreateOrder({ auth }) {
                         </table>
 
                         {/* Pagination */}
-                        {!loading && !error && quotations.length > 0 && lastPage > 1 && (
+                        {!loading && !error && quotations.length > 0 && (
                             <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
-                            <button
-                                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                                className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                    currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
-                                }`}
-                                disabled={currentPage <= 1}
-                            >
-                                Previous
-                            </button>
-                        
-                            {Array.from({ length: Math.max(1, lastPage) }, (_, index) => index + 1).map((page) => (
                                 <button
-                                    key={page}
-                                    onClick={() => setCurrentPage(page)}
-                                    className={`px-3 py-1 ${
-                                        currentPage === page
-                                            ? "bg-[#009FDC] text-white"
-                                            : "border border-[#B9BBBD] bg-white text-black"
-                                    } rounded-full`}
+                                    onClick={() => setCurrentPage(currentPage - 1)}
+                                    className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
+                                        currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
+                                    }`}
+                                    disabled={currentPage <= 1}
                                 >
-                                    {page}
+                                    Previous
                                 </button>
-                            ))}
-                        
-                            <button
-                                onClick={() => setCurrentPage((prev) => Math.min(lastPage, prev + 1))}
-                                className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                    currentPage >= lastPage ? "opacity-50 cursor-not-allowed" : ""
-                                }`}
-                                disabled={currentPage >= lastPage}
-                            >
-                                Next
-                            </button>
-                        </div>
+                                {Array.from({ length: Math.ceil(quotations.length / 10) }, (_, index) => index + 1).map((page) => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`px-3 py-1 ${
+                                            currentPage === page
+                                                ? "bg-[#009FDC] text-white"
+                                                : "border border-[#B9BBBD] bg-white text-black"
+                                        } rounded-full`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => setCurrentPage(currentPage + 1)}
+                                    className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
+                                        currentPage >= Math.ceil(quotations.length / 10) ? "opacity-50 cursor-not-allowed" : ""
+                                    }`}
+                                    disabled={currentPage >= Math.ceil(quotations.length / 10)}
+                                >
+                                    Next
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>

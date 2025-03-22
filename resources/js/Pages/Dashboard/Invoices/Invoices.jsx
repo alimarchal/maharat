@@ -2,49 +2,156 @@ import React, { useState, useEffect } from "react";
 import { Link, router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight, faEye } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight, faEye, faPlus } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 
-const invoices = ({ auth }) => {
-    const [rfqLogs, setRfqLogs] = useState([]);
+const Invoices = ({ auth }) => {
+    const [invoices, setInvoices] = useState([]);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [editingId, setEditingId] = useState(null);
     const [editData, setEditData] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [progress, setProgress] = useState(0);
+    const [suppliers, setSuppliers] = useState([]);
+    const [customers, setCustomers] = useState([]);
 
-    const fetchRFQLogs = async () => {
+    const defaultItem = {
+        name: 'Default Item',
+        description: null,
+        quantity: 1,
+        unit_price: 0,
+        tax_rate: 0,
+        identification: null
+    };
+
+    const fetchInvoices = async () => {
+        setLoading(true);
+        setProgress(0);
+        let progressInterval;
+        
         try {
-            const response = await axios.get(`/api/v1/rfq-status-logs?page=${currentPage}`);
-            setRfqLogs(response.data.data);
-            setLastPage(response.data.meta.last_page);
-            setError("");
+            progressInterval = setInterval(() => {
+                setProgress((prev) => {
+                    if (prev >= 90) {
+                        clearInterval(progressInterval);
+                        return 90;
+                    }
+                    return prev + 10;
+                });
+            }, 200);
+            
+            // Make sure we have suppliers data first
+            if (suppliers.length === 0) {
+                await fetchSuppliers();
+            }
+            
+            const response = await axios.get(`/api/v1/invoices?page=${currentPage}`);
+            
+            if (response.data && response.data.data) {
+                console.log('Invoices data:', response.data.data);
+                setInvoices(response.data.data);
+                setLastPage(response.data.meta.last_page);
+                setError("");
+            } else {
+                console.error("Invalid response format:", response.data);
+                setError("Received invalid data format from API");
+            }
+            
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
         } catch (error) {
             console.error('API Error:', error);
-            setError("Failed to load RFQ logs");
-            setRfqLogs([]);
+            setError("Failed to load invoices");
+            setInvoices([]);
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
+        } finally {
+            if (progressInterval) clearInterval(progressInterval);
+        }
+    };
+
+    const fetchSuppliers = async () => {
+        try {
+            const response = await axios.get('/api/v1/suppliers');
+            setSuppliers(response.data.data);
+        } catch (error) {
+            console.error('Error fetching suppliers:', error);
+        }
+    };
+
+    const fetchCustomers = async () => {
+        try {
+            const response = await axios.get('/api/v1/customers');
+            setCustomers(response.data.data);
+        } catch (error) {
+            console.error('Error fetching customers:', error);
         }
     };
 
     useEffect(() => {
-        fetchRFQLogs();
+        fetchInvoices();
+        fetchSuppliers();
+        fetchCustomers();
     }, [currentPage]);
 
-    const handleEdit = (log) => {
-        setEditingId(log.id);
-        setEditData(log);
+    const handleEdit = (invoice) => {
+        setEditingId(invoice.id);
+        setEditData(invoice);
     };
 
     const handleSave = async (id) => {
         try {
-            const response = await axios.put(`/api/v1/rfq-status-logs/${id}`, editData);
+            const isNewInvoice = id.toString().includes('new-');
+            
+            // Prepare the payload with only essential fields
+            let payload = {
+                vendor_id: Number(editData.vendor_id),
+                client_id: editData.client_id ? Number(editData.client_id) : null,
+                status: 'Draft',
+                issue_date: editData.issue_date || new Date().toISOString().split('T')[0],
+                currency: editData.currency || 'SAR',
+                total_amount: Number(editData.total_amount || 0),
+                subtotal: Number(editData.total_amount || 0),
+                tax_amount: 0,
+                account_code_id: 4
+            };
+
+            // Validate only required fields
+            if (!payload.vendor_id) {
+                setError('Supplier is required');
+                return;
+            }
+
+            console.log('Attempting to save invoice with payload:', payload);
+
+            let response;
+            if (isNewInvoice) {
+                delete payload.id;
+                delete payload.invoice_number;
+                response = await axios.post('/api/v1/invoices', payload);
+            } else {
+                response = await axios.put(`/api/v1/invoices/${id}`, payload);
+            }
+
+            console.log('Server response:', response.data);
+
             if (response.data) {
                 setEditingId(null);
-                fetchRFQLogs(); // Refresh the data
+                setError('');
+                await fetchInvoices();
             }
         } catch (error) {
             console.error('Save error:', error);
-            setError('Failed to save changes');
+            console.error('Error response:', error.response?.data);
+            
+            const errorMessage = error.response?.data?.error || 
+                               error.response?.data?.message || 
+                               error.message || 
+                               'An unknown error occurred';
+                               
+            setError('Failed to save changes: ' + errorMessage);
         }
     };
 
@@ -52,10 +159,17 @@ const invoices = ({ auth }) => {
         if (!confirm("Are you sure you want to delete this record?")) return;
 
         try {
-            await axios.delete(`/api/v1/rfq-status-logs/${id}`);
-            fetchRFQLogs(); // Refresh data
+            // Check if it's a new record (not yet saved to the server)
+            if (id.toString().includes('new-')) {
+                setInvoices(prevInvoices => prevInvoices.filter(invoice => invoice.id !== id));
+                return;
+            }
+            
+            await axios.delete(`/api/v1/invoices/${id}`);
+            fetchInvoices(); // Refresh data
         } catch (error) {
             console.error('Error deleting record:', error);
+            setError('Failed to delete record: ' + (error.response?.data?.message || error.message));
         }
     };
 
@@ -67,20 +181,74 @@ const invoices = ({ auth }) => {
     };
 
     const formatDateTime = (dateString) => {
-        const optionsDate = { year: "numeric", month: "long", day: "numeric" };
-        const optionsTime = { hour: "2-digit", minute: "2-digit", hour12: true };
-    
-        const dateObj = new Date(dateString);
-        const formattedDate = dateObj.toLocaleDateString("en-US", optionsDate);
-        const formattedTime = dateObj.toLocaleTimeString("en-US", optionsTime);
-    
-        return (
-            <div>
-                {formattedDate}
-                <br />
-                <span className="text-gray-500">at {formattedTime}</span>
-            </div>
-        );
+        if (!dateString) {
+            return 'N/A';
+        }
+
+        try {
+            const optionsDate = { year: "numeric", month: "long", day: "numeric" };
+            const optionsTime = { hour: "2-digit", minute: "2-digit", hour12: true };
+        
+            const dateObj = new Date(dateString);
+            
+            // Check if date is valid
+            if (isNaN(dateObj.getTime())) {
+                console.error('Invalid date:', dateString);
+                return 'Invalid Date';
+            }
+
+            const formattedDate = dateObj.toLocaleDateString("en-US", optionsDate);
+            const formattedTime = dateObj.toLocaleTimeString("en-US", optionsTime);
+        
+            return (
+                <div>
+                    {formattedDate}
+                    <br />
+                    <span className="text-gray-500">at {formattedTime}</span>
+                </div>
+            );
+        } catch (error) {
+            console.error('Date formatting error:', error);
+            return 'Date Error';
+        }
+    };
+
+    const addInvoice = async () => {
+        const now = new Date();
+        const currentDate = now.toISOString().split('T')[0];
+        
+        const newInvoice = {
+            id: `new-${Date.now()}`,
+            invoice_number: "Auto-generated",
+            vendor_id: null,
+            client_id: null,
+            status: 'Draft',
+            issue_date: currentDate,
+            currency: 'SAR',
+            total_amount: 0,
+            subtotal: 0,
+            tax_amount: 0,
+            account_code_id: 4,
+            updated_at: now.toISOString(), // Add this for proper date/time display
+            created_at: now.toISOString()  // Add this for proper date/time display
+        };
+        
+        setInvoices([...invoices, newInvoice]);
+        setEditingId(newInvoice.id);
+        setEditData(newInvoice);
+    };
+
+    const getStatusClass = (status) => {
+        switch (status) {
+            case 'Paid':
+                return 'bg-green-100 text-green-800';
+            case 'Overdue':
+                return 'bg-red-100 text-red-800';
+            case 'Cancelled':
+                return 'bg-gray-100 text-gray-800';
+            default:
+                return 'bg-yellow-100 text-yellow-800'; // Pending or others
+        }
     };
 
     return (
@@ -104,119 +272,197 @@ const invoices = ({ auth }) => {
                     <span className="text-[#009FDC] text-xl">Invoices</span>
                 </div>
 
-                {/* RFQs Logs Heading and Make New RFQ Button */}
+                {/* Invoices Heading */}
                 <div className="flex justify-between items-center mb-6">
-                <h2 className="text-[32px] font-bold text-[#2C323C] whitespace-nowrap">Invoices</h2>
+                    <h2 className="text-[32px] font-bold text-[#2C323C] whitespace-nowrap">Invoices</h2>
                 </div>
 
-                {/* RFQs Table */}
+                {/* Loading Bar */}
+                {loading && (
+                    <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
+                        <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
+                            <div
+                                className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
+                                style={{ width: `${progress}%` }}
+                            ></div>
+                            <span className="absolute text-white">
+                                {progress < 60 ? "Please Wait, Fetching Details..." : `${progress}%`}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
+                {/* Invoices Table */}
                 <div className="w-full overflow-hidden">
-                    {error && (
+                    {!loading && error && (
                         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
                             <span className="block sm:inline">{error}</span>
                         </div>
                     )}
-                    <table className="w-full">
-                        <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
-                            <tr>
-                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">Invoice ID</th>
-                                <th className="py-3 px-4 text-center">Supplier</th>
-                                <th className="py-3 px-4 text-center">Amount</th>
-                                <th className="py-3 px-4 text-center">Status</th>
-                                <th className="py-3 px-4 text-center">Date & Time</th>
-                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Actions</th>
-                            </tr>
-                        </thead>
-
-                        <tbody className="bg-transparent divide-y divide-gray-200">
-                            {rfqLogs.map((log) => (
-                                <tr key={log.id}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {log.rfq_id}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {editingId === log.id ? (
-                                            <input
-                                                type="text"
-                                                value={editData.supplier_name || ''}
-                                                onChange={(e) => handleChange('supplier_name', e.target.value)}
-                                                className="bg-transparent border-none focus:outline-none focus:ring-0 w-20 text-center text-base"
-                                            />
-                                        ) : (
-                                            log.supplier_name || 'N/A'
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center w-[250px]">
-                                        {editingId === log.id ? (
-                                            <input
-                                                type="number"
-                                                value={editData.amount || ''}
-                                                onChange={(e) => {
-                                                    const value = Math.max(0, Number(e.target.value)); // Prevent negative values
-                                                    handleChange('amount', value);
-                                                }}
-                                                className="bg-transparent border-none focus:outline-none focus:ring-0 w-[150px] text-center text-base"
-                                                min="0"
-                                            />
-                                        ) : (
-                                            <span className="text-base inline-block w-[150px] truncate">{log.amount || '0'}</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <span className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${
-                                            log.status_name === 'Active' ? 'bg-green-100 text-green-800' :
-                                            log.status_name === 'Rejected' ? 'bg-red-100 text-red-800' :
-                                            log.status_name === 'Expired' ? 'bg-gray-100 text-gray-800' :
-                                            'bg-yellow-100 text-yellow-800'
-                                        }`}>
-                                            {log.status_name}
-                                        </span>
-                                    </td>
-
-                                    {/* Format Date & Time */}
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        {formatDateTime(log.created_at)}
-                                    </td>
-
-                                    {/* Centered Buttons */}
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <div className="flex justify-center space-x-3">
-                                            <button
-                                                onClick={() => router.visit("/dummy-page")} 
-                                                className="text-gray-600 hover:text-gray-600"
-                                            >
-                                                <FontAwesomeIcon icon={faEye} className="h-5 w-5" />
-                                            </button>
-                                            {editingId === log.id ? (
-                                                <button
-                                                    onClick={() => handleSave(log.id)}
-                                                    className="text-green-600 hover:text-green-900"
-                                                >
-                                                    <FontAwesomeIcon icon={faCheck} className="h-5 w-5" />
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={() => handleEdit(log)}
-                                                    className="text-gray-600 hover:text-gray-600"
-                                                >
-                                                    <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={() => handleDelete(log.id)}
-                                                className="text-red-600 hover:text-red-900"
-                                            >
-                                                <FontAwesomeIcon icon={faTrash} className="h-5 w-5" />
-                                            </button>
-                                        </div>
-                                    </td>
+                    
+                    {!loading && (
+                        <table className="w-full">
+                            <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                                <tr>
+                                    <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">Invoice ID</th>
+                                    <th className="py-3 px-4 text-center">Supplier</th>
+                                    <th className="py-3 px-4 text-center">Customer</th>
+                                    <th className="py-3 px-4 text-center">Amount</th>
+                                    <th className="py-3 px-4 text-center">Status</th>
+                                    <th className="py-3 px-4 text-center">Date & Time</th>
+                                    <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
 
+                            <tbody className="bg-transparent divide-y divide-gray-200">
+                                {invoices.length > 0 ? (
+                                    invoices.map((invoice) => (
+                                        <tr key={invoice.id}>
+                                            {/* Invoice Number - Not Editable */}
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                {invoice.invoice_number}
+                                            </td>
+
+                                            {/* Supplier - Editable with Dropdown */}
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                {editingId === invoice.id ? (
+                                                    <select
+                                                        value={editData.vendor_id || ''}
+                                                        onChange={(e) => handleChange('vendor_id', e.target.value)}
+                                                        className="bg-transparent border-none focus:outline-none focus:ring-0 w-full text-center text-base"
+                                                        required
+                                                    >
+                                                        <option value="">Select a supplier</option>
+                                                        {suppliers.map((supplier) => (
+                                                            <option key={supplier.id} value={supplier.id}>
+                                                                {supplier.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                ) : (
+                                                    suppliers.find(s => s.id === invoice.vendor_id)?.name || 'N/A'
+                                                )}
+                                            </td>
+
+                                            {/* Customer Dropdown */}
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                {editingId === invoice.id ? (
+                                                    <select
+                                                        value={editData.client_id || ''}
+                                                        onChange={(e) => handleChange('client_id', e.target.value)}
+                                                        className="bg-transparent border-none focus:outline-none focus:ring-0 w-full text-center text-base"
+                                                    >
+                                                        <option value="">Select a customer</option>
+                                                        {customers.map((customer) => (
+                                                            <option key={customer.id} value={customer.id}>
+                                                                {customer.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                ) : (
+                                                    customers.find(c => c.id == invoice.client_id)?.name || 'N/A'
+                                                )}
+                                            </td>
+
+                                            {/* Amount with Currency - Editable */}
+                                            <td className="px-6 py-4 whitespace-nowrap text-center w-[250px]">
+                                                {editingId === invoice.id ? (
+                                                    <div className="flex items-center justify-center space-x-2">
+                                                        <input
+                                                            type="number"
+                                                            value={editData.total_amount || ''}
+                                                            onChange={(e) => {
+                                                                const value = Math.max(0, Math.floor(Number(e.target.value))); // Ensure whole number & prevent negative values
+                                                                handleChange('total_amount', value);
+                                                            }}
+                                                            className="bg-transparent border-none focus:outline-none focus:ring-0 w-[150px] text-center text-base"
+                                                            min="0"
+                                                            step="1"
+                                                        />
+                                                        <select
+                                                            value={editData.currency || 'SAR'}
+                                                            onChange={(e) => handleChange('currency', e.target.value)}
+                                                            className="bg-transparent border-none focus:outline-none focus:ring-0"
+                                                        >
+                                                            <option value="SAR">SAR</option>
+                                                            <option value="USD">USD</option>
+                                                            <option value="EUR">EUR</option>
+                                                            <option value="GBP">GBP</option>
+                                                        </select>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-base inline-block w-[150px] truncate">
+                                                        {Math.floor(invoice.total_amount) || '0'} {invoice.currency || 'SAR'}
+                                                    </span>
+                                                )}
+                                            </td>
+
+                                            {/* Status - Not Editable */}
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                <span className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(invoice.status)}`}>
+                                                    {invoice.status}
+                                                </span>
+                                            </td>
+
+                                            {/* Date & Time - Not Editable */}
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                {formatDateTime(invoice.updated_at)}
+                                            </td>
+
+                                            {/* Actions */}
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                <div className="flex justify-center space-x-3">
+                                                    {editingId === invoice.id ? (
+                                                        <button
+                                                            onClick={() => handleSave(invoice.id)}
+                                                            className="text-green-600 hover:text-green-900"
+                                                        >
+                                                            <FontAwesomeIcon icon={faCheck} className="h-5 w-5" />
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleEdit(invoice)}
+                                                            className="text-gray-600 hover:text-gray-600"
+                                                        >
+                                                            <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleDelete(invoice.id)}
+                                                        className="text-red-600 hover:text-red-900"
+                                                    >
+                                                        <FontAwesomeIcon icon={faTrash} className="h-5 w-5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="6" className="px-6 py-4 text-center">
+                                            {error ? error : "No invoices found"}
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    )}
+
+                    {/* Add Invoice Button - At the end of the table before pagination */}
+                    {!loading && (
+                        <div className="mt-4 flex justify-center mb-4">
+                            <button
+                                onClick={addInvoice}
+                                className="text-blue-600 flex items-center"
+                            >
+                                <FontAwesomeIcon icon={faPlus} className="mr-2" />
+                                Add Invoice
+                            </button>
+                        </div>
+                    )}
+                    
                     {/* Pagination */}
-                    {!error && rfqLogs.length > 0 && (
+                    {!loading && !error && invoices.length > 0 && (
                         <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                             <button
                                 onClick={() => setCurrentPage(currentPage - 1)}
@@ -257,4 +503,4 @@ const invoices = ({ auth }) => {
     );
 };
 
-export default invoices;
+export default Invoices;

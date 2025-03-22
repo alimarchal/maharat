@@ -24,7 +24,7 @@ class Invoice extends Model
         'total_amount',
         'currency',
         'notes',
-        'account_code_id',
+        'account_code_id'
     ];
 
     protected $casts = [
@@ -34,6 +34,8 @@ class Invoice extends Model
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'discounted_days' => 'integer',
+        'vendor_id' => 'integer',
+        'client_id' => 'integer'
     ];
 
     /**
