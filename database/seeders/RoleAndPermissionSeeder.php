@@ -74,7 +74,8 @@ class RoleAndPermissionSeeder extends Seeder
         $supervisorRole->givePermissionTo([
             'view_users',
             'view_reports',
-            'view_dashboard', 'edit_profile'
+            'view_dashboard',
+            'edit_profile'
         ]);
 
         // User
@@ -84,12 +85,12 @@ class RoleAndPermissionSeeder extends Seeder
             'parent_role_id' => $supervisorRole->id
         ]);
 
-
-        Role::create(['name' => 'Procurement Officer','guard_name' => 'web']);
-        Role::create(['name' => 'Procurement Supervisor','guard_name' => 'web']);
-        Role::create(['name' => 'Maintenance Manager','guard_name' => 'web']);
-        Role::create(['name' => 'Warehouse Manager','guard_name' => 'web']);
-        Role::create(['name' => 'Department Director','guard_name' => 'web']);
+        // Use firstOrCreate to avoid duplicate role errors
+        Role::firstOrCreate(['name' => 'Procurement Officer', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'Procurement Supervisor', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'Maintenance Manager', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'Warehouse Manager', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'Department Director', 'guard_name' => 'web']);
 
         $userRole->givePermissionTo([
             'view_dashboard',

@@ -32,6 +32,12 @@ class GrnSeeder extends Seeder
         }
 
         try {
+            // First, delete dependent records in grn_receive_goods to avoid foreign key constraint issues
+            DB::table('grn_receive_goods')->delete();
+        
+            // Now safely delete GRNs without truncating
+            DB::table('grns')->delete();
+          
             // Temporarily disable foreign key constraints
             DB::statement('SET FOREIGN_KEY_CHECKS=0');
 
@@ -55,15 +61,16 @@ class GrnSeeder extends Seeder
                     'updated_at' => Carbon::now(),
                 ];
             }
-
-            // Insert into database
+        
+            // Insert new records
             DB::table('grns')->insert($grns);
-
+        
             $this->command->info('GRNs seeded successfully.');
         } catch (\Exception $e) {
             // In case of error, ensure foreign key checks are re-enabled
             DB::statement('SET FOREIGN_KEY_CHECKS=1');
             $this->command->error('Error seeding GRNs: ' . $e->getMessage());
         }
+        
     }
 }

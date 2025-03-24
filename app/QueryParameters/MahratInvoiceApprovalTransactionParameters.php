@@ -2,6 +2,8 @@
 
 namespace App\QueryParameters;
 
+use Spatie\QueryBuilder\AllowedFilter;
+
 class MahratInvoiceApprovalTransactionParameters
 {
     const ALLOWED_FILTERS = [
@@ -14,6 +16,20 @@ class MahratInvoiceApprovalTransactionParameters
         'created_by',
         'updated_by'
     ];
+
+    public static function getAllowedFilters()
+    {
+        return array_merge(
+            self::ALLOWED_FILTERS,
+            [
+                AllowedFilter::callback('invoice.status', function ($query, $value) {
+                    $query->whereHas('invoice', function ($query) use ($value) {
+                        $query->where('status', $value);
+                    });
+                }),
+            ]
+        );
+    }
 
     const ALLOWED_SORTS = [
         'id',
