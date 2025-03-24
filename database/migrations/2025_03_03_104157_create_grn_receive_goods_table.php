@@ -14,15 +14,16 @@ return new class extends Migration
         Schema::create('grn_receive_goods', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->comment('Created By')->constrained('users', 'id');
+            $table->foreignId('grn_id')->nullable()->constrained('grns', 'id');
             $table->foreignId('supplier_id')->nullable()->comment('Supplier Good Received')->constrained();
             $table->foreignId('purchase_order_id')->nullable()->constrained('purchase_orders', 'id');
             $table->foreignId('quotation_id')->nullable()->constrained('quotations', 'id');
-            $table->decimal('quantity_quoted', 4,2)->nullable()->comment('Quotation Quoted in Quotation');
+            $table->decimal('quantity_quoted', 15,2)->nullable()->comment('Quotation Quoted in Quotation');
             $table->date('due_delivery_date')->nullable()->comment('Due Delivery Date');
             $table->string('receiver_name')->nullable()->comment('Receiver Name');
             $table->string('upc')->nullable();
             $table->foreignId('category_id')->nullable()->constrained('product_categories','id');
-            $table->decimal('quantity_delivered', 4,2)->nullable()->comment('Delivery Quantity ');
+            $table->decimal('quantity_delivered', 15,2)->nullable()->comment('Delivery Quantity ');
             $table->date('delivery_date')->nullable()->comment('Delivery Date');
             $table->softDeletes();
             $table->timestamps();

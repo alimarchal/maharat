@@ -12,6 +12,7 @@ class GrnReceiveGoodResource extends JsonResource
         return [
             'id' => $this->id,
             'user_id' => $this->user_id,
+            'grn_id' => $this->grn_id,
             'supplier_id' => $this->supplier_id,
             'purchase_order_id' => $this->purchase_order_id,
             'quotation_id' => $this->quotation_id,

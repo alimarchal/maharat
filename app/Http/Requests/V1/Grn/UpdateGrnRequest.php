@@ -18,7 +18,6 @@ class UpdateGrnRequest extends FormRequest
             'user_id' => ['sometimes', 'nullable', 'exists:users,id'],
             'grn_number' => [
                 'sometimes',
-                'required',
                 'string',
                 Rule::unique('grns')->ignore($this->grn)
             ],

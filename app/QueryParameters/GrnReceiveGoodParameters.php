@@ -6,6 +6,7 @@ class GrnReceiveGoodParameters
 {
     const ALLOWED_FILTERS = [
         'user_id',
+        'grn_id',
         'supplier_id',
         'purchase_order_id',
         'quotation_id',
@@ -18,6 +19,7 @@ class GrnReceiveGoodParameters
     const ALLOWED_SORTS = [
         'id',
         'supplier_id',
+        'grn_id',
         'quantity_quoted',
         'quantity_delivered',
         'due_delivery_date',
@@ -27,6 +29,7 @@ class GrnReceiveGoodParameters
     ];
 
     const ALLOWED_INCLUDES = [
+        'grn',
         'user',
         'supplier',
         'purchaseOrder',

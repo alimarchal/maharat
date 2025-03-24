@@ -13,6 +13,7 @@ class GrnReceiveGood extends Model
 
     protected $fillable = [
         'user_id',
+        'grn_id',
         'supplier_id',
         'purchase_order_id',
         'quotation_id',
@@ -31,6 +32,11 @@ class GrnReceiveGood extends Model
         'quantity_quoted' => 'decimal:2',
         'quantity_delivered' => 'decimal:2',
     ];
+
+    public function grn(): BelongsTo
+    {
+        return $this->belongsTo(Grn::class);
+    }
 
     public function user(): BelongsTo
     {

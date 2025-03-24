@@ -15,6 +15,7 @@ class UpdateGrnReceiveGoodRequest extends FormRequest
     {
         return [
             'user_id' => ['sometimes', 'nullable', 'exists:users,id'],
+            'grn_id' => ['sometimes', 'nullable', 'exists:grns,id'],
             'supplier_id' => ['sometimes', 'required', 'exists:suppliers,id'],
             'purchase_order_id' => ['sometimes', 'nullable', 'exists:purchase_orders,id'],
             'quotation_id' => ['sometimes', 'nullable', 'exists:quotations,id'],

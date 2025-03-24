@@ -15,6 +15,7 @@ class StoreGrnReceiveGoodRequest extends FormRequest
     {
         return [
             'user_id' => ['nullable', 'exists:users,id'],
+            'grn_id' => ['nullable', 'exists:grns,id'],
             'supplier_id' => ['required', 'exists:suppliers,id'],
             'purchase_order_id' => ['nullable', 'exists:purchase_orders,id'],
             'quotation_id' => ['nullable', 'exists:quotations,id'],
