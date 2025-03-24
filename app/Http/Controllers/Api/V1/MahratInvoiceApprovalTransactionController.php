@@ -84,14 +84,23 @@ class MahratInvoiceApprovalTransactionController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $transaction = QueryBuilder::for(MahratInvoiceApprovalTransaction::class)
-            ->allowedIncludes(MahratInvoiceApprovalTransactionParameters::ALLOWED_INCLUDES)
-            ->findOrFail($id);
+        try {
+            $transaction = QueryBuilder::for(MahratInvoiceApprovalTransaction::class)
+                ->allowedIncludes(MahratInvoiceApprovalTransactionParameters::ALLOWED_INCLUDES)
+                ->with(['invoice']) // Ensure the invoice relationship is always loaded
+                ->findOrFail($id);
 
-        return response()->json([
-            'data' => new MahratInvoiceApprovalTransactionResource($transaction)
-        ], Response::HTTP_OK);
+            return response()->json([
+                'data' => new MahratInvoiceApprovalTransactionResource($transaction)
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to fetch invoice details',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
+
 
     /**
      * Update the specified mahrat invoice approval transaction.

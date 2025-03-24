@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FaPlus, FaTrash } from "react-icons/fa";
 import { router } from "@inertiajs/react";
 
-export default function CreateMaharatInvoice() {
+export default function CreateMaharatInvoice({ transactionId = null }) {
     const [customers, setCustomers] = useState([]);
     const [formData, setFormData] = useState({
         company_id: "",
@@ -34,6 +34,9 @@ export default function CreateMaharatInvoice() {
     const [touched, setTouched] = useState({});
     const [itemErrors, setItemErrors] = useState([]);
     const [itemTouched, setItemTouched] = useState([]);
+    const [invoiceNumber, setInvoiceNumber] = useState('');
+    const [paymentMethods, setPaymentMethods] = useState([]);
+    const [isEditMode, setIsEditMode] = useState(false);
 
     useEffect(() => {
         setItemErrors(formData.items.map(() => ({})));
@@ -42,7 +45,14 @@ export default function CreateMaharatInvoice() {
 
     useEffect(() => {
         fetchCustomers();
-    }, []);
+        fetchPaymentMethods();
+        if (transactionId) {
+            setIsEditMode(true);
+            fetchTransactionData();
+        } else {
+            fetchNextInvoiceNumber();
+        }
+    }, [transactionId]);
 
     const fetchCustomers = async () => {
         try {
@@ -51,6 +61,83 @@ export default function CreateMaharatInvoice() {
             setCustomers(response.data.data);
         } catch (error) {
             console.error("Error fetching customers:", error);
+        }
+    };
+
+    const fetchNextInvoiceNumber = async () => {
+        try {
+            const response = await axios.get('/api/v1/invoices/next-number');
+            if (response.data.success) {
+                setInvoiceNumber(response.data.next_number);
+            } else {
+                console.error('Failed to get next invoice number:', response.data.message);
+            }
+        } catch (error) {
+            console.error('Error fetching next invoice number:', error);
+            setErrors(prev => ({
+                ...prev,
+                fetch: 'Failed to generate invoice number'
+            }));
+        }
+    };
+
+    const fetchPaymentMethods = async () => {
+        try {
+            const response = await axios.get("/api/v1/invoices");
+            const uniqueMethods = [...new Set(response.data.data
+                .map(invoice => invoice.payment_method)
+                .filter(method => method))];
+            setPaymentMethods(uniqueMethods.length > 0 ? uniqueMethods : ['Cash', 'Credit']);
+        } catch (error) {
+            console.error("Error fetching payment methods:", error);
+            setPaymentMethods(['Cash', 'Credit']);
+        }
+    };
+
+    const fetchTransactionData = async () => {
+        try {
+            const response = await axios.get(`/api/v1/mahrat-invoice-approval-trans/${transactionId}?include=invoice`);
+            const { data } = response.data;
+            
+            if (!data || !data.invoice) {
+                console.error('No invoice data found');
+                return;
+            }
+
+            const invoice = data.invoice;
+            console.log('Fetched invoice data:', invoice);
+
+            setInvoiceNumber(invoice.invoice_number);
+
+            setFormData(prevData => ({
+                ...prevData,
+                company_id: invoice.client_id || '',
+                invoice_date: invoice.created_at ? new Date(invoice.created_at).toISOString().split('T')[0] : '',
+                payment_terms: invoice.payment_method || '',
+                vat_rate: invoice.tax_amount?.toString() || "15",
+                subtotal: invoice.subtotal?.toString() || "0.00",
+                total: invoice.total_amount?.toString() || "0.00",
+                vat_amount: invoice.tax_amount?.toString() || "0.00",
+            }));
+
+            if (invoice.client_id) {
+                const customerResponse = await axios.get(`/api/v1/customers/${invoice.client_id}`);
+                const customer = customerResponse.data.data;
+                if (customer) {
+                    setFormData(prevData => ({
+                        ...prevData,
+                        representative: customer.account_name || "",
+                        address: customer.city || "",
+                        cr_no: customer.commercial_registration_number || "",
+                        vat_no: customer.tax_number || "",
+                        mobile: customer.contact_number || "",
+                        email: customer.email || "",
+                    }));
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching transaction data:', error);
+            setErrors({ fetch: 'Failed to load invoice data' });
         }
     };
 
@@ -350,19 +437,31 @@ export default function CreateMaharatInvoice() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
-        setLoading(true);
 
         try {
-            await axios.post("/api/v1/invoices", formData);
-            router.visit("/invoices");
+            const payload = {
+                invoice_number: invoiceNumber,
+                client_id: formData.company_id,
+                payment_method: formData.payment_terms,
+                tax_amount: formData.vat_rate,
+            };
+
+            let response;
+            if (isEditMode) {
+                response = await axios.put(`/api/v1/invoices/${transactionId}`, payload);
+            } else {
+                response = await axios.post('/api/v1/invoices', payload);
+                await axios.post('/api/v1/mahrat-invoice-approval-trans', {
+                    invoice_id: response.data.data.id,
+                    status: 'Pending',
+                });
+            }
+
+            router.visit('/maharat-invoices');
         } catch (error) {
-            setErrors(
-                error.response?.data?.errors || {
-                    general: "An error occurred while creating the invoice",
-                }
-            );
-        } finally {
-            setLoading(false);
+            setErrors(error.response?.data?.errors || {
+                general: "An error occurred while saving the invoice"
+            });
         }
     };
 
@@ -405,7 +504,7 @@ export default function CreateMaharatInvoice() {
                     <div className="bg-gray-100 p-4 rounded-2xl">
                         <div className="flex justify-start items-center gap-2 mt-4">
                             <strong className="w-1/4">Invoice #:</strong>
-                            <p className="w-full">1234</p>
+                            <p className="w-full">{invoiceNumber}</p>
                         </div>
                         <div className="flex justify-start items-center gap-2">
                             <strong className="w-1/4">Invoice Date:</strong>
@@ -444,11 +543,12 @@ export default function CreateMaharatInvoice() {
                                     onChange={handleInputChange}
                                     className="mt-1 block w-full rounded border-gray-300"
                                 >
-                                    <option value="">
-                                        Select payment terms
-                                    </option>
-                                    <option value="cash">Cash</option>
-                                    <option value="credit">Credit</option>
+                                    <option value="">Select payment terms</option>
+                                    {paymentMethods.map((method) => (
+                                        <option key={method} value={method}>
+                                            {method}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
@@ -852,7 +952,7 @@ export default function CreateMaharatInvoice() {
                     onClick={handleSubmit}
                     className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto"
                 >
-                    Create Invoice
+                    {isEditMode ? 'Update Invoice' : 'Create Invoice'}
                 </button>
             </div>
         </div>

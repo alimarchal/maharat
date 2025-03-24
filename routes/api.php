@@ -260,11 +260,15 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('customers/{id}/restore', [CustomerController::class, 'restore']);
 
     // Maharat Invoices
+    Route::get('/invoices/next-number', [InvoiceController::class, 'getNextInvoiceNumber']);
     Route::apiResource('invoices', InvoiceController::class);
     Route::post('invoices/{id}/restore', [InvoiceController::class, 'restore']);
 
     Route::post('/maharat-invoices', [MahratInvoiceController::class, 'store']);
     Route::get('/maharat-invoices/{id}/edit', [MahratInvoiceController::class, 'edit']);
+
+    Route::get('/maharat-invoices/{id}', [MahratInvoiceController::class, 'show']);
+    Route::get('/invoices/payment-methods', [InvoiceController::class, 'getPaymentMethods']);
 
     // Payment Orders routes
     Route::apiResource('payment-orders', PaymentOrderController::class);

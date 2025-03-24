@@ -147,7 +147,7 @@ const MaharatInvoicesTable = () => {
                         {filters.map((filter) => (
                             <button
                                 key={filter}
-                                className={`px-4 py-1 rounded-full text-base transition ${
+                                className={`px-5 py-1 rounded-full text-base transition ${
                                     selectedFilter === filter
                                         ? "bg-[#009FDC] text-white"
                                         : "text-[#9B9DA2]"
@@ -227,7 +227,16 @@ const MaharatInvoicesTable = () => {
                                         <td className="py-3 px-4 text-center">{formatDateTime(invoice.updated_at)}</td>
                                         <td className="py-3 px-4 flex justify-center space-x-3">
                                             <Link
-                                                href={`/maharat-invoices/${invoice.id}/edit`}
+                                                href={`/maharat-invoices/create?edit=${invoice.id}`}
+                                                onClick={() => {
+                                                    console.log('Editing Maharat Invoice Approval Transaction:', {
+                                                        transactionId: invoice.id,
+                                                        invoiceNumber: invoice.invoice_number,
+                                                        invoiceId: invoice.invoice_id,
+                                                        status: invoice.status,
+                                                        fullRecord: invoice
+                                                    });
+                                                }}
                                                 className="text-gray-600 hover:text-gray-800"
                                             >
                                                 <FontAwesomeIcon icon={faEdit} />

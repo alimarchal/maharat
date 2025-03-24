@@ -226,4 +226,42 @@ class InvoiceController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+    public function getPaymentMethods()
+    {
+        try {
+            // You can modify this array based on your requirements
+            $paymentMethods = ['Cash', 'Credit', 'Bank Transfer', 'Cheque'];
+            
+            return response()->json([
+                'success' => true,
+                'payment_methods' => $paymentMethods
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch payment methods',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getNextInvoiceNumber()
+    {
+        try {
+            $nextInvoiceNumber = $this->generateInvoiceNumber();
+
+            return response()->json([
+                'success' => true,
+                'next_number' => $nextInvoiceNumber
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error generating next invoice number: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate next invoice number',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
