@@ -446,16 +446,14 @@ export default function MainDashboard({ roles }) {
                     iconColor="text-[#393559]"
                     dropdownItems={purchaseDropdownItems}
                 />
-                {isAdmin && (
-                    <DashboardCard
-                        icon={faBoxes}
-                        title="Finance Center"
-                        subtitle="Financials"
-                        bgColor="bg-[#C4E4F0]"
-                        iconColor="text-[#005372]"
-                        dropdownItems={financeDropdownItems}
-                    />
-                )}
+                <DashboardCard
+                    icon={faBoxes}
+                    title="Finance Center"
+                    subtitle="Financials"
+                    bgColor="bg-[#C4E4F0]"
+                    iconColor="text-[#005372]"
+                    dropdownItems={financeDropdownItems}
+                />
             </div>
 
             {isAdmin && (
