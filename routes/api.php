@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\CostCenterController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\DepartmentController;
 use App\Http\Controllers\Api\V1\DesignationController;
+use App\Http\Controllers\Api\V1\ExternalDeliveryNoteController;
 use App\Http\Controllers\Api\V1\ExternalInvoiceController;
 use App\Http\Controllers\Api\V1\FinancialTransactionController;
 use App\Http\Controllers\Api\V1\FiscalPeriodController;
@@ -188,6 +189,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     // GRN Receive Goods routes
     Route::apiResource('grn-receive-goods', GrnReceiveGoodController::class);
+    Route::apiResource('external-delivery-notes', ExternalDeliveryNoteController::class);
+
 
     // Category Routes
     Route::get('/categories', [CategoryController::class, 'index']);

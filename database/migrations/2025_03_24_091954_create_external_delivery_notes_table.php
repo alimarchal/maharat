@@ -11,16 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('grns', function (Blueprint $table) {
+        Schema::create('external_delivery_notes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->comment('Created By')->constrained('users', 'id');
-            $table->string('grn_number')->comment("Good Receiving Notes Number NO (e.g., GRN-2023-001)")->unique();
-            $table->foreignId('quotation_id')->nullable()->constrained('quotations', 'id');
+            $table->foreignId('grn_id')->nullable()->constrained('grns', 'id');
             $table->foreignId('purchase_order_id')->nullable()->constrained('purchase_orders', 'id');
-            $table->decimal('quantity', 15, 2)->comment("Quantity")->default(0);
-            $table->date('delivery_date')->comment("Delivery Date")->default(DB::raw('CURRENT_TIMESTAMP'));
-
-            $table->softDeletes();
+            $table->string('delivery_note_number')->nullable()->comment('Delivery Note Number');
+            $table->string('attachment_path')->nullable()->comment('Attachment Path');
             $table->timestamps();
         });
     }
@@ -30,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('grns');
+        Schema::dropIfExists('external_delivery_notes');
     }
 };
