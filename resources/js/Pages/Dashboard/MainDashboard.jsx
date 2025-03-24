@@ -270,11 +270,6 @@ export default function MainDashboard({ roles }) {
             onClick: () => router.visit("/view-order"),
         },
         {
-            text: "Goods Receiving Notes",
-            icon: faListCheck,
-            onClick: () => router.visit("/grn"),
-        },
-        {
             text: "External Invoices",
             icon: faFileAlt,
             onClick: () => router.visit("/external-invoices"),
@@ -326,9 +321,9 @@ export default function MainDashboard({ roles }) {
             onClick: () => router.visit("/items"),
         },
         {
-            text: "Goods Receiving",
+            text: "Goods Receiving Notes",
             icon: faFileInvoice,
-            onClick: () => router.visit("/grn"),
+            onClick: () => router.visit("/goods-receiving-notes"),
         },
         {
             text: "Inventory Tracking",

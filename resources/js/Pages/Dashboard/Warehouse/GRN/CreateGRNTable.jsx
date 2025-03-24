@@ -1,26 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPaperclip, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { Link } from "@inertiajs/react";
-import PaymentOrderModal from "./PaymentOrderModal";
 
-const CreatePaymentOrdersTable = () => {
-    const [formData, setFormData] = useState({ from_date: "", to_date: "" });
+const CreateGRNTable = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedOrder, setSelectedOrder] = useState(null);
-
     useEffect(() => {
         const fetchPurchaseOrders = async () => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/purchase-orders?has_payment_order=false&include=department,costCenter,subCostCenter,warehouse,quotation,supplier,user&page=${currentPage}`
+                    `/api/v1/purchase-orders?has_good_receive_note=false&include=department,costCenter,subCostCenter,warehouse,quotation,supplier,user&page=${currentPage}`
                 );
                 const res = await response.json();
                 if (response.ok) {
@@ -39,69 +33,17 @@ const CreatePaymentOrdersTable = () => {
         fetchPurchaseOrders();
     }, []);
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const handleOpenModal = (order) => {
-        setSelectedOrder(order);
-        setIsModalOpen(true);
-    };
-
     return (
         <div className="w-full">
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h2 className="text-3xl font-bold text-[#2C323C]">
-                        Purchase Orders without Payment Orders
+                        Purchase Orders without Delivery Notes
                     </h2>
                     <p className="text-[#7D8086] text-lg">
-                        List of Purchased Orders that have no Payment Orders
+                        List of Purchased Orders that have no Goods receiving
+                        notes
                     </p>
-                </div>
-                <div className="flex flex-col lg:flex-row lg:justify-start items-center gap-3 w-full md:w-2/5">
-                    <div className="relative w-full">
-                        <input
-                            type="date"
-                            name="from_date"
-                            value={formData.from_date}
-                            onChange={handleChange}
-                            min={new Date().toISOString().split("T")[0]}
-                            className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
-                        />
-                        <label
-                            className={`absolute left-3 px-2 bg-white text-gray-500 text-base transition-all
-                                ${
-                                    formData.from_date
-                                        ? "-top-2 text-[#009FDC] text-sm px-2"
-                                        : "top-1/2 text-gray-400 -translate-y-1/2"
-                                }
-                                peer-focus:top-0 peer-focus:text-sm peer-focus:text-[#009FDC] peer-focus:px-2`}
-                        >
-                            Select From Date
-                        </label>
-                    </div>
-                    <div className="relative w-full">
-                        <input
-                            type="date"
-                            name="to_date"
-                            value={formData.to_date}
-                            onChange={handleChange}
-                            min={new Date().toISOString().split("T")[0]}
-                            className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
-                        />
-                        <label
-                            className={`absolute left-3 px-2 bg-white text-gray-500 text-base transition-all
-                                ${
-                                    formData.to_date
-                                        ? "-top-2 text-[#009FDC] text-sm px-2"
-                                        : "top-1/2 text-gray-400 -translate-y-1/2"
-                                }
-                                peer-focus:top-0 peer-focus:text-sm peer-focus:text-[#009FDC] peer-focus:px-2`}
-                        >
-                            Select To Date
-                        </label>
-                    </div>
                 </div>
             </div>
 
@@ -171,10 +113,7 @@ const CreatePaymentOrdersTable = () => {
                                     )}
                                 </td>
                                 <td className="py-3 px-4 flex justify-center text-center">
-                                    <button
-                                        onClick={() => handleOpenModal(order)}
-                                        className="flex items-center justify-center w-6 h-6 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200"
-                                    >
+                                    <button className="flex items-center justify-center w-6 h-6 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200">
                                         <FontAwesomeIcon icon={faPlus} />
                                     </button>
                                 </td>
@@ -192,17 +131,8 @@ const CreatePaymentOrdersTable = () => {
                     )}
                 </tbody>
             </table>
-
-            {/* Render the modal */}
-            {isModalOpen && (
-                <PaymentOrderModal
-                    isOpen={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
-                    selectedOrder={selectedOrder}
-                />
-            )}
         </div>
     );
 };
 
-export default CreatePaymentOrdersTable;
+export default CreateGRNTable;
