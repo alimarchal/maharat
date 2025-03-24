@@ -260,6 +260,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('invoices', InvoiceController::class);
     Route::post('invoices/{id}/restore', [InvoiceController::class, 'restore']);
 
+    Route::post('/maharat-invoices', [MahratInvoiceController::class, 'store']);
+    Route::get('/maharat-invoices/{id}/edit', [MahratInvoiceController::class, 'edit']);
 
     // Payment Orders routes
     Route::apiResource('payment-orders', PaymentOrderController::class);

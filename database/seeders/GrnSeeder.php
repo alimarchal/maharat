@@ -32,9 +32,12 @@ class GrnSeeder extends Seeder
         }
 
         try {
-            // Clear existing data
-            DB::table('grns')->truncate();
-
+            // First, delete dependent records in grn_receive_goods to avoid foreign key constraint issues
+            DB::table('grn_receive_goods')->delete();
+        
+            // Now safely delete GRNs without truncating
+            DB::table('grns')->delete();
+        
             // Seed GRN records dynamically
             $grns = [];
             for ($i = 1; $i <= 3; $i++) {
@@ -49,13 +52,14 @@ class GrnSeeder extends Seeder
                     'updated_at' => Carbon::now(),
                 ];
             }
-
-            // Insert into database
+        
+            // Insert new records
             DB::table('grns')->insert($grns);
-
+        
             $this->command->info('GRNs seeded successfully.');
         } catch (\Exception $e) {
             $this->command->error('Error seeding GRNs: ' . $e->getMessage());
         }
+        
     }
 }

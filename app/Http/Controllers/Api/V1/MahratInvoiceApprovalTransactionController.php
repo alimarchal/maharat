@@ -22,7 +22,7 @@ class MahratInvoiceApprovalTransactionController extends Controller
     public function index(): JsonResponse|ResourceCollection
     {
         $transactions = QueryBuilder::for(MahratInvoiceApprovalTransaction::class)
-            ->allowedFilters(MahratInvoiceApprovalTransactionParameters::ALLOWED_FILTERS)
+            ->allowedFilters(MahratInvoiceApprovalTransactionParameters::getAllowedFilters())
             ->allowedSorts(MahratInvoiceApprovalTransactionParameters::ALLOWED_SORTS)
             ->allowedIncludes(MahratInvoiceApprovalTransactionParameters::ALLOWED_INCLUDES)
             ->paginate()
@@ -37,6 +37,7 @@ class MahratInvoiceApprovalTransactionController extends Controller
 
         return MahratInvoiceApprovalTransactionResource::collection($transactions);
     }
+
 
     /**
      * Store a newly created mahrat invoice approval transaction.
