@@ -25,6 +25,7 @@ class PurchaseOrderController extends Controller
     {
         try {
             $quotationId = $request->input('quotation_id');
+            $hasPaymentOrder = $request->boolean('has_payment_order');
 
             // Start building the query
             $query = QueryBuilder::for(PurchaseOrder::class)
@@ -37,6 +38,11 @@ class PurchaseOrderController extends Controller
                 $query->where('quotation_id', $quotationId);
             }
 
+            // Filter purchase orders with payment orders if requested
+            if ($hasPaymentOrder) {
+                $query->whereHas('paymentOrders');
+            }
+
             // Now paginate the results after all conditions are applied
             $purchaseOrders = $query->paginate()
                 ->appends(request()->query());
@@ -45,8 +51,8 @@ class PurchaseOrderController extends Controller
                 'data' => PurchaseOrderResource::collection($purchaseOrders)
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
-            \Log::error('Error fetching purchase orders: ' . $e->getMessage());
-            \Log::error($e->getTraceAsString());
+//            \Log::error('Error fetching purchase orders: ' . $e->getMessage());
+//            \Log::error($e->getTraceAsString());
             return response()->json([
                 'message' => 'Error fetching purchase orders',
                 'error' => $e->getMessage()

@@ -11,8 +11,6 @@ class PurchaseOrder extends Model
 {
     use HasFactory, SoftDeletes;
 
-    use HasFactory, SoftDeletes;
-
     protected $fillable = [
         'purchase_order_no',
         'warehouse_id',
@@ -89,5 +87,13 @@ class PurchaseOrder extends Model
     public function subCostCenter(): BelongsTo
     {
         return $this->belongsTo(CostCenter::class, 'sub_cost_center_id');
+    }
+
+    /**
+     * Get the payment orders associated with this purchase order.
+     */
+    public function paymentOrders()
+    {
+        return $this->hasMany(PaymentOrder::class);
     }
 }

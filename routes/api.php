@@ -319,31 +319,13 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
 });
 
-//Route::get('/user', function (Request $request) {
-//    return $request->user();
-//})->middleware(['auth:sanctum']);
+
+//Route::get('/api/files/{path}', function ($path) {
+//    $fullPath = 'rfq-attachments/' . $path;
 //
-//Route::middleware(['auth:sanctum'])->group(function () {
-//    // RFQ Routes
-//    Route::get('/rfqs', [RfqController::class, 'index']);
-//    Route::get('/rfqs/{id}', [RfqController::class, 'show']);
-//    Route::post('/rfqs', [RfqController::class, 'store']);
-//    Route::delete('/rfqs/{id}', [RfqController::class, 'destroy']);
+//    if (Storage::disk('public')->exists($fullPath)) {
+//        return Storage::disk('public')->download($fullPath);
+//    }
 //
-//    // RFQ Form Data endpoints
-//    Route::get('/form-data', [RfqController::class, 'getFormData']);
-//    Route::get('/warehouses', [WarehouseController::class, 'index']);
-//    Route::get('/product-categories', [ProductCategoryController::class, 'index']);
-//    Route::get('/units', [UnitController::class, 'index']);
-//    Route::get('/brands', [BrandController::class, 'index']);
-//});
-
-Route::get('/api/files/{path}', function ($path) {
-    $fullPath = 'rfq-attachments/' . $path;
-
-    if (Storage::disk('public')->exists($fullPath)) {
-        return Storage::disk('public')->download($fullPath);
-    }
-
-    abort(404, 'File not found');
-})->where('path', '.*')->name('file.download');
+//    abort(404, 'File not found');
+//})->where('path', '.*')->name('file.download');
