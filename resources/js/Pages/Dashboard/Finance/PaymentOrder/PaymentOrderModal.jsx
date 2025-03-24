@@ -20,8 +20,6 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    console.log("Test:", selectedOrder);
-
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -53,6 +51,14 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                     ...formData,
                     payment_order_id: paymentOrderResponse,
                 };
+
+                const purchaseOrderPayload = {
+                    has_payment_order: true,
+                };
+                await axios.put(
+                    `/api/v1/purchase-orders/${selectedOrder?.id}`,
+                    purchaseOrderPayload
+                );
 
                 await axios.post(
                     "/api/v1/payment-order-logs",

@@ -123,11 +123,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/create-order', function () { return Inertia::render('Dashboard/Purchase Order/CreateOrder'); })->name('create-order');
 
-    Route::get('/grn', function () { return Inertia::render('Dashboard/GRN/GRNs'); })->name('grn');
-
-    Route::get('/receive-goods', function () { return Inertia::render('Dashboard/GRN/ReceiveGoods'); })->name('receive-goods');
-
-    Route::get('/add-goods', function () { return Inertia::render('Dashboard/GRN/AddGoods'); })->name('add-goods');
+    Route::get('/goods-receiving-notes', function () {
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/GRN/GRNTable']);
+    })->name('grns.index');
+    Route::get('/goods-receiving-notes/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/GRN/CreateGRNTable']);
+    })->name('grns.create');
+    Route::get('/goods-receiving-notes/receive-goods/add-goods', function () {
+        return Inertia::render('Dashboard', ['page' => 'Warehouse/GRN/AddGoods']);
+    })->name('addGoods.index');
 
     Route::get('/doc-status', function () { return Inertia::render('Dashboard/Reports/Statuses'); })->name('doc-status');
 
