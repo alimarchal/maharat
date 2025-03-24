@@ -53,10 +53,10 @@ const CreatePaymentOrdersTable = () => {
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h2 className="text-3xl font-bold text-[#2C323C]">
-                        Payment Orders
+                        Purchase Orders without Payment Orders
                     </h2>
                     <p className="text-[#7D8086] text-lg">
-                        List of Purchased Orders which has no Payment Orders
+                        List of Purchased Orders that have no Payment Orders
                     </p>
                 </div>
                 <div className="flex flex-col lg:flex-row lg:justify-start items-center gap-3 w-full md:w-2/5">
@@ -116,7 +116,7 @@ const CreatePaymentOrdersTable = () => {
                         <th className="py-3 px-4">Amount</th>
                         <th className="py-3 px-4 text-center">Attachment</th>
                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
-                            Action
+                            Create
                         </th>
                     </tr>
                 </thead>
@@ -186,7 +186,7 @@ const CreatePaymentOrdersTable = () => {
                                 colSpan="6"
                                 className="text-center text-[#2C323C] font-medium py-4"
                             >
-                                No Payment Orders found.
+                                No Purchase Orders found.
                             </td>
                         </tr>
                     )}

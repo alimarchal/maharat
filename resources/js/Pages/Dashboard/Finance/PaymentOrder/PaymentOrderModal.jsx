@@ -47,16 +47,82 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                     "/api/v1/payment-orders",
                     paymentOrderPayload
                 );
+                const paymentOrderResponse = response.data.data?.id;
 
                 const paymentLogsPayload = {
                     ...formData,
-                    payment_order_id: response.data.data?.id,
+                    payment_order_id: paymentOrderResponse,
                 };
 
                 await axios.post(
                     "/api/v1/payment-order-logs",
                     paymentLogsPayload
                 );
+
+                try {
+                    const processResponse = await axios.get(
+                        "/api/v1/processes?include=steps,creator,updater&filter[title]=Payment Order Approval"
+                    );
+
+                    // Check if we have valid process data
+                    if (
+                        processResponse.data.data &&
+                        processResponse.data.data.length > 0
+                    ) {
+                        const process = processResponse.data.data[0];
+
+                        // Check if process has steps
+                        if (process.steps && process.steps.length > 0) {
+                            const processStep = process.steps[0];
+
+                            // Only proceed if we have a valid process step
+                            if (processStep && processStep.order) {
+                                const processResponseViaUser = await axios.get(
+                                    `/api/v1/process-steps/${processStep.order}/user/${userId}`
+                                );
+
+                                // Check if we have valid user assignment data
+                                if (
+                                    processResponseViaUser?.data?.user?.user?.id
+                                ) {
+                                    const assignUser =
+                                        processResponseViaUser.data;
+
+                                    // Create approval transaction
+                                    const PaymentOrderApprovalPayload = {
+                                        payment_order_id: paymentOrderResponse,
+                                        requester_id: userId,
+                                        assigned_to: assignUser.user.user.id,
+                                        order: processStep.order,
+                                        description: processStep.description,
+                                        status: "Pending",
+                                    };
+                                    await axios.post(
+                                        "/api/v1/payment-order-approval-trans",
+                                        PaymentOrderApprovalPayload
+                                    );
+
+                                    // Create task
+                                    const taskPayload = {
+                                        process_step_id: processStep.id,
+                                        process_id: processStep.process_id,
+                                        assigned_at: new Date().toISOString(),
+                                        urgency: "Normal",
+                                        assigned_to_user_id:
+                                            assignUser.user.user.id,
+                                        assigned_from_user_id: userId,
+                                    };
+                                    await axios.post(
+                                        "/api/v1/tasks",
+                                        taskPayload
+                                    );
+                                }
+                            }
+                        }
+                    }
+                } catch (approvalError) {
+                    console.error("Approval process error:", approvalError);
+                }
 
                 setLoading(false);
                 onClose();
