@@ -21,11 +21,15 @@ class PurchaseOrderController extends Controller
     /**
      * Display a listing of the resource.
      */
+    /**
+     * Display a listing of the resource.
+     */
     public function index(Request $request): JsonResponse
     {
         try {
             $quotationId = $request->input('quotation_id');
             $hasPaymentOrder = $request->boolean('has_payment_order');
+            $hasGoodReceiveNote = $request->boolean('has_good_receive_note');
 
             // Start building the query
             $query = QueryBuilder::for(PurchaseOrder::class)
@@ -38,9 +42,25 @@ class PurchaseOrderController extends Controller
                 $query->where('quotation_id', $quotationId);
             }
 
-            // Filter purchase orders with payment orders if requested
-            if ($hasPaymentOrder) {
-                $query->whereHas('paymentOrders');
+            // Filter based on has_payment_order parameter
+            if ($request->has('has_payment_order')) {
+                if ($hasPaymentOrder) {
+                    // Get purchase orders that have payment orders
+                    $query->whereHas('paymentOrders');
+                } else {
+                    // Get purchase orders that do NOT have payment orders
+                    $query->whereDoesntHave('paymentOrders');
+                }
+            }
+
+            if ($request->has('has_good_receive_note')) {
+                if ($hasGoodReceiveNote) {
+                    // Get purchase orders that have payment orders
+                    $query->whereHas('goodReceiveNote');
+                } else {
+                    // Get purchase orders that do NOT have payment orders
+                    $query->whereDoesntHave('goodReceiveNote');
+                }
             }
 
             // Now paginate the results after all conditions are applied
@@ -51,8 +71,8 @@ class PurchaseOrderController extends Controller
                 'data' => PurchaseOrderResource::collection($purchaseOrders)
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
-//            \Log::error('Error fetching purchase orders: ' . $e->getMessage());
-//            \Log::error($e->getTraceAsString());
+            \Log::error('Error fetching purchase orders: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
             return response()->json([
                 'message' => 'Error fetching purchase orders',
                 'error' => $e->getMessage()

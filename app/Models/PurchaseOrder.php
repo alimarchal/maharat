@@ -96,4 +96,9 @@ class PurchaseOrder extends Model
     {
         return $this->hasMany(PaymentOrder::class);
     }
+
+    public function goodReceiveNote()
+    {
+        return $this->hasMany(Grn::class);
+    }
 }
