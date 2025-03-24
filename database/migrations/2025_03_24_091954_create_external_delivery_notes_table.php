@@ -18,6 +18,7 @@ return new class extends Migration
             $table->foreignId('purchase_order_id')->nullable()->constrained('purchase_orders', 'id');
             $table->string('delivery_note_number')->nullable()->comment('Delivery Note Number');
             $table->string('attachment_path')->nullable()->comment('Attachment Path');
+            $table->userTracking();
             $table->timestamps();
         });
     }
