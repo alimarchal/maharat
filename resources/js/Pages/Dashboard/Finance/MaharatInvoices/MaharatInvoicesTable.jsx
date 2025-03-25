@@ -26,49 +26,37 @@ const MaharatInvoicesTable = () => {
         
         try {
             progressInterval = setInterval(() => {
-                setProgress((prev) => {
-                    if (prev >= 90) {
-                        clearInterval(progressInterval);
-                        return 90;
-                    }
-                    return prev + 10;
-                });
+                setProgress((prev) => prev >= 90 ? 90 : prev + 10);
             }, 200);
 
-            let url = `/api/v1/mahrat-invoice-approval-trans?page=${currentPage}`;
-            url += "&include=invoice,requester,createdByUser";
-            
-            if (selectedFilter !== "All") {
-                url += `&filter[invoice.status]=${selectedFilter}`;
-            }
-
-            const response = await axios.get(url);
+            const response = await axios.get(`/api/v1/invoices?page=${currentPage}&include=client`);
+            console.log('Raw API response:', response.data); // Debug log
             
             if (response.data && response.data.data) {
-                const mappedData = response.data.data.map(transaction => ({
-                    ...transaction,
-                    invoice_number: transaction.invoice?.invoice_number,
-                    total_amount: Math.floor(transaction.invoice?.total_amount || 0),
-                    customer_name: transaction.requester?.name,
-                    created_by_name: transaction.created_by_user?.name,
-                    invoice_status: transaction.invoice?.status,
-                    approval_status: transaction.status
-                }));
+                const mappedData = response.data.data.map(invoice => {
+                    console.log('Processing invoice:', invoice); // Debug log
+                    return {
+                        id: invoice.id,
+                        invoice_number: invoice.invoice_number || `INV-${invoice.id.toString().padStart(5, '0')}`,
+                        customer_name: invoice.client?.name || 'N/A',
+                        total_amount: invoice.total_amount || 0,
+                        status: invoice.status || 'Draft',
+                        updated_at: invoice.updated_at
+                    };
+                });
 
+                console.log('Mapped data:', mappedData); // Debug log
                 setInvoices(mappedData);
                 setLastPage(response.data.meta.last_page);
                 setError("");
             }
-            
-            setProgress(100);
-            setTimeout(() => setLoading(false), 500);
         } catch (error) {
             console.error('Error fetching invoices:', error);
             setError("Failed to load invoices");
-            setProgress(100);
-            setTimeout(() => setLoading(false), 500);
         } finally {
             if (progressInterval) clearInterval(progressInterval);
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
         }
     };
 
@@ -89,15 +77,17 @@ const MaharatInvoicesTable = () => {
     };
 
     const getStatusClass = (status) => {
-        switch (status) {
-            case 'Approve':
+        switch (status?.toLowerCase()) {
+            case 'paid':
                 return 'bg-green-100 text-green-800';
-            case 'Reject':
+            case 'cancelled':
                 return 'bg-red-100 text-red-800';
-            case 'Refer':
+            case 'overdue':
                 return 'bg-purple-100 text-purple-800';
-            case 'Pending':
+            case 'pending':
                 return 'bg-yellow-100 text-yellow-800';
+            case 'draft':
+                return 'bg-gray-100 text-gray-800';
             default:
                 return 'bg-gray-100 text-gray-800';
         }
@@ -202,66 +192,55 @@ const MaharatInvoicesTable = () => {
                             <tr>
                                 <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">Invoice ID</th>
                                 <th className="py-3 px-4 text-center">Customer</th>
-                                <th className="py-3 px-4 text-center">Created By</th>
                                 <th className="py-3 px-4 text-center">Total Amount</th>
                                 <th className="py-3 px-4 text-center">Status</th>
                                 <th className="py-3 px-4 text-center">Date & Time</th>
                                 <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Actions</th>
-                            </tr>
-                        </thead>
+                    </tr>
+                </thead>
                         <tbody className="bg-transparent divide-y divide-gray-200">
                             {invoices.length > 0 ? (
                                 invoices.map((invoice) => (
-                                    <tr key={invoice.id}>
+                                <tr key={invoice.id}>
                                         <td className="py-3 px-4 text-center">{invoice.invoice_number || 'N/A'}</td>
                                         <td className="py-3 px-4 text-center">{invoice.customer_name || 'N/A'}</td>
-                                        <td className="py-3 px-4 text-center">{invoice.created_by_name || 'N/A'}</td>
                                         <td className="py-3 px-4 text-center">
                                             {invoice.total_amount ? `${Math.floor(invoice.total_amount).toLocaleString()} SAR` : 'N/A'}
-                                        </td>
+                                    </td>
                                         <td className="py-3 px-4 text-center">
-                                            <span className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(invoice.approval_status)}`}>
-                                                {invoice.approval_status}
-                                            </span>
-                                        </td>
+                                            <span className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(invoice.status)}`}>
+                                                {invoice.status}
+                                        </span>
+                                    </td>
                                         <td className="py-3 px-4 text-center">{formatDateTime(invoice.updated_at)}</td>
                                         <td className="py-3 px-4 flex justify-center space-x-3">
                                             <Link
-                                                href={`/maharat-invoices/create?edit=${invoice.id}`}
-                                                onClick={() => {
-                                                    console.log('Editing Maharat Invoice Approval Transaction:', {
-                                                        transactionId: invoice.id,
-                                                        invoiceNumber: invoice.invoice_number,
-                                                        invoiceId: invoice.invoice_id,
-                                                        status: invoice.status,
-                                                        fullRecord: invoice
-                                                    });
-                                                }}
+                                                href={`/maharat-invoices/create/${invoice.id}`}
                                                 className="text-gray-600 hover:text-gray-800"
                                             >
-                                                <FontAwesomeIcon icon={faEdit} />
+                                            <FontAwesomeIcon icon={faEdit} />
                                             </Link>
-                                            <button className="text-blue-600 hover:text-blue-900">
-                                                <FontAwesomeIcon icon={faFilePdf} />
-                                            </button>
+                                        <button className="text-blue-600 hover:text-blue-900">
+                                            <FontAwesomeIcon icon={faFilePdf} />
+                                        </button>
                                             <button
                                                 onClick={() => handleDelete(invoice.id)}
                                                 className="text-red-600 hover:text-red-900"
                                             >
                                                 <FontAwesomeIcon icon={faTrash} />
                                             </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="7" className="text-center text-[#2C323C] font-medium py-4">
-                                        No Maharat Invoices found.
                                     </td>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            ))
+                    ) : (
+                        <tr>
+                                    <td colSpan="6" className="text-center text-[#2C323C] font-medium py-4">
+                                No Maharat Invoices found.
+                            </td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
                 )}
 
                 {/* Pagination */}

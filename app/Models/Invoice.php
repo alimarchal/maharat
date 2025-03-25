@@ -14,39 +14,39 @@ class Invoice extends Model
 
     protected $fillable = [
         'invoice_number',
-        'representative',
-        'representative_email',
         'client_id',
+        'company_id',
         'status',
         'payment_method',
+        'representative_id',  
+        'representative_email',  
         'issue_date',
         'due_date',
-        'discounted_days',
+        'discounted_days',  
+        'vat_rate',  
         'subtotal',
         'tax_amount',
+        'discount_amount',  
         'total_amount',
         'currency',
-        'notes',
+        'notes',  
         'account_code_id'
     ];
-
+    
     protected $casts = [
         'issue_date' => 'date',
         'due_date' => 'date',
         'subtotal' => 'decimal:2',
         'tax_amount' => 'decimal:2',
+        'vat_rate' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'discounted_days' => 'integer',
-        'client_id' => 'integer'
+        'client_id' => 'integer',
+        'company_id' => 'integer', 
     ];
-//
-//    /**
-//     * Get the vendor (customer that issued the invoice).
-//     */
-//    public function vendor()
-//    {
-//        return $this->belongsTo(Customer::class, 'vendor_id');
-//    }
+    
+
 
     /**
      * Get the client (customer that received the invoice).
@@ -54,6 +54,16 @@ class Invoice extends Model
     public function client()
     {
         return $this->belongsTo(Customer::class, 'client_id');
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function representative()
+    {
+        return $this->belongsTo(User::class, 'representative_id');
     }
 
     /**

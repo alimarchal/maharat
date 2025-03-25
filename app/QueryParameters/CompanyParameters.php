@@ -11,6 +11,8 @@ class CompanyParameters
         'city',
         'business_category',
         'zatca_environment',
+        'vat_no',
+        'currency_id',
     ];
 
     public const ALLOWED_SORTS = [
@@ -25,5 +27,6 @@ class CompanyParameters
         'users',
         'departments',
         'branches',
+        'currency',
     ];
 }

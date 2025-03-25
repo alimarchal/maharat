@@ -86,7 +86,7 @@ class CompanyController extends Controller
     public function show(string $id): JsonResponse
     {
         $company = QueryBuilder::for(Company::class)
-            ->allowedIncludes(CompanyParameters::ALLOWED_INCLUDES)
+            ->allowedIncludes([...CompanyParameters::ALLOWED_INCLUDES, 'currency'])
             ->findOrFail($id);
 
         return response()->json([
@@ -173,6 +173,38 @@ class CompanyController extends Controller
                 'message' => 'Failed to delete company',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function getPrimaryCompany(): JsonResponse
+    {
+        try {
+            $company = Company::find(1);
+            
+            // If no company exists, return default values
+            if (!$company) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'name' => 'MAHARAT',
+                        'address' => 'Riyadh, Saudi Arabia',
+                        'contact_number' => '+966 123 456 789',
+                        'vat_no' => '123456789',
+                        'cr_no' => '0345'
+                    ]
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => new CompanyResource($company)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch company details',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 }

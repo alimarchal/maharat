@@ -14,6 +14,8 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
+use Spatie\QueryBuilder\AllowedFilter;
+use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
 {
@@ -73,9 +75,11 @@ class InvoiceController extends Controller
     public function index(): JsonResponse|ResourceCollection
     {
         $invoices = QueryBuilder::for(Invoice::class)
-            ->allowedFilters(InvoiceParameters::ALLOWED_FILTERS)
-            ->allowedSorts(InvoiceParameters::ALLOWED_SORTS)
-            ->allowedIncludes(InvoiceParameters::ALLOWED_INCLUDES)
+            ->allowedFilters([
+                AllowedFilter::exact('status'),
+                // Add other filters if needed
+            ])
+            ->allowedIncludes(['client', 'vendor'])
             ->paginate()
             ->appends(request()->query());
 
@@ -89,97 +93,148 @@ class InvoiceController extends Controller
         return InvoiceResource::collection($invoices);
     }
 
-    public function store(StoreInvoiceRequest $request): JsonResponse
+    public function store(Request $request)
     {
+        $validated = $request->validate([
+            'invoice_number' => 'required|unique:invoices',
+            'client_id' => 'required|exists:customers,id',
+            'company_id' => 'required|exists:companies,id',
+            'status' => 'required|in:Draft,Pending,Paid,Overdue,Cancelled',
+            'payment_method' => 'nullable|string',
+            'representative' => 'nullable|string',  
+            'issue_date' => 'required|date',
+            'due_date' => 'nullable|date|after_or_equal:issue_date',
+            'vat_rate' => 'required|numeric|min:0', 
+            'subtotal' => 'required|numeric',
+            'tax_amount' => 'nullable|numeric',
+            'discount_amount' => 'nullable|numeric',  
+            'total_amount' => 'required|numeric',
+            'currency' => 'required|string|size:3',
+        ]);
+
         try {
-            DB::beginTransaction();
-
-            // Get validated data
-            $validatedData = $request->validated();
-
-            // Ensure numeric fields are properly cast
-            $numericFields = ['total_amount', 'subtotal', 'tax_amount',  'client_id'];
-            foreach ($numericFields as $field) {
-                if (isset($validatedData[$field])) {
-                    $validatedData[$field] = is_string($validatedData[$field])
-                        ? (float) $validatedData[$field]
-                        : $validatedData[$field];
-                }
-            }
-
-            // Add invoice number
-            $validatedData['invoice_number'] = $this->generateInvoiceNumber();
-
-            // Create invoice
-            $invoice = Invoice::create($validatedData);
-
-            DB::commit();
-
-            return response()->json([
-                'message' => 'Invoice created successfully',
-                'data' => new InvoiceResource($invoice->fresh())
-            ], Response::HTTP_CREATED);
-
+            $invoice = Invoice::create($validated);
+            return new InvoiceResource($invoice);
         } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Invoice creation error: ' . $e->getMessage());
-
             return response()->json([
                 'message' => 'Failed to create invoice',
                 'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], 500);
         }
     }
 
     public function show(string $id): JsonResponse
     {
-        $invoice = QueryBuilder::for(Invoice::class)
-            ->allowedIncludes(InvoiceParameters::ALLOWED_INCLUDES)
-            ->findOrFail($id);
+        try {
+            $invoice = Invoice::with(['company', 'items' => function($query) {
+                $query->select('id', 'invoice_id', 'name', 'description', 'quantity', 'unit_price', 'subtotal');
+            }])->findOrFail($id);
 
-        return response()->json([
-            'data' => new InvoiceResource($invoice)
-        ], Response::HTTP_OK);
+            return response()->json([
+                'data' => [
+                    'id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'client_id' => $invoice->client_id,
+                    'company_id' => $invoice->company_id,
+                    'company' => $invoice->company,
+                    'status' => $invoice->status,
+                    'payment_method' => $invoice->payment_method,
+                    'representative_id' => $invoice->representative_id,
+                    'representative_email' => $invoice->representative_email,
+                    'issue_date' => $invoice->issue_date,
+                    'due_date' => $invoice->due_date,
+                    'discounted_days' => $invoice->discounted_days,
+                    'vat_rate' => $invoice->vat_rate,
+                    'subtotal' => $invoice->subtotal,
+                    'tax_amount' => $invoice->tax_amount,
+                    'discount_amount' => $invoice->discount_amount,
+                    'total_amount' => $invoice->total_amount,
+                    'currency' => $invoice->currency,
+                    'notes' => $invoice->notes,
+                    'items' => $invoice->items->map(function($item) {
+                        return [
+                            'id' => $item->id,
+                            'name' => $item->name,
+                            'description' => $item->description,
+                            'quantity' => $item->quantity,
+                            'unit_price' => $item->unit_price,
+                            'subtotal' => $item->subtotal
+                        ];
+                    })
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch invoice',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
-    public function update(UpdateInvoiceRequest $request, Invoice $invoice): JsonResponse
+
+    public function update(Request $request, Invoice $invoice)
     {
         try {
+            $validated = $request->validate([
+                'issue_date' => 'required|date',
+                'payment_method' => 'nullable|string',
+                'vat_rate' => 'required|numeric|min:0',
+                'company_id' => 'required|exists:companies,id',
+                'client_id' => 'nullable|exists:customers,id',
+                'representative_id' => 'nullable|string',
+                'subtotal' => 'required|numeric|min:0',
+                'discount_amount' => 'nullable|numeric|min:0',
+                'tax_amount' => 'required|numeric|min:0',
+                'total_amount' => 'required|numeric|min:0',
+                'status' => 'required|in:Draft,Pending,Paid,Overdue,Cancelled',
+                'currency' => 'required|string|size:3',
+                'items' => 'required|array',
+                'items.*.name' => 'required|string',
+                'items.*.description' => 'nullable|string',
+                'items.*.quantity' => 'required|numeric|min:0',
+                'items.*.unit_price' => 'required|numeric|min:0',
+                'items.*.subtotal' => 'required|numeric|min:0',
+                'items.*.tax_rate' => 'required|numeric|min:0',
+                'items.*.tax_amount' => 'required|numeric|min:0',
+                'items.*.total' => 'required|numeric|min:0'
+            ]);
+
             DB::beginTransaction();
 
-            // Get validated data
-            $validatedData = $request->validated();
+            // Remove items field before updating invoice
+            $invoiceData = collect($validated)->except('items')->toArray();
+            $invoice->update($invoiceData);
 
-            // Ensure numeric fields are properly cast
-            $numericFields = ['total_amount', 'subtotal', 'tax_amount', 'client_id'];
-            foreach ($numericFields as $field) {
-                if (isset($validatedData[$field])) {
-                    $validatedData[$field] = is_string($validatedData[$field])
-                        ? (float) $validatedData[$field]
-                        : $validatedData[$field];
-                }
+            // Update items
+            $invoice->items()->delete(); // Remove old items
+            foreach ($validated['items'] as $item) {
+                $invoice->items()->create([
+                    'name' => $item['name'],
+                    'description' => $item['description'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'subtotal' => $item['subtotal'],
+                    'tax_rate' => $item['tax_rate'],
+                    'tax_amount' => $item['tax_amount'],
+                    'total' => $item['total']
+                ]);
             }
-
-            // Update invoice
-            $invoice->update($validatedData);
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Invoice updated successfully',
-                'data' => new InvoiceResource($invoice->fresh())
-            ], Response::HTTP_OK);
-
+                'data' => $invoice->load('items')
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Invoice update error: ' . $e->getMessage());
-
             return response()->json([
                 'message' => 'Failed to update invoice',
                 'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], 500);
         }
     }
+
 
     public function destroy(Invoice $invoice): JsonResponse
     {
@@ -263,5 +318,20 @@ class InvoiceController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    protected function validateInvoice(Request $request)
+    {
+        return $request->validate([
+            'issue_date' => 'required|date',
+            'payment_method' => 'required|string',
+            'vat_rate' => 'required|numeric|min:0',
+            'company_id' => 'required|exists:companies,id',
+            'representative_id' => 'required|exists:users,id',
+            'subtotal' => 'required|numeric|min:0',
+            'discount_amount' => 'required|numeric|min:0',
+            'tax_amount' => 'required|numeric|min:0',
+            'total_amount' => 'required|numeric|min:0',
+        ]);
     }
 }
