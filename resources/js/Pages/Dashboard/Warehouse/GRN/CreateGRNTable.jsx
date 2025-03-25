@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPaperclip, faPlus } from "@fortawesome/free-solid-svg-icons";
+import CreateGRNModal from "./CreateGRNModal";
 
 const CreateGRNTable = () => {
     const [orders, setOrders] = useState([]);
@@ -8,6 +9,8 @@ const CreateGRNTable = () => {
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedGRNs, setSelectedGRNs] = useState(null);
 
     useEffect(() => {
         const fetchPurchaseOrders = async () => {
@@ -113,7 +116,13 @@ const CreateGRNTable = () => {
                                     )}
                                 </td>
                                 <td className="py-3 px-4 flex justify-center text-center">
-                                    <button className="flex items-center justify-center w-6 h-6 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200">
+                                    <button
+                                        className="flex items-center justify-center w-6 h-6 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200"
+                                        onClick={() => {
+                                            setSelectedGRNs(order);
+                                            setIsModalOpen(true);
+                                        }}
+                                    >
                                         <FontAwesomeIcon icon={faPlus} />
                                     </button>
                                 </td>
@@ -131,6 +140,16 @@ const CreateGRNTable = () => {
                     )}
                 </tbody>
             </table>
+
+            {/* Render the modal */}
+            <CreateGRNModal
+                isOpen={isModalOpen}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setSelectedGRNs(null);
+                }}
+                grnsData={selectedGRNs}
+            />
         </div>
     );
 };

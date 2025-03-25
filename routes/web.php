@@ -129,9 +129,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/goods-receiving-notes/create', function () {
         return Inertia::render('Dashboard', ['page' => 'Warehouse/GRN/CreateGRNTable']);
     })->name('grns.create');
-    Route::get('/goods-receiving-notes/receive-goods/add-goods', function () {
-        return Inertia::render('Dashboard', ['page' => 'Warehouse/GRN/AddGoods']);
-    })->name('addGoods.index');
 
     Route::get('/doc-status', function () { return Inertia::render('Dashboard/Reports/Statuses'); })->name('doc-status');
 
