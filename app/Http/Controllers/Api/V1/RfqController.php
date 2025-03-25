@@ -45,7 +45,7 @@ class RfqController extends Controller
     public function show(string $id)
     {
         try {
-            Log::info("Fetching RFQ with ID: $id");
+            // Log::info("Fetching RFQ with ID: $id");
 
             // Find the RFQ with all necessary relationships
             $rfq = Rfq::with([
@@ -55,7 +55,8 @@ class RfqController extends Controller
                 'warehouse',
                 'requester',
                 'paymentType',
-                'categories'
+                'categories',
+                'items.product',
             ])->findOrFail($id);
 
             // Get category info for this RFQ
@@ -130,8 +131,6 @@ class RfqController extends Controller
 
     public function store(Request $request)
     {
-        Log::info('RFQ Creation request received');
-        Log::info('Request data:', $request->except(['attachments'])); // Log everything except file data
 
         DB::beginTransaction();
         try {
@@ -154,8 +153,6 @@ class RfqController extends Controller
                 'updated_at' => now()
             ];
 
-            Log::info('Creating RFQ with data:', $rfqData);
-
             // Insert RFQ directly with query builder
             $rfqId = DB::table('rfqs')->insertGetId($rfqData);
 
@@ -163,7 +160,6 @@ class RfqController extends Controller
                 throw new \Exception("Failed to create RFQ record");
             }
 
-            Log::info("RFQ created with ID: $rfqId");
 
             // Only attach category if it's a valid ID
             $categoryId = $request->input('category_id');
@@ -193,6 +189,7 @@ class RfqController extends Controller
                         // Build item data
                         $itemData = [
                             'rfq_id' => $rfqId,
+                            'product_id' => $item['product_id'] ?? null,
                             'item_name' => $item['item_name'] ?? null,
                             'description' => $item['description'] ?? null,
                             'unit_id' => $item['unit_id'] ?? null,
@@ -224,11 +221,8 @@ class RfqController extends Controller
                             return $value !== null;
                         });
 
-                        Log::info("Creating RFQ item for RFQ ID: $rfqId", $itemData);
-
                         // Direct DB insert
                         $itemId = DB::table('rfq_items')->insertGetId($itemData);
-                        Log::info("Item created with ID: $itemId");
 
                     } catch (\Exception $itemException) {
                         Log::error("Error creating item: " . $itemException->getMessage());
@@ -280,8 +274,6 @@ class RfqController extends Controller
 
     public function update(Request $request, $id)
     {
-        Log::info("RFQ Update request received for ID: $id");
-        Log::info('Request data:', $request->except(['attachments']));
 
         // First verify the RFQ exists
         $rfq = Rfq::findOrFail($id);
@@ -306,7 +298,6 @@ class RfqController extends Controller
             // Remove null/empty values
             $updateData = array_filter($updateData, fn($value) => $value !== null && $value !== '');
 
-            Log::info('Updating RFQ with data:', $updateData);
 
             // Update RFQ record
             $rfq->update($updateData);
@@ -314,7 +305,6 @@ class RfqController extends Controller
             // Process category update
             $categoryId = $request->input('category_id');
             if (!empty($categoryId)) {
-                Log::info("Updating category for RFQ ID: $id to category ID: $categoryId");
 
                 // Delete existing category records
                 DB::table('rfq_categories')->where('rfq_id', $id)->delete();
@@ -336,6 +326,7 @@ class RfqController extends Controller
                     try {
                         $itemData = [
                             'rfq_id' => $id,
+                            'product_id' => $item['product_id'] ?? null,
                             'item_name' => $item['item_name'] ?? null,
                             'description' => $item['description'] ?? null,
                             'unit_id' => $item['unit_id'] ?? null,
