@@ -3,9 +3,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCamera, faTimes } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import { router } from "@inertiajs/react";
+import InputFloating from "../../../../Components/InputFloating";
 
 const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
     const [formData, setFormData] = useState({
+        delivery_note_number: "",
         attachment: "",
     });
     const [rfqItems, setRFQItems] = useState([]);
@@ -38,6 +40,11 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
     }, [isOpen, grnsData]);
 
     const currentDate = new Date().toISOString().split("T")[0];
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+        setError({ ...error, [e.target.name]: "" });
+    };
 
     const handleQuantityChange = (e, itemId) => {
         const { value } = e.target;
@@ -72,6 +79,11 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
             }
         });
 
+        if (!formData.delivery_note_number) {
+            newErrors.delivery_note_number =
+                "Delivery Note Number is required.";
+            isValid = false;
+        }
         if (!formData.attachment) {
             newErrors.attachment = "Photo is required.";
             isValid = false;
@@ -87,21 +99,23 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
 
         setLoading(true);
         try {
+            const totalDeliveredQuantity = rfqItems.reduce((sum, item) => {
+                const deliveredQty = parseInt(quantityDelivered[item.id]) || 0;
+                return sum + deliveredQty;
+            }, 0);
+
+            const grnsPayload = {
+                purchase_order_id: grnsData.id,
+                quotation_id: grnsData.quotation_id,
+                delivery_date: currentDate,
+                quantity: totalDeliveredQuantity,
+            };
+            const grnResponse = await axios.post("/api/v1/grns", grnsPayload);
+            const grnId = grnResponse.data.data?.id;
+
             for (const item of rfqItems) {
                 const deliveredQty = quantityDelivered[item.id];
                 if (parseInt(deliveredQty) > 0) {
-                    const grnsPayload = {
-                        purchase_order_id: grnsData.id,
-                        quotation_id: grnsData.quotation_id,
-                        delivery_date: currentDate,
-                        quantity: deliveredQty,
-                    };
-                    const grnResponse = await axios.post(
-                        "/api/v1/grns",
-                        grnsPayload
-                    );
-                    const grnId = grnResponse.data.id;
-
                     const grnsGoodsPayload = {
                         supplier_id: grnsData.supplier_id,
                         grn_id: grnId,
@@ -118,35 +132,43 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                         "/api/v1/grn-receive-goods",
                         grnsGoodsPayload
                     );
-
-                    // const deliverNoteResponse = {
-                    //     ...formData,
-                    //     grn_id: grnId,
-                    //     purchase_order_id: grnsData.id,
-                    //     delivery_note_number: "123",
-                    // };
-                    // await axios.post(
-                    //     `/api/v1/external-delivery-notes`,
-                    //     deliverNoteResponse
-                    // );
-
-                    // const inventoryPayload = {
-                    //     warehouse_id: 101,
-                    //     quantity: item.quantity,
-                    //     reorder_level: 10,
-                    //     description: "Stock in from supplier",
-                    //     reference_number: "PO-2025-0031",
-                    //     reference_type: "purchase_order",
-                    //     reference_id: "1",
-                    //     notes: "Regular stock replenishment",
-                    // };
-
-                    // await axios.post(
-                    //     `/api/v1/inventories/product/${grnsData.id}/stock-in`,
-                    //     inventoryPayload
-                    // );
                 }
             }
+
+            const formDataToSend = new FormData();
+            formDataToSend.append(
+                "delivery_note_number",
+                formData.delivery_note_number
+            );
+            formDataToSend.append("grn_id", grnId);
+            formDataToSend.append("purchase_order_id", grnsData.id);
+            formDataToSend.append("attachment", formData.attachment);
+
+            await axios.post(
+                "/api/v1/external-delivery-notes",
+                formDataToSend,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                }
+            );
+
+            // const inventoryPayload = {
+            //     warehouse_id: 101,
+            //     quantity: item.quantity,
+            //     reorder_level: 10,
+            //     description: "Stock in from supplier",
+            //     reference_number: "PO-2025-0031",
+            //     reference_type: "purchase_order",
+            //     reference_id: "1",
+            //     notes: "Regular stock replenishment",
+            // };
+
+            // await axios.post(
+            //     `/api/v1/inventories/product/${grnsData.id}/stock-in`,
+            //     inventoryPayload
+            // );
 
             const purchaseOrderPayload = {
                 has_good_receive_note: true,
@@ -284,27 +306,44 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                 </table>
 
                 <form className="my-6">
-                    <label className="border p-4 rounded-2xl bg-white w-full flex items-center justify-center cursor-pointer relative">
-                        <FontAwesomeIcon
-                            icon={faCamera}
-                            className="text-gray-500 mr-2"
-                        />
-                        <span className="text-gray-700 text-sm sm:text-base overflow-hidden text-ellipsis max-w-[80%]">
-                            {formData.attachment?.name || "Add a Photo"}
-                        </span>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileChange}
-                            className="hidden"
-                        />
-                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <InputFloating
+                                label="Delivery Note Number"
+                                name="delivery_note_number"
+                                value={formData.delivery_note_number}
+                                onChange={handleChange}
+                            />
+                            {error.delivery_note_number && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {error.delivery_note_number}
+                                </p>
+                            )}
+                        </div>
+                        <div>
+                            <label className="border p-5 rounded-2xl bg-white w-full flex items-center justify-center cursor-pointer relative">
+                                <FontAwesomeIcon
+                                    icon={faCamera}
+                                    className="text-gray-500 mr-2"
+                                />
+                                <span className="text-gray-700 text-sm sm:text-base overflow-hidden text-ellipsis max-w-[80%]">
+                                    {formData.attachment?.name || "Add a Photo"}
+                                </span>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                />
+                            </label>
 
-                    {error.attachment && (
-                        <p className="text-red-500 text-sm mt-2">
-                            {error.attachment}
-                        </p>
-                    )}
+                            {error.attachment && (
+                                <p className="text-red-500 text-sm mt-2">
+                                    {error.attachment}
+                                </p>
+                            )}
+                        </div>
+                    </div>
                 </form>
 
                 <div className="flex justify-end space-x-3 mt-6">
