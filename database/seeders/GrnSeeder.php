@@ -52,7 +52,7 @@ class GrnSeeder extends Seeder
             for ($i = 1; $i <= 3; $i++) {
                 $grns[] = [
                     'user_id' => $i,
-                    'grn_number' => 'GRN-' . date('Y') . '-' . str_pad($i, 5, '0', STR_PAD_LEFT),
+                    'grn_number' => 'GRN-' . date('Y') . '-' . str_pad($i, 8, '0', STR_PAD_LEFT),
                     'quotation_id' => $quotationIds[array_rand($quotationIds)],
                     'purchase_order_id' => $purchaseOrderIds[array_rand($purchaseOrderIds)],
                     'quantity' => rand(50, 100),
