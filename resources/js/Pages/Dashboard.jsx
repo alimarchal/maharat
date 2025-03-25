@@ -52,8 +52,6 @@ import CreateSuppliers from "./Dashboard/Suppliers/CreateSuppliers";
 import RequestBudgetTable from "./Dashboard/BudgetAndAccounts/RequestABudget/RequestBudgetTable";
 import InventoryTable from "./Dashboard/Warehouse/Inventory/InventoryTable";
 import GRNTable from "./Dashboard/Warehouse/GRN/GRNTable";
-import ReceiveGoods from "./Dashboard/Warehouse/GRN/ReceiveGoods";
-import AddItemsToInventory from "./Dashboard/Warehouse/GRN/AddGoods";
 import CreateGRNTable from "./Dashboard/Warehouse/GRN/CreateGRNTable";
 
 export default function Dashboard({ auth, page }) {
@@ -136,8 +134,6 @@ export default function Dashboard({ auth, page }) {
             return <InventoryTable />;
         if (page === "Warehouse/GRN/GRNTable") return <GRNTable />;
         if (page === "Warehouse/GRN/CreateGRNTable") return <CreateGRNTable />;
-        if (page === "Warehouse/GRN/ReceiveGoods") return <ReceiveGoods />;
-        if (page === "Warehouse/GRN/AddGoods") return <AddItemsToInventory />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };
