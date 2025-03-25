@@ -6,7 +6,7 @@ class InvoiceParameters
 {
     public const ALLOWED_FILTERS = [
         'invoice_number',
-        'representative',
+        'representative_id',
         'representative_email',
         'client_id',
         'company_id',

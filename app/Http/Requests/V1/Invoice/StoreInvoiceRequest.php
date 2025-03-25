@@ -18,7 +18,7 @@ class StoreInvoiceRequest extends FormRequest
             'company_id' => ['required', 'exists:companies,id'],
             'status' => ['required', 'string', 'in:Draft,Pending,Paid,Overdue,Cancelled'],
             'payment_method' => ['nullable', 'string'],
-            'representative' => ['nullable', 'string'],  
+            'representative_id' => ['nullable', 'string'],  
             'representative_email' => ['nullable', 'email'],  
             'issue_date' => ['required', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:issue_date'],

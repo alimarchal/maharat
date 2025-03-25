@@ -125,14 +125,52 @@ class InvoiceController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $invoice = QueryBuilder::for(Invoice::class)
-            ->allowedIncludes(InvoiceParameters::ALLOWED_INCLUDES)
-            ->findOrFail($id);
+        try {
+            $invoice = Invoice::with(['company', 'items' => function($query) {
+                $query->select('id', 'invoice_id', 'name', 'description', 'quantity', 'unit_price', 'subtotal');
+            }])->findOrFail($id);
 
-        return response()->json([
-            'data' => new InvoiceResource($invoice)
-        ], Response::HTTP_OK);
+            return response()->json([
+                'data' => [
+                    'id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'client_id' => $invoice->client_id,
+                    'company_id' => $invoice->company_id,
+                    'company' => $invoice->company,
+                    'status' => $invoice->status,
+                    'payment_method' => $invoice->payment_method,
+                    'representative_id' => $invoice->representative_id,
+                    'representative_email' => $invoice->representative_email,
+                    'issue_date' => $invoice->issue_date,
+                    'due_date' => $invoice->due_date,
+                    'discounted_days' => $invoice->discounted_days,
+                    'vat_rate' => $invoice->vat_rate,
+                    'subtotal' => $invoice->subtotal,
+                    'tax_amount' => $invoice->tax_amount,
+                    'discount_amount' => $invoice->discount_amount,
+                    'total_amount' => $invoice->total_amount,
+                    'currency' => $invoice->currency,
+                    'notes' => $invoice->notes,
+                    'items' => $invoice->items->map(function($item) {
+                        return [
+                            'id' => $item->id,
+                            'name' => $item->name,
+                            'description' => $item->description,
+                            'quantity' => $item->quantity,
+                            'unit_price' => $item->unit_price,
+                            'subtotal' => $item->subtotal
+                        ];
+                    })
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch invoice',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
+
 
     public function update(Request $request, Invoice $invoice)
     {

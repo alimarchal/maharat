@@ -4,7 +4,7 @@ import { router, usePage } from "@inertiajs/react";
 
 export default function CreateMaharatInvoice() {
     const { invoiceId } = usePage().props;
-    const [customers, setCustomers] = useState([]);
+    const [companies, setCompanies] = useState([]);
     const [formData, setFormData] = useState({
         company_id: "",
         representative: "",
@@ -43,8 +43,17 @@ export default function CreateMaharatInvoice() {
         address: '',
         contact_number: '',
         vat_no: '',
-        cr_no: ''
+        cr_no: '',
+        account_name: '',
+        account_no: '',
+        currency: '',
+        license_no: '',
+        iban: '',
+        bank: '',
+        branch: '',
+        swift: ''
     });
+    const [users, setUsers] = useState([]);
 
     useEffect(() => {
         setItemErrors(formData.items.map(() => ({})));
@@ -52,9 +61,9 @@ export default function CreateMaharatInvoice() {
     }, []);
 
     useEffect(() => {
-        fetchCustomers();
+        fetchCompanies();
         fetchPaymentMethods();
-        fetchCompanyDetails();
+        fetchUsers();
         
         if (invoiceId) {
             console.log('Edit mode - Invoice ID:', invoiceId);
@@ -66,13 +75,13 @@ export default function CreateMaharatInvoice() {
         }
     }, [invoiceId]);
 
-    const fetchCustomers = async () => {
+    const fetchCompanies = async () => {
         try {
-            const response = await axios.get("/api/v1/customers");
-            console.log(response.data.data);
-            setCustomers(response.data.data);
+            const response = await axios.get("/api/v1/companies");
+            console.log("Companies data:", response.data.data);
+            setCompanies(response.data.data);
         } catch (error) {
-            console.error("Error fetching customers:", error);
+            console.error("Error fetching companies:", error);
         }
     };
 
@@ -106,64 +115,79 @@ export default function CreateMaharatInvoice() {
         }
     };
 
+    const fetchUsers = async () => {
+        try {
+            const response = await axios.get("/api/v1/users");
+            setUsers(response.data.data);
+        } catch (error) {
+            console.error("Error fetching users:", error);
+        }
+    };
+
     const fetchInvoiceData = async () => {
         try {
             const response = await axios.get(`/api/v1/invoices/${invoiceId}`);
             const invoice = response.data.data;
-            
-            if (!invoice) {
-                console.error('No invoice data found');
-                return;
-            }
+            console.log('Received invoice data:', invoice);
 
-            console.log('Fetched invoice data:', invoice);
+            // Format the date from the API response (YYYY-MM-DDTHH:mm:ss.SSSSSSZ)
+            const formattedDate = invoice.issue_date ? invoice.issue_date.split('T')[0] : '';
 
+            // Set invoice number
             setInvoiceNumber(invoice.invoice_number);
 
+            // Set form data with invoice details
             setFormData(prevData => ({
                 ...prevData,
-                company_id: invoice.client_id || '',
-                invoice_date: invoice.issue_date || '',
+                company_id: invoice.company_id || '',
+                representative: invoice.representative_id || '',
+                address: invoice.company?.address || '',
+                cr_no: invoice.company?.cr_no || '',
+                vat_no: invoice.company?.vat_no || '',
+                email: invoice.company?.email || '',
+                mobile: invoice.company?.contact_number || '',
+                invoice_date: formattedDate,
                 payment_terms: invoice.payment_method || '',
-                vat_rate: invoice.tax_rate?.toString() || "15",
-                vat_amount: invoice.tax_amount?.toString() || "0.00",
-                subtotal: invoice.subtotal?.toString() || "0.00",
-                total: invoice.total_amount?.toString() || "0.00",
-                discount: invoice.discount_amount?.toString() || "0",
-                items: invoice.items?.map(item => ({
-                    item_id: item.name || "",
-                    description: item.description || "",
-                    quantity: item.quantity?.toString() || "",
-                    unit_price: item.unit_price?.toString() || "",
-                    subtotal: item.subtotal?.toString() || "0.00"
-                })) || [
-                    {
-                        item_id: "",
-                        description: "",
-                        quantity: "",
-                        unit_price: "",
-                        subtotal: "0.00"
-                    }
-                ]
+                vat_rate: invoice.vat_rate || '',
+                vat_amount: invoice.tax_amount || '',
+                subtotal: invoice.subtotal || '0.00',
+                total: invoice.total_amount || '0.00',
+                discount: invoice.discount_amount || '0',
+                items: invoice.items?.length > 0 ? invoice.items.map(item => ({
+                    id: item.id,
+                    item_id: item.name,
+                    description: item.description,
+                    quantity: item.quantity.toString(),
+                    unit_price: item.unit_price.toString(),
+                    subtotal: item.subtotal.toString()
+                })) : [{
+                    item_id: "",
+                    description: "",
+                    quantity: "",
+                    unit_price: "",
+                    subtotal: ""
+                }]
             }));
 
-            if (invoice.client_id) {
-                const customerResponse = await axios.get(`/api/v1/customers/${invoice.client_id}`);
-                const customer = customerResponse.data.data;
-                if (customer) {
-                    setFormData(prevData => ({
-                        ...prevData,
-                        representative: customer.account_name || "",
-                        address: customer.city || "",
-                        cr_no: customer.commercial_registration_number || "",
-                        vat_no: customer.tax_number || "",
-                        mobile: customer.contact_number || "",
-                        email: customer.email || "",
-                    }));
-                }
+            // Set company details
+            if (invoice.company) {
+                setCompanyDetails({
+                    name: invoice.company.name || '',
+                    address: invoice.company.address || '',
+                    contact_number: invoice.company.contact_number || '',
+                    vat_no: invoice.company.vat_no || '',
+                    cr_no: invoice.company.cr_no || '',
+                    account_name: invoice.company.account_name || '',
+                    account_no: invoice.company.account_no || '',
+                    currency: invoice.company.currency?.name || '',
+                    license_no: invoice.company.license_no || '',
+                    iban: invoice.company.iban || '',
+                    bank: invoice.company.bank || '',
+                    branch: invoice.company.branch || '',
+                    swift: invoice.company.swift || ''
+                });
             }
 
-            setIsEditMode(true);
         } catch (error) {
             console.error('Error fetching invoice data:', error);
             setErrors({ fetch: 'Failed to load invoice data' });
@@ -191,6 +215,42 @@ export default function CreateMaharatInvoice() {
         }
     };
 
+    const fetchCompanyDetailsById = async (companyId) => {
+        try {
+            const response = await axios.get(`/api/v1/companies/${companyId}?include=currency`);
+            const company = response.data.data;
+            
+            if (company) {
+                setFormData(prevData => ({
+                    ...prevData,
+                    address: company.address || "",
+                    cr_no: company.cr_no || "",
+                    vat_no: company.vat_no || "",
+                    mobile: company.contact_number || "",
+                    email: company.email || "",
+                }));
+
+                setCompanyDetails({
+                    name: company.name || '',
+                    address: company.address || '',
+                    contact_number: company.contact_number || '',
+                    vat_no: company.vat_no || '',
+                    cr_no: company.cr_no || '',
+                    account_name: company.account_name || '',
+                    account_no: company.account_no || '',
+                    currency: company.currency?.name || '',
+                    license_no: company.license_no || '',
+                    iban: company.iban || '',
+                    bank: company.bank || '',
+                    branch: company.branch || '',
+                    swift: company.swift || ''
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching company details:', error);
+        }
+    };
+
     const handleBlur = (field) => {
         setTouched((prev) => ({
             ...prev,
@@ -210,23 +270,40 @@ export default function CreateMaharatInvoice() {
         validateItemField(index, field);
     };
 
-    const handleCompanyChange = (event) => {
-        const selectedCompanyId = Number(event.target.value);
-        const selectedCompany = customers.find(
-            (c) => c.id === selectedCompanyId
-        );
+    const handleCompanyChange = async (companyId) => {
+        try {
+            const response = await axios.get(`/api/v1/companies/${companyId}?include=currency`);
+            const company = response.data.data;
+            
+            if (company) {
+                setFormData(prevData => ({
+                    ...prevData,
+                    company_id: company.id,
+                    address: company.address || "",
+                    cr_no: company.cr_no || "",
+                    vat_no: company.vat_no || "",
+                    mobile: company.contact_number || "",
+                    email: company.email || "",
+                }));
 
-        if (selectedCompany) {
-            setFormData({
-                ...formData,
-                company_id: selectedCompanyId,
-                representative: selectedCompany.account_name || "",
-                address: selectedCompany.city || "",
-                cr_no: selectedCompany.commercial_registration_number || "",
-                vat_no: selectedCompany.tax_number || "",
-                mobile: selectedCompany.contact_number || "",
-                email: selectedCompany.email || "",
-            });
+                setCompanyDetails({
+                    name: company.name || '',
+                    address: company.address || '',
+                    contact_number: company.contact_number || '',
+                    vat_no: company.vat_no || '',
+                    cr_no: company.cr_no || '',
+                    account_name: company.account_name || '',
+                    account_no: company.account_no || '',
+                    currency: company.currency?.name || '',
+                    license_no: company.license_no || '',
+                    iban: company.iban || '',
+                    bank: company.bank || '',
+                    branch: company.branch || '',
+                    swift: company.swift || ''
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching company details:', error);
         }
     };
 
@@ -358,54 +435,32 @@ export default function CreateMaharatInvoice() {
         return isValid && Object.keys(validationErrors).length === 0;
     };
 
-    const handleInputChange = (e, index = null) => {
+    const handleInputChange = (e) => {
         const { name, value } = e.target;
+        
+        setFormData(prevData => ({
+            ...prevData,
+            [name]: value
+        }));
 
-        if (index !== null) {
-            const updatedItems = [...formData.items];
-            if (!updatedItems[index]) return;
+        // Recalculate totals when VAT rate or discount changes
+        if (name === 'vat_rate' || name === 'discount') {
+            const subtotal = formData.items.reduce((sum, item) => {
+                return sum + (parseFloat(item.subtotal) || 0);
+            }, 0);
 
-            updatedItems[index][name] = value;
+            const vatRate = name === 'vat_rate' ? (parseFloat(value) || 0) : (parseFloat(formData.vat_rate) || 0);
+            const discount = name === 'discount' ? (parseFloat(value) || 0) : (parseFloat(formData.discount) || 0);
 
-            if (["quantity", "unit_price"].includes(name)) {
-                const quantity = Number(updatedItems[index].quantity) || 0;
-                const unitPrice = Number(updatedItems[index].unit_price) || 0;
-                const subtotal = (quantity * unitPrice).toFixed(2);
-                updatedItems[index].subtotal = subtotal;
-            }
+            const vatAmount = (subtotal * vatRate) / 100;
+            const total = Math.max(subtotal + vatAmount - discount, 0);
 
-            setFormData((prev) => ({
-                ...prev,
-                items: updatedItems,
+            setFormData(prevData => ({
+                ...prevData,
+                [name]: value,
+                vat_amount: vatAmount.toFixed(2),
+                total: total.toFixed(2)
             }));
-
-            updateSummary(updatedItems);
-
-            if (itemErrors[index] && itemErrors[index][name]) {
-                const newItemErrors = [...itemErrors];
-                delete newItemErrors[index][name];
-                setItemErrors(newItemErrors);
-            }
-
-            return;
-        }
-
-        setFormData((prev) => {
-            const updatedData = { ...prev, [name]: value };
-
-            if (name === "vat_rate" || name === "discount") {
-                updateSummary(prev.items, value, name);
-            }
-
-            return updatedData;
-        });
-
-        if (errors[name]) {
-            setErrors((prev) => {
-                const updated = { ...prev };
-                delete updated[name];
-                return updated;
-            });
         }
     };
 
@@ -429,7 +484,8 @@ export default function CreateMaharatInvoice() {
         setItemErrors((prev) => [...prev, {}]);
         setItemTouched((prev) => [...prev, {}]);
 
-        updateSummary(updatedItems);
+        // Recalculate totals with new empty row
+        calculateTotals(updatedItems);
     };
 
     const removeItemRow = (index) => {
@@ -447,40 +503,36 @@ export default function CreateMaharatInvoice() {
         setItemErrors(updatedItemErrors);
         setItemTouched(updatedItemTouched);
 
-        updateSummary(updatedItems);
+        // Recalculate totals after removing row
+        calculateTotals(updatedItems);
     };
 
-    const updateSummary = (
-        updatedItems,
-        newValue = null,
-        changedField = null
-    ) => {
-        let subtotal = updatedItems.reduce(
-            (sum, item) => sum + (parseFloat(item.subtotal) || 0),
-            0
-        );
+    const calculateTotals = (items) => {
+        // Calculate subtotal by summing up all item subtotals
+        const subtotal = items.reduce((sum, item) => {
+            const itemSubtotal = parseFloat(item.subtotal) || 0;
+            console.log('Item subtotal:', itemSubtotal); // Debug log
+            return sum + itemSubtotal;
+        }, 0);
+        
+        console.log('Total subtotal:', subtotal); // Debug log
 
-        let vatRate =
-            changedField === "vat_rate"
-                ? parseFloat(newValue) || 0
-                : parseFloat(formData.vat_rate) || 0;
+        // Get current VAT rate and discount
+        const vatRate = parseFloat(formData.vat_rate) || 0;
+        const discount = parseFloat(formData.discount) || 0;
 
-        let vatAmount = (subtotal * vatRate) / 100;
-        let totalBeforeDiscount = subtotal + vatAmount;
+        // Calculate VAT amount
+        const vatAmount = (subtotal * vatRate) / 100;
 
-        let discount =
-            changedField === "discount"
-                ? parseFloat(newValue) || 0
-                : parseFloat(formData.discount) || 0;
+        // Calculate final total
+        const total = Math.max(subtotal + vatAmount - discount, 0);
 
-        let finalTotal = totalBeforeDiscount - discount;
-        finalTotal = finalTotal > 0 ? finalTotal : 0;
-
-        setFormData((prevState) => ({
-            ...prevState,
+        // Update form data with new calculations
+        setFormData(prevData => ({
+            ...prevData,
             subtotal: subtotal.toFixed(2),
             vat_amount: vatAmount.toFixed(2),
-            total: finalTotal.toFixed(2),
+            total: total.toFixed(2)
         }));
     };
 
@@ -491,10 +543,12 @@ export default function CreateMaharatInvoice() {
         try {
             const payload = {
                 invoice_number: invoiceNumber,
-                client_id: formData.company_id,
+                company_id: formData.company_id,
+                representative_id: formData.representative,
                 payment_method: formData.payment_terms,
                 issue_date: formData.invoice_date,
-                tax_amount: formData.vat_rate,
+                vat_rate: formData.vat_rate,
+                vat_amount: formData.vat_amount,
                 subtotal: formData.subtotal,
                 discount_amount: formData.discount,
                 total_amount: formData.total,
@@ -504,8 +558,27 @@ export default function CreateMaharatInvoice() {
             let response;
             if (isEditMode) {
                 response = await axios.put(`/api/v1/invoices/${invoiceId}`, payload);
+                await axios.put(`/api/v1/invoices/${invoiceId}/items`, {
+                    items: formData.items.map(item => ({
+                        id: item.id,
+                        item_name: item.item_id,
+                        description: item.description,
+                        quantity: Number(item.quantity),
+                        unit_price: Number(item.unit_price),
+                        subtotal: Number(item.subtotal)
+                    }))
+                });
             } else {
                 response = await axios.post('/api/v1/invoices', payload);
+                await axios.post(`/api/v1/invoices/${response.data.data.id}/items`, {
+                    items: formData.items.map(item => ({
+                        item_name: item.item_id,
+                        description: item.description,
+                        quantity: Number(item.quantity),
+                        unit_price: Number(item.unit_price),
+                        subtotal: Number(item.subtotal)
+                    }))
+                });
                 await axios.post('/api/v1/mahrat-invoice-approval-trans', {
                     invoice_id: response.data.data.id,
                     status: 'Pending',
@@ -518,6 +591,27 @@ export default function CreateMaharatInvoice() {
                 general: "An error occurred while saving the invoice"
             });
         }
+    };
+
+    const handleItemChange = (index, field, value) => {
+        const updatedItems = [...formData.items];
+        updatedItems[index][field] = value;
+
+        // Calculate subtotal if quantity or unit_price changes
+        if (field === 'quantity' || field === 'unit_price') {
+            const quantity = parseFloat(updatedItems[index].quantity) || 0;
+            const unitPrice = parseFloat(updatedItems[index].unit_price) || 0;
+            updatedItems[index].subtotal = (quantity * unitPrice).toFixed(2);
+            console.log(`Row ${index + 1} subtotal:`, updatedItems[index].subtotal); // Debug log
+        }
+
+        setFormData(prevData => ({
+            ...prevData,
+            items: updatedItems
+        }));
+
+        // Recalculate all totals
+        calculateTotals(updatedItems);
     };
 
     return (
@@ -604,7 +698,7 @@ export default function CreateMaharatInvoice() {
                                     {paymentMethods.map((method) => (
                                         <option key={method} value={method}>
                                             {method}
-                                        </option>
+                                    </option>
                                     ))}
                                 </select>
                             </div>
@@ -642,13 +736,13 @@ export default function CreateMaharatInvoice() {
                                     }`}
                                 >
                                     <option value="">Select Company</option>
-                                    {customers && customers.length > 0 ? (
-                                        customers.map((customer) => (
+                                    {companies && companies.length > 0 ? (
+                                        companies.map((company) => (
                                             <option
-                                                key={customer.id}
-                                                value={customer.id}
+                                                key={company.id}
+                                                value={company.id}
                                             >
-                                                {customer.name}
+                                                {company.name}
                                             </option>
                                         ))
                                     ) : (
@@ -667,7 +761,22 @@ export default function CreateMaharatInvoice() {
 
                         <div className="flex justify-start items-center gap-2 mt-4">
                             <strong className="w-1/4">Representative:</strong>
-                            <p className="w-full">{formData.representative}</p>
+                            <div className="w-full">
+                                <select
+                                    id="representative"
+                                    name="representative"
+                                    value={formData.representative}
+                                    onChange={handleInputChange}
+                                    className="mt-1 block w-full rounded border-gray-300"
+                                >
+                                    <option value="">Select Representative</option>
+                                    {users.map((user) => (
+                                        <option key={user.id} value={user.id}>
+                                            {user.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         <div className="flex justify-start items-center gap-2 mt-4">
@@ -701,182 +810,88 @@ export default function CreateMaharatInvoice() {
 
             <div className="mt-8">
                 <h3 className="text-2xl font-bold mb-2">Invoice Items</h3>
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                        <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                <div className="w-full overflow-hidden">
+                    <table className="w-full">
+                        <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
                             <tr>
-                                <th className="p-3 rounded-tl-2xl rounded-bl-2xl w-[5%]">
-                                    SN
-                                </th>
-                                <th className="p-3 w-1/6">Item Name</th>
-                                <th className="p-3 w-1/3">Description</th>
-                                <th className="p-3 w-1/6">Qty</th>
-                                <th className="p-3 w-1/6">Unit Price</th>
-                                <th className="p-3 w-[10%]">Total</th>
-                                <th className="p-3 text-center rounded-tr-2xl rounded-br-2xl w-[8%]">
-                                    Action
-                                </th>
+                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center w-[60px]">S/N</th>
+                                <th className="py-3 px-4 text-center w-[180px]">Item Name</th>
+                                <th className="py-3 px-4 text-center w-[220px]">Description</th>
+                                <th className="py-3 px-4 text-center w-[100px]">Quantity</th>
+                                <th className="py-3 px-4 text-center w-[120px]">Unit Price</th>
+                                <th className="py-3 px-4 text-center w-[120px]">Total</th>
+                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center w-[80px]">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
+                        <tbody className="bg-transparent divide-y divide-gray-200">
                             {formData.items.map((item, index) => (
                                 <tr key={index}>
-                                    <td className="p-3">{index + 1}</td>
-                                    <td className="p-3">
-                                        <div>
-                                            <input
-                                                type="text"
-                                                id={`item_id_${index}`}
+                                    <td className="py-3 px-4 text-center">{index + 1}</td>
+                                    <td className="py-3 px-4">
+                                        <div className="min-w-[180px] max-w-[250px]">
+                                            <textarea
                                                 name="item_id"
                                                 value={item.item_id}
-                                                onChange={(e) =>
-                                                    handleInputChange(e, index)
-                                                }
-                                                onBlur={() =>
-                                                    handleItemBlur(
-                                                        index,
-                                                        "item_id"
-                                                    )
-                                                }
-                                                className={`block w-full rounded ${
-                                                    itemTouched[index]
-                                                        ?.item_id &&
-                                                    itemErrors[index]?.item_id
-                                                        ? "border-red-500"
-                                                        : "border-gray-300"
-                                                }`}
-                                                placeholder="Item Name"
+                                                onChange={(e) => handleItemChange(index, 'item_id', e.target.value)}
+                                                className="w-full text-center bg-transparent border-none focus:ring-0 resize-none overflow-hidden"
+                                                rows="1"
+                                                onInput={(e) => {
+                                                    e.target.style.height = 'auto';
+                                                    e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
+                                                }}
                                             />
-                                            {itemTouched[index]?.item_id &&
-                                                itemErrors[index]?.item_id && (
-                                                    <p className="text-red-500 text-sm mt-1">
-                                                        {
-                                                            itemErrors[index]
-                                                                .item_id
-                                                        }
-                                                    </p>
-                                                )}
                                         </div>
                                     </td>
-                                    <td className="p-3">
+                                    <td className="py-3 px-4">
+                                        <div className="min-w-[220px] max-w-[300px]">
+                                            <textarea
+                                                name="description"
+                                                value={item.description}
+                                                onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                                className="w-full text-center bg-transparent border-none focus:ring-0 resize-none overflow-hidden"
+                                                rows="1"
+                                                onInput={(e) => {
+                                                    e.target.style.height = 'auto';
+                                                    e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
+                                                }}
+                                            />
+                                        </div>
+                                    </td>
+                                    <td className="py-3 px-4 text-center">
                                         <input
-                                            type="text"
-                                            id={`description_${index}`}
-                                            name="description"
-                                            value={item.description}
-                                            onChange={(e) =>
-                                                handleInputChange(e, index)
-                                            }
-                                            className="block w-full rounded border-gray-300"
-                                            placeholder="Enter Description"
+                                            type="number"
+                                            name="quantity"
+                                            value={item.quantity}
+                                            onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                            min="0"
+                                            className="w-full text-center bg-transparent border-none focus:ring-0"
                                         />
                                     </td>
-                                    <td className="p-3">
-                                        <div>
-                                            <input
-                                                type="number"
-                                                id={`quantity_${index}`}
-                                                name="quantity"
-                                                value={item.quantity}
-                                                onChange={(e) =>
-                                                    handleInputChange(e, index)
-                                                }
-                                                onBlur={() =>
-                                                    handleItemBlur(
-                                                        index,
-                                                        "quantity"
-                                                    )
-                                                }
-                                                min="0"
-                                                step="1"
-                                                className={`block w-full rounded ${
-                                                    itemTouched[index]
-                                                        ?.quantity &&
-                                                    itemErrors[index]?.quantity
-                                                        ? "border-red-500"
-                                                        : "border-gray-300"
-                                                }`}
-                                                placeholder="Qty"
-                                            />
-                                            {itemTouched[index]?.quantity &&
-                                                itemErrors[index]?.quantity && (
-                                                    <p className="text-red-500 text-sm mt-1">
-                                                        {
-                                                            itemErrors[index]
-                                                                .quantity
-                                                        }
-                                                    </p>
-                                                )}
-                                        </div>
+                                    <td className="py-3 px-4 text-center">
+                                        <input
+                                            type="number"
+                                            name="unit_price"
+                                            value={item.unit_price}
+                                            onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
+                                            min="0"
+                                            className="w-full text-center bg-transparent border-none focus:ring-0"
+                                        />
                                     </td>
-                                    <td className="p-3">
-                                        <div>
-                                            <input
-                                                type="number"
-                                                id={`unit_price_${index}`}
-                                                name="unit_price"
-                                                value={item.unit_price}
-                                                onChange={(e) =>
-                                                    handleInputChange(e, index)
-                                                }
-                                                onBlur={() =>
-                                                    handleItemBlur(
-                                                        index,
-                                                        "unit_price"
-                                                    )
-                                                }
-                                                min="0"
-                                                step="0.01"
-                                                className={`block w-full rounded ${
-                                                    itemTouched[index]
-                                                        ?.unit_price &&
-                                                    itemErrors[index]
-                                                        ?.unit_price
-                                                        ? "border-red-500"
-                                                        : "border-gray-300"
-                                                }`}
-                                                placeholder="Unit Price"
-                                            />
-                                            {itemTouched[index]?.unit_price &&
-                                                itemErrors[index]
-                                                    ?.unit_price && (
-                                                    <p className="text-red-500 text-sm mt-1">
-                                                        {
-                                                            itemErrors[index]
-                                                                .unit_price
-                                                        }
-                                                    </p>
-                                                )}
-                                        </div>
-                                    </td>
-                                    <td className="p-3">
+                                    <td className="py-3 px-4 text-center">
                                         <input
                                             type="text"
-                                            id={`subtotal_${index}`}
-                                            name="subtotal"
-                                            value={item.subtotal || "0.00"}
-                                            className="block w-full rounded bg-gray-50 border-gray-300"
+                                            value={item.subtotal}
                                             readOnly
+                                            className="w-full text-center bg-transparent border-none focus:ring-0"
                                         />
                                     </td>
-                                    <td className="p-3">
-                                        <div className="flex justify-center text-center gap-2">
+                                    <td className="py-3 px-4">
+                                        <div className="flex items-center justify-center h-full">
                                             <button
                                                 type="button"
-                                                onClick={() =>
-                                                    removeItemRow(index)
-                                                }
-                                                className={`p-1 text-red-500 hover:text-red-700 ${
-                                                    index === 0 ||
-                                                    formData.items.length <= 1
-                                                        ? "opacity-50 cursor-not-allowed"
-                                                        : ""
-                                                }`}
-                                                title="Remove Item"
-                                                disabled={
-                                                    index === 0 ||
-                                                    formData.items.length <= 1
-                                                }
+                                                onClick={() => removeItemRow(index)}
+                                                className="text-red-600 hover:text-red-900"
+                                                disabled={formData.items.length <= 1}
                                             >
                                                 <FaTrash />
                                             </button>
@@ -905,37 +920,35 @@ export default function CreateMaharatInvoice() {
                     <div className="w-full flex flex-col text-center md:text-left space-y-2">
                         <p>
                             <span className="font-semibold">Account Name:</span>{" "}
-                            MAHARAT CONSTRUCTION TRAINING CENTER (MCTC)
+                            {companyDetails.account_name}
                         </p>
                         <p>
                             <span className="font-semibold">Account No:</span>{" "}
-                            242-089787-001
+                            {companyDetails.account_no}
                         </p>
                         <p>
                             <span className="font-semibold">Currency:</span>{" "}
-                            +966 SAR
+                            {companyDetails.currency}
                         </p>
                         <p>
                             <span className="font-semibold">License No:</span>{" "}
-                            L-310522
+                            {companyDetails.license_no}
                         </p>
                         <p>
                             <span className="font-semibold">IBAN Number:</span>{" "}
-                            SA0345000000242089787001
+                            {companyDetails.iban}
                         </p>
                         <p>
                             <span className="font-semibold">Bank Name:</span>{" "}
-                            Saudi National Bank (SNB)
+                            {companyDetails.bank}
                         </p>
                         <p>
                             <span className="font-semibold">Branch Name:</span>{" "}
-                            Khobar Main Branch
+                            {companyDetails.branch}
                         </p>
                         <p>
-                            <span className="font-semibold">
-                                SABB Swift Code:
-                            </span>{" "}
-                            SABBSARI
+                            <span className="font-semibold">SABB Swift Code:</span>{" "}
+                            {companyDetails.swift}
                         </p>
                     </div>
                 </div>

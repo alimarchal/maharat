@@ -266,6 +266,14 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::get('/invoices/payment-methods', [InvoiceController::class, 'getPaymentMethods']);
 
+    Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
+    Route::get('/companies/{company}', [CompanyController::class, 'show']);
+
+
+    Route::get('invoices/{invoice}/items', [InvoiceItemController::class, 'index']);
+    Route::post('invoices/{invoice}/items', [InvoiceItemController::class, 'storeItems']);
+    Route::put('invoices/{invoice}/items', [InvoiceItemController::class, 'updateItems']);
+
     // Payment Orders routes
     Route::apiResource('payment-orders', PaymentOrderController::class);
     // Payment Order Logs routes

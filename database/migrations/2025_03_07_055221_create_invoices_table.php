@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('company_id')->constrained('companies')->onDelete('cascade'); 
             $table->enum('status', ['Draft', 'Pending', 'Paid', 'Overdue', 'Cancelled'])->default('Draft');
             $table->string('payment_method')->nullable();
-            $table->string('representative')->nullable();
+            $table->string('representative_id')->nullable();
             $table->string('representative_email')->nullable();
             $table->date('issue_date');
             $table->date('due_date')->nullable();

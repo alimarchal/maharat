@@ -18,7 +18,7 @@ class Invoice extends Model
         'company_id',
         'status',
         'payment_method',
-        'representative',  
+        'representative_id',  
         'representative_email',  
         'issue_date',
         'due_date',
@@ -46,14 +46,7 @@ class Invoice extends Model
         'company_id' => 'integer', 
     ];
     
-//
-//    /**
-//     * Get the vendor (customer that issued the invoice).
-//     */
-//    public function vendor()
-//    {
-//        return $this->belongsTo(Customer::class, 'vendor_id');
-//    }
+
 
     /**
      * Get the client (customer that received the invoice).
@@ -61,6 +54,16 @@ class Invoice extends Model
     public function client()
     {
         return $this->belongsTo(Customer::class, 'client_id');
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function representative()
+    {
+        return $this->belongsTo(User::class, 'representative_id');
     }
 
     /**

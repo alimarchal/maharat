@@ -26,48 +26,37 @@ const MaharatInvoicesTable = () => {
         
         try {
             progressInterval = setInterval(() => {
-                setProgress((prev) => {
-                    if (prev >= 90) {
-                        clearInterval(progressInterval);
-                        return 90;
-                    }
-                    return prev + 10;
-                });
+                setProgress((prev) => prev >= 90 ? 90 : prev + 10);
             }, 200);
 
-            let url = `/api/v1/invoices?page=${currentPage}`;
-            url += "&include=client";
-            
-            if (selectedFilter !== "All") {
-                url += `&filter[status]=${selectedFilter}`;
-            }
-
-            const response = await axios.get(url);
+            const response = await axios.get(`/api/v1/invoices?page=${currentPage}&include=client`);
+            console.log('Raw API response:', response.data); // Debug log
             
             if (response.data && response.data.data) {
-                const mappedData = response.data.data.map(invoice => ({
-                    id: invoice.id,
-                    invoice_number: invoice.invoice_number,
-                    customer_name: invoice.client?.name,
-                    total_amount: Math.floor(invoice.total_amount || 0),
-                    status: invoice.status,
-                    updated_at: invoice.updated_at
-                }));
+                const mappedData = response.data.data.map(invoice => {
+                    console.log('Processing invoice:', invoice); // Debug log
+                    return {
+                        id: invoice.id,
+                        invoice_number: invoice.invoice_number || `INV-${invoice.id.toString().padStart(5, '0')}`,
+                        customer_name: invoice.client?.name || 'N/A',
+                        total_amount: invoice.total_amount || 0,
+                        status: invoice.status || 'Draft',
+                        updated_at: invoice.updated_at
+                    };
+                });
 
+                console.log('Mapped data:', mappedData); // Debug log
                 setInvoices(mappedData);
                 setLastPage(response.data.meta.last_page);
                 setError("");
             }
-            
-            setProgress(100);
-            setTimeout(() => setLoading(false), 500);
         } catch (error) {
             console.error('Error fetching invoices:', error);
             setError("Failed to load invoices");
-            setProgress(100);
-            setTimeout(() => setLoading(false), 500);
         } finally {
             if (progressInterval) clearInterval(progressInterval);
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
         }
     };
 
@@ -207,51 +196,51 @@ const MaharatInvoicesTable = () => {
                                 <th className="py-3 px-4 text-center">Status</th>
                                 <th className="py-3 px-4 text-center">Date & Time</th>
                                 <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Actions</th>
-                            </tr>
-                        </thead>
+                    </tr>
+                </thead>
                         <tbody className="bg-transparent divide-y divide-gray-200">
                             {invoices.length > 0 ? (
                                 invoices.map((invoice) => (
-                                    <tr key={invoice.id}>
+                                <tr key={invoice.id}>
                                         <td className="py-3 px-4 text-center">{invoice.invoice_number || 'N/A'}</td>
                                         <td className="py-3 px-4 text-center">{invoice.customer_name || 'N/A'}</td>
                                         <td className="py-3 px-4 text-center">
                                             {invoice.total_amount ? `${Math.floor(invoice.total_amount).toLocaleString()} SAR` : 'N/A'}
-                                        </td>
+                                    </td>
                                         <td className="py-3 px-4 text-center">
                                             <span className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(invoice.status)}`}>
                                                 {invoice.status}
-                                            </span>
-                                        </td>
+                                        </span>
+                                    </td>
                                         <td className="py-3 px-4 text-center">{formatDateTime(invoice.updated_at)}</td>
                                         <td className="py-3 px-4 flex justify-center space-x-3">
                                             <Link
                                                 href={`/maharat-invoices/create/${invoice.id}`}
                                                 className="text-gray-600 hover:text-gray-800"
                                             >
-                                                <FontAwesomeIcon icon={faEdit} />
+                                            <FontAwesomeIcon icon={faEdit} />
                                             </Link>
-                                            <button className="text-blue-600 hover:text-blue-900">
-                                                <FontAwesomeIcon icon={faFilePdf} />
-                                            </button>
+                                        <button className="text-blue-600 hover:text-blue-900">
+                                            <FontAwesomeIcon icon={faFilePdf} />
+                                        </button>
                                             <button
                                                 onClick={() => handleDelete(invoice.id)}
                                                 className="text-red-600 hover:text-red-900"
                                             >
                                                 <FontAwesomeIcon icon={faTrash} />
                                             </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="6" className="text-center text-[#2C323C] font-medium py-4">
-                                        No Maharat Invoices found.
                                     </td>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            ))
+                    ) : (
+                        <tr>
+                                    <td colSpan="6" className="text-center text-[#2C323C] font-medium py-4">
+                                No Maharat Invoices found.
+                            </td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
                 )}
 
                 {/* Pagination */}
