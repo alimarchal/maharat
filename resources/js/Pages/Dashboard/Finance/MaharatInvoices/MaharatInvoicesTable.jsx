@@ -30,12 +30,19 @@ const MaharatInvoicesTable = () => {
                 setProgress((prev) => prev >= 90 ? 90 : prev + 10);
             }, 200);
 
-            const response = await axios.get(`/api/v1/invoices?page=${currentPage}&include=client`);
-            console.log('Raw API response:', response.data); // Debug log
+            // Convert filter to lowercase for consistency
+            const status = selectedFilter.toLowerCase();
+            let url = `/api/v1/invoices?page=${currentPage}&include=client`;
+            
+            // Only add status filter if not "all"
+            if (selectedFilter !== "All") {
+                url += `&filter[status]=${status}`;  // Using filter[status] format for Laravel API
+            }
+
+            const response = await axios.get(url);
             
             if (response.data && response.data.data) {
                 const mappedData = response.data.data.map(invoice => {
-                    console.log('Processing invoice:', invoice); // Debug log
                     return {
                         id: invoice.id,
                         invoice_number: invoice.invoice_number || `INV-${invoice.id.toString().padStart(5, '0')}`,
@@ -46,8 +53,14 @@ const MaharatInvoicesTable = () => {
                     };
                 });
 
-                console.log('Mapped data:', mappedData); // Debug log
-                setInvoices(mappedData);
+                // Additional client-side filtering as backup
+                const filteredData = selectedFilter === "All" 
+                    ? mappedData 
+                    : mappedData.filter(invoice => 
+                        invoice.status.toLowerCase() === status
+                    );
+
+                setInvoices(filteredData);
                 setLastPage(response.data.meta.last_page);
                 setError("");
             }
@@ -130,6 +143,11 @@ const MaharatInvoicesTable = () => {
         }
     };
 
+    const handleFilterChange = (filter) => {
+        setSelectedFilter(filter);
+        setCurrentPage(1);
+    };
+
     return (
         <div className="w-full">
             <div className="flex justify-between items-center text-center mb-6">
@@ -147,7 +165,7 @@ const MaharatInvoicesTable = () => {
                                         ? "bg-[#009FDC] text-white"
                                         : "text-[#9B9DA2]"
                                 }`}
-                                onClick={() => setSelectedFilter(filter)}
+                                onClick={() => handleFilterChange(filter)}
                             >
                                 {filter}
                             </button>
