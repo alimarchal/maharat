@@ -35,24 +35,24 @@ const MaharatInvoicesTable = () => {
                 });
             }, 200);
 
-            let url = `/api/v1/mahrat-invoice-approval-trans?page=${currentPage}`;
-            url += "&include=invoice,requester,createdByUser";
+            let url = `/api/v1/invoices?page=${currentPage}`;
+            url += "&include=client,vendor";
             
             if (selectedFilter !== "All") {
-                url += `&filter[invoice.status]=${selectedFilter}`;
+                url += `&filter[status]=${selectedFilter}`;
             }
 
             const response = await axios.get(url);
             
             if (response.data && response.data.data) {
-                const mappedData = response.data.data.map(transaction => ({
-                    ...transaction,
-                    invoice_number: transaction.invoice?.invoice_number,
-                    total_amount: Math.floor(transaction.invoice?.total_amount || 0),
-                    customer_name: transaction.requester?.name,
-                    created_by_name: transaction.created_by_user?.name,
-                    invoice_status: transaction.invoice?.status,
-                    approval_status: transaction.status
+                const mappedData = response.data.data.map(invoice => ({
+                    id: invoice.id,
+                    invoice_number: invoice.invoice_number,
+                    customer_name: invoice.client?.name,
+                    created_by_name: invoice.vendor?.name,
+                    total_amount: Math.floor(invoice.total_amount || 0),
+                    status: invoice.status,
+                    updated_at: invoice.updated_at
                 }));
 
                 setInvoices(mappedData);
@@ -89,15 +89,17 @@ const MaharatInvoicesTable = () => {
     };
 
     const getStatusClass = (status) => {
-        switch (status) {
-            case 'Approve':
+        switch (status?.toLowerCase()) {
+            case 'paid':
                 return 'bg-green-100 text-green-800';
-            case 'Reject':
+            case 'cancelled':
                 return 'bg-red-100 text-red-800';
-            case 'Refer':
+            case 'overdue':
                 return 'bg-purple-100 text-purple-800';
-            case 'Pending':
+            case 'pending':
                 return 'bg-yellow-100 text-yellow-800';
+            case 'draft':
+                return 'bg-gray-100 text-gray-800';
             default:
                 return 'bg-gray-100 text-gray-800';
         }
@@ -220,8 +222,8 @@ const MaharatInvoicesTable = () => {
                                             {invoice.total_amount ? `${Math.floor(invoice.total_amount).toLocaleString()} SAR` : 'N/A'}
                                         </td>
                                         <td className="py-3 px-4 text-center">
-                                            <span className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(invoice.approval_status)}`}>
-                                                {invoice.approval_status}
+                                            <span className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(invoice.status)}`}>
+                                                {invoice.status}
                                             </span>
                                         </td>
                                         <td className="py-3 px-4 text-center">{formatDateTime(invoice.updated_at)}</td>
@@ -229,10 +231,9 @@ const MaharatInvoicesTable = () => {
                                             <Link
                                                 href={`/maharat-invoices/create?edit=${invoice.id}`}
                                                 onClick={() => {
-                                                    console.log('Editing Maharat Invoice Approval Transaction:', {
-                                                        transactionId: invoice.id,
+                                                    console.log('Editing Invoice:', {
+                                                        invoiceId: invoice.id,
                                                         invoiceNumber: invoice.invoice_number,
-                                                        invoiceId: invoice.invoice_id,
                                                         status: invoice.status,
                                                         fullRecord: invoice
                                                     });

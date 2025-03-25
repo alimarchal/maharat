@@ -21,6 +21,7 @@ class InvoiceResource extends JsonResource
             'discounted_days' => $this->discounted_days,
             'subtotal' => $this->subtotal,
             'tax_amount' => $this->tax_amount,
+            'discount_amount' => $this->discount_amount,
             'total_amount' => $this->total_amount,
             'currency' => $this->currency,
             'notes' => $this->notes,

@@ -37,6 +37,13 @@ export default function CreateMaharatInvoice({ transactionId = null }) {
     const [invoiceNumber, setInvoiceNumber] = useState('');
     const [paymentMethods, setPaymentMethods] = useState([]);
     const [isEditMode, setIsEditMode] = useState(false);
+    const [companyDetails, setCompanyDetails] = useState({
+        name: '',
+        address: '',
+        contact_number: '',
+        vat_no: '',
+        cr_no: ''
+    });
 
     useEffect(() => {
         setItemErrors(formData.items.map(() => ({})));
@@ -52,6 +59,7 @@ export default function CreateMaharatInvoice({ transactionId = null }) {
         } else {
             fetchNextInvoiceNumber();
         }
+        fetchCompanyDetails();
     }, [transactionId]);
 
     const fetchCustomers = async () => {
@@ -138,6 +146,21 @@ export default function CreateMaharatInvoice({ transactionId = null }) {
         } catch (error) {
             console.error('Error fetching transaction data:', error);
             setErrors({ fetch: 'Failed to load invoice data' });
+        }
+    };
+
+    const fetchCompanyDetails = async () => {
+        try {
+            const response = await axios.get("/api/v1/companies");
+            const company = response.data.data?.[0]; // Get the first company record
+            
+            if (company) {
+                setCompanyDetails(company);
+            } else {
+                console.error("No company records found");
+            }
+        } catch (error) {
+            console.error("Error fetching company details:", error);
         }
     };
 
@@ -477,21 +500,23 @@ export default function CreateMaharatInvoice({ transactionId = null }) {
             <header className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-2">
                 <div className="w-full flex flex-col justify-end text-center md:text-left md:items-start">
                     <h1 className="text-3xl font-bold uppercase mb-2 truncate">
-                        Maharat
+                        {companyDetails.name || 'Maharat'}
                     </h1>
                     <p>
-                        <span className="font-semibold">Address:</span> Riyadh,
-                        Saudi Arabia
+                        <span className="font-semibold">Address:</span>{" "}
+                        {companyDetails.address || 'Riyadh, Saudi Arabia'}
                     </p>
                     <p>
-                        <span className="font-semibold">Mobile:</span> +966 123
-                        456 789
+                        <span className="font-semibold">Mobile:</span>{" "}
+                        {companyDetails.contact_number || '+966 123 456 789'}
                     </p>
                     <p>
-                        <span className="font-semibold">VAT No:</span> 123456789
+                        <span className="font-semibold">VAT No:</span>{" "}
+                        {companyDetails.vat_no || '123456789'}
                     </p>
                     <p>
-                        <span className="font-semibold">CR No:</span> 0345
+                        <span className="font-semibold">CR No:</span>{" "}
+                        {companyDetails.cr_no || '0345'}
                     </p>
                 </div>
             </header>

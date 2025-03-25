@@ -29,6 +29,8 @@ class Company extends Model
         'license_no',
         'var',
         'cr_no',
+        'vat_no',
+        'currency_id',
         'logo_path',
         'stamp_path',
     ];
@@ -53,5 +55,10 @@ class Company extends Model
     public function branches()
     {
         return $this->hasMany(Branch::class);
+    }
+
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class);
     }
 }

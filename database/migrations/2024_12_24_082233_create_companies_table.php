@@ -28,9 +28,10 @@ return new class extends Migration
                 $table->string('swift')->nullable();
                 $table->string('account_name')->nullable();
                 $table->string('account_no')->nullable();
+                $table->foreignId('currency_id')->constrained('currencies')->nullable();
                 $table->string('iban')->nullable();
                 $table->string('license_no')->nullable();
-                $table->string('var')->nullable();
+                $table->string('vat_no')->nullable();
                 $table->string('cr_no')->nullable();
                 $table->string('logo_path')->nullable();
                 $table->string('stamp_path')->nullable();

@@ -14,6 +14,7 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
+use Spatie\QueryBuilder\AllowedFilter;
 
 class InvoiceController extends Controller
 {
@@ -73,9 +74,11 @@ class InvoiceController extends Controller
     public function index(): JsonResponse|ResourceCollection
     {
         $invoices = QueryBuilder::for(Invoice::class)
-            ->allowedFilters(InvoiceParameters::ALLOWED_FILTERS)
-            ->allowedSorts(InvoiceParameters::ALLOWED_SORTS)
-            ->allowedIncludes(InvoiceParameters::ALLOWED_INCLUDES)
+            ->allowedFilters([
+                AllowedFilter::exact('status'),
+                // Add other filters if needed
+            ])
+            ->allowedIncludes(['client', 'vendor'])
             ->paginate()
             ->appends(request()->query());
 
@@ -94,11 +97,18 @@ class InvoiceController extends Controller
         try {
             DB::beginTransaction();
 
-            // Get validated data
             $validatedData = $request->validated();
 
-            // Ensure numeric fields are properly cast
-            $numericFields = ['total_amount', 'subtotal', 'tax_amount', 'vendor_id', 'client_id'];
+            // Update numeric fields array to include discount_amount
+            $numericFields = [
+                'total_amount', 
+                'subtotal', 
+                'tax_amount', 
+                'discount_amount', // Added new field
+                'vendor_id', 
+                'client_id'
+            ];
+            
             foreach ($numericFields as $field) {
                 if (isset($validatedData[$field])) {
                     $validatedData[$field] = is_string($validatedData[$field]) 
@@ -107,10 +117,7 @@ class InvoiceController extends Controller
                 }
             }
 
-            // Add invoice number
             $validatedData['invoice_number'] = $this->generateInvoiceNumber();
-
-            // Create invoice
             $invoice = Invoice::create($validatedData);
 
             DB::commit();

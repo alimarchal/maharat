@@ -94,6 +94,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/permissions', [PermissionController::class, 'store']);
 
     Route::apiResource('companies', CompanyController::class);
+    Route::get('/companies/primary', [CompanyController::class, 'getPrimaryCompany']);
     Route::apiResource('statuses', StatusController::class);
     Route::apiResource('warehouses', WarehouseController::class);
     Route::apiResource('warehouse-managers', WarehouseManagerController::class);
@@ -264,10 +265,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('invoices', InvoiceController::class);
     Route::post('invoices/{id}/restore', [InvoiceController::class, 'restore']);
 
-    Route::post('/maharat-invoices', [MahratInvoiceController::class, 'store']);
-    Route::get('/maharat-invoices/{id}/edit', [MahratInvoiceController::class, 'edit']);
-
-    Route::get('/maharat-invoices/{id}', [MahratInvoiceController::class, 'show']);
     Route::get('/invoices/payment-methods', [InvoiceController::class, 'getPaymentMethods']);
 
     // Payment Orders routes

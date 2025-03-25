@@ -23,6 +23,7 @@ return new class extends Migration
             $table->integer('discounted_days')->nullable();
             $table->decimal('subtotal', 15, 2)->default(0);
             $table->decimal('tax_amount', 15, 2)->default(0);
+            $table->decimal('discount_amount', 15, 2)->default(0);
             $table->decimal('total_amount', 15, 2)->default(0);
             $table->string('currency', 3)->default('SAR');
             $table->text('notes')->nullable();
