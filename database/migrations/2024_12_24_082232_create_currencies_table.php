@@ -18,8 +18,6 @@ return new class extends Migration
             $table->string('fraction_name');              // Cents, Fils, etc
             $table->decimal('rate', 10, 6)->default(1);   // Exchange rate
             $table->timestamp('last_updated_at')->nullable();
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });

@@ -204,9 +204,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/maharat-invoices', function () {
         return Inertia::render('Dashboard', ['page' => 'Finance/MaharatInvoices/MaharatInvoicesTable']);
     })->name('maharatInvoices.index');
+
     Route::get('/maharat-invoices/create', function () {
         return Inertia::render('Dashboard', ['page' => 'Finance/MaharatInvoices/CreateMaharatInvoice']);
     })->name('maharatInvoices.create');
+
+    Route::get('/maharat-invoices/create/{id?}', function ($id = null) {
+    return Inertia::render('Dashboard', [
+        'page' => 'Finance/MaharatInvoices/CreateMaharatInvoice',
+        'invoiceId' => $id  
+    ]);
+    })->name('maharatInvoices.edit');
 
     Route::get('/accounts', function () {
         return Inertia::render('Dashboard', ['page' => 'Finance/Accounts/AccountsTable']);

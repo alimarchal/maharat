@@ -28,7 +28,8 @@ return new class extends Migration
                 $table->string('swift')->nullable();
                 $table->string('account_name')->nullable();
                 $table->string('account_no')->nullable();
-                $table->foreignId('currency_id')->constrained('currencies')->nullable();
+                $table->unsignedBigInteger('currency_id')->default(1);
+                $table->foreign('currency_id')->references('id')->on('currencies')->onDelete('cascade');
                 $table->string('iban')->nullable();
                 $table->string('license_no')->nullable();
                 $table->string('vat_no')->nullable();

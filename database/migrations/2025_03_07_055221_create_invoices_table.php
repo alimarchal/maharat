@@ -14,13 +14,16 @@ return new class extends Migration
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
             $table->string('invoice_number')->unique()->comment('Maharat Invoice Table');
-            $table->foreignId('vendor_id')->constrained('suppliers')->onDelete('cascade');
             $table->foreignId('client_id')->nullable()->constrained('customers')->onDelete('cascade');
-            $table->enum('status', ['Draft', 'Pending', 'Paid', 'Overdue', 'Cancelled'])->default('Draft'); // Directly store status as string field
+            $table->foreignId('company_id')->constrained('companies')->onDelete('cascade'); 
+            $table->enum('status', ['Draft', 'Pending', 'Paid', 'Overdue', 'Cancelled'])->default('Draft');
             $table->string('payment_method')->nullable();
+            $table->string('representative')->nullable();
+            $table->string('representative_email')->nullable();
             $table->date('issue_date');
             $table->date('due_date')->nullable();
             $table->integer('discounted_days')->nullable();
+            $table->decimal('vat_rate', 15, 2)->default(0);
             $table->decimal('subtotal', 15, 2)->default(0);
             $table->decimal('tax_amount', 15, 2)->default(0);
             $table->decimal('discount_amount', 15, 2)->default(0);
@@ -30,7 +33,7 @@ return new class extends Migration
             $table->foreignId('account_code_id')->default(4)->constrained('account_codes', 'id');
             $table->timestamps();
             $table->softDeletes();
-        });
+        });        
     }
 
     /**

@@ -33,15 +33,24 @@ class CompanySeeder extends Seeder
 
         DB::statement('ALTER TABLE companies AUTO_INCREMENT = 1;');
 
-        DB::transaction(function () {
-            $companies = [
-                ['name' => 'Maharat', 'name_ar' => 'مهارات', 'email' => 'smartprocure@maharat.com', 'contact_number' => '+966112233445', 'country' => 'Saudi Arabia', 'city' => 'Riyadh'],
-                ['name' => 'Beta Solutions', 'name_ar' => 'بيتا سوليوشنز', 'email' => 'info@betasolutions.com', 'contact_number' => '+966556677889', 'country' => 'Saudi Arabia', 'city' => 'Jeddah'],
-                ['name' => 'Gamma Corp', 'name_ar' => 'غاما كورب', 'email' => 'support@gammacorp.com', 'contact_number' => '+966998877665', 'country' => 'Saudi Arabia', 'city' => 'Dammam'],
-                ['name' => 'Delta Enterprises', 'name_ar' => 'دلتا انتربرايزس', 'email' => 'sales@deltaenterprises.com', 'contact_number' => '+966334455667', 'country' => 'Saudi Arabia', 'city' => 'Medina'],
-                ['name' => 'Epsilon Industries', 'name_ar' => 'إبسيلون اندستريز', 'email' => 'info@epsilonindustries.com', 'contact_number' => '+966112244668', 'country' => 'Saudi Arabia', 'city' => 'Mecca'],
-            ];
+        $sarCurrencyId = DB::table('currencies')
+            ->where('code', 'SAR')
+            ->value('id');
 
+        if (!$sarCurrencyId) {
+            $this->command->error('SAR currency not found. Please run CurrencySeeder first.');
+            return;
+        }
+
+        DB::transaction(function () use ($sarCurrencyId) {
+            $companies = [
+                ['name' => 'Maharat', 'name_ar' => 'مهارات', 'email' => 'smartprocure@maharat.com', 'contact_number' => '+966112233445', 'country' => 'Saudi Arabia', 'city' => 'Riyadh', 'currency_id' => $sarCurrencyId],
+                ['name' => 'Beta Solutions', 'name_ar' => 'بيتا سوليوشنز', 'email' => 'info@betasolutions.com', 'contact_number' => '+966556677889', 'country' => 'Saudi Arabia', 'city' => 'Jeddah', 'currency_id' => $sarCurrencyId],
+                ['name' => 'Gamma Corp', 'name_ar' => 'غاما كورب', 'email' => 'support@gammacorp.com', 'contact_number' => '+966998877665', 'country' => 'Saudi Arabia', 'city' => 'Dammam', 'currency_id' => $sarCurrencyId],
+                ['name' => 'Delta Enterprises', 'name_ar' => 'دلتا انتربرايزس', 'email' => 'sales@deltaenterprises.com', 'contact_number' => '+966334455667', 'country' => 'Saudi Arabia', 'city' => 'Medina', 'currency_id' => $sarCurrencyId],
+                ['name' => 'Epsilon Industries', 'name_ar' => 'إبسيلون اندستريز', 'email' => 'info@epsilonindustries.com', 'contact_number' => '+966112244668', 'country' => 'Saudi Arabia', 'city' => 'Mecca', 'currency_id' => $sarCurrencyId],
+            ];
+        
             Company::insert($companies);
         });
 

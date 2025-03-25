@@ -32,7 +32,7 @@ class CompanyResource extends JsonResource
             'cr_no' => $this->cr_no,
             'vat_no' => $this->vat_no,
             'currency_id' => $this->currency_id,
-            'currency' => new CurrencyResource($this->whenLoaded('currency')),
+            'currency' => $this->whenLoaded('currency'),
             'logo_path' => $this->logo_path ? Storage::url($this->logo_path) : null,
             'stamp_path' => $this->stamp_path ? Storage::url($this->stamp_path) : null,
             'created_at' => $this->created_at,

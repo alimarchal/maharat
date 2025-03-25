@@ -15,6 +15,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
 use Spatie\QueryBuilder\AllowedFilter;
+use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
 {
@@ -92,49 +93,33 @@ class InvoiceController extends Controller
         return InvoiceResource::collection($invoices);
     }
 
-    public function store(StoreInvoiceRequest $request): JsonResponse
+    public function store(Request $request)
     {
+        $validated = $request->validate([
+            'invoice_number' => 'required|unique:invoices',
+            'client_id' => 'required|exists:customers,id',
+            'company_id' => 'required|exists:companies,id',
+            'status' => 'required|in:Draft,Pending,Paid,Overdue,Cancelled',
+            'payment_method' => 'nullable|string',
+            'representative' => 'nullable|string',  
+            'issue_date' => 'required|date',
+            'due_date' => 'nullable|date|after_or_equal:issue_date',
+            'vat_rate' => 'required|numeric|min:0', 
+            'subtotal' => 'required|numeric',
+            'tax_amount' => 'nullable|numeric',
+            'discount_amount' => 'nullable|numeric',  
+            'total_amount' => 'required|numeric',
+            'currency' => 'required|string|size:3',
+        ]);
+
         try {
-            DB::beginTransaction();
-
-            $validatedData = $request->validated();
-
-            // Update numeric fields array to include discount_amount
-            $numericFields = [
-                'total_amount', 
-                'subtotal', 
-                'tax_amount', 
-                'discount_amount', // Added new field
-                'vendor_id', 
-                'client_id'
-            ];
-            
-            foreach ($numericFields as $field) {
-                if (isset($validatedData[$field])) {
-                    $validatedData[$field] = is_string($validatedData[$field]) 
-                        ? (float) $validatedData[$field] 
-                        : $validatedData[$field];
-                }
-            }
-
-            $validatedData['invoice_number'] = $this->generateInvoiceNumber();
-            $invoice = Invoice::create($validatedData);
-
-            DB::commit();
-
-            return response()->json([
-                'message' => 'Invoice created successfully',
-                'data' => new InvoiceResource($invoice->fresh())
-            ], Response::HTTP_CREATED);
-
+            $invoice = Invoice::create($validated);
+            return new InvoiceResource($invoice);
         } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Invoice creation error: ' . $e->getMessage());
-            
             return response()->json([
                 'message' => 'Failed to create invoice',
                 'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], 500);
         }
     }
 
@@ -149,44 +134,36 @@ class InvoiceController extends Controller
         ], Response::HTTP_OK);
     }
 
-    public function update(UpdateInvoiceRequest $request, Invoice $invoice): JsonResponse
+    public function update(Request $request, Invoice $invoice)
     {
+        $validated = $request->validate([
+            'client_id' => 'sometimes|exists:customers,id',
+            'company_id' => 'sometimes|exists:companies,id',
+            'status' => 'sometimes|in:Draft,Pending,Paid,Overdue,Cancelled',
+            'payment_method' => 'nullable|string',
+            'representative' => 'nullable|string',  
+            'issue_date' => 'sometimes|date',
+            'due_date' => 'nullable|date|after_or_equal:issue_date',
+            'vat_rate' => 'nullable|numeric|min:0',  
+            'subtotal' => 'required|numeric',
+            'tax_amount' => 'nullable|numeric',
+            'discount_amount' => 'nullable|numeric', 
+            'total_amount' => 'required|numeric',
+            'currency' => 'nullable|string|size:3',
+            'account_code_id' => 'required|exists:account_codes,id'
+        ]);
+
         try {
-            DB::beginTransaction();
-
-            // Get validated data
-            $validatedData = $request->validated();
-
-            // Ensure numeric fields are properly cast
-            $numericFields = ['total_amount', 'subtotal', 'tax_amount', 'vendor_id', 'client_id'];
-            foreach ($numericFields as $field) {
-                if (isset($validatedData[$field])) {
-                    $validatedData[$field] = is_string($validatedData[$field]) 
-                        ? (float) $validatedData[$field] 
-                        : $validatedData[$field];
-                }
-            }
-
-            // Update invoice
-            $invoice->update($validatedData);
-
-            DB::commit();
-
-            return response()->json([
-                'message' => 'Invoice updated successfully',
-                'data' => new InvoiceResource($invoice->fresh())
-            ], Response::HTTP_OK);
-
+            $invoice->update($validated);
+            return new InvoiceResource($invoice);
         } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Invoice update error: ' . $e->getMessage());
-            
             return response()->json([
                 'message' => 'Failed to update invoice',
                 'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], 500);
         }
     }
+
 
     public function destroy(Invoice $invoice): JsonResponse
     {
@@ -222,7 +199,7 @@ class InvoiceController extends Controller
 
             return response()->json([
                 'message' => 'Invoice restored successfully',
-                'data' => new InvoiceResource($invoice->load('vendor', 'client', 'items'))
+                'data' => new InvoiceResource($invoice->load('client', 'items'))
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -239,7 +216,7 @@ class InvoiceController extends Controller
         try {
             // You can modify this array based on your requirements
             $paymentMethods = ['Cash', 'Credit', 'Bank Transfer', 'Cheque'];
-            
+
             return response()->json([
                 'success' => true,
                 'payment_methods' => $paymentMethods

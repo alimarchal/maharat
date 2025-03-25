@@ -36,7 +36,7 @@ const MaharatInvoicesTable = () => {
             }, 200);
 
             let url = `/api/v1/invoices?page=${currentPage}`;
-            url += "&include=client,vendor";
+            url += "&include=client";
             
             if (selectedFilter !== "All") {
                 url += `&filter[status]=${selectedFilter}`;
@@ -49,7 +49,6 @@ const MaharatInvoicesTable = () => {
                     id: invoice.id,
                     invoice_number: invoice.invoice_number,
                     customer_name: invoice.client?.name,
-                    created_by_name: invoice.vendor?.name,
                     total_amount: Math.floor(invoice.total_amount || 0),
                     status: invoice.status,
                     updated_at: invoice.updated_at
@@ -204,7 +203,6 @@ const MaharatInvoicesTable = () => {
                             <tr>
                                 <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">Invoice ID</th>
                                 <th className="py-3 px-4 text-center">Customer</th>
-                                <th className="py-3 px-4 text-center">Created By</th>
                                 <th className="py-3 px-4 text-center">Total Amount</th>
                                 <th className="py-3 px-4 text-center">Status</th>
                                 <th className="py-3 px-4 text-center">Date & Time</th>
@@ -217,7 +215,6 @@ const MaharatInvoicesTable = () => {
                                     <tr key={invoice.id}>
                                         <td className="py-3 px-4 text-center">{invoice.invoice_number || 'N/A'}</td>
                                         <td className="py-3 px-4 text-center">{invoice.customer_name || 'N/A'}</td>
-                                        <td className="py-3 px-4 text-center">{invoice.created_by_name || 'N/A'}</td>
                                         <td className="py-3 px-4 text-center">
                                             {invoice.total_amount ? `${Math.floor(invoice.total_amount).toLocaleString()} SAR` : 'N/A'}
                                         </td>
@@ -229,15 +226,7 @@ const MaharatInvoicesTable = () => {
                                         <td className="py-3 px-4 text-center">{formatDateTime(invoice.updated_at)}</td>
                                         <td className="py-3 px-4 flex justify-center space-x-3">
                                             <Link
-                                                href={`/maharat-invoices/create?edit=${invoice.id}`}
-                                                onClick={() => {
-                                                    console.log('Editing Invoice:', {
-                                                        invoiceId: invoice.id,
-                                                        invoiceNumber: invoice.invoice_number,
-                                                        status: invoice.status,
-                                                        fullRecord: invoice
-                                                    });
-                                                }}
+                                                href={`/maharat-invoices/create/${invoice.id}`}
                                                 className="text-gray-600 hover:text-gray-800"
                                             >
                                                 <FontAwesomeIcon icon={faEdit} />
@@ -256,7 +245,7 @@ const MaharatInvoicesTable = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="7" className="text-center text-[#2C323C] font-medium py-4">
+                                    <td colSpan="6" className="text-center text-[#2C323C] font-medium py-4">
                                         No Maharat Invoices found.
                                     </td>
                                 </tr>

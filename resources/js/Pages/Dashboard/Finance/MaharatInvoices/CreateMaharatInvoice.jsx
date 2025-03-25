@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { FaPlus, FaTrash } from "react-icons/fa";
-import { router } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 
-export default function CreateMaharatInvoice({ transactionId = null }) {
+export default function CreateMaharatInvoice() {
+    const { invoiceId } = usePage().props;
     const [customers, setCustomers] = useState([]);
     const [formData, setFormData] = useState({
         company_id: "",
@@ -14,7 +15,7 @@ export default function CreateMaharatInvoice({ transactionId = null }) {
         mobile: "",
         invoice_date: "",
         payment_terms: "",
-        vat_rate: "15",
+        vat_rate: "",
         vat_amount: "",
         subtotal: "0.00",
         total: "0.00",
@@ -53,14 +54,17 @@ export default function CreateMaharatInvoice({ transactionId = null }) {
     useEffect(() => {
         fetchCustomers();
         fetchPaymentMethods();
-        if (transactionId) {
+        fetchCompanyDetails();
+        
+        if (invoiceId) {
+            console.log('Edit mode - Invoice ID:', invoiceId);
             setIsEditMode(true);
-            fetchTransactionData();
+            fetchInvoiceData();
         } else {
+            console.log('Create mode - Fetching next invoice number');
             fetchNextInvoiceNumber();
         }
-        fetchCompanyDetails();
-    }, [transactionId]);
+    }, [invoiceId]);
 
     const fetchCustomers = async () => {
         try {
@@ -102,17 +106,16 @@ export default function CreateMaharatInvoice({ transactionId = null }) {
         }
     };
 
-    const fetchTransactionData = async () => {
+    const fetchInvoiceData = async () => {
         try {
-            const response = await axios.get(`/api/v1/mahrat-invoice-approval-trans/${transactionId}?include=invoice`);
-            const { data } = response.data;
+            const response = await axios.get(`/api/v1/invoices/${invoiceId}`);
+            const invoice = response.data.data;
             
-            if (!data || !data.invoice) {
+            if (!invoice) {
                 console.error('No invoice data found');
                 return;
             }
 
-            const invoice = data.invoice;
             console.log('Fetched invoice data:', invoice);
 
             setInvoiceNumber(invoice.invoice_number);
@@ -120,12 +123,28 @@ export default function CreateMaharatInvoice({ transactionId = null }) {
             setFormData(prevData => ({
                 ...prevData,
                 company_id: invoice.client_id || '',
-                invoice_date: invoice.created_at ? new Date(invoice.created_at).toISOString().split('T')[0] : '',
+                invoice_date: invoice.issue_date || '',
                 payment_terms: invoice.payment_method || '',
-                vat_rate: invoice.tax_amount?.toString() || "15",
+                vat_rate: invoice.tax_rate?.toString() || "15",
+                vat_amount: invoice.tax_amount?.toString() || "0.00",
                 subtotal: invoice.subtotal?.toString() || "0.00",
                 total: invoice.total_amount?.toString() || "0.00",
-                vat_amount: invoice.tax_amount?.toString() || "0.00",
+                discount: invoice.discount_amount?.toString() || "0",
+                items: invoice.items?.map(item => ({
+                    item_id: item.name || "",
+                    description: item.description || "",
+                    quantity: item.quantity?.toString() || "",
+                    unit_price: item.unit_price?.toString() || "",
+                    subtotal: item.subtotal?.toString() || "0.00"
+                })) || [
+                    {
+                        item_id: "",
+                        description: "",
+                        quantity: "",
+                        unit_price: "",
+                        subtotal: "0.00"
+                    }
+                ]
             }));
 
             if (invoice.client_id) {
@@ -143,8 +162,10 @@ export default function CreateMaharatInvoice({ transactionId = null }) {
                     }));
                 }
             }
+
+            setIsEditMode(true);
         } catch (error) {
-            console.error('Error fetching transaction data:', error);
+            console.error('Error fetching invoice data:', error);
             setErrors({ fetch: 'Failed to load invoice data' });
         }
     };
@@ -152,15 +173,21 @@ export default function CreateMaharatInvoice({ transactionId = null }) {
     const fetchCompanyDetails = async () => {
         try {
             const response = await axios.get("/api/v1/companies");
-            const company = response.data.data?.[0]; // Get the first company record
+            const company = response.data.data?.find(comp => comp.id === 1);
             
             if (company) {
-                setCompanyDetails(company);
+                setCompanyDetails({
+                    name: company.name,
+                    address: `${company.city}, ${company.country}`,
+                    contact_number: company.contact_number,
+                    vat_no: company.vat_no,
+                    cr_no: company.cr_no
+                });
             } else {
-                console.error("No company records found");
+                console.log('Company with ID 1 not found');
             }
         } catch (error) {
-            console.error("Error fetching company details:", error);
+            console.error('Error fetching company details:', error);
         }
     };
 
@@ -466,12 +493,17 @@ export default function CreateMaharatInvoice({ transactionId = null }) {
                 invoice_number: invoiceNumber,
                 client_id: formData.company_id,
                 payment_method: formData.payment_terms,
+                issue_date: formData.invoice_date,
                 tax_amount: formData.vat_rate,
+                subtotal: formData.subtotal,
+                discount_amount: formData.discount,
+                total_amount: formData.total,
+                status: 'Draft'
             };
 
             let response;
             if (isEditMode) {
-                response = await axios.put(`/api/v1/invoices/${transactionId}`, payload);
+                response = await axios.put(`/api/v1/invoices/${invoiceId}`, payload);
             } else {
                 response = await axios.post('/api/v1/invoices', payload);
                 await axios.post('/api/v1/mahrat-invoice-approval-trans', {
@@ -500,23 +532,23 @@ export default function CreateMaharatInvoice({ transactionId = null }) {
             <header className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-2">
                 <div className="w-full flex flex-col justify-end text-center md:text-left md:items-start">
                     <h1 className="text-3xl font-bold uppercase mb-2 truncate">
-                        {companyDetails.name || 'Maharat'}
+                        {companyDetails.name}
                     </h1>
                     <p>
                         <span className="font-semibold">Address:</span>{" "}
-                        {companyDetails.address || 'Riyadh, Saudi Arabia'}
+                        {companyDetails.address}
                     </p>
                     <p>
                         <span className="font-semibold">Mobile:</span>{" "}
-                        {companyDetails.contact_number || '+966 123 456 789'}
+                        {companyDetails.contact_number}
                     </p>
                     <p>
                         <span className="font-semibold">VAT No:</span>{" "}
-                        {companyDetails.vat_no || '123456789'}
+                        {companyDetails.vat_no}
                     </p>
                     <p>
                         <span className="font-semibold">CR No:</span>{" "}
-                        {companyDetails.cr_no || '0345'}
+                        {companyDetails.cr_no}
                     </p>
                 </div>
             </header>

@@ -94,7 +94,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/permissions', [PermissionController::class, 'store']);
 
     Route::apiResource('companies', CompanyController::class);
-    Route::get('/companies/primary', [CompanyController::class, 'getPrimaryCompany']);
     Route::apiResource('statuses', StatusController::class);
     Route::apiResource('warehouses', WarehouseController::class);
     Route::apiResource('warehouse-managers', WarehouseManagerController::class);

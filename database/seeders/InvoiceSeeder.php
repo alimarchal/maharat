@@ -38,7 +38,6 @@ class InvoiceSeeder extends Seeder
             $invoices = [
                 [
                     'invoice_number' => 'INV-00001',
-                    'vendor_id' => 1,
                     'client_id' => 1,
                     'status' => 'Draft',
                     'payment_method' => 'Bank Transfer',
@@ -56,7 +55,6 @@ class InvoiceSeeder extends Seeder
                 ],
                 [
                     'invoice_number' => 'INV-00002',
-                    'vendor_id' => 2,
                     'client_id' => 2,
                     'status' => 'Draft',
                     'payment_method' => 'Credit Card',
@@ -74,7 +72,6 @@ class InvoiceSeeder extends Seeder
                 ],
                 [
                     'invoice_number' => 'INV-00003',
-                    'vendor_id' => 3,
                     'client_id' => 3,
                     'status' => 'Draft',
                     'payment_method' => 'Cash',
@@ -92,7 +89,6 @@ class InvoiceSeeder extends Seeder
                 ],
                 [
                     'invoice_number' => 'INV-00004',
-                    'vendor_id' => 1,
                     'client_id' => 1,
                     'status' => 'Paid',
                     'payment_method' => 'Bank Transfer',
@@ -110,7 +106,6 @@ class InvoiceSeeder extends Seeder
                 ],
                 [
                     'invoice_number' => 'INV-00005',
-                    'vendor_id' => 2,
                     'client_id' => 2,
                     'status' => 'Pending',
                     'payment_method' => 'Cash',
@@ -132,7 +127,7 @@ class InvoiceSeeder extends Seeder
 
             DB::commit();
             $this->command->info('Invoices seeded successfully.');
-            
+
         } catch (\Exception $e) {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
