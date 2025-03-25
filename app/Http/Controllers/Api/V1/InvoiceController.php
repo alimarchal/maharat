@@ -174,27 +174,60 @@ class InvoiceController extends Controller
 
     public function update(Request $request, Invoice $invoice)
     {
-        $validated = $request->validate([
-            'client_id' => 'sometimes|exists:customers,id',
-            'company_id' => 'sometimes|exists:companies,id',
-            'status' => 'sometimes|in:Draft,Pending,Paid,Overdue,Cancelled',
-            'payment_method' => 'nullable|string',
-            'representative' => 'nullable|string',  
-            'issue_date' => 'sometimes|date',
-            'due_date' => 'nullable|date|after_or_equal:issue_date',
-            'vat_rate' => 'nullable|numeric|min:0',  
-            'subtotal' => 'required|numeric',
-            'tax_amount' => 'nullable|numeric',
-            'discount_amount' => 'nullable|numeric', 
-            'total_amount' => 'required|numeric',
-            'currency' => 'nullable|string|size:3',
-            'account_code_id' => 'required|exists:account_codes,id'
-        ]);
-
         try {
-            $invoice->update($validated);
-            return new InvoiceResource($invoice);
+            $validated = $request->validate([
+                'issue_date' => 'required|date',
+                'payment_method' => 'nullable|string',
+                'vat_rate' => 'required|numeric|min:0',
+                'company_id' => 'required|exists:companies,id',
+                'client_id' => 'nullable|exists:customers,id',
+                'representative_id' => 'nullable|string',
+                'subtotal' => 'required|numeric|min:0',
+                'discount_amount' => 'nullable|numeric|min:0',
+                'tax_amount' => 'required|numeric|min:0',
+                'total_amount' => 'required|numeric|min:0',
+                'status' => 'required|in:Draft,Pending,Paid,Overdue,Cancelled',
+                'currency' => 'required|string|size:3',
+                'items' => 'required|array',
+                'items.*.name' => 'required|string',
+                'items.*.description' => 'nullable|string',
+                'items.*.quantity' => 'required|numeric|min:0',
+                'items.*.unit_price' => 'required|numeric|min:0',
+                'items.*.subtotal' => 'required|numeric|min:0',
+                'items.*.tax_rate' => 'required|numeric|min:0',
+                'items.*.tax_amount' => 'required|numeric|min:0',
+                'items.*.total' => 'required|numeric|min:0'
+            ]);
+
+            DB::beginTransaction();
+
+            // Remove items field before updating invoice
+            $invoiceData = collect($validated)->except('items')->toArray();
+            $invoice->update($invoiceData);
+
+            // Update items
+            $invoice->items()->delete(); // Remove old items
+            foreach ($validated['items'] as $item) {
+                $invoice->items()->create([
+                    'name' => $item['name'],
+                    'description' => $item['description'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'subtotal' => $item['subtotal'],
+                    'tax_rate' => $item['tax_rate'],
+                    'tax_amount' => $item['tax_amount'],
+                    'total' => $item['total']
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Invoice updated successfully',
+                'data' => $invoice->load('items')
+            ]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'message' => 'Failed to update invoice',
                 'error' => $e->getMessage()
@@ -285,5 +318,20 @@ class InvoiceController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    protected function validateInvoice(Request $request)
+    {
+        return $request->validate([
+            'issue_date' => 'required|date',
+            'payment_method' => 'required|string',
+            'vat_rate' => 'required|numeric|min:0',
+            'company_id' => 'required|exists:companies,id',
+            'representative_id' => 'required|exists:users,id',
+            'subtotal' => 'required|numeric|min:0',
+            'discount_amount' => 'required|numeric|min:0',
+            'tax_amount' => 'required|numeric|min:0',
+            'total_amount' => 'required|numeric|min:0',
+        ]);
     }
 }

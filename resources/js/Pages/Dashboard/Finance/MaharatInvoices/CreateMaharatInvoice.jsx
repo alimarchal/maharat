@@ -7,6 +7,7 @@ export default function CreateMaharatInvoice() {
     const [companies, setCompanies] = useState([]);
     const [formData, setFormData] = useState({
         company_id: "",
+        client_id: "",
         representative: "",
         address: "",
         cr_no: "",
@@ -54,6 +55,14 @@ export default function CreateMaharatInvoice() {
         swift: ''
     });
     const [users, setUsers] = useState([]);
+    const [clients, setClients] = useState([]);
+    const [headerCompanyDetails, setHeaderCompanyDetails] = useState({
+        name: '',
+        address: '',
+        contact_number: '',
+        vat_no: '',
+        cr_no: ''
+    });
 
     useEffect(() => {
         setItemErrors(formData.items.map(() => ({})));
@@ -61,9 +70,11 @@ export default function CreateMaharatInvoice() {
     }, []);
 
     useEffect(() => {
+        fetchHeaderCompanyDetails();
         fetchCompanies();
         fetchPaymentMethods();
         fetchUsers();
+        fetchClients();
         
         if (invoiceId) {
             console.log('Edit mode - Invoice ID:', invoiceId);
@@ -74,6 +85,25 @@ export default function CreateMaharatInvoice() {
             fetchNextInvoiceNumber();
         }
     }, [invoiceId]);
+
+    const fetchHeaderCompanyDetails = async () => {
+        try {
+            const response = await axios.get("/api/v1/companies/1");
+            const company = response.data.data;
+            
+            if (company) {
+                setHeaderCompanyDetails({
+                    name: company.name || '',
+                    address: company.address || '',
+                    contact_number: company.contact_number || '',
+                    vat_no: company.vat_no || '',
+                    cr_no: company.cr_no || ''
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching header company details:', error);
+        }
+    };
 
     const fetchCompanies = async () => {
         try {
@@ -124,13 +154,22 @@ export default function CreateMaharatInvoice() {
         }
     };
 
+    const fetchClients = async () => {
+        try {
+            const response = await axios.get("/api/v1/customers");
+            setClients(response.data.data);
+        } catch (error) {
+            console.error("Error fetching clients:", error);
+        }
+    };
+
     const fetchInvoiceData = async () => {
         try {
             const response = await axios.get(`/api/v1/invoices/${invoiceId}`);
             const invoice = response.data.data;
             console.log('Received invoice data:', invoice);
 
-            // Format the date from the API response (YYYY-MM-DDTHH:mm:ss.SSSSSSZ)
+            // Format the date from the API response
             const formattedDate = invoice.issue_date ? invoice.issue_date.split('T')[0] : '';
 
             // Set invoice number
@@ -140,6 +179,7 @@ export default function CreateMaharatInvoice() {
             setFormData(prevData => ({
                 ...prevData,
                 company_id: invoice.company_id || '',
+                client_id: invoice.client_id || '',
                 representative: invoice.representative_id || '',
                 address: invoice.company?.address || '',
                 cr_no: invoice.company?.cr_no || '',
@@ -169,22 +209,26 @@ export default function CreateMaharatInvoice() {
                 }]
             }));
 
-            // Set company details
+            // Set company details including currency
             if (invoice.company) {
+                // Fetch complete company details including currency
+                const companyResponse = await axios.get(`/api/v1/companies/${invoice.company_id}?include=currency`);
+                const companyData = companyResponse.data.data;
+                
                 setCompanyDetails({
-                    name: invoice.company.name || '',
-                    address: invoice.company.address || '',
-                    contact_number: invoice.company.contact_number || '',
-                    vat_no: invoice.company.vat_no || '',
-                    cr_no: invoice.company.cr_no || '',
-                    account_name: invoice.company.account_name || '',
-                    account_no: invoice.company.account_no || '',
-                    currency: invoice.company.currency?.name || '',
-                    license_no: invoice.company.license_no || '',
-                    iban: invoice.company.iban || '',
-                    bank: invoice.company.bank || '',
-                    branch: invoice.company.branch || '',
-                    swift: invoice.company.swift || ''
+                    name: companyData.name || '',
+                    address: companyData.address || '',
+                    contact_number: companyData.contact_number || '',
+                    vat_no: companyData.vat_no || '',
+                    cr_no: companyData.cr_no || '',
+                    account_name: companyData.account_name || '',
+                    account_no: companyData.account_no || '',
+                    currency: companyData.currency?.name || '',
+                    license_no: companyData.license_no || '',
+                    iban: companyData.iban || '',
+                    bank: companyData.bank || '',
+                    branch: companyData.branch || '',
+                    swift: companyData.swift || ''
                 });
             }
 
@@ -270,7 +314,16 @@ export default function CreateMaharatInvoice() {
         validateItemField(index, field);
     };
 
-    const handleCompanyChange = async (companyId) => {
+    const handleCompanyChange = async (e) => {
+        const companyId = e.target.value;
+        
+        setFormData(prevData => ({
+            ...prevData,
+            company_id: companyId
+        }));
+
+        if (!companyId) return;
+
         try {
             const response = await axios.get(`/api/v1/companies/${companyId}?include=currency`);
             const company = response.data.data;
@@ -278,7 +331,6 @@ export default function CreateMaharatInvoice() {
             if (company) {
                 setFormData(prevData => ({
                     ...prevData,
-                    company_id: company.id,
                     address: company.address || "",
                     cr_no: company.cr_no || "",
                     vat_no: company.vat_no || "",
@@ -511,20 +563,17 @@ export default function CreateMaharatInvoice() {
         // Calculate subtotal by summing up all item subtotals
         const subtotal = items.reduce((sum, item) => {
             const itemSubtotal = parseFloat(item.subtotal) || 0;
-            console.log('Item subtotal:', itemSubtotal); // Debug log
             return sum + itemSubtotal;
         }, 0);
-        
-        console.log('Total subtotal:', subtotal); // Debug log
 
-        // Get current VAT rate and discount
+        // Get current VAT rate and discount from form data
         const vatRate = parseFloat(formData.vat_rate) || 0;
         const discount = parseFloat(formData.discount) || 0;
 
-        // Calculate VAT amount
+        // Calculate VAT amount based on the current VAT rate
         const vatAmount = (subtotal * vatRate) / 100;
 
-        // Calculate final total
+        // Calculate final total (Net Amount)
         const total = Math.max(subtotal + vatAmount - discount, 0);
 
         // Update form data with new calculations
@@ -541,52 +590,59 @@ export default function CreateMaharatInvoice() {
         if (!validateForm()) return;
 
         try {
-            const payload = {
-                invoice_number: invoiceNumber,
-                company_id: formData.company_id,
-                representative_id: formData.representative,
-                payment_method: formData.payment_terms,
+            const invoicePayload = {
                 issue_date: formData.invoice_date,
+                payment_method: formData.payment_terms,
                 vat_rate: formData.vat_rate,
-                vat_amount: formData.vat_amount,
+                company_id: formData.company_id,
+                client_id: formData.client_id,
+                representative_id: formData.representative,
                 subtotal: formData.subtotal,
                 discount_amount: formData.discount,
+                tax_amount: formData.vat_amount,
                 total_amount: formData.total,
-                status: 'Draft'
+                status: 'Draft',
+                currency: 'SAR',
+                account_code_id: 4,
+                items: formData.items.map(item => {
+                    const itemTaxAmount = (Number(item.subtotal) * Number(formData.vat_rate)) / 100;
+                    const itemTotal = Number(item.subtotal) + itemTaxAmount;
+                    
+                    return {
+                        name: item.item_id,
+                        description: item.description,
+                        quantity: Number(item.quantity),
+                        unit_price: Number(item.unit_price),
+                        subtotal: Number(item.subtotal),
+                        tax_rate: Number(formData.vat_rate),
+                        tax_amount: itemTaxAmount,
+                        total: itemTotal
+                    };
+                })
             };
+
+            console.log('Submitting payload:', invoicePayload);
 
             let response;
             if (isEditMode) {
-                response = await axios.put(`/api/v1/invoices/${invoiceId}`, payload);
-                await axios.put(`/api/v1/invoices/${invoiceId}/items`, {
-                    items: formData.items.map(item => ({
-                        id: item.id,
-                        item_name: item.item_id,
-                        description: item.description,
-                        quantity: Number(item.quantity),
-                        unit_price: Number(item.unit_price),
-                        subtotal: Number(item.subtotal)
-                    }))
-                });
+                // Only do the PUT request in edit mode
+                response = await axios.put(`/api/v1/invoices/${invoiceId}`, invoicePayload);
             } else {
-                response = await axios.post('/api/v1/invoices', payload);
-                await axios.post(`/api/v1/invoices/${response.data.data.id}/items`, {
-                    items: formData.items.map(item => ({
-                        item_name: item.item_id,
-                        description: item.description,
-                        quantity: Number(item.quantity),
-                        unit_price: Number(item.unit_price),
-                        subtotal: Number(item.subtotal)
-                    }))
-                });
+                // Only do the POST request in create mode
+                response = await axios.post('/api/v1/invoices', invoicePayload);
+                
+                // Create approval transaction for new invoices
+                const newInvoiceId = response.data.data.id;
                 await axios.post('/api/v1/mahrat-invoice-approval-trans', {
-                    invoice_id: response.data.data.id,
+                    invoice_id: newInvoiceId,
                     status: 'Pending',
                 });
             }
 
+            console.log('Server response:', response.data);
             router.visit('/maharat-invoices');
         } catch (error) {
+            console.error('Error submitting form:', error.response?.data);
             setErrors(error.response?.data?.errors || {
                 general: "An error occurred while saving the invoice"
             });
@@ -626,23 +682,23 @@ export default function CreateMaharatInvoice() {
             <header className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-2">
                 <div className="w-full flex flex-col justify-end text-center md:text-left md:items-start">
                     <h1 className="text-3xl font-bold uppercase mb-2 truncate">
-                        {companyDetails.name}
+                        {headerCompanyDetails.name}
                     </h1>
                     <p>
                         <span className="font-semibold">Address:</span>{" "}
-                        {companyDetails.address}
+                        {headerCompanyDetails.address}
                     </p>
                     <p>
                         <span className="font-semibold">Mobile:</span>{" "}
-                        {companyDetails.contact_number}
+                        {headerCompanyDetails.contact_number}
                     </p>
                     <p>
                         <span className="font-semibold">VAT No:</span>{" "}
-                        {companyDetails.vat_no}
+                        {headerCompanyDetails.vat_no}
                     </p>
                     <p>
                         <span className="font-semibold">CR No:</span>{" "}
-                        {companyDetails.cr_no}
+                        {headerCompanyDetails.cr_no}
                     </p>
                 </div>
             </header>
@@ -756,6 +812,35 @@ export default function CreateMaharatInvoice() {
                                         {errors.company_id}
                                     </p>
                                 )}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-start items-center gap-2 mt-4">
+                            <strong className="w-1/4">Client:</strong>
+                            <div className="w-full">
+                                <select
+                                    id="client_id"
+                                    name="client_id"
+                                    value={formData.client_id}
+                                    onChange={handleInputChange}
+                                    className="mt-1 block w-full rounded border-gray-300"
+                                >
+                                    <option value="">Select Client</option>
+                                    {clients && clients.length > 0 ? (
+                                        clients.map((client) => (
+                                            <option
+                                                key={client.id}
+                                                value={client.id}
+                                            >
+                                                {client.name}
+                                            </option>
+                                        ))
+                                    ) : (
+                                        <option disabled>
+                                            Loading clients...
+                                        </option>
+                                    )}
+                                </select>
                             </div>
                         </div>
 

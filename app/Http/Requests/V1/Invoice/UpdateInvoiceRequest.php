@@ -30,7 +30,7 @@ class UpdateInvoiceRequest extends FormRequest
             'total_amount' => ['required', 'numeric', 'min:0'],
             'currency' => ['required', 'string', 'size:3'],
             'notes' => ['nullable', 'string'],  
-            'account_code_id' => ['required', 'exists:account_codes,id']
+            'account_code_id' => ['nullable', 'exists:account_codes,id']
         ];
     }
 }

@@ -15,16 +15,17 @@ class InvoiceItem extends Model
         'description',
         'quantity',
         'unit_price',
-        'tax_rate',
+        'vat_rate',
         'tax_amount',
         'subtotal',
-        'total'
+        'total',
+        'tax_rate'
     ];
 
     protected $casts = [
         'quantity' => 'decimal:2',
         'unit_price' => 'decimal:2',
-        'tax_rate' => 'decimal:2',
+        'vat_rate' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'total' => 'decimal:2',

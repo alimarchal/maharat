@@ -117,46 +117,34 @@ class InvoiceItemController extends Controller
         }
     }
 
-    public function updateItems(Request $request, Invoice $invoice)
+    public function updateItems(Request $request, Invoice $invoice): JsonResponse
     {
         try {
             $validatedData = $request->validate([
                 'items' => 'required|array',
-                'items.*.id' => 'nullable|exists:invoice_items,id',
-                'items.*.item_name' => 'required|string',
+                'items.*.name' => 'required|string',
                 'items.*.description' => 'nullable|string',
                 'items.*.quantity' => 'required|numeric|min:0',
                 'items.*.unit_price' => 'required|numeric|min:0',
                 'items.*.subtotal' => 'required|numeric|min:0',
+                'items.*.tax_rate' => 'required|numeric|min:0',
+                'items.*.tax_amount' => 'required|numeric|min:0',
             ]);
 
-            // Delete existing items not in the new list
-            $newItemIds = collect($validatedData['items'])
-                ->pluck('id')
-                ->filter()
-                ->toArray();
-            
-            $invoice->items()
-                ->whereNotIn('id', $newItemIds)
-                ->delete();
+            // Delete existing items
+            $invoice->items()->delete();
 
-            // Update or create items
+            // Create new items
             foreach ($validatedData['items'] as $item) {
-                $itemData = [
-                    'name' => $item['item_name'],
+                $invoice->items()->create([
+                    'name' => $item['name'],
                     'description' => $item['description'],
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
                     'subtotal' => $item['subtotal'],
-                ];
-
-                if (isset($item['id'])) {
-                    $invoice->items()
-                        ->where('id', $item['id'])
-                        ->update($itemData);
-                } else {
-                    $invoice->items()->create($itemData);
-                }
+                    'tax_rate' => $item['tax_rate'],
+                    'tax_amount' => $item['tax_amount']
+                ]);
             }
 
             return response()->json(['message' => 'Items updated successfully']);
