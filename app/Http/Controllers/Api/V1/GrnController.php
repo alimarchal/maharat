@@ -29,7 +29,7 @@ class GrnController extends Controller
 
         if ($lastGrn) {
             // Extract the numeric part and increment
-            $lastNumber = (int) substr($lastGrn->grn_number, -5);
+            $lastNumber = (int) substr($lastGrn->grn_number, -8);
             $newNumber = $lastNumber + 1;
         } else {
             $newNumber = 1;
@@ -75,6 +75,7 @@ class GrnController extends Controller
             if (!isset($validated['grn_number'])) {
                 $validated['grn_number'] = $this->generateGrnNumber();
             }
+
 
             // Set current user as creator if not specified
             if (!isset($validated['user_id'])) {

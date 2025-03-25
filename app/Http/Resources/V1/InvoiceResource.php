@@ -28,7 +28,14 @@ class InvoiceResource extends JsonResource
             'discount_amount' => $this->discount_amount,  
             'total_amount' => $this->total_amount,
             'currency' => $this->currency,
-            'notes' => $this->notes, 
+            'notes' => $this->notes,
+            'created_by' => $this->created_by,
+            'updated_by' => $this->updated_by,
+
+            // Related resources
+            'client' => new CustomerResource($this->whenLoaded('client')),
+            'items' => InvoiceItemResource::collection($this->whenLoaded('items')),
+
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
