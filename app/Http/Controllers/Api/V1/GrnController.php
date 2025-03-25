@@ -76,6 +76,7 @@ class GrnController extends Controller
                 $validated['grn_number'] = $this->generateGrnNumber();
             }
 
+
             // Set current user as creator if not specified
             if (!isset($validated['user_id'])) {
                 $validated['user_id'] = auth()->id();
