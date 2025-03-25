@@ -15,6 +15,7 @@ const MaharatInvoicesTable = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [progress, setProgress] = useState(0);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const [selectedFilter, setSelectedFilter] = useState("All");
     const filters = ["All", "Draft", "Pending", "Paid", "Overdue", "Cancelled"];
@@ -66,13 +67,17 @@ const MaharatInvoicesTable = () => {
 
     const handleDelete = async (id) => {
         if (!confirm("Are you sure you want to delete this record?")) return;
+        if (isDeleting) return; // Prevent multiple clicks
 
+        setIsDeleting(true);
         try {
-            await axios.delete(`/api/v1/mahrat-invoice-approval-trans/${id}`);
+            await axios.delete(`/api/v1/invoices/${id}`);
             fetchInvoices(); // Refresh the data
         } catch (error) {
             console.error('Error deleting record:', error);
             setError('Failed to delete record: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setIsDeleting(false);
         }
     };
 

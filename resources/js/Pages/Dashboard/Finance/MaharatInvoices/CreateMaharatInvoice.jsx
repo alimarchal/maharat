@@ -591,6 +591,7 @@ export default function CreateMaharatInvoice() {
 
         try {
             const invoicePayload = {
+                invoice_number: invoiceNumber,
                 issue_date: formData.invoice_date,
                 payment_method: formData.payment_terms,
                 vat_rate: formData.vat_rate,
@@ -625,17 +626,16 @@ export default function CreateMaharatInvoice() {
 
             let response;
             if (isEditMode) {
-                // Only do the PUT request in edit mode
                 response = await axios.put(`/api/v1/invoices/${invoiceId}`, invoicePayload);
             } else {
-                // Only do the POST request in create mode
                 response = await axios.post('/api/v1/invoices', invoicePayload);
                 
-                // Create approval transaction for new invoices
                 const newInvoiceId = response.data.data.id;
                 await axios.post('/api/v1/mahrat-invoice-approval-trans', {
                     invoice_id: newInvoiceId,
                     status: 'Pending',
+                    requester_id: formData.representative,
+                    assigned_to: formData.company_id,
                 });
             }
 
@@ -709,13 +709,13 @@ export default function CreateMaharatInvoice() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                     <div className="bg-gray-100 p-4 rounded-2xl">
-                        <div className="flex justify-start items-center gap-2 mt-4">
-                            <strong className="w-1/4">Invoice #:</strong>
+                        <div className="flex justify-start items-start gap-8 mb-2">
+                            <strong className="w-32">Invoice #:</strong>
                             <p className="w-full">{invoiceNumber}</p>
                         </div>
-                        <div className="flex justify-start items-center gap-2">
-                            <strong className="w-1/4">Invoice Date:</strong>
-                            <div className="w-full">
+                        <div className="flex justify-start items-center gap-8">
+                            <strong className="w-26">Invoice Date:</strong>
+                            <div className="w-36">
                                 <input
                                     type="date"
                                     id="invoice_date"
@@ -723,32 +723,21 @@ export default function CreateMaharatInvoice() {
                                     value={formData.invoice_date}
                                     onChange={handleInputChange}
                                     onBlur={() => handleBlur("invoice_date")}
-                                    className={`mt-1 block w-full rounded ${
-                                        touched.invoice_date &&
-                                        errors.invoice_date
-                                            ? "border-red-500"
-                                            : "border-gray-300"
-                                    }`}
+                                    className="block w-full rounded border-none bg-transparent shadow-none focus:ring-0 pl-0"
                                 />
-                                {touched.invoice_date &&
-                                    errors.invoice_date && (
-                                        <p className="text-red-500 text-sm mt-1">
-                                            {errors.invoice_date}
-                                        </p>
-                                    )}
                             </div>
                         </div>
                     </div>
                     <div className="bg-gray-100 p-4 rounded-2xl">
-                        <div className="flex justify-start items-center gap-2">
+                        <div className="flex justify-start items-center gap-5">
                             <strong className="w-1/4">Payment:</strong>
-                            <div className="w-full">
+                            <div className="w-full pr-4">
                                 <select
                                     id="payment_terms"
                                     name="payment_terms"
                                     value={formData.payment_terms}
                                     onChange={handleInputChange}
-                                    className="mt-1 block w-full rounded border-gray-300"
+                                    className="block w-full rounded border-none shadow-none focus:ring-0 appearance-none bg-transparent pl-0"
                                 >
                                     <option value="">Select payment terms</option>
                                     {paymentMethods.map((method) => (
@@ -759,7 +748,7 @@ export default function CreateMaharatInvoice() {
                                 </select>
                             </div>
                         </div>
-                        <div className="flex justify-start items-center gap-2 mt-4">
+                        <div className="flex justify-start items-center gap-2">
                             <strong className="w-1/4">VAT Rate (%):</strong>
                             <input
                                 type="number"
@@ -770,26 +759,22 @@ export default function CreateMaharatInvoice() {
                                 min="0"
                                 max="100"
                                 step="0.01"
-                                className="mt-1 block w-full rounded border-gray-300"
+                                className="block w-full rounded border-none bg-transparent shadow-none focus:ring-0"
                                 placeholder="Enter VAT Rate"
                             />
                         </div>
                     </div>
                     <div className="w-full bg-gray-100 p-4 rounded-2xl">
-                        <div className="flex justify-start items-center gap-2">
-                            <strong className="w-1/4">Company:</strong>
-                            <div className="w-full">
+                        <div className="flex justify-start items-start gap-8 mt-0">
+                            <strong className="w-32">Company:</strong>
+                            <div className="w-full -mt-2">
                                 <select
                                     id="company_id"
                                     name="company_id"
                                     value={formData.company_id}
                                     onChange={handleCompanyChange}
                                     onBlur={() => handleBlur("company_id")}
-                                    className={`block w-full rounded ${
-                                        touched.company_id && errors.company_id
-                                            ? "border-red-500"
-                                            : "border-gray-300"
-                                    }`}
+                                    className="block w-full rounded border-none shadow-none focus:ring-0 appearance-none bg-transparent pl-0"
                                 >
                                     <option value="">Select Company</option>
                                     {companies && companies.length > 0 ? (
@@ -815,15 +800,15 @@ export default function CreateMaharatInvoice() {
                             </div>
                         </div>
 
-                        <div className="flex justify-start items-center gap-2 mt-4">
-                            <strong className="w-1/4">Client:</strong>
-                            <div className="w-full">
+                        <div className="flex justify-start items-start gap-8 mt-6">
+                            <strong className="w-32">Client:</strong>
+                            <div className="w-full -mt-2">
                                 <select
                                     id="client_id"
                                     name="client_id"
                                     value={formData.client_id}
                                     onChange={handleInputChange}
-                                    className="mt-1 block w-full rounded border-gray-300"
+                                    className="block w-full rounded border-none shadow-none focus:ring-0 appearance-none bg-transparent pl-0"
                                 >
                                     <option value="">Select Client</option>
                                     {clients && clients.length > 0 ? (
@@ -844,15 +829,15 @@ export default function CreateMaharatInvoice() {
                             </div>
                         </div>
 
-                        <div className="flex justify-start items-center gap-2 mt-4">
-                            <strong className="w-1/4">Representative:</strong>
-                            <div className="w-full">
+                        <div className="flex justify-start items-start gap-4 mt-6">
+                            <strong className="w-36">Representative:</strong>
+                            <div className="w-full -mt-2">
                                 <select
                                     id="representative"
                                     name="representative"
                                     value={formData.representative}
                                     onChange={handleInputChange}
-                                    className="mt-1 block w-full rounded border-gray-300"
+                                    className="block w-full rounded border-none shadow-none focus:ring-0 appearance-none bg-transparent pl-0"
                                 >
                                     <option value="">Select Representative</option>
                                     {users.map((user) => (
@@ -864,37 +849,39 @@ export default function CreateMaharatInvoice() {
                             </div>
                         </div>
 
-                        <div className="flex justify-start items-center gap-2 mt-4">
-                            <strong className="w-1/4">Address:</strong>
+                        <div className="flex justify-start items-start gap-8 mt-6">
+                            <strong className="w-32">Address:</strong>
                             <p className="w-full">{formData.address}</p>
                         </div>
                     </div>
                     <div className="w-full bg-gray-100 p-4 rounded-2xl">
-                        <div className="flex justify-start items-center gap-2 mt-4">
-                            <strong className="w-1/4">CR No:</strong>
-                            <p className="w-full">{formData.cr_no}</p>
-                        </div>
+                        <div className="flex flex-col space-y-6">
+                            <div className="flex justify-start items-start gap-8">
+                                <strong className="w-32">CR No:</strong>
+                                <p className="w-full">{formData.cr_no}</p>
+                            </div>
 
-                        <div className="flex justify-start items-center gap-2 mt-4">
-                            <strong className="w-1/4">VAT No:</strong>
-                            <p className="w-full">{formData.vat_no}</p>
-                        </div>
+                            <div className="flex justify-start items-start gap-8">
+                                <strong className="w-32">VAT No:</strong>
+                                <p className="w-full">{formData.vat_no}</p>
+                            </div>
 
-                        <div className="flex justify-start items-center gap-2 mt-4">
-                            <strong className="w-1/4">Contact No:</strong>
-                            <p className="w-full">{formData.mobile}</p>
-                        </div>
+                            <div className="flex justify-start items-start gap-8">
+                                <strong className="w-32">Contact No:</strong>
+                                <p className="w-full">{formData.mobile}</p>
+                            </div>
 
-                        <div className="flex justify-start items-center gap-2 mt-4">
-                            <strong className="w-1/4">Email:</strong>
-                            <p className="w-full">{formData.email}</p>
+                            <div className="flex justify-start items-start gap-8">
+                                <strong className="w-32">Email:</strong>
+                                <p className="w-full">{formData.email}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
 
             <div className="mt-8">
-                <h3 className="text-2xl font-bold mb-2">Invoice Items</h3>
+                <h3 className="text-2xl font-bold mb-2 text-center">Invoice Items</h3>
                 <div className="w-full overflow-hidden">
                     <table className="w-full">
                         <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
@@ -933,8 +920,8 @@ export default function CreateMaharatInvoice() {
                                                 name="description"
                                                 value={item.description}
                                                 onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                                className="w-full text-center bg-transparent border-none focus:ring-0 resize-none overflow-hidden"
-                                                rows="1"
+                                                className="w-full text-center bg-transparent border-none focus:ring-0 resize-none overflow-hidden min-h-[100px]"
+                                                rows="3"
                                                 onInput={(e) => {
                                                     e.target.style.height = 'auto';
                                                     e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
@@ -960,12 +947,22 @@ export default function CreateMaharatInvoice() {
                                             onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
                                             min="0"
                                             className="w-full text-center bg-transparent border-none focus:ring-0"
+                                            onBlur={(e) => {
+                                                const formatted = parseFloat(e.target.value).toLocaleString(undefined, {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2
+                                                });
+                                                e.target.value = formatted;
+                                            }}
                                         />
                                     </td>
                                     <td className="py-3 px-4 text-center">
                                         <input
                                             type="text"
-                                            value={item.subtotal}
+                                            value={parseFloat(item.subtotal).toLocaleString(undefined, {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2
+                                            })}
                                             readOnly
                                             className="w-full text-center bg-transparent border-none focus:ring-0"
                                         />
@@ -989,7 +986,7 @@ export default function CreateMaharatInvoice() {
                 </div>
             </div>
 
-            <div className="flex justify-start mt-4">
+            <div className="flex justify-center mt-4">
                 <button
                     type="button"
                     onClick={addItemRow}
@@ -1002,39 +999,39 @@ export default function CreateMaharatInvoice() {
 
             <div className="flex flex-col md:flex-row justify-between gap-4 w-full mt-6">
                 <div className="bg-gray-100 p-4 rounded-2xl w-full md:w-1/2">
-                    <div className="w-full flex flex-col text-center md:text-left space-y-2">
-                        <p>
-                            <span className="font-semibold">Account Name:</span>{" "}
-                            {companyDetails.account_name}
-                        </p>
-                        <p>
-                            <span className="font-semibold">Account No:</span>{" "}
-                            {companyDetails.account_no}
-                        </p>
-                        <p>
-                            <span className="font-semibold">Currency:</span>{" "}
-                            {companyDetails.currency}
-                        </p>
-                        <p>
-                            <span className="font-semibold">License No:</span>{" "}
-                            {companyDetails.license_no}
-                        </p>
-                        <p>
-                            <span className="font-semibold">IBAN Number:</span>{" "}
-                            {companyDetails.iban}
-                        </p>
-                        <p>
-                            <span className="font-semibold">Bank Name:</span>{" "}
-                            {companyDetails.bank}
-                        </p>
-                        <p>
-                            <span className="font-semibold">Branch Name:</span>{" "}
-                            {companyDetails.branch}
-                        </p>
-                        <p>
-                            <span className="font-semibold">SABB Swift Code:</span>{" "}
-                            {companyDetails.swift}
-                        </p>
+                    <div className="w-full flex flex-col text-center md:text-left space-y-4">
+                        <div className="flex items-start gap-8">
+                            <span className="font-semibold w-32">Account Name:</span>
+                            <span>{companyDetails.account_name}</span>
+                        </div>
+                        <div className="flex items-start gap-8">
+                            <span className="font-semibold w-32">Account No:</span>
+                            <span>{companyDetails.account_no}</span>
+                        </div>
+                        <div className="flex items-start gap-8">
+                            <span className="font-semibold w-32">Currency:</span>
+                            <span>{companyDetails.currency}</span>
+                        </div>
+                        <div className="flex items-start gap-8">
+                            <span className="font-semibold w-32">License No:</span>
+                            <span>{companyDetails.license_no}</span>
+                        </div>
+                        <div className="flex items-start gap-8">
+                            <span className="font-semibold w-32">IBAN Number:</span>
+                            <span>{companyDetails.iban}</span>
+                        </div>
+                        <div className="flex items-start gap-8">
+                            <span className="font-semibold w-32">Bank Name:</span>
+                            <span>{companyDetails.bank}</span>
+                        </div>
+                        <div className="flex items-start gap-8">
+                            <span className="font-semibold w-32">Branch Name:</span>
+                            <span>{companyDetails.branch}</span>
+                        </div>
+                        <div className="flex items-start gap-8">
+                            <span className="font-semibold w-32">Swift Code:</span>
+                            <span>{companyDetails.swift}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -1042,22 +1039,19 @@ export default function CreateMaharatInvoice() {
                     <div className="bg-gray-100 p-4 rounded-2xl">
                         <div className="flex justify-between items-center gap-2 mb-4">
                             <strong className="w-1/4">Subtotal:</strong>
-                            <p className="font-medium">
-                                {parseFloat(formData.subtotal).toLocaleString(
-                                    undefined,
-                                    {
+                            <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                    {parseFloat(formData.subtotal).toLocaleString(undefined, {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2,
-                                    }
-                                )}{" "}
-                                SAR
-                            </p>
+                                    })}
+                                </p>
+                                <span className="font-medium">{companyDetails.currency_code || 'SAR'}</span>
+                            </div>
                         </div>
-                        <div className="flex flex-col md:flex-row justify-start items-center gap-2">
-                            <strong className="w-full md:w-1/3">
-                                Discount:
-                            </strong>
-                            <div className="w-full">
+                        <div className="flex justify-between items-center gap-2">
+                            <strong className="w-1/4">Discount:</strong>
+                            <div className="flex items-center gap-2 justify-end -mt-1">
                                 <input
                                     type="number"
                                     id="discount"
@@ -1066,49 +1060,48 @@ export default function CreateMaharatInvoice() {
                                     onChange={handleInputChange}
                                     min="0"
                                     step="0.01"
-                                    className="mt-1 block w-full rounded border-gray-300"
+                                    className="block w-24 rounded border-none shadow-none focus:ring-0 text-right appearance-none bg-transparent pr-0"
                                     placeholder="Enter Discount"
                                 />
+                                <span className="font-medium">{companyDetails.currency_code || 'SAR'}</span>
                             </div>
                         </div>
                         <div className="flex justify-between items-center gap-2 mt-4">
                             <strong className="w-1/4">VAT Amount:</strong>
-                            <p className="font-medium">
-                                {parseFloat(formData.vat_amount).toLocaleString(
-                                    undefined,
-                                    {
+                            <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                    {parseFloat(formData.vat_amount).toLocaleString(undefined, {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2,
-                                    }
-                                )}{" "}
-                                SAR
-                            </p>
+                                    })}
+                                </p>
+                                <span className="font-medium">{companyDetails.currency_code || 'SAR'}</span>
+                            </div>
                         </div>
                     </div>
-                    <div className="bg-gray-100 p-4 rounded mt-4">
+                    <div className="bg-gray-100 p-4 rounded-2xl mt-4">
                         <div className="flex justify-between items-center gap-2 font-medium text-2xl text-red-500">
                             <strong>Net Amount:</strong>
-                            <p>
-                                {parseFloat(formData.total).toLocaleString(
-                                    undefined,
-                                    {
+                            <div className="flex items-center gap-2">
+                                <p>
+                                    {parseFloat(formData.total).toLocaleString(undefined, {
                                         minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2,
-                                    }
-                                )}{" "}
-                                SAR
-                            </p>
+                                        maximumFractionDigits: 2
+                                    })}
+                                </p>
+                                <span>{companyDetails.currency_code || 'SAR'}</span>
+                            </div>
                         </div>
                     </div>
+                    <div className="mt-8 flex justify-end">
+                        <button
+                            onClick={handleSubmit}
+                            className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto"
+                        >
+                            {isEditMode ? 'Update Invoice' : 'Create Invoice'}
+                        </button>
+                    </div>
                 </div>
-            </div>
-            <div className="my-8 flex flex-col md:flex-row justify-center md:justify-end w-full gap-4">
-                <button
-                    onClick={handleSubmit}
-                    className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto"
-                >
-                    {isEditMode ? 'Update Invoice' : 'Create Invoice'}
-                </button>
             </div>
         </div>
     );
