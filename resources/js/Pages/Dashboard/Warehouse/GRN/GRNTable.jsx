@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit, faTrash, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faTrash } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 
 export default function GRNTable() {
@@ -133,15 +133,19 @@ export default function GRNTable() {
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <div className="flex justify-center space-x-3">
+                                                    <button className="text-[#9B9DA2] hover:text-gray-500">
+                                                        <FontAwesomeIcon
+                                                            icon={faEye}
+                                                        />
+                                                    </button>
                                                     <button
                                                         onClick={() =>
                                                             handleDelete(grn.id)
                                                         }
-                                                        className="text-red-600 hover:text-red-900"
+                                                        className="text-[#9B9DA2] hover:text-gray-500"
                                                     >
                                                         <FontAwesomeIcon
                                                             icon={faTrash}
-                                                            className="h-5 w-5"
                                                         />
                                                     </button>
                                                 </div>
