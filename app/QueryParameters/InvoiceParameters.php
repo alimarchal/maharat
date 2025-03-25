@@ -6,7 +6,8 @@ class InvoiceParameters
 {
     public const ALLOWED_FILTERS = [
         'invoice_number',
-        'vendor_id',
+        'representative',
+        'representative_email',
         'client_id',
         'status',
         'payment_method',
@@ -26,7 +27,6 @@ class InvoiceParameters
     ];
 
     public const ALLOWED_INCLUDES = [
-        'vendor',
         'client',
         'items'
     ];

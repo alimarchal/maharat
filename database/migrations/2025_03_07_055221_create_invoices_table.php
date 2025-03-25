@@ -14,10 +14,12 @@ return new class extends Migration
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
             $table->string('invoice_number')->unique()->comment('Maharat Invoice Table');
-            $table->foreignId('vendor_id')->constrained('suppliers')->onDelete('cascade');
+//            $table->foreignId('vendor_id')->constrained('suppliers')->onDelete('cascade');
             $table->foreignId('client_id')->nullable()->constrained('customers')->onDelete('cascade');
             $table->enum('status', ['Draft', 'Pending', 'Paid', 'Overdue', 'Cancelled'])->default('Draft'); // Directly store status as string field
             $table->string('payment_method')->nullable();
+            $table->string('representative')->nullable();
+            $table->string('representative_email')->nullable();
             $table->date('issue_date');
             $table->date('due_date')->nullable();
             $table->integer('discounted_days')->nullable();

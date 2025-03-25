@@ -98,11 +98,11 @@ class InvoiceController extends Controller
             $validatedData = $request->validated();
 
             // Ensure numeric fields are properly cast
-            $numericFields = ['total_amount', 'subtotal', 'tax_amount', 'vendor_id', 'client_id'];
+            $numericFields = ['total_amount', 'subtotal', 'tax_amount',  'client_id'];
             foreach ($numericFields as $field) {
                 if (isset($validatedData[$field])) {
-                    $validatedData[$field] = is_string($validatedData[$field]) 
-                        ? (float) $validatedData[$field] 
+                    $validatedData[$field] = is_string($validatedData[$field])
+                        ? (float) $validatedData[$field]
                         : $validatedData[$field];
                 }
             }
@@ -123,7 +123,7 @@ class InvoiceController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Invoice creation error: ' . $e->getMessage());
-            
+
             return response()->json([
                 'message' => 'Failed to create invoice',
                 'error' => $e->getMessage()
@@ -151,11 +151,11 @@ class InvoiceController extends Controller
             $validatedData = $request->validated();
 
             // Ensure numeric fields are properly cast
-            $numericFields = ['total_amount', 'subtotal', 'tax_amount', 'vendor_id', 'client_id'];
+            $numericFields = ['total_amount', 'subtotal', 'tax_amount', 'client_id'];
             foreach ($numericFields as $field) {
                 if (isset($validatedData[$field])) {
-                    $validatedData[$field] = is_string($validatedData[$field]) 
-                        ? (float) $validatedData[$field] 
+                    $validatedData[$field] = is_string($validatedData[$field])
+                        ? (float) $validatedData[$field]
                         : $validatedData[$field];
                 }
             }
@@ -173,7 +173,7 @@ class InvoiceController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Invoice update error: ' . $e->getMessage());
-            
+
             return response()->json([
                 'message' => 'Failed to update invoice',
                 'error' => $e->getMessage()
@@ -215,7 +215,7 @@ class InvoiceController extends Controller
 
             return response()->json([
                 'message' => 'Invoice restored successfully',
-                'data' => new InvoiceResource($invoice->load('vendor', 'client', 'items'))
+                'data' => new InvoiceResource($invoice->load('client', 'items'))
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -232,7 +232,7 @@ class InvoiceController extends Controller
         try {
             // You can modify this array based on your requirements
             $paymentMethods = ['Cash', 'Credit', 'Bank Transfer', 'Cheque'];
-            
+
             return response()->json([
                 'success' => true,
                 'payment_methods' => $paymentMethods

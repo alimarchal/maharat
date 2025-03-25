@@ -12,7 +12,8 @@ class InvoiceResource extends JsonResource
         return [
             'id' => $this->id,
             'invoice_number' => $this->invoice_number,
-            'vendor_id' => $this->vendor_id,
+            'representative' => $this->representative,
+            'representative_email' => $this->representative_email,
             'client_id' => $this->client_id,
             'status' => $this->status,
             'payment_method' => $this->payment_method,
@@ -26,7 +27,6 @@ class InvoiceResource extends JsonResource
             'notes' => $this->notes,
 
             // Related resources
-            'vendor' => new CustomerResource($this->whenLoaded('vendor')),
             'client' => new CustomerResource($this->whenLoaded('client')),
             'items' => InvoiceItemResource::collection($this->whenLoaded('items')),
 

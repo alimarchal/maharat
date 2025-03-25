@@ -12,7 +12,8 @@ class Invoice extends Model
 
     protected $fillable = [
         'invoice_number',
-        'vendor_id',
+        'representative',
+        'representative_email',
         'client_id',
         'status',
         'payment_method',
@@ -34,17 +35,16 @@ class Invoice extends Model
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'discounted_days' => 'integer',
-        'vendor_id' => 'integer',
         'client_id' => 'integer'
     ];
-
-    /**
-     * Get the vendor (customer that issued the invoice).
-     */
-    public function vendor()
-    {
-        return $this->belongsTo(Customer::class, 'vendor_id');
-    }
+//
+//    /**
+//     * Get the vendor (customer that issued the invoice).
+//     */
+//    public function vendor()
+//    {
+//        return $this->belongsTo(Customer::class, 'vendor_id');
+//    }
 
     /**
      * Get the client (customer that received the invoice).

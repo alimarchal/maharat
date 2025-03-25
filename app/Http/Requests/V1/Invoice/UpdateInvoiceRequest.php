@@ -14,7 +14,6 @@ class UpdateInvoiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'vendor_id' => ['required', 'integer', 'exists:suppliers,id'],
             'client_id' => ['nullable', 'integer', 'exists:customers,id'],
             'status' => ['required', 'string', 'in:Draft,Pending,Paid,Overdue,Cancelled'],
             'issue_date' => ['required', 'date'],
@@ -23,7 +22,7 @@ class UpdateInvoiceRequest extends FormRequest
             'subtotal' => ['required', 'numeric', 'min:0'],
             'tax_amount' => ['required', 'numeric', 'min:0'],
             'account_code_id' => ['required', 'exists:account_codes,id'],
-            
+
             // Optional fields
             'payment_method' => ['nullable', 'string'],
             'due_date' => ['nullable', 'date', 'after_or_equal:issue_date'],
