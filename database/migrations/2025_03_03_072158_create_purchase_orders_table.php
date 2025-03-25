@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('purchase_orders', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->comment('Created By')->constrained('users', 'id');
+            $table->foreignId('rfq_id')->nullable()->constrained('rfqs', 'id');
             $table->foreignId('warehouse_id')->nullable()->constrained('warehouses');
             $table->foreignId('department_id')->nullable()->constrained('departments', 'id');
             $table->foreignId('cost_center_id')->nullable()->constrained('cost_centers', 'id');

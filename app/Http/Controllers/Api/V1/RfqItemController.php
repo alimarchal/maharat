@@ -38,16 +38,18 @@ class RfqItemController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
         try {
             DB::beginTransaction();
 
             $items = json_decode($request->input('items'), true);
-            
+
             if (!is_array($items)) {
                 throw new \Exception('Invalid items data');
             }
+
+
 
             foreach ($items as $index => $item) {
                 $itemData = [
@@ -110,7 +112,7 @@ class RfqItemController extends Controller
             DB::beginTransaction();
 
             $items = json_decode($request->items, true);
-            
+
             if (!is_array($items)) {
                 throw new \Exception('Invalid items data');
             }
@@ -121,7 +123,7 @@ class RfqItemController extends Controller
                 }
 
                 $item = RfqItem::findOrFail($itemData['id']);
-                
+
                 // Only update fields that are present in the request
                 $updateData = array_filter($itemData, function($value) {
                     return $value !== null && $value !== '';
@@ -136,7 +138,7 @@ class RfqItemController extends Controller
 
                 // Remove id from update data
                 unset($updateData['id']);
-                
+
                 if (!empty($updateData)) {
                     $item->update($updateData);
                 }
@@ -152,7 +154,7 @@ class RfqItemController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('RFQ Items Update Error: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update items: ' . $e->getMessage()

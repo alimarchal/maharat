@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('rfq_id')->nullable()->constrained()->cascadeOnDelete();
             $table->foreignId('category_id')->nullable()->constrained('product_categories');
+            $table->foreignId('product_id')->nullable()->constrained('products', 'id');
             $table->string('item_name')->nullable();
             $table->text('description')->nullable();
             $table->foreignId('unit_id')->nullable()->constrained('units');

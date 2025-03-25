@@ -24,6 +24,7 @@ class StorePurchaseOrderRequest extends FormRequest
         return [
             'purchase_order_no' => 'nullable',
             'quotation_id' => 'nullable|exists:quotations,id',
+            'rfq_id' => 'nullable|exists:rfqs,id',
             'warehouse_id' => 'nullable|exists:warehouses,id',
             'department_id' => 'nullable|exists:departments,id',
             'cost_center_id' => 'nullable|exists:cost_centers,id',

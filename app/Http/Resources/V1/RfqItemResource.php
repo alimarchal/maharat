@@ -12,11 +12,13 @@ class RfqItemResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'product_id' => $this->product_id,
             'rfq_id' => $this->rfq_id,
             'item_name' => $this->item_name,
             'description' => $this->description,
             'quantity' => number_format((float)$this->quantity, 1, '.', ''),
             'brand_id' => $this->brand_id,
+            'product' => new ProductResource($this->whenLoaded('product')),
             'brand' => new BrandResource($this->whenLoaded('brand')),
             'model' => $this->model,
             'specifications' => $this->specifications,

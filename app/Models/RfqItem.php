@@ -14,6 +14,7 @@ class RfqItem extends Model
     protected $fillable = [
         'rfq_id',
         'category_id',
+        'product_id',
         'item_name',
         'description',
         'unit_id',
@@ -52,5 +53,10 @@ class RfqItem extends Model
     public function status(): BelongsTo
     {
         return $this->belongsTo(Status::class, 'status_id');
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class,'product_id');
     }
 }

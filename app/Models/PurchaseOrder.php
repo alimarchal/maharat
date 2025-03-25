@@ -13,6 +13,7 @@ class PurchaseOrder extends Model
 
     protected $fillable = [
         'purchase_order_no',
+        'rfq_id',
         'warehouse_id',
         'department_id',
         'cost_center_id',
@@ -100,5 +101,10 @@ class PurchaseOrder extends Model
     public function goodReceiveNote()
     {
         return $this->hasMany(Grn::class);
+    }
+
+    public function requestForQuotation(): BelongsTo
+    {
+        return $this->belongsTo(Rfq::class, 'rfq_id','id');
     }
 }

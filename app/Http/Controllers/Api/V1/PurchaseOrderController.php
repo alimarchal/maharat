@@ -155,17 +155,17 @@ class PurchaseOrderController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id): JsonResponse
+    public function show(string $id)
     {
         try {
             $purchaseOrder = PurchaseOrder::with([
-                'quotation',
-                'supplier',
-                'user',
-                'department',
-                'costCenter',
-                'subCostCenter',
-                'warehouse',
+//                'quotation',
+//                'supplier',
+//                'user',
+//                'department',
+//                'costCenter',
+//                'subCostCenter',
+                'requestForQuotation',
             ])->findOrFail($id);
 
             return response()->json([
@@ -219,6 +219,7 @@ class PurchaseOrderController extends Controller
                         'costCenter',
                         'subCostCenter',
                         'warehouse',
+                        'rfq',
                     ])
                 )
             ], Response::HTTP_OK);
