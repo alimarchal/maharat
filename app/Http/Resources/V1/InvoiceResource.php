@@ -25,6 +25,8 @@ class InvoiceResource extends JsonResource
             'total_amount' => $this->total_amount,
             'currency' => $this->currency,
             'notes' => $this->notes,
+            'created_by' => $this->created_by,
+            'updated_by' => $this->updated_by,
 
             // Related resources
             'client' => new CustomerResource($this->whenLoaded('client')),
