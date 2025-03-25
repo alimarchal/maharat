@@ -159,13 +159,13 @@ class PurchaseOrderController extends Controller
     {
         try {
             $purchaseOrder = PurchaseOrder::with([
-//                'quotation',
-//                'supplier',
-//                'user',
-//                'department',
-//                'costCenter',
-//                'subCostCenter',
-                'requestForQuotation',
+                'quotation',
+                'supplier',
+                'user',
+                'department',
+                'costCenter',
+                'subCostCenter',
+                'requestForQuotation.items',
             ])->findOrFail($id);
 
             return response()->json([

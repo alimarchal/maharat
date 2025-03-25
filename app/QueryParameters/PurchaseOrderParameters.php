@@ -36,6 +36,6 @@ class PurchaseOrderParameters
         'costCenter',
         'subCostCenter',
         'warehouse',
-        'rfq',
+        'requestForQuotation.items',
     ];
 }

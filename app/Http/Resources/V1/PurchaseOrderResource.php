@@ -20,6 +20,7 @@ class PurchaseOrderResource extends JsonResource
             'quotation_id' => $this->quotation_id,
             'supplier_id' => $this->supplier_id,
             'user_id' => $this->user_id,
+            'rfq_id' => $this->rfq_id,
             'purchase_order_date' => $this->purchase_order_date->toDateString(),
             'expiry_date' => $this->expiry_date->toDateString(),
             'amount' => $this->amount,
@@ -30,7 +31,7 @@ class PurchaseOrderResource extends JsonResource
             'updated_at' => $this->updated_at,
 
 //            // Include related resources when loaded
-            'requestForQuotation' => new RfqResource($this->whenLoaded('requestForQuotation')),
+            'rfq' => new RfqResource($this->whenLoaded('requestForQuotation')),
             'department' => new DepartmentResource($this->whenLoaded('department')),
             'costCenter' => new CostCenterResource($this->whenLoaded('costCenter')),
             'subCostCenter' => new CostCenterResource($this->whenLoaded('subCostCenter')),
