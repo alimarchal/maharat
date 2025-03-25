@@ -29,8 +29,10 @@ return new class extends Migration
             $table->string('currency', 3)->default('SAR');
             $table->text('notes')->nullable();
             $table->foreignId('account_code_id')->default(4)->constrained('account_codes', 'id');
-            $table->timestamps();
             $table->softDeletes();
+            $table->userTracking();
+            $table->timestamps();
+
         });
     }
 
