@@ -59,16 +59,21 @@ export default function AddQuotationForm({ auth }) {
     const [paymentTypeNames, setPaymentTypeNames] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [products, setProducts] = useState([]);
 
     useEffect(() => {
-        if (rfqId) {
-            setLoading(true);
-            setIsEditing(true);
+        const fetchInitialData = async () => {
+            try {
+                // First fetch products
+                const productsResponse = await axios.get("/api/v1/products");
+                const productsData = productsResponse.data?.data || [];
+                setProducts(productsData);
 
-            // Directly fetch RFQ data
-            axios
-                .get(`/api/v1/rfqs/${rfqId}`)
-                .then(async (response) => {
+                if (rfqId) {
+                    setLoading(true);
+                    setIsEditing(true);
+
+                    const response = await axios.get(`/api/v1/rfqs/${rfqId}`);
                     const rfqData = response.data?.data;
 
                     if (!rfqData) {
@@ -115,55 +120,37 @@ export default function AddQuotationForm({ auth }) {
                         let attachmentObj = null;
                         if (item.attachment) {
                             if (typeof item.attachment === "string") {
-                                // Extract just the path part, removing any domain
-                                let path = item.attachment;
-
-                                // If it's a full URL, extract just the path portion
-                                if (path.startsWith("http")) {
-                                    const urlObj = new URL(path);
-                                    path = urlObj.pathname; // This gives just the path part: /storage/rfq-attachments/
-                                }
-
-                                // Create object with relative path
+                                const fileName = item.attachment.split("/").pop();
                                 attachmentObj = {
-                                    url: path,
-                                    name:
-                                        item.specifications ||
-                                        path.split("/").pop(),
+                                    url: item.attachment,
+                                    name: fileName,
+                                    file_name: fileName
                                 };
                             } else if (typeof item.attachment === "object") {
-                                // Handle object attachment
                                 attachmentObj = {
-                                    url:
-                                        item.attachment.url ||
-                                        item.attachment.path ||
-                                        "",
-                                    name:
-                                        item.specifications ||
-                                        item.attachment.name ||
-                                        "Attachment",
+                                    url: item.attachment.url || item.attachment.path || "",
+                                    name: item.attachment.name || item.attachment.file_name || "Attachment",
+                                    file_name: item.attachment.file_name || item.attachment.name || "Attachment"
                                 };
                             }
                         }
 
+                        // Find the corresponding product from the already loaded products
+                        const product = productsData.find(p => p.id === item.product_id);
+
                         return {
                             id: item.id,
-                            item_name: item.item_name || "",
-                            description: item.description || "",
-                            unit_id: item.unit_id ? String(item.unit_id) : "",
-                            quantity: item.quantity || "",
-                            brand_id: item.brand_id
-                                ? String(item.brand_id)
-                                : "",
+                            product_id: item.product_id || '',
+                            item_name: item.item_name || (product ? product.name : ''),
+                            description: item.description || (product ? product.description : ''),
+                            unit_id: item.unit_id ? String(item.unit_id) : '',
+                            quantity: item.quantity || '',
+                            brand_id: item.brand_id ? String(item.brand_id) : '',
                             attachment: attachmentObj,
-                            specifications: item.specifications || "",
-                            expected_delivery_date:
-                                item.expected_delivery_date?.split("T")[0] ||
-                                "",
+                            specifications: item.specifications || '',
+                            expected_delivery_date: item.expected_delivery_date?.split('T')[0] || '',
                             rfq_id: rfqId,
-                            status_id: item.status_id
-                                ? String(item.status_id)
-                                : "48",
+                            status_id: item.status_id ? String(item.status_id) : '48',
                         };
                     });
 
@@ -214,39 +201,37 @@ export default function AddQuotationForm({ auth }) {
                     console.log("Setting form data:", formattedData);
                     setFormData(formattedData);
                     setLoading(false);
-                })
-                .catch((error) => {
-                    console.error("Error fetching RFQ data:", error);
-                    setError(
-                        "Failed to load RFQ data: " +
-                            (error.response?.data?.message ||
-                                error.message ||
-                                "Unknown error")
-                    );
-                    setLoading(false);
-                });
-        } else {
-            // In create mode, get new RFQ number
-            axios
-                .get("/api/v1/rfqs/form-data")
-                .then((response) => {
-                    if (response.data && response.data.rfq_number) {
-                        setFormData((prev) => ({
-                            ...prev,
-                            rfq_id: response.data.rfq_number,
-                            issue_date:
-                                response.data.request_date ||
-                                new Date().toISOString().split("T")[0],
-                        }));
-                    }
-                })
-                .catch((error) => {
-                    console.error("Error fetching new RFQ number:", error);
-                })
-                .finally(() => {
-                    setLoading(false);
-                });
-        }
+                } else {
+                    // In create mode, get new RFQ number
+                    axios
+                        .get("/api/v1/rfqs/form-data")
+                        .then((response) => {
+                            if (response.data && response.data.rfq_number) {
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    rfq_id: response.data.rfq_number,
+                                    issue_date:
+                                        response.data.request_date ||
+                                        new Date().toISOString().split("T")[0],
+                                }));
+                            }
+                        })
+                        .catch((error) => {
+                            console.error("Error fetching new RFQ number:", error);
+                        })
+                        .finally(() => {
+                            setLoading(false);
+                        });
+                }
+            } catch (error) {
+                console.error("Error fetching initial data:", error);
+                setError("Failed to load data");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchInitialData();
     }, [rfqId]);
 
     // Fetch lookup data
@@ -261,6 +246,7 @@ export default function AddQuotationForm({ auth }) {
                     { name: "brands", url: "/api/v1/brands" },
                     { name: "categories", url: "/api/v1/product-categories" },
                     { name: "warehouses", url: "/api/v1/warehouses" },
+                    { name: "products", url: "/api/v1/products" },
                 ];
 
                 // Fetch each endpoint and handle potential errors individually
@@ -337,6 +323,10 @@ export default function AddQuotationForm({ auth }) {
                                 }
                             });
                             setWarehouseNames(warehouseLookup);
+                            break;
+
+                        case "products":
+                            setProducts(result.data);
                             break;
 
                         default:
@@ -513,6 +503,7 @@ export default function AddQuotationForm({ auth }) {
                 setWarehouseNames({});
                 setCategoryNames({});
                 setPaymentTypeNames({});
+                setProducts([]);
 
                 setLoading(false);
             }
@@ -526,10 +517,7 @@ export default function AddQuotationForm({ auth }) {
 
         try {
             const formDataObj = new FormData();
-            formDataObj.append(
-                "organization_email",
-                formData.organization_email || ""
-            );
+            formDataObj.append("organization_email", formData.organization_email || "");
             formDataObj.append("city", formData.city || "");
             formDataObj.append("category_id", formData.category_id || "");
             formDataObj.append("warehouse_id", formData.warehouse_id || "");
@@ -545,43 +533,15 @@ export default function AddQuotationForm({ auth }) {
                 if (item.id) {
                     formDataObj.append(`items[${index}][id]`, item.id);
                 }
-                formDataObj.append(
-                    `items[${index}][item_name]`,
-                    item.item_name || ""
-                );
-                formDataObj.append(
-                    `items[${index}][description]`,
-                    item.description || ""
-                );
-                formDataObj.append(
-                    `items[${index}][unit_id]`,
-                    item.unit_id || ""
-                );
-                formDataObj.append(
-                    `items[${index}][quantity]`,
-                    item.quantity || ""
-                );
-                formDataObj.append(
-                    `items[${index}][brand_id]`,
-                    item.brand_id || ""
-                );
-                formDataObj.append(
-                    `items[${index}][expected_delivery_date]`,
-                    item.expected_delivery_date || ""
-                );
-                formDataObj.append(
-                    `items[${index}][status_id]`,
-                    item.status_id || "48"
-                );
+                formDataObj.append(`items[${index}][product_id]`, item.product_id || '');
+                formDataObj.append(`items[${index}][item_name]`, item.item_name || '');
+                formDataObj.append(`items[${index}][description]`, item.description || '');
+                formDataObj.append(`items[${index}][unit_id]`, item.unit_id || '');
+                formDataObj.append(`items[${index}][quantity]`, item.quantity || '');
+                formDataObj.append(`items[${index}][brand_id]`, item.brand_id || '');
+                formDataObj.append(`items[${index}][expected_delivery_date]`, item.expected_delivery_date || '');
+                formDataObj.append(`items[${index}][status_id]`, item.status_id || '48');
                 formDataObj.append(`items[${index}][rfq_id]`, rfqId || null);
-
-                // Handle file attachment
-                if (attachments[index]) {
-                    formDataObj.append(
-                        `items[${index}][attachment]`,
-                        attachments[index]
-                    );
-                }
             });
 
             // For PUT requests in Laravel
@@ -590,7 +550,6 @@ export default function AddQuotationForm({ auth }) {
             }
 
             const url = rfqId ? `/api/v1/rfqs/${rfqId}` : "/api/v1/rfqs";
-
             const response = await axios.post(url, formDataObj, {
                 headers: {
                     "Content-Type": "multipart/form-data",
@@ -599,76 +558,62 @@ export default function AddQuotationForm({ auth }) {
             });
             const RFQResponse = response.data.data;
 
-            const loggedUser = auth.user?.id;
-            const processResponse = await axios.get(
-                "/api/v1/processes?include=steps,creator,updater&filter[title]=RFQ Approval"
-            );
-            const processList = processResponse.data.data;
-            const process = processList[0];
-            const processStep = process.steps[0];
+            // Only proceed with process steps if we have a successful RFQ response
+            if (RFQResponse?.id) {
+                const loggedUser = auth.user?.id;
+                const processResponse = await axios.get(
+                    "/api/v1/processes?include=steps,creator,updater&filter[title]=RFQ Approval"
+                );
+                
+                if (processResponse.data?.data?.[0]?.steps?.[0]) {
+                    const process = processResponse.data.data[0];
+                    const processStep = process.steps[0];
 
-            const processResponseViaUser = await axios.get(
-                `/api/v1/process-steps/${processStep?.order}/user/${loggedUser}`
-            );
-            const assignUser = processResponseViaUser?.data;
+                    // Only proceed if we have valid process step data
+                    if (processStep?.id && processStep?.order) {
+                        const processResponseViaUser = await axios.get(
+                            `/api/v1/process-steps/${processStep.order}/user/${loggedUser}`
+                        );
+                        const assignUser = processResponseViaUser?.data;
 
-            const RFQApprovalTransactionPayload = {
-                rfq_id: RFQResponse?.id,
-                requester_id: loggedUser,
-                assigned_to: assignUser.user?.user?.id,
-                order: processStep.order,
-                description: processStep.description,
-                status: "Pending",
-            };
-            await axios.post(
-                "/api/v1/rfq-approval-transactions",
-                RFQApprovalTransactionPayload
-            );
+                        if (assignUser?.user?.user?.id) {
+                            const RFQApprovalTransactionPayload = {
+                                rfq_id: RFQResponse.id,
+                                requester_id: loggedUser,
+                                assigned_to: assignUser.user.user.id,
+                                order: processStep.order,
+                                description: processStep.description,
+                                status: "Pending",
+                            };
+                            await axios.post(
+                                "/api/v1/rfq-approval-transactions",
+                                RFQApprovalTransactionPayload
+                            );
 
-            const taskPayload = {
-                process_step_id: processStep.id,
-                process_id: processStep.process_id,
-                assigned_at: new Date().toISOString(),
-                urgency: "Normal",
-                assigned_to_user_id: assignUser.user?.user?.id,
-                assigned_from_user_id: loggedUser,
-            };
-            await axios.post("/api/v1/tasks", taskPayload);
+                            const taskPayload = {
+                                process_step_id: processStep.id,
+                                process_id: processStep.process_id,
+                                assigned_at: new Date().toISOString(),
+                                urgency: "Normal",
+                                assigned_to_user_id: assignUser.user.user.id,
+                                assigned_from_user_id: loggedUser,
+                            };
+                            await axios.post("/api/v1/tasks", taskPayload);
+                        }
+                    }
+                }
+            }
 
             if (response.data && response.data.success === true) {
-                alert(
-                    rfqId
-                        ? "RFQ updated successfully!"
-                        : "RFQ created successfully!"
-                );
-            } else {
-                console.error(
-                    "Response didn't indicate success:",
-                    response.data
-                );
-                alert(
-                    "Failed to save RFQ: " +
-                        (response.data.message || "Unknown error")
-                );
+                alert(rfqId ? "RFQ updated successfully!" : "RFQ created successfully!");
+                router.visit(route("rfq.index")); // Redirect after successful save
+                return true;
             }
         } catch (error) {
             console.error("Error saving RFQ:", error);
-            console.error(
-                "Error details:",
-                error.response?.data || error.message
-            );
-
-            if (error.response?.data?.errors) {
-                const errorMessages = Object.values(error.response.data.errors)
-                    .flat()
-                    .join("\n");
-                alert(`Validation Error:\n${errorMessages}`);
-            } else {
-                alert(
-                    error.response?.data?.message ||
-                        "Failed to save RFQ. Check console for details."
-                );
-            }
+            console.error("Error details:", error.response?.data || error.message);
+            alert(error.response?.data?.message || "Failed to save RFQ. Check console for details.");
+            return false;
         }
     };
 
@@ -678,13 +623,14 @@ export default function AddQuotationForm({ auth }) {
             items: [
                 ...prev.items,
                 {
-                    item_name: "",
-                    description: "",
-                    unit_id: "",
-                    quantity: "",
-                    brand_id: "",
+                    product_id: '',
+                    item_name: '',
+                    description: '',
+                    unit_id: '',
+                    quantity: '',
+                    brand_id: '',
                     attachment: null,
-                    expected_delivery_date: "",
+                    expected_delivery_date: '',
                     rfq_id: rfqId || null,
                     status_id: 48,
                 },
@@ -694,9 +640,28 @@ export default function AddQuotationForm({ auth }) {
 
     const handleItemChange = (index, field, value) => {
         const updatedItems = [...formData.items];
-        if (field === "quantity") {
-            if (value === "") {
-                updatedItems[index][field] = "";
+        
+        if (field === 'product_id') {
+            const selectedProduct = products.find(p => p.id === Number(value));
+            if (selectedProduct) {
+                updatedItems[index] = {
+                    ...updatedItems[index],
+                    product_id: selectedProduct.id,
+                    item_name: selectedProduct.name,
+                    description: selectedProduct.description || ''
+                };
+            } else {
+                // If no product is selected (empty selection)
+                updatedItems[index] = {
+                    ...updatedItems[index],
+                    product_id: '',
+                    item_name: '',
+                    description: ''
+                };
+            }
+        } else if (field === 'quantity') {
+            if (value === '') {
+                updatedItems[index][field] = '';
             } else {
                 const numValue = parseFloat(value);
                 if (numValue < 0) return;
@@ -705,6 +670,7 @@ export default function AddQuotationForm({ auth }) {
         } else {
             updatedItems[index][field] = value;
         }
+        
         setFormData({ ...formData, items: updatedItems });
     };
 
@@ -719,11 +685,12 @@ export default function AddQuotationForm({ auth }) {
 
             // Update the form data with the file info
             const updatedItems = [...formData.items];
-            updatedItems[index].attachment = file;
+            updatedItems[index].attachment = {
+                name: file.name,
+                original_filename: file.name,
+                file: file
+            };
             setFormData({ ...formData, items: updatedItems });
-
-            // Optionally create a temporary URL for immediate display
-            updatedItems[index].tempUrl = URL.createObjectURL(file);
         }
     };
 
@@ -752,37 +719,78 @@ export default function AddQuotationForm({ auth }) {
         }));
     };
 
-    const handleSave = async (e) => {
-        if (e) e.preventDefault();
+    const handleSaveAndSubmit = async (e) => {
+        e.preventDefault();
 
         try {
-            const formDataToSend = new FormData();
+            // First save the RFQ
+            const formDataObj = new FormData();
+            formDataObj.append("organization_email", formData.organization_email || "");
+            formDataObj.append("city", formData.city || "");
+            formDataObj.append("category_id", formData.category_id || "");
+            formDataObj.append("warehouse_id", formData.warehouse_id || "");
+            formDataObj.append("request_date", formData.issue_date || "");
+            formDataObj.append("closing_date", formData.closing_date || "");
+            formDataObj.append("rfq_number", formData.rfq_id || "");
+            formDataObj.append("payment_type", formData.payment_type || "");
+            formDataObj.append("contact_number", formData.contact_no || "");
+            formDataObj.append("status_id", formData.status_id || "48");
 
-            // Add basic form data
-            Object.keys(formData).forEach((key) => {
-                if (key !== "items" && formData[key] !== null) {
-                    formDataToSend.append(key, formData[key]);
-                }
-            });
-
-            // Add items as a JSON string
-            if (formData.items && formData.items.length > 0) {
-                formDataToSend.append("items", JSON.stringify(formData.items));
-            }
-
-            // Add attachments separately
-            if (attachments) {
-                Object.keys(attachments).forEach((index) => {
-                    formDataToSend.append(
-                        `attachments[${index}]`,
-                        attachments[index]
-                    );
+            let response;
+            if (rfqId) {
+                // For updates, use axios.put
+                response = await axios.put(`/api/v1/rfqs/${rfqId}`, formDataObj, {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                        Accept: "application/json",
+                    },
+                });
+            } else {
+                // For new RFQs, use axios.post
+                response = await axios.post("/api/v1/rfqs", formDataObj, {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                        Accept: "application/json",
+                    },
                 });
             }
 
-            const response = await axios.post(
+            if (!response.data?.data?.id) {
+                throw new Error("Failed to get RFQ ID");
+            }
+
+            const newRfqId = response.data.data.id;
+
+            // Now save the items with the new RFQ ID
+            const itemsFormData = new FormData();
+            const itemsToSend = formData.items.map(item => ({
+                id: item.id,
+                product_id: item.product_id,
+                unit_id: item.unit_id,
+                quantity: item.quantity,
+                brand_id: item.brand_id,
+                expected_delivery_date: item.expected_delivery_date,
+                rfq_id: newRfqId,
+                status_id: item.status_id || '48'
+            }));
+
+            itemsFormData.append("items", JSON.stringify(itemsToSend));
+
+            // Add attachments
+            if (attachments) {
+                Object.keys(attachments).forEach((index) => {
+                    if (attachments[index]) {
+                        itemsFormData.append(
+                            `attachments[${index}]`,
+                            attachments[index]
+                        );
+                    }
+                });
+            }
+
+            const itemsResponse = await axios.post(
                 "/api/v1/rfq-items",
-                formDataToSend,
+                itemsFormData,
                 {
                     headers: {
                         "Content-Type": "multipart/form-data",
@@ -791,54 +799,14 @@ export default function AddQuotationForm({ auth }) {
                 }
             );
 
-            if (response.data.success) {
-                alert("Items saved successfully!");
+            if (itemsResponse.data.success) {
+                alert("RFQ and items saved successfully!");
                 router.visit(route("rfq.index"));
             }
         } catch (error) {
-            console.error("Save error:", error);
-            alert(error.response?.data?.message || "Failed to save items");
+            console.error("Error in save and submit:", error);
+            alert(error.response?.data?.message || "Save failed. Please check your data and try again.");
         }
-    };
-
-    const handleDownloadPDF = async () => {
-        try {
-            if (!formData.id) {
-                await handleSave();
-            }
-
-            // View PDF in new tab
-            window.open(route("quotations.pdf.view", formData.id), "_blank");
-
-            // Direct download
-            // window.location.href = route('quotations.pdf.download', formData.id);
-        } catch (error) {
-            console.error("Error handling PDF:", error);
-            alert("Failed to process PDF request");
-        }
-    };
-
-    const handleSaveAndSubmit = async (e) => {
-        e.preventDefault();
-
-        try {
-            await handleSubmit(e);
-        } catch (error) {
-            console.error("Error saving RFQ:", error);
-            alert("RFQ save failed. Please check your data and try again.");
-            return;
-        }
-
-        try {
-            await handleSave();
-        } catch (error) {
-            console.error("Error saving item table or attachments:", error);
-            alert("Item table or attachments save failed. Please try again.");
-            return;
-        }
-
-        alert("RFQ successfully saved with all attachments!");
-        router.visit(route("rfq.index"));
     };
 
     const FileDisplay = ({ file, onFileClick }) => {
@@ -846,88 +814,46 @@ export default function AddQuotationForm({ auth }) {
             return (
                 <div className="flex flex-col items-center justify-center space-y-2">
                     <DocumentArrowDownIcon className="h-6 w-6 text-gray-400" />
-                    <span className="text-sm text-gray-500">
-                        No file attached
-                    </span>
+                    <span className="text-sm text-gray-500">No file attached</span>
                 </div>
             );
         }
 
-        const origin = window.location.origin;
-
         let fileName = "";
         let fileUrl = null;
 
-        // Case 1: File is a string URL (path)
-        if (typeof file === "string") {
-            fileName = file.split("/").pop();
-            try {
-                fileName = decodeURIComponent(fileName);
-            } catch (e) {
-                console.error("Error decoding filename:", e);
-            }
-
-            const path = file.startsWith("/") ? file : `/${file}`;
-            fileUrl = `${origin}${path}`;
-        }
-
-        // Case 2: File is a File object
-        else if (file instanceof File) {
+        if (file instanceof File) {
+            // New file being uploaded
             fileName = file.name;
             fileUrl = URL.createObjectURL(file);
-        }
-
-        // Case 3: File is an object with properties
-        else if (file && typeof file === "object") {
-            if (file.url) {
-                fileName = file.name || file.url.split("/").pop();
-                try {
-                    fileName = decodeURIComponent(fileName);
-                } catch (e) {
-                    console.error("Error decoding filename:", e);
-                }
-
-                // Convert to absolute URL
-                if (file.url.startsWith("http")) {
-                    fileUrl = file.url;
-                } else {
-                    // Relative path
-                    const path = file.url.startsWith("/")
-                        ? file.url
-                        : `/${file.url}`;
-                    fileUrl = `${origin}${path}`;
-                }
+        } else if (typeof file === "object") {
+            // File from database
+            fileName = file.original_filename || file.name || file.file_name;
+            // Fix the URL construction
+            if (file.url && file.url.startsWith('http')) {
+                fileUrl = file.url;
             } else {
-                fileName = file.name || "Attachment";
-                fileUrl = `${origin}/storage/rfq-attachments/${fileName}`;
+                fileUrl = `/storage/${file.url || file.path || file}`.replace('/storage/storage/', '/storage/');
             }
+        } else if (typeof file === "string") {
+            // Legacy format - just the path
+            fileName = file.split("/").pop();
+            fileUrl = `/storage/${file}`.replace('/storage/storage/', '/storage/');
         }
-
-        console.log("FileDisplay final URL:", {
-            origin,
-            fileName,
-            fileUrl,
-        });
 
         return (
             <div className="flex flex-col items-center justify-center space-y-2">
                 <DocumentArrowDownIcon
                     className="h-6 w-6 text-blue-500 cursor-pointer hover:text-blue-700"
                     onClick={() => {
-                        if (fileUrl) {
-                            console.log("Opening file URL:", fileUrl);
-                            window.open(fileUrl, "_blank");
-                        }
+                        if (fileUrl) onFileClick(fileUrl);
                     }}
                 />
                 {fileName && (
                     <span
                         className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
                         onClick={() => {
-                            if (fileUrl) {
-                                console.log("Opening file URL:", fileUrl);
-                                window.open(fileUrl, "_blank");
-                            }
+                            if (fileUrl) onFileClick(fileUrl);
                         }}
                     >
                         {fileName}
@@ -1253,10 +1179,10 @@ export default function AddQuotationForm({ auth }) {
                     <table className="w-full mt-4 table-fixed border-collapse">
                         <thead>
                             <tr>
-                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
+                                <th className="px-2 py-2 rounded-tl-2xl rounded-bl-2xl text-center w-[13%] bg-[#C7E7DE]">
                                     Item Name
                                 </th>
-                                <th className="px-2 py-2 text-center w-[15%] bg-[#C7E7DE]">
+                                <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">
                                     Description
                                 </th>
                                 <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
@@ -1274,7 +1200,7 @@ export default function AddQuotationForm({ auth }) {
                                 <th className="px-2 py-2 text-center w-[14%] bg-[#C7E7DE]">
                                     Expected Delivery Date
                                 </th>
-                                <th className="px-2 py-2 text-center w-[6%] bg-[#C7E7DE]">
+                                <th className="px-2 py-2 rounded-tr-2xl rounded-br-2xl text-center w-[6%] bg-[#C7E7DE]">
                                     Action
                                 </th>
                             </tr>
@@ -1283,36 +1209,24 @@ export default function AddQuotationForm({ auth }) {
                             {formData.items.map((item, index) => (
                                 <tr key={index}>
                                     <td className="px-6 py-6 text-center align-middle">
-                                        <textarea
-                                            value={item.item_name || ""}
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    index,
-                                                    "item_name",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center min-h-[3rem] resize-none overflow-hidden"
-                                            style={{
-                                                background: "none",
-                                                outline: "none",
-                                                textAlign: "center",
-                                            }}
-                                            rows={1}
+                                        <select
+                                            value={item.product_id || ''}
+                                            onChange={(e) => handleItemChange(index, 'product_id', e.target.value)}
+                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent cursor-pointer"
                                             required
-                                        />
+                                        >
+                                            <option value="">Select Product</option>
+                                            {products.map((product) => (
+                                                <option key={product.id} value={product.id}>
+                                                    {product.name}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </td>
                                     <td className="px-6 py-6 text-center align-middle">
                                         <textarea
-                                            value={item.description || ""}
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    index,
-                                                    "description",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center min-h-[3rem] resize-none overflow-hidden"
+                                            value={item.description || ''}
+                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center min-h-[3rem] resize-none overflow-hidden bg-gray-100"
                                             style={{
                                                 background: "none",
                                                 outline: "none",
@@ -1321,11 +1235,7 @@ export default function AddQuotationForm({ auth }) {
                                                 whiteSpace: "normal",
                                             }}
                                             rows="1"
-                                            required
-                                            onInput={(e) => {
-                                                e.target.style.height = "auto"; // Reset height
-                                                e.target.style.height = `${e.target.scrollHeight}px`; // Adjust height dynamically
-                                            }}
+                                            readOnly
                                         />
                                     </td>
                                     <td className="px-6 py-6 text-center align-middle">

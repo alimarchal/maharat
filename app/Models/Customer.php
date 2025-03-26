@@ -12,46 +12,46 @@ class Customer extends Model
 
     protected $fillable = [
         'name',
+        'email',
         'commercial_registration_number',
-        'tax_number',
+        'vat_number', 
         'tax_group_registration_number',
+        'cr_no', 
         'contact_number',
         'additional_number',
         'client_code',
         'license_number',
         'type',
         'is_limited',
+    
         // Address fields
-        'street_name',
-        'building_number',
-        'address_additional_number',
-        'district',
-        'neighborhood',
-        'main_street',
-        'city',
-        'state',
+        'address', 
         'zip_code',
         'country_code',
+    
         // Bank account fields
         'account_name',
         'account_number',
         'iban',
         'swift_code',
+        'bank_name',
         'branch_name',
-        'bank_currency',
+        'bank_currency', 
+    
         // Payment method
         'preferred_payment_method',
+    
         // Tax information
         'default_tax_rate',
         'is_tax_exempt'
     ];
-
+    
     protected $casts = [
         'is_limited' => 'boolean',
         'is_tax_exempt' => 'boolean',
         'default_tax_rate' => 'decimal:2',
     ];
-
+    
     /**
      * Get the invoices where this customer is the vendor.
      */
@@ -59,7 +59,7 @@ class Customer extends Model
     {
         return $this->hasMany(Invoice::class, 'vendor_id');
     }
-
+    
     /**
      * Get the invoices where this customer is the client.
      */
@@ -67,4 +67,5 @@ class Customer extends Model
     {
         return $this->hasMany(Invoice::class, 'client_id');
     }
+    
 }

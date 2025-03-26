@@ -16,13 +16,12 @@ return new class extends Migration
             $table->foreignId('rfq_id')->nullable()->constrained()->cascadeOnDelete();
             $table->foreignId('category_id')->nullable()->constrained('product_categories');
             $table->foreignId('product_id')->nullable()->constrained('products', 'id');
-            $table->string('item_name')->nullable();
-            $table->text('description')->nullable();
             $table->foreignId('unit_id')->nullable()->constrained('units');
             $table->decimal('quantity', 15, 4);
             $table->foreignId('brand_id')->nullable()->constrained('brands');
             $table->string('model')->nullable();
             $table->string('specifications')->nullable();
+            $table->string('original_filename')->nullable();
             $table->string('attachment')->nullable();
             $table->date('expected_delivery_date')->nullable();
             $table->decimal('quoted_price', 15, 4)->nullable();

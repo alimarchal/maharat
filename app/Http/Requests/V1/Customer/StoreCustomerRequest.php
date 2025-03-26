@@ -15,9 +15,11 @@ class StoreCustomerRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'email' => ['nullable', 'string', 'email'],
             'commercial_registration_number' => ['nullable', 'string', 'unique:customers,commercial_registration_number'],
-            'tax_number' => ['nullable', 'string', 'unique:customers,tax_number'],
+            'vat_number' => ['nullable', 'string', 'unique:customers,vat_number'],
             'tax_group_registration_number' => ['nullable', 'string'],
+            'cr_no' => ['nullable', 'string'],
             'contact_number' => ['nullable', 'string'],
             'additional_number' => ['nullable', 'string'],
             'client_code' => ['nullable', 'string'],
@@ -26,14 +28,7 @@ class StoreCustomerRequest extends FormRequest
             'is_limited' => ['boolean'],
 
             // Address fields
-            'street_name' => ['nullable', 'string'],
-            'building_number' => ['nullable', 'string'],
-            'address_additional_number' => ['nullable', 'string'],
-            'district' => ['nullable', 'string'],
-            'neighborhood' => ['nullable', 'string'],
-            'main_street' => ['nullable', 'string'],
-            'city' => ['nullable', 'string'],
-            'state' => ['nullable', 'string'],
+            'address' => ['nullable', 'string'],
             'zip_code' => ['nullable', 'string'],
             'country_code' => ['nullable', 'string', 'max:3'],
 
@@ -42,8 +37,9 @@ class StoreCustomerRequest extends FormRequest
             'account_number' => ['nullable', 'string'],
             'iban' => ['nullable', 'string'],
             'swift_code' => ['nullable', 'string'],
+            'bank_name' => ['nullable', 'string'],
             'branch_name' => ['nullable', 'string'],
-            'bank_currency' => ['nullable', 'string', 'max:3'],
+            'bank_currency' => ['nullable', 'string', 'max:3', 'in:SAR,USD,EUR'],
 
             // Payment method
             'preferred_payment_method' => ['nullable', 'string'],

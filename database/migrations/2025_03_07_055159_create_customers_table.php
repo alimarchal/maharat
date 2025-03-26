@@ -15,9 +15,11 @@ return new class extends Migration
             $table->id();
             // Basic customer information
             $table->string('name');
+            $table->string('email')->nullable();
             $table->string('commercial_registration_number')->nullable()->unique();
-            $table->string('tax_number')->nullable()->unique();
+            $table->string('vat_number')->nullable()->unique();
             $table->string('tax_group_registration_number')->nullable();
+            $table->string('cr_no')->nullable();
             $table->string('contact_number')->nullable();
             $table->string('additional_number')->nullable();
             $table->string('client_code')->nullable();
@@ -26,22 +28,16 @@ return new class extends Migration
             $table->boolean('is_limited')->default(false);
 
             // Address fields
-            $table->string('street_name')->nullable();
-            $table->string('building_number')->nullable();
-            $table->string('address_additional_number')->nullable();
-            $table->string('district')->nullable();
-            $table->string('neighborhood')->nullable();
-            $table->string('main_street')->nullable();
-            $table->string('city')->nullable();
-            $table->string('state')->nullable();
+            $table->string('address')->nullable();
             $table->string('zip_code')->nullable();
-            $table->string('country_code', 3)->nullable(); // ISO country code e.g., 'SA'
+            $table->string('country_code', 3)->nullable(); 
 
             // Bank account fields
             $table->string('account_name')->nullable();
             $table->string('account_number')->nullable();
             $table->string('iban')->nullable();
             $table->string('swift_code')->nullable();
+            $table->string('bank_name')->nullable();
             $table->string('branch_name')->nullable();
             $table->string('bank_currency', 3)->nullable()->default('SAR');
 

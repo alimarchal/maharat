@@ -12,49 +12,46 @@ class CustomerResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'email' => $this->email,
             'commercial_registration_number' => $this->commercial_registration_number,
-            'tax_number' => $this->tax_number,
+            'vat_number' => $this->vat_number, // Updated from tax_number
             'tax_group_registration_number' => $this->tax_group_registration_number,
+            'cr_no' => $this->cr_no, // Added cr_no
             'contact_number' => $this->contact_number,
             'additional_number' => $this->additional_number,
             'client_code' => $this->client_code,
             'license_number' => $this->license_number,
             'type' => $this->type,
             'is_limited' => $this->is_limited,
-
-            // Address fields
-            'street_name' => $this->street_name,
-            'building_number' => $this->building_number,
-            'address_additional_number' => $this->address_additional_number,
-            'district' => $this->district,
-            'neighborhood' => $this->neighborhood,
-            'main_street' => $this->main_street,
-            'city' => $this->city,
-            'state' => $this->state,
+    
+            // Address field
+            'address' => $this->address, // Combined address fields
             'zip_code' => $this->zip_code,
             'country_code' => $this->country_code,
-
+    
             // Bank account fields
             'account_name' => $this->account_name,
             'account_number' => $this->account_number,
             'iban' => $this->iban,
             'swift_code' => $this->swift_code,
+            'bank_name' => $this->bank_name, // Added missing bank_name
             'branch_name' => $this->branch_name,
-            'bank_currency' => $this->bank_currency,
-
+            'bank_currency' => $this->bank_currency ?? 'SAR', // Default to SAR
+    
             // Payment method
             'preferred_payment_method' => $this->preferred_payment_method,
-
+    
             // Tax information
             'default_tax_rate' => $this->default_tax_rate,
             'is_tax_exempt' => $this->is_tax_exempt,
-
+    
             // Related resources
             'sent_invoices' => InvoiceResource::collection($this->whenLoaded('sentInvoices')),
             'received_invoices' => InvoiceResource::collection($this->whenLoaded('receivedInvoices')),
-
+    
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
     }
+    
 }
