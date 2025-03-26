@@ -79,7 +79,7 @@ class InvoiceController extends Controller
                 AllowedFilter::exact('status'),
                 // Add other filters if needed
             ])
-            ->allowedIncludes(['client'])
+            ->allowedIncludes(['client','items'])
             ->paginate()
             ->appends(request()->query());
 
@@ -127,7 +127,7 @@ class InvoiceController extends Controller
     public function show(string $id): JsonResponse
     {
         try {
-            $invoice = Invoice::with(['company', 'items' => function($query) {
+            $invoice = Invoice::with(['client', 'items' => function($query) {
                 $query->select('id', 'invoice_id', 'name', 'description', 'quantity', 'unit_price', 'subtotal');
             }])->findOrFail($id);
 
@@ -149,7 +149,7 @@ class InvoiceController extends Controller
                     'tax_amount' => $invoice->tax_amount,
                     'discount_amount' => $invoice->discount_amount,
                     'total_amount' => $invoice->total_amount,
-                    'paid_amount' => $this->paid_amount,
+                    'paid_amount' => $invoice->paid_amount,
                     'currency' => $invoice->currency,
                     'notes' => $invoice->notes,
                     'items' => $invoice->items->map(function($item) {
