@@ -26,6 +26,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->userTracking();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

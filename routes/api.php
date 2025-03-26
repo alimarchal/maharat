@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\BudgetApprovalTransactionController;
 use App\Http\Controllers\Api\V1\BudgetController;
 use App\Http\Controllers\Api\V1\BudgetRequestApprovalTransactionController;
+use App\Http\Controllers\Api\V1\CashFlowTransactionController;
 use App\Http\Controllers\Api\V1\ChartOfAccountController;
 use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\CostCenterController;
@@ -319,6 +320,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('financial-transactions/{financialTransaction}/post', [FinancialTransactionController::class, 'post']);
     Route::post('financial-transactions/{financialTransaction}/cancel', [FinancialTransactionController::class, 'cancel']);
     Route::post('financial-transactions/{financialTransaction}/reverse', [FinancialTransactionController::class, 'reverse']);
+
+    Route::apiResource('cash-flow-transactions', CashFlowTransactionController::class);
 
 
 });
