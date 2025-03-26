@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->string('invoice_number')->unique()->comment('Maharat Invoice Table');
             $table->foreignId('client_id')->nullable()->constrained('customers')->onDelete('cascade');
-            $table->foreignId('company_id')->constrained('companies')->onDelete('cascade'); 
             $table->enum('status', ['Draft', 'Pending', 'Paid', 'Overdue', 'Cancelled'])->default('Draft');
             $table->string('payment_method')->nullable();
             $table->string('representative_id')->nullable();
@@ -28,6 +27,7 @@ return new class extends Migration
             $table->decimal('tax_amount', 15, 2)->default(0);
             $table->decimal('discount_amount', 15, 2)->default(0);
             $table->decimal('total_amount', 15, 2)->default(0);
+            $table->decimal('paid_amount', 15, 2)->default(0);
             $table->string('currency', 3)->default('SAR');
             $table->text('notes')->nullable();
             $table->foreignId('account_code_id')->default(4)->constrained('account_codes', 'id');

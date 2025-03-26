@@ -79,7 +79,7 @@ class InvoiceController extends Controller
                 AllowedFilter::exact('status'),
                 // Add other filters if needed
             ])
-            ->allowedIncludes(['client', 'vendor'])
+            ->allowedIncludes(['client'])
             ->paginate()
             ->appends(request()->query());
 
@@ -96,23 +96,24 @@ class InvoiceController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'invoice_number' => 'required|unique:invoices',
+            'invoice_number' => 'nullable|unique:invoices',
             'client_id' => 'required|exists:customers,id',
-            'company_id' => 'required|exists:companies,id',
             'status' => 'required|in:Draft,Pending,Paid,Overdue,Cancelled',
             'payment_method' => 'nullable|string',
-            'representative' => 'nullable|string',  
+            'representative' => 'nullable|string',
             'issue_date' => 'required|date',
             'due_date' => 'nullable|date|after_or_equal:issue_date',
-            'vat_rate' => 'required|numeric|min:0', 
+            'vat_rate' => 'required|numeric|min:0',
             'subtotal' => 'required|numeric',
             'tax_amount' => 'nullable|numeric',
-            'discount_amount' => 'nullable|numeric',  
+            'discount_amount' => 'nullable|numeric',
+            'paid_amount' => 'nullable|numeric',
             'total_amount' => 'required|numeric',
             'currency' => 'required|string|size:3',
         ]);
 
         try {
+            $validated['invoice_number'] = $this->generateInvoiceNumber();
             $invoice = Invoice::create($validated);
             return new InvoiceResource($invoice);
         } catch (\Exception $e) {
@@ -135,7 +136,6 @@ class InvoiceController extends Controller
                     'id' => $invoice->id,
                     'invoice_number' => $invoice->invoice_number,
                     'client_id' => $invoice->client_id,
-                    'company_id' => $invoice->company_id,
                     'company' => $invoice->company,
                     'status' => $invoice->status,
                     'payment_method' => $invoice->payment_method,
@@ -149,6 +149,7 @@ class InvoiceController extends Controller
                     'tax_amount' => $invoice->tax_amount,
                     'discount_amount' => $invoice->discount_amount,
                     'total_amount' => $invoice->total_amount,
+                    'paid_amount' => $this->paid_amount,
                     'currency' => $invoice->currency,
                     'notes' => $invoice->notes,
                     'items' => $invoice->items->map(function($item) {
@@ -179,13 +180,13 @@ class InvoiceController extends Controller
                 'issue_date' => 'required|date',
                 'payment_method' => 'nullable|string',
                 'vat_rate' => 'required|numeric|min:0',
-                'company_id' => 'required|exists:companies,id',
                 'client_id' => 'nullable|exists:customers,id',
                 'representative_id' => 'nullable|string',
                 'subtotal' => 'required|numeric|min:0',
                 'discount_amount' => 'nullable|numeric|min:0',
                 'tax_amount' => 'required|numeric|min:0',
                 'total_amount' => 'required|numeric|min:0',
+                'paid_amount' => 'nullable|numeric',
                 'status' => 'required|in:Draft,Pending,Paid,Overdue,Cancelled',
                 'currency' => 'required|string|size:3',
                 'items' => 'required|array',
@@ -240,11 +241,8 @@ class InvoiceController extends Controller
     {
         try {
             DB::beginTransaction();
-
             $invoice->delete();
-
             DB::commit();
-
             return response()->json([
                 'message' => 'Invoice deleted successfully'
             ], Response::HTTP_OK);

@@ -15,24 +15,24 @@ class Invoice extends Model
     protected $fillable = [
         'invoice_number',
         'client_id',
-        'company_id',
+        'paid_amount',
         'status',
         'payment_method',
-        'representative_id',  
-        'representative_email',  
+        'representative_id',
+        'representative_email',
         'issue_date',
         'due_date',
-        'discounted_days',  
-        'vat_rate',  
+        'discounted_days',
+        'vat_rate',
         'subtotal',
         'tax_amount',
-        'discount_amount',  
+        'discount_amount',
         'total_amount',
         'currency',
-        'notes',  
+        'notes',
         'account_code_id'
     ];
-    
+
     protected $casts = [
         'issue_date' => 'date',
         'due_date' => 'date',
@@ -43,9 +43,8 @@ class Invoice extends Model
         'total_amount' => 'decimal:2',
         'discounted_days' => 'integer',
         'client_id' => 'integer',
-        'company_id' => 'integer', 
     ];
-    
+
 
 
     /**
@@ -54,11 +53,6 @@ class Invoice extends Model
     public function client()
     {
         return $this->belongsTo(Customer::class, 'client_id');
-    }
-
-    public function company()
-    {
-        return $this->belongsTo(Company::class);
     }
 
     public function representative()

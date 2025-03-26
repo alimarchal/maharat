@@ -38,10 +38,7 @@ class CustomerSeeder extends Seeder
                     ->delete();
             }
 
-            // Delete invoices
-            if (Schema::hasTable('invoices')) {
-                DB::table('invoices')->whereNotNull('client_id')->delete();
-            }
+
 
             // Delete customers
             DB::table('customers')->delete();
@@ -54,7 +51,7 @@ class CustomerSeeder extends Seeder
             DB::commit();
 
             $this->command->info('Customers seeded successfully.');
-            
+
         } catch (\Exception $e) {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
@@ -73,7 +70,7 @@ class CustomerSeeder extends Seeder
     private function getCustomersData(): array
     {
         $now = Carbon::now();
-        
+
         return [
             [
                 'id' => 1,

@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryTransactionController;
 use App\Http\Controllers\Api\V1\InventoryTransferController;
 use App\Http\Controllers\Api\V1\InvoiceController;
+use App\Http\Controllers\Api\V1\InvoiceItemController;
 use App\Http\Controllers\Api\V1\IssueMaterialController;
 use App\Http\Controllers\Api\V1\MahratInvoiceApprovalTransactionController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
@@ -192,10 +193,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('external-delivery-notes', ExternalDeliveryNoteController::class);
 
 
-    // Category Routes
-    Route::get('/categories', [CategoryController::class, 'index']);
-
-
     // Start Inventory
     // Inventory Management
     Route::get('inventories/low-stock', [InventoryController::class, 'getLowStockItems']);
@@ -229,9 +226,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('cost-centers', CostCenterController::class);
     Route::get('cost-centers-tree', [CostCenterController::class, 'tree']);
     Route::post('cost-centers/{id}/restore', [CostCenterController::class, 'restore']);
-
-//    Route::apiResource('ledgers', LedgerController::class);
-//    Route::post('ledgers/{id}/restore', [LedgerController::class, 'restore']);
 
     Route::apiResource('accounts', AccountController::class);
     Route::post('accounts/{id}/restore', [AccountController::class, 'restore']);
@@ -308,8 +302,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('external-invoices', ExternalInvoiceController::class);
     Route::post('external-invoices/{id}/restore', [ExternalInvoiceController::class, 'restore']);
 
-
-
     Route::apiResource('rfq-approval-transactions', RfqApprovalTransactionController::class);
     Route::apiResource('po-approval-transactions', PoApprovalTransactionController::class);
     Route::apiResource('budget-approval-transactions', BudgetApprovalTransactionController::class);
@@ -329,16 +321,4 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('financial-transactions/{financialTransaction}/reverse', [FinancialTransactionController::class, 'reverse']);
 
 
-
 });
-
-
-//Route::get('/api/files/{path}', function ($path) {
-//    $fullPath = 'rfq-attachments/' . $path;
-//
-//    if (Storage::disk('public')->exists($fullPath)) {
-//        return Storage::disk('public')->download($fullPath);
-//    }
-//
-//    abort(404, 'File not found');
-//})->where('path', '.*')->name('file.download');

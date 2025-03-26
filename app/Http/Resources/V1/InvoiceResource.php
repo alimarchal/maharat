@@ -13,11 +13,10 @@ class InvoiceResource extends JsonResource
             'id' => $this->id,
             'invoice_number' => $this->invoice_number,
             'client_id' => $this->client_id,
-            'company_id' => $this->company_id,
             'status' => $this->status,
             'payment_method' => $this->payment_method,
             'representative_id' => $this->representative_id,
-            
+
             'representative' => $this->whenLoaded('representative', function () {
                 return [
                     'id' => $this->representative->id,
@@ -34,6 +33,7 @@ class InvoiceResource extends JsonResource
             'tax_amount' => $this->tax_amount,
             'discount_amount' => $this->discount_amount,
             'total_amount' => $this->total_amount,
+            'paid_amount' => $this->paid_amount,
             'currency' => $this->currency,
             'notes' => $this->notes,
             'created_by' => $this->created_by,
