@@ -21,6 +21,7 @@ class Budget extends Model
         'fiscal_period_id',
         'department_id',
         'cost_center_id',
+        'sub_cost_center_id',
         'description',
         'total_revenue_planned',
         'total_revenue_actual',
@@ -66,6 +67,13 @@ class Budget extends Model
     {
         return $this->belongsTo(CostCenter::class);
     }
+
+
+    public function subCostCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class,'sub_cost_center_id');
+    }
+
 
     /**
      * Get the user who created the budget.

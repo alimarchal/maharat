@@ -26,6 +26,7 @@ class StoreBudgetRequest extends FormRequest
             'fiscal_period_id' => ['required', 'exists:fiscal_periods,id'],
             'department_id' => ['nullable', 'exists:departments,id'],
             'cost_center_id' => ['nullable', 'exists:cost_centers,id'],
+            'sub_cost_center_id' => ['nullable', 'exists:cost_centers,id'],
             'description' => ['nullable', 'string', 'max:255'],
             'total_revenue_planned' => ['required', 'numeric', 'min:0'],
             'total_revenue_actual' => ['nullable', 'numeric', 'min:0'],

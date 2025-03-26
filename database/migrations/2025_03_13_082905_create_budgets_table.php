@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignId('fiscal_period_id')->constrained('fiscal_periods', 'id')->comment('Reference to the fiscal year this budget belongs to');
             $table->foreignId('department_id')->nullable()->constrained('departments', 'id')->comment('Department responsible for managing this budget');
             $table->foreignId('cost_center_id')->nullable()->constrained('cost_centers', 'id')->comment('Cost center this budget is assigned to');
+            $table->foreignId('sub_cost_center_id')->nullable()->constrained('cost_centers', 'id')->comment('Cost center this budget is assigned to');
             $table->string('description')->nullable()->comment('Detailed description of the budget purpose');
             $table->decimal('total_revenue_planned', 15, 2)->default(0);
             $table->decimal('total_revenue_actual', 15, 2)->default(0);

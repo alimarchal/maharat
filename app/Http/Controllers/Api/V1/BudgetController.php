@@ -104,6 +104,7 @@ class BudgetController extends Controller
                         'fiscalPeriod',
                         'department',
                         'costCenter',
+                        'subCostCenter',
                         'creator',
                         'updater'
                     ])

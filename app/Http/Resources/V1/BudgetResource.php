@@ -19,6 +19,7 @@ class BudgetResource extends JsonResource
             'fiscal_period_id' => $this->fiscal_period_id,
             'department_id' => $this->department_id,
             'cost_center_id' => $this->cost_center_id,
+            'sub_cost_center_id' => $this->sub_cost_center_id,
             'description' => $this->description,
             'total_revenue_planned' => $this->total_revenue_planned,
             'total_revenue_actual' => $this->total_revenue_actual,

@@ -13,6 +13,7 @@ class BudgetParameters
         'fiscal_period_id',
         'department_id',
         'cost_center_id',
+        'sub_cost_center_id',
         'status',
         'description',
         'created_by',
@@ -48,5 +49,6 @@ class BudgetParameters
         'costCenter',
         'creator',
         'updater',
+        'subCostCenter',
     ];
 }
