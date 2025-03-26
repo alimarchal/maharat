@@ -48,12 +48,14 @@ class ExternalInvoiceController extends Controller
             DB::beginTransaction();
 
             $data = $request->validated();
+            
+            // Set default values
+            $data['invoice_id'] = $this->generateInvoiceId();
+            $data['type'] = 'Cash';
+            $data['vat_amount'] = $data['amount'] * 0.15;
+            $data['status'] = 'Draft';
 
-            // Set the user ID if not provided
-            if (!isset($data['user_id'])) {
-                $data['user_id'] = auth()->id();
-            }
-
+            // Create the invoice
             $invoice = ExternalInvoice::create($data);
 
             DB::commit();
@@ -162,5 +164,23 @@ class ExternalInvoiceController extends Controller
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    private function generateInvoiceId(): string
+    {
+        $prefix = 'EXT-INV-';
+        $lastInvoice = ExternalInvoice::orderBy('id', 'desc')->first();
+        
+        if (!$lastInvoice) {
+            return $prefix . '0001';
+        }
+
+        $lastNumber = 0;
+        if (preg_match('/-(\d+)$/', $lastInvoice->invoice_id, $matches)) {
+            $lastNumber = intval($matches[1]);
+        }
+        
+        $nextNumber = $lastNumber + 1;
+        return $prefix . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
     }
 }

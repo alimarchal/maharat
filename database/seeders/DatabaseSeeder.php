@@ -62,6 +62,7 @@ class DatabaseSeeder extends Seeder
             CustomerSeeder::class,
             InvoiceSeeder::class,
             InvoiceItemSeeder::class,
+            ExternalInvoiceSeeder::class,
 
             // Additional seeders if needed
             AccountCodeSeeder::class,

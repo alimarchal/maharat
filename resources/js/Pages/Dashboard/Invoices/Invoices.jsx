@@ -15,7 +15,7 @@ const Invoices = ({ auth }) => {
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
     const [suppliers, setSuppliers] = useState([]);
-    const [customers, setCustomers] = useState([]);
+    const [users, setUsers] = useState([]);
 
     const defaultItem = {
         name: 'Default Item',
@@ -33,42 +33,23 @@ const Invoices = ({ auth }) => {
         
         try {
             progressInterval = setInterval(() => {
-                setProgress((prev) => {
-                    if (prev >= 90) {
-                        clearInterval(progressInterval);
-                        return 90;
-                    }
-                    return prev + 10;
-                });
+                setProgress((prev) => prev >= 90 ? 90 : prev + 10);
             }, 200);
-            
-            // Make sure we have suppliers data first
-            if (suppliers.length === 0) {
-                await fetchSuppliers();
-            }
-            
-            const response = await axios.get(`/api/v1/invoices?page=${currentPage}`);
+
+            const response = await axios.get(`/api/v1/external-invoices?page=${currentPage}&include=supplier,user`);
             
             if (response.data && response.data.data) {
-                console.log('Invoices data:', response.data.data);
                 setInvoices(response.data.data);
                 setLastPage(response.data.meta.last_page);
                 setError("");
-            } else {
-                console.error("Invalid response format:", response.data);
-                setError("Received invalid data format from API");
             }
-            
-            setProgress(100);
-            setTimeout(() => setLoading(false), 500);
         } catch (error) {
-            console.error('API Error:', error);
+            console.error('Error fetching invoices:', error);
             setError("Failed to load invoices");
-            setInvoices([]);
-            setProgress(100);
-            setTimeout(() => setLoading(false), 500);
         } finally {
             if (progressInterval) clearInterval(progressInterval);
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
         }
     };
 
@@ -81,19 +62,19 @@ const Invoices = ({ auth }) => {
         }
     };
 
-    const fetchCustomers = async () => {
+    const fetchUsers = async () => {
         try {
-            const response = await axios.get('/api/v1/customers');
-            setCustomers(response.data.data);
+            const response = await axios.get('/api/v1/users');
+            setUsers(response.data.data);
         } catch (error) {
-            console.error('Error fetching customers:', error);
+            console.error('Error fetching users:', error);
         }
     };
 
     useEffect(() => {
         fetchInvoices();
         fetchSuppliers();
-        fetchCustomers();
+        fetchUsers();
     }, [currentPage]);
 
     const handleEdit = (invoice) => {
@@ -104,38 +85,30 @@ const Invoices = ({ auth }) => {
     const handleSave = async (id) => {
         try {
             const isNewInvoice = id.toString().includes('new-');
+            const amount = Number(editData.amount || 0);
             
-            // Prepare the payload with only essential fields
             let payload = {
-                vendor_id: Number(editData.vendor_id),
-                client_id: editData.client_id ? Number(editData.client_id) : null,
-                status: 'Draft',
-                issue_date: editData.issue_date || new Date().toISOString().split('T')[0],
-                currency: editData.currency || 'SAR',
-                total_amount: Number(editData.total_amount || 0),
-                subtotal: Number(editData.total_amount || 0),
-                tax_amount: 0,
-                account_code_id: 4
+                supplier_id: Number(editData.supplier_id),
+                user_id: Number(editData.user_id),
+                amount: amount,
+                vat_amount: amount * 0.15,
+                type: 'Cash',
+                payable_date: editData.payable_date || new Date().toISOString().split('T')[0],
+                status: isNewInvoice ? 'Draft' : editData.status,
+                invoice_id: isNewInvoice ? 'EXT-INV-' : editData.invoice_id
             };
 
-            // Validate only required fields
-            if (!payload.vendor_id) {
-                setError('Supplier is required');
+            if (!payload.supplier_id || !payload.user_id) {
+                setError('Supplier and Customer are required');
                 return;
             }
 
-            console.log('Attempting to save invoice with payload:', payload);
-
             let response;
             if (isNewInvoice) {
-                delete payload.id;
-                delete payload.invoice_number;
-                response = await axios.post('/api/v1/invoices', payload);
+                response = await axios.post('/api/v1/external-invoices', payload);
             } else {
-                response = await axios.put(`/api/v1/invoices/${id}`, payload);
+                response = await axios.put(`/api/v1/external-invoices/${id}`, payload);
             }
-
-            console.log('Server response:', response.data);
 
             if (response.data) {
                 setEditingId(null);
@@ -144,14 +117,7 @@ const Invoices = ({ auth }) => {
             }
         } catch (error) {
             console.error('Save error:', error);
-            console.error('Error response:', error.response?.data);
-            
-            const errorMessage = error.response?.data?.error || 
-                               error.response?.data?.message || 
-                               error.message || 
-                               'An unknown error occurred';
-                               
-            setError('Failed to save changes: ' + errorMessage);
+            setError('Failed to save changes: ' + (error.response?.data?.message || error.message));
         }
     };
 
@@ -165,7 +131,7 @@ const Invoices = ({ auth }) => {
                 return;
             }
             
-            await axios.delete(`/api/v1/invoices/${id}`);
+            await axios.delete(`/api/v1/external-invoices/${id}`);
             fetchInvoices(); // Refresh data
         } catch (error) {
             console.error('Error deleting record:', error);
@@ -213,24 +179,19 @@ const Invoices = ({ auth }) => {
         }
     };
 
-    const addInvoice = async () => {
+    const addInvoice = () => {
         const now = new Date();
-        const currentDate = now.toISOString().split('T')[0];
-        
         const newInvoice = {
             id: `new-${Date.now()}`,
-            invoice_number: "Auto-generated",
-            vendor_id: null,
-            client_id: null,
+            invoice_id: "Auto-generated",
+            supplier_id: "",
+            user_id: "",
+            amount: 0,
+            vat_amount: 0,
+            type: 'Cash',
+            payable_date: now.toISOString().split('T')[0],
             status: 'Draft',
-            issue_date: currentDate,
-            currency: 'SAR',
-            total_amount: 0,
-            subtotal: 0,
-            tax_amount: 0,
-            account_code_id: 4,
-            updated_at: now.toISOString(), // Add this for proper date/time display
-            created_at: now.toISOString()  // Add this for proper date/time display
+            updated_at: now.toISOString()
         };
         
         setInvoices([...invoices, newInvoice]);
@@ -239,15 +200,34 @@ const Invoices = ({ auth }) => {
     };
 
     const getStatusClass = (status) => {
-        switch (status) {
-            case 'Paid':
+        switch (status?.toLowerCase()) {
+            case 'paid':
                 return 'bg-green-100 text-green-800';
-            case 'Overdue':
+            case 'unpaid':
                 return 'bg-red-100 text-red-800';
-            case 'Cancelled':
+            case 'partially paid':
+                return 'bg-purple-100 text-purple-800';
+            case 'verified':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'draft':
                 return 'bg-gray-100 text-gray-800';
             default:
-                return 'bg-yellow-100 text-yellow-800'; // Pending or others
+                return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        } catch (error) {
+            console.error('Date formatting error:', error);
+            return 'Invalid Date';
         }
     };
 
@@ -309,6 +289,7 @@ const Invoices = ({ auth }) => {
                                     <th className="py-3 px-4 text-center">Customer</th>
                                     <th className="py-3 px-4 text-center">Amount</th>
                                     <th className="py-3 px-4 text-center">Status</th>
+                                    <th className="py-3 px-4 text-center">Payable Date</th>
                                     <th className="py-3 px-4 text-center">Date & Time</th>
                                     <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Actions</th>
                                 </tr>
@@ -318,21 +299,17 @@ const Invoices = ({ auth }) => {
                                 {invoices.length > 0 ? (
                                     invoices.map((invoice) => (
                                         <tr key={invoice.id}>
-                                            {/* Invoice Number - Not Editable */}
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                {invoice.invoice_number}
+                                                {invoice.invoice_id || 'Auto-generated'}
                                             </td>
-
-                                            {/* Supplier - Editable with Dropdown */}
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 {editingId === invoice.id ? (
                                                     <select
-                                                        value={editData.vendor_id || ''}
-                                                        onChange={(e) => handleChange('vendor_id', e.target.value)}
-                                                        className="bg-transparent border-none focus:outline-none focus:ring-0 w-full text-center text-base"
-                                                        required
+                                                        value={editData.supplier_id || ''}
+                                                        onChange={(e) => handleChange('supplier_id', e.target.value)}
+                                                        className="bg-transparent border-none focus:outline-none focus:ring-0 w-full text-center"
                                                     >
-                                                        <option value="">Select a supplier</option>
+                                                        <option value="">Select Supplier</option>
                                                         {suppliers.map((supplier) => (
                                                             <option key={supplier.id} value={supplier.id}>
                                                                 {supplier.name}
@@ -340,76 +317,60 @@ const Invoices = ({ auth }) => {
                                                         ))}
                                                     </select>
                                                 ) : (
-                                                    suppliers.find(s => s.id === invoice.vendor_id)?.name || 'N/A'
+                                                    invoice.supplier?.name || 'N/A'
                                                 )}
                                             </td>
-
-                                            {/* Customer Dropdown */}
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 {editingId === invoice.id ? (
                                                     <select
-                                                        value={editData.client_id || ''}
-                                                        onChange={(e) => handleChange('client_id', e.target.value)}
-                                                        className="bg-transparent border-none focus:outline-none focus:ring-0 w-full text-center text-base"
+                                                        value={editData.user_id || ''}
+                                                        onChange={(e) => handleChange('user_id', e.target.value)}
+                                                        className="bg-transparent border-none focus:outline-none focus:ring-0 w-full text-center"
                                                     >
-                                                        <option value="">Select a customer</option>
-                                                        {customers.map((customer) => (
-                                                            <option key={customer.id} value={customer.id}>
-                                                                {customer.name}
+                                                        <option value="">Select Customer</option>
+                                                        {users.map((user) => (
+                                                            <option key={user.id} value={user.id}>
+                                                                {user.name}
                                                             </option>
                                                         ))}
                                                     </select>
                                                 ) : (
-                                                    customers.find(c => c.id == invoice.client_id)?.name || 'N/A'
+                                                    invoice.user?.name || 'N/A'
                                                 )}
                                             </td>
-
-                                            {/* Amount with Currency - Editable */}
-                                            <td className="px-6 py-4 whitespace-nowrap text-center w-[250px]">
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 {editingId === invoice.id ? (
-                                                    <div className="flex items-center justify-center space-x-2">
-                                                        <input
-                                                            type="number"
-                                                            value={editData.total_amount || ''}
-                                                            onChange={(e) => {
-                                                                const value = Math.max(0, Math.floor(Number(e.target.value))); // Ensure whole number & prevent negative values
-                                                                handleChange('total_amount', value);
-                                                            }}
-                                                            className="bg-transparent border-none focus:outline-none focus:ring-0 w-[150px] text-center text-base"
-                                                            min="0"
-                                                            step="1"
-                                                        />
-                                                        <select
-                                                            value={editData.currency || 'SAR'}
-                                                            onChange={(e) => handleChange('currency', e.target.value)}
-                                                            className="bg-transparent border-none focus:outline-none focus:ring-0"
-                                                        >
-                                                            <option value="SAR">SAR</option>
-                                                            <option value="USD">USD</option>
-                                                            <option value="EUR">EUR</option>
-                                                            <option value="GBP">GBP</option>
-                                                        </select>
-                                                    </div>
+                                                    <input
+                                                        type="number"
+                                                        value={editData.amount || ''}
+                                                        onChange={(e) => handleChange('amount', Math.max(0, Number(e.target.value)))}
+                                                        className="bg-transparent border-none focus:outline-none focus:ring-0 w-full text-center"
+                                                        min="0"
+                                                    />
                                                 ) : (
-                                                    <span className="text-base inline-block w-[150px] truncate">
-                                                        {Math.floor(invoice.total_amount) || '0'} {invoice.currency || 'SAR'}
-                                                    </span>
+                                                    `${invoice.amount || 0} SAR`
                                                 )}
                                             </td>
-
-                                            {/* Status - Not Editable */}
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 <span className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(invoice.status)}`}>
                                                     {invoice.status}
                                                 </span>
                                             </td>
-
-                                            {/* Date & Time - Not Editable */}
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                {editingId === invoice.id ? (
+                                                    <input
+                                                        type="date"
+                                                        value={editData.payable_date || ''}
+                                                        onChange={(e) => handleChange('payable_date', e.target.value)}
+                                                        className="bg-transparent border-none focus:outline-none focus:ring-0 w-full text-center"
+                                                    />
+                                                ) : (
+                                                    formatDate(invoice.payable_date)
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 {formatDateTime(invoice.updated_at)}
                                             </td>
-
-                                            {/* Actions */}
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 <div className="flex justify-center space-x-3">
                                                     {editingId === invoice.id ? (
@@ -439,8 +400,8 @@ const Invoices = ({ auth }) => {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="6" className="px-6 py-4 text-center">
-                                            {error ? error : "No invoices found"}
+                                        <td colSpan="7" className="px-6 py-4 text-center">
+                                            No invoices found
                                         </td>
                                     </tr>
                                 )}
