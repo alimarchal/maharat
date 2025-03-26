@@ -1,56 +1,111 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLink } from "@fortawesome/free-solid-svg-icons";
 import SelectFloating from "../../../../Components/SelectFloating";
+import InputFloating from "../../../../Components/InputFloating";
+import { router } from "@inertiajs/react";
 
 const BudgetRequestForm = () => {
     const [formData, setFormData] = useState({
-        year: "",
-        department: "",
-        costCenter: "",
+        fiscal_period_id: "",
+        department_id: "",
+        cost_center_id: "",
         sub_cost_center: "",
-        previousBudget: "",
-        requestedAmount: "",
+        previous_year_budget_amount: "",
+        requested_amount: "",
         urgency: "",
         attachment: null,
-        description: "",
+        reason_for_increase: "",
     });
     const [errors, setErrors] = useState({});
+    const [departments, setDepartments] = useState([]);
+    const [costCenters, setCostCenters] = useState([]);
+    const [subCostCenters, setSubCostCenters] = useState([]);
+    const [fiscalYears, setFiscalYears] = useState([]);
+    const [filteredSubCostCenters, setFilteredSubCostCenters] = useState([]);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            const [deptRes, costRes, yearRes] = await Promise.all([
+                axios.get("/api/v1/departments"),
+                axios.get("/api/v1/cost-centers"),
+                axios.get("/api/v1/fiscal-periods"),
+            ]);
+            setDepartments(deptRes.data.data);
+            setCostCenters(costRes.data.data);
+            setSubCostCenters(costRes.data.data);
+            setFiscalYears(yearRes.data.data);
+        } catch (error) {
+            console.error("Error fetching data", error);
+        }
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-        setErrors({ ...errors, [name]: "" });
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+            ...(name === "cost_center_id" ? { sub_cost_center: "" } : {}),
+        }));
+        setErrors((prev) => ({ ...prev, [name]: "" }));
+
+        if (name === "cost_center_id") {
+            filterSubCostCenters(value);
+        }
+    };
+
+    const filterSubCostCenters = (costCenterId) => {
+        if (!costCenterId) {
+            setFilteredSubCostCenters([]);
+            return;
+        }
+        const filtered = subCostCenters.filter(
+            (cost) => cost.parent_id === parseInt(costCenterId)
+        );
+        setFilteredSubCostCenters(filtered);
     };
 
     const handleFileChange = (e) => {
-        setFormData({ ...formData, attachment: e.target.files[0] });
+        setFormData((prev) => ({ ...prev, attachment: e.target.files[0] }));
     };
 
     const validateForm = () => {
         let newErrors = {};
-        if (!formData.department)
-            newErrors.department = "Department is required";
-        if (!formData.costCenter)
-            newErrors.costCenter = "Cost Center is required";
+        if (!formData.fiscal_period_id)
+            newErrors.fiscal_period_id = "Year is required";
+        if (!formData.department_id)
+            newErrors.department_id = "Department is required";
+        if (!formData.cost_center_id)
+            newErrors.cost_center_id = "Cost Center is required";
         if (!formData.sub_cost_center)
             newErrors.sub_cost_center = "Sub Cost Center is required";
-        if (!formData.previousBudget)
-            newErrors.previousBudget = "Previous Budget is required";
-        if (!formData.requestedAmount)
-            newErrors.requestedAmount = "Requested Amount is required";
+        if (!formData.previous_year_budget_amount)
+            newErrors.previous_year_budget_amount =
+                "Previous Budget is required";
+        if (!formData.requested_amount)
+            newErrors.requested_amount = "Requested Amount is required";
         if (!formData.urgency) newErrors.urgency = "Urgency is required";
-        if (!formData.description)
-            newErrors.description = "Description is required";
+        if (!formData.reason_for_increase)
+            newErrors.reason_for_increase = "Reason is required";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (validateForm()) {
-            console.log("Form submitted successfully", formData);
+        if (!validateForm()) return;
+
+        try {
+            await axios.post("/api/v1/request-budgets", formData);
+            router.visit("/request-budgets");
+        } catch (error) {
+            console.error("Error saving Request a budget:", error);
         }
     };
 
@@ -68,15 +123,19 @@ const BudgetRequestForm = () => {
                 <div className="w-full lg:w-1/4">
                     <SelectFloating
                         label="Year"
-                        name="year"
-                        value={formData.year}
+                        name="fiscal_period_id"
+                        value={formData.fiscal_period_id}
                         onChange={handleChange}
-                        options={[
-                            { id: 1, label: "2023" },
-                            { id: 2, label: "2024" },
-                            { id: 3, label: "2025" },
-                        ]}
+                        options={fiscalYears.map((year) => ({
+                            id: year.id,
+                            label: year.period_name,
+                        }))}
                     />
+                    {errors.fiscal_period_id && (
+                        <p className="text-red-500 text-sm mt-1">
+                            {errors.fiscal_period_id}
+                        </p>
+                    )}
                 </div>
             </div>
 
@@ -98,34 +157,34 @@ const BudgetRequestForm = () => {
                     <div>
                         <SelectFloating
                             label="Department Name"
-                            name="department"
-                            value={formData.department}
+                            name="department_id"
+                            value={formData.department_id}
                             onChange={handleChange}
-                            options={[
-                                { id: 1, label: "Finance" },
-                                { id: 2, label: "HR" },
-                            ]}
+                            options={departments.map((dept) => ({
+                                id: dept.id,
+                                label: dept.name,
+                            }))}
                         />
-                        {errors.department && (
+                        {errors.department_id && (
                             <p className="text-red-500 text-sm mt-1">
-                                {errors.department}
+                                {errors.department_id}
                             </p>
                         )}
                     </div>
                     <div>
                         <SelectFloating
                             label="Cost Center"
-                            name="costCenter"
-                            value={formData.costCenter}
+                            name="cost_center_id"
+                            value={formData.cost_center_id}
                             onChange={handleChange}
-                            options={[
-                                { id: 1, label: "Operations" },
-                                { id: 2, label: "Marketing" },
-                            ]}
+                            options={costCenters.map((cost) => ({
+                                id: cost.id,
+                                label: cost.name,
+                            }))}
                         />
-                        {errors.costCenter && (
+                        {errors.cost_center_id && (
                             <p className="text-red-500 text-sm mt-1">
-                                {errors.costCenter}
+                                {errors.cost_center_id}
                             </p>
                         )}
                     </div>
@@ -135,10 +194,10 @@ const BudgetRequestForm = () => {
                             name="sub_cost_center"
                             value={formData.sub_cost_center}
                             onChange={handleChange}
-                            options={[
-                                { id: 1, label: "Operations" },
-                                { id: 2, label: "Marketing" },
-                            ]}
+                            options={filteredSubCostCenters.map((sub) => ({
+                                id: sub.id,
+                                label: sub.name,
+                            }))}
                         />
                         {errors.sub_cost_center && (
                             <p className="text-red-500 text-sm mt-1">
@@ -149,36 +208,28 @@ const BudgetRequestForm = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <SelectFloating
+                        <InputFloating
                             label="Previous Budget Amount"
-                            name="previousBudget"
-                            value={formData.previousBudget}
+                            name="previous_year_budget_amount"
+                            value={formData.previous_year_budget_amount}
                             onChange={handleChange}
-                            options={[
-                                { id: 1, label: "$10,000" },
-                                { id: 2, label: "$20,000" },
-                            ]}
                         />
-                        {errors.previousBudget && (
+                        {errors.previous_year_budget_amount && (
                             <p className="text-red-500 text-sm mt-1">
-                                {errors.previousBudget}
+                                {errors.previous_year_budget_amount}
                             </p>
                         )}
                     </div>
                     <div>
-                        <SelectFloating
+                        <InputFloating
                             label="Requested Amount"
-                            name="requestedAmount"
-                            value={formData.requestedAmount}
+                            name="requested_amount"
+                            value={formData.requested_amount}
                             onChange={handleChange}
-                            options={[
-                                { id: 1, label: "$15,000" },
-                                { id: 2, label: "$25,000" },
-                            ]}
                         />
-                        {errors.requestedAmount && (
+                        {errors.requested_amount && (
                             <p className="text-red-500 text-sm mt-1">
-                                {errors.requestedAmount}
+                                {errors.requested_amount}
                             </p>
                         )}
                     </div>
@@ -189,8 +240,9 @@ const BudgetRequestForm = () => {
                             value={formData.urgency}
                             onChange={handleChange}
                             options={[
-                                { id: 1, label: "High" },
-                                { id: 2, label: "Medium" },
+                                { value: "High", label: "High" },
+                                { value: "Medium", label: "Medium" },
+                                { value: "Low", label: "Low" },
                             ]}
                         />
                         {errors.urgency && (
@@ -225,15 +277,15 @@ const BudgetRequestForm = () => {
                 <div className="w-full">
                     <div className="relative w-full">
                         <textarea
-                            name="description"
-                            value={formData.description}
+                            name="reason_for_increase"
+                            value={formData.reason_for_increase}
                             onChange={handleChange}
                             className="peer border border-gray-300 p-5 rounded-2xl w-full h-24 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
                         ></textarea>
                         <label
                             className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
                                     ${
-                                        formData.description
+                                        formData.reason_for_increase
                                             ? "-top-2 left-2 text-base text-[#009FDC] px-1"
                                             : "top-4 text-base text-gray-400"
                                     }
@@ -242,9 +294,9 @@ const BudgetRequestForm = () => {
                             Reasons for increase
                         </label>
                     </div>
-                    {errors.description && (
+                    {errors.reason_for_increase && (
                         <p className="text-red-500 text-sm mt-1">
-                            {errors.description}
+                            {errors.reason_for_increase}
                         </p>
                     )}
                 </div>

@@ -34,6 +34,7 @@ import ViewPayable from "./Dashboard/Finance/AccountPayables/ViewPayable";
 import IncomeStatementTable from "./Dashboard/BudgetAndAccounts/IncomeStatement/IncomeStatementTable";
 import ViewIncomeStatement from "./Dashboard/BudgetAndAccounts/IncomeStatement/ViewIncomeStatement";
 import BudgetTable from "./Dashboard/BudgetAndAccounts/Budget/BudgetTable";
+import CreateBudget from "./Dashboard/BudgetAndAccounts/Budget/CreateBudget";
 import ViewBudget from "./Dashboard/BudgetAndAccounts/Budget/ViewBudget";
 import ViewBalanceSheet from "./Dashboard/BudgetAndAccounts/BalanceSheet/ViewBalanceSheet";
 import BudgetRequestForm from "./Dashboard/BudgetAndAccounts/RequestABudget/BudgetRequestForm";
@@ -115,6 +116,8 @@ export default function Dashboard({ auth, page }) {
             return <ViewBalanceSheet />;
         if (page === "BudgetAndAccounts/Budget/BudgetTable")
             return <BudgetTable />;
+        if (page === "BudgetAndAccounts/Budget/CreateBudget")
+            return <CreateBudget />;
         if (page === "BudgetAndAccounts/Budget/ViewBudget")
             return <ViewBudget />;
         if (page === "BudgetAndAccounts/RequestABudget/RequestBudgetTable")

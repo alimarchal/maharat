@@ -263,6 +263,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/budget', function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/BudgetTable']);
     })->name('budget.index');
+    Route::get('/budget/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/CreateBudget']);
+    })->name('budget.create');
     Route::get('/budget/details/{id}', function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/ViewBudget']);
     })->name('budget.view');

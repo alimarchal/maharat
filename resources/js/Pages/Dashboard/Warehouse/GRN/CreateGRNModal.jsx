@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCamera, faTimes } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
@@ -10,35 +10,12 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
         delivery_note_number: "",
         attachment: "",
     });
-    const [rfqItems, setRFQItems] = useState([]);
+
     const [quantityDelivered, setQuantityDelivered] = useState({});
     const [error, setError] = useState({});
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        const fetchRFQItems = async () => {
-            setLoading(true);
-            const rfqId = grnsData?.quotation?.rfq_id ?? null;
-            try {
-                const response = await axios.get(
-                    "/api/v1/rfq-items?include=category,unit,status"
-                );
-                const filteredItems = response.data.data.filter(
-                    (item) => item.rfq_id === rfqId
-                );
-                setRFQItems(filteredItems);
-            } catch (error) {
-                setError({ fetch: "Error loading RFQ Items." });
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        if (isOpen && grnsData) {
-            fetchRFQItems();
-        }
-    }, [isOpen, grnsData]);
-
+    const rfqItems = grnsData?.rfq?.items;
     const currentDate = new Date().toISOString().split("T")[0];
 
     const handleChange = (e) => {
@@ -135,6 +112,19 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                 }
             }
 
+            for (const item of rfqItems) {
+                const inventoryPayload = {
+                    warehouse_id: grnsData?.rfq?.warehouse_id,
+                    quantity: parseInt(item.quantity),
+                    reorder_level: parseInt(item.quantity),
+                    description: item.description,
+                };
+                await axios.post(
+                    `/api/v1/inventories/product/${item?.product_id}/stock-in`,
+                    inventoryPayload
+                );
+            }
+
             const formDataToSend = new FormData();
             formDataToSend.append(
                 "delivery_note_number",
@@ -153,22 +143,6 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                     },
                 }
             );
-
-            // const inventoryPayload = {
-            //     warehouse_id: 101,
-            //     quantity: item.quantity,
-            //     reorder_level: 10,
-            //     description: "Stock in from supplier",
-            //     reference_number: "PO-2025-0031",
-            //     reference_type: "purchase_order",
-            //     reference_id: "1",
-            //     notes: "Regular stock replenishment",
-            // };
-
-            // await axios.post(
-            //     `/api/v1/inventories/product/${grnsData.id}/stock-in`,
-            //     inventoryPayload
-            // );
 
             const purchaseOrderPayload = {
                 has_good_receive_note: true,
@@ -264,10 +238,10 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                                         {item.description}
                                     </td>
                                     <td className="py-3 px-4">
-                                        {item.brand?.name}
+                                        {item.brand_id}
                                     </td>
                                     <td className="py-3 px-4">
-                                        {item.unit?.name}
+                                        {item.unit_id}
                                     </td>
                                     <td className="py-3 px-4 text-center">
                                         {parseInt(item.quantity)}
