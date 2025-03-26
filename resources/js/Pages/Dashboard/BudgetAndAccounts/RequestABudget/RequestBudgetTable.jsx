@@ -2,39 +2,29 @@ import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
+import axios from "axios";
 
 const RequestBudgetTable = () => {
     const [budgetRequests, setBudgetRequests] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
-    const staticRequestData = [
-        {
-            id: 1,
-            year: "2023",
-            department: "Finance",
-            costCenter: "Operations",
-            subCostCenter: "Marketing",
-            previousBudget: "$10,000",
-            requestedAmount: "$15,000",
-            urgency: "High",
-            description: "Additional resources needed",
-        },
-        {
-            id: 2,
-            year: "2024",
-            department: "HR",
-            costCenter: "Recruitment",
-            subCostCenter: "Training",
-            previousBudget: "$20,000",
-            requestedAmount: "$25,000",
-            urgency: "Medium",
-            description: "New hiring initiatives",
-        },
-    ];
-
     useEffect(() => {
-        setBudgetRequests(staticRequestData);
+        const fetchBudgetRequests = async () => {
+            setLoading(true);
+            try {
+                const response = await axios.get(
+                    `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator`
+                );
+                setBudgetRequests(response.data.data);
+            } catch (err) {
+                setError("Failed to fetch budget requests.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchBudgetRequests();
     }, []);
 
     return (
@@ -47,7 +37,7 @@ const RequestBudgetTable = () => {
                     href={`/request-budgets/create`}
                     className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                 >
-                    Create new Budget Request
+                    Create department Budget Request
                 </Link>
             </div>
 
@@ -88,25 +78,27 @@ const RequestBudgetTable = () => {
                     ) : budgetRequests.length > 0 ? (
                         budgetRequests.map((request) => (
                             <tr key={request.id}>
-                                <td className="py-3 px-4">{request.year}</td>
                                 <td className="py-3 px-4">
-                                    {request.department}
+                                    {request.fiscal_period?.fiscal_year}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {request.costCenter}
+                                    {request.department?.name}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {request.subCostCenter}
+                                    {request.cost_center?.name}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {request.previousBudget}
+                                    {request.sub_cost_center_details?.name}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {request.requestedAmount}
+                                    {request.previous_year_budget_amount}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {request.requested_amount}
                                 </td>
                                 <td className="py-3 px-4">{request.urgency}</td>
                                 <td className="py-3 px-4">
-                                    {request.description}
+                                    {request.reason_for_increase}
                                 </td>
                                 <td className="py-3 px-4 flex items-center justify-center gap-4">
                                     <button className="text-gray-600 hover:text-gray-800">
