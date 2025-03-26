@@ -23,12 +23,11 @@ return new class extends Migration
             $table->decimal('total_expense_planned', 15, 2)->default(0);
             $table->decimal('total_expense_actual', 15, 2)->default(0);
             $table->enum('status', ['Active', 'Frozen', 'Closed'])->default('Active')->comment('Current status of the budget');
-            $table->foreignId('created_by')->constrained('users', 'id')->comment('User who created this budget');
-            $table->foreignId('updated_by')->nullable()->constrained('users', 'id')->comment('User who last updated this budget');
             $table->string('pdf_link')->nullable()->comment('Link to the saved PDF file');
             $table->string('excel_link')->nullable()->comment('Link to the saved Excel file');
-            $table->timestamps();
+            $table->userTracking();
             $table->softDeletes();
+            $table->timestamps();
         });
     }
 

@@ -27,7 +27,8 @@ class RfqItem extends Model
         'quoted_price',
         'negotiated_price',
         'status_id',
-        'attachment'
+        'attachment',
+        'original_filename'
     ];
 
     public function rfq(): BelongsTo

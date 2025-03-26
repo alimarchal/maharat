@@ -25,8 +25,9 @@ class RfqItemResource extends JsonResource
             'status_id' => $this->status_id,
             'attachment' => $this->when($this->attachment, function () {
                 return [
-                    'name' => basename($this->attachment),
-                    'url' => Storage::disk('public')->url($this->attachment)
+                    'name' => $this->original_filename ?? basename($this->attachment),
+                    'url' => $this->attachment,
+                    'original_filename' => $this->original_filename
                 ];
             }),
             'expected_delivery_date' => $this->expected_delivery_date,

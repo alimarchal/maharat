@@ -49,12 +49,14 @@ class RfqItemController extends Controller
                 throw new \Exception('Invalid items data');
             }
 
-
-
             foreach ($items as $index => $item) {
+                if (empty($item['rfq_id'])) {
+                    throw new \Exception('RFQ ID is required for items');
+                }
+
                 $itemData = [
-                    'item_name' => $item['item_name'] ?? null,
-                    'description' => $item['description'] ?? null,
+                    'rfq_id' => $item['rfq_id'],
+                    'product_id' => $item['product_id'] ?? null,
                     'unit_id' => $item['unit_id'] ?? null,
                     'quantity' => $item['quantity'] ?? null,
                     'brand_id' => $item['brand_id'] ?? null,
@@ -65,21 +67,28 @@ class RfqItemController extends Controller
                 // Handle file upload if exists
                 if ($request->hasFile("attachments.{$index}")) {
                     $file = $request->file("attachments.{$index}");
-                    $filename = $file->getClientOriginalName();
-                    // Store with original filename
-                    $path = $file->storeAs('rfq-attachments', $filename, 'public');
+                    $path = $file->store('rfq-attachments', 'public');
                     $itemData['attachment'] = $path;
+                    $itemData['original_filename'] = $file->getClientOriginalName();
                 }
 
-                // Remove null values
-                $itemData = array_filter($itemData, function ($value) {
-                    return $value !== null;
-                });
+                if (isset($item['id'])) {
+                    // Update existing item
+                    RfqItem::where('id', $item['id'])->update($itemData);
+                } else {
+                    // Create new item
+                    RfqItem::create($itemData);
+                }
+            }
 
-                RfqItem::updateOrCreate(
-                    ['id' => $item['id'] ?? null],
-                    $itemData
-                );
+            // Delete items that were removed from the form
+            if (!empty($items)) {
+                $currentItemIds = array_filter(array_column($items, 'id')); // Get all valid IDs
+                if (!empty($currentItemIds)) {
+                    RfqItem::where('rfq_id', $items[0]['rfq_id'])
+                        ->whereNotIn('id', $currentItemIds)
+                        ->delete();
+                }
             }
 
             DB::commit();
@@ -124,7 +133,6 @@ class RfqItemController extends Controller
 
                 $item = RfqItem::findOrFail($itemData['id']);
 
-                // Only update fields that are present in the request
                 $updateData = array_filter($itemData, function($value) {
                     return $value !== null && $value !== '';
                 });
@@ -132,8 +140,10 @@ class RfqItemController extends Controller
                 // Handle file attachment if present
                 if (isset($request->file('attachments')[$index])) {
                     $file = $request->file('attachments')[$index];
-                    $path = $file->store('rfq-attachments', 'public');
-                    $updateData['attachment'] = $path;
+                    $originalFilename = $file->getClientOriginalName();
+                    $storagePath = $file->store('rfq-attachments', 'public');
+                    $updateData['attachment'] = $storagePath;
+                    $updateData['original_filename'] = $originalFilename;
                 }
 
                 // Remove id from update data
@@ -145,16 +155,11 @@ class RfqItemController extends Controller
             }
 
             DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Items updated successfully'
-            ]);
+            return response()->json(['success' => true, 'message' => 'Items updated successfully']);
 
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('RFQ Items Update Error: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update items: ' . $e->getMessage()
