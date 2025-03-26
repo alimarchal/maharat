@@ -6,7 +6,6 @@ export default function CreateMaharatInvoice() {
     const { invoiceId } = usePage().props;
     const [companies, setCompanies] = useState([]);
     const [formData, setFormData] = useState({
-        company_id: "",
         client_id: "",
         representative: "",
         address: "",
@@ -88,7 +87,7 @@ export default function CreateMaharatInvoice() {
 
     const fetchHeaderCompanyDetails = async () => {
         try {
-            const response = await axios.get("/api/v1/companies/1");
+            const response = await axios.get("/api/v1/companies/1?include=currency");
             const company = response.data.data;
             
             if (company) {
@@ -99,9 +98,26 @@ export default function CreateMaharatInvoice() {
                     vat_no: company.vat_no || '',
                     cr_no: company.cr_no || ''
                 });
+
+                setCompanyDetails({
+                    name: company.name || '',
+                    address: company.address || '',
+                    contact_number: company.contact_number || '',
+                    vat_no: company.vat_no || '',
+                    cr_no: company.cr_no || '',
+                    account_name: company.account_name || '',
+                    account_no: company.account_no || '',
+                    currency: company.currency?.name || 'SAR',
+                    currency_code: company.currency?.code || 'SAR',
+                    license_no: company.license_no || '',
+                    iban: company.iban || '',
+                    bank: company.bank || '',
+                    branch: company.branch || '',
+                    swift: company.swift || ''
+                });
             }
         } catch (error) {
-            console.error('Error fetching header company details:', error);
+            console.error('Error fetching company details:', error);
         }
     };
 
@@ -157,6 +173,7 @@ export default function CreateMaharatInvoice() {
     const fetchClients = async () => {
         try {
             const response = await axios.get("/api/v1/customers");
+            console.log("All Clients Data:", response.data.data);
             setClients(response.data.data);
         } catch (error) {
             console.error("Error fetching clients:", error);
@@ -175,17 +192,28 @@ export default function CreateMaharatInvoice() {
             // Set invoice number
             setInvoiceNumber(invoice.invoice_number);
 
-            // Set form data with invoice details
+            // First, get client details if client_id exists
+            let clientDetails = {};
+            if (invoice.client_id) {
+                try {
+                    const clientResponse = await axios.get(`/api/v1/customers/${invoice.client_id}`);
+                    clientDetails = clientResponse.data.data;
+                } catch (error) {
+                    console.error('Error fetching client details:', error);
+                }
+            }
+
+            // Set form data with invoice details and client details
             setFormData(prevData => ({
                 ...prevData,
-                company_id: invoice.company_id || '',
                 client_id: invoice.client_id || '',
                 representative: invoice.representative_id || '',
-                address: invoice.company?.address || '',
-                cr_no: invoice.company?.cr_no || '',
-                vat_no: invoice.company?.vat_no || '',
-                email: invoice.company?.email || '',
-                mobile: invoice.company?.contact_number || '',
+                // Use client details instead of company details
+                address: clientDetails.address || '',
+                cr_no: clientDetails.cr_no || '',
+                vat_no: clientDetails.vat_number || '', // Note: using vat_number from customer
+                email: clientDetails.email || '',
+                mobile: clientDetails.contact_number || '',
                 invoice_date: formattedDate,
                 payment_terms: invoice.payment_method || '',
                 vat_rate: invoice.vat_rate || '',
@@ -209,10 +237,9 @@ export default function CreateMaharatInvoice() {
                 }]
             }));
 
-            // Set company details including currency
+            // Set company details for the bottom section (this remains unchanged)
             if (invoice.company) {
-                // Fetch complete company details including currency
-                const companyResponse = await axios.get(`/api/v1/companies/${invoice.company_id}?include=currency`);
+                const companyResponse = await axios.get(`/api/v1/companies/1?include=currency`);
                 const companyData = companyResponse.data.data;
                 
                 setCompanyDetails({
@@ -224,6 +251,7 @@ export default function CreateMaharatInvoice() {
                     account_name: companyData.account_name || '',
                     account_no: companyData.account_no || '',
                     currency: companyData.currency?.name || '',
+                    currency_code: companyData.currency?.code || 'SAR',
                     license_no: companyData.license_no || '',
                     iban: companyData.iban || '',
                     bank: companyData.bank || '',
@@ -235,63 +263,6 @@ export default function CreateMaharatInvoice() {
         } catch (error) {
             console.error('Error fetching invoice data:', error);
             setErrors({ fetch: 'Failed to load invoice data' });
-        }
-    };
-
-    const fetchCompanyDetails = async () => {
-        try {
-            const response = await axios.get("/api/v1/companies");
-            const company = response.data.data?.find(comp => comp.id === 1);
-            
-            if (company) {
-                setCompanyDetails({
-                    name: company.name,
-                    address: `${company.city}, ${company.country}`,
-                    contact_number: company.contact_number,
-                    vat_no: company.vat_no,
-                    cr_no: company.cr_no
-                });
-            } else {
-                console.log('Company with ID 1 not found');
-            }
-        } catch (error) {
-            console.error('Error fetching company details:', error);
-        }
-    };
-
-    const fetchCompanyDetailsById = async (companyId) => {
-        try {
-            const response = await axios.get(`/api/v1/companies/${companyId}?include=currency`);
-            const company = response.data.data;
-            
-            if (company) {
-                setFormData(prevData => ({
-                    ...prevData,
-                    address: company.address || "",
-                    cr_no: company.cr_no || "",
-                    vat_no: company.vat_no || "",
-                    mobile: company.contact_number || "",
-                    email: company.email || "",
-                }));
-
-                setCompanyDetails({
-                    name: company.name || '',
-                    address: company.address || '',
-                    contact_number: company.contact_number || '',
-                    vat_no: company.vat_no || '',
-                    cr_no: company.cr_no || '',
-                    account_name: company.account_name || '',
-                    account_no: company.account_no || '',
-                    currency: company.currency?.name || '',
-                    license_no: company.license_no || '',
-                    iban: company.iban || '',
-                    bank: company.bank || '',
-                    branch: company.branch || '',
-                    swift: company.swift || ''
-                });
-            }
-        } catch (error) {
-            console.error('Error fetching company details:', error);
         }
     };
 
@@ -312,179 +283,6 @@ export default function CreateMaharatInvoice() {
         setItemTouched(newItemTouched);
 
         validateItemField(index, field);
-    };
-
-    const handleCompanyChange = async (e) => {
-        const companyId = e.target.value;
-        
-        setFormData(prevData => ({
-            ...prevData,
-            company_id: companyId
-        }));
-
-        if (!companyId) return;
-
-        try {
-            const response = await axios.get(`/api/v1/companies/${companyId}?include=currency`);
-            const company = response.data.data;
-            
-            if (company) {
-                setFormData(prevData => ({
-                    ...prevData,
-                    address: company.address || "",
-                    cr_no: company.cr_no || "",
-                    vat_no: company.vat_no || "",
-                    mobile: company.contact_number || "",
-                    email: company.email || "",
-                }));
-
-                setCompanyDetails({
-                    name: company.name || '',
-                    address: company.address || '',
-                    contact_number: company.contact_number || '',
-                    vat_no: company.vat_no || '',
-                    cr_no: company.cr_no || '',
-                    account_name: company.account_name || '',
-                    account_no: company.account_no || '',
-                    currency: company.currency?.name || '',
-                    license_no: company.license_no || '',
-                    iban: company.iban || '',
-                    bank: company.bank || '',
-                    branch: company.branch || '',
-                    swift: company.swift || ''
-                });
-            }
-        } catch (error) {
-            console.error('Error fetching company details:', error);
-        }
-    };
-
-    const validateItemField = (index, field) => {
-        if (index >= itemErrors.length) return;
-
-        const newItemErrors = [...itemErrors];
-        if (!newItemErrors[index]) {
-            newItemErrors[index] = {};
-        }
-
-        const item = formData.items[index];
-
-        switch (field) {
-            case "item_id":
-                if (!item.item_id) {
-                    newItemErrors[index].item_id = "Item name is required";
-                } else {
-                    delete newItemErrors[index].item_id;
-                }
-                break;
-            case "quantity":
-                if (!item.quantity) {
-                    newItemErrors[index].quantity = "Quantity is required";
-                } else if (parseFloat(item.quantity) <= 0) {
-                    newItemErrors[index].quantity =
-                        "Quantity must be greater than 0";
-                } else {
-                    delete newItemErrors[index].quantity;
-                }
-                break;
-            case "unit_price":
-                if (!item.unit_price) {
-                    newItemErrors[index].unit_price = "Unit price is required";
-                } else if (parseFloat(item.unit_price) < 0) {
-                    newItemErrors[index].unit_price =
-                        "Unit price cannot be negative";
-                } else {
-                    delete newItemErrors[index].unit_price;
-                }
-                break;
-            default:
-                break;
-        }
-
-        setItemErrors(newItemErrors);
-    };
-
-    const validateField = (field) => {
-        const newErrors = { ...errors };
-
-        switch (field) {
-            case "company_id":
-                if (!formData.company_id) {
-                    newErrors.company_id = "Company is required";
-                } else {
-                    delete newErrors.company_id;
-                }
-                break;
-            case "invoice_date":
-                if (!formData.invoice_date) {
-                    newErrors.invoice_date = "Invoice date is required";
-                } else {
-                    delete newErrors.invoice_date;
-                }
-                break;
-            default:
-                break;
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const validateForm = () => {
-        const validationErrors = {};
-        let isValid = true;
-
-        if (!formData.company_id)
-            validationErrors.company_id = "Company is required";
-
-        if (!formData.invoice_date)
-            validationErrors.invoice_date = "Invoice date is required";
-
-        const newItemErrors = formData.items.map((item, index) => {
-            const itemValidationErrors = {};
-
-            if (!item.item_id) {
-                itemValidationErrors.item_id = "Item name is required";
-                isValid = false;
-            }
-
-            if (!item.quantity) {
-                itemValidationErrors.quantity = "Quantity is required";
-                isValid = false;
-            } else if (parseFloat(item.quantity) <= 0) {
-                itemValidationErrors.quantity =
-                    "Quantity must be greater than 0";
-                isValid = false;
-            }
-
-            if (!item.unit_price) {
-                itemValidationErrors.unit_price = "Unit price is required";
-                isValid = false;
-            } else if (parseFloat(item.unit_price) < 0) {
-                itemValidationErrors.unit_price =
-                    "Unit price cannot be negative";
-                isValid = false;
-            }
-
-            return itemValidationErrors;
-        });
-
-        setErrors(validationErrors);
-        setItemErrors(newItemErrors);
-
-        setTouched({
-            company_id: true,
-            invoice_date: true,
-        });
-
-        const allItemsTouched = formData.items.map(() => ({
-            item_id: true,
-            quantity: true,
-            unit_price: true,
-        }));
-        setItemTouched(allItemsTouched);
-
-        return isValid && Object.keys(validationErrors).length === 0;
     };
 
     const handleInputChange = (e) => {
@@ -585,6 +383,123 @@ export default function CreateMaharatInvoice() {
         }));
     };
 
+    const validateItemField = (index, field) => {
+        if (index >= itemErrors.length) return;
+
+        const newItemErrors = [...itemErrors];
+        if (!newItemErrors[index]) {
+            newItemErrors[index] = {};
+        }
+
+        const item = formData.items[index];
+
+        switch (field) {
+            case "item_id":
+                if (!item.item_id) {
+                    newItemErrors[index].item_id = "Item name is required";
+                } else {
+                    delete newItemErrors[index].item_id;
+                }
+                break;
+            case "quantity":
+                if (!item.quantity) {
+                    newItemErrors[index].quantity = "Quantity is required";
+                } else if (parseFloat(item.quantity) <= 0) {
+                    newItemErrors[index].quantity =
+                        "Quantity must be greater than 0";
+                } else {
+                    delete newItemErrors[index].quantity;
+                }
+                break;
+            case "unit_price":
+                if (!item.unit_price) {
+                    newItemErrors[index].unit_price = "Unit price is required";
+                } else if (parseFloat(item.unit_price) < 0) {
+                    newItemErrors[index].unit_price =
+                        "Unit price cannot be negative";
+                } else {
+                    delete newItemErrors[index].unit_price;
+                }
+                break;
+            default:
+                break;
+        }
+
+        setItemErrors(newItemErrors);
+    };
+
+    const validateField = (field) => {
+        const newErrors = { ...errors };
+
+        switch (field) {
+            case "invoice_date":
+                if (!formData.invoice_date) {
+                    newErrors.invoice_date = "Invoice date is required";
+                } else {
+                    delete newErrors.invoice_date;
+                }
+                break;
+            default:
+                break;
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const validateForm = () => {
+        const validationErrors = {};
+        let isValid = true;
+
+        if (!formData.invoice_date)
+            validationErrors.invoice_date = "Invoice date is required";
+
+        const newItemErrors = formData.items.map((item, index) => {
+            const itemValidationErrors = {};
+
+            if (!item.item_id) {
+                itemValidationErrors.item_id = "Item name is required";
+                isValid = false;
+            }
+
+            if (!item.quantity) {
+                itemValidationErrors.quantity = "Quantity is required";
+                isValid = false;
+            } else if (parseFloat(item.quantity) <= 0) {
+                itemValidationErrors.quantity =
+                    "Quantity must be greater than 0";
+                isValid = false;
+            }
+
+            if (!item.unit_price) {
+                itemValidationErrors.unit_price = "Unit price is required";
+                isValid = false;
+            } else if (parseFloat(item.unit_price) < 0) {
+                itemValidationErrors.unit_price =
+                    "Unit price cannot be negative";
+                isValid = false;
+            }
+
+            return itemValidationErrors;
+        });
+
+        setErrors(validationErrors);
+        setItemErrors(newItemErrors);
+
+        setTouched({
+            invoice_date: true,
+        });
+
+        const allItemsTouched = formData.items.map(() => ({
+            item_id: true,
+            quantity: true,
+            unit_price: true,
+        }));
+        setItemTouched(allItemsTouched);
+
+        return isValid && Object.keys(validationErrors).length === 0;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
@@ -595,7 +510,7 @@ export default function CreateMaharatInvoice() {
                 issue_date: formData.invoice_date,
                 payment_method: formData.payment_terms,
                 vat_rate: formData.vat_rate,
-                company_id: formData.company_id,
+                company_id: 1,
                 client_id: formData.client_id,
                 representative_id: formData.representative,
                 subtotal: formData.subtotal,
@@ -635,7 +550,7 @@ export default function CreateMaharatInvoice() {
                     invoice_id: newInvoiceId,
                     status: 'Pending',
                     requester_id: formData.representative,
-                    assigned_to: formData.company_id,
+                    assigned_to: 1,
                 });
             }
 
@@ -668,6 +583,47 @@ export default function CreateMaharatInvoice() {
 
         // Recalculate all totals
         calculateTotals(updatedItems);
+    };
+
+    const handleClientChange = async (e) => {
+        const clientId = e.target.value;
+        console.log("Selected Client ID:", clientId);
+        
+        setFormData(prevData => ({
+            ...prevData,
+            client_id: clientId
+        }));
+
+        if (!clientId) {
+            // Clear client-related fields if no client is selected
+            setFormData(prevData => ({
+                ...prevData,
+                address: "",
+                cr_no: "",
+                vat_no: "",
+                mobile: "",
+                email: ""
+            }));
+            return;
+        }
+
+        try {
+            const response = await axios.get(`/api/v1/customers/${clientId}`);
+            const client = response.data.data;
+            console.log('Selected Client Full Data:', client);
+            console.log('Client email field:', client.email);
+
+            setFormData(prevData => ({
+                ...prevData,
+                address: client.address || "",
+                cr_no: client.cr_no || "",
+                vat_no: client.vat_number || "",
+                mobile: client.contact_number || "",
+                email: client.email || ""
+            }));
+        } catch (error) {
+            console.error('Error fetching client details:', error);
+        }
     };
 
     return (
@@ -766,65 +722,24 @@ export default function CreateMaharatInvoice() {
                     </div>
                     <div className="w-full bg-gray-100 p-4 rounded-2xl">
                         <div className="flex justify-start items-start gap-8 mt-0">
-                            <strong className="w-32">Company:</strong>
-                            <div className="w-full -mt-2">
-                                <select
-                                    id="company_id"
-                                    name="company_id"
-                                    value={formData.company_id}
-                                    onChange={handleCompanyChange}
-                                    onBlur={() => handleBlur("company_id")}
-                                    className="block w-full rounded border-none shadow-none focus:ring-0 appearance-none bg-transparent pl-0"
-                                >
-                                    <option value="">Select Company</option>
-                                    {companies && companies.length > 0 ? (
-                                        companies.map((company) => (
-                                            <option
-                                                key={company.id}
-                                                value={company.id}
-                                            >
-                                                {company.name}
-                                            </option>
-                                        ))
-                                    ) : (
-                                        <option disabled>
-                                            Loading companies...
-                                        </option>
-                                    )}
-                                </select>
-                                {touched.company_id && errors.company_id && (
-                                    <p className="text-red-500 text-sm mt-1">
-                                        {errors.company_id}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="flex justify-start items-start gap-8 mt-6">
                             <strong className="w-32">Client:</strong>
                             <div className="w-full -mt-2">
                                 <select
                                     id="client_id"
                                     name="client_id"
                                     value={formData.client_id}
-                                    onChange={handleInputChange}
+                                    onChange={handleClientChange}
                                     className="block w-full rounded border-none shadow-none focus:ring-0 appearance-none bg-transparent pl-0"
                                 >
                                     <option value="">Select Client</option>
-                                    {clients && clients.length > 0 ? (
-                                        clients.map((client) => (
-                                            <option
-                                                key={client.id}
-                                                value={client.id}
-                                            >
-                                                {client.name}
-                                            </option>
-                                        ))
-                                    ) : (
-                                        <option disabled>
-                                            Loading clients...
+                                    {clients.map((client) => (
+                                        <option
+                                            key={client.id}
+                                            value={client.id}
+                                        >
+                                            {client.name}
                                         </option>
-                                    )}
+                                    ))}
                                 </select>
                             </div>
                         </div>

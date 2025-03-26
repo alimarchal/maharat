@@ -19,14 +19,15 @@ class UpdateCustomerRequest extends FormRequest
             'commercial_registration_number' => [
                 'nullable',
                 'string',
-                Rule::unique('customers')->ignore($this->customer)
+                Rule::unique('customers', 'commercial_registration_number')->ignore($this->customer),
             ],
-            'tax_number' => [
+            'vat_number' => [
                 'nullable',
                 'string',
-                Rule::unique('customers')->ignore($this->customer)
+                Rule::unique('customers', 'vat_number')->ignore($this->customer),
             ],
             'tax_group_registration_number' => ['nullable', 'string'],
+            'cr_no' => ['nullable', 'string'],
             'contact_number' => ['nullable', 'string'],
             'additional_number' => ['nullable', 'string'],
             'client_code' => ['nullable', 'string'],
@@ -35,14 +36,7 @@ class UpdateCustomerRequest extends FormRequest
             'is_limited' => ['boolean'],
 
             // Address fields
-            'street_name' => ['nullable', 'string'],
-            'building_number' => ['nullable', 'string'],
-            'address_additional_number' => ['nullable', 'string'],
-            'district' => ['nullable', 'string'],
-            'neighborhood' => ['nullable', 'string'],
-            'main_street' => ['nullable', 'string'],
-            'city' => ['nullable', 'string'],
-            'state' => ['nullable', 'string'],
+            'address' => ['nullable', 'string'],
             'zip_code' => ['nullable', 'string'],
             'country_code' => ['nullable', 'string', 'max:3'],
 
@@ -51,8 +45,9 @@ class UpdateCustomerRequest extends FormRequest
             'account_number' => ['nullable', 'string'],
             'iban' => ['nullable', 'string'],
             'swift_code' => ['nullable', 'string'],
+            'bank_name' => ['nullable', 'string'],
             'branch_name' => ['nullable', 'string'],
-            'bank_currency' => ['nullable', 'string', 'max:3'],
+            'bank_currency' => ['nullable', 'string', 'max:3', 'in:SAR,USD,EUR'],
 
             // Payment method
             'preferred_payment_method' => ['nullable', 'string'],

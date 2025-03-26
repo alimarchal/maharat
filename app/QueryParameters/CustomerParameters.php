@@ -6,6 +6,7 @@ class CustomerParameters
 {
     public const ALLOWED_FILTERS = [
         'name',
+        'email',
         'commercial_registration_number',
         'tax_number',
         'type',
