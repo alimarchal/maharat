@@ -33,6 +33,8 @@ class PurchaseOrderParameters
         'supplier',
         'user',
         'department',
+        'paymentOrders',
+        'goodReceiveNote',
         'costCenter',
         'subCostCenter',
         'warehouse',
