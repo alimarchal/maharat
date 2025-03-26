@@ -26,11 +26,13 @@ class RfqItemSeeder extends Seeder
 
         foreach ($rfqs as $rfq) {
             $numberOfItems = rand(2, 4);
-            
+
+
             for ($i = 0; $i < $numberOfItems; $i++) {
                 $item = $items[array_rand($items)];
                 RfqItem::create([
                     'rfq_id' => $rfq->id,
+                    'product_id' => rand(201, 203),
                     'item_name' => $item['name'],
                     'description' => $item['description'],
                     'unit_id' => Unit::inRandomOrder()->first()->id ?? 1,

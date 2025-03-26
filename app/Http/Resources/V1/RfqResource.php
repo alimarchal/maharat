@@ -17,6 +17,7 @@ class RfqResource extends JsonResource
         return [
             'id' => $this->id,
             'rfq_number' => $this->rfq_number,
+            'warehouse_id' => $this->warehouse_id,
             'department_id' => $this->department_id,
             'cost_center_id' => $this->cost_center_id,
             'sub_cost_center_id' => $this->sub_cost_center_id,

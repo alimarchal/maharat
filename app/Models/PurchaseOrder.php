@@ -60,7 +60,6 @@ class PurchaseOrder extends Model
     }
 
 
-
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class);
@@ -105,6 +104,6 @@ class PurchaseOrder extends Model
 
     public function requestForQuotation(): BelongsTo
     {
-        return $this->belongsTo(Rfq::class, 'rfq_id','id');
+        return $this->belongsTo(Rfq::class, 'rfq_id', 'id');
     }
 }

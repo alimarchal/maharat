@@ -18,14 +18,11 @@ class RfqItemResource extends JsonResource
             'description' => $this->description,
             'quantity' => number_format((float)$this->quantity, 1, '.', ''),
             'brand_id' => $this->brand_id,
-            'product' => new ProductResource($this->whenLoaded('product')),
-            'brand' => new BrandResource($this->whenLoaded('brand')),
+
             'model' => $this->model,
             'specifications' => $this->specifications,
             'unit_id' => $this->unit_id,
-            'unit' => new UnitResource($this->whenLoaded('unit')),
             'status_id' => $this->status_id,
-            'status' => new StatusResource($this->whenLoaded('status')),
             'attachment' => $this->when($this->attachment, function () {
                 return [
                     'name' => basename($this->attachment),
@@ -37,6 +34,10 @@ class RfqItemResource extends JsonResource
             'negotiated_price' => $this->negotiated_price,
 
             // Relationships
+            'unit' => new UnitResource($this->whenLoaded('unit')),
+            'status' => new StatusResource($this->whenLoaded('status')),
+            'brand' => new BrandResource($this->whenLoaded('brand')),
+            'product' => new ProductResource($this->whenLoaded('product')),
             'category' => new ProductCategoryResource($this->whenLoaded('category')),
 
             'created_at' => $this->created_at,

@@ -165,7 +165,9 @@ class PurchaseOrderController extends Controller
                 'department',
                 'costCenter',
                 'subCostCenter',
-                'requestForQuotation.items',
+                'requestForQuotation.warehouse',
+                'requestForQuotation.items.product.category',
+                'requestForQuotation.items.product.unit',
             ])->findOrFail($id);
 
             return response()->json([

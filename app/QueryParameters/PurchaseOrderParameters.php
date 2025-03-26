@@ -36,6 +36,8 @@ class PurchaseOrderParameters
         'costCenter',
         'subCostCenter',
         'warehouse',
-        'requestForQuotation.items',
+        'requestForQuotation.warehouse',
+        'requestForQuotation.items.product.category',
+        'requestForQuotation.items.product.unit',
     ];
 }

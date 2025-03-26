@@ -55,8 +55,8 @@ class RfqItem extends Model
         return $this->belongsTo(Status::class, 'status_id');
     }
 
-    public function product(): BelongsTo
+    public function product()
     {
-        return $this->belongsTo(Product::class,'product_id');
+        return $this->belongsTo(Product::class);
     }
 }
