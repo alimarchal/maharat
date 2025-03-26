@@ -10,5 +10,5 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class CashFlowTransaction extends Model
 {
     /** @use HasFactory<\Database\Factories\CashFlowTransactionFactory> */
-    use HasFactory,, UserTracking, SoftDeletes;
+    use HasFactory, UserTracking, SoftDeletes;
 }
