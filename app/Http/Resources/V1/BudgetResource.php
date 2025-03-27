@@ -35,6 +35,7 @@ class BudgetResource extends JsonResource
             'fiscal_period' => new FiscalPeriodResource($this->whenLoaded('fiscalPeriod')),
             'department' => new DepartmentResource($this->whenLoaded('department')),
             'cost_center' => new CostCenterResource($this->whenLoaded('costCenter')),
+            'sub_cost_center' => new CostCenterResource($this->whenLoaded('subCostCenter')),
             'creator' => new UserResource($this->whenLoaded('creator')),
             'updater' => new UserResource($this->whenLoaded('updater')),
         ];
