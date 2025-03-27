@@ -106,4 +106,9 @@ class PurchaseOrder extends Model
     {
         return $this->belongsTo(Rfq::class, 'rfq_id', 'id');
     }
+
+    public function rfq(): BelongsTo
+    {
+        return $this->belongsTo(Rfq::class, 'rfq_id', 'id');
+    }
 }

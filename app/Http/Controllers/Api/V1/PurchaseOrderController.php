@@ -184,14 +184,15 @@ class PurchaseOrderController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdatePurchaseOrderRequest $request, PurchaseOrder $purchaseOrder): JsonResponse
+    public function update(UpdatePurchaseOrderRequest $request, PurchaseOrder $purchaseOrder)
     {
+
+
         try {
             DB::beginTransaction();
 
             // Get validated data except the attachment
             $validatedData = $request->safe()->except(['attachment']);
-
             // Update purchase order
             $purchaseOrder->update($validatedData);
 
@@ -221,7 +222,7 @@ class PurchaseOrderController extends Controller
                         'costCenter',
                         'subCostCenter',
                         'warehouse',
-                        'rfq',
+                        'requestForQuotation',
                     ])
                 )
             ], Response::HTTP_OK);
