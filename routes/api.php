@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\Api\V1\AssetController;
+use App\Http\Controllers\Api\V1\AssetTransactionController;
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\BudgetApprovalTransactionController;
 use App\Http\Controllers\Api\V1\BudgetController;
@@ -12,6 +14,8 @@ use App\Http\Controllers\Api\V1\CostCenterController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\DepartmentController;
 use App\Http\Controllers\Api\V1\DesignationController;
+use App\Http\Controllers\Api\V1\EquityAccountController;
+use App\Http\Controllers\Api\V1\EquityTransactionController;
 use App\Http\Controllers\Api\V1\ExternalDeliveryNoteController;
 use App\Http\Controllers\Api\V1\ExternalInvoiceController;
 use App\Http\Controllers\Api\V1\FinancialTransactionController;
@@ -329,5 +333,24 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
         Route::get('/income-statement/expenses', 'getExpenses');
         Route::get('/income-statement/transactions', 'getTransactions');
     });
+
+    Route::apiResource('assets', AssetController::class);
+    Route::post('assets/{id}/restore', [AssetController::class, 'restore'])->name('assets.restore');
+
+    // Asset Transaction routes
+    Route::apiResource('asset-transactions', AssetTransactionController::class);
+    Route::get('assets/{asset}/transactions', [AssetTransactionController::class, 'getAssetTransactions'])->name('assets.transactions');
+
+    // Equity Account routes
+    Route::apiResource('equity-accounts', EquityAccountController::class);
+    Route::post('equity-accounts/{id}/restore', [EquityAccountController::class, 'restore'])->name('equity-accounts.restore');
+    Route::get('equity-accounts/type/{type}', [EquityAccountController::class, 'getByType'])->name('equity-accounts.type');
+
+    // Equity Transaction routes
+    Route::apiResource('equity-transactions', EquityTransactionController::class);
+    Route::get('equity-accounts/{equityAccount}/transactions', [EquityTransactionController::class, 'getAccountTransactions'])->name('equity-accounts.transactions');
+    Route::get('equity-transactions/type/{type}', [EquityTransactionController::class, 'getByType'])->name('equity-transactions.type');
+    Route::get('equity-transactions/date-range', [EquityTransactionController::class, 'getByDateRange'])->name('equity-transactions.date-range');
+
 
 });
