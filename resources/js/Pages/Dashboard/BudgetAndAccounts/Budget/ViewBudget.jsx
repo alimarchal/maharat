@@ -18,15 +18,19 @@ const ViewBudget = () => {
         setError("");
 
         try {
-            const response = await axios.get(
+            const res = await axios.get(
                 `/api/v1/budgets/${budgetId}?include=fiscalPeriod,department,costCenter,subCostCenter,creator,updater`
             );
+            const fiscalPeriodId = res.data?.data?.fiscal_period_id;
+
+            const response = await axios.get(
+                `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator`
+            );
             if (response.data && response.data.data) {
-                setBudgets(
-                    Array.isArray(response.data.data)
-                        ? response.data.data
-                        : [response.data.data]
+                const filteredBudgets = response.data.data.filter(
+                    (budget) => budget.fiscal_period_id === fiscalPeriodId
                 );
+                setBudgets(filteredBudgets.length > 0 ? filteredBudgets : []);
             } else {
                 setError("Invalid response format. Please try again.");
             }
@@ -41,12 +45,13 @@ const ViewBudget = () => {
     };
 
     const totalRequested = budgets?.reduce(
-        (sum, budget) => sum + (parseFloat(budget.total_expense_planned) || 0),
+        (sum, budget) => sum + (parseFloat(budget.requested_amount) || 0),
         0
     );
 
     const totalApproved = budgets?.reduce(
-        (sum, budget) => sum + (parseFloat(budget.total_expense_actual) || 0),
+        (sum, budget) =>
+            sum + (parseFloat(budget.previous_year_budget_amount) || 0),
         0
     );
 
@@ -90,19 +95,19 @@ const ViewBudget = () => {
                                     {budget.cost_center?.name}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {budget.sub_cost_center?.name}
+                                    {budget.sub_cost_center_details?.name}
                                 </td>
                                 <td className="py-3 px-4">
                                     {budget.department?.name}
                                 </td>
                                 <td className="py-3 px-4 text-blue-500">
                                     {parseFloat(
-                                        budget.total_expense_planned
+                                        budget.requested_amount
                                     ).toLocaleString()}
                                 </td>
                                 <td className="py-3 px-4 text-green-500">
                                     {parseFloat(
-                                        budget.total_expense_actual
+                                        budget.previous_year_budget_amount
                                     ).toLocaleString()}
                                 </td>
                             </tr>

@@ -4,6 +4,7 @@ import { router, usePage } from "@inertiajs/react";
 
 export default function CreateMaharatInvoice() {
     const { invoiceId } = usePage().props;
+    const user_id = usePage().props.auth.user.id;
     const [companies, setCompanies] = useState([]);
     const [formData, setFormData] = useState({
         client_id: "",
@@ -35,32 +36,32 @@ export default function CreateMaharatInvoice() {
     const [touched, setTouched] = useState({});
     const [itemErrors, setItemErrors] = useState([]);
     const [itemTouched, setItemTouched] = useState([]);
-    const [invoiceNumber, setInvoiceNumber] = useState('');
+    const [invoiceNumber, setInvoiceNumber] = useState("");
     const [paymentMethods, setPaymentMethods] = useState([]);
     const [isEditMode, setIsEditMode] = useState(false);
     const [companyDetails, setCompanyDetails] = useState({
-        name: '',
-        address: '',
-        contact_number: '',
-        vat_no: '',
-        cr_no: '',
-        account_name: '',
-        account_no: '',
-        currency: '',
-        license_no: '',
-        iban: '',
-        bank: '',
-        branch: '',
-        swift: ''
+        name: "",
+        address: "",
+        contact_number: "",
+        vat_no: "",
+        cr_no: "",
+        account_name: "",
+        account_no: "",
+        currency: "",
+        license_no: "",
+        iban: "",
+        bank: "",
+        branch: "",
+        swift: "",
     });
     const [users, setUsers] = useState([]);
     const [clients, setClients] = useState([]);
     const [headerCompanyDetails, setHeaderCompanyDetails] = useState({
-        name: '',
-        address: '',
-        contact_number: '',
-        vat_no: '',
-        cr_no: ''
+        name: "",
+        address: "",
+        contact_number: "",
+        vat_no: "",
+        cr_no: "",
     });
 
     useEffect(() => {
@@ -74,57 +75,56 @@ export default function CreateMaharatInvoice() {
         fetchPaymentMethods();
         fetchUsers();
         fetchClients();
-        
+
         if (invoiceId) {
-            console.log('Edit mode - Invoice ID:', invoiceId);
             setIsEditMode(true);
             fetchInvoiceData();
         } else {
-            console.log('Create mode - Fetching next invoice number');
             fetchNextInvoiceNumber();
         }
     }, [invoiceId]);
 
     const fetchHeaderCompanyDetails = async () => {
         try {
-            const response = await axios.get("/api/v1/companies/1?include=currency");
+            const response = await axios.get(
+                "/api/v1/companies/1?include=currency"
+            );
             const company = response.data.data;
-            
+
             if (company) {
                 setHeaderCompanyDetails({
-                    name: company.name || '',
-                    address: company.address || '',
-                    contact_number: company.contact_number || '',
-                    vat_no: company.vat_no || '',
-                    cr_no: company.cr_no || ''
+                    name: company.name || "",
+                    address: company.address || "",
+                    contact_number: company.contact_number || "",
+                    vat_no: company.vat_no || "",
+                    cr_no: company.cr_no || "",
                 });
 
                 setCompanyDetails({
-                    name: company.name || '',
-                    address: company.address || '',
-                    contact_number: company.contact_number || '',
-                    vat_no: company.vat_no || '',
-                    cr_no: company.cr_no || '',
-                    account_name: company.account_name || '',
-                    account_no: company.account_no || '',
-                    currency: company.currency?.name || 'SAR',
-                    currency_code: company.currency?.code || 'SAR',
-                    license_no: company.license_no || '',
-                    iban: company.iban || '',
-                    bank: company.bank || '',
-                    branch: company.branch || '',
-                    swift: company.swift || ''
+                    name: company.name || "",
+                    address: company.address || "",
+                    contact_number: company.contact_number || "",
+                    vat_no: company.vat_no || "",
+                    cr_no: company.cr_no || "",
+                    account_name: company.account_name || "",
+                    account_no: company.account_no || "",
+                    currency: company.currency?.name || "SAR",
+                    currency_code: company.currency?.code || "SAR",
+                    license_no: company.license_no || "",
+                    iban: company.iban || "",
+                    bank: company.bank || "",
+                    branch: company.branch || "",
+                    swift: company.swift || "",
                 });
             }
         } catch (error) {
-            console.error('Error fetching company details:', error);
+            console.error("Error fetching company details:", error);
         }
     };
 
     const fetchCompanies = async () => {
         try {
             const response = await axios.get("/api/v1/companies");
-            console.log("Companies data:", response.data.data);
             setCompanies(response.data.data);
         } catch (error) {
             console.error("Error fetching companies:", error);
@@ -133,17 +133,19 @@ export default function CreateMaharatInvoice() {
 
     const fetchNextInvoiceNumber = async () => {
         try {
-            const response = await axios.get('/api/v1/invoices/next-number');
+            const response = await axios.get("/api/v1/invoices/next-number");
             if (response.data.success) {
                 setInvoiceNumber(response.data.next_number);
             } else {
-                console.error('Failed to get next invoice number:', response.data.message);
+                console.error(
+                    "Failed to get next invoice number:",
+                    response.data.message
+                );
             }
         } catch (error) {
-            console.error('Error fetching next invoice number:', error);
-            setErrors(prev => ({
+            setErrors((prev) => ({
                 ...prev,
-                fetch: 'Failed to generate invoice number'
+                fetch: "Failed to generate invoice number",
             }));
         }
     };
@@ -151,13 +153,18 @@ export default function CreateMaharatInvoice() {
     const fetchPaymentMethods = async () => {
         try {
             const response = await axios.get("/api/v1/invoices");
-            const uniqueMethods = [...new Set(response.data.data
-                .map(invoice => invoice.payment_method)
-                .filter(method => method))];
-            setPaymentMethods(uniqueMethods.length > 0 ? uniqueMethods : ['Cash', 'Credit']);
+            const uniqueMethods = [
+                ...new Set(
+                    response.data.data
+                        .map((invoice) => invoice.payment_method)
+                        .filter((method) => method)
+                ),
+            ];
+            setPaymentMethods(
+                uniqueMethods.length > 0 ? uniqueMethods : ["Cash", "Credit"]
+            );
         } catch (error) {
-            console.error("Error fetching payment methods:", error);
-            setPaymentMethods(['Cash', 'Credit']);
+            setPaymentMethods(["Cash", "Credit"]);
         }
     };
 
@@ -173,7 +180,6 @@ export default function CreateMaharatInvoice() {
     const fetchClients = async () => {
         try {
             const response = await axios.get("/api/v1/customers");
-            console.log("All Clients Data:", response.data.data);
             setClients(response.data.data);
         } catch (error) {
             console.error("Error fetching clients:", error);
@@ -184,10 +190,10 @@ export default function CreateMaharatInvoice() {
         try {
             const response = await axios.get(`/api/v1/invoices/${invoiceId}`);
             const invoice = response.data.data;
-            console.log('Received invoice data:', invoice);
 
-            // Format the date from the API response
-            const formattedDate = invoice.issue_date ? invoice.issue_date.split('T')[0] : '';
+            const formattedDate = invoice.issue_date
+                ? invoice.issue_date.split("T")[0]
+                : "";
 
             // Set invoice number
             setInvoiceNumber(invoice.invoice_number);
@@ -196,73 +202,80 @@ export default function CreateMaharatInvoice() {
             let clientDetails = {};
             if (invoice.client_id) {
                 try {
-                    const clientResponse = await axios.get(`/api/v1/customers/${invoice.client_id}`);
+                    const clientResponse = await axios.get(
+                        `/api/v1/customers/${invoice.client_id}`
+                    );
                     clientDetails = clientResponse.data.data;
                 } catch (error) {
-                    console.error('Error fetching client details:', error);
+                    console.error("Error fetching client details:", error);
                 }
             }
 
             // Set form data with invoice details and client details
-            setFormData(prevData => ({
+            setFormData((prevData) => ({
                 ...prevData,
-                client_id: invoice.client_id || '',
-                representative: invoice.representative_id || '',
+                client_id: invoice.client_id || "",
+                representative: invoice.representative_id || "",
                 // Use client details instead of company details
-                address: clientDetails.address || '',
-                cr_no: clientDetails.cr_no || '',
-                vat_no: clientDetails.vat_number || '', // Note: using vat_number from customer
-                email: clientDetails.email || '',
-                mobile: clientDetails.contact_number || '',
+                address: clientDetails.address || "",
+                cr_no: clientDetails.cr_no || "",
+                vat_no: clientDetails.vat_number || "", // Note: using vat_number from customer
+                email: clientDetails.email || "",
+                mobile: clientDetails.contact_number || "",
                 invoice_date: formattedDate,
-                payment_terms: invoice.payment_method || '',
-                vat_rate: invoice.vat_rate || '',
-                vat_amount: invoice.tax_amount || '',
-                subtotal: invoice.subtotal || '0.00',
-                total: invoice.total_amount || '0.00',
-                discount: invoice.discount_amount || '0',
-                items: invoice.items?.length > 0 ? invoice.items.map(item => ({
-                    id: item.id,
-                    item_id: item.name,
-                    description: item.description,
-                    quantity: item.quantity.toString(),
-                    unit_price: item.unit_price.toString(),
-                    subtotal: item.subtotal.toString()
-                })) : [{
-                    item_id: "",
-                    description: "",
-                    quantity: "",
-                    unit_price: "",
-                    subtotal: ""
-                }]
+                payment_terms: invoice.payment_method || "",
+                vat_rate: invoice.vat_rate || "",
+                vat_amount: invoice.tax_amount || "",
+                subtotal: invoice.subtotal || "0.00",
+                total: invoice.total_amount || "0.00",
+                discount: invoice.discount_amount || "0",
+                items:
+                    invoice.items?.length > 0
+                        ? invoice.items.map((item) => ({
+                              id: item.id,
+                              item_id: item.name,
+                              description: item.description,
+                              quantity: item.quantity.toString(),
+                              unit_price: item.unit_price.toString(),
+                              subtotal: item.subtotal.toString(),
+                          }))
+                        : [
+                              {
+                                  item_id: "",
+                                  description: "",
+                                  quantity: "",
+                                  unit_price: "",
+                                  subtotal: "",
+                              },
+                          ],
             }));
 
             // Set company details for the bottom section (this remains unchanged)
             if (invoice.company) {
-                const companyResponse = await axios.get(`/api/v1/companies/1?include=currency`);
+                const companyResponse = await axios.get(
+                    `/api/v1/companies/1?include=currency`
+                );
                 const companyData = companyResponse.data.data;
-                
+
                 setCompanyDetails({
-                    name: companyData.name || '',
-                    address: companyData.address || '',
-                    contact_number: companyData.contact_number || '',
-                    vat_no: companyData.vat_no || '',
-                    cr_no: companyData.cr_no || '',
-                    account_name: companyData.account_name || '',
-                    account_no: companyData.account_no || '',
-                    currency: companyData.currency?.name || '',
-                    currency_code: companyData.currency?.code || 'SAR',
-                    license_no: companyData.license_no || '',
-                    iban: companyData.iban || '',
-                    bank: companyData.bank || '',
-                    branch: companyData.branch || '',
-                    swift: companyData.swift || ''
+                    name: companyData.name || "",
+                    address: companyData.address || "",
+                    contact_number: companyData.contact_number || "",
+                    vat_no: companyData.vat_no || "",
+                    cr_no: companyData.cr_no || "",
+                    account_name: companyData.account_name || "",
+                    account_no: companyData.account_no || "",
+                    currency: companyData.currency?.name || "",
+                    currency_code: companyData.currency?.code || "SAR",
+                    license_no: companyData.license_no || "",
+                    iban: companyData.iban || "",
+                    bank: companyData.bank || "",
+                    branch: companyData.branch || "",
+                    swift: companyData.swift || "",
                 });
             }
-
         } catch (error) {
-            console.error('Error fetching invoice data:', error);
-            setErrors({ fetch: 'Failed to load invoice data' });
+            setErrors({ fetch: "Failed to load invoice data" });
         }
     };
 
@@ -287,29 +300,35 @@ export default function CreateMaharatInvoice() {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        
-        setFormData(prevData => ({
+
+        setFormData((prevData) => ({
             ...prevData,
-            [name]: value
+            [name]: value,
         }));
 
         // Recalculate totals when VAT rate or discount changes
-        if (name === 'vat_rate' || name === 'discount') {
+        if (name === "vat_rate" || name === "discount") {
             const subtotal = formData.items.reduce((sum, item) => {
                 return sum + (parseFloat(item.subtotal) || 0);
             }, 0);
 
-            const vatRate = name === 'vat_rate' ? (parseFloat(value) || 0) : (parseFloat(formData.vat_rate) || 0);
-            const discount = name === 'discount' ? (parseFloat(value) || 0) : (parseFloat(formData.discount) || 0);
+            const vatRate =
+                name === "vat_rate"
+                    ? parseFloat(value) || 0
+                    : parseFloat(formData.vat_rate) || 0;
+            const discount =
+                name === "discount"
+                    ? parseFloat(value) || 0
+                    : parseFloat(formData.discount) || 0;
 
             const vatAmount = (subtotal * vatRate) / 100;
             const total = Math.max(subtotal + vatAmount - discount, 0);
 
-            setFormData(prevData => ({
+            setFormData((prevData) => ({
                 ...prevData,
                 [name]: value,
                 vat_amount: vatAmount.toFixed(2),
-                total: total.toFixed(2)
+                total: total.toFixed(2),
             }));
         }
     };
@@ -375,11 +394,11 @@ export default function CreateMaharatInvoice() {
         const total = Math.max(subtotal + vatAmount - discount, 0);
 
         // Update form data with new calculations
-        setFormData(prevData => ({
+        setFormData((prevData) => ({
             ...prevData,
             subtotal: subtotal.toFixed(2),
             vat_amount: vatAmount.toFixed(2),
-            total: total.toFixed(2)
+            total: total.toFixed(2),
         }));
     };
 
@@ -517,13 +536,15 @@ export default function CreateMaharatInvoice() {
                 discount_amount: formData.discount,
                 tax_amount: formData.vat_amount,
                 total_amount: formData.total,
-                status: 'Draft',
-                currency: 'SAR',
+                status: "Draft",
+                currency: "SAR",
                 account_code_id: 4,
-                items: formData.items.map(item => {
-                    const itemTaxAmount = (Number(item.subtotal) * Number(formData.vat_rate)) / 100;
+                items: formData.items.map((item) => {
+                    const itemTaxAmount =
+                        (Number(item.subtotal) * Number(formData.vat_rate)) /
+                        100;
                     const itemTotal = Number(item.subtotal) + itemTaxAmount;
-                    
+
                     return {
                         name: item.item_id,
                         description: item.description,
@@ -532,35 +553,65 @@ export default function CreateMaharatInvoice() {
                         subtotal: Number(item.subtotal),
                         tax_rate: Number(formData.vat_rate),
                         tax_amount: itemTaxAmount,
-                        total: itemTotal
+                        total: itemTotal,
                     };
-                })
+                }),
             };
-
-            console.log('Submitting payload:', invoicePayload);
-
             let response;
             if (isEditMode) {
-                response = await axios.put(`/api/v1/invoices/${invoiceId}`, invoicePayload);
+                response = await axios.put(
+                    `/api/v1/invoices/${invoiceId}`,
+                    invoicePayload
+                );
             } else {
-                response = await axios.post('/api/v1/invoices', invoicePayload);
-                
-                const newInvoiceId = response.data.data.id;
-                await axios.post('/api/v1/mahrat-invoice-approval-trans', {
-                    invoice_id: newInvoiceId,
-                    status: 'Pending',
-                    requester_id: formData.representative,
-                    assigned_to: 1,
-                });
+                response = await axios.post("/api/v1/invoices", invoicePayload);
             }
+            const newInvoiceId = response.data?.data?.id;
 
-            console.log('Server response:', response.data);
-            router.visit('/maharat-invoices');
+            const processResponse = await axios.get(
+                "/api/v1/processes?include=steps,creator,updater&filter[title]=Maharat Invoice Approval"
+            );
+            const processList = processResponse.data.data;
+            const process = processList[0];
+            const processStep = process.steps[0];
+
+            const processResponseViaUser = await axios.get(
+                `/api/v1/process-steps/${processStep?.order}/user/${user_id}`
+            );
+            const assignUser = processResponseViaUser?.data;
+
+            const transactionPayload = {
+                invoice_id: newInvoiceId,
+                requester_id: user_id,
+                assigned_to: assignUser.user.user.id,
+                order: String(processStep.order),
+                description: processStep.description,
+                status: "Pending",
+            };
+            await axios.post(
+                "/api/v1/mahrat-invoice-approval-trans",
+                transactionPayload
+            );
+
+            const taskPayload = {
+                process_step_id: processStep.id,
+                process_id: processStep.process_id,
+                assigned_at: new Date().toISOString(),
+                urgency: "Normal",
+                assigned_to_user_id: assignUser.user?.user?.id,
+                assigned_from_user_id: user_id,
+                read_status: null,
+            };
+            await axios.post("/api/v1/tasks", taskPayload);
+
+            router.visit("/maharat-invoices");
         } catch (error) {
-            console.error('Error submitting form:', error.response?.data);
-            setErrors(error.response?.data?.errors || {
-                general: "An error occurred while saving the invoice"
-            });
+            console.error("Error submitting form:", error.response?.data);
+            setErrors(
+                error.response?.data?.errors || {
+                    general: "An error occurred while saving the invoice",
+                }
+            );
         }
     };
 
@@ -569,16 +620,15 @@ export default function CreateMaharatInvoice() {
         updatedItems[index][field] = value;
 
         // Calculate subtotal if quantity or unit_price changes
-        if (field === 'quantity' || field === 'unit_price') {
+        if (field === "quantity" || field === "unit_price") {
             const quantity = parseFloat(updatedItems[index].quantity) || 0;
             const unitPrice = parseFloat(updatedItems[index].unit_price) || 0;
             updatedItems[index].subtotal = (quantity * unitPrice).toFixed(2);
-            console.log(`Row ${index + 1} subtotal:`, updatedItems[index].subtotal); // Debug log
         }
 
-        setFormData(prevData => ({
+        setFormData((prevData) => ({
             ...prevData,
-            items: updatedItems
+            items: updatedItems,
         }));
 
         // Recalculate all totals
@@ -587,22 +637,21 @@ export default function CreateMaharatInvoice() {
 
     const handleClientChange = async (e) => {
         const clientId = e.target.value;
-        console.log("Selected Client ID:", clientId);
-        
-        setFormData(prevData => ({
+
+        setFormData((prevData) => ({
             ...prevData,
-            client_id: clientId
+            client_id: clientId,
         }));
 
         if (!clientId) {
             // Clear client-related fields if no client is selected
-            setFormData(prevData => ({
+            setFormData((prevData) => ({
                 ...prevData,
                 address: "",
                 cr_no: "",
                 vat_no: "",
                 mobile: "",
-                email: ""
+                email: "",
             }));
             return;
         }
@@ -610,19 +659,17 @@ export default function CreateMaharatInvoice() {
         try {
             const response = await axios.get(`/api/v1/customers/${clientId}`);
             const client = response.data.data;
-            console.log('Selected Client Full Data:', client);
-            console.log('Client email field:', client.email);
 
-            setFormData(prevData => ({
+            setFormData((prevData) => ({
                 ...prevData,
                 address: client.address || "",
                 cr_no: client.cr_no || "",
                 vat_no: client.vat_number || "",
                 mobile: client.contact_number || "",
-                email: client.email || ""
+                email: client.email || "",
             }));
         } catch (error) {
-            console.error('Error fetching client details:', error);
+            console.error("Error fetching client details:", error);
         }
     };
 
@@ -671,7 +718,7 @@ export default function CreateMaharatInvoice() {
                         </div>
                         <div className="flex justify-start items-center gap-8">
                             <strong className="w-26">Invoice Date:</strong>
-                            <div className="w-36">
+                            <div className="w-full">
                                 <input
                                     type="date"
                                     id="invoice_date"
@@ -679,7 +726,7 @@ export default function CreateMaharatInvoice() {
                                     value={formData.invoice_date}
                                     onChange={handleInputChange}
                                     onBlur={() => handleBlur("invoice_date")}
-                                    className="block w-full rounded border-none bg-transparent shadow-none focus:ring-0 pl-0"
+                                    className="block w-full border border-gray-300 rounded-lg"
                                 />
                             </div>
                         </div>
@@ -687,49 +734,53 @@ export default function CreateMaharatInvoice() {
                     <div className="bg-gray-100 p-4 rounded-2xl">
                         <div className="flex justify-start items-center gap-5">
                             <strong className="w-1/4">Payment:</strong>
-                            <div className="w-full pr-4">
+                            <div className="w-full">
                                 <select
                                     id="payment_terms"
                                     name="payment_terms"
                                     value={formData.payment_terms}
                                     onChange={handleInputChange}
-                                    className="block w-full rounded border-none shadow-none focus:ring-0 appearance-none bg-transparent pl-0"
+                                    className="block w-full rounded-lg border border-gray-300"
                                 >
-                                    <option value="">Select payment terms</option>
+                                    <option value="">
+                                        Select payment terms
+                                    </option>
                                     {paymentMethods.map((method) => (
                                         <option key={method} value={method}>
                                             {method}
-                                    </option>
+                                        </option>
                                     ))}
                                 </select>
                             </div>
                         </div>
-                        <div className="flex justify-start items-center gap-2">
+                        <div className="flex justify-start items-center gap-5 mt-2">
                             <strong className="w-1/4">VAT Rate (%):</strong>
-                            <input
-                                type="number"
-                                id="vat_rate"
-                                name="vat_rate"
-                                value={formData.vat_rate}
-                                onChange={handleInputChange}
-                                min="0"
-                                max="100"
-                                step="0.01"
-                                className="block w-full rounded border-none bg-transparent shadow-none focus:ring-0"
-                                placeholder="Enter VAT Rate"
-                            />
+                            <div className="w-full">
+                                <input
+                                    type="number"
+                                    id="vat_rate"
+                                    name="vat_rate"
+                                    value={formData.vat_rate}
+                                    onChange={handleInputChange}
+                                    min="0"
+                                    max="100"
+                                    step="0.01"
+                                    className="block w-full rounded-lg border border-gray-300"
+                                    placeholder="Enter VAT Rate"
+                                />
+                            </div>
                         </div>
                     </div>
                     <div className="w-full bg-gray-100 p-4 rounded-2xl">
-                        <div className="flex justify-start items-start gap-8 mt-0">
+                        <div className="flex justify-start items-start gap-8">
                             <strong className="w-32">Client:</strong>
-                            <div className="w-full -mt-2">
+                            <div className="w-full">
                                 <select
                                     id="client_id"
                                     name="client_id"
                                     value={formData.client_id}
                                     onChange={handleClientChange}
-                                    className="block w-full rounded border-none shadow-none focus:ring-0 appearance-none bg-transparent pl-0"
+                                    className="block w-full rounded-lg border border-gray-300"
                                 >
                                     <option value="">Select Client</option>
                                     {clients.map((client) => (
@@ -744,17 +795,19 @@ export default function CreateMaharatInvoice() {
                             </div>
                         </div>
 
-                        <div className="flex justify-start items-start gap-4 mt-6">
+                        <div className="flex justify-start items-start gap-4 my-4">
                             <strong className="w-36">Representative:</strong>
-                            <div className="w-full -mt-2">
+                            <div className="w-full">
                                 <select
                                     id="representative"
                                     name="representative"
                                     value={formData.representative}
                                     onChange={handleInputChange}
-                                    className="block w-full rounded border-none shadow-none focus:ring-0 appearance-none bg-transparent pl-0"
+                                    className="block w-full rounded-lg border border-gray-300"
                                 >
-                                    <option value="">Select Representative</option>
+                                    <option value="">
+                                        Select Representative
+                                    </option>
                                     {users.map((user) => (
                                         <option key={user.id} value={user.id}>
                                             {user.name}
@@ -764,29 +817,29 @@ export default function CreateMaharatInvoice() {
                             </div>
                         </div>
 
-                        <div className="flex justify-start items-start gap-8 mt-6">
+                        <div className="flex justify-start items-start gap-6">
                             <strong className="w-32">Address:</strong>
                             <p className="w-full">{formData.address}</p>
                         </div>
                     </div>
                     <div className="w-full bg-gray-100 p-4 rounded-2xl">
                         <div className="flex flex-col space-y-6">
-                            <div className="flex justify-start items-start gap-8">
+                            <div className="flex justify-start items-start gap-6">
                                 <strong className="w-32">CR No:</strong>
                                 <p className="w-full">{formData.cr_no}</p>
                             </div>
 
-                            <div className="flex justify-start items-start gap-8">
+                            <div className="flex justify-start items-start gap-6">
                                 <strong className="w-32">VAT No:</strong>
                                 <p className="w-full">{formData.vat_no}</p>
                             </div>
 
-                            <div className="flex justify-start items-start gap-8">
+                            <div className="flex justify-start items-start gap-6">
                                 <strong className="w-32">Contact No:</strong>
                                 <p className="w-full">{formData.mobile}</p>
                             </div>
 
-                            <div className="flex justify-start items-start gap-8">
+                            <div className="flex justify-start items-start gap-6">
                                 <strong className="w-32">Email:</strong>
                                 <p className="w-full">{formData.email}</p>
                             </div>
@@ -796,50 +849,86 @@ export default function CreateMaharatInvoice() {
             </section>
 
             <div className="mt-8">
-                <h3 className="text-2xl font-bold mb-2 text-center">Invoice Items</h3>
+                <h3 className="text-2xl font-bold mb-2">Invoice Items</h3>
                 <div className="w-full overflow-hidden">
                     <table className="w-full">
                         <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
                             <tr>
-                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center w-[60px]">S/N</th>
-                                <th className="py-3 px-4 text-center w-[180px]">Item Name</th>
-                                <th className="py-3 px-4 text-center w-[220px]">Description</th>
-                                <th className="py-3 px-4 text-center w-[100px]">Quantity</th>
-                                <th className="py-3 px-4 text-center w-[120px]">Unit Price</th>
-                                <th className="py-3 px-4 text-center w-[120px]">Total</th>
-                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center w-[80px]">Actions</th>
+                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center w-[60px]">
+                                    S/N
+                                </th>
+                                <th className="py-3 px-4 text-center w-[180px]">
+                                    Item Name
+                                </th>
+                                <th className="py-3 px-4 text-center w-[220px]">
+                                    Description
+                                </th>
+                                <th className="py-3 px-4 text-center w-[100px]">
+                                    Quantity
+                                </th>
+                                <th className="py-3 px-4 text-center w-[120px]">
+                                    Unit Price
+                                </th>
+                                <th className="py-3 px-4 text-center w-[120px]">
+                                    Total
+                                </th>
+                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center w-[80px]">
+                                    Actions
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="bg-transparent divide-y divide-gray-200">
                             {formData.items.map((item, index) => (
                                 <tr key={index}>
-                                    <td className="py-3 px-4 text-center">{index + 1}</td>
+                                    <td className="py-3 px-4 text-center">
+                                        {index + 1}
+                                    </td>
                                     <td className="py-3 px-4">
-                                        <div className="min-w-[180px] max-w-[250px]">
+                                        <div className="w-full">
                                             <textarea
                                                 name="item_id"
                                                 value={item.item_id}
-                                                onChange={(e) => handleItemChange(index, 'item_id', e.target.value)}
-                                                className="w-full text-center bg-transparent border-none focus:ring-0 resize-none overflow-hidden"
+                                                onChange={(e) =>
+                                                    handleItemChange(
+                                                        index,
+                                                        "item_id",
+                                                        e.target.value
+                                                    )
+                                                }
+                                                className="w-full rounded-lg border border-gray-300"
                                                 rows="1"
                                                 onInput={(e) => {
-                                                    e.target.style.height = 'auto';
-                                                    e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
+                                                    e.target.style.height =
+                                                        "auto";
+                                                    e.target.style.height = `${Math.min(
+                                                        e.target.scrollHeight,
+                                                        150
+                                                    )}px`;
                                                 }}
                                             />
                                         </div>
                                     </td>
                                     <td className="py-3 px-4">
-                                        <div className="min-w-[220px] max-w-[300px]">
+                                        <div className="w-full">
                                             <textarea
                                                 name="description"
                                                 value={item.description}
-                                                onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                                className="w-full text-center bg-transparent border-none focus:ring-0 resize-none overflow-hidden min-h-[100px]"
+                                                onChange={(e) =>
+                                                    handleItemChange(
+                                                        index,
+                                                        "description",
+                                                        e.target.value
+                                                    )
+                                                }
+                                                className="w-full rounded-lg border border-gray-300"
                                                 rows="3"
                                                 onInput={(e) => {
-                                                    e.target.style.height = 'auto';
-                                                    e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
+                                                    e.target.style.height =
+                                                        "auto";
+                                                    e.target.style.height = `${Math.min(
+                                                        e.target.scrollHeight,
+                                                        150
+                                                    )}px`;
                                                 }}
                                             />
                                         </div>
@@ -849,9 +938,15 @@ export default function CreateMaharatInvoice() {
                                             type="number"
                                             name="quantity"
                                             value={item.quantity}
-                                            onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                            onChange={(e) =>
+                                                handleItemChange(
+                                                    index,
+                                                    "quantity",
+                                                    e.target.value
+                                                )
+                                            }
                                             min="0"
-                                            className="w-full text-center bg-transparent border-none focus:ring-0"
+                                            className="w-full rounded-lg border border-gray-300"
                                         />
                                     </td>
                                     <td className="py-3 px-4 text-center">
@@ -859,13 +954,21 @@ export default function CreateMaharatInvoice() {
                                             type="number"
                                             name="unit_price"
                                             value={item.unit_price}
-                                            onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
+                                            onChange={(e) =>
+                                                handleItemChange(
+                                                    index,
+                                                    "unit_price",
+                                                    e.target.value
+                                                )
+                                            }
                                             min="0"
-                                            className="w-full text-center bg-transparent border-none focus:ring-0"
+                                            className="w-full rounded-lg border border-gray-300"
                                             onBlur={(e) => {
-                                                const formatted = parseFloat(e.target.value).toLocaleString(undefined, {
+                                                const formatted = parseFloat(
+                                                    e.target.value
+                                                ).toLocaleString(undefined, {
                                                     minimumFractionDigits: 2,
-                                                    maximumFractionDigits: 2
+                                                    maximumFractionDigits: 2,
                                                 });
                                                 e.target.value = formatted;
                                             }}
@@ -874,21 +977,27 @@ export default function CreateMaharatInvoice() {
                                     <td className="py-3 px-4 text-center">
                                         <input
                                             type="text"
-                                            value={parseFloat(item.subtotal).toLocaleString(undefined, {
+                                            value={parseFloat(
+                                                item.subtotal
+                                            ).toLocaleString(undefined, {
                                                 minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2
+                                                maximumFractionDigits: 2,
                                             })}
                                             readOnly
-                                            className="w-full text-center bg-transparent border-none focus:ring-0"
+                                            className="w-full rounded-lg border border-gray-300"
                                         />
                                     </td>
                                     <td className="py-3 px-4">
                                         <div className="flex items-center justify-center h-full">
                                             <button
                                                 type="button"
-                                                onClick={() => removeItemRow(index)}
+                                                onClick={() =>
+                                                    removeItemRow(index)
+                                                }
                                                 className="text-red-600 hover:text-red-900"
-                                                disabled={formData.items.length <= 1}
+                                                disabled={
+                                                    formData.items.length <= 1
+                                                }
                                             >
                                                 <FaTrash />
                                             </button>
@@ -916,35 +1025,51 @@ export default function CreateMaharatInvoice() {
                 <div className="bg-gray-100 p-4 rounded-2xl w-full md:w-1/2">
                     <div className="w-full flex flex-col text-center md:text-left space-y-4">
                         <div className="flex items-start gap-8">
-                            <span className="font-semibold w-32">Account Name:</span>
+                            <span className="font-semibold w-32">
+                                Account Name:
+                            </span>
                             <span>{companyDetails.account_name}</span>
                         </div>
                         <div className="flex items-start gap-8">
-                            <span className="font-semibold w-32">Account No:</span>
+                            <span className="font-semibold w-32">
+                                Account No:
+                            </span>
                             <span>{companyDetails.account_no}</span>
                         </div>
                         <div className="flex items-start gap-8">
-                            <span className="font-semibold w-32">Currency:</span>
+                            <span className="font-semibold w-32">
+                                Currency:
+                            </span>
                             <span>{companyDetails.currency}</span>
                         </div>
                         <div className="flex items-start gap-8">
-                            <span className="font-semibold w-32">License No:</span>
+                            <span className="font-semibold w-32">
+                                License No:
+                            </span>
                             <span>{companyDetails.license_no}</span>
                         </div>
                         <div className="flex items-start gap-8">
-                            <span className="font-semibold w-32">IBAN Number:</span>
+                            <span className="font-semibold w-32">
+                                IBAN Number:
+                            </span>
                             <span>{companyDetails.iban}</span>
                         </div>
                         <div className="flex items-start gap-8">
-                            <span className="font-semibold w-32">Bank Name:</span>
+                            <span className="font-semibold w-32">
+                                Bank Name:
+                            </span>
                             <span>{companyDetails.bank}</span>
                         </div>
                         <div className="flex items-start gap-8">
-                            <span className="font-semibold w-32">Branch Name:</span>
+                            <span className="font-semibold w-32">
+                                Branch Name:
+                            </span>
                             <span>{companyDetails.branch}</span>
                         </div>
                         <div className="flex items-start gap-8">
-                            <span className="font-semibold w-32">Swift Code:</span>
+                            <span className="font-semibold w-32">
+                                Swift Code:
+                            </span>
                             <span>{companyDetails.swift}</span>
                         </div>
                     </div>
@@ -956,12 +1081,16 @@ export default function CreateMaharatInvoice() {
                             <strong className="w-1/4">Subtotal:</strong>
                             <div className="flex items-center gap-2">
                                 <p className="font-medium">
-                                    {parseFloat(formData.subtotal).toLocaleString(undefined, {
+                                    {parseFloat(
+                                        formData.subtotal
+                                    ).toLocaleString(undefined, {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2,
                                     })}
                                 </p>
-                                <span className="font-medium">{companyDetails.currency_code || 'SAR'}</span>
+                                <span className="font-medium">
+                                    {companyDetails.currency_code || "SAR"}
+                                </span>
                             </div>
                         </div>
                         <div className="flex justify-between items-center gap-2">
@@ -978,19 +1107,25 @@ export default function CreateMaharatInvoice() {
                                     className="block w-24 rounded border-none shadow-none focus:ring-0 text-right appearance-none bg-transparent pr-0"
                                     placeholder="Enter Discount"
                                 />
-                                <span className="font-medium">{companyDetails.currency_code || 'SAR'}</span>
+                                <span className="font-medium">
+                                    {companyDetails.currency_code || "SAR"}
+                                </span>
                             </div>
                         </div>
                         <div className="flex justify-between items-center gap-2 mt-4">
                             <strong className="w-1/4">VAT Amount:</strong>
                             <div className="flex items-center gap-2">
                                 <p className="font-medium">
-                                    {parseFloat(formData.vat_amount).toLocaleString(undefined, {
+                                    {parseFloat(
+                                        formData.vat_amount
+                                    ).toLocaleString(undefined, {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2,
                                     })}
                                 </p>
-                                <span className="font-medium">{companyDetails.currency_code || 'SAR'}</span>
+                                <span className="font-medium">
+                                    {companyDetails.currency_code || "SAR"}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -999,12 +1134,17 @@ export default function CreateMaharatInvoice() {
                             <strong>Net Amount:</strong>
                             <div className="flex items-center gap-2">
                                 <p>
-                                    {parseFloat(formData.total).toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                    })}
+                                    {parseFloat(formData.total).toLocaleString(
+                                        undefined,
+                                        {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                        }
+                                    )}
                                 </p>
-                                <span>{companyDetails.currency_code || 'SAR'}</span>
+                                <span>
+                                    {companyDetails.currency_code || "SAR"}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -1013,7 +1153,7 @@ export default function CreateMaharatInvoice() {
                             onClick={handleSubmit}
                             className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto"
                         >
-                            {isEditMode ? 'Update Invoice' : 'Create Invoice'}
+                            {isEditMode ? "Update Invoice" : "Create Invoice"}
                         </button>
                     </div>
                 </div>
