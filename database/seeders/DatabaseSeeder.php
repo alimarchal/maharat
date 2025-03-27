@@ -66,6 +66,9 @@ class DatabaseSeeder extends Seeder
 
             // Additional seeders if needed
             AccountCodeSeeder::class,
+            ChartOfAccountSeeder::class,
+            AccountSeeder::class,
+            FinancialTransactionSeeder::class,
             MahratInvoiceApprovalTransactionSeeder::class,
         ]);
     }
