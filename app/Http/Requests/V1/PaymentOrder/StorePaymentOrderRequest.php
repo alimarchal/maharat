@@ -18,6 +18,9 @@ class StorePaymentOrderRequest extends FormRequest
             'purchase_order_id' => ['required', 'exists:purchase_orders,id'],
             'date' => ['nullable', 'date'],
             'attachment' => ['nullable', 'string'],
+            'total_amount' => ['nullable', 'string'],
+            'paid_amount' => ['nullable', 'string'],
+            'status' => ['nullable', 'string'],
         ];
     }
 }

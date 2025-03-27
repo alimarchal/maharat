@@ -8,7 +8,10 @@ class PaymentOrderParameters
         'payment_order_number',
         'user_id',
         'purchase_order_id',
-        'date'
+        'date',
+        'total_amount',
+        'paid_amount',
+        'status',
     ];
 
     public const ALLOWED_SORTS = [

@@ -30,5 +30,7 @@ class AssetParameters
         'updated_at',
     ];
 
-    public const ALLOWED_INCLUDES = [];
+    public const ALLOWED_INCLUDES = [
+        'transactions'
+    ];
 }
