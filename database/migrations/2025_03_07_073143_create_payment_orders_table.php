@@ -18,8 +18,8 @@ return new class extends Migration
             $table->string('payment_order_number')->unique();
             $table->date('date')->nullable();
             $table->string('attachment')->nullable();
-            $table->decimal('total_amount','15,2')->nullable()->default(0);
-            $table->decimal('paid_amount','15,2')->nullable()->default(0);
+            $table->decimal('total_amount',15,2)->default(0);
+            $table->decimal('paid_amount',15,2)->default(0);
             $table->enum('status', ['Draft', 'Approved','Overdue', 'Cancelled','Paid', 'Pending', 'Partially Paid'])->default('Draft');
             $table->timestamps();
         });
