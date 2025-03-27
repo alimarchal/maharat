@@ -10,6 +10,7 @@ const CreateBudget = () => {
         fiscal_period_id: "",
         department_id: "",
         cost_center_id: "",
+        sub_cost_center_id: "",
         status: "",
         description: "",
         total_revenue_planned: "",
@@ -19,9 +20,11 @@ const CreateBudget = () => {
     const [fiscalPeriod, setFiscalPeriod] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [costCenters, setCostCenters] = useState([]);
+    const [subCostCenters, setSubCostCenters] = useState([]);
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [filteredSubCostCenters, setFilteredSubCostCenters] = useState([]);
 
     useEffect(() => {
         fetchDropdownData();
@@ -37,6 +40,7 @@ const CreateBudget = () => {
                 ]);
             setDepartments(deptResponse.data.data);
             setCostCenters(costCenterResponse.data.data);
+            setSubCostCenters(costCenterResponse.data.data);
             setFiscalPeriod(fiscalPeriodResponse.data.data);
         } catch (error) {
             console.error("Error fetching dropdown data:", error);
@@ -45,10 +49,27 @@ const CreateBudget = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prevData) => ({
-            ...prevData,
+        setFormData((prev) => ({
+            ...prev,
             [name]: value,
+            ...(name === "cost_center_id" ? { sub_cost_center_id: "" } : {}),
         }));
+        setErrors((prev) => ({ ...prev, [name]: "" }));
+
+        if (name === "cost_center_id") {
+            filterSubCostCenters(value);
+        }
+    };
+
+    const filterSubCostCenters = (costCenterId) => {
+        if (!costCenterId) {
+            setFilteredSubCostCenters([]);
+            return;
+        }
+        const filtered = subCostCenters.filter(
+            (cost) => cost.parent_id === parseInt(costCenterId)
+        );
+        setFilteredSubCostCenters(filtered);
     };
 
     const validate = () => {
@@ -59,6 +80,8 @@ const CreateBudget = () => {
             tempErrors.department_id = "Department is required";
         if (!formData.cost_center_id)
             tempErrors.cost_center_id = "Cost Center is required";
+        if (!formData.sub_cost_center_id)
+            tempErrors.sub_cost_center_id = "Sub Cost Center is required";
         if (!formData.status) tempErrors.status = "Status is required";
         if (!formData.description)
             tempErrors.description = "Description is required";
@@ -107,7 +130,7 @@ const CreateBudget = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="mt-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <SelectFloating
                             label="Fiscal Period"
@@ -116,7 +139,9 @@ const CreateBudget = () => {
                             onChange={handleChange}
                             options={fiscalPeriod.map((fiscal) => ({
                                 id: fiscal.id,
-                                label: fiscal.period_name,
+                                label: `${fiscal.period_name} ${
+                                    fiscal.fiscal_year.split("-")[0]
+                                }`,
                             }))}
                         />
                         {errors.fiscal_period_id && (
@@ -142,6 +167,8 @@ const CreateBudget = () => {
                             </p>
                         )}
                     </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
                     <div>
                         <SelectFloating
                             label="Cost Center"
@@ -156,6 +183,23 @@ const CreateBudget = () => {
                         {errors.cost_center_id && (
                             <p className="text-red-500 text-sm mt-1">
                                 {errors.cost_center_id}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <SelectFloating
+                            label="Sub Cost Center"
+                            name="sub_cost_center_id"
+                            value={formData.sub_cost_center_id}
+                            onChange={handleChange}
+                            options={filteredSubCostCenters.map((sub) => ({
+                                id: sub.id,
+                                label: sub.name,
+                            }))}
+                        />
+                        {errors.sub_cost_center_id && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.sub_cost_center_id}
                             </p>
                         )}
                     </div>
@@ -177,6 +221,8 @@ const CreateBudget = () => {
                             </p>
                         )}
                     </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
                     <div>
                         <InputFloating
                             label="Total Revenue Planned"

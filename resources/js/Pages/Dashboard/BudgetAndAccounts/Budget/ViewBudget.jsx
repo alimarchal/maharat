@@ -1,61 +1,52 @@
 import React, { useEffect, useState } from "react";
+import { usePage } from "@inertiajs/react";
+import axios from "axios";
 
 const ViewBudget = () => {
-    const [budgets, setBudgets] = useState([]);
+    const { budgetId } = usePage().props;
 
-    const staticBudgetData = [
-        {
-            id: 1,
-            costCenter: "Management",
-            subCostCenter: "Management",
-            department: "Management",
-            amountRequested: 6000000,
-            amountApproved: 6000000,
-        },
-        {
-            id: 2,
-            costCenter: "IT",
-            subCostCenter: "IT",
-            department: "Engineering",
-            amountRequested: 6000000,
-            amountApproved: 6000000,
-        },
-        {
-            id: 3,
-            costCenter: "Marketing",
-            subCostCenter: "Marketing",
-            department: "Marketing",
-            amountRequested: 6000000,
-            amountApproved: 6000000,
-        },
-        {
-            id: 4,
-            costCenter: "Training",
-            subCostCenter: "Training",
-            department: "Training",
-            amountRequested: 6000000,
-            amountApproved: 6000000,
-        },
-        {
-            id: 5,
-            costCenter: "Maintenance",
-            subCostCenter: "Training",
-            department: "Building",
-            amountRequested: 6000000,
-            amountApproved: 6000000,
-        },
-    ];
+    const [budgets, setBudgets] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
 
     useEffect(() => {
-        setBudgets(staticBudgetData);
+        fetchBudget();
     }, []);
 
-    const totalRequested = budgets.reduce(
-        (sum, budget) => sum + budget.amountRequested,
+    const fetchBudget = async () => {
+        setLoading(true);
+        setError("");
+
+        try {
+            const response = await axios.get(
+                `/api/v1/budgets/${budgetId}?include=fiscalPeriod,department,costCenter,subCostCenter,creator,updater`
+            );
+            if (response.data && response.data.data) {
+                setBudgets(
+                    Array.isArray(response.data.data)
+                        ? response.data.data
+                        : [response.data.data]
+                );
+            } else {
+                setError("Invalid response format. Please try again.");
+            }
+        } catch (error) {
+            setError(
+                error.response?.data?.message ||
+                    "Failed to fetch budgets. Please try again."
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const totalRequested = budgets?.reduce(
+        (sum, budget) => sum + (parseFloat(budget.total_expense_planned) || 0),
         0
     );
-    const totalApproved = budgets.reduce(
-        (sum, budget) => sum + budget.amountApproved,
+
+    const totalApproved = budgets?.reduce(
+        (sum, budget) => sum + (parseFloat(budget.total_expense_actual) || 0),
         0
     );
 
@@ -77,21 +68,52 @@ const ViewBudget = () => {
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-center text-base font-medium divide-y divide-[#D7D8D9]">
-                    {budgets.map((budget) => (
-                        <tr key={budget.id}>
-                            <td className="py-3 px-4">{budget.costCenter}</td>
-                            <td className="py-3 px-4">
-                                {budget.subCostCenter}
-                            </td>
-                            <td className="py-3 px-4">{budget.department}</td>
-                            <td className="py-3 px-4">
-                                {budget.amountRequested.toLocaleString()}
-                            </td>
-                            <td className="py-3 px-4">
-                                {budget.amountApproved.toLocaleString()}
+                    {loading ? (
+                        <tr>
+                            <td colSpan="5" className="text-center py-12">
+                                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
-                    ))}
+                    ) : error ? (
+                        <tr>
+                            <td
+                                colSpan="5"
+                                className="text-center text-red-500 font-medium py-4"
+                            >
+                                {error}
+                            </td>
+                        </tr>
+                    ) : budgets.length > 0 ? (
+                        budgets.map((budget) => (
+                            <tr key={budget.id}>
+                                <td className="py-3 px-4">
+                                    {budget.cost_center?.name}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {budget.sub_cost_center?.name}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {budget.department?.name}
+                                </td>
+                                <td className="py-3 px-4 text-blue-500">
+                                    {parseFloat(
+                                        budget.total_expense_planned
+                                    ).toLocaleString()}
+                                </td>
+                                <td className="py-3 px-4 text-green-500">
+                                    {parseFloat(
+                                        budget.total_expense_actual
+                                    ).toLocaleString()}
+                                </td>
+                            </tr>
+                        ))
+                    ) : (
+                        <tr>
+                            <td colSpan="5" className="py-4">
+                                No budget data available.
+                            </td>
+                        </tr>
+                    )}
 
                     <tr className="bg-[#DCECF2] text-2xl font-bold border-none">
                         <td
@@ -106,6 +128,7 @@ const ViewBudget = () => {
                         <td className="p-4 text-green-500 rounded-tr-2xl rounded-br-2xl">
                             {totalApproved.toLocaleString()}
                         </td>
+                        <td></td>
                     </tr>
                 </tbody>
             </table>
