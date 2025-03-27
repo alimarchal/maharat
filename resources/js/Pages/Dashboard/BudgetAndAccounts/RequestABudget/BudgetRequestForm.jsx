@@ -128,7 +128,9 @@ const BudgetRequestForm = () => {
                         onChange={handleChange}
                         options={fiscalYears.map((year) => ({
                             id: year.id,
-                            label: year.period_name,
+                            label: `${year.period_name} ${
+                                year.fiscal_year.split("-")[0]
+                            }`,
                         }))}
                     />
                     {errors.fiscal_period_id && (

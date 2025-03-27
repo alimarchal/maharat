@@ -266,8 +266,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/budget/create', function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/CreateBudget']);
     })->name('budget.create');
-    Route::get('/budget/details/{id}', function () {
-        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/ViewBudget']);
+    Route::get('/budget/details/{id}', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/ViewBudget','budgetId' => $id]);
     })->name('budget.view');
 
     Route::get('/request-budgets', function () {
