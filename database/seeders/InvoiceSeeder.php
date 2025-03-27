@@ -7,14 +7,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
-class InvoiceSeeder extends Seeder
-{
+
+    /**
+     * Run the database seeds.
+     */
+    class InvoiceSeeder extends Seeder
+    {
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
-        // Check if tables exist
         if (!Schema::hasTable('invoices') || !Schema::hasTable('invoice_items')) {
             $this->command->warn('Required tables do not exist. Skipping InvoiceSeeder.');
             return;
@@ -23,16 +26,17 @@ class InvoiceSeeder extends Seeder
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
 
         try {
-            // Reset AUTO_INCREMENT before transaction
-            DB::statement('ALTER TABLE invoices AUTO_INCREMENT = 1');
-
-            DB::beginTransaction();
-
-            // Clear existing data
+            // Clear existing data first
             if (Schema::hasTable('invoice_items')) {
                 DB::table('invoice_items')->delete();
             }
             DB::table('invoices')->delete();
+
+            // Reset AUTO_INCREMENT after deleting data but before transaction
+            DB::statement('ALTER TABLE invoices AUTO_INCREMENT = 1');
+
+            // Now start the transaction for the insert
+            DB::beginTransaction();
 
             // Insert fresh invoice data
             $invoices = [
@@ -141,6 +145,7 @@ class InvoiceSeeder extends Seeder
             DB::table('invoices')->insert($invoices);
 
             DB::commit();
+            
             $this->command->info('Invoices seeded successfully.');
 
         } catch (\Exception $e) {

@@ -65,6 +65,7 @@ use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\Api\RfqApiController;
 use App\Http\Controllers\Api\V1\RfqStatusLogController;
 use App\Http\Controllers\Api\V1\RfqCategoryController;
+use App\Http\Controllers\Api\V1\IncomeStatementController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -323,5 +324,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::apiResource('cash-flow-transactions', CashFlowTransactionController::class);
 
+    Route::controller(IncomeStatementController::class)->group(function () {
+        Route::get('/income-statement/revenue', 'getRevenue');
+        Route::get('/income-statement/expenses', 'getExpenses');
+        Route::get('/income-statement/transactions', 'getTransactions');
+    });
 
 });

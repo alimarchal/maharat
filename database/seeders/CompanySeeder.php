@@ -19,30 +19,95 @@ class CompanySeeder extends Seeder
             return;
         }
 
-        DB::table('grn_receive_goods')->delete();
-        DB::table('grns')->delete();
-        DB::table('purchase_orders')->delete();
-        DB::table('material_request_items')->delete();
-        DB::table('material_requests')->delete();
-        DB::table('rfqs')->delete();
-        DB::table('budgets')->delete(); 
-        DB::table('departments')->delete(); 
-        DB::table('quotations')->delete();
+        // First, clean up all dependent tables
+        try {
+            // 1. First level - Delete tables that depend on purchase_orders
+            if (Schema::hasTable('external_invoices')) {
+                DB::table('external_invoices')->delete();
+                $this->command->info('Cleaned external_invoices.');
+            }
 
-        DB::table('companies')->delete();
+            if (Schema::hasTable('grn_receive_goods')) {
+                DB::table('grn_receive_goods')->delete();
+                $this->command->info('Cleaned grn_receive_goods.');
+            }
 
-        DB::statement('ALTER TABLE companies AUTO_INCREMENT = 1;');
+            if (Schema::hasTable('grns')) {
+                DB::table('grns')->delete();
+                $this->command->info('Cleaned grns.');
+            }
 
-        $sarCurrencyId = DB::table('currencies')
-            ->where('code', 'SAR')
-            ->value('id');
+            // 2. Second level - Delete purchase_orders and its dependencies
+            if (Schema::hasTable('purchase_orders')) {
+                DB::table('purchase_orders')->delete();
+                $this->command->info('Cleaned purchase_orders.');
+            }
 
-        if (!$sarCurrencyId) {
-            $this->command->error('SAR currency not found. Please run CurrencySeeder first.');
-            return;
+            // 3. Third level - Delete remaining dependent tables
+            if (Schema::hasTable('quotations')) {
+                DB::table('quotations')->delete();
+                $this->command->info('Cleaned quotations.');
+            }
+
+            if (Schema::hasTable('material_request_items')) {
+                DB::table('material_request_items')->delete();
+                $this->command->info('Cleaned material_request_items.');
+            }
+
+            if (Schema::hasTable('material_requests')) {
+                DB::table('material_requests')->delete();
+                $this->command->info('Cleaned material_requests.');
+            }
+
+            if (Schema::hasTable('rfqs')) {
+                DB::table('rfqs')->delete();
+                $this->command->info('Cleaned rfqs.');
+            }
+
+            if (Schema::hasTable('budgets')) {
+                DB::table('budgets')->delete();
+                $this->command->info('Cleaned budgets.');
+            }
+
+            // Delete accounts before departments due to foreign key constraint
+            if (Schema::hasTable('accounts')) {
+                DB::table('accounts')->delete();
+                $this->command->info('Cleaned accounts.');
+            }
+
+            // Now we can safely delete departments
+            if (Schema::hasTable('departments')) {
+                DB::table('departments')->delete();
+                $this->command->info('Cleaned departments.');
+            }
+
+            // 4. Clean companies
+            DB::table('companies')->delete();
+            $this->command->info('Cleaned companies.');
+
+            // Reset auto-increment outside transaction
+            DB::statement('ALTER TABLE companies AUTO_INCREMENT = 1');
+            $this->command->info('Reset companies auto-increment.');
+
+        } catch (\Exception $e) {
+            $this->command->error('Error cleaning tables: ' . $e->getMessage());
+            throw $e;
         }
 
-        DB::transaction(function () use ($sarCurrencyId) {
+        // Now insert new data in a separate transaction
+        try {
+            DB::beginTransaction();
+
+            // Get SAR currency ID
+            $sarCurrencyId = DB::table('currencies')
+                ->where('code', 'SAR')
+                ->value('id');
+
+            if (!$sarCurrencyId) {
+                throw new \Exception('SAR currency not found. Please run CurrencySeeder first.');
+            }
+
+            // Company data
             $companies = [
                 [
                     'name' => 'Maharat',
@@ -140,10 +205,17 @@ class CompanySeeder extends Seeder
                     'swift' => 'ARNBSARI',
                 ],
             ];
-            
-            Company::insert($companies);
-        });
 
-        $this->command->info('Companies table seeded successfully.');
+            // Insert companies
+            Company::insert($companies);
+            
+            DB::commit();
+            $this->command->info('Companies inserted successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->command->error('Error seeding companies: ' . $e->getMessage());
+            throw $e;
+        }
     }
 }
