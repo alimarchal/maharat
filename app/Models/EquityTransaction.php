@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\UserTracking;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EquityTransaction extends Model
 {
-    use HasFactory;
+    use HasFactory, UserTracking;
 
     protected $fillable = [
         'equity_account_id',

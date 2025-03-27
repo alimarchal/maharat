@@ -28,7 +28,6 @@ return new class extends Migration
             $table->date('transaction_date');
             $table->string('reference_number')->nullable();
             $table->text('description')->nullable();
-            $table->foreignId('created_by')->constrained('users');
             $table->timestamps();
             $table->userTracking();
         });
