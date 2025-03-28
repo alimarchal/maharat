@@ -64,8 +64,8 @@ const CustomersTable = () => {
                             <th className="py-3 px-4">Commercial Reg. No.</th>
                             <th className="py-3 px-4">Tax Number</th>
                             <th className="py-3 px-4">Contact Number</th>
-                            <th className="py-3 px-4">City</th>
                             <th className="py-3 px-4">Country</th>
+                            <th className="py-3 px-4">Address</th>
                             <th className="py-3 px-4">Account Name</th>
                             <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
                                 Actions
@@ -97,14 +97,16 @@ const CustomersTable = () => {
                                         {item.commercial_registration_number}
                                     </td>
                                     <td className="py-3 px-4">
-                                        {item.tax_number}
+                                        {item.tax_group_registration_number}
                                     </td>
                                     <td className="py-3 px-4">
                                         {item.contact_number}
                                     </td>
-                                    <td className="py-3 px-4">{item.city}</td>
                                     <td className="py-3 px-4">
                                         {item.country_code}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {item.address}
                                     </td>
                                     <td className="py-3 px-4">
                                         {item.account_name}

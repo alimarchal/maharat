@@ -13,6 +13,9 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
+use Spatie\QueryBuilder\AllowedFilter;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PaymentOrderController extends Controller
 {
@@ -26,23 +29,45 @@ class PaymentOrderController extends Controller
         return 'PMT-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
     }
 
-    public function index(): JsonResponse|ResourceCollection
+    public function index(Request $request)
     {
-        $paymentOrders = QueryBuilder::for(PaymentOrder::class)
-            ->allowedFilters(PaymentOrderParameters::ALLOWED_FILTERS)
-            ->allowedSorts(PaymentOrderParameters::ALLOWED_SORTS)
-            ->allowedIncludes(PaymentOrderParameters::ALLOWED_INCLUDES)
-            ->paginate()
-            ->appends(request()->query());
+        try {
+            Log::info('Payment Orders Request:', [
+                'request' => $request->all(),
+                'url' => $request->fullUrl()
+            ]);
 
-        if ($paymentOrders->isEmpty()) {
+            $query = QueryBuilder::for(PaymentOrder::class)
+                ->allowedFilters([
+                    AllowedFilter::exact('status'),
+                ])
+                ->allowedIncludes(['user'])
+                ->defaultSort('-created_at');
+
+            $perPage = $request->input('per_page', 10);
+            $paymentOrders = $query->paginate($perPage);
+
             return response()->json([
-                'message' => 'No payment orders found',
-                'data' => []
-            ], Response::HTTP_OK);
-        }
+                'data' => $paymentOrders->items(),
+                'meta' => [
+                    'current_page' => $paymentOrders->currentPage(),
+                    'last_page' => $paymentOrders->lastPage(),
+                    'per_page' => $paymentOrders->perPage(),
+                    'total' => $paymentOrders->total()
+                ]
+            ]);
 
-        return PaymentOrderResource::collection($paymentOrders);
+        } catch (\Exception $e) {
+            Log::error('Payment Orders Error:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to fetch payment orders',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function store(StorePaymentOrderRequest $request): JsonResponse

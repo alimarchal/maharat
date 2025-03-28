@@ -16,7 +16,10 @@ class PaymentOrder extends Model
         'purchase_order_id',
         'payment_order_number',
         'date',
-        'attachment'
+        'attachment',
+        'total_amount',
+        'paid_amount',
+        'status'
     ];
 
     protected $casts = [
