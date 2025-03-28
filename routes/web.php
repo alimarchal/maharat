@@ -130,10 +130,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'Warehouse/GRN/CreateGRNTable']);
     })->name('grns.create');
 
-    Route::get('/doc-status', function () { return Inertia::render('Dashboard/Reports/Statuses'); })->name('doc-status');
-
-    Route::get('/report-logs', function () { return Inertia::render('Dashboard/Reports/ReportLogs'); })->name('report-logs');
-
     Route::get('/external-invoices', function () { return Inertia::render('Dashboard/Invoices/Invoices'); })->name('invoices');
 
     Route::get('/chart', function () {
@@ -145,6 +141,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     //Route::get('/chart', function () { return Inertia::render('Dashboard/OrganizationalChart/Chart'); })->name('chart');
 
     Route::get('/rfq-status', function () { return Inertia::render('Dashboard/RFQ/RFQStatus'); })->name('rfq-status');
+    
+    Route::get('/reports', function () {
+        return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/Reports/ReportLogs']);
+    })->name('reports.index');
+
+    Route::get('/purchase-doc-status', function () {
+        return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/PurchaseDocStatus/PurchaseStatuses']);
+    })->name('purchase.index');
+
+    Route::get('/statuses', function () {
+        return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/ProcessStatus']);
+    })->name('processStatus.index');
+    Route::get('/statuses/request-status/{id}', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/Statuses', 'id' => $id]);
+    })->name('processStatus.index');
 
     Route::get('/inventory-tracking', function () {
         return Inertia::render('Dashboard', ['page' => 'Warehouse/Inventory/InventoryTable']);

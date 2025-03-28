@@ -364,17 +364,17 @@ export default function MainDashboard({ roles }) {
         {
             text: "Reports",
             icon: faFileAlt,
-            onClick: () => router.visit("/report-logs"),
+            onClick: () => router.visit("/reports"),
         },
         {
             text: "Purchase Document Status",
             icon: faSignal,
-            onClick: () => router.visit("/doc-status"),
+            onClick: () => router.visit("/purchase-doc-status"),
         },
         {
-            text: "RFQ Status",
+            text: "Statuses",
             icon: faSync,
-            onClick: () => router.visit("/rfq-status"),
+            onClick: () => router.visit("/statuses"),
         },
     ];
 

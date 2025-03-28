@@ -1,0 +1,159 @@
+import React, { useState, useEffect } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEye } from "@fortawesome/free-solid-svg-icons";
+
+const MInvoiceTable = () => {
+    const [invoices, setInvoices] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [lastPage, setLastPage] = useState(1);
+
+    useEffect(() => {
+        const fetchInvoices = async () => {
+            setLoading(true);
+            try {
+                const response = await fetch(
+                    `/api/v1/invoices?include=client,items&page=${currentPage}`
+                );
+                const data = await response.json();
+                if (response.ok) {
+                    setInvoices(data.data || []);
+                    setLastPage(data.meta?.last_page || 1);
+                } else {
+                    setError(data.message || "Failed to fetch invoices.");
+                }
+            } catch (err) {
+                console.error("Error fetching invoices:", err);
+                setError("Error loading invoices.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchInvoices();
+    }, [currentPage]);
+
+    return (
+        <div className="w-full overflow-hidden">
+            <table className="w-full">
+                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                    <tr>
+                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
+                            Invoice ID
+                        </th>
+                        <th className="py-3 px-4">Customer</th>
+                        <th className="py-3 px-4">Total Amount</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4">Date & Time</th>
+                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
+                            Action
+                        </th>
+                    </tr>
+                </thead>
+                <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
+                    {loading ? (
+                        <tr>
+                            <td colSpan="6" className="text-center py-12">
+                                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+                            </td>
+                        </tr>
+                    ) : error ? (
+                        <tr>
+                            <td
+                                colSpan="6"
+                                className="text-center text-red-500 font-medium py-4"
+                            >
+                                {error}
+                            </td>
+                        </tr>
+                    ) : invoices.length > 0 ? (
+                        invoices.map((invoice) => (
+                            <tr key={invoice.id}>
+                                <td className="py-3 px-4">
+                                    {invoice.invoice_number || "N/A"}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {invoice.client?.name || "N/A"}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {invoice.total_amount
+                                        ? `${Math.floor(
+                                              invoice.total_amount
+                                          ).toLocaleString()} SAR`
+                                        : "N/A"}
+                                </td>
+                                <td className="py-3 px-4">{invoice.status}</td>
+                                <td className="py-3 px-4">
+                                    <div className="flex flex-col">
+                                        {invoice.updated_at
+                                            ? new Date(
+                                                  invoice.updated_at
+                                              ).toLocaleDateString()
+                                            : "N/A"}
+                                        <span className="text-gray-400">
+                                            {invoice.updated_at
+                                                ? new Date(
+                                                      invoice.updated_at
+                                                  ).toLocaleTimeString()
+                                                : ""}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td className="py-3 px-4 flex justify-center space-x-3">
+                                    <button className="text-[#9B9DA2] hover:text-gray-500">
+                                        <FontAwesomeIcon icon={faEye} />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))
+                    ) : (
+                        <tr>
+                            <td
+                                colSpan="6"
+                                className="text-center text-[#2C323C] font-medium py-4"
+                            >
+                                No Maharat Invoices found.
+                            </td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+
+            {/* Pagination */}
+            {!loading && !error && invoices.length > 0 && (
+                <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    {Array.from(
+                        { length: lastPage },
+                        (_, index) => index + 1
+                    ).map((page) => (
+                        <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-1 ${
+                                currentPage === page
+                                    ? "bg-[#009FDC] text-white"
+                                    : "border border-[#B9BBBD] bg-white"
+                            } rounded-full hover:bg-[#0077B6] transition`}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage >= lastPage
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage >= lastPage}
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default MInvoiceTable;
