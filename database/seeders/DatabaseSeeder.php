@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             UnitSeeder::class,
 
             // User and organization structure
+            DocumentPermissionSeeder::class,
             RoleAndPermissionSeeder::class,
             CompanySeeder::class,
             DepartmentSeeder::class,

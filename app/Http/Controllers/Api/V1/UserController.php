@@ -365,4 +365,28 @@ class UserController extends Controller
     }
     */
 
+    public function getCurrentRole(): JsonResponse
+    {
+        $user = auth()->user();
+        
+        if (!$user) {
+            return response()->json([
+                'message' => 'Unauthenticated'
+            ], 401);
+        }
+
+        $role = $user->roles()->first();
+        
+        if (!$role) {
+            return response()->json([
+                'message' => 'User has no assigned role',
+                'role' => null
+            ]);
+        }
+
+        return response()->json([
+            'role' => $role
+        ]);
+    }
+
 }

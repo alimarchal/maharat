@@ -88,7 +88,20 @@ class RoleController extends Controller
 
     public function subordinates(Role $role): JsonResponse
     {
-        $subordinateIds = $role->subordinates();
+        // Get all descendant roles recursively
+        $subordinateIds = collect();
+        $queue = collect([$role]);
+
+        while ($queue->isNotEmpty()) {
+            $current = $queue->shift();
+            $children = Role::where('parent_role_id', $current->id)->get();
+            
+            foreach ($children as $child) {
+                $subordinateIds->push($child->id);
+                $queue->push($child);
+            }
+        }
+
         $subordinates = Role::whereIn('id', $subordinateIds)->get();
 
         return response()->json([
@@ -122,6 +135,62 @@ class RoleController extends Controller
         return response()->json([
             'data' => $roles
         ]);
+    }
+
+    public function togglePermission(Request $request, Role $role): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'permission' => 'required|string',
+                'value' => 'required|boolean'
+            ]);
+
+            // Check if permission exists or create it
+            $permission = Permission::firstOrCreate(
+                ['name' => $validated['permission']],
+                ['guard_name' => 'web']
+            );
+
+            if ($validated['value']) {
+                $role->givePermissionTo($permission);
+            } else {
+                $role->revokePermissionTo($permission);
+            }
+
+            // Clear permission cache
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+            return response()->json([
+                'message' => 'Permission toggled successfully',
+                'data' => $role->permissions
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Permission toggle failed: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            
+            return response()->json([
+                'message' => 'Failed to toggle permission',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getPermissions(Role $role): JsonResponse
+    {
+        try {
+            // Clear permission cache
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+            
+            return response()->json([
+                'data' => $role->permissions
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to get permissions: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to get permissions',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
 }

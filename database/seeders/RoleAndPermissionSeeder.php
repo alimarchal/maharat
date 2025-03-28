@@ -17,6 +17,9 @@ class RoleAndPermissionSeeder extends Seeder
         // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
+        // Run the document permissions seeder
+        $this->call(DocumentPermissionSeeder::class);
+
         // Create Permissions - All permissions from the matrix
         $permissions = [
             // User & Roles Management
@@ -63,13 +66,16 @@ class RoleAndPermissionSeeder extends Seeder
             Permission::firstOrCreate(['name' => $permission]);
         }
 
+        // Get all permissions including document permissions
+        $allPermissions = Permission::all();
+
         // Admin/CEO - has all permissions
         $adminRole = Role::firstOrCreate([
             'name' => 'Admin',
             'guard_name' => 'web',
             'parent_role_id' => null
         ]);
-        $adminRole->givePermissionTo(Permission::all());
+        $adminRole->givePermissionTo($allPermissions);
 
         // Director
         $directorRole = Role::firstOrCreate([

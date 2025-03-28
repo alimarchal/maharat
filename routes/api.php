@@ -87,6 +87,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     // Note the order is important - specific routes before resource routes
     Route::get('roles/hierarchy', [RoleController::class, 'hierarchy']);
+    Route::post('roles/{role}/toggle-permission', [RoleController::class, 'togglePermission']);
+    Route::get('roles/{role}/permissions', [RoleController::class, 'getPermissions']);
     Route::apiResource('roles', RoleController::class);
     Route::get('roles/{role}/subordinates', [RoleController::class, 'subordinates']);
     Route::get('roles/{role}/superiors', [RoleController::class, 'superiors']);
@@ -352,5 +354,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('equity-transactions/type/{type}', [EquityTransactionController::class, 'getByType'])->name('equity-transactions.type');
     Route::get('equity-transactions/date-range', [EquityTransactionController::class, 'getByDateRange'])->name('equity-transactions.date-range');
 
+    Route::get('/roles/{role}/permissions', [RoleController::class, 'getPermissions']);
+    Route::post('/roles/{role}/toggle-permission', [RoleController::class, 'togglePermission']);
+    Route::get('/user/current-role', [UserController::class, 'getCurrentRole']);
 
 });
