@@ -61,7 +61,7 @@ const IncomeStatementTable = () => {
             const previousTransactions = parseFloat(transactionsResponse.data.data.total_amount) || 0;
 
             // Calculate derived values
-            const change = totalRevenue - totalExpenses;
+            const change = totalExpenses - totalRevenue;
             const finalNetAssets = change + previousTransactions;
 
             // Format dates for display

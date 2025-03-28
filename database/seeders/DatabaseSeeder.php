@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             UnitSeeder::class,
 
             // User and organization structure
+            DocumentPermissionSeeder::class,
             RoleAndPermissionSeeder::class,
             CompanySeeder::class,
             DepartmentSeeder::class,
@@ -69,6 +70,10 @@ class DatabaseSeeder extends Seeder
             ChartOfAccountSeeder::class,
             AccountSeeder::class,
             FinancialTransactionSeeder::class,
+
+            PaymentOrderSeeder::class,
+            PaymentOrderApprovalTransactionSeeder::class,
+            
             MahratInvoiceApprovalTransactionSeeder::class,
         ]);
     }
