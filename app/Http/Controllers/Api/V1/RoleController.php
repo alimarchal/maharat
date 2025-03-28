@@ -72,17 +72,17 @@ class RoleController extends Controller
         ]);
     }
 
-    public function destroy(Role $role): JsonResponse
-    {
-        Role::where('parent_role_id', $role->id)
-            ->update(['parent_role_id' => null]);
-
-        $role->delete();
-
-        return response()->json([
-            'message' => 'Role deleted successfully'
-        ]);
-    }
+//    public function destroy(Role $role): JsonResponse
+//    {
+//        Role::where('parent_role_id', $role->id)
+//            ->update(['parent_role_id' => null]);
+//
+//        $role->delete();
+//
+//        return response()->json([
+//            'message' => 'Role deleted successfully'
+//        ]);
+//    }
 
 
 
@@ -95,7 +95,7 @@ class RoleController extends Controller
         while ($queue->isNotEmpty()) {
             $current = $queue->shift();
             $children = Role::where('parent_role_id', $current->id)->get();
-            
+
             foreach ($children as $child) {
                 $subordinateIds->push($child->id);
                 $queue->push($child);
@@ -167,7 +167,7 @@ class RoleController extends Controller
         } catch (\Exception $e) {
             \Log::error('Permission toggle failed: ' . $e->getMessage());
             \Log::error($e->getTraceAsString());
-            
+
             return response()->json([
                 'message' => 'Failed to toggle permission',
                 'error' => $e->getMessage()
@@ -180,7 +180,7 @@ class RoleController extends Controller
         try {
             // Clear permission cache
             app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
-            
+
             return response()->json([
                 'data' => $role->permissions
             ]);
