@@ -54,6 +54,10 @@ import RequestBudgetTable from "./Dashboard/BudgetAndAccounts/RequestABudget/Req
 import InventoryTable from "./Dashboard/Warehouse/Inventory/InventoryTable";
 import GRNTable from "./Dashboard/Warehouse/GRN/GRNTable";
 import CreateGRNTable from "./Dashboard/Warehouse/GRN/CreateGRNTable";
+import ProcessStatuses from "./Dashboard/ReportsAndStatuses/ProcessStatus/processStatus";
+import Statuses from "./Dashboard/ReportsAndStatuses/ProcessStatus/Statuses";
+import Reports from "./Dashboard/ReportsAndStatuses/Reports/ReportLogs";
+import PurchaseStatus from "./Dashboard/ReportsAndStatuses/PurchaseDocStatus/PurchaseStatuses";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -137,6 +141,14 @@ export default function Dashboard({ auth, page }) {
             return <InventoryTable />;
         if (page === "Warehouse/GRN/GRNTable") return <GRNTable />;
         if (page === "Warehouse/GRN/CreateGRNTable") return <CreateGRNTable />;
+        if (page === "ReportsAndStatuses/Reports/ReportLogs")
+            return <Reports />;
+        if (page === "ReportsAndStatuses/PurchaseDocStatus/PurchaseStatuses")
+            return <PurchaseStatus />;
+        if (page === "ReportsAndStatuses/ProcessStatus/ProcessStatus")
+            return <ProcessStatuses />;
+        if (page === "ReportsAndStatuses/ProcessStatus/Statuses")
+            return <Statuses />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };
