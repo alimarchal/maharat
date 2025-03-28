@@ -2,12 +2,12 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 const documentTypes = [
-    "rfqs",
-    "quotations",
-    "goods_receiving_notes",
-    "material_requests",
-    "invoices",
-    "payment_orders"
+    "RFQ document",
+    "Quotations document",
+    "Goods Receiving Notes documents",
+    "MRs documents",
+    "Invoices documents",
+    "PMNTOs documents",
 ];
 
 const displayNames = {
@@ -77,14 +77,12 @@ const RolesPermissions = () => {
             console.log('Raw permissions:', response.data.data);
             const rolePermissions = response.data.data;
             
-            const newPermissions = documentTypes.map((docType) => {
-                return {
-                    read: rolePermissions.some(p => p.name === `view_${docType}`),
-                    create: rolePermissions.some(p => p.name === `create_${docType}`),
-                    modify: rolePermissions.some(p => p.name === `edit_${docType}`),
-                    delete: rolePermissions.some(p => p.name === `delete_${docType}`)
-                };
-            });
+            const newPermissions = documentTypes.map((docType) => ({
+                read: rolePermissions.some(p => p.name === `view_${docType.toLowerCase().replace(/\s+/g, '_')}`),
+                create: rolePermissions.some(p => p.name === `create_${docType.toLowerCase().replace(/\s+/g, '_')}`),
+                modify: rolePermissions.some(p => p.name === `edit_${docType.toLowerCase().replace(/\s+/g, '_')}`),
+                delete: rolePermissions.some(p => p.name === `delete_${docType.toLowerCase().replace(/\s+/g, '_')}`)
+            }));
 
             console.log('Mapped permissions:', newPermissions);
             setPermissions(newPermissions);
@@ -104,7 +102,7 @@ const RolesPermissions = () => {
                 'delete': 'delete'
             };
 
-            const docType = documentTypes[index];
+            const docType = documentTypes[index].toLowerCase().replace(/\s+/g, '_');
             const permissionName = `${permissionMapping[type]}_${docType}`;
             
             console.log('Toggling permission:', permissionName);
@@ -140,15 +138,15 @@ const RolesPermissions = () => {
                 Roles & Permissions
             </h2>
             <p className="text-lg md:text-xl text-[#7D8086]">
-                Allows where users will receive notifications
+                Manage role permissions for different document types
             </p>
 
-            {/* Add Role Selection */}
+            {/* Role Selection */}
             <div className="mb-6">
                 <select 
                     value={selectedRole || ''} 
                     onChange={(e) => setSelectedRole(e.target.value)}
-                    className="mt-4 p-2 border rounded-md"
+                    className="mt-4 p-2 border rounded-md bg-white text-[#2C323C]"
                 >
                     <option value="">Select a role</option>
                     {roles.map(role => (
@@ -163,7 +161,7 @@ const RolesPermissions = () => {
                 </select>
             </div>
 
-            {/* Your existing CRUD header */}
+            {/* CRUD Header */}
             <div className="bg-[#DCECF2] p-4 md:p-6 my-6 rounded-2xl grid grid-cols-2 md:grid-cols-5 items-center text-lg md:text-xl font-medium text-[#2C323C]">
                 <span className="text-xl md:text-2xl font-bold">CRUD :</span>
                 <span className="flex items-center justify-center">Read</span>
@@ -172,12 +170,23 @@ const RolesPermissions = () => {
                 <span className="flex items-center justify-center">Delete</span>
             </div>
 
-            {/* Your existing Document Types section */}
+            {/* Document Types Header */}
+            <div className="p-2 grid grid-cols-2 md:grid-cols-5 gap-4 items-center text-lg md:text-xl font-medium text-[#0086B9]">
+                <span className="text-[#6E66AC] text-xl md:text-2xl">
+                    Document Types
+                </span>
+                <span className="flex items-center justify-center">Turn On/Off</span>
+                <span className="flex items-center justify-center">Turn On/Off</span>
+                <span className="flex items-center justify-center">Turn On/Off</span>
+                <span className="flex items-center justify-center">Turn On/Off</span>
+            </div>
+
+            {/* Document List */}
             <div className="bg-white p-4 mt-4 rounded-2xl shadow-md">
                 {documentTypes.map((doc, index) => (
                     <div key={index} className="grid grid-cols-2 md:grid-cols-5 gap-4 items-center py-4">
                         <span className="text-lg md:text-xl font-medium text-[#000000]">
-                            {displayNames[doc]}
+                            {doc}
                         </span>
                         {["read", "create", "modify", "delete"].map((type) => (
                             <label
