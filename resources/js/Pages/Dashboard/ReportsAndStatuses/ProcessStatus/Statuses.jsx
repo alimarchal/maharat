@@ -1,12 +1,35 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faChevronRight,
     faCalendarAlt,
     faCheck,
 } from "@fortawesome/free-solid-svg-icons";
+import { usePage } from "@inertiajs/react";
 
 const Statuses = () => {
+    const { id } = usePage().props;
+
+    const [status, setStatus] = useState(null);
+
+    useEffect(() => {
+        if (id) {
+            fetchStatus(id);
+        }
+    }, [id]);
+
+    const fetchStatus = async (id) => {
+        try {
+            const response = await axios.get(
+                `/api/v1/material-request-transactions/${id}?include=materialRequest,requester,assignedUser,referredUser`
+            );
+            console.log("Id:", response.data.data);
+            setStatus(response.data.data);
+        } catch (error) {
+            console.error("Error fetching status:", error);
+        }
+    };
+
     const requestData = {
         requestId: "0123456",
         date: "03 Jan 2025",
