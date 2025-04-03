@@ -5,6 +5,7 @@ namespace App\Http\Requests\V1;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
+use Spatie\Permission\Models\Permission;
 
 class UpdateUserRequest extends FormRequest
 {
@@ -21,7 +22,49 @@ class UpdateUserRequest extends FormRequest
      */
     protected function prepareForValidation()
     {
-        Log::info("Raw update request data: ", $this->all());
+        //Log::info("Raw update request data: ", $this->all());
+
+        // Convert permission names to IDs
+        if ($this->has('permissions') && is_array($this->permissions)) {
+            $newPermissions = [];
+            foreach ($this->permissions as $key => $permission) {
+                if (is_string($permission) && !is_numeric($permission)) {
+                    // Try to find the permission by name
+                    $p = Permission::where('name', $permission)->where('guard_name', 'web')->first();
+                    if ($p) {
+                        $newPermissions[] = $p->id;
+                    } else {
+                        // Keep the original value to let validation fail naturally
+                        $newPermissions[] = $permission;
+                    }
+                } else {
+                    // Already an ID or something else
+                    $newPermissions[] = $permission;
+                }
+            }
+            $this->merge(['permissions' => $newPermissions]);
+        }
+
+        // Convert remove_permissions names to IDs
+        if ($this->has('remove_permissions') && is_array($this->remove_permissions)) {
+            $newRemovePermissions = [];
+            foreach ($this->remove_permissions as $key => $permission) {
+                if (is_string($permission) && !is_numeric($permission)) {
+                    // Try to find the permission by name
+                    $p = Permission::where('name', $permission)->where('guard_name', 'web')->first();
+                    if ($p) {
+                        $newRemovePermissions[] = $p->id;
+                    } else {
+                        // Keep the original value to let validation fail naturally
+                        $newRemovePermissions[] = $permission;
+                    }
+                } else {
+                    // Already an ID or something else
+                    $newRemovePermissions[] = $permission;
+                }
+            }
+            $this->merge(['remove_permissions' => $newRemovePermissions]);
+        }
     }
 
     /**
@@ -51,6 +94,11 @@ class UpdateUserRequest extends FormRequest
             'profile_photo_path' => 'sometimes|nullable|file|image|max:10240',
             'employee_type' => 'sometimes|nullable|string',
             'description' => 'sometimes|nullable|string',
+            'role_id' => 'sometimes|exists:roles,id',
+            'permissions' => 'sometimes|array',
+            'permissions.*' => 'exists:permissions,id',
+            'remove_permissions' => 'sometimes|array',
+            'remove_permissions.*' => 'exists:permissions,id',
         ];
     }
 
@@ -59,6 +107,6 @@ class UpdateUserRequest extends FormRequest
      */
     protected function passedValidation()
     {
-        Log::info("Passed validation with data: ", $this->validated());
+        //Log::info("Passed validation with data: ", $this->validated());
     }
 }

@@ -13,6 +13,9 @@ use App\Http\Resources\V1\UserResource;
 use App\Http\Resources\V1\UserCollection;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Spatie\Permission\Models\Permission;
 use Storage;
 
 class UserController extends Controller
@@ -68,62 +71,174 @@ class UserController extends Controller
     public function show(User $user)
     {
         return new UserResource($user);
-//        return (new UserResource($user))->additional(['hierarchy' => self::buildUserHierarchy($user)]);
     }
 
 
     /**
-     * Update the specified resource in storage.
+     * Update the specified user in storage.
+     * Handles both permission names and IDs.
+     *
+     * @param UpdateUserRequest $request
+     * @param User $user
+     * @return UserResource|\Illuminate\Http\JsonResponse
      */
     public function update(UpdateUserRequest $request, User $user)
     {
         // Log request info
-        \Log::info("Update request received for user ID: {$user->id}", [
-            'user_original' => $user->toArray(),
-            'request_data' => $request->all(),
-        ]);
+//        Log::info("Update request received for user ID: {$user->id}", [
+//            'user_original' => $user->toArray(),
+//            'request_data' => $request->all(),
+//        ]);
 
         // Validate the request
         $validated = $request->validated();
-        \Log::info("Validated data:", $validated);
+//        Log::info("Validated data:", $validated);
 
         if (empty($validated)) {
-            \Log::warning("Empty validated data - no fields passed validation!");
+//            Log::warning("Empty validated data - no fields passed validation!");
             return response()->json(['error' => 'No valid fields to update'], 422);
         }
 
-        // Manually check for specific fields
-        if (isset($validated['lastname'])) {
-            \Log::info("Lastname will be changed from '{$user->lastname}' to '{$validated['lastname']}'");
-        }
+        // Begin database transaction
+        DB::beginTransaction();
 
-        if (isset($validated['username'])) {
-            \Log::info("Username will be changed from '{$user->username}' to '{$validated['username']}'");
-        }
-
-        // Try direct update
         try {
-            $result = $user->update($validated);
-            \Log::info("Update operation result: " . ($result ? "Success" : "Failed"));
+            // Extract permission-related data before updating the user model
+            $roleId = $validated['role_id'] ?? null;
+            $permissions = $validated['permissions'] ?? null;
+            $removePermissions = $validated['remove_permissions'] ?? null;
 
-            // Refresh and check if data was actually updated
-            $user->refresh();
-            \Log::info("User data after update:", $user->toArray());
+            // Remove these fields so they don't interfere with the update
+            unset($validated['role_id'], $validated['permissions'], $validated['remove_permissions']);
 
-            // Manually check if fields were updated
-            if (isset($validated['lastname']) && $user->lastname !== $validated['lastname']) {
-                \Log::error("Database update failed - lastname was not updated!");
+            // Update user basic information
+            $user->update($validated);
+
+            // Handle role updates if provided
+            if ($roleId) {
+                try {
+                    // Remove all current roles
+                    $user->roles()->detach();
+
+                    // Assign new role - specify the 'web' guard
+                    $role = Role::findById($roleId, 'web');
+                    if ($role) {
+                        $user->assignRole($role);
+//                        Log::info("Assigned role '{$role->name}' to user {$user->id}");
+                    } else {
+//                        Log::warning("Role with ID {$roleId} not found");
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Error assigning role: " . $e->getMessage());
+                    throw $e;
+                }
             }
 
+            // Handle direct permission updates if provided
+            if (is_array($permissions)) {
+                try {
+                    $permissionObjects = [];
+
+                    foreach ($permissions as $permission) {
+                        if (is_string($permission) && !is_numeric($permission)) {
+                            // Find permission by name
+                            try {
+                                $p = Permission::where('name', $permission)->where('guard_name', 'web')->first();
+                                if ($p) {
+                                    $permissionObjects[] = $p;
+//                                    Log::info("Found permission by name: {$permission}");
+                                } else {
+//                                    Log::warning("Permission not found by name: {$permission}");
+                                }
+                            } catch (\Exception $e) {
+                                Log::error("Error finding permission by name '{$permission}': " . $e->getMessage());
+                            }
+                        } else {
+                            // Find permission by ID
+                            try {
+                                $p = Permission::findById($permission, 'web');
+                                if ($p) {
+                                    $permissionObjects[] = $p;
+//                                    Log::info("Found permission by ID: {$permission} (name: {$p->name})");
+                                } else {
+//                                    Log::warning("Permission not found by ID: {$permission}");
+                                }
+                            } catch (\Exception $e) {
+                                Log::error("Error finding permission by ID {$permission}: " . $e->getMessage());
+                            }
+                        }
+                    }
+
+                    if (!empty($permissionObjects)) {
+                        // Sync permissions (replaces all existing permissions)
+                        $user->syncPermissions($permissionObjects);
+//                        Log::info("Synced " . count($permissionObjects) . " permissions to user {$user->id}");
+                    } else {
+                        Log::warning("No valid permissions found to sync");
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Error syncing permissions: " . $e->getMessage());
+                    throw $e;
+                }
+            }
+
+            // Handle permission removal if specified
+            if (is_array($removePermissions)) {
+                try {
+                    foreach ($removePermissions as $permission) {
+                        if (is_string($permission) && !is_numeric($permission)) {
+                            // Remove by name
+                            if ($user->hasPermissionTo($permission, 'web')) {
+                                $user->revokePermissionTo($permission);
+//                                Log::info("Revoked permission by name: {$permission}");
+                            } else {
+//                                Log::info("User doesn't have permission '{$permission}' to revoke");
+                            }
+                        } else {
+                            // Remove by ID
+                            try {
+                                $p = Permission::findById($permission, 'web');
+                                if ($p && $user->hasPermissionTo($p)) {
+                                    $user->revokePermissionTo($p);
+//                                    Log::info("Revoked permission by ID: {$permission} (name: {$p->name})");
+                                } else {
+//                                    Log::info("User doesn't have permission with ID {$permission} to revoke");
+                                }
+                            } catch (\Exception $e) {
+//                                Log::error("Error finding permission to revoke by ID {$permission}: " . $e->getMessage());
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+//                    Log::error("Error revoking permissions: " . $e->getMessage());
+                    throw $e;
+                }
+            }
+
+            DB::commit();
+
+            // Refresh user to include updated relationships
+            $user->refresh();
+//            Log::info("User data after update:", [
+//                'id' => $user->id,
+//                'name' => $user->name,
+//                'roles' => $user->roles->pluck('name'),
+//                'permissions' => $user->getAllPermissions()->pluck('name')
+//            ]);
+
             return new UserResource($user);
+
         } catch (\Exception $e) {
-            \Log::error("Exception during update: " . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
+            DB::rollBack();
+
+//            Log::error("Exception during update: " . $e->getMessage(), [
+//                'trace' => $e->getTraceAsString()
+//            ]);
 
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
     }
+
     /**
      * Remove the specified resource from storage.
      */
@@ -368,7 +483,7 @@ class UserController extends Controller
     public function getCurrentRole(): JsonResponse
     {
         $user = auth()->user();
-        
+
         if (!$user) {
             return response()->json([
                 'message' => 'Unauthenticated'
@@ -376,7 +491,7 @@ class UserController extends Controller
         }
 
         $role = $user->roles()->first();
-        
+
         if (!$role) {
             return response()->json([
                 'message' => 'User has no assigned role',
