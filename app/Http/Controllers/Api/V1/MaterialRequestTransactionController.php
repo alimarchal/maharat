@@ -63,9 +63,17 @@ class MaterialRequestTransactionController extends Controller
     {
         $transaction = QueryBuilder::for(MaterialRequestTransaction::class)
             ->allowedIncludes(MaterialRequestTransactionParameters::ALLOWED_INCLUDES)
-            ->findOrFail($id);
+            ->find($id);
+
+        if (!$transaction) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Resource not found'
+            ], Response::HTTP_NOT_FOUND);
+        }
 
         return response()->json([
+            'success' => true,
             'data' => new MaterialRequestTransactionResource($transaction)
         ], Response::HTTP_OK);
     }
