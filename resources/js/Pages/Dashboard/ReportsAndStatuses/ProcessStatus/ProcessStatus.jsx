@@ -4,6 +4,8 @@ import RFQTable from "./StatusTables/RFQTable";
 import POTable from "./StatusTables/POTable";
 import PMTTable from "./StatusTables/PMTTable";
 import MInvoiceTable from "./StatusTables/MInvoiceTable";
+import BudgetRequestTable from "./StatusTables/BudgetRequestTable";
+import TotalBudgetTable from "./StatusTables/TotalBudgetTable";
 
 const ProcessStatus = () => {
     const [selectedFilter, setSelectedFilter] = useState("MR Status");
@@ -31,23 +33,11 @@ const ProcessStatus = () => {
             case "Invoice Status":
                 return <MInvoiceTable />;
             case "Budget Request Status":
-                return (
-                    <div className="text-xl text-[#2C323C]">
-                        Budget Request Status Table
-                    </div>
-                );
+                return <BudgetRequestTable />;
             case "Total Budget Status":
-                return (
-                    <div className="text-xl text-[#2C323C]">
-                        Total Budget Status Table
-                    </div>
-                );
+                return <TotalBudgetTable />;
             default:
-                return (
-                    <div className="text-xl text-[#2C323C]">
-                        Select a status
-                    </div>
-                );
+                return <MRTable />;
         }
     };
 
