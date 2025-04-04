@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
+import { Link } from "@inertiajs/react";
 
 const BudgetRequestTable = () => {
     const [budgetRequests, setBudgetRequests] = useState([]);
@@ -44,7 +45,7 @@ const BudgetRequestTable = () => {
                         <th className="py-3 px-4">Requested Amount</th>
                         <th className="py-3 px-4">Urgency</th>
                         <th className="py-3 px-4">Description</th>
-                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                             Action
                         </th>
                     </tr>
@@ -91,9 +92,12 @@ const BudgetRequestTable = () => {
                                     {request.reason_for_increase}
                                 </td>
                                 <td className="py-3 px-4 flex items-center justify-center gap-4">
-                                    <button className="text-gray-600 hover:text-gray-800">
+                                    <Link
+                                        href={`/statuses/request-status/${request.id}`}
+                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                    >
                                         <FontAwesomeIcon icon={faEye} />
-                                    </button>
+                                    </Link>
                                 </td>
                             </tr>
                         ))

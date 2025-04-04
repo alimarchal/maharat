@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye } from "@fortawesome/free-solid-svg-icons";
+import { Link } from "@inertiajs/react";
 
 const RFQTable = () => {
     const [rfqLogs, setRfqLogs] = useState([]);
@@ -47,7 +48,7 @@ const RFQTable = () => {
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">Date & Time</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
-                            Actions
+                            Action
                         </th>
                     </tr>
                 </thead>
@@ -116,9 +117,12 @@ const RFQTable = () => {
                                     </div>
                                 </td>
                                 <td className="py-3 px-4 flex justify-center space-x-3">
-                                    <button className="text-[#9B9DA2] hover:text-gray-500">
+                                    <Link
+                                        href={`/statuses/rfq-status/${log.id}`}
+                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                    >
                                         <FontAwesomeIcon icon={faEye} />
-                                    </button>
+                                    </Link>
                                 </td>
                             </tr>
                         ))
