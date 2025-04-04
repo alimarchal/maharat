@@ -86,7 +86,10 @@ const PMTTable = () => {
                                     ${order.purchase_order?.amount || "N/A"}
                                 </td>
                                 <td className="py-3 px-4 flex justify-center text-center space-x-3">
-                                    <Link className="text-[#9B9DA2] hover:text-gray-500">
+                                    <Link
+                                        href={`/statuses/pmt-status/${order.id}`}
+                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                    >
                                         <FontAwesomeIcon icon={faEye} />
                                     </Link>
                                 </td>

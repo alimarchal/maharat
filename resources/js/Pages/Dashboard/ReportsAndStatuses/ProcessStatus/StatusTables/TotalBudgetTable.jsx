@@ -53,7 +53,7 @@ const TotalBudgetTable = () => {
                         <th className="py-3 px-4">Total Revenue Actual</th>
                         <th className="py-3 px-4">Total Expense Planned</th>
                         <th className="py-3 px-4">Total Expense Actual</th>
-                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                             Action
                         </th>
                     </tr>
@@ -94,7 +94,10 @@ const TotalBudgetTable = () => {
                                     {budget.total_expense_actual}
                                 </td>
                                 <td className="py-3 px-4 flex items-center justify-center gap-4">
-                                    <Link className="text-[#9B9DA2] hover:text-gray-800 transition duration-200">
+                                    <Link
+                                        href={`/statuses/budget-status/${budget.id}`}
+                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                    >
                                         <FontAwesomeIcon icon={faEye} />
                                     </Link>
                                 </td>

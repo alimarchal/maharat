@@ -154,7 +154,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/ProcessStatus']);
     })->name('processStatus.index');
     Route::get('/statuses/request-status/{id}', function ($id) {
-        return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/Statuses', 'id' => $id]);
+        return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/MRStatusFlow', 'id' => $id]);
+    })->name('processStatus.index');
+    Route::get('/statuses/rfq-status/{id}', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/RFQStatusFlow', 'id' => $id]);
+    })->name('processStatus.index');
+    Route::get('/statuses/po-status/{id}', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/POStatusFlow', 'id' => $id]);
+    })->name('processStatus.index');
+    Route::get('/statuses/pmt-status/{id}', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/PMTStatusFlow', 'id' => $id]);
+    })->name('processStatus.index');
+    Route::get('/statuses/invoice-status/{id}', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/MInvoiceStatusFlow', 'id' => $id]);
+    })->name('processStatus.index');
+    Route::get('/statuses/request-status/{id}', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/BudgetRequestStatusFlow', 'id' => $id]);
+    })->name('processStatus.index');
+    Route::get('/statuses/budget-status/{id}', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/TotalBudgetStatusFlow', 'id' => $id]);
     })->name('processStatus.index');
 
     Route::get('/inventory-tracking', function () {

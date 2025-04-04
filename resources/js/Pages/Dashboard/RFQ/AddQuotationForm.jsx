@@ -120,37 +120,59 @@ export default function AddQuotationForm({ auth }) {
                         let attachmentObj = null;
                         if (item.attachment) {
                             if (typeof item.attachment === "string") {
-                                const fileName = item.attachment.split("/").pop();
+                                const fileName = item.attachment
+                                    .split("/")
+                                    .pop();
                                 attachmentObj = {
                                     url: item.attachment,
                                     name: fileName,
-                                    file_name: fileName
+                                    file_name: fileName,
                                 };
                             } else if (typeof item.attachment === "object") {
                                 attachmentObj = {
-                                    url: item.attachment.url || item.attachment.path || "",
-                                    name: item.attachment.name || item.attachment.file_name || "Attachment",
-                                    file_name: item.attachment.file_name || item.attachment.name || "Attachment"
+                                    url:
+                                        item.attachment.url ||
+                                        item.attachment.path ||
+                                        "",
+                                    name:
+                                        item.attachment.name ||
+                                        item.attachment.file_name ||
+                                        "Attachment",
+                                    file_name:
+                                        item.attachment.file_name ||
+                                        item.attachment.name ||
+                                        "Attachment",
                                 };
                             }
                         }
 
                         // Find the corresponding product from the already loaded products
-                        const product = productsData.find(p => p.id === item.product_id);
+                        const product = productsData.find(
+                            (p) => p.id === item.product_id
+                        );
 
                         return {
                             id: item.id,
-                            product_id: item.product_id || '',
-                            item_name: item.item_name || (product ? product.name : ''),
-                            description: item.description || (product ? product.description : ''),
-                            unit_id: item.unit_id ? String(item.unit_id) : '',
-                            quantity: item.quantity || '',
-                            brand_id: item.brand_id ? String(item.brand_id) : '',
+                            product_id: item.product_id || "",
+                            item_name:
+                                item.item_name || (product ? product.name : ""),
+                            description:
+                                item.description ||
+                                (product ? product.description : ""),
+                            unit_id: item.unit_id ? String(item.unit_id) : "",
+                            quantity: item.quantity || "",
+                            brand_id: item.brand_id
+                                ? String(item.brand_id)
+                                : "",
                             attachment: attachmentObj,
-                            specifications: item.specifications || '',
-                            expected_delivery_date: item.expected_delivery_date?.split('T')[0] || '',
+                            specifications: item.specifications || "",
+                            expected_delivery_date:
+                                item.expected_delivery_date?.split("T")[0] ||
+                                "",
                             rfq_id: rfqId,
-                            status_id: item.status_id ? String(item.status_id) : '48',
+                            status_id: item.status_id
+                                ? String(item.status_id)
+                                : "48",
                         };
                     });
 
@@ -217,7 +239,10 @@ export default function AddQuotationForm({ auth }) {
                             }
                         })
                         .catch((error) => {
-                            console.error("Error fetching new RFQ number:", error);
+                            console.error(
+                                "Error fetching new RFQ number:",
+                                error
+                            );
                         })
                         .finally(() => {
                             setLoading(false);
@@ -512,125 +537,20 @@ export default function AddQuotationForm({ auth }) {
         fetchData();
     }, []);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        try {
-            const formDataObj = new FormData();
-            formDataObj.append("organization_email", formData.organization_email || "");
-            formDataObj.append("city", formData.city || "");
-            formDataObj.append("category_id", formData.category_id || "");
-            formDataObj.append("warehouse_id", formData.warehouse_id || "");
-            formDataObj.append("request_date", formData.issue_date || "");
-            formDataObj.append("closing_date", formData.closing_date || "");
-            formDataObj.append("rfq_number", formData.rfq_id || "");
-            formDataObj.append("payment_type", formData.payment_type || "");
-            formDataObj.append("contact_number", formData.contact_no || "");
-            formDataObj.append("status_id", formData.status_id || "48");
-
-            // Process and append items
-            formData.items.forEach((item, index) => {
-                if (item.id) {
-                    formDataObj.append(`items[${index}][id]`, item.id);
-                }
-                formDataObj.append(`items[${index}][product_id]`, item.product_id || '');
-                formDataObj.append(`items[${index}][item_name]`, item.item_name || '');
-                formDataObj.append(`items[${index}][description]`, item.description || '');
-                formDataObj.append(`items[${index}][unit_id]`, item.unit_id || '');
-                formDataObj.append(`items[${index}][quantity]`, item.quantity || '');
-                formDataObj.append(`items[${index}][brand_id]`, item.brand_id || '');
-                formDataObj.append(`items[${index}][expected_delivery_date]`, item.expected_delivery_date || '');
-                formDataObj.append(`items[${index}][status_id]`, item.status_id || '48');
-                formDataObj.append(`items[${index}][rfq_id]`, rfqId || null);
-            });
-
-            // For PUT requests in Laravel
-            if (rfqId) {
-                formDataObj.append("_method", "PUT");
-            }
-
-            const url = rfqId ? `/api/v1/rfqs/${rfqId}` : "/api/v1/rfqs";
-            const response = await axios.post(url, formDataObj, {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                    Accept: "application/json",
-                },
-            });
-            const RFQResponse = response.data.data;
-
-            // Only proceed with process steps if we have a successful RFQ response
-            if (RFQResponse?.id) {
-                const loggedUser = auth.user?.id;
-                const processResponse = await axios.get(
-                    "/api/v1/processes?include=steps,creator,updater&filter[title]=RFQ Approval"
-                );
-                
-                if (processResponse.data?.data?.[0]?.steps?.[0]) {
-                    const process = processResponse.data.data[0];
-                    const processStep = process.steps[0];
-
-                    // Only proceed if we have valid process step data
-                    if (processStep?.id && processStep?.order) {
-                        const processResponseViaUser = await axios.get(
-                            `/api/v1/process-steps/${processStep.order}/user/${loggedUser}`
-                        );
-                        const assignUser = processResponseViaUser?.data;
-
-                        if (assignUser?.user?.user?.id) {
-                            const RFQApprovalTransactionPayload = {
-                                rfq_id: RFQResponse.id,
-                                requester_id: loggedUser,
-                                assigned_to: assignUser.user.user.id,
-                                order: processStep.order,
-                                description: processStep.description,
-                                status: "Pending",
-                            };
-                            await axios.post(
-                                "/api/v1/rfq-approval-transactions",
-                                RFQApprovalTransactionPayload
-                            );
-
-                            const taskPayload = {
-                                process_step_id: processStep.id,
-                                process_id: processStep.process_id,
-                                assigned_at: new Date().toISOString(),
-                                urgency: "Normal",
-                                assigned_to_user_id: assignUser.user.user.id,
-                                assigned_from_user_id: loggedUser,
-                            };
-                            await axios.post("/api/v1/tasks", taskPayload);
-                        }
-                    }
-                }
-            }
-
-            if (response.data && response.data.success === true) {
-                alert(rfqId ? "RFQ updated successfully!" : "RFQ created successfully!");
-                router.visit(route("rfq.index")); // Redirect after successful save
-                return true;
-            }
-        } catch (error) {
-            console.error("Error saving RFQ:", error);
-            console.error("Error details:", error.response?.data || error.message);
-            alert(error.response?.data?.message || "Failed to save RFQ. Check console for details.");
-            return false;
-        }
-    };
-
     const addItem = () => {
         setFormData((prev) => ({
             ...prev,
             items: [
                 ...prev.items,
                 {
-                    product_id: '',
-                    item_name: '',
-                    description: '',
-                    unit_id: '',
-                    quantity: '',
-                    brand_id: '',
+                    product_id: "",
+                    item_name: "",
+                    description: "",
+                    unit_id: "",
+                    quantity: "",
+                    brand_id: "",
                     attachment: null,
-                    expected_delivery_date: '',
+                    expected_delivery_date: "",
                     rfq_id: rfqId || null,
                     status_id: 48,
                 },
@@ -640,28 +560,30 @@ export default function AddQuotationForm({ auth }) {
 
     const handleItemChange = (index, field, value) => {
         const updatedItems = [...formData.items];
-        
-        if (field === 'product_id') {
-            const selectedProduct = products.find(p => p.id === Number(value));
+
+        if (field === "product_id") {
+            const selectedProduct = products.find(
+                (p) => p.id === Number(value)
+            );
             if (selectedProduct) {
                 updatedItems[index] = {
                     ...updatedItems[index],
                     product_id: selectedProduct.id,
                     item_name: selectedProduct.name,
-                    description: selectedProduct.description || ''
+                    description: selectedProduct.description || "",
                 };
             } else {
                 // If no product is selected (empty selection)
                 updatedItems[index] = {
                     ...updatedItems[index],
-                    product_id: '',
-                    item_name: '',
-                    description: ''
+                    product_id: "",
+                    item_name: "",
+                    description: "",
                 };
             }
-        } else if (field === 'quantity') {
-            if (value === '') {
-                updatedItems[index][field] = '';
+        } else if (field === "quantity") {
+            if (value === "") {
+                updatedItems[index][field] = "";
             } else {
                 const numValue = parseFloat(value);
                 if (numValue < 0) return;
@@ -670,7 +592,7 @@ export default function AddQuotationForm({ auth }) {
         } else {
             updatedItems[index][field] = value;
         }
-        
+
         setFormData({ ...formData, items: updatedItems });
     };
 
@@ -688,7 +610,7 @@ export default function AddQuotationForm({ auth }) {
             updatedItems[index].attachment = {
                 name: file.name,
                 original_filename: file.name,
-                file: file
+                file: file,
             };
             setFormData({ ...formData, items: updatedItems });
         }
@@ -725,7 +647,10 @@ export default function AddQuotationForm({ auth }) {
         try {
             // First save the RFQ
             const formDataObj = new FormData();
-            formDataObj.append("organization_email", formData.organization_email || "");
+            formDataObj.append(
+                "organization_email",
+                formData.organization_email || ""
+            );
             formDataObj.append("city", formData.city || "");
             formDataObj.append("category_id", formData.category_id || "");
             formDataObj.append("warehouse_id", formData.warehouse_id || "");
@@ -739,12 +664,16 @@ export default function AddQuotationForm({ auth }) {
             let response;
             if (rfqId) {
                 // For updates, use axios.put
-                response = await axios.put(`/api/v1/rfqs/${rfqId}`, formDataObj, {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                        Accept: "application/json",
-                    },
-                });
+                response = await axios.put(
+                    `/api/v1/rfqs/${rfqId}`,
+                    formDataObj,
+                    {
+                        headers: {
+                            "Content-Type": "multipart/form-data",
+                            Accept: "application/json",
+                        },
+                    }
+                );
             } else {
                 // For new RFQs, use axios.post
                 response = await axios.post("/api/v1/rfqs", formDataObj, {
@@ -763,7 +692,7 @@ export default function AddQuotationForm({ auth }) {
 
             // Now save the items with the new RFQ ID
             const itemsFormData = new FormData();
-            const itemsToSend = formData.items.map(item => ({
+            const itemsToSend = formData.items.map((item) => ({
                 id: item.id,
                 product_id: item.product_id,
                 unit_id: item.unit_id,
@@ -771,7 +700,7 @@ export default function AddQuotationForm({ auth }) {
                 brand_id: item.brand_id,
                 expected_delivery_date: item.expected_delivery_date,
                 rfq_id: newRfqId,
-                status_id: item.status_id || '48'
+                status_id: item.status_id || "48",
             }));
 
             itemsFormData.append("items", JSON.stringify(itemsToSend));
@@ -799,13 +728,62 @@ export default function AddQuotationForm({ auth }) {
                 }
             );
 
+            // Only proceed with process steps if we have a successful RFQ response
+            if (newRfqId) {
+                const loggedUser = auth.user?.id;
+                const processResponse = await axios.get(
+                    "/api/v1/processes?include=steps,creator,updater&filter[title]=RFQ Approval"
+                );
+
+                if (processResponse.data?.data?.[0]?.steps?.[0]) {
+                    const process = processResponse.data.data[0];
+                    const processStep = process.steps[0];
+
+                    // Only proceed if we have valid process step data
+                    if (processStep?.id && processStep?.order) {
+                        const processResponseViaUser = await axios.get(
+                            `/api/v1/process-steps/${processStep.order}/user/${loggedUser}`
+                        );
+                        const assignUser = processResponseViaUser?.data;
+
+                        if (assignUser?.user?.user?.id) {
+                            const RFQApprovalTransactionPayload = {
+                                rfq_id: newRfqId,
+                                requester_id: loggedUser,
+                                assigned_to: assignUser.user.user.id,
+                                order: processStep.order,
+                                description: processStep.description,
+                                status: "Pending",
+                            };
+                            await axios.post(
+                                "/api/v1/rfq-approval-transactions",
+                                RFQApprovalTransactionPayload
+                            );
+
+                            const taskPayload = {
+                                process_step_id: processStep.id,
+                                process_id: processStep.process_id,
+                                assigned_at: new Date().toISOString(),
+                                urgency: "Normal",
+                                assigned_to_user_id: assignUser.user.user.id,
+                                assigned_from_user_id: loggedUser,
+                            };
+                            await axios.post("/api/v1/tasks", taskPayload);
+                        }
+                    }
+                }
+            }
+
             if (itemsResponse.data.success) {
                 alert("RFQ and items saved successfully!");
                 router.visit(route("rfq.index"));
             }
         } catch (error) {
             console.error("Error in save and submit:", error);
-            alert(error.response?.data?.message || "Save failed. Please check your data and try again.");
+            alert(
+                error.response?.data?.message ||
+                    "Save failed. Please check your data and try again."
+            );
         }
     };
 
@@ -814,7 +792,9 @@ export default function AddQuotationForm({ auth }) {
             return (
                 <div className="flex flex-col items-center justify-center space-y-2">
                     <DocumentArrowDownIcon className="h-6 w-6 text-gray-400" />
-                    <span className="text-sm text-gray-500">No file attached</span>
+                    <span className="text-sm text-gray-500">
+                        No file attached
+                    </span>
                 </div>
             );
         }
@@ -830,15 +810,21 @@ export default function AddQuotationForm({ auth }) {
             // File from database
             fileName = file.original_filename || file.name || file.file_name;
             // Fix the URL construction
-            if (file.url && file.url.startsWith('http')) {
+            if (file.url && file.url.startsWith("http")) {
                 fileUrl = file.url;
             } else {
-                fileUrl = `/storage/${file.url || file.path || file}`.replace('/storage/storage/', '/storage/');
+                fileUrl = `/storage/${file.url || file.path || file}`.replace(
+                    "/storage/storage/",
+                    "/storage/"
+                );
             }
         } else if (typeof file === "string") {
             // Legacy format - just the path
             fileName = file.split("/").pop();
-            fileUrl = `/storage/${file}`.replace('/storage/storage/', '/storage/');
+            fileUrl = `/storage/${file}`.replace(
+                "/storage/storage/",
+                "/storage/"
+            );
         }
 
         return (
@@ -1210,14 +1196,25 @@ export default function AddQuotationForm({ auth }) {
                                 <tr key={index}>
                                     <td className="px-6 py-6 text-center align-middle">
                                         <select
-                                            value={item.product_id || ''}
-                                            onChange={(e) => handleItemChange(index, 'product_id', e.target.value)}
+                                            value={item.product_id || ""}
+                                            onChange={(e) =>
+                                                handleItemChange(
+                                                    index,
+                                                    "product_id",
+                                                    e.target.value
+                                                )
+                                            }
                                             className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent cursor-pointer"
                                             required
                                         >
-                                            <option value="">Select Product</option>
+                                            <option value="">
+                                                Select Product
+                                            </option>
                                             {products.map((product) => (
-                                                <option key={product.id} value={product.id}>
+                                                <option
+                                                    key={product.id}
+                                                    value={product.id}
+                                                >
                                                     {product.name}
                                                 </option>
                                             ))}
@@ -1225,7 +1222,7 @@ export default function AddQuotationForm({ auth }) {
                                     </td>
                                     <td className="px-6 py-6 text-center align-middle">
                                         <textarea
-                                            value={item.description || ''}
+                                            value={item.description || ""}
                                             className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center min-h-[3rem] resize-none overflow-hidden bg-gray-100"
                                             style={{
                                                 background: "none",

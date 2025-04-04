@@ -55,9 +55,15 @@ import InventoryTable from "./Dashboard/Warehouse/Inventory/InventoryTable";
 import GRNTable from "./Dashboard/Warehouse/GRN/GRNTable";
 import CreateGRNTable from "./Dashboard/Warehouse/GRN/CreateGRNTable";
 import ProcessStatuses from "./Dashboard/ReportsAndStatuses/ProcessStatus/processStatus";
-import Statuses from "./Dashboard/ReportsAndStatuses/ProcessStatus/Statuses";
 import Reports from "./Dashboard/ReportsAndStatuses/Reports/ReportLogs";
 import PurchaseStatus from "./Dashboard/ReportsAndStatuses/PurchaseDocStatus/PurchaseStatuses";
+import MRStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/MRStatusFlow";
+import RFQStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/RFQStatusFlow";
+import POStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/POStatusFlow";
+import PMTStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/PMTStatusFlow";
+import MInvoiceStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/MInvoiceStatusFlow";
+import BudgetRequestStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/BudgetRequestStatusFlow";
+import TotalBudgetStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/TotalBudgetStatusFlow";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -147,8 +153,33 @@ export default function Dashboard({ auth, page }) {
             return <PurchaseStatus />;
         if (page === "ReportsAndStatuses/ProcessStatus/ProcessStatus")
             return <ProcessStatuses />;
-        if (page === "ReportsAndStatuses/ProcessStatus/Statuses")
-            return <Statuses />;
+        if (page === "ReportsAndStatuses/ProcessStatus/StatusFlow/MRStatusFlow")
+            return <MRStatusFlow />;
+        if (
+            page === "ReportsAndStatuses/ProcessStatus/StatusFlow/RFQStatusFlow"
+        )
+            return <RFQStatusFlow />;
+        if (page === "ReportsAndStatuses/ProcessStatus/StatusFlow/POStatusFlow")
+            return <POStatusFlow />;
+        if (
+            page === "ReportsAndStatuses/ProcessStatus/StatusFlow/PMTStatusFlow"
+        )
+            return <PMTStatusFlow />;
+        if (
+            page ===
+            "ReportsAndStatuses/ProcessStatus/StatusFlow/MInvoiceStatusFlow"
+        )
+            return <MInvoiceStatusFlow />;
+        if (
+            page ===
+            "ReportsAndStatuses/ProcessStatus/StatusFlow/BudgetRequestStatusFlow"
+        )
+            return <BudgetRequestStatusFlow />;
+        if (
+            page ===
+            "ReportsAndStatuses/ProcessStatus/StatusFlow/TotalBudgetStatusFlow"
+        )
+            return <TotalBudgetStatusFlow />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };

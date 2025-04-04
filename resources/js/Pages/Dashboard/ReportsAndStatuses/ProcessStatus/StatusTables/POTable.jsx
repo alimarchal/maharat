@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye } from "@fortawesome/free-solid-svg-icons";
+import { Link } from "@inertiajs/react";
 
 export default function POTable() {
     const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -91,9 +92,12 @@ export default function POTable() {
                                     {Number(order.amount || 0).toLocaleString()}
                                 </td>
                                 <td className="py-3 px-4 flex justify-center space-x-3">
-                                    <button className="text-[#9B9DA2] hover:text-gray-500">
+                                    <Link
+                                        href={`/statuses/po-status/${order.id}`}
+                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                    >
                                         <FontAwesomeIcon icon={faEye} />
-                                    </button>
+                                    </Link>
                                 </td>
                             </tr>
                         ))
