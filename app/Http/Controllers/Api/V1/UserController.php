@@ -464,6 +464,7 @@ class UserController extends Controller
                     'user_id' => $user->id,
                     'notification_type_id' => $type->id,
                     'notification_channel_id' => $channel->id,
+                    'is_user' => $isEnabled,
                     'is_enabled' => $isEnabled,
                 ]);
             }

@@ -36,6 +36,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('notification_type_id')->constrained()->onDelete('cascade');
             $table->foreignId('notification_channel_id')->constrained()->onDelete('cascade');
+            $table->boolean('is_user')->nullable()->default(false);
             $table->boolean('is_enabled')->default(true);
             $table->timestamps();
 
