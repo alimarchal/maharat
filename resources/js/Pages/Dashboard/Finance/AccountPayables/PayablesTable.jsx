@@ -243,4 +243,4 @@ const PayablesTable = () => {
     );
 };
 
-export { PayablesTable };
+export default PayablesTable;

@@ -182,7 +182,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('/quotations/next-number', [QuotationController::class, 'getNextQuotationNumber']);
 
     Route::get('/purchaseorder/next-number', [PurchaseOrderController::class, 'getNextPurchaseOrderNumber']);
-    Route::apiResource('purchase-orders', PurchaseOrderController::class);
 
     // Task Routes
     Route::apiResource('tasks', TaskController::class);
@@ -230,10 +229,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // End Inventory
 
     // Department routes
-    Route::apiResource('departments', DepartmentController::class);
     Route::get('departments-tree', [DepartmentController::class, 'tree']);
-    Route::post('departments/{id}/restore', [DepartmentController::class, 'restore']);
-
 
     Route::apiResource('cost-centers', CostCenterController::class);
     Route::get('cost-centers-tree', [CostCenterController::class, 'tree']);
@@ -284,7 +280,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('payment-orders', PaymentOrderController::class);
     // Payment Order Logs routes
     Route::apiResource('payment-order-logs', PaymentOrderLogController::class);
-    Route::apiResource('designations', DesignationController::class);
 
     Route::get('users/organogram', [UserController::class, 'organogram']);
     Route::post('users/{id}/restore', [UserController::class, 'restore']);
@@ -362,7 +357,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/roles/{role}/toggle-permission', [RoleController::class, 'togglePermission']);
     Route::get('/user/current-role', [UserController::class, 'getCurrentRole']);
 
-    Route::get('/user/current', [UserController::class, 'current']);
     Route::get('/roles', [RoleController::class, 'index']);
     Route::get('/roles/{role}', [RoleController::class, 'show']);
     Route::put('/roles/{role}', [RoleController::class, 'update']);
