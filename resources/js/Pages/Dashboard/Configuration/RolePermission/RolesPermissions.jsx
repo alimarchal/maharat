@@ -10,6 +10,16 @@ const documentTypes = [
     "PMNTOs documents",
 ];
 
+// Map document types to their database permission keys
+const documentTypeKeys = {
+    "RFQ document": "rfqs",
+    "Quotations document": "quotations",
+    "Goods Receiving Notes documents": "goods_receiving_notes",
+    "MRs documents": "material_requests",
+    "Invoices documents": "invoices",
+    "PMNTOs documents": "payment_orders"
+};
+
 const displayNames = {
     'rfqs': 'RFQ Document',
     'quotations': 'Quotations Document',
@@ -29,29 +39,22 @@ const RolesPermissions = () => {
         }))
     );
     const [currentUserRole, setCurrentUserRole] = useState(null);
-    const [managedRoles, setManagedRoles] = useState([]);
-    const [selectedRole, setSelectedRole] = useState(null);
-    const [roles, setRoles] = useState([]);
+    const [users, setUsers] = useState([]);
+    const [selectedUser, setSelectedUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Fetch initial data when component mounts
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
                 // Get current user's role
                 const userResponse = await axios.get('/api/v1/user/current-role');
-                console.log('Current user role:', userResponse.data); // Debug log
+                console.log('Current user role:', userResponse.data);
                 setCurrentUserRole(userResponse.data.role);
 
-                // Get all roles
-                const rolesResponse = await axios.get('/api/v1/roles');
-                console.log('All roles:', rolesResponse.data); // Debug log
-                setRoles(rolesResponse.data.data);
-
-                // Get manageable roles based on hierarchy
-                const subordinatesResponse = await axios.get(`/api/v1/roles/${userResponse.data.role.id}/subordinates`);
-                console.log('Subordinate roles:', subordinatesResponse.data); // Debug log
-                setManagedRoles(subordinatesResponse.data.data);
+                // Get all users
+                const usersResponse = await axios.get('/api/v1/users');
+                console.log('All users:', usersResponse.data);
+                setUsers(usersResponse.data.data);
 
                 setLoading(false);
             } catch (error) {
@@ -63,36 +66,39 @@ const RolesPermissions = () => {
         fetchInitialData();
     }, []);
 
-    // Fetch role permissions when a role is selected
+    // Fetch user permissions when a user is selected
     useEffect(() => {
-        if (selectedRole) {
-            fetchRolePermissions(selectedRole);
+        if (selectedUser) {
+            fetchUserPermissions(selectedUser);
         }
-    }, [selectedRole]);
+    }, [selectedUser]);
 
-    const fetchRolePermissions = async (roleId) => {
+    const fetchUserPermissions = async (userId) => {
         try {
-            console.log('Fetching permissions for role:', roleId);
-            const response = await axios.get(`/api/v1/roles/${roleId}/permissions`);
-            console.log('Raw permissions:', response.data.data);
-            const rolePermissions = response.data.data;
+            console.log('Fetching permissions for user:', userId);
+            const response = await axios.get(`/api/v1/users/${userId}`);
+            console.log('Raw user data:', response.data.data);
+            const userPermissions = response.data.data.permissions || [];
             
-            const newPermissions = documentTypes.map((docType) => ({
-                read: rolePermissions.some(p => p.name === `view_${docType.toLowerCase().replace(/\s+/g, '_')}`),
-                create: rolePermissions.some(p => p.name === `create_${docType.toLowerCase().replace(/\s+/g, '_')}`),
-                modify: rolePermissions.some(p => p.name === `edit_${docType.toLowerCase().replace(/\s+/g, '_')}`),
-                delete: rolePermissions.some(p => p.name === `delete_${docType.toLowerCase().replace(/\s+/g, '_')}`)
-            }));
+            const newPermissions = documentTypes.map((docType) => {
+                const docTypeKey = documentTypeKeys[docType];
+                return {
+                    read: userPermissions.includes(`view_${docTypeKey}`),
+                    create: userPermissions.includes(`create_${docTypeKey}`),
+                    modify: userPermissions.includes(`edit_${docTypeKey}`),
+                    delete: userPermissions.includes(`delete_${docTypeKey}`)
+                };
+            });
 
             console.log('Mapped permissions:', newPermissions);
             setPermissions(newPermissions);
         } catch (error) {
-            console.error("Failed to fetch role permissions:", error);
+            console.error("Failed to fetch user permissions:", error);
         }
     };
 
     const togglePermission = async (index, type) => {
-        if (!selectedRole || !canManageRole(selectedRole)) return;
+        if (!selectedUser || !canManageUser(selectedUser)) return;
 
         try {
             const permissionMapping = {
@@ -102,60 +108,77 @@ const RolesPermissions = () => {
                 'delete': 'delete'
             };
 
-            const docType = documentTypes[index].toLowerCase().replace(/\s+/g, '_');
-            const permissionName = `${permissionMapping[type]}_${docType}`;
+            const docType = documentTypes[index];
+            const docTypeKey = documentTypeKeys[docType];
+            const permissionName = `${permissionMapping[type]}_${docTypeKey}`;
+            const currentValue = permissions[index][type];
             
-            console.log('Toggling permission:', permissionName);
+            console.log('Current permissions state:', permissions);
+            console.log('Toggling permission:', permissionName, 'Current value:', currentValue);
             
-            const response = await axios.post(`/api/v1/roles/${selectedRole}/toggle-permission`, {
+            // Update UI immediately for better UX
+            const newPermissions = [...permissions];
+            newPermissions[index][type] = !currentValue;
+            setPermissions(newPermissions);
+            
+            // Use the togglePermission endpoint
+            const response = await axios.post(`/api/v1/users/${selectedUser}/toggle-permission`, {
                 permission: permissionName,
-                value: !permissions[index][type]
+                value: !currentValue
             });
 
-            if (response.data.data) {
-                const newPermissions = [...permissions];
-                newPermissions[index][type] = !permissions[index][type];
-                setPermissions(newPermissions);
+            if (response.data.success) {
+                console.log('Permission toggled successfully');
+                // Refresh permissions to ensure we have the latest state
+                fetchUserPermissions(selectedUser);
             }
         } catch (error) {
             console.error("Failed to toggle permission:", error);
+            console.error("Error details:", error.response?.data);
+            
+            // Revert the UI change if the API call failed
+            const newPermissions = [...permissions];
+            newPermissions[index][type] = currentValue;
+            setPermissions(newPermissions);
         }
     };
 
-    const canManageRole = (roleId) => {
-        // Admin can manage all roles
-        if (currentUserRole?.name === 'Admin') return true;
-        
-        // Other roles can manage their subordinates
-        return managedRoles.some(role => role.id === parseInt(roleId));
+    const canManageUser = (userId) => {
+        return currentUserRole?.name === 'Admin';
     };
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-full">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#009FDC]"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full mx-auto p-4">
             <h2 className="text-2xl md:text-3xl font-bold text-[#2C323C]">
-                Roles & Permissions
+                User Permissions
             </h2>
             <p className="text-lg md:text-xl text-[#7D8086]">
-                Manage role permissions for different document types
+                Manage permissions for individual users
             </p>
 
-            {/* Role Selection */}
+            {/* User Selection */}
             <div className="mb-6">
                 <select 
-                    value={selectedRole || ''} 
-                    onChange={(e) => setSelectedRole(e.target.value)}
-                    className="mt-4 p-2 border rounded-md bg-white text-[#2C323C]"
+                    value={selectedUser || ''} 
+                    onChange={(e) => setSelectedUser(e.target.value)}
+                    className="mt-4 p-2 border rounded-md bg-white text-[#2C323C] w-1/3"
                 >
-                    <option value="">Select a role</option>
-                    {roles.map(role => (
+                    <option value="">Select a user</option>
+                    {users.map(user => (
                         <option 
-                            key={role.id} 
-                            value={role.id}
-                            disabled={!canManageRole(role.id)}
+                            key={user.id} 
+                            value={user.id}
+                            disabled={!canManageUser(user.id)}
                         >
-                            {role.name} {!canManageRole(role.id) ? '(No access)' : ''}
+                            {user.name}
                         </option>
                     ))}
                 </select>
@@ -192,7 +215,7 @@ const RolesPermissions = () => {
                             <label
                                 key={type}
                                 className={`flex items-center cursor-pointer justify-center ${
-                                    !selectedRole || !canManageRole(selectedRole) ? 'opacity-50 cursor-not-allowed' : ''
+                                    !selectedUser || !canManageUser(selectedUser) ? 'opacity-50 cursor-not-allowed' : ''
                                 }`}
                             >
                                 <input
@@ -200,7 +223,7 @@ const RolesPermissions = () => {
                                     className="hidden"
                                     checked={permissions[index][type]}
                                     onChange={() => togglePermission(index, type)}
-                                    disabled={!selectedRole || !canManageRole(selectedRole)}
+                                    disabled={!selectedUser || !canManageUser(selectedUser)}
                                 />
                                 <div className={`w-14 h-7 flex items-center rounded-full border border-[#2C323C33] p-1 shadow-md transition duration-300`}>
                                     <div className={`w-5 h-5 rounded-full shadow-md transform transition duration-300 ${

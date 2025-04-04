@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 const documentTypes = [
@@ -18,23 +18,155 @@ const Notification = () => {
             sms: false,
         }))
     );
+    const [loading, setLoading] = useState(true);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [toggleLoading, setToggleLoading] = useState({});
+
+    // Fetch initial data when component mounts
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            try {
+                // Get current user
+                const userResponse = await axios.get('/api/v1/user/current');
+                console.log('Current user:', userResponse.data);
+                setCurrentUser(userResponse.data.data);
+
+                // Get user's notifications
+                const notificationsResponse = await axios.get(`/api/v1/users/${userResponse.data.data.id}/notifications`, {
+                    params: {
+                        per_page: 100
+                    }
+                });
+                console.log('Raw notifications:', notificationsResponse.data);
+
+                // Map notifications to permissions
+                const notifications = notificationsResponse.data.data || [];
+                const newPermissions = documentTypes.map(docType => {
+                    const docKey = docType.toLowerCase().replace(/\s+/g, '_');
+                    
+                    // Find notifications for this document type
+                    const docNotifications = notifications.filter(n => 
+                        n.data?.additional_data?.document_type === docKey
+                    );
+                    
+                    // Check if there are enabled notifications for each channel
+                    const systemsEnabled = docNotifications.some(n => 
+                        n.data?.type === 'system_alert' && 
+                        n.data?.additional_data?.enabled === true
+                    );
+                    
+                    const emailEnabled = docNotifications.some(n => 
+                        n.data?.type === 'email_notification' && 
+                        n.data?.additional_data?.enabled === true
+                    );
+                    
+                    const smsEnabled = docNotifications.some(n => 
+                        n.data?.type === 'sms_notification' && 
+                        n.data?.additional_data?.enabled === true
+                    );
+                    
+                    return {
+                        systems: systemsEnabled,
+                        email: emailEnabled,
+                        sms: smsEnabled
+                    };
+                });
+
+                console.log('Mapped permissions:', newPermissions);
+                setPermissions(newPermissions);
+                setLoading(false);
+            } catch (error) {
+                console.error("Failed to fetch initial data:", error);
+                setLoading(false);
+            }
+        };
+
+        fetchInitialData();
+    }, []);
 
     const togglePermission = async (index, type) => {
-        const newPermissions = [...permissions];
-        newPermissions[index][type] = !newPermissions[index][type];
-        setPermissions(newPermissions);
+        const toggleId = `${index}-${type}`;
+        setToggleLoading(prev => ({ ...prev, [toggleId]: true }));
+        
+        try {
+            const docType = documentTypes[index].toLowerCase().replace(/\s+/g, '_');
+            const notificationType = type === 'systems' ? 'system_alert' : 
+                                   type === 'email' ? 'email_notification' : 'sms_notification';
 
-        // try {
-        //     await axios.post("/api/v1/notifications", {
-        //         document: documentTypes[index],
-        //         permissionType: type,
-        //         status: newPermissions[index][type],
-        //     });
-        //     console.log("API call successful");
-        // } catch (error) {
-        //     console.error("API call failed:", error);
-        // }
+            // Get the new state
+            const newEnabled = !permissions[index][type];
+
+            // Update UI immediately for better UX
+            const newPermissions = [...permissions];
+            newPermissions[index][type] = newEnabled;
+            setPermissions(newPermissions);
+
+            // Check if a notification already exists for this document type and channel
+            const existingNotifications = await axios.get(`/api/v1/users/${currentUser.id}/notifications`, {
+                params: {
+                    per_page: 100
+                }
+            });
+            
+            const existingNotification = existingNotifications.data.data.find(
+                n => n.data?.type === notificationType && 
+                n.data?.additional_data?.document_type === docType
+            );
+            
+            let response;
+            
+            if (existingNotification) {
+                // Update existing notification
+                response = await axios.patch(`/api/v1/notifications/${existingNotification.id}`, {
+                    data: {
+                        ...existingNotification.data,
+                        additional_data: {
+                            ...existingNotification.data.additional_data,
+                            enabled: newEnabled
+                        }
+                    }
+                });
+            } else {
+                // Create new notification
+                response = await axios.post('/api/v1/notifications', {
+                    user_ids: [currentUser.id],
+                    title: `${docType} Notification Setting`,
+                    message: `${type} notifications ${newEnabled ? 'enabled' : 'disabled'} for ${documentTypes[index]}`,
+                    type: notificationType,
+                    data: {
+                        document_type: docType,
+                        enabled: newEnabled,
+                        notification_channel: type
+                    }
+                });
+            }
+
+            console.log('Toggle response:', response.data);
+
+            if (response.data.status !== 'success') {
+                // Revert if not successful
+                newPermissions[index][type] = !newEnabled;
+                setPermissions(newPermissions);
+                console.error('Failed to toggle notification:', response.data);
+            }
+        } catch (error) {
+            console.error("Toggle error:", error.response?.data || error);
+            // Revert on error
+            const newPermissions = [...permissions];
+            newPermissions[index][type] = !newPermissions[index][type];
+            setPermissions(newPermissions);
+        } finally {
+            setToggleLoading(prev => ({ ...prev, [toggleId]: false }));
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-full">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#009FDC]"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full mx-auto p-4">
@@ -85,28 +217,26 @@ const Notification = () => {
                             <label
                                 key={type}
                                 className="flex items-center cursor-pointer justify-center"
+                                onClick={(e) => {
+                                    e.preventDefault(); // Prevent double-toggle
+                                    togglePermission(index, type);
+                                }}
                             >
                                 <input
                                     type="checkbox"
                                     className="hidden"
                                     checked={permissions[index][type]}
-                                    onChange={() =>
-                                        togglePermission(index, type)
-                                    }
+                                    onChange={() => {}} // Empty onChange to avoid React warning
                                 />
-                                <div
+                                <div 
                                     className={`w-14 h-7 flex items-center rounded-full border border-[#2C323C33] p-1 shadow-md transition duration-300 ${
-                                        permissions[index][type]
-                                            ? "bg-white"
-                                            : "bg-white"
-                                    }`}
+                                        permissions[index][type] ? "bg-[#E8F3FF]" : "bg-white"
+                                    } ${toggleLoading[`${index}-${type}`] ? "opacity-50" : ""}`}
                                 >
-                                    <div
+                                    <div 
                                         className={`w-5 h-5 rounded-full shadow-md transform transition duration-300 ${
-                                            permissions[index][type]
-                                                ? "translate-x-6 bg-[#009FDC]"
-                                                : "bg-[#D7D8D9]"
-                                        }`}
+                                            permissions[index][type] ? "translate-x-6 bg-[#009FDC]" : "bg-[#D7D8D9]"
+                                        } ${toggleLoading[`${index}-${type}`] ? "animate-pulse" : ""}`}
                                     ></div>
                                 </div>
                             </label>
