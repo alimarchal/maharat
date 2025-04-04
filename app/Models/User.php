@@ -163,4 +163,16 @@ class User extends Authenticatable
         $levelThreeUsers = User::where('hierarchy_level', 3)->get();
 
      */
+
+    // Add to your existing User model
+    public function notificationSettings()
+    {
+        return $this->hasMany(UserNotificationSetting::class);
+    }
+
+    // Using Laravel's notification system
+    public function receivesBroadcastNotificationsOn()
+    {
+        return 'users.'.$this->id;
+    }
 }

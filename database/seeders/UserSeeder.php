@@ -5,16 +5,34 @@ namespace Database\Seeders;
 use App\Models\User;
 use App\Models\Department;
 use App\Models\Designation;
+use App\Services\NotificationSettingsService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
+
+    protected $notificationSettingsService;
+
+    public function __construct(NotificationSettingsService $notificationSettingsService)
+    {
+        $this->notificationSettingsService = $notificationSettingsService;
+    }
+
+
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
+
+        // Ensure notification types and channels are seeded
+        $this->call([
+            NotificationTypesSeeder::class,
+            NotificationChannelsSeeder::class,
+        ]);
+
+
         // Fetch valid department and designation IDs
         $departmentIds = Department::pluck('id')->toArray();
         $designationIds = Designation::pluck('id')->toArray();
@@ -52,6 +70,8 @@ class UserSeeder extends Seeder
             ]
         );
         $admin->assignRole('Admin');
+        $this->notificationSettingsService->setupDefaultSettingsForUser($admin);
+
 
         // Create Director
         $director = User::firstOrCreate(
@@ -68,6 +88,8 @@ class UserSeeder extends Seeder
             ]
         );
         $director->assignRole('Director');
+        $this->notificationSettingsService->setupDefaultSettingsForUser($director);
+
 
         // Create Manager
         $manager = User::firstOrCreate(
@@ -84,6 +106,8 @@ class UserSeeder extends Seeder
             ]
         );
         $manager->assignRole('Manager');
+        $this->notificationSettingsService->setupDefaultSettingsForUser($manager);
+
 
         // Create Supervisor
         $supervisor = User::firstOrCreate(
@@ -100,6 +124,8 @@ class UserSeeder extends Seeder
             ]
         );
         $supervisor->assignRole('Supervisor');
+        $this->notificationSettingsService->setupDefaultSettingsForUser($supervisor);
+
 
         // Fixed Users
         $users = [
@@ -138,6 +164,8 @@ class UserSeeder extends Seeder
             );
 
             $user->assignRole('User');
+            $this->notificationSettingsService->setupDefaultSettingsForUser($user);
+
         }
 
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();

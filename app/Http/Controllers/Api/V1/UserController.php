@@ -4,7 +4,11 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Designation;
+use App\Models\NotificationChannel;
+use App\Models\NotificationType;
 use App\Models\Role;
+use App\Models\UserNotificationSetting;
+use App\Services\NotificationSettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Http\Requests\V1\StoreUserRequest;
@@ -20,6 +24,12 @@ use Storage;
 
 class UserController extends Controller
 {
+    protected $notificationSettingsService;
+
+    public function __construct(NotificationSettingsService $notificationSettingsService)
+    {
+        $this->notificationSettingsService = $notificationSettingsService;
+    }
 
 
     public function index(Request $request)
@@ -41,9 +51,7 @@ class UserController extends Controller
         return new UserCollection($users);
 
     }
-    /**
-     * Store a newly created resource in storage.
-     */
+
     public function store(StoreUserRequest $request)
     {
         $validated = $request->validated();
@@ -62,40 +70,23 @@ class UserController extends Controller
         $role = Role::find($request->role_id);
         $user->assignRole($role->name);
 
+        // Setup default notification settings
+        $this->notificationSettingsService->setupDefaultSettingsForUser($user);
+
         return new UserResource($user);
     }
 
-    /**
-     * Display the specified resource.
-     */
+
     public function show(User $user)
     {
         return new UserResource($user);
     }
 
-
-    /**
-     * Update the specified user in storage.
-     * Handles both permission names and IDs.
-     *
-     * @param UpdateUserRequest $request
-     * @param User $user
-     * @return UserResource|\Illuminate\Http\JsonResponse
-     */
     public function update(UpdateUserRequest $request, User $user)
     {
-        // Log request info
-//        Log::info("Update request received for user ID: {$user->id}", [
-//            'user_original' => $user->toArray(),
-//            'request_data' => $request->all(),
-//        ]);
 
-        // Validate the request
         $validated = $request->validated();
-//        Log::info("Validated data:", $validated);
-
         if (empty($validated)) {
-//            Log::warning("Empty validated data - no fields passed validation!");
             return response()->json(['error' => 'No valid fields to update'], 422);
         }
 
@@ -219,29 +210,17 @@ class UserController extends Controller
 
             // Refresh user to include updated relationships
             $user->refresh();
-//            Log::info("User data after update:", [
-//                'id' => $user->id,
-//                'name' => $user->name,
-//                'roles' => $user->roles->pluck('name'),
-//                'permissions' => $user->getAllPermissions()->pluck('name')
-//            ]);
 
             return new UserResource($user);
 
         } catch (\Exception $e) {
             DB::rollBack();
 
-//            Log::error("Exception during update: " . $e->getMessage(), [
-//                'trace' => $e->getTraceAsString()
-//            ]);
-
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+
     public function destroy(User $user)
     {
         $user->delete();
@@ -249,12 +228,7 @@ class UserController extends Controller
         return response()->noContent();
     }
 
-    /**
-     * Get the hierarchical structure under a user
-     *
-     * @param \App\Models\User|null $user
-     * @return \Illuminate\Http\JsonResponse
-     */
+
     public function hierarchy(User $user = null): JsonResponse
     {
         $user = $user ?? auth()->user();
@@ -265,12 +239,6 @@ class UserController extends Controller
         return response()->json(['data' => $hierarchyData]);
     }
 
-    /**
-     * Format user hierarchy data recursively
-     *
-     * @param \App\Models\User $user
-     * @return array
-     */
     private function formatHierarchy(User $user): array
     {
         // Load the user with all subordinates
@@ -295,25 +263,12 @@ class UserController extends Controller
         return $result;
     }
 
-
-    /**
-     * Get users at a specific hierarchy level
-     *
-     * @param int $level
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function getUsersByLevel(int $level): JsonResponse
     {
         $users = User::where('hierarchy_level', $level)->get();
         return response()->json(['data' => $users]);
     }
 
-    /**
-     * Get a user's reporting chain (path to top of organization)
-     *
-     * @param \App\Models\User|null $user
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function reportingChain(User $user = null): JsonResponse
     {
         $user = $user ?? auth()->user();
@@ -322,13 +277,6 @@ class UserController extends Controller
         return response()->json(['data' => $chain]);
     }
 
-
-    /**
-     * Get organizational chart data
-     *
-     * @param User|null $user
-     * @return JsonResponse
-     */
     public function organogram(User $user = null): JsonResponse
     {
         if ($user === null) {
@@ -358,11 +306,6 @@ class UserController extends Controller
         return response()->json(['data' => [], 'message' => 'No users found']);
     }
 
-    /**
-     * Build a complete organogram structure from all users
-     *
-     * @return array
-     */
     private function buildCompleteOrganogram(): array
     {
         // Find the root user with hierarchy_level = 0 and null parent_id
@@ -408,12 +351,6 @@ class UserController extends Controller
         return $this->buildOrganogramData($rootUser);
     }
 
-    /**
-     * Build organogram data structure recursively
-     *
-     * @param User $user
-     * @return array
-     */
     private function buildOrganogramData(User $user): array
     {
         // Load essential relations including nested children
@@ -438,47 +375,6 @@ class UserController extends Controller
 
         return $node;
     }
-
-
-    /*
-    public function hierarchy(User $user = null): JsonResponse
-    {
-        $user = $user ?? auth()->user();
-         $hierarchy = $this->buildUserHierarchy($user);
-
-        return response()->json(['data' => $hierarchy]);
-    }
-
-    private function buildUserHierarchy(User $user): array
-    {
-        $hierarchy = [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'roles' => $user->roles->pluck('name'),
-            'children' => []
-        ];
-
-        foreach ($user->roles as $role) {
-            $roleIds = Role::where(function($query) use ($role) {
-                $path = explode('.', $role->id);
-                $query->where('parent_role_id', $role->id);
-            })->pluck('id');
-
-            if ($roleIds->isNotEmpty()) {
-                $subordinates = User::whereHas('roles', function($query) use ($roleIds) {
-                    $query->whereIn('id', $roleIds);
-                })->get();
-
-                foreach ($subordinates as $subordinate) {
-                    $hierarchy['children'][] = $this->buildUserHierarchy($subordinate);
-                }
-            }
-        }
-
-        return $hierarchy;
-    }
-    */
 
     public function getCurrentRole(): JsonResponse
     {
@@ -533,7 +429,7 @@ class UserController extends Controller
     public function current()
     {
         $user = auth()->user();
-        
+
         if (!$user) {
             return response()->json([
                 'message' => 'Unauthenticated'
@@ -541,6 +437,37 @@ class UserController extends Controller
         }
 
         return new UserResource($user);
+    }
+
+
+    // In your UserController or Service
+    public function setupDefaultNotificationSettings(User $user)
+    {
+        $notificationTypes = NotificationType::all();
+        $channels = NotificationChannel::all();
+
+        // Default configuration similar to your UI
+        $defaultSettings = [
+            'rfq_document' => ['email' => true, 'system' => false, 'sms' => false],
+            'quotations_document' => ['email' => false, 'system' => true, 'sms' => true],
+            'goods_receiving_notes' => ['email' => false, 'system' => true, 'sms' => false],
+            'mrs_documents' => ['email' => true, 'system' => false, 'sms' => false],
+            'invoices_documents' => ['email' => false, 'system' => false, 'sms' => false],
+            'pmntos_documents' => ['email' => false, 'system' => false, 'sms' => false],
+        ];
+
+        foreach ($notificationTypes as $type) {
+            foreach ($channels as $channel) {
+                $isEnabled = $defaultSettings[$type->key][$channel->key] ?? false;
+
+                UserNotificationSetting::create([
+                    'user_id' => $user->id,
+                    'notification_type_id' => $type->id,
+                    'notification_channel_id' => $channel->id,
+                    'is_enabled' => $isEnabled,
+                ]);
+            }
+        }
     }
 
 }

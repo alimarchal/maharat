@@ -24,6 +24,8 @@ class DatabaseSeeder extends Seeder
             RoleAndPermissionSeeder::class,
             CompanySeeder::class,
             DepartmentSeeder::class,
+            NotificationTypesSeeder::class,
+            NotificationChannelsSeeder::class,
             UserSeeder::class,
 
             // Product related seeders
@@ -73,8 +75,11 @@ class DatabaseSeeder extends Seeder
 
             PaymentOrderSeeder::class,
             PaymentOrderApprovalTransactionSeeder::class,
-            
+
             MahratInvoiceApprovalTransactionSeeder::class,
+
+
+
         ]);
     }
 }
