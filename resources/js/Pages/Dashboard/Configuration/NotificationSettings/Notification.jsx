@@ -10,6 +10,23 @@ const documentTypes = [
     "PMNTOs documents",
 ];
 
+// Map document types to their database keys
+const documentTypeKeys = {
+    "RFQ document": "rfq_document",
+    "Quotations document": "quotations_document",
+    "Goods Receiving Notes documents": "goods_receiving_notes",
+    "MRs documents": "mrs_documents",
+    "Invoices documents": "invoices_documents",
+    "PMNTOs documents": "pmntos_documents"
+};
+
+// Map UI channel names to database keys
+const channelKeys = {
+    "systems": "system",
+    "email": "email",
+    "sms": "sms"
+};
+
 const Notification = () => {
     const [permissions, setPermissions] = useState(
         documentTypes.map(() => ({
@@ -21,6 +38,8 @@ const Notification = () => {
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState(null);
     const [toggleLoading, setToggleLoading] = useState({});
+    const [notificationTypes, setNotificationTypes] = useState([]);
+    const [notificationChannels, setNotificationChannels] = useState([]);
 
     // Fetch initial data when component mounts
     useEffect(() => {
@@ -31,44 +50,30 @@ const Notification = () => {
                 console.log('Current user:', userResponse.data);
                 setCurrentUser(userResponse.data.data);
 
-                // Get user's notifications
-                const notificationsResponse = await axios.get(`/api/v1/users/${userResponse.data.data.id}/notifications`, {
-                    params: {
-                        per_page: 100
-                    }
-                });
-                console.log('Raw notifications:', notificationsResponse.data);
+                // Get notification types
+                const typesResponse = await axios.get('/api/v1/notification-types');
+                console.log('Notification types:', typesResponse.data);
+                setNotificationTypes(typesResponse.data.data);
 
-                // Map notifications to permissions
-                const notifications = notificationsResponse.data.data || [];
+                // Get notification channels
+                const channelsResponse = await axios.get('/api/v1/notification-channels');
+                console.log('Notification channels:', channelsResponse.data);
+                setNotificationChannels(channelsResponse.data.data);
+
+                // Get user's notification settings
+                const settingsResponse = await axios.get(`/api/v1/users/${userResponse.data.data.id}/notification-settings`);
+                console.log('User notification settings:', settingsResponse.data);
+                
+                // Map settings to permissions state
+                const settings = settingsResponse.data.settings || {};
                 const newPermissions = documentTypes.map(docType => {
-                    const docKey = docType.toLowerCase().replace(/\s+/g, '_');
-                    
-                    // Find notifications for this document type
-                    const docNotifications = notifications.filter(n => 
-                        n.data?.additional_data?.document_type === docKey
-                    );
-                    
-                    // Check if there are enabled notifications for each channel
-                    const systemsEnabled = docNotifications.some(n => 
-                        n.data?.type === 'system_alert' && 
-                        n.data?.additional_data?.enabled === true
-                    );
-                    
-                    const emailEnabled = docNotifications.some(n => 
-                        n.data?.type === 'email_notification' && 
-                        n.data?.additional_data?.enabled === true
-                    );
-                    
-                    const smsEnabled = docNotifications.some(n => 
-                        n.data?.type === 'sms_notification' && 
-                        n.data?.additional_data?.enabled === true
-                    );
+                    const docKey = documentTypeKeys[docType];
+                    const docSettings = settings[docKey] || {};
                     
                     return {
-                        systems: systemsEnabled,
-                        email: emailEnabled,
-                        sms: smsEnabled
+                        systems: docSettings.system || false,
+                        email: docSettings.email || false,
+                        sms: docSettings.sms || false
                     };
                 });
 
@@ -89,10 +94,10 @@ const Notification = () => {
         setToggleLoading(prev => ({ ...prev, [toggleId]: true }));
         
         try {
-            const docType = documentTypes[index].toLowerCase().replace(/\s+/g, '_');
-            const notificationType = type === 'systems' ? 'system_alert' : 
-                                   type === 'email' ? 'email_notification' : 'sms_notification';
-
+            const docType = documentTypes[index];
+            const docTypeKey = documentTypeKeys[docType];
+            const channelKey = channelKeys[type];
+            
             // Get the new state
             const newEnabled = !permissions[index][type];
 
@@ -101,53 +106,30 @@ const Notification = () => {
             newPermissions[index][type] = newEnabled;
             setPermissions(newPermissions);
 
-            // Check if a notification already exists for this document type and channel
-            const existingNotifications = await axios.get(`/api/v1/users/${currentUser.id}/notifications`, {
-                params: {
-                    per_page: 100
-                }
-            });
+            // Find the notification type and channel IDs
+            const notificationType = notificationTypes.find(t => t.key === docTypeKey);
+            const notificationChannel = notificationChannels.find(c => c.key === channelKey);
             
-            const existingNotification = existingNotifications.data.data.find(
-                n => n.data?.type === notificationType && 
-                n.data?.additional_data?.document_type === docType
-            );
-            
-            let response;
-            
-            if (existingNotification) {
-                // Update existing notification
-                response = await axios.patch(`/api/v1/notifications/${existingNotification.id}`, {
-                    data: {
-                        ...existingNotification.data,
-                        additional_data: {
-                            ...existingNotification.data.additional_data,
-                            enabled: newEnabled
-                        }
-                    }
-                });
-            } else {
-                // Create new notification
-                response = await axios.post('/api/v1/notifications', {
-                    user_ids: [currentUser.id],
-                    title: `${docType} Notification Setting`,
-                    message: `${type} notifications ${newEnabled ? 'enabled' : 'disabled'} for ${documentTypes[index]}`,
-                    type: notificationType,
-                    data: {
-                        document_type: docType,
-                        enabled: newEnabled,
-                        notification_channel: type
-                    }
-                });
+            if (!notificationType || !notificationChannel) {
+                throw new Error(`Notification type or channel not found for ${docTypeKey} and ${channelKey}`);
             }
 
-            console.log('Toggle response:', response.data);
+            // Update the notification setting
+            const response = await axios.put(`/api/v1/users/${currentUser.id}/notification-settings`, {
+                settings: [{
+                    type_id: notificationType.id,
+                    channel_id: notificationChannel.id,
+                    enabled: newEnabled
+                }]
+            });
 
-            if (response.data.status !== 'success') {
+            console.log('Update response:', response.data);
+
+            if (response.data.message !== 'Notification settings updated successfully') {
                 // Revert if not successful
                 newPermissions[index][type] = !newEnabled;
                 setPermissions(newPermissions);
-                console.error('Failed to toggle notification:', response.data);
+                console.error('Failed to update notification setting:', response.data);
             }
         } catch (error) {
             console.error("Toggle error:", error.response?.data || error);

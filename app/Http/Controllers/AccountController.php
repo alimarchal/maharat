@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\V1\Account\StoreAccountRequest;
 use App\Http\Requests\V1\Account\StoreLedgerRequest;
-use App\Http\Requests\V1\Account\UpdateLedgerRequest;
+use App\Http\Requests\V1\Account\UpdateAccountRequest;
 use App\Http\Resources\V1\AccountResource;
 use App\Http\Resources\V1\LedgerResource;
 use App\Models\Account;
@@ -84,7 +84,7 @@ class AccountController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateLedgerRequest $request, Account $account): JsonResponse
+    public function update(UpdateAccountRequest $request, Account $account): JsonResponse
     {
         try {
             DB::beginTransaction();

@@ -29,6 +29,7 @@ class ChartOfAccountResource extends JsonResource
             'parent' => new ChartOfAccountResource($this->whenLoaded('parent')),
             'children' => ChartOfAccountResource::collection($this->whenLoaded('children')),
             'descendants' => ChartOfAccountResource::collection($this->whenLoaded('descendants')),
+            'account_code' => new AccountCodeResource($this->whenLoaded('accountCode')),
         ];
     }
 }

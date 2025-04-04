@@ -29,7 +29,7 @@ import CreatePaymentOrdersTable from "./Dashboard/Finance/PaymentOrder/CreatePay
 import ReceivableTable from "./Dashboard/Finance/AccountReceivables/ReceivableTable";
 import CreateReceivable from "./Dashboard/Finance/AccountReceivables/CreateReceivable";
 import ViewReceivable from "./Dashboard/Finance/AccountReceivables/ViewReceivable";
-import { PayablesTable } from "./Dashboard/Finance/AccountPayables/PayablesTable";
+import PayablesTable from "./Dashboard/Finance/AccountPayables/PayablesTable";
 import ViewPayable from "./Dashboard/Finance/AccountPayables/ViewPayable";
 import IncomeStatementTable from "./Dashboard/BudgetAndAccounts/IncomeStatement/IncomeStatementTable";
 import ViewIncomeStatement from "./Dashboard/BudgetAndAccounts/IncomeStatement/ViewIncomeStatement";

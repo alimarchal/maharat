@@ -31,6 +31,7 @@ class AccountResource extends JsonResource
             'cost_center' => new CostCenterResource($this->whenLoaded('costCenter')),
             'creator' => new UserResource($this->whenLoaded('creator')),
             'updater' => new UserResource($this->whenLoaded('updater')),
+            'chart_of_account' => new ChartOfAccountResource($this->whenLoaded('chartOfAccount')),
         ];
     }
 }
