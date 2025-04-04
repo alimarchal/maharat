@@ -84,6 +84,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('/users/reporting-chain/{user?}', [UserController::class, 'reportingChain']);
     Route::get('/users/organogram/{user?}', [UserController::class, 'organogram']);
     Route::apiResource('users', UserController::class);
+    Route::get('/users', [UserController::class, 'index']);
+    Route::get('/users/{user}', [UserController::class, 'show']);
+    Route::put('/users/{user}', [UserController::class, 'update']);
+    Route::get('/user/current', [UserController::class, 'current']);
 
     // Note the order is important - specific routes before resource routes
     Route::get('roles/hierarchy', [RoleController::class, 'hierarchy']);
@@ -357,5 +361,13 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('/roles/{role}/permissions', [RoleController::class, 'getPermissions']);
     Route::post('/roles/{role}/toggle-permission', [RoleController::class, 'togglePermission']);
     Route::get('/user/current-role', [UserController::class, 'getCurrentRole']);
+
+    Route::get('/user/current', [UserController::class, 'current']);
+    Route::get('/roles', [RoleController::class, 'index']);
+    Route::get('/roles/{role}', [RoleController::class, 'show']);
+    Route::put('/roles/{role}', [RoleController::class, 'update']);
+
+    Route::get('/users/{user}/permissions', [UserController::class, 'getPermissions']);
+    Route::post('/users/{user}/toggle-permission', [UserController::class, 'togglePermission']);
 
 });

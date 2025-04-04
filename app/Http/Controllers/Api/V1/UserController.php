@@ -504,4 +504,43 @@ class UserController extends Controller
         ]);
     }
 
+    public function getPermissions(User $user)
+    {
+        return response()->json([
+            'data' => $user->getAllPermissions()
+        ]);
+    }
+
+    public function togglePermission(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'permission' => 'required|string',
+            'value' => 'required|boolean'
+        ]);
+
+        if ($validated['value']) {
+            $user->givePermissionTo($validated['permission']);
+        } else {
+            $user->revokePermissionTo($validated['permission']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $user->getAllPermissions()
+        ]);
+    }
+
+    public function current()
+    {
+        $user = auth()->user();
+        
+        if (!$user) {
+            return response()->json([
+                'message' => 'Unauthenticated'
+            ], 401);
+        }
+
+        return new UserResource($user);
+    }
+
 }

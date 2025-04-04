@@ -80,32 +80,28 @@ class NotificationController extends Controller
      */
     public function store(Request $request)
     {
-        // Validate the request
         $request->validate([
             'user_ids' => 'nullable|array',
             'user_ids.*' => 'exists:users,id',
             'title' => 'required|string|max:255',
             'message' => 'required|string',
             'type' => 'required|string|max:50',
-            'data' => 'nullable|array'
+            'data' => 'required|array',
+            'data.document_type' => 'required|string',
+            'data.enabled' => 'required|boolean',
+            'data.notification_channel' => 'required|string'
         ]);
 
-        // Prepare notification data
         $notificationData = [
             'title' => $request->title,
             'message' => $request->message,
             'type' => $request->type,
-            'additional_data' => $request->data ?? [],
-            'created_by' => Auth::id() ?? null,
+            'additional_data' => $request->data,
+            'created_by' => Auth::id(),
             'created_at' => now()->toDateTimeString()
         ];
 
-        // If user_ids is not provided, default to the authenticated user
-        if (!$request->has('user_ids') || empty($request->user_ids)) {
-            $users = collect([Auth::user()]);
-        } else {
-            $users = User::whereIn('id', $request->user_ids)->get();
-        }
+        $users = $request->has('user_ids') ? User::whereIn('id', $request->user_ids)->get() : collect([Auth::user()]);
 
         Notification::send($users, new GeneralNotification($notificationData));
 
