@@ -32,6 +32,8 @@ class AccountParameters
     public const ALLOWED_INCLUDES = [
         'costCenter',
         'creator',
-        'updater'
+        'updater',
+        'chartOfAccount',
+        'chartOfAccount.accountCode'
     ];
 }

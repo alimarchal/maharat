@@ -51,4 +51,12 @@ class Account extends Model
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
+
+    /**
+     * Get the chart of account associated with the account.
+     */
+    public function chartOfAccount(): BelongsTo
+    {
+        return $this->belongsTo(ChartOfAccount::class, 'chart_of_account_id');
+    }
 }

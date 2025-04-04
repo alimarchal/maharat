@@ -26,8 +26,7 @@ class UpdateChartOfAccountRequest extends FormRequest
             'account_code_id' => [
                 'sometimes',
                 'required',
-                'string',
-                Rule::unique('chart_of_accounts')->ignore($this->chart_of_account)
+                'string'
             ],
             'account_name' => ['sometimes', 'required', 'string', 'max:255'],
             'parent_id' => ['nullable', 'exists:chart_of_accounts,id'],

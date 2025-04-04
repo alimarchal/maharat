@@ -26,6 +26,7 @@ class ChartOfAccountParameters
     const ALLOWED_INCLUDES = [
         'parent',
         'children',
-        'descendants'
+        'descendants',
+        'accountCode'
     ];
 }

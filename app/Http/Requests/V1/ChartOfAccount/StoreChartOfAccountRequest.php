@@ -23,7 +23,7 @@ class StoreChartOfAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'account_code_id' => ['required', 'string', 'unique:chart_of_accounts,account_code_id'],
+            'account_code_id' => ['required', 'string'],
             'account_name' => ['required', 'string', 'max:255'],
             'parent_id' => ['nullable', 'exists:chart_of_accounts,id'],
             'is_active' => ['boolean'],
