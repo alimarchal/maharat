@@ -139,23 +139,23 @@ const PayablesTable = () => {
 
             {/* Table */}
             {!loading && (
-                <table className="w-full border-collapse">
+            <table className="w-full border-collapse">
                     <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
-                        <tr>
+                    <tr>
                             <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">
                                 Payment Order #
-                            </th>
+                        </th>
                             <th className="py-3 px-4 text-center">Supplier</th>
                             <th className="py-3 px-4 text-center">Contact</th>
                             <th className="py-3 px-4 text-center">Status</th>
                             <th className="py-3 px-4 text-center">Amount</th>
                             <th className="py-3 px-4 text-center">Balance</th>
-                            <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
-                                Details
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
+                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
+                            Details
+                        </th>
+                    </tr>
+                </thead>
+                <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                         {payables.length > 0 ? (
                             payables.map((data) => {
                                 const balance = data.total_amount - (data.paid_amount || 0);
@@ -174,33 +174,33 @@ const PayablesTable = () => {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2
                                             })} SAR
-                                        </td>
+                            </td>
                                         <td className="py-3 px-4 text-center">
                                             {balance.toLocaleString(undefined, {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2
                                             })} SAR
-                                        </td>
-                                        <td className="py-3 px-4 flex justify-center text-center">
-                                            <Link
-                                                href={`/account-payables/view/${data.id}`}
-                                                className="flex items-center justify-center w-8 h-8 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200"
-                                            >
-                                                <FontAwesomeIcon icon={faEllipsisH} />
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                );
-                            })
-                        ) : (
-                            <tr>
-                                <td colSpan="7" className="text-center text-[#2C323C] font-medium py-4">
-                                    No Payables found.
+                            </td>
+                                <td className="py-3 px-4 flex justify-center text-center">
+                                    <Link
+                                        href={`/account-payables/view/${data.id}`}
+                                        className="flex items-center justify-center w-8 h-8 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200"
+                                    >
+                                        <FontAwesomeIcon icon={faEllipsisH} />
+                                    </Link>
                                 </td>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                                );
+                            })
+                    ) : (
+                        <tr>
+                                <td colSpan="7" className="text-center text-[#2C323C] font-medium py-4">
+                                    No Payables found.
+                            </td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
             )}
 
             {/* Pagination */}

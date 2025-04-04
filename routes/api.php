@@ -32,7 +32,10 @@ use App\Http\Controllers\Api\V1\MahratInvoiceApprovalTransactionController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
 use App\Http\Controllers\Api\V1\MaterialRequestItemController;
 use App\Http\Controllers\Api\V1\MaterialRequestTransactionController;
+use App\Http\Controllers\Api\V1\NotificationChannelsController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\NotificationSettingsController;
+use App\Http\Controllers\Api\V1\NotificationTypesController;
 use App\Http\Controllers\Api\V1\PaymentOrderApprovalTransactionController;
 use App\Http\Controllers\Api\V1\PaymentOrderController;
 use App\Http\Controllers\Api\V1\PaymentOrderLogController;
@@ -291,6 +294,12 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('designations', DesignationController::class);
     Route::post('designations/{id}/restore', [DesignationController::class, 'restore']);
 
+
+    Route::get('/notification-types', [NotificationTypesController::class, 'index']);
+    Route::get('/notification-channels', [NotificationChannelsController::class, 'index']);
+    Route::get('users/{user}/notification-settings', [NotificationSettingsController::class, 'getUserSettings']);
+    Route::post('users/{user}/notification-settings/setup-defaults', [NotificationSettingsController::class, 'setupDefaults']);
+    Route::put('users/{user}/notification-settings', [NotificationSettingsController::class, 'updateSettings']);
 
     // Get all notifications (for authenticated user by default or specific user)
     Route::get('/notifications', [NotificationController::class, 'index']);
