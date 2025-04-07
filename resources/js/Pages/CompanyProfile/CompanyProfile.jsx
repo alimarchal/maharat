@@ -118,14 +118,10 @@ const CompanyProfile = () => {
         try {
             const payload = { ...formData };
 
-            let response;
             if (companyId) {
-                response = await axios.put(
-                    `/api/v1/companies/${companyId}`,
-                    payload
-                );
+                await axios.put(`/api/v1/companies/${companyId}`, payload);
             } else {
-                response = await axios.post("/api/v1/companies", payload);
+                const response = await axios.post("/api/v1/companies", payload);
                 setCompanyId(response.data.data.id);
             }
 
@@ -403,27 +399,15 @@ const CompanyProfile = () => {
                         )}
                     </div>
                 </div>
-                <div className="flex justify-end my-6 space-x-4">
-                    <button
-                        type="button"
-                        className={`px-8 py-2 text-xl font-medium border border-[#009FDC] text-[#009FDC] rounded-full transition duration-300 ${
-                            !companyId || isSubmitting
-                                ? "opacity-50 cursor-not-allowed"
-                                : "hover:bg-[#009FDC] hover:text-white"
-                        }`}
-                        disabled={!companyId || isSubmitting}
-                        onClick={handleSubmit}
-                    >
-                        {isSubmitting ? "Updating..." : "Edit"}
-                    </button>
+                <div className="flex justify-end my-6">
                     <button
                         type="submit"
                         className={`px-8 py-2 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 ${
-                            companyId || isSubmitting
+                            isSubmitting
                                 ? "opacity-50 cursor-not-allowed"
                                 : "hover:bg-[#007BB5]"
                         }`}
-                        disabled={companyId || isSubmitting}
+                        disabled={isSubmitting}
                     >
                         {isSubmitting ? "Saving..." : "Save"}
                     </button>

@@ -93,7 +93,7 @@ const BudgetRequestTable = () => {
                                 </td>
                                 <td className="py-3 px-4 flex items-center justify-center gap-4">
                                     <Link
-                                        href={`/statuses/request-status/${request.id}`}
+                                        href={`/statuses/budget-status/${request.id}`}
                                         className="text-[#9B9DA2] hover:text-gray-500"
                                     >
                                         <FontAwesomeIcon icon={faEye} />
