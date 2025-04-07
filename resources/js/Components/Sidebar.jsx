@@ -76,8 +76,8 @@ const Sidebar = ({ isOpen }) => {
 
         <SidebarButton
           icon={faQuestionCircle}
-          link="/help"
-          isActive={url === "/help"}
+          link="/faqs"
+          isActive={url === "/faqs"}
         />
       </aside>
 

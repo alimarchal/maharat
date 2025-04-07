@@ -334,6 +334,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    
+    // FAQ route
+    Route::get('/faqs', function () {
+        return Inertia::render('FAQs/FAQ');
+    })->name('faqs.index');
 });
 
 // Forgot Password Route (Guest Only)
