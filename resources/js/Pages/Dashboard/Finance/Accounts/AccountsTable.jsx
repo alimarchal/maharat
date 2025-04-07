@@ -239,31 +239,31 @@ const AccountsTable = () => {
             )}
 
             {!loading && (
-                <table className="w-full border-collapse">
+            <table className="w-full border-collapse">
                     <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-center">
-                        <tr>
-                            <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
-                                ID
-                            </th>
-                            <th className="py-3 px-4">Name</th>
-                            <th className="py-3 px-4">Description</th>
-                            <th className="py-3 px-4">Type</th>
-                            <th className="py-3 px-4">Cost Center</th>
-                            <th className="py-3 px-4">Status</th>
-                            <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
-                                Action
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
+                    <tr>
+                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
+                            ID
+                        </th>
+                        <th className="py-3 px-4">Name</th>
+                        <th className="py-3 px-4">Description</th>
+                        <th className="py-3 px-4">Type</th>
+                        <th className="py-3 px-4">Cost Center</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                            Action
+                        </th>
+                    </tr>
+                </thead>
+                <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                         {accounts.length > 0 ? (
                             accounts.map((account) => (
-                                <tr key={account.id}>
+                            <tr key={account.id}>
                                     <td className="py-3 px-4 text-center">{account.id}</td>
                                     <td className="py-3 px-4 text-center">{account.name}</td>
                                     <td className="py-3 px-4 text-center">
-                                        {account.description}
-                                    </td>
+                                    {account.description}
+                                </td>
                                     <td className="py-3 px-4 text-center">
                                         {account.chart_of_account?.account_code?.account_type || 'N/A'}
                                     </td>
@@ -274,21 +274,21 @@ const AccountsTable = () => {
                                         <span className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(account.status)}`}>
                                             {account.status}
                                         </span>
-                                    </td>
+                                </td>
                                     <td className="py-3 px-4 flex justify-center space-x-3">
                                         <button 
                                             className="text-gray-600 hover:text-gray-800"
                                             onClick={() => handleEdit(account)}
                                         >
-                                            <FontAwesomeIcon icon={faEdit} />
+                                        <FontAwesomeIcon icon={faEdit} />
                                         </button>
                                         <button 
                                             className="text-red-600 hover:text-red-900"
                                             onClick={() => handleDelete(account.id)}
                                             disabled={isDeleting}
                                         >
-                                            <FontAwesomeIcon icon={faTrash} />
-                                        </button>
+                                        <FontAwesomeIcon icon={faTrash} />
+                                    </button>
                                     </td>
                                 </tr>
                             ))
@@ -299,34 +299,34 @@ const AccountsTable = () => {
                                 </td>
                             </tr>
                         )}
-                    </tbody>
-                </table>
+                </tbody>
+            </table>
             )}
 
             {!loading && (
-                <div className="flex justify-center items-center relative w-full my-8">
-                    <div
-                        className="absolute top-1/2 left-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
-                        style={{
-                            background:
-                                "linear-gradient(to right, #9B9DA2, #9B9DA200)",
-                        }}
-                    ></div>
-                    <button
-                        type="button"
-                        className="p-2 text-base sm:text-lg flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] transition-all duration-300 hover:border-[#009FDC] hover:bg-[#009FDC] hover:text-white hover:scale-105"
-                        onClick={() => setIsModalOpen(true)}
-                    >
+            <div className="flex justify-center items-center relative w-full my-8">
+                <div
+                    className="absolute top-1/2 left-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
+                    style={{
+                        background:
+                            "linear-gradient(to right, #9B9DA2, #9B9DA200)",
+                    }}
+                ></div>
+                <button
+                    type="button"
+                    className="p-2 text-base sm:text-lg flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] transition-all duration-300 hover:border-[#009FDC] hover:bg-[#009FDC] hover:text-white hover:scale-105"
+                    onClick={() => setIsModalOpen(true)}
+                >
                         <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add an Account
-                    </button>
-                    <div
-                        className="absolute top-1/2 right-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
-                        style={{
-                            background:
-                                "linear-gradient(to left, #9B9DA2, #9B9DA200)",
-                        }}
-                    ></div>
-                </div>
+                </button>
+                <div
+                    className="absolute top-1/2 right-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
+                    style={{
+                        background:
+                            "linear-gradient(to left, #9B9DA2, #9B9DA200)",
+                    }}
+                ></div>
+            </div>
             )}
 
             {/* Add Account Modal */}

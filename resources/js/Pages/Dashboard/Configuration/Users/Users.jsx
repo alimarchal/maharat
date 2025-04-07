@@ -232,42 +232,25 @@ useEffect(() => {
             // Debugging log before sending
             console.log("FORM DATA BEFORE SUBMIT:", formData);
     
-            // IMPORTANT: Send both versions of these fields to ensure compatibility
-            // with both validation rules AND database column names
-            formDataToSend.append("firstname", formData.firstname || '');
-            formDataToSend.append("lastname", formData.lastname || '');
-            formDataToSend.append("first_name", formData.firstname || '');
-            formDataToSend.append("last_name", formData.lastname || '');
-            
+            // Add all form fields
+            Object.entries(formData).forEach(([key, value]) => {
+                if (value !== null && value !== undefined && value !== '') {
+                    formDataToSend.append(key, value);
+                }
+            });
+    
             // Make sure the name field is constructed properly
             formDataToSend.append("name", `${formData.firstname} ${formData.lastname}`);
             
-            // Other fields
-            formDataToSend.append("email", formData.email || '');
-            formDataToSend.append("landline", formData.landline || '');
-            formDataToSend.append("mobile", formData.mobile || '');
-            formDataToSend.append("designation_id", formData.designation_id || '');
-            formDataToSend.append("department_id", formData.department_id || '');
-            formDataToSend.append("language", formData.language || '');
-            formDataToSend.append("employee_id", formData.employee_id || '');
-            formDataToSend.append("username", formData.username || '');
-            formDataToSend.append("hierarchy_level", formData.hierarchy_level || 0);
-    
-            // Handle parent_id correctly (null if not set)
-            if (formData.parent_id !== undefined && formData.parent_id !== null) {
-                formDataToSend.append("parent_id", formData.parent_id);
-            }
-    
-            // Optional fields
-            if (formData.employee_type) formDataToSend.append("employee_type", formData.employee_type);
-            if (formData.description) formDataToSend.append("description", formData.description);
-    
-            // Append photo if available
+            // Add photo if available
             if (photo) {
-                formDataToSend.append("profile_photo_path", photo);
+                formDataToSend.append('profile_photo_path', photo);
             }
-    
-            let response;
+
+            // Send designation_id as role_id for both create and update
+            if (formData.designation_id) {
+                formDataToSend.append('role_id', formData.designation_id);
+            }
     
             // Debug logging - view exactly what's being sent
             const formObject = {};
@@ -276,7 +259,8 @@ useEffect(() => {
             });
             console.log("FORM DATA BEING SENT:", formObject);
     
-            // If we have an ID, we're updating an existing user
+            let response;
+    
             if (id) {
                 // For update operations
                 const apiUrl = `/api/v1/users/${id}`;

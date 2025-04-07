@@ -173,6 +173,38 @@ class UserController extends Controller
                 }
             }
 
+            if (is_array($removePermissions)) {
+                try {
+                    foreach ($removePermissions as $permission) {
+                        if (is_string($permission) && !is_numeric($permission)) {
+                            // Remove by name
+                            if ($user->hasPermissionTo($permission, 'web')) {
+                                $user->revokePermissionTo($permission);
+//                                Log::info("Revoked permission by name: {$permission}");
+                            } else {
+//                                Log::info("User doesn't have permission '{$permission}' to revoke");
+                            }
+                        } else {
+                            // Remove by ID
+                            try {
+                                $p = Permission::findById($permission, 'web');
+                                if ($p && $user->hasPermissionTo($p)) {
+                                    $user->revokePermissionTo($p);
+//                                    Log::info("Revoked permission by ID: {$permission} (name: {$p->name})");
+                                } else {
+//                                    Log::info("User doesn't have permission with ID {$permission} to revoke");
+                                }
+                            } catch (\Exception $e) {
+//                                Log::error("Error finding permission to revoke by ID {$permission}: " . $e->getMessage());
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+//                    Log::error("Error revoking permissions: " . $e->getMessage());
+                    throw $e;
+                }
+            }
+
             DB::commit();
 
             // Refresh user to include updated relationships
