@@ -31,11 +31,12 @@ return new class extends Migration
 
                 // Additional User Information
                 $table->string('title')->nullable();           // Title (Mr, Mrs, etc.)
-                //$table->string('designation')->nullable();
+                $table->text('description')->nullable();       // User description
+                $table->enum('employee_type', ['full-time', 'part-time', 'contract', 'intern'])->default('full-time');
+                $table->enum('language', ['english', 'arabic'])->default('english');
 
                 $table->string('landline')->nullable();        // Landline phone number
                 $table->string('mobile')->nullable();          // Mobile phone number
-                $table->string('language')->nullable();        // Preferred language
                 $table->string('favourite_module')->nullable(); // User's preferred module
 
                 // User Settings & Preferences

@@ -25,8 +25,8 @@ const Users = () => {
         photo: "",
         designation_id: "",
         department_id: "",
-        language: "",
-        employee_type: "",
+        language: "english",
+        employee_type: "full-time",
         description: "",
         parent_id: parent_id ?? null,
         hierarchy_level: hierarchy_level !== undefined ? hierarchy_level : 0,
@@ -70,15 +70,19 @@ useEffect(() => {
                     email: userData.email,
                     landline: userData.landline,
                     mobile: userData.mobile,
-                    photo: userData.photo,
+                    photo: userData.profile_photo_path,
                     designation_id: userData.designation_id,
                     department_id: userData.department_id,
-                    language: userData.language,
-                    employee_type: userData.employee_type,
-                    description: userData.description,
+                    language: userData.language || "english",
+                    employee_type: userData.employee_type || "full-time",
+                    description: userData.description || "",
                     parent_id: userData.parent_id,
                     hierarchy_level: userData.hierarchy_level,
                 });
+
+                if (userData.profile_photo_path) {
+                    setPhotoPreview(`/storage/${userData.profile_photo_path}`);
+                }
 
                 setIsEditing(true);
                 
@@ -140,11 +144,11 @@ useEffect(() => {
 }, [id, hierarchy_level, parent_id]);      
 
     const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData({
-            ...formData,
-            [name]: type === "checkbox" ? checked : value,
-        });
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
 
         // Clear the error for the field being updated
         setErrors((prevErrors) => ({
@@ -198,12 +202,23 @@ useEffect(() => {
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
+            // Validate file type
+            if (!file.type.match('image.*')) {
+                alert('Please select an image file');
+                return;
+            }
+            
+            // Validate file size (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                alert('File size should be less than 2MB');
+                return;
+            }
+            
+            // Create preview URL
+            const previewUrl = URL.createObjectURL(file);
+            setPhotoPreview(previewUrl);
+            
             setPhoto(file);
-            setPhotoPreview(URL.createObjectURL(file));
-            setFormData((prevData) => ({
-                ...prevData,
-                profile_photo_path: file,
-            }));
         }
     };
 
@@ -526,12 +541,18 @@ useEffect(() => {
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <InputFloating
-                        label="Language"
-                        name="language"
-                        value={formData.language}
-                        onChange={handleChange}
-                    />
+                    <div>
+                        <SelectFloating
+                            label="Language"
+                            name="language"
+                            value={formData.language}
+                            onChange={handleChange}
+                            options={[
+                                { id: "english", label: "English" },
+                                { id: "arabic", label: "Arabic" }
+                            ]}
+                        />
+                    </div>
                     <div>
                         <SelectFloating
                             label="Employee Type"
@@ -542,7 +563,7 @@ useEffect(() => {
                                 { id: "full-time", label: "Full-Time" },
                                 { id: "part-time", label: "Part-Time" },
                                 { id: "contract", label: "Contract" },
-                                { id: "intern", label: "Intern" },
+                                { id: "intern", label: "Intern" }
                             ]}
                         />
                     </div>

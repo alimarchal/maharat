@@ -35,6 +35,8 @@ class User extends Authenticatable
         'landline',
         'mobile',
         'language',
+        'employee_type',
+        'description',
         'favourite_module',
         'enable_otp',
         'is_salesman_linked',
