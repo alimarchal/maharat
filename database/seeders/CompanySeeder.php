@@ -28,18 +28,18 @@ class CompanySeeder extends Seeder
             }
 
             if (Schema::hasTable('grn_receive_goods')) {
-                DB::table('grn_receive_goods')->delete();
+        DB::table('grn_receive_goods')->delete();
                 $this->command->info('Cleaned grn_receive_goods.');
             }
 
             if (Schema::hasTable('grns')) {
-                DB::table('grns')->delete();
+        DB::table('grns')->delete();
                 $this->command->info('Cleaned grns.');
             }
 
             // 2. Second level - Delete purchase_orders and its dependencies
             if (Schema::hasTable('purchase_orders')) {
-                DB::table('purchase_orders')->delete();
+        DB::table('purchase_orders')->delete();
                 $this->command->info('Cleaned purchase_orders.');
             }
 
@@ -50,22 +50,22 @@ class CompanySeeder extends Seeder
             }
 
             if (Schema::hasTable('material_request_items')) {
-                DB::table('material_request_items')->delete();
+        DB::table('material_request_items')->delete();
                 $this->command->info('Cleaned material_request_items.');
             }
 
             if (Schema::hasTable('material_requests')) {
-                DB::table('material_requests')->delete();
+        DB::table('material_requests')->delete();
                 $this->command->info('Cleaned material_requests.');
             }
 
             if (Schema::hasTable('rfqs')) {
-                DB::table('rfqs')->delete();
+        DB::table('rfqs')->delete();
                 $this->command->info('Cleaned rfqs.');
             }
 
             if (Schema::hasTable('budgets')) {
-                DB::table('budgets')->delete();
+        DB::table('budgets')->delete(); 
                 $this->command->info('Cleaned budgets.');
             }
 
@@ -77,12 +77,12 @@ class CompanySeeder extends Seeder
 
             // Now we can safely delete departments
             if (Schema::hasTable('departments')) {
-                DB::table('departments')->delete();
+        DB::table('departments')->delete(); 
                 $this->command->info('Cleaned departments.');
             }
 
             // 4. Clean companies
-            DB::table('companies')->delete();
+        DB::table('companies')->delete();
             $this->command->info('Cleaned companies.');
 
             // Reset auto-increment outside transaction

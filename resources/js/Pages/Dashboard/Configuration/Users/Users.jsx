@@ -247,7 +247,7 @@ useEffect(() => {
                 formDataToSend.append('profile_photo_path', photo);
             }
 
-            // Send designation_id as role_id
+            // Send designation_id as role_id for both create and update
             if (formData.designation_id) {
                 formDataToSend.append('role_id', formData.designation_id);
             }

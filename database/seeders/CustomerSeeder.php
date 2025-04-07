@@ -51,7 +51,7 @@ class CustomerSeeder extends Seeder
             DB::commit();
 
             $this->command->info('Customers seeded successfully.');
-
+            
         } catch (\Exception $e) {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
