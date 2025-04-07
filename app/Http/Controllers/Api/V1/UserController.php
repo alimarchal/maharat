@@ -62,8 +62,8 @@ class UserController extends Controller
         // Handle profile photo
         if ($request->hasFile('profile_photo_path')) {
             $file = $request->file('profile_photo_path');
-            $path = $file->store('profile_photos', 'public');
-            $validated['profile_photo_path'] = asset("storage/$path");
+            $path = $file->store('users/profile_photos', 'public');
+            $validated['profile_photo_path'] = $path;
         }
 
         $user = User::create($validated);
@@ -84,7 +84,6 @@ class UserController extends Controller
 
     public function update(UpdateUserRequest $request, User $user)
     {
-
         $validated = $request->validated();
         if (empty($validated)) {
             return response()->json(['error' => 'No valid fields to update'], 422);
@@ -94,6 +93,19 @@ class UserController extends Controller
         DB::beginTransaction();
 
         try {
+            // Handle profile photo update
+            if ($request->hasFile('profile_photo_path')) {
+                // Delete old photo if exists
+                if ($user->profile_photo_path) {
+                    Storage::disk('public')->delete($user->profile_photo_path);
+                }
+                
+                // Store new photo
+                $file = $request->file('profile_photo_path');
+                $path = $file->store('users/profile_photos', 'public');
+                $validated['profile_photo_path'] = $path;
+            }
+
             // Extract permission-related data before updating the user model
             $roleId = $validated['role_id'] ?? null;
             $permissions = $validated['permissions'] ?? null;
@@ -115,9 +127,6 @@ class UserController extends Controller
                     $role = Role::findById($roleId, 'web');
                     if ($role) {
                         $user->assignRole($role);
-//                        Log::info("Assigned role '{$role->name}' to user {$user->id}");
-                    } else {
-//                        Log::warning("Role with ID {$roleId} not found");
                     }
                 } catch (\Exception $e) {
                     Log::error("Error assigning role: " . $e->getMessage());
@@ -137,9 +146,6 @@ class UserController extends Controller
                                 $p = Permission::where('name', $permission)->where('guard_name', 'web')->first();
                                 if ($p) {
                                     $permissionObjects[] = $p;
-//                                    Log::info("Found permission by name: {$permission}");
-                                } else {
-//                                    Log::warning("Permission not found by name: {$permission}");
                                 }
                             } catch (\Exception $e) {
                                 Log::error("Error finding permission by name '{$permission}': " . $e->getMessage());
@@ -150,9 +156,6 @@ class UserController extends Controller
                                 $p = Permission::findById($permission, 'web');
                                 if ($p) {
                                     $permissionObjects[] = $p;
-//                                    Log::info("Found permission by ID: {$permission} (name: {$p->name})");
-                                } else {
-//                                    Log::warning("Permission not found by ID: {$permission}");
                                 }
                             } catch (\Exception $e) {
                                 Log::error("Error finding permission by ID {$permission}: " . $e->getMessage());
@@ -163,45 +166,9 @@ class UserController extends Controller
                     if (!empty($permissionObjects)) {
                         // Sync permissions (replaces all existing permissions)
                         $user->syncPermissions($permissionObjects);
-//                        Log::info("Synced " . count($permissionObjects) . " permissions to user {$user->id}");
-                    } else {
-                        Log::warning("No valid permissions found to sync");
                     }
                 } catch (\Exception $e) {
                     Log::error("Error syncing permissions: " . $e->getMessage());
-                    throw $e;
-                }
-            }
-
-            // Handle permission removal if specified
-            if (is_array($removePermissions)) {
-                try {
-                    foreach ($removePermissions as $permission) {
-                        if (is_string($permission) && !is_numeric($permission)) {
-                            // Remove by name
-                            if ($user->hasPermissionTo($permission, 'web')) {
-                                $user->revokePermissionTo($permission);
-//                                Log::info("Revoked permission by name: {$permission}");
-                            } else {
-//                                Log::info("User doesn't have permission '{$permission}' to revoke");
-                            }
-                        } else {
-                            // Remove by ID
-                            try {
-                                $p = Permission::findById($permission, 'web');
-                                if ($p && $user->hasPermissionTo($p)) {
-                                    $user->revokePermissionTo($p);
-//                                    Log::info("Revoked permission by ID: {$permission} (name: {$p->name})");
-                                } else {
-//                                    Log::info("User doesn't have permission with ID {$permission} to revoke");
-                                }
-                            } catch (\Exception $e) {
-//                                Log::error("Error finding permission to revoke by ID {$permission}: " . $e->getMessage());
-                            }
-                        }
-                    }
-                } catch (\Exception $e) {
-//                    Log::error("Error revoking permissions: " . $e->getMessage());
                     throw $e;
                 }
             }
@@ -215,7 +182,6 @@ class UserController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
     }
