@@ -168,10 +168,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/statuses/invoice-status/{id}', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/MInvoiceStatusFlow', 'id' => $id]);
     })->name('processStatus.index');
-    Route::get('/statuses/request-status/{id}', function ($id) {
+    Route::get('/statuses/budget-status/{id}', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/BudgetRequestStatusFlow', 'id' => $id]);
     })->name('processStatus.index');
-    Route::get('/statuses/budget-status/{id}', function ($id) {
+    Route::get('/statuses/total-budget-status/{id}', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/TotalBudgetStatusFlow', 'id' => $id]);
     })->name('processStatus.index');
 

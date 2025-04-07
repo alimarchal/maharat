@@ -6,6 +6,7 @@ import axios from "axios";
 const CompanyProfile = () => {
     const [formData, setFormData] = useState({
         name: "",
+        name_ar: "",
         email: "",
         contact_number: "",
         address: "",
@@ -18,16 +19,20 @@ const CompanyProfile = () => {
         swift: "",
         account_name: "",
         account_no: "",
+        currency_id: 1,
         iban: "",
         license_no: "",
-        var: "",
+        vat_no: "",
         cr_no: "",
         logo_path: null,
+        stamp_path: null
     });
 
     const [errors, setErrors] = useState({});
     const [companyId, setCompanyId] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
+    const [logoPreview, setLogoPreview] = useState(null);
 
     useEffect(() => {
         fetchCompanyData();
@@ -36,11 +41,20 @@ const CompanyProfile = () => {
     const fetchCompanyData = async () => {
         try {
             const response = await axios.get("/api/v1/companies");
+            console.log('Fetched companies:', response.data);
+            
             const company = response.data.data?.[0];
 
             if (company) {
+                console.log('Setting company data:', company);
+                // Clean the logo path if it contains full URL
+                const cleanLogoPath = company.logo_path ? 
+                    company.logo_path.replace(/^.*\/storage\//, '') : 
+                    null;
+                
                 setFormData({
                     name: company.name ?? "",
+                    name_ar: company.name_ar ?? "",
                     email: company.email ?? "",
                     contact_number: company.contact_number ?? "",
                     address: company.address ?? "",
@@ -53,16 +67,22 @@ const CompanyProfile = () => {
                     swift: company.swift ?? "",
                     account_name: company.account_name ?? "",
                     account_no: company.account_no ?? "",
+                    currency_id: company.currency_id ?? 1,
                     iban: company.iban ?? "",
                     license_no: company.license_no ?? "",
-                    var: company.var ?? "",
+                    vat_no: company.vat_no ?? "",
                     cr_no: company.cr_no ?? "",
-                    logo_path: company.logo_path ?? null,
+                    logo_path: cleanLogoPath,
+                    stamp_path: company.stamp_path ?? null
                 });
                 setCompanyId(company.id);
+                console.log('Company ID set:', company.id);
+            } else {
+                console.error('No company data found');
             }
         } catch (error) {
             console.error("Error fetching company data:", error);
+            console.error("Error details:", error.response?.data);
         }
     };
 
@@ -77,6 +97,22 @@ const CompanyProfile = () => {
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
+            // Validate file type
+            if (!file.type.match('image.*')) {
+                alert('Please select an image file');
+                return;
+            }
+            
+            // Validate file size (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                alert('File size should be less than 2MB');
+                return;
+            }
+            
+            // Create preview URL
+            const previewUrl = URL.createObjectURL(file);
+            setLogoPreview(previewUrl);
+            
             setFormData((prevData) => ({
                 ...prevData,
                 logo_path: file,
@@ -95,7 +131,7 @@ const CompanyProfile = () => {
         if (!formData.postal_code)
             tempErrors.postal_code = "Postal code is required";
         if (!formData.address) tempErrors.address = "Address is required";
-        if (!formData.var) tempErrors.var = "VAT number is required";
+        if (!formData.vat_no) tempErrors.vat_no = "VAT number is required";
         if (!formData.cr_no) tempErrors.cr_no = "CR number is required";
         if (!formData.account_name)
             tempErrors.account_name = "Account name is required";
@@ -112,30 +148,67 @@ const CompanyProfile = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!validate()) return;
         setIsSubmitting(true);
+        setErrors({});
+        setSuccessMessage("");
 
         try {
-            const payload = { ...formData };
+            const formDataObj = new FormData();
+            
+            // Add all form fields
+            Object.entries(formData).forEach(([key, value]) => {
+                if (key === 'logo_path' && value instanceof File) {
+                    formDataObj.append('logo', value);
+                } else if (key === 'stamp_path' && value instanceof File) {
+                    formDataObj.append('stamp', value);
+                } else if (value !== null) {
+                    formDataObj.append(key, value);
+                }
+            });
 
-            let response;
-            if (companyId) {
-                response = await axios.put(
-                    `/api/v1/companies/${companyId}`,
-                    payload
-                );
+            // Add _method parameter to simulate PUT request
+            formDataObj.append('_method', 'PUT');
+
+            console.log('Sending request with form data:', Object.fromEntries(formDataObj));
+            
+            const response = await axios.post(`/api/v1/companies/${companyId}`, formDataObj, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            if (response.data.success) {
+                setSuccessMessage("Company profile updated successfully!");
+                // Refresh the company data to get the updated logo path
+                await fetchCompanyData();
+                // Clear the preview if we had one
+                if (logoPreview) {
+                    URL.revokeObjectURL(logoPreview);
+                    setLogoPreview(null);
+                }
             } else {
-                response = await axios.post("/api/v1/companies", payload);
-                setCompanyId(response.data.data.id);
+                setErrors(response.data.errors || {});
             }
-
-            fetchCompanyData();
         } catch (error) {
-            console.error("Error saving data:", error);
+            console.error('Error during form submission:', error);
+            if (error.response?.data?.errors) {
+                setErrors(error.response.data.errors);
+            } else {
+                setErrors({ general: 'An error occurred while updating the company profile.' });
+            }
         } finally {
             setIsSubmitting(false);
         }
     };
+
+    // Clean up preview URL when component unmounts
+    useEffect(() => {
+        return () => {
+            if (logoPreview) {
+                URL.revokeObjectURL(logoPreview);
+            }
+        };
+    }, [logoPreview]);
 
     return (
         <div className="w-full mx-auto">
@@ -149,24 +222,28 @@ const CompanyProfile = () => {
             <form onSubmit={handleSubmit}>
                 <div className="flex flex-col items-center mb-8">
                     <div className="relative">
-                        <div className="w-36 h-36 border-2 border-green-500 rounded-full flex items-center justify-center bg-white">
-                            {formData.logo_path ? (
+                        <div className="w-36 h-36 border-2 border-green-500 rounded-full flex items-center justify-center bg-white overflow-hidden">
+                            {logoPreview ? (
                                 <img
-                                    src={
-                                        typeof formData.logo_path === "string"
-                                            ? formData.logo_path
-                                            : URL.createObjectURL(
-                                                  formData.logo_path
-                                              )
-                                    }
+                                    src={logoPreview}
+                                    alt="Company Logo Preview"
+                                    className="w-full h-full object-contain"
+                                />
+                            ) : formData.logo_path ? (
+                                <img
+                                    src={`/storage/${formData.logo_path}`}
                                     alt="Company Logo"
-                                    className="w-24 h-24 object-contain"
+                                    className="w-full h-full object-contain"
+                                    onError={(e) => {
+                                        console.error('Error loading logo:', e);
+                                        e.target.src = '/images/MCTC Logo.png';
+                                    }}
                                 />
                             ) : (
                                 <img
                                     src="/images/MCTC Logo.png"
                                     alt="Company Logo"
-                                    className="w-24 h-24 object-contain"
+                                    className="w-full h-full object-contain"
                                 />
                             )}
                         </div>
@@ -184,6 +261,7 @@ const CompanyProfile = () => {
                             <FaCamera className="text-gray-500" />
                         </label>
                     </div>
+
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -379,13 +457,13 @@ const CompanyProfile = () => {
                     <div>
                         <InputFloating
                             label="VAT Number"
-                            name="var"
-                            value={formData.var}
+                            name="vat_no"
+                            value={formData.vat_no}
                             onChange={handleChange}
                         />
-                        {errors.var && (
+                        {errors.vat_no && (
                             <p className="text-red-500 text-sm mt-1">
-                                {errors.var}
+                                {errors.vat_no}
                             </p>
                         )}
                     </div>
@@ -403,32 +481,30 @@ const CompanyProfile = () => {
                         )}
                     </div>
                 </div>
-                <div className="flex justify-end my-6 space-x-4">
-                    <button
-                        type="button"
-                        className={`px-8 py-2 text-xl font-medium border border-[#009FDC] text-[#009FDC] rounded-full transition duration-300 ${
-                            !companyId || isSubmitting
-                                ? "opacity-50 cursor-not-allowed"
-                                : "hover:bg-[#009FDC] hover:text-white"
-                        }`}
-                        disabled={!companyId || isSubmitting}
-                        onClick={handleSubmit}
-                    >
-                        {isSubmitting ? "Updating..." : "Edit"}
-                    </button>
+                <div className="flex justify-end my-6">
                     <button
                         type="submit"
                         className={`px-8 py-2 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 ${
-                            companyId || isSubmitting
+                            isSubmitting
                                 ? "opacity-50 cursor-not-allowed"
                                 : "hover:bg-[#007BB5]"
                         }`}
-                        disabled={companyId || isSubmitting}
+                        disabled={isSubmitting}
                     >
                         {isSubmitting ? "Saving..." : "Save"}
                     </button>
                 </div>
             </form>
+            {successMessage && (
+                <div className="mt-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-md">
+                    {successMessage}
+                </div>
+            )}
+            {errors.general && (
+                <div className="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                    {errors.general}
+                </div>
+            )}
         </div>
     );
 };

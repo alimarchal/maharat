@@ -20,23 +20,22 @@ class CompanyController extends Controller
     /**
      * Display a listing of companies.
      */
-    public function index(): JsonResponse|CompanyCollection
+    public function index(): JsonResponse
     {
-        $companies = QueryBuilder::for(Company::class)
-            ->allowedFilters(CompanyParameters::ALLOWED_FILTERS)
-            ->allowedSorts(CompanyParameters::ALLOWED_SORTS)
-            ->allowedIncludes(CompanyParameters::ALLOWED_INCLUDES)
-            ->paginate()
-            ->appends(request()->query());
-
-        if ($companies->isEmpty()) {
+        try {
+            $companies = Company::all();
+            
             return response()->json([
-                'message' => 'No companies found',
-                'data' => []
+                'success' => true,
+                'data' => CompanyResource::collection($companies)
             ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch companies',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        return new CompanyCollection($companies);
     }
 
     /**
@@ -63,10 +62,10 @@ class CompanyController extends Controller
 
             $company = Company::create($data);
 
-
             DB::commit();
 
             return response()->json([
+                'success' => true,
                 'message' => 'Company created successfully',
                 'data' => new CompanyResource($company)
             ], Response::HTTP_CREATED);
@@ -74,6 +73,7 @@ class CompanyController extends Controller
             DB::rollBack();
 
             return response()->json([
+                'success' => false,
                 'message' => 'Failed to create company',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
@@ -100,44 +100,95 @@ class CompanyController extends Controller
     public function update(UpdateCompanyRequest $request, Company $company): JsonResponse
     {
         try {
-            DB::beginTransaction();
+            \Log::info('Starting company update process');
+            \Log::info('Company ID:', ['id' => $company->id]);
+            \Log::info('Current company data:', $company->toArray());
 
+            DB::beginTransaction();
+            \Log::info('Database transaction started');
+
+            // Get all validated data
             $data = $request->validated();
+            \Log::info('Validated request data:', $data);
+            
+            // Log all request data (including files)
+            \Log::info('Full request data:', [
+                'has_logo' => $request->hasFile('logo'),
+                'has_stamp' => $request->hasFile('stamp'),
+                'all_data' => $request->all()
+            ]);
 
             // Handle logo upload
             if ($request->hasFile('logo')) {
+                \Log::info('Processing logo upload');
                 // Delete old logo if exists
                 if ($company->logo_path && Storage::disk('public')->exists($company->logo_path)) {
                     Storage::disk('public')->delete($company->logo_path);
+                    \Log::info('Old logo deleted');
                 }
 
+                // Store the file and get the relative path
                 $logoPath = $request->file('logo')->store('companies/logos', 'public');
+                // Clean the path to remove any full URL
+                $logoPath = str_replace('public/', '', $logoPath);
                 $data['logo_path'] = $logoPath;
+                \Log::info('New logo uploaded:', ['path' => $logoPath]);
             }
 
             // Handle stamp upload
             if ($request->hasFile('stamp')) {
+                \Log::info('Processing stamp upload');
                 // Delete old stamp if exists
                 if ($company->stamp_path && Storage::disk('public')->exists($company->stamp_path)) {
                     Storage::disk('public')->delete($company->stamp_path);
+                    \Log::info('Old stamp deleted');
                 }
 
+                // Store the file and get the relative path
                 $stampPath = $request->file('stamp')->store('companies/stamps', 'public');
+                // Clean the path to remove any full URL
+                $stampPath = str_replace('public/', '', $stampPath);
                 $data['stamp_path'] = $stampPath;
+                \Log::info('New stamp uploaded:', ['path' => $stampPath]);
             }
 
-            $company->update($data);
+            \Log::info('Final data to be updated:', $data);
+
+            // Update the company using mass assignment
+            $company->fill($data);
+            $saved = $company->save();
+            
+            \Log::info('Save result:', [
+                'saved' => $saved,
+                'company_after_save' => $company->fresh()->toArray()
+            ]);
+
+            if (!$saved) {
+                \Log::error('Failed to save company changes');
+                throw new \Exception('Failed to update company data');
+            }
 
             DB::commit();
+            \Log::info('Database transaction committed successfully');
 
+            // Return the updated company data
             return response()->json([
+                'success' => true,
                 'message' => 'Company updated successfully',
-                'data' => new CompanyResource($company)
+                'data' => new CompanyResource($company->fresh())
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
+            
+            \Log::error('Error updating company:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
 
             return response()->json([
+                'success' => false,
                 'message' => 'Failed to update company',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
