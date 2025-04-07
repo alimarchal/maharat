@@ -41,7 +41,13 @@ class PaymentOrderController extends Controller
                 ->allowedFilters([
                     AllowedFilter::exact('status'),
                 ])
-                ->allowedIncludes(['user'])
+                ->allowedIncludes([
+                    'user',
+                    'purchaseOrder',
+                    'purchaseOrder.supplier',
+                    'purchaseOrder.quotation',
+                    'logs'
+                ])
                 ->defaultSort('-created_at');
 
             $perPage = $request->input('per_page', 10);
