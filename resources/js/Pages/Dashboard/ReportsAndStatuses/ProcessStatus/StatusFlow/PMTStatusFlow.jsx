@@ -14,6 +14,7 @@ const PMTStatusFlow = () => {
 
     const [statuses, setStatuses] = useState([]);
     const [cardData, setCardData] = useState([]);
+    const [currentStep, setCurrentStep] = useState(0);
 
     useEffect(() => {
         if (id) {
@@ -41,6 +42,10 @@ const PMTStatusFlow = () => {
                 `/api/v1/payment-order-approval-trans?filter[payment_order_id]=${id}&include=materialRequest,requester,assignedUser,referredUser`
             );
             setCardData(response.data?.data);
+
+            if (response.data?.data && response.data.data.length > 0) {
+                setCurrentStep(response.data.data.length);
+            }
         } catch (error) {
             console.error("Error fetching status:", error);
         }
@@ -121,22 +126,37 @@ const PMTStatusFlow = () => {
                                     <div
                                         className="absolute left-0 h-0.5 bg-green-500 top-1/2 z-0"
                                         style={{
-                                            width: `${
-                                                (statuses.length - 1) *
-                                                (100 / statuses.length)
-                                            }%`,
+                                            width:
+                                                currentStep > 0
+                                                    ? `${
+                                                          ((currentStep - 1) /
+                                                              (statuses.length -
+                                                                  1)) *
+                                                          100
+                                                      }%`
+                                                    : "0%",
                                         }}
                                     ></div>
 
-                                    {statuses.map((status) => (
+                                    {statuses.map((status, index) => (
                                         <div
                                             key={`circle-${status.id}`}
-                                            className="relative z-10 flex items-center justify-center w-10 h-10 rounded-full bg-green-500"
+                                            className={`relative z-10 flex items-center justify-center w-10 h-10 rounded-full ${
+                                                index < currentStep
+                                                    ? "bg-green-500"
+                                                    : "bg-gray-300"
+                                            }`}
                                         >
-                                            <FontAwesomeIcon
-                                                icon={faCheck}
-                                                className="text-white"
-                                            />
+                                            {index < currentStep ? (
+                                                <FontAwesomeIcon
+                                                    icon={faCheck}
+                                                    className="text-white"
+                                                />
+                                            ) : (
+                                                <span className="text-white font-medium">
+                                                    {index + 1}
+                                                </span>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -145,43 +165,14 @@ const PMTStatusFlow = () => {
 
                         {cardData.length > 0 ? (
                             <div className="mb-6">
-                                <div
-                                    className={`${
-                                        cardData.length > 3
-                                            ? "overflow-x-auto pb-4"
-                                            : ""
-                                    }`}
-                                >
-                                    <div
-                                        className={`grid ${
-                                            cardData.length > 3
-                                                ? "grid-flow-col auto-cols-max gap-4"
-                                                : "grid-cols-3 gap-4"
-                                        }`}
-                                        style={
-                                            cardData.length > 3
-                                                ? {
-                                                      width: `${
-                                                          cardData.length * 600
-                                                      }px`,
-                                                  }
-                                                : {}
-                                        }
-                                    >
+                                <div className="w-full overflow-x-auto pb-4">
+                                    <div className="flex justify-start gap-4">
                                         {cardData.map((card) => (
                                             <div
                                                 key={`card-container-${card.id}`}
                                                 className="border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white flex flex-row gap-4"
-                                                style={
-                                                    cardData.length > 3
-                                                        ? { width: "580px" }
-                                                        : {}
-                                                }
                                             >
-                                                <div
-                                                    key={`card-requester-${card.id}`}
-                                                    className="w-full rounded-xl p-6 bg-gray-100"
-                                                >
+                                                <div className="w-full rounded-xl p-6 bg-gray-100">
                                                     <div className="mb-4">
                                                         <button className="border border-[#22c55e] text-[#22c55e] rounded-full px-4 py-1 text-base flex items-center">
                                                             Filled Request
@@ -241,10 +232,7 @@ const PMTStatusFlow = () => {
                                                     </div>
                                                 </div>
 
-                                                <div
-                                                    key={`card-manager-${card.id}`}
-                                                    className="w-full rounded-xl p-6 bg-gray-100"
-                                                >
+                                                <div className="w-full rounded-xl p-6 bg-gray-100">
                                                     <div className="mb-4">
                                                         <button className="border border-[#22c55e] text-[#22c55e] rounded-full px-4 py-1 text-base flex items-center">
                                                             {card.status}
