@@ -2,31 +2,31 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 const documentTypes = [
-    "RFQ document",
-    "Quotations document",
-    "Goods Receiving Notes documents",
-    "MRs documents",
-    "Invoices documents",
-    "PMNTOs documents",
+    "RFQs",
+    "Quotations",
+    "Goods Receiving Notes",
+    "Material Requests",
+    "Invoices",
+    "Payment Orders",
 ];
 
 // Map document types to their database permission keys
 const documentTypeKeys = {
-    "RFQ document": "rfqs",
-    "Quotations document": "quotations",
-    "Goods Receiving Notes documents": "goods_receiving_notes",
-    "MRs documents": "material_requests",
-    "Invoices documents": "invoices",
-    "PMNTOs documents": "payment_orders"
+    "RFQs": "rfqs",
+    "Quotations": "quotations",
+    "Goods Receiving Notes": "goods_receiving_notes",
+    "Material Requests": "material_requests",
+    "Invoices": "invoices",
+    "Payment Orders": "payment_orders"
 };
 
 const displayNames = {
-    'rfqs': 'RFQ Document',
-    'quotations': 'Quotations Document',
-    'goods_receiving_notes': 'Goods Receiving Notes Documents',
-    'material_requests': 'MRs Documents',
-    'invoices': 'Invoices Documents',
-    'payment_orders': 'PMNTOs Documents'
+    'rfqs': 'RFQs',
+    'quotations': 'Quotations',
+    'goods_receiving_notes': 'Goods Receiving Notes',
+    'material_requests': 'Material Requests',
+    'invoices': 'Invoices',
+    'payment_orders': 'Payment Orders'
 };
 
 const RolesPermissions = () => {

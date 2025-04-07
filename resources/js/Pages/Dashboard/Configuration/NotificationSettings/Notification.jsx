@@ -2,22 +2,22 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 const documentTypes = [
-    "RFQ document",
-    "Quotations document",
-    "Goods Receiving Notes documents",
-    "MRs documents",
-    "Invoices documents",
-    "PMNTOs documents",
+    "RFQs",
+    "Quotations",
+    "Goods Receiving Notes",
+    "Material Requests",
+    "Invoices",
+    "Payment Orders",
 ];
 
 // Map document types to their database keys
 const documentTypeKeys = {
-    "RFQ document": "rfq_document",
-    "Quotations document": "quotations_document",
-    "Goods Receiving Notes documents": "goods_receiving_notes",
-    "MRs documents": "mrs_documents",
-    "Invoices documents": "invoices_documents",
-    "PMNTOs documents": "pmntos_documents"
+    "RFQs": "rfq_document",
+    "Quotations": "quotations_document",
+    "Goods Receiving Notes": "goods_receiving_notes",
+    "Material Requests": "mrs_documents",
+    "Invoices": "invoices_documents",
+    "Payment Orders": "pmntos_documents"
 };
 
 // Map UI channel names to database keys
