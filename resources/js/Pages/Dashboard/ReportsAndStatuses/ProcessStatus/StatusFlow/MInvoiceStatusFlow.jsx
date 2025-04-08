@@ -52,7 +52,7 @@ const MInvoiceStatusFlow = () => {
     };
 
     return (
-        <div className="w-full">
+        <div className="w-full overflow-hidden">
             <h1 className="text-2xl font-bold text-gray-800 mb-6">
                 Maharat Invoice Statuses for Regular Purchase Flow
             </h1>
@@ -100,7 +100,7 @@ const MInvoiceStatusFlow = () => {
                                 Maharat Invoice Progress
                             </h2>
 
-                            <div className="relative my-16">
+                            <div className="my-16">
                                 <div
                                     className="grid gap-8 mb-4"
                                     style={{
@@ -164,140 +164,158 @@ const MInvoiceStatusFlow = () => {
                         </div>
 
                         {cardData.length > 0 ? (
-                            <div className="mb-6">
-                                <div className="w-full overflow-x-auto pb-4">
-                                    <div className="flex justify-start gap-4">
-                                        {cardData.map((card) => (
-                                            <div
-                                                key={`card-container-${card.id}`}
-                                                className="border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white flex flex-row gap-4"
-                                            >
-                                                <div className="w-full rounded-xl p-6 bg-gray-100">
-                                                    <div className="mb-4">
-                                                        <button className="border border-[#22c55e] text-[#22c55e] rounded-full px-4 py-1 text-base flex items-center">
-                                                            Filled Request
-                                                        </button>
-                                                    </div>
+                            <div className="w-full pb-4 mb-6">
+                                <div className="relative w-full">
+                                    <div
+                                        className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
+                                        style={{
+                                            scrollbarWidth: "thin",
+                                            WebkitOverflowScrolling: "touch",
+                                        }}
+                                    >
+                                        <div className="flex space-x-4 pb-4">
+                                            {cardData.map((card) => (
+                                                <div
+                                                    key={`card-container-${card.id}`}
+                                                    className="flex-none w-full md:w-2/3 lg:w-1/2 xl:w-1/3 border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white"
+                                                    style={{
+                                                        minWidth: "400px",
+                                                        maxWidth: "500px",
+                                                    }}
+                                                >
+                                                    <div className="flex flex-row gap-4">
+                                                        <div className="w-1/2 rounded-xl p-6 bg-gray-100">
+                                                            <div className="mb-4">
+                                                                <button className="border border-[#22c55e] text-[#22c55e] rounded-full px-4 py-1 text-base flex items-center">
+                                                                    Filled
+                                                                    Request
+                                                                </button>
+                                                            </div>
 
-                                                    <div className="flex justify-between items-center gap-4">
-                                                        <span className="text-sm font-medium">
-                                                            User
-                                                        </span>
-                                                        <span className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full">
-                                                            <FontAwesomeIcon
-                                                                icon={
-                                                                    faInfoCircle
-                                                                }
-                                                                className="text-white"
-                                                            />
-                                                        </span>
-                                                    </div>
+                                                            <div className="flex justify-between items-center gap-4">
+                                                                <span className="text-sm font-medium">
+                                                                    User
+                                                                </span>
+                                                                <span className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full">
+                                                                    <FontAwesomeIcon
+                                                                        icon={
+                                                                            faInfoCircle
+                                                                        }
+                                                                        className="text-white"
+                                                                    />
+                                                                </span>
+                                                            </div>
 
-                                                    <div className="h-px bg-gray-300 w-full my-4"></div>
+                                                            <div className="h-px bg-gray-300 w-full my-4"></div>
 
-                                                    <div className="flex items-start">
-                                                        <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                                                            <span className="text-sm">
-                                                                {
-                                                                    card
-                                                                        .requester
-                                                                        .firstname[0]
-                                                                }
-                                                            </span>
+                                                            <div className="flex items-start">
+                                                                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                                                                    <span className="text-sm">
+                                                                        {
+                                                                            card
+                                                                                .requester
+                                                                                .firstname[0]
+                                                                        }
+                                                                    </span>
+                                                                </div>
+
+                                                                <div className="ml-4">
+                                                                    <div className="text-base font-medium">
+                                                                        {
+                                                                            card
+                                                                                .requester
+                                                                                .name
+                                                                        }
+                                                                    </div>
+                                                                    <div className="text-sm text-gray-500 flex items-center mt-1">
+                                                                        <FontAwesomeIcon
+                                                                            icon={
+                                                                                faCalendarAlt
+                                                                            }
+                                                                            className="mr-1 text-gray-500"
+                                                                        />
+                                                                        <span>
+                                                                            Post:{" "}
+                                                                            {new Date(
+                                                                                card.created_at
+                                                                            ).toLocaleDateString()}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </div>
 
-                                                        <div className="ml-4">
-                                                            <div className="text-base font-medium">
-                                                                {
-                                                                    card
-                                                                        .requester
-                                                                        .name
-                                                                }
-                                                            </div>
-                                                            <div className="text-sm text-gray-500 flex items-center mt-1">
-                                                                <FontAwesomeIcon
-                                                                    icon={
-                                                                        faCalendarAlt
+                                                        <div className="w-1/2 rounded-xl p-6 bg-gray-100">
+                                                            <div className="mb-4">
+                                                                <button className="border border-[#22c55e] text-[#22c55e] rounded-full px-4 py-1 text-base flex items-center">
+                                                                    {
+                                                                        card.status
                                                                     }
-                                                                    className="mr-1 text-gray-500"
-                                                                />
-                                                                <span>
-                                                                    Post:{" "}
-                                                                    {new Date(
-                                                                        card.created_at
-                                                                    ).toLocaleDateString()}
+                                                                    <FontAwesomeIcon
+                                                                        icon={
+                                                                            faChevronRight
+                                                                        }
+                                                                        className="ml-2 text-xs"
+                                                                    />
+                                                                </button>
+                                                            </div>
+
+                                                            <div className="flex justify-between items-center gap-4">
+                                                                <span className="text-sm font-medium">
+                                                                    Direct
+                                                                    Manager
                                                                 </span>
+                                                                <span className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full">
+                                                                    <FontAwesomeIcon
+                                                                        icon={
+                                                                            faInfoCircle
+                                                                        }
+                                                                        className="text-white"
+                                                                    />
+                                                                </span>
+                                                            </div>
+
+                                                            <div className="h-px bg-gray-300 w-full my-4"></div>
+
+                                                            <div className="flex items-start">
+                                                                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                                                                    <span className="text-sm">
+                                                                        {
+                                                                            card
+                                                                                .assigned_user
+                                                                                .firstname[0]
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                                <div className="ml-4">
+                                                                    <div className="text-base font-medium">
+                                                                        {
+                                                                            card
+                                                                                .assigned_user
+                                                                                .name
+                                                                        }
+                                                                    </div>
+                                                                    <div className="text-sm text-gray-500 flex items-center mt-1">
+                                                                        <FontAwesomeIcon
+                                                                            icon={
+                                                                                faCalendarAlt
+                                                                            }
+                                                                            className="mr-1 text-gray-400"
+                                                                        />
+                                                                        <span>
+                                                                            Post:{" "}
+                                                                            {new Date(
+                                                                                card.created_at
+                                                                            ).toLocaleDateString()}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
-
-                                                <div className="w-full rounded-xl p-6 bg-gray-100">
-                                                    <div className="mb-4">
-                                                        <button className="border border-[#22c55e] text-[#22c55e] rounded-full px-4 py-1 text-base flex items-center">
-                                                            {card.status}
-                                                            <FontAwesomeIcon
-                                                                icon={
-                                                                    faChevronRight
-                                                                }
-                                                                className="ml-2 text-xs"
-                                                            />
-                                                        </button>
-                                                    </div>
-
-                                                    <div className="flex justify-between items-center gap-4">
-                                                        <span className="text-sm font-medium">
-                                                            Direct Manager
-                                                        </span>
-                                                        <span className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full">
-                                                            <FontAwesomeIcon
-                                                                icon={
-                                                                    faInfoCircle
-                                                                }
-                                                                className="text-white"
-                                                            />
-                                                        </span>
-                                                    </div>
-
-                                                    <div className="h-px bg-gray-300 w-full my-4"></div>
-
-                                                    <div className="flex items-start">
-                                                        <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                                                            <span className="text-sm">
-                                                                {
-                                                                    card
-                                                                        .assigned_user
-                                                                        .firstname[0]
-                                                                }
-                                                            </span>
-                                                        </div>
-                                                        <div className="ml-4">
-                                                            <div className="text-base font-medium">
-                                                                {
-                                                                    card
-                                                                        .assigned_user
-                                                                        .name
-                                                                }
-                                                            </div>
-                                                            <div className="text-sm text-gray-500 flex items-center mt-1">
-                                                                <FontAwesomeIcon
-                                                                    icon={
-                                                                        faCalendarAlt
-                                                                    }
-                                                                    className="mr-1 text-gray-400"
-                                                                />
-                                                                <span>
-                                                                    Post:{" "}
-                                                                    {new Date(
-                                                                        card.created_at
-                                                                    ).toLocaleDateString()}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

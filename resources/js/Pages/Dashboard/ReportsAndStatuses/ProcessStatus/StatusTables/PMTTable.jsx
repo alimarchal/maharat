@@ -42,7 +42,7 @@ const PMTTable = () => {
                         </th>
                         <th className="py-3 px-4">Purchase Order #</th>
                         <th className="py-3 px-4">Quotation #</th>
-                        <th className="py-3 px-4">Company</th>
+                        <th className="py-3 px-4">Supplier</th>
                         <th className="py-3 px-4">Amount</th>
                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                             Action
@@ -76,11 +76,12 @@ const PMTTable = () => {
                                         "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {order.quotation?.quotation_number || "N/A"}
+                                    {order.purchase_order.quotation
+                                        ?.quotation_number || "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {order.purchase_order?.quotation
-                                        ?.company_name || "N/A"}
+                                    {order.purchase_order?.supplier?.name ||
+                                        "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
                                     ${order.purchase_order?.amount || "N/A"}
