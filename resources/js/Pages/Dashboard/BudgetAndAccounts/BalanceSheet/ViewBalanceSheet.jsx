@@ -1,15 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFilePdf } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import SelectFloating from "@/Components/SelectFloating";
+import axios from "axios";
 
 const BalanceSheetReport = () => {
     const [formData, setFormData] = useState({
-        year: "",
+        year: new Date().getFullYear().toString(),
     });
     const [errors, setErrors] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [balanceSheetData, setBalanceSheetData] = useState({
+        assets: { current: [], nonCurrent: [] },
+        liabilities: { current: [], nonCurrent: [] },
+        netAssets: { withoutDonorRestrictions: [], withDonorRestrictions: [] }
+    });
+    const [summary, setSummary] = useState({
+        totalAssets: 0,
+        totalLiabilities: 0,
+        totalEquity: 0,
+        balance: 0
+    });
 
     const [openSections, setOpenSections] = useState({
         currentAssets: true,
@@ -19,6 +32,33 @@ const BalanceSheetReport = () => {
         withoutDonorRestrictions: false,
         withDonorRestrictions: false,
     });
+
+    useEffect(() => {
+        fetchBalanceSheetData();
+    }, [formData.year]);
+
+    const fetchBalanceSheetData = async () => {
+        try {
+            setLoading(true);
+            const [assetsRes, liabilitiesRes, equityRes, summaryRes] = await Promise.all([
+                axios.get('/api/v1/balance-sheet/assets'),
+                axios.get('/api/v1/balance-sheet/liabilities'),
+                axios.get('/api/v1/balance-sheet/equity'),
+                axios.get('/api/v1/balance-sheet/summary')
+            ]);
+
+            setBalanceSheetData({
+                assets: assetsRes.data,
+                liabilities: liabilitiesRes.data,
+                netAssets: equityRes.data
+            });
+            setSummary(summaryRes.data);
+        } catch (error) {
+            console.error('Error fetching balance sheet data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const toggleSection = (section) => {
         setOpenSections((prev) => ({
@@ -33,59 +73,26 @@ const BalanceSheetReport = () => {
         setErrors({ ...errors, [name]: "" });
     };
 
-    const balanceSheetData = {
-        assets: {
-            current: [
-                { category: "Cash & Cash Equivalents", total: 1250000 },
-                { category: "Short-term Investments", total: 750000 },
-                { category: "Accounts Receivable", total: 325000 },
-                { category: "Prepaid Expenses", total: 125000 },
-                { category: "Inventory", total: 75000 },
-            ],
-            nonCurrent: [
-                { category: "Long-term Investments", total: 3500000 },
-                { category: "Property, Plant & Equipment", total: 12500000 },
-                { category: "Accumulated Depreciation", total: -375000 },
-                { category: "Land", total: 2000000 },
-                { category: "Intangible Assets", total: 250000 },
-                { category: "Endowment Funds", total: 5000000 },
-            ],
-        },
-        liabilities: {
-            current: [
-                { category: "Accounts Payable", total: 275000 },
-                { category: "Accrued Expenses", total: 225000 },
-                { category: "Deferred Revenue", total: 1200000 },
-                { category: "Short-term Loan", total: 150000 },
-                {
-                    category: "Current Portion of Long-term Debt",
-                    total: 300000,
-                },
-            ],
-            nonCurrent: [
-                { category: "Long-term Debt", total: 4500000 },
-                { category: "Pension Liabilities", total: 1200000 },
-                { category: "Other Long-term Obligations", total: 350000 },
-            ],
-        },
-        netAssets: {
-            withoutDonorRestrictions: [
-                { category: "Undesignated", total: 3825000 },
-                { category: "Board-designated", total: 2500000 },
-            ],
-            withDonorRestrictions: [
-                { category: "Time-restricted", total: 1000000 },
-                { category: "Purpose-restricted", total: 1500000 },
-                {
-                    category: "Perpetual in Nature (Endowments)",
-                    total: 5000000,
-                },
-            ],
-        },
-    };
-
     const renderTable = (title, data, isOpen, sectionKey) => {
-        const total = data.reduce((sum, item) => sum + item.total, 0);
+        if (loading) {
+            return (
+                <div className="border rounded-lg shadow-md mb-4 bg-white p-4">
+                    <div className="animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+                        <div className="space-y-3">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="h-4 bg-gray-200 rounded"></div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const total = data.reduce((sum, item) => {
+            const amount = parseFloat(item.total) || 0;
+            return sum + amount;
+        }, 0);
 
         return (
             <div className="border rounded-lg shadow-md mb-4 bg-white">
@@ -109,16 +116,16 @@ const BalanceSheetReport = () => {
                             <tbody className="text-[#2C323C] divide-y divide-[#D7D8D9]">
                                 {data.map((item, index) => (
                                     <tr key={index}>
-                                        <td className="p-3">{item.category}</td>
+                                        <td className="p-3">{item.name || item.category}</td>
                                         <td className="p-3 text-right">
-                                            ${item.total.toLocaleString()}
+                                            {parseFloat(item.total).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                                         </td>
                                     </tr>
                                 ))}
                                 <tr className="bg-gray-100 font-bold">
                                     <td className="p-3">Total {title}</td>
                                     <td className="p-3 text-right">
-                                        ${total.toLocaleString()}
+                                        {total.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                                     </td>
                                 </tr>
                             </tbody>
@@ -130,8 +137,26 @@ const BalanceSheetReport = () => {
     };
 
     const calculateSectionTotal = (section) => {
-        return section.reduce((sum, item) => sum + item.total, 0);
+        return section.reduce((sum, item) => {
+            const amount = parseFloat(item.total) || 0;
+            return sum + amount;
+        }, 0);
     };
+
+    if (loading) {
+        return (
+            <div className="w-full p-8">
+                <div className="animate-pulse">
+                    <div className="h-8 bg-gray-200 rounded w-1/3 mb-8"></div>
+                    <div className="space-y-8">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="h-64 bg-gray-200 rounded"></div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full">
@@ -173,17 +198,7 @@ const BalanceSheetReport = () => {
                     )}
                     <div className="bg-[#DCECF2] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
                         <h3>Total Assets:</h3>
-                        <p>
-                            $
-                            {(
-                                calculateSectionTotal(
-                                    balanceSheetData.assets.current
-                                ) +
-                                calculateSectionTotal(
-                                    balanceSheetData.assets.nonCurrent
-                                )
-                            ).toLocaleString()}
-                        </p>
+                        <p>{summary.totalAssets.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</p>
                     </div>
                 </div>
 
@@ -205,17 +220,7 @@ const BalanceSheetReport = () => {
                     )}
                     <div className="bg-[#DCECF2] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
                         <h3>Total Liabilities:</h3>
-                        <p>
-                            $
-                            {(
-                                calculateSectionTotal(
-                                    balanceSheetData.liabilities.current
-                                ) +
-                                calculateSectionTotal(
-                                    balanceSheetData.liabilities.nonCurrent
-                                )
-                            ).toLocaleString()}
-                        </p>
+                        <p>{summary.totalLiabilities.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</p>
                     </div>
                 </div>
 
@@ -237,19 +242,7 @@ const BalanceSheetReport = () => {
                     )}
                     <div className="bg-[#DCECF2] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
                         <h3>Total Net Assets:</h3>
-                        <p>
-                            $
-                            {(
-                                calculateSectionTotal(
-                                    balanceSheetData.netAssets
-                                        .withoutDonorRestrictions
-                                ) +
-                                calculateSectionTotal(
-                                    balanceSheetData.netAssets
-                                        .withDonorRestrictions
-                                )
-                            ).toLocaleString()}
-                        </p>
+                        <p>{summary.totalEquity.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</p>
                     </div>
                 </div>
             </div>

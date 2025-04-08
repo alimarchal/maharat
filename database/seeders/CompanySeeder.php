@@ -21,7 +21,18 @@ class CompanySeeder extends Seeder
 
         // First, clean up all dependent tables
         try {
-            // 1. First level - Delete tables that depend on purchase_orders
+            // 1. First level - Delete tables that depend on payment_orders
+            if (Schema::hasTable('payment_order_approval_transactions')) {
+                DB::table('payment_order_approval_transactions')->delete();
+                $this->command->info('Cleaned payment_order_approval_transactions.');
+            }
+
+            if (Schema::hasTable('payment_orders')) {
+                DB::table('payment_orders')->delete();
+                $this->command->info('Cleaned payment_orders.');
+            }
+
+            // 2. Second level - Delete tables that depend on purchase_orders
             if (Schema::hasTable('external_invoices')) {
                 DB::table('external_invoices')->delete();
                 $this->command->info('Cleaned external_invoices.');
@@ -37,13 +48,13 @@ class CompanySeeder extends Seeder
                 $this->command->info('Cleaned grns.');
             }
 
-            // 2. Second level - Delete purchase_orders and its dependencies
+            // 3. Third level - Delete purchase_orders and its dependencies
             if (Schema::hasTable('purchase_orders')) {
         DB::table('purchase_orders')->delete();
                 $this->command->info('Cleaned purchase_orders.');
             }
 
-            // 3. Third level - Delete remaining dependent tables
+            // 4. Fourth level - Delete remaining dependent tables
             if (Schema::hasTable('quotations')) {
                 DB::table('quotations')->delete();
                 $this->command->info('Cleaned quotations.');
@@ -69,6 +80,12 @@ class CompanySeeder extends Seeder
                 $this->command->info('Cleaned budgets.');
             }
 
+            // Delete cash flow transactions before accounts
+            if (Schema::hasTable('cash_flow_transactions')) {
+                DB::table('cash_flow_transactions')->delete();
+                $this->command->info('Cleaned cash_flow_transactions.');
+            }
+
             // Delete accounts before departments due to foreign key constraint
             if (Schema::hasTable('accounts')) {
                 DB::table('accounts')->delete();
@@ -81,7 +98,7 @@ class CompanySeeder extends Seeder
                 $this->command->info('Cleaned departments.');
             }
 
-            // 4. Clean companies
+            // 5. Finally, clean companies
         DB::table('companies')->delete();
             $this->command->info('Cleaned companies.');
 

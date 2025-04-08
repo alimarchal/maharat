@@ -73,6 +73,7 @@ use App\Http\Controllers\Api\RfqApiController;
 use App\Http\Controllers\Api\V1\RfqStatusLogController;
 use App\Http\Controllers\Api\V1\RfqCategoryController;
 use App\Http\Controllers\Api\V1\IncomeStatementController;
+use App\Http\Controllers\Api\V1\BalanceSheetController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -361,6 +362,13 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('equity-accounts/{equityAccount}/transactions', [EquityTransactionController::class, 'getAccountTransactions'])->name('equity-accounts.transactions');
     Route::get('equity-transactions/type/{type}', [EquityTransactionController::class, 'getByType'])->name('equity-transactions.type');
     Route::get('equity-transactions/date-range', [EquityTransactionController::class, 'getByDateRange'])->name('equity-transactions.date-range');
+
+    // Balance Sheet Routes
+    Route::get('/balance-sheet/fiscal-years', [BalanceSheetController::class, 'getFiscalYears']);
+    Route::get('/balance-sheet/assets', [BalanceSheetController::class, 'getAssets']);
+    Route::get('/balance-sheet/liabilities', [BalanceSheetController::class, 'getLiabilities']);
+    Route::get('/balance-sheet/equity', [BalanceSheetController::class, 'getEquity']);
+    Route::get('/balance-sheet/summary', [BalanceSheetController::class, 'getSummary']);
 
     Route::get('/roles/{role}/permissions', [RoleController::class, 'getPermissions']);
     Route::post('/roles/{role}/toggle-permission', [RoleController::class, 'togglePermission']);

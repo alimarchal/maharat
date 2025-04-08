@@ -131,7 +131,7 @@ class InvoiceController extends Controller
                 $query->select('id', 'invoice_id', 'name', 'description', 'quantity', 'unit_price', 'subtotal');
             }])->findOrFail($id);
 
-            return response()->json([
+        return response()->json([
                 'data' => [
                     'id' => $invoice->id,
                     'invoice_number' => $invoice->invoice_number,
@@ -204,18 +204,18 @@ class InvoiceController extends Controller
 
             // Remove items field before updating invoice
             $invoiceData = collect($validated)->except('items')->toArray();
-            $invoice->update($invoiceData);
+                $invoice->update($invoiceData);
 
             // Update items
             $invoice->items()->delete(); // Remove old items
             foreach ($validated['items'] as $item) {
                 $invoice->items()->create([
-                    'name' => $item['name'],
+                        'name' => $item['name'],
                     'description' => $item['description'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['unit_price'],
                     'subtotal' => $item['subtotal'],
-                    'tax_rate' => $item['tax_rate'],
+                        'tax_rate' => $item['tax_rate'],
                     'tax_amount' => $item['tax_amount'],
                     'total' => $item['total']
                 ]);

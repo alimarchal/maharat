@@ -67,19 +67,23 @@ class DatabaseSeeder extends Seeder
             InvoiceItemSeeder::class,
             ExternalInvoiceSeeder::class,
 
-            // Additional seeders if needed
+            // Financial management seeders
             AccountCodeSeeder::class,
             ChartOfAccountSeeder::class,
             AccountSeeder::class,
             FinancialTransactionSeeder::class,
+            CashFlowTransactionSeeder::class,
 
+            // Asset and Equity seeders
+            AssetSeeder::class,
+            AssetTransactionSeeder::class,
+            EquityAccountSeeder::class,
+            EquityTransactionSeeder::class,
+
+            // Payment and approval seeders
             PaymentOrderSeeder::class,
             PaymentOrderApprovalTransactionSeeder::class,
-
             MahratInvoiceApprovalTransactionSeeder::class,
-
-
-
         ]);
     }
 }
