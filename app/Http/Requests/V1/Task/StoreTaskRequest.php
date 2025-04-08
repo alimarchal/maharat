@@ -23,6 +23,8 @@ class StoreTaskRequest extends FormRequest
             'purchase_order_id' => ['sometimes', 'exists:purchase_orders,id'],
             'payment_order_id' => ['sometimes', 'exists:payment_orders,id'],
             'invoice_id' => ['sometimes', 'exists:invoices,id'],
+            'budget_id' => ['sometimes', 'exists:budgets,id'],
+            'budget_approval_transaction_id' => ['sometimes', 'exists:budget_approval_transactions,id'],
             'assigned_at' => ['nullable', 'date'],
             'deadline' => ['nullable', 'date', 'after_or_equal:assigned_at'],
             'urgency' => ['required', Rule::in(['Normal', 'Medium', 'High', 'Low', 'ASAP'])],

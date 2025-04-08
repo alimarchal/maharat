@@ -21,6 +21,13 @@ class TaskResource extends JsonResource
             'order_no' => $this->order_no,
             'assigned_from_user_id' => $this->assigned_from_user_id,
             'assigned_to_user_id' => $this->assigned_to_user_id,
+            'material_request_id' => $this->material_request_id,
+            'rfq_id' => $this->rfq_id,
+            'purchase_order_id' => $this->purchase_order_id,
+            'payment_order_id' => $this->payment_order_id,
+            'invoice_id' => $this->invoice_id,
+            'budget_id' => $this->budget_id,
+            'budget_approval_transaction_id' => $this->budget_approval_transaction_id,
             'read_status' => $this->read_status?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
@@ -37,6 +44,8 @@ class TaskResource extends JsonResource
             'purchase_order' => new PurchaseOrderResource($this->whenLoaded('purchase_order')),
             'payment_order' => new PaymentOrderResource($this->whenLoaded('payment_order')),
             'invoice' => new InvoiceResource($this->whenLoaded('invoice')),
+            'budget' => new BudgetResource($this->whenLoaded('budget')),
+            'budget_approval_transaction' => new BudgetApprovalTransactionResource($this->whenLoaded('budget_approval_transaction')),
         ];
     }
 }

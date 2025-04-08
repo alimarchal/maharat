@@ -66,6 +66,8 @@ class TaskController extends Controller
                     'purchase_order',
                     'payment_order',
                     'invoice',
+                    'budget',
+                    'budget_approval_transaction',
                 ]))
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
@@ -110,6 +112,8 @@ class TaskController extends Controller
                     'purchase_order',
                     'payment_order',
                     'invoice',
+                    'budget',
+                    'budget_approval_transaction',
                 ]))
             ], Response::HTTP_OK);
         } catch (\Exception $e) {

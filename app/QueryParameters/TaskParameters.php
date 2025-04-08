@@ -33,6 +33,8 @@ class TaskParameters
             AllowedFilter::exact('purchase_order_id'),
             AllowedFilter::exact('payment_order_id'),
             AllowedFilter::exact('invoice_id'),
+            AllowedFilter::exact('budget_id'),
+            AllowedFilter::exact('budget_approval_transaction_id'),
         ];
     }
 
@@ -52,6 +54,8 @@ class TaskParameters
         'purchase_order_id',
         'payment_order_id',
         'invoice_id',
+        'budget_id',
+        'budget_approval_transaction_id',
         'read_status',
         'created_at',
         'updated_at',
@@ -69,5 +73,7 @@ class TaskParameters
         'purchase_order',
         'payment_order',
         'invoice',
+        'budget',
+        'budget_approval_transaction',
     ];
 }

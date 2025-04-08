@@ -27,6 +27,8 @@ return new class extends Migration
             $table->foreignId('purchase_order_id')->nullable()->constrained('purchase_orders', 'id');
             $table->foreignId('payment_order_id')->nullable()->constrained('payment_orders', 'id');
             $table->foreignId('invoice_id')->nullable()->comment('maharat invoices')->constrained('invoices', 'id');
+            $table->foreignId('budget_id')->nullable()->constrained('budgets', 'id');
+            $table->foreignId('budget_approval_transaction_id')->nullable()->constrained('budget_approval_transactions', 'id');
 
             $table->dateTime('read_status')->nullable();
             $table->enum('status',['Pending','Approved','Rejected','Referred'])->default('Pending');

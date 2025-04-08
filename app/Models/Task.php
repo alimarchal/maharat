@@ -25,6 +25,8 @@ class Task extends Model
         'rfq_id',
         'purchase_order_id',
         'payment_order_id',
+        'budget_id',
+        'budget_approval_transaction_id',
         'invoice_id',
         'read_status',
         'tasks'
@@ -87,5 +89,17 @@ class Task extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+
+    public function budget(): BelongsTo
+    {
+        return $this->belongsTo(Budget::class);
+    }
+
+
+    public function budget_approval_transaction(): BelongsTo
+    {
+        return $this->belongsTo(BudgetApprovalTransaction::class);
     }
 }
