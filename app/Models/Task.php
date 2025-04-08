@@ -18,8 +18,16 @@ class Task extends Model
         'assigned_at',
         'deadline',
         'urgency',
+        'order_no',
         'assigned_from_user_id',
         'assigned_to_user_id',
+        'material_request_id',
+        'rfq_id',
+        'purchase_order_id',
+        'payment_order_id',
+        'budget_id',
+        'budget_approval_transaction_id',
+        'invoice_id',
         'read_status',
         'tasks'
     ];
@@ -53,5 +61,45 @@ class Task extends Model
     public function descriptions(): HasMany
     {
         return $this->hasMany(TaskDescription::class);
+    }
+
+
+    public function material_request(): BelongsTo
+    {
+        return $this->belongsTo(MaterialRequest::class);
+    }
+
+    public function rfq(): BelongsTo
+    {
+        return $this->belongsTo(Rfq::class);
+    }
+
+
+    public function purchase_order(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
+
+
+    public function payment_order(): BelongsTo
+    {
+        return $this->belongsTo(PaymentOrder::class);
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
+
+    public function budget(): BelongsTo
+    {
+        return $this->belongsTo(Budget::class);
+    }
+
+
+    public function budget_approval_transaction(): BelongsTo
+    {
+        return $this->belongsTo(BudgetApprovalTransaction::class);
     }
 }

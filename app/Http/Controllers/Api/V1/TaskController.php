@@ -56,7 +56,18 @@ class TaskController extends Controller
             return response()->json([
                 'message' => 'Task created successfully',
                 'data' => new TaskResource($task->load([
-                    'processStep', 'process', 'assignedFromUser', 'assignedToUser', 'descriptions'
+                    'processStep',
+                    'process',
+                    'assignedFromUser',
+                    'assignedToUser',
+                    'descriptions',
+                    'material_request',
+                    'rfq',
+                    'purchase_order',
+                    'payment_order',
+                    'invoice',
+                    'budget',
+                    'budget_approval_transaction',
                 ]))
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
@@ -92,7 +103,17 @@ class TaskController extends Controller
             return response()->json([
                 'message' => 'Task updated successfully',
                 'data' => new TaskResource($task->load([
-                    'processStep', 'process', 'assignedUser', 'descriptions'
+                    'processStep',
+                    'process',
+                    'assignedUser',
+                    'descriptions',
+                    'material_request',
+                    'rfq',
+                    'purchase_order',
+                    'payment_order',
+                    'invoice',
+                    'budget',
+                    'budget_approval_transaction',
                 ]))
             ], Response::HTTP_OK);
         } catch (\Exception $e) {

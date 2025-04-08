@@ -20,6 +20,16 @@ return new class extends Migration
             $table->enum('urgency', ['Normal', 'Medium', 'High', 'Low', 'ASAP'])->default('Normal');
             $table->foreignId('assigned_from_user_id')->nullable()->comment('from')->constrained('users', 'id');
             $table->foreignId('assigned_to_user_id')->nullable()->comment('to')->constrained('users', 'id');
+
+            $table->integer('order_no')->comment('order_or_sequence_no')->default(1);
+            $table->foreignId('material_request_id')->nullable()->constrained('material_requests', 'id');
+            $table->foreignId('rfq_id')->nullable()->constrained('rfqs', 'id');
+            $table->foreignId('purchase_order_id')->nullable()->constrained('purchase_orders', 'id');
+            $table->foreignId('payment_order_id')->nullable()->constrained('payment_orders', 'id');
+            $table->foreignId('invoice_id')->nullable()->comment('maharat invoices')->constrained('invoices', 'id');
+            $table->foreignId('budget_id')->nullable()->constrained('budgets', 'id');
+            $table->foreignId('budget_approval_transaction_id')->nullable()->constrained('budget_approval_transactions', 'id');
+
             $table->dateTime('read_status')->nullable();
             $table->enum('status',['Pending','Approved','Rejected','Referred'])->default('Pending');
             $table->softDeletes();
