@@ -35,7 +35,7 @@ const Invoices = ({ auth }) => {
             progressInterval = setInterval(() => {
                 setProgress((prev) => prev >= 90 ? 90 : prev + 10);
             }, 200);
-
+            
             const response = await axios.get(`/api/v1/external-invoices?page=${currentPage}&include=supplier,user`);
             
             if (response.data && response.data.data) {
@@ -109,7 +109,7 @@ const Invoices = ({ auth }) => {
             } else {
                 response = await axios.put(`/api/v1/external-invoices/${id}`, payload);
             }
-
+            
             if (response.data) {
                 setEditingId(null);
                 setError('');
@@ -152,10 +152,10 @@ const Invoices = ({ auth }) => {
         }
 
         try {
-            const optionsDate = { year: "numeric", month: "long", day: "numeric" };
-            const optionsTime = { hour: "2-digit", minute: "2-digit", hour12: true };
-        
-            const dateObj = new Date(dateString);
+        const optionsDate = { year: "numeric", month: "long", day: "numeric" };
+        const optionsTime = { hour: "2-digit", minute: "2-digit", hour12: true };
+    
+        const dateObj = new Date(dateString);
             
             // Check if date is valid
             if (isNaN(dateObj.getTime())) {
@@ -163,16 +163,16 @@ const Invoices = ({ auth }) => {
                 return 'Invalid Date';
             }
 
-            const formattedDate = dateObj.toLocaleDateString("en-US", optionsDate);
-            const formattedTime = dateObj.toLocaleTimeString("en-US", optionsTime);
-        
-            return (
-                <div>
-                    {formattedDate}
-                    <br />
-                    <span className="text-gray-500">at {formattedTime}</span>
-                </div>
-            );
+        const formattedDate = dateObj.toLocaleDateString("en-US", optionsDate);
+        const formattedTime = dateObj.toLocaleTimeString("en-US", optionsTime);
+    
+        return (
+            <div>
+                {formattedDate}
+                <br />
+                <span className="text-gray-500">at {formattedTime}</span>
+            </div>
+        );
         } catch (error) {
             console.error('Date formatting error:', error);
             return 'Date Error';
@@ -340,12 +340,12 @@ const Invoices = ({ auth }) => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 {editingId === invoice.id ? (
-                                                    <input
-                                                        type="number"
+                                                        <input
+                                                            type="number"
                                                         value={editData.amount || ''}
                                                         onChange={(e) => handleChange('amount', Math.max(0, Number(e.target.value)))}
                                                         className="bg-transparent border-none focus:outline-none focus:ring-0 w-full text-center"
-                                                        min="0"
+                                                            min="0"
                                                     />
                                                 ) : (
                                                     `${invoice.amount || 0} SAR`

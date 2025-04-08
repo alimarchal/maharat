@@ -31,15 +31,42 @@ class PurchaseOrderSeeder extends Seeder
                 DB::statement('ALTER TABLE purchase_orders AUTO_INCREMENT = 1');
             }
 
-            // Sample purchase orders with explicit IDs
+            // Check if required tables exist
+            if (!Schema::hasTable('quotations') || !Schema::hasTable('suppliers') || !Schema::hasTable('users')) {
+                $this->command->warn('Required tables (quotations, suppliers, users) do not exist. Skipping PurchaseOrderSeeder.');
+                return;
+            }
+
+            // Get existing quotations
+            $quotations = DB::table('quotations')->pluck('id')->toArray();
+            if (empty($quotations)) {
+                $this->command->warn('No quotations found. Please run QuotationSeeder first.');
+                return;
+            }
+
+            // Get existing suppliers
+            $suppliers = DB::table('suppliers')->pluck('id')->toArray();
+            if (empty($suppliers)) {
+                $this->command->warn('No suppliers found. Please run SupplierSeeder first.');
+                return;
+            }
+
+            // Get existing users
+            $users = DB::table('users')->pluck('id')->toArray();
+            if (empty($users)) {
+                $this->command->warn('No users found. Please run UserSeeder first.');
+                return;
+            }
+
+            // Sample purchase orders with dynamic IDs
             $purchaseOrders = [
                 [
                     'id' => 201,
-                    'user_id' => 1,
+                    'user_id' => $users[0] ?? 1,
                     'rfq_id' => 1,
                     'purchase_order_no' => 'PO-2025-0001',
-                    'quotation_id' => 2,
-                    'supplier_id' => 1,
+                    'quotation_id' => $quotations[0] ?? 1,
+                    'supplier_id' => $suppliers[0] ?? 1,
                     'purchase_order_date' => '2025-03-10',
                     'expiry_date' => '2025-03-15',
                     'amount' => 15000.00,
@@ -51,11 +78,11 @@ class PurchaseOrderSeeder extends Seeder
                 ],
                 [
                     'id' => 202,
-                    'user_id' => 2,
+                    'user_id' => $users[1] ?? 2,
                     'rfq_id' => 2,
                     'purchase_order_no' => 'PO-2025-0002',
-                    'quotation_id' => 4,
-                    'supplier_id' => 2,
+                    'quotation_id' => $quotations[1] ?? 2,
+                    'supplier_id' => $suppliers[1] ?? 2,
                     'purchase_order_date' => '2025-03-11',
                     'expiry_date' => '2025-03-16',
                     'amount' => 7500.50,
@@ -67,11 +94,11 @@ class PurchaseOrderSeeder extends Seeder
                 ],
                 [
                     'id' => 203,
-                    'user_id' => 3,
+                    'user_id' => $users[2] ?? 3,
                     'rfq_id' => 3,
                     'purchase_order_no' => 'PO-2025-0003',
-                    'quotation_id' => 6,
-                    'supplier_id' => 3,
+                    'quotation_id' => $quotations[2] ?? 3,
+                    'supplier_id' => $suppliers[2] ?? 3,
                     'purchase_order_date' => '2025-03-12',
                     'expiry_date' => '2025-03-16',
                     'amount' => 20000.00,
@@ -94,5 +121,4 @@ class PurchaseOrderSeeder extends Seeder
             $this->command->error('Error seeding purchase orders: ' . $e->getMessage());
         }
     }
-
 }
