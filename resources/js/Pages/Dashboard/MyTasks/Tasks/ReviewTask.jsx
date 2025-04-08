@@ -69,10 +69,10 @@ const ReviewTask = () => {
                 );
                 const taskDescription = response.data.data;
                 const transactionPayload = {
-                    material_request_id: taskDescription.task?.process_id,
+                    material_request_id: taskData?.material_request_id,
                     requester_id: logged_user,
                     assigned_to: taskDescription.task?.assigned_to_user_id,
-                    // order: String(taskDescription.task?.order),
+                    order: String(taskData?.order_no),
                     description: taskDescription.description,
                     status: taskDescription.action,
                     referred_to: taskDescription?.user_id || null,

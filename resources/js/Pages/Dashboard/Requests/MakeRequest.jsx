@@ -321,6 +321,7 @@ const MakeRequest = () => {
                 assigned_to_user_id: assignUser.user?.user?.id,
                 assigned_from_user_id: user_id,
                 read_status: null,
+                material_request_id: materialRequestId,
             };
             await axios.post("/api/v1/tasks", taskPayload);
 
