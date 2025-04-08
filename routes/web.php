@@ -290,7 +290,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('balance.index');
 
     Route::get('/balance-sheet-old', function () {
-        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/BalanceSheet/BalanceSheetOld']);
+        return Inertia::render('Dashboard/BudgetAndAccounts/BalanceSheet/BalanceSheetOld');
     })->name('balance-old.index');
 
     Route::get('/budget', function () {

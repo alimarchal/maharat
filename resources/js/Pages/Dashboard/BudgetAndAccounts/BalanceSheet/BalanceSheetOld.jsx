@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFilePdf } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import SelectFloating from "@/Components/SelectFloating";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 
 const BalanceSheetReport = () => {
     const [formData, setFormData] = useState({
@@ -134,136 +135,138 @@ const BalanceSheetReport = () => {
     };
 
     return (
-        <div className="w-full">
-            <div className="flex justify-between items-center text-center mb-8">
-                <h2 className="text-3xl font-bold text-[#2C323C]">
-                    Comprehensive Balance Sheet
-                </h2>
-                <div className="w-full lg:w-1/4">
-                    <SelectFloating
-                        label="Year"
-                        name="year"
-                        value={formData.year}
-                        onChange={handleChange}
-                        options={[
-                            { id: 1, label: "2023" },
-                            { id: 2, label: "2024" },
-                            { id: 3, label: "2025" },
-                        ]}
-                    />
-                </div>
-            </div>
-
-            <div className="space-y-8">
-                <div className="bg-white rounded-2xl p-8 shadow-md">
-                    <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#009FDC] pb-3 mb-6">
-                        Assets
+        <AuthenticatedLayout>
+            <div className="w-full p-8">
+                <div className="flex justify-between items-center text-center mb-8">
+                    <h2 className="text-3xl font-bold text-[#2C323C]">
+                        Comprehensive Balance Sheet
                     </h2>
-                    {renderTable(
-                        "Current Assets",
-                        balanceSheetData.assets.current,
-                        openSections.currentAssets,
-                        "currentAssets"
-                    )}
-                    {renderTable(
-                        "Non-Current Assets",
-                        balanceSheetData.assets.nonCurrent,
-                        openSections.nonCurrentAssets,
-                        "nonCurrentAssets"
-                    )}
-                    <div className="bg-[#DCECF2] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
-                        <h3>Total Assets:</h3>
-                        <p>
-                            $
-                            {(
-                                calculateSectionTotal(
-                                    balanceSheetData.assets.current
-                                ) +
-                                calculateSectionTotal(
-                                    balanceSheetData.assets.nonCurrent
-                                )
-                            ).toLocaleString()}
-                        </p>
+                    <div className="w-full lg:w-1/4">
+                        <SelectFloating
+                            label="Year"
+                            name="year"
+                            value={formData.year}
+                            onChange={handleChange}
+                            options={[
+                                { id: 1, label: "2023" },
+                                { id: 2, label: "2024" },
+                                { id: 3, label: "2025" },
+                            ]}
+                        />
                     </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-8 shadow-md">
-                    <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#009FDC] pb-3 mb-6">
-                        Liabilities
-                    </h2>
-                    {renderTable(
-                        "Current Liabilities",
-                        balanceSheetData.liabilities.current,
-                        openSections.currentLiabilities,
-                        "currentLiabilities"
-                    )}
-                    {renderTable(
-                        "Non-Current Liabilities",
-                        balanceSheetData.liabilities.nonCurrent,
-                        openSections.nonCurrentLiabilities,
-                        "nonCurrentLiabilities"
-                    )}
-                    <div className="bg-[#DCECF2] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
-                        <h3>Total Liabilities:</h3>
-                        <p>
-                            $
-                            {(
-                                calculateSectionTotal(
-                                    balanceSheetData.liabilities.current
-                                ) +
-                                calculateSectionTotal(
-                                    balanceSheetData.liabilities.nonCurrent
-                                )
-                            ).toLocaleString()}
-                        </p>
+                <div className="space-y-8">
+                    <div className="bg-white rounded-2xl p-8 shadow-md">
+                        <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#009FDC] pb-3 mb-6">
+                            Assets
+                        </h2>
+                        {renderTable(
+                            "Current Assets",
+                            balanceSheetData.assets.current,
+                            openSections.currentAssets,
+                            "currentAssets"
+                        )}
+                        {renderTable(
+                            "Non-Current Assets",
+                            balanceSheetData.assets.nonCurrent,
+                            openSections.nonCurrentAssets,
+                            "nonCurrentAssets"
+                        )}
+                        <div className="bg-[#DCECF2] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
+                            <h3>Total Assets:</h3>
+                            <p>
+                                $
+                                {(
+                                    calculateSectionTotal(
+                                        balanceSheetData.assets.current
+                                    ) +
+                                    calculateSectionTotal(
+                                        balanceSheetData.assets.nonCurrent
+                                    )
+                                ).toLocaleString()}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-8 shadow-md">
+                        <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#009FDC] pb-3 mb-6">
+                            Liabilities
+                        </h2>
+                        {renderTable(
+                            "Current Liabilities",
+                            balanceSheetData.liabilities.current,
+                            openSections.currentLiabilities,
+                            "currentLiabilities"
+                        )}
+                        {renderTable(
+                            "Non-Current Liabilities",
+                            balanceSheetData.liabilities.nonCurrent,
+                            openSections.nonCurrentLiabilities,
+                            "nonCurrentLiabilities"
+                        )}
+                        <div className="bg-[#DCECF2] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
+                            <h3>Total Liabilities:</h3>
+                            <p>
+                                $
+                                {(
+                                    calculateSectionTotal(
+                                        balanceSheetData.liabilities.current
+                                    ) +
+                                    calculateSectionTotal(
+                                        balanceSheetData.liabilities.nonCurrent
+                                    )
+                                ).toLocaleString()}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-8 shadow-md">
+                        <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#009FDC] pb-3 mb-6">
+                            Net Assets
+                        </h2>
+                        {renderTable(
+                            "Without Donor Restrictions",
+                            balanceSheetData.netAssets.withoutDonorRestrictions,
+                            openSections.withoutDonorRestrictions,
+                            "withoutDonorRestrictions"
+                        )}
+                        {renderTable(
+                            "With Donor Restrictions",
+                            balanceSheetData.netAssets.withDonorRestrictions,
+                            openSections.withDonorRestrictions,
+                            "withDonorRestrictions"
+                        )}
+                        <div className="bg-[#DCECF2] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
+                            <h3>Total Net Assets:</h3>
+                            <p>
+                                $
+                                {(
+                                    calculateSectionTotal(
+                                        balanceSheetData.netAssets
+                                            .withoutDonorRestrictions
+                                    ) +
+                                    calculateSectionTotal(
+                                        balanceSheetData.netAssets
+                                            .withDonorRestrictions
+                                    )
+                                ).toLocaleString()}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-8 shadow-md">
-                    <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#009FDC] pb-3 mb-6">
-                        Net Assets
-                    </h2>
-                    {renderTable(
-                        "Without Donor Restrictions",
-                        balanceSheetData.netAssets.withoutDonorRestrictions,
-                        openSections.withoutDonorRestrictions,
-                        "withoutDonorRestrictions"
-                    )}
-                    {renderTable(
-                        "With Donor Restrictions",
-                        balanceSheetData.netAssets.withDonorRestrictions,
-                        openSections.withDonorRestrictions,
-                        "withDonorRestrictions"
-                    )}
-                    <div className="bg-[#DCECF2] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
-                        <h3>Total Net Assets:</h3>
-                        <p>
-                            $
-                            {(
-                                calculateSectionTotal(
-                                    balanceSheetData.netAssets
-                                        .withoutDonorRestrictions
-                                ) +
-                                calculateSectionTotal(
-                                    balanceSheetData.netAssets
-                                        .withDonorRestrictions
-                                )
-                            ).toLocaleString()}
-                        </p>
-                    </div>
+                <div className="flex flex-wrap justify-end items-center my-8">
+                    <Link className="flex items-center bg-[#009FDC] text-white px-6 py-3 rounded-full hover:bg-[#0077B6] transition duration-200">
+                        <FontAwesomeIcon
+                            icon={faFilePdf}
+                            className="mr-2 text-lg"
+                        />
+                        Generate PDF
+                    </Link>
                 </div>
             </div>
-
-            <div className="flex flex-wrap justify-end items-center my-8">
-                <Link className="flex items-center bg-[#009FDC] text-white px-6 py-3 rounded-full hover:bg-[#0077B6] transition duration-200">
-                    <FontAwesomeIcon
-                        icon={faFilePdf}
-                        className="mr-2 text-lg"
-                    />
-                    Generate PDF
-                </Link>
-            </div>
-        </div>
+        </AuthenticatedLayout>
     );
 };
 
