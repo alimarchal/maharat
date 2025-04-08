@@ -28,6 +28,11 @@ class TaskParameters
             AllowedFilter::exact('process_id'),
             AllowedFilter::exact('assigned_from_user_id'),
             AllowedFilter::exact('assigned_to_user_id'),
+            AllowedFilter::exact('material_request_id'),
+            AllowedFilter::exact('rfq_id'),
+            AllowedFilter::exact('purchase_order_id'),
+            AllowedFilter::exact('payment_order_id'),
+            AllowedFilter::exact('invoice_id'),
         ];
     }
 
@@ -42,6 +47,11 @@ class TaskParameters
         'urgency',
         'assigned_from_user_id',
         'assigned_to_user_id',
+        'material_request_id',
+        'rfq_id',
+        'purchase_order_id',
+        'payment_order_id',
+        'invoice_id',
         'read_status',
         'created_at',
         'updated_at',
@@ -54,5 +64,10 @@ class TaskParameters
         'assignedFromUser',
         'assignedToUser',
         'descriptions',
+        'material_request',
+        'rfq',
+        'purchase_order',
+        'payment_order',
+        'invoice',
     ];
 }

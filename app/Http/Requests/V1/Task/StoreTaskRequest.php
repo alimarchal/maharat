@@ -17,6 +17,12 @@ class StoreTaskRequest extends FormRequest
         return [
             'process_step_id' => ['required', 'exists:process_steps,id'],
             'process_id' => ['required', 'exists:processes,id'],
+            'order_no' => ['nullable','integer', 'min:1'],
+            'material_request_id' => ['sometimes', 'exists:material_requests,id'],
+            'rfq_id' => ['sometimes', 'exists:rfqs,id'],
+            'purchase_order_id' => ['sometimes', 'exists:purchase_orders,id'],
+            'payment_order_id' => ['sometimes', 'exists:payment_orders,id'],
+            'invoice_id' => ['sometimes', 'exists:invoices,id'],
             'assigned_at' => ['nullable', 'date'],
             'deadline' => ['nullable', 'date', 'after_or_equal:assigned_at'],
             'urgency' => ['required', Rule::in(['Normal', 'Medium', 'High', 'Low', 'ASAP'])],
