@@ -282,7 +282,7 @@ const RFQStatusFlow = () => {
                                                                     <span className="text-sm">
                                                                         {
                                                                             card
-                                                                                .assigned_user
+                                                                                .assigned_to_user
                                                                                 .firstname[0]
                                                                         }
                                                                     </span>
@@ -291,7 +291,7 @@ const RFQStatusFlow = () => {
                                                                     <div className="text-base font-medium">
                                                                         {
                                                                             card
-                                                                                .assigned_user
+                                                                                .assigned_to_user
                                                                                 .name
                                                                         }
                                                                     </div>

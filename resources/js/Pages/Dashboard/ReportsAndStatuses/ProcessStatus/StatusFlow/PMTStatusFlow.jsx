@@ -39,7 +39,7 @@ const PMTStatusFlow = () => {
             }
 
             const response = await axios.get(
-                `/api/v1/payment-order-approval-trans?filter[payment_order_id]=${id}&include=materialRequest,requester,assignedUser,referredUser`
+                `/api/v1/payment-order-approval-trans?filter[payment_order_id]=${id}&include=paymentOrder,requester,assignedUser,referredUser,createdByUser,updatedByUser`
             );
             setCardData(response.data?.data);
 

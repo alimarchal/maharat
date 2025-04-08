@@ -117,6 +117,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                         assigned_to_user_id:
                                             assignUser.user.user.id,
                                         assigned_from_user_id: userId,
+                                        payment_order_id: paymentOrderResponse,
                                     };
                                     await axios.post(
                                         "/api/v1/tasks",

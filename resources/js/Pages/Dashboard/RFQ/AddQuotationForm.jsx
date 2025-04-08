@@ -69,9 +69,9 @@ export default function AddQuotationForm({ auth }) {
                 const productsData = productsResponse.data?.data || [];
                 setProducts(productsData);
 
-        if (rfqId) {
-            setLoading(true);
-            setIsEditing(true);
+                if (rfqId) {
+                    setLoading(true);
+                    setIsEditing(true);
 
                     const response = await axios.get(`/api/v1/rfqs/${rfqId}`);
                     const rfqData = response.data?.data;
@@ -81,8 +81,6 @@ export default function AddQuotationForm({ auth }) {
                         setLoading(false);
                         return;
                     }
-
-                    console.log("Raw RFQ data from API:", rfqData);
 
                     // For category, we need to fetch from rfq_categories
                     let categoryId = rfqData.category_id
@@ -95,11 +93,6 @@ export default function AddQuotationForm({ auth }) {
                             const categoryResponse = await axios.get(
                                 `/api/v1/rfq-categories/${rfqId}`
                             );
-                            console.log(
-                                "Category data:",
-                                categoryResponse.data
-                            );
-
                             if (
                                 categoryResponse.data &&
                                 categoryResponse.data.data &&
@@ -219,35 +212,33 @@ export default function AddQuotationForm({ auth }) {
                             : "48",
                         items: formattedItems,
                     };
-
-                    console.log("Setting form data:", formattedData);
                     setFormData(formattedData);
                     setLoading(false);
-        } else {
-            // In create mode, get new RFQ number
-            axios
-                .get("/api/v1/rfqs/form-data")
-                .then((response) => {
-                    if (response.data && response.data.rfq_number) {
-                        setFormData((prev) => ({
-                            ...prev,
-                            rfq_id: response.data.rfq_number,
-                            issue_date:
-                                response.data.request_date ||
-                                new Date().toISOString().split("T")[0],
-                        }));
-                    }
-                })
-                .catch((error) => {
+                } else {
+                    // In create mode, get new RFQ number
+                    axios
+                        .get("/api/v1/rfqs/form-data")
+                        .then((response) => {
+                            if (response.data && response.data.rfq_number) {
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    rfq_id: response.data.rfq_number,
+                                    issue_date:
+                                        response.data.request_date ||
+                                        new Date().toISOString().split("T")[0],
+                                }));
+                            }
+                        })
+                        .catch((error) => {
                             console.error(
                                 "Error fetching new RFQ number:",
                                 error
                             );
-                })
-                .finally(() => {
-                    setLoading(false);
-                });
-        }
+                        })
+                        .finally(() => {
+                            setLoading(false);
+                        });
+                }
             } catch (error) {
                 console.error("Error fetching initial data:", error);
                 setError("Failed to load data");
@@ -255,7 +246,6 @@ export default function AddQuotationForm({ auth }) {
                 setLoading(false);
             }
         };
-
         fetchInitialData();
     }, [rfqId]);
 
@@ -264,8 +254,6 @@ export default function AddQuotationForm({ auth }) {
         const fetchData = async () => {
             try {
                 setLoading(true);
-
-                // Define the API endpoints
                 const endpoints = [
                     { name: "units", url: "/api/v1/units" },
                     { name: "brands", url: "/api/v1/brands" },
@@ -368,12 +356,6 @@ export default function AddQuotationForm({ auth }) {
                             },
                         }
                     );
-
-                    console.log(
-                        "Statuses response with per_page=100:",
-                        statusesResponse.data
-                    );
-
                     let allStatuses = [];
 
                     if (statusesResponse.data && statusesResponse.data.data) {
@@ -404,11 +386,6 @@ export default function AddQuotationForm({ auth }) {
                                         })
                                     );
                                 }
-
-                                console.log(
-                                    `Fetching ${remainingRequests.length} additional pages of statuses...`
-                                );
-
                                 const remainingResponses = await Promise.all(
                                     remainingRequests
                                 );
@@ -423,19 +400,12 @@ export default function AddQuotationForm({ auth }) {
                                 });
                             }
                         }
-
-                        console.log(
-                            `Total statuses fetched: ${allStatuses.length}`
-                        );
-
                         // Filter for payment types
                         const paymentTypes = allStatuses.filter(
                             (status) =>
                                 status.type &&
                                 status.type.toLowerCase() === "payment"
                         );
-
-                        console.log("Filtered payment types:", paymentTypes);
 
                         if (paymentTypes.length > 0) {
                             setPaymentTypes(paymentTypes);
@@ -450,9 +420,6 @@ export default function AddQuotationForm({ auth }) {
                             });
                             setPaymentTypeNames(paymentTypeLookup);
                         } else {
-                            console.log(
-                                "No payment types found, using all statuses instead"
-                            );
                             setPaymentTypes(allStatuses);
 
                             // Create lookup map for all statuses
@@ -505,12 +472,6 @@ export default function AddQuotationForm({ auth }) {
                         setPaymentTypeNames({});
                     }
                 }
-
-                console.log("Category mapping:", categoryNames);
-                console.log("Warehouse mapping:", warehouseNames);
-                console.log("Payment type mapping:", paymentTypeNames);
-                console.log("Form data after loading lookup data:", formData);
-
                 setLoading(false);
             } catch (error) {
                 console.error("Error fetching lookup data:", error);
@@ -533,7 +494,6 @@ export default function AddQuotationForm({ auth }) {
                 setLoading(false);
             }
         };
-
         fetchData();
     }, []);
 
@@ -645,7 +605,6 @@ export default function AddQuotationForm({ auth }) {
         e.preventDefault();
 
         try {
-            // First save the RFQ
             const formDataObj = new FormData();
             formDataObj.append(
                 "organization_email",
@@ -663,7 +622,6 @@ export default function AddQuotationForm({ auth }) {
 
             let response;
             if (rfqId) {
-                // For updates, use axios.put
                 response = await axios.put(
                     `/api/v1/rfqs/${rfqId}`,
                     formDataObj,
@@ -675,7 +633,6 @@ export default function AddQuotationForm({ auth }) {
                     }
                 );
             } else {
-                // For new RFQs, use axios.post
                 response = await axios.post("/api/v1/rfqs", formDataObj, {
                     headers: {
                         "Content-Type": "multipart/form-data",
@@ -687,8 +644,9 @@ export default function AddQuotationForm({ auth }) {
             if (!response.data?.data?.id) {
                 throw new Error("Failed to get RFQ ID");
             }
-
-            const newRfqId = response.data.data.id;
+            console.log("Rfq:", response.data.data);
+            const newRfqId = response.data.data?.id;
+            console.log("Rfq Id:".newRfqId);
 
             // Now save the items with the new RFQ ID
             const itemsFormData = new FormData();
@@ -710,9 +668,9 @@ export default function AddQuotationForm({ auth }) {
                 Object.keys(attachments).forEach((index) => {
                     if (attachments[index]) {
                         itemsFormData.append(
-                        `attachments[${index}]`,
-                        attachments[index]
-                    );
+                            `attachments[${index}]`,
+                            attachments[index]
+                        );
                     }
                 });
             }
@@ -767,6 +725,7 @@ export default function AddQuotationForm({ auth }) {
                                 urgency: "Normal",
                                 assigned_to_user_id: assignUser.user.user.id,
                                 assigned_from_user_id: loggedUser,
+                                rfq_id: newRfqId,
                             };
                             await axios.post("/api/v1/tasks", taskPayload);
                         }
@@ -776,10 +735,9 @@ export default function AddQuotationForm({ auth }) {
 
             if (itemsResponse.data.success) {
                 alert("RFQ and items saved successfully!");
-        router.visit(route("rfq.index"));
+                router.visit(route("rfq.index"));
             }
         } catch (error) {
-            console.error("Error in save and submit:", error);
             alert(
                 error.response?.data?.message ||
                     "Save failed. Please check your data and try again."
@@ -811,8 +769,8 @@ export default function AddQuotationForm({ auth }) {
             fileName = file.original_filename || file.name || file.file_name;
             // Fix the URL construction
             if (file.url && file.url.startsWith("http")) {
-                    fileUrl = file.url;
-                } else {
+                fileUrl = file.url;
+            } else {
                 fileUrl = `/storage/${file.url || file.path || file}`.replace(
                     "/storage/storage/",
                     "/storage/"
