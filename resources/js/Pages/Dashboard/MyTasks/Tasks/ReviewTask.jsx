@@ -61,30 +61,66 @@ const ReviewTask = () => {
             newErrors.user_id = "User is required";
 
         setErrors(newErrors);
-        if (Object.keys(newErrors).length === 0) {
-            try {
-                const response = await axios.post(
-                    "/api/v1/task-descriptions",
-                    formData
-                );
-                const taskDescription = response.data.data;
-                const transactionPayload = {
-                    material_request_id: taskData?.material_request_id,
-                    requester_id: logged_user,
-                    assigned_to: taskDescription.task?.assigned_to_user_id,
-                    order: String(taskData?.order_no),
-                    description: taskDescription.description,
-                    status: taskDescription.action,
-                    referred_to: taskDescription?.user_id || null,
-                };
-                await axios.post(
-                    "/api/v1/material-request-transactions",
-                    transactionPayload
-                );
-                router.visit("/tasks");
-            } catch (error) {
-                console.error("Error submitting task:", error);
+        if (Object.keys(newErrors).length > 0) return;
+
+        try {
+            const response = await axios.post(
+                "/api/v1/task-descriptions",
+                formData
+            );
+            const taskDescription = response.data.data;
+
+            const commonPayload = {
+                requester_id: logged_user,
+                assigned_to: taskDescription.task?.assigned_to_user_id,
+                order: String(taskData?.order_no),
+                description: taskDescription.description,
+                status: taskDescription.action,
+                referred_to: taskDescription?.user_id || null,
+            };
+
+            const transactions = [
+                {
+                    key: "material_request_id",
+                    url: "/api/v1/material-request-transactions",
+                },
+                {
+                    key: "rfq_id",
+                    url: "/api/v1/rfq-approval-transactions",
+                },
+                {
+                    key: "purchase_order_id",
+                    url: "/api/v1/po-approval-transactions",
+                },
+                {
+                    key: "payment_order_id",
+                    url: "/api/v1/payment-order-approval-trans",
+                },
+                {
+                    key: "invoice_id",
+                    url: "/api/v1/mahrat-invoice-approval-trans",
+                },
+                {
+                    key: "request_budgets_id",
+                    url: "/api/v1/budget-request-approval-trans",
+                },
+                {
+                    key: "budget_id",
+                    url: "/api/v1/budget-approval-transactions",
+                },
+            ];
+
+            for (const { key, url } of transactions) {
+                const id = taskData[key];
+                if (id && id !== "") {
+                    const payload = { ...commonPayload, [key]: id };
+                    await axios.post(url, payload);
+                }
             }
+
+            router.visit("/tasks");
+        } catch (error) {
+            console.error("Error submitting task:", error);
         }
     };
 
