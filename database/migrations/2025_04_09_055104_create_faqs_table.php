@@ -18,6 +18,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->text('screenshots')->nullable();
             $table->string('video_link')->nullable();
+            $table->integer('order')->default(0);
             $table->timestamps();
         });
     }

@@ -1,11 +1,157 @@
-import React, { useState } from "react";
-import { FaChevronDown, FaChevronUp, FaQuestionCircle } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import { FaChevronDown, FaChevronUp, FaQuestionCircle, FaEdit } from "react-icons/fa";
 import InputFloating from "../../Components/InputFloating";
 import axios from "axios";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, router } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronRight, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
+import { faChevronRight, faArrowLeft, faGripVertical } from "@fortawesome/free-solid-svg-icons";
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+
+const FAQModal = ({ isOpen, onClose, onSave, faq = null, isEdit = false }) => {
+    const [formData, setFormData] = useState({
+        title: "",
+        question: "",
+        description: "",
+        video_link: "",
+        screenshots: [],
+    });
+
+    const [errors, setErrors] = useState({});
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (isOpen && faq && isEdit) {
+            setFormData({
+                title: faq.title || "",
+                question: faq.question || "",
+                description: faq.description || "",
+                video_link: faq.video_link || "",
+                screenshots: faq.screenshots ? JSON.parse(faq.screenshots) : [],
+            });
+        }
+    }, [isOpen, faq, isEdit]);
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleFileChange = (e) => {
+        setFormData({ ...formData, screenshots: Array.from(e.target.files) });
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        setErrors({});
+
+        try {
+            const formDataToSend = new FormData();
+            formDataToSend.append('title', formData.title);
+            formDataToSend.append('question', formData.question);
+            formDataToSend.append('description', formData.description);
+            formDataToSend.append('video_link', formData.video_link);
+            formData.screenshots.forEach((file, index) => {
+                formDataToSend.append(`screenshots[${index}]`, file);
+            });
+
+            if (isEdit) {
+                await axios.put(`/api/v1/faqs/${faq.id}`, formDataToSend);
+            } else {
+                await axios.post('/api/v1/faqs', formDataToSend);
+            }
+
+            onSave();
+            onClose();
+        } catch (error) {
+            if (error.response?.data?.errors) {
+                setErrors(error.response.data.errors);
+            } else {
+                setErrors({ submit: error.response?.data?.message || "Failed to save FAQ" });
+            }
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white p-8 rounded-2xl w-[90%] max-w-lg">
+                <div className="flex justify-between border-b pb-2 mb-4">
+                    <h2 className="text-3xl font-bold text-[#2C323C]">
+                        {isEdit ? "Edit FAQ" : "Add FAQ"}
+                    </h2>
+                    <button onClick={onClose} className="text-red-500 hover:text-red-800">
+                        <FontAwesomeIcon icon={faTimes} />
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <InputFloating
+                        label="Title"
+                        name="title"
+                        value={formData.title}
+                        onChange={handleChange}
+                        error={errors.title}
+                    />
+                    <InputFloating
+                        label="Question"
+                        name="question"
+                        value={formData.question}
+                        onChange={handleChange}
+                        error={errors.question}
+                    />
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Description
+                        </label>
+                        <textarea
+                            name="description"
+                            value={formData.description}
+                            onChange={handleChange}
+                            rows="4"
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#009FDC] ${
+                                errors.description ? "border-red-500" : "border-gray-300"
+                            }`}
+                        ></textarea>
+                        {errors.description && (
+                            <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+                        )}
+                    </div>
+                    <InputFloating
+                        label="Video Link"
+                        name="video_link"
+                        value={formData.video_link}
+                        onChange={handleChange}
+                        error={errors.video_link}
+                    />
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Screenshots
+                        </label>
+                        <input
+                            type="file"
+                            multiple
+                            onChange={handleFileChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                            accept="image/*"
+                        />
+                    </div>
+                    <div className="my-4 flex justify-center w-full">
+                        <button
+                            type="submit"
+                            className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full"
+                            disabled={isSaving}
+                        >
+                            {isSaving ? "Saving..." : (isEdit ? "Save" : "Submit")}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
 
 const FAQ = () => {
     const [expandedIndex, setExpandedIndex] = useState(null);
@@ -18,42 +164,79 @@ const FAQ = () => {
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitSuccess, setSubmitSuccess] = useState(false);
+    const [faqs, setFaqs] = useState([]);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [editingFaq, setEditingFaq] = useState(null);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    // FAQ data
-    const faqData = [
-        {
-            question: "What is an RFQ and how do I create one?",
-            answer: "An RFQ (Request for Quotation) is a document that businesses use to request pricing information from suppliers. To create an RFQ in our system, navigate to the RFQ section, click on 'Create New RFQ', fill in the required details including items, quantities, and specifications, and submit. The system will then send this to your selected suppliers for quotation."
-        },
-        {
-            question: "How do I manage quotations received from suppliers?",
-            answer: "When suppliers respond to your RFQ, you'll receive notifications. You can view all quotations in the 'Quotations' section. Here you can compare prices, specifications, and delivery terms. You can accept, reject, or request modifications to quotations. Once you've made a decision, you can convert the accepted quotation into a purchase order."
-        },
-        {
-            question: "What is the process for creating and managing purchase orders?",
-            answer: "Purchase orders can be created directly or from an accepted quotation. Navigate to the 'Purchase Orders' section and click 'Create New PO'. Fill in the supplier details, items, quantities, prices, and delivery information. Once created, you can track the status of your PO, receive goods, and manage payments all within the system."
-        },
-        {
-            question: "How do I track inventory and manage stock levels?",
-            answer: "The inventory management system allows you to track stock levels in real-time. You can view current inventory levels, set minimum stock alerts, and generate inventory reports. When goods are received against a purchase order, the system automatically updates your inventory levels. You can also perform physical stock counts and adjust inventory as needed."
-        },
-        {
-            question: "How do I manage invoices and payments?",
-            answer: "Invoices can be created for sales or received from suppliers. Navigate to the 'Invoices' section to create, view, or manage invoices. The system supports various payment methods and can track payment status. You can also set up recurring invoices and payment reminders to ensure timely payments."
-        },
-        {
-            question: "What are Goods Receiving Notes (GRNs) and how do I use them?",
-            answer: "A GRN is a document used to confirm the receipt of goods from suppliers. When goods arrive, create a GRN by referencing the purchase order. The system will pre-populate the expected items and quantities. You can then verify the received goods, note any discrepancies, and approve the GRN. This process updates your inventory and can trigger invoice generation."
-        },
-        {
-            question: "How do I generate reports and analyze data?",
-            answer: "The system provides various reports including inventory reports, financial reports, supplier performance reports, and more. Navigate to the 'Reports' section to access these. You can customize report parameters, export to various formats, and schedule automatic report generation. The dashboard also provides key metrics and visualizations for quick insights."
-        },
-        {
-            question: "How do I manage user permissions and roles?",
-            answer: "Administrators can manage user roles and permissions in the 'User Management' section. You can create roles with specific permissions, assign users to roles, and customize access levels for different modules. This ensures that users only have access to the features they need for their job functions."
+    useEffect(() => {
+        fetchFaqs();
+        checkAdminRole();
+    }, []);
+
+    const fetchFaqs = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await axios.get('/api/v1/faqs');
+            setFaqs(response.data);
+        } catch (error) {
+            console.error('Error fetching FAQs:', error);
+            setError('Failed to load FAQs. Please try again later.');
+        } finally {
+            setLoading(false);
         }
-    ];
+    };
+
+    const checkAdminRole = () => {
+        try {
+            const user = JSON.parse(localStorage.getItem('user'));
+            setIsAdmin(user?.roles?.some(role => role.name === 'admin'));
+        } catch (error) {
+            console.error('Error checking admin role:', error);
+            setIsAdmin(false);
+        }
+    };
+
+    const handleDragEnd = async (result) => {
+        if (!result.destination) return;
+
+        const items = Array.from(faqs);
+        const [reorderedItem] = items.splice(result.source.index, 1);
+        items.splice(result.destination.index, 0, reorderedItem);
+
+        setFaqs(items);
+
+        try {
+            const reorderedItems = items.map((item, index) => ({
+                id: item.id,
+                order: index
+            }));
+            await axios.post('/api/v1/faqs/reorder', { items: reorderedItems });
+        } catch (error) {
+            console.error('Error reordering FAQs:', error);
+            fetchFaqs(); // Revert to original order if error occurs
+        }
+    };
+
+    const handleEdit = (faq) => {
+        setEditingFaq(faq);
+        setIsEditMode(true);
+        setShowModal(true);
+    };
+
+    const handleAdd = () => {
+        setEditingFaq(null);
+        setIsEditMode(false);
+        setShowModal(true);
+    };
+
+    const handleSave = () => {
+        fetchFaqs();
+    };
 
     const toggleAccordion = (index) => {
         setExpandedIndex(expandedIndex === index ? null : index);
@@ -131,39 +314,142 @@ const FAQ = () => {
                     </div>
                 </div>
                       
-                
-                <h2 className="text-3xl font-bold text-[#2C323C]">FAQs</h2>
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-3xl font-bold text-[#2C323C]">FAQs</h2>
+                    {isAdmin && (
+                        <div className="flex space-x-4">
+                            <button
+                                onClick={handleAdd}
+                                className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
+                            >
+                                Add FAQ
+                            </button>
+                            <button
+                                onClick={() => setIsEditMode(!isEditMode)}
+                                className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
+                            >
+                                {isEditMode ? 'Done Editing' : 'Edit FAQs'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+
                 <p className="text-xl text-[#7D8086] mb-6">
                     Find answers to common questions about our application
                 </p>
 
-                {/* FAQ Accordion */}
-                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-                    {faqData.map((faq, index) => (
-                        <div key={index} className="border-b border-gray-200 last:border-b-0">
-                            <button
-                                className="w-full flex justify-between items-center p-4 text-left focus:outline-none"
-                                onClick={() => toggleAccordion(index)}
-                            >
-                                <span className="font-medium text-lg text-[#2C323C]">
-                                    {faq.question}
-                                </span>
-                                <span className="text-[#009FDC]">
-                                    {expandedIndex === index ? (
-                                        <FaChevronUp />
-                                    ) : (
-                                        <FaChevronDown />
-                                    )}
-                                </span>
-                            </button>
-                            {expandedIndex === index && (
-                                <div className="p-4 bg-gray-50 text-[#4A5568]">
-                                    {faq.answer}
+                {loading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#009FDC]"></div>
+                    </div>
+                ) : error ? (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                        {error}
+                    </div>
+                ) : (
+                    <DragDropContext onDragEnd={handleDragEnd}>
+                        <Droppable droppableId="faqs">
+                            {(provided, snapshot) => (
+                                <div
+                                    {...provided.droppableProps}
+                                    ref={provided.innerRef}
+                                    className={`bg-white rounded-lg shadow-md overflow-hidden mb-8 ${
+                                        snapshot.isDraggingOver ? 'bg-gray-50' : ''
+                                    }`}
+                                >
+                                    {faqs.map((faq, index) => (
+                                        <Draggable
+                                            key={faq.id}
+                                            draggableId={faq.id.toString()}
+                                            index={index}
+                                            isDragDisabled={!isEditMode}
+                                        >
+                                            {(provided, snapshot) => (
+                                                <div
+                                                    ref={provided.innerRef}
+                                                    {...provided.draggableProps}
+                                                    {...provided.dragHandleProps}
+                                                    className={`border-b border-gray-200 last:border-b-0 ${
+                                                        snapshot.isDragging ? 'bg-gray-50' : ''
+                                                    }`}
+                                                >
+                                                    <button
+                                                        className="w-full flex justify-between items-center p-4 text-left focus:outline-none"
+                                                        onClick={() => setExpandedIndex(expandedIndex === index ? null : index)}
+                                                    >
+                                                        <div className="flex items-center">
+                                                            {isEditMode && (
+                                                                <span className="mr-4 text-gray-400">
+                                                                    <FontAwesomeIcon icon={faGripVertical} />
+                                                                </span>
+                                                            )}
+                                                            <span className="font-medium text-lg text-[#2C323C]">
+                                                                {faq.question}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center">
+                                                            {isEditMode && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleEdit(faq);
+                                                                    }}
+                                                                    className="mr-4 text-[#009FDC] hover:text-[#007BB5]"
+                                                                >
+                                                                    <FaEdit />
+                                                                </button>
+                                                            )}
+                                                            <span className="text-[#009FDC]">
+                                                                {expandedIndex === index ? (
+                                                                    <FaChevronUp />
+                                                                ) : (
+                                                                    <FaChevronDown />
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                    </button>
+                                                    {expandedIndex === index && (
+                                                        <div className="p-4 bg-gray-50 text-[#4A5568]">
+                                                            <div className="mb-4">
+                                                                <h3 className="font-semibold mb-2">{faq.title}</h3>
+                                                                <p>{faq.description}</p>
+                                                            </div>
+                                                            {faq.screenshots && JSON.parse(faq.screenshots).length > 0 && (
+                                                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                                                    {JSON.parse(faq.screenshots).map((screenshot, idx) => (
+                                                                        <img
+                                                                            key={idx}
+                                                                            src={`/storage/${screenshot}`}
+                                                                            alt={`Screenshot ${idx + 1}`}
+                                                                            className="rounded-lg"
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            {faq.video_link && (
+                                                                <div className="mt-4">
+                                                                    <a
+                                                                        href={faq.video_link}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-[#009FDC] hover:text-[#007BB5]"
+                                                                    >
+                                                                        Watch Video Tutorial
+                                                                    </a>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </Draggable>
+                                    ))}
+                                    {provided.placeholder}
                                 </div>
                             )}
-                        </div>
-                    ))}
-                </div>
+                        </Droppable>
+                    </DragDropContext>
+                )}
 
                 {/* Help Request Section */}
                 <div className="bg-white rounded-lg shadow-md p-6">
@@ -247,6 +533,14 @@ const FAQ = () => {
                     )}
                 </div>
             </div>
+
+            <FAQModal
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                onSave={handleSave}
+                faq={editingFaq}
+                isEdit={isEditMode}
+            />
         </AuthenticatedLayout>
     );
 };

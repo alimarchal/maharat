@@ -68,7 +68,7 @@ const ProductsTable = () => {
                         <th className="py-3 px-4">Item Name</th>
                         <th className="py-3 px-4">Category Name</th>
                         <th className="py-3 px-4">Units</th>
-                        <th className="py-3 px-4">UPC</th>
+                        <th className="py-3 px-4">Item Code</th>
                         <th className="py-3 px-4">Description</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
                             Actions

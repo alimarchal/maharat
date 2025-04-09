@@ -176,7 +176,7 @@ const CreateProduct = () => {
                     </div>
                     <div>
                         <InputFloating
-                            label="UPC"
+                            label="Item Code"
                             name="upc"
                             value={formData.upc}
                             onChange={handleChange}
