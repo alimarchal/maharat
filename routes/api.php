@@ -75,6 +75,7 @@ use App\Http\Controllers\Api\V1\RfqStatusLogController;
 use App\Http\Controllers\Api\V1\RfqCategoryController;
 use App\Http\Controllers\Api\V1\IncomeStatementController;
 use App\Http\Controllers\Api\V1\BalanceSheetController;
+use App\Http\Controllers\Api\V1\FaqApprovalController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -382,15 +383,17 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('/users/{user}/permissions', [UserController::class, 'getPermissions']);
     Route::post('/users/{user}/toggle-permission', [UserController::class, 'togglePermission']);
 
-    Route::apiResource('faqs', FaqController::class);
-
-});
-
-// FAQ Routes
-Route::prefix('v1')->group(function () {
+    // FAQ routes
     Route::get('/faqs', [FaqController::class, 'index']);
     Route::post('/faqs', [FaqController::class, 'store'])->middleware('auth:sanctum');
     Route::put('/faqs/{faq}', [FaqController::class, 'update'])->middleware('auth:sanctum');
     Route::delete('/faqs/{faq}', [FaqController::class, 'destroy'])->middleware('auth:sanctum');
     Route::post('/faqs/reorder', [FaqController::class, 'reorder'])->middleware('auth:sanctum');
+    
+    // FAQ Approval routes
+    Route::get('/faqs/approval', [FaqApprovalController::class, 'view'])->middleware('auth:sanctum');
+    Route::post('/faqs/approval', [FaqApprovalController::class, 'store'])->middleware('auth:sanctum');
+    Route::put('/faqs/approval/{id}', [FaqApprovalController::class, 'update'])->middleware('auth:sanctum');
+    Route::delete('/faqs/approval/{id}', [FaqApprovalController::class, 'destroy'])->middleware('auth:sanctum');
+
 });

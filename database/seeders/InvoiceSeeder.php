@@ -11,8 +11,8 @@ use Carbon\Carbon;
     /**
      * Run the database seeds.
      */
-    class InvoiceSeeder extends Seeder
-    {
+class InvoiceSeeder extends Seeder
+{
     /**
      * Run the database seeds.
      */
@@ -39,63 +39,63 @@ use Carbon\Carbon;
             DB::beginTransaction();
 
             // Insert fresh invoice data
-            $invoices = [
-                [
+        $invoices = [
+            [
                     'invoice_number' => 'INV-00001',
-                    'client_id' => 1,
+                'client_id' => 1,
                     'representative_id' => 5,
-                    'status' => 'Draft',
-                    'payment_method' => 'Bank Transfer',
-                    'issue_date' => '2025-03-10',
-                    'due_date' => '2025-03-20',
-                    'discounted_days' => 5,
+                'status' => 'Draft',
+                'payment_method' => 'Bank Transfer',
+                'issue_date' => '2025-03-10',
+                'due_date' => '2025-03-20',
+                'discounted_days' => 5,
                     'vat_rate' => 15,
-                    'subtotal' => 5000.00,
+                'subtotal' => 5000.00,
                     'tax_amount' => (5000 * 15) / 100,
                     'discount_amount' => 200.00,
                     'total_amount' => 5000 + (5000 * 15 / 100) - 200,
-                    'currency' => 'SAR',
-                    'notes' => 'Initial invoice for Q1 services',
+                'currency' => 'SAR',
+                'notes' => 'Initial invoice for Q1 services',
                     'account_code_id' => 4,
                     'created_at' => now(),
                     'updated_at' => now(),
-                ],
-                [
+            ],
+            [
                     'invoice_number' => 'INV-00002',
-                    'client_id' => 2,
+                'client_id' => 2,
                     'representative_id' => 7,
                     'status' => 'Overdue',
-                    'payment_method' => 'Credit Card',
-                    'issue_date' => '2025-03-11',
-                    'due_date' => '2025-03-21',
-                    'discounted_days' => 3,
+                'payment_method' => 'Credit Card',
+                'issue_date' => '2025-03-11',
+                'due_date' => '2025-03-21',
+                'discounted_days' => 3,
                     'vat_rate' => 15,
-                    'subtotal' => 7500.00,
+                'subtotal' => 7500.00,
                     'tax_amount' => (7500 * 15) / 100,
                     'discount_amount' => 50.00,
                     'total_amount' => 7500 + (7500 * 15 / 100) - 50,
-                    'currency' => 'SAR',
-                    'notes' => 'Web development project invoice',
+                'currency' => 'SAR',
+                'notes' => 'Web development project invoice',
                     'account_code_id' => 4,
                     'created_at' => now(),
                     'updated_at' => now(),
-                ],
-                [
+            ],
+            [
                     'invoice_number' => 'INV-00003',
-                    'client_id' => 3,
+                'client_id' => 3,
                     'representative_id' => 8,
                     'status' => 'Cancelled',
-                    'payment_method' => 'Cash',
-                    'issue_date' => '2025-03-12',
-                    'due_date' => '2025-03-22',
-                    'discounted_days' => 7,
+                'payment_method' => 'Cash',
+                'issue_date' => '2025-03-12',
+                'due_date' => '2025-03-22',
+                'discounted_days' => 7,
                     'vat_rate' => 10,
-                    'subtotal' => 3200.00,
+                'subtotal' => 3200.00,
                     'tax_amount' => (3200 * 10) / 100,
                     'discount_amount' => 100.00,
                     'total_amount' => 3200 + (3200 * 10 / 100) - 100,
-                    'currency' => 'SAR',
-                    'notes' => 'Consultation services invoice',
+                'currency' => 'SAR',
+                'notes' => 'Consultation services invoice',
                     'account_code_id' => 4,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -142,7 +142,7 @@ use Carbon\Carbon;
                 ]
             ];
 
-            DB::table('invoices')->insert($invoices);
+        DB::table('invoices')->insert($invoices);
 
             DB::commit();
             

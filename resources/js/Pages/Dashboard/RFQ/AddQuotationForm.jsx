@@ -69,9 +69,9 @@ export default function AddQuotationForm({ auth }) {
                 const productsData = productsResponse.data?.data || [];
                 setProducts(productsData);
 
-                if (rfqId) {
-                    setLoading(true);
-                    setIsEditing(true);
+        if (rfqId) {
+            setLoading(true);
+            setIsEditing(true);
 
                     const response = await axios.get(`/api/v1/rfqs/${rfqId}`);
                     const rfqData = response.data?.data;
@@ -214,31 +214,31 @@ export default function AddQuotationForm({ auth }) {
                     };
                     setFormData(formattedData);
                     setLoading(false);
-                } else {
-                    // In create mode, get new RFQ number
-                    axios
-                        .get("/api/v1/rfqs/form-data")
-                        .then((response) => {
-                            if (response.data && response.data.rfq_number) {
-                                setFormData((prev) => ({
-                                    ...prev,
-                                    rfq_id: response.data.rfq_number,
-                                    issue_date:
-                                        response.data.request_date ||
-                                        new Date().toISOString().split("T")[0],
-                                }));
-                            }
-                        })
-                        .catch((error) => {
+        } else {
+            // In create mode, get new RFQ number
+            axios
+                .get("/api/v1/rfqs/form-data")
+                .then((response) => {
+                    if (response.data && response.data.rfq_number) {
+                        setFormData((prev) => ({
+                            ...prev,
+                            rfq_id: response.data.rfq_number,
+                            issue_date:
+                                response.data.request_date ||
+                                new Date().toISOString().split("T")[0],
+                        }));
+                    }
+                })
+                .catch((error) => {
                             console.error(
                                 "Error fetching new RFQ number:",
                                 error
                             );
-                        })
-                        .finally(() => {
-                            setLoading(false);
-                        });
-                }
+                })
+                .finally(() => {
+                    setLoading(false);
+                });
+        }
             } catch (error) {
                 console.error("Error fetching initial data:", error);
                 setError("Failed to load data");
@@ -668,9 +668,9 @@ export default function AddQuotationForm({ auth }) {
                 Object.keys(attachments).forEach((index) => {
                     if (attachments[index]) {
                         itemsFormData.append(
-                            `attachments[${index}]`,
-                            attachments[index]
-                        );
+                        `attachments[${index}]`,
+                        attachments[index]
+                    );
                     }
                 });
             }
@@ -735,7 +735,7 @@ export default function AddQuotationForm({ auth }) {
 
             if (itemsResponse.data.success) {
                 alert("RFQ and items saved successfully!");
-                router.visit(route("rfq.index"));
+        router.visit(route("rfq.index"));
             }
         } catch (error) {
             alert(
@@ -769,8 +769,8 @@ export default function AddQuotationForm({ auth }) {
             fileName = file.original_filename || file.name || file.file_name;
             // Fix the URL construction
             if (file.url && file.url.startsWith("http")) {
-                fileUrl = file.url;
-            } else {
+                    fileUrl = file.url;
+                } else {
                 fileUrl = `/storage/${file.url || file.path || file}`.replace(
                     "/storage/storage/",
                     "/storage/"

@@ -31,4 +31,8 @@ class Faq extends Model
     protected $casts = [
         'screenshots' => 'array',
     ];
+
+    protected $attributes = [
+        'order' => 0
+    ];
 }
