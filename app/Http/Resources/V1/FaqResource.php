@@ -21,6 +21,7 @@ class FaqResource extends JsonResource
             'description' => $this->description,
             'screenshots' => $this->screenshots,
             'video_link' => $this->video_link,
+            'order' => $this->order,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

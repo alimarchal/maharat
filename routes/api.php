@@ -382,15 +382,11 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('/users/{user}/permissions', [UserController::class, 'getPermissions']);
     Route::post('/users/{user}/toggle-permission', [UserController::class, 'togglePermission']);
 
-    Route::apiResource('faqs', FaqController::class);
-
-});
-
-// FAQ Routes
-Route::prefix('v1')->group(function () {
+    // FAQ routes
     Route::get('/faqs', [FaqController::class, 'index']);
     Route::post('/faqs', [FaqController::class, 'store'])->middleware('auth:sanctum');
     Route::put('/faqs/{faq}', [FaqController::class, 'update'])->middleware('auth:sanctum');
     Route::delete('/faqs/{faq}', [FaqController::class, 'destroy'])->middleware('auth:sanctum');
     Route::post('/faqs/reorder', [FaqController::class, 'reorder'])->middleware('auth:sanctum');
+
 });

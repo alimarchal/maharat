@@ -5,7 +5,7 @@ import axios from "axios";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, router } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronRight, faArrowLeft, faGripVertical } from "@fortawesome/free-solid-svg-icons";
+import { faChevronRight, faArrowLeft, faGripVertical, faTimes, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 const FAQModal = ({ isOpen, onClose, onSave, faq = null, isEdit = false }) => {
@@ -27,7 +27,15 @@ const FAQModal = ({ isOpen, onClose, onSave, faq = null, isEdit = false }) => {
                 question: faq.question || "",
                 description: faq.description || "",
                 video_link: faq.video_link || "",
-                screenshots: faq.screenshots ? JSON.parse(faq.screenshots) : [],
+                screenshots: [],
+            });
+        } else if (isOpen && !isEdit) {
+            setFormData({
+                title: "",
+                question: "",
+                description: "",
+                video_link: "",
+                screenshots: [],
             });
         }
     }, [isOpen, faq, isEdit]);
@@ -50,20 +58,49 @@ const FAQModal = ({ isOpen, onClose, onSave, faq = null, isEdit = false }) => {
             formDataToSend.append('title', formData.title);
             formDataToSend.append('question', formData.question);
             formDataToSend.append('description', formData.description);
-            formDataToSend.append('video_link', formData.video_link);
-            formData.screenshots.forEach((file, index) => {
-                formDataToSend.append(`screenshots[${index}]`, file);
-            });
-
-            if (isEdit) {
-                await axios.put(`/api/v1/faqs/${faq.id}`, formDataToSend);
-            } else {
-                await axios.post('/api/v1/faqs', formDataToSend);
+            
+            // Format video link if provided
+            if (formData.video_link) {
+                let videoLink = formData.video_link.trim();
+                // Add https:// if not present
+                if (!videoLink.startsWith('http://') && !videoLink.startsWith('https://')) {
+                    videoLink = 'https://' + videoLink;
+                }
+                formDataToSend.append('video_link', videoLink);
             }
 
-            onSave();
-            onClose();
+            // Handle screenshots
+            if (formData.screenshots && formData.screenshots.length > 0) {
+                formData.screenshots.forEach((file, index) => {
+                    if (file) {
+                        formDataToSend.append(`screenshots[${index}]`, file);
+                    }
+                });
+            }
+
+            let response;
+            if (isEdit && faq) {
+                // For update, use POST
+                response = await axios.post(`/api/v1/faqs/${faq.id}`, formDataToSend, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+            } else {
+                // For create, use regular POST
+                response = await axios.post('/api/v1/faqs', formDataToSend, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+            }
+
+            if (response.data) {
+                onSave();
+                onClose();
+            }
         } catch (error) {
+            console.error('Error submitting FAQ:', error);
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             } else {
@@ -120,7 +157,7 @@ const FAQModal = ({ isOpen, onClose, onSave, faq = null, isEdit = false }) => {
                         )}
                     </div>
                     <InputFloating
-                        label="Video Link"
+                        label="Video Link (Optional)"
                         name="video_link"
                         value={formData.video_link}
                         onChange={handleChange}
@@ -128,7 +165,7 @@ const FAQModal = ({ isOpen, onClose, onSave, faq = null, isEdit = false }) => {
                     />
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Screenshots
+                            Screenshots (Optional)
                         </label>
                         <input
                             type="file"
@@ -174,8 +211,36 @@ const FAQ = () => {
 
     useEffect(() => {
         fetchFaqs();
-        checkAdminRole();
+        fetchUserData();
     }, []);
+
+    const fetchUserData = async () => {
+        try {
+            const response = await axios.get('/api/v1/user/current', {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.data && response.data.data) {
+                const userData = response.data.data;
+                console.log('User data from API:', userData);
+                setIsAdmin(userData.roles && userData.roles.includes('Admin'));
+                console.log('Is admin:', userData.roles && userData.roles.includes('Admin'));
+            } else {
+                console.error('Invalid user data format:', response.data);
+                setIsAdmin(false);
+            }
+        } catch (error) {
+            console.error('Error fetching user data:', error);
+            if (error.response) {
+                console.error('Response status:', error.response.status);
+                console.error('Response data:', error.response.data);
+            }
+            setIsAdmin(false);
+        }
+    };
 
     const fetchFaqs = async () => {
         try {
@@ -188,16 +253,6 @@ const FAQ = () => {
             setError('Failed to load FAQs. Please try again later.');
         } finally {
             setLoading(false);
-        }
-    };
-
-    const checkAdminRole = () => {
-        try {
-            const user = JSON.parse(localStorage.getItem('user'));
-            setIsAdmin(user?.roles?.some(role => role.name === 'admin'));
-        } catch (error) {
-            console.error('Error checking admin role:', error);
-            setIsAdmin(false);
         }
     };
 
@@ -215,11 +270,37 @@ const FAQ = () => {
                 id: item.id,
                 order: index
             }));
-            await axios.post('/api/v1/faqs/reorder', { items: reorderedItems });
+            
+            await axios.post('/api/v1/faqs/reorder', { items: reorderedItems }, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
         } catch (error) {
             console.error('Error reordering FAQs:', error);
             fetchFaqs(); // Revert to original order if error occurs
         }
+    };
+
+    const handleDelete = async (faqId) => {
+        if (window.confirm('Are you sure you want to delete this FAQ?')) {
+            try {
+                await axios.delete(`/api/v1/faqs/${faqId}`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                await fetchFaqs();
+            } catch (error) {
+                console.error('Error deleting FAQ:', error);
+            }
+        }
+    };
+
+    const handleEditModeToggle = () => {
+        setIsEditMode(!isEditMode);
     };
 
     const handleEdit = (faq) => {
@@ -325,7 +406,7 @@ const FAQ = () => {
                                 Add FAQ
                             </button>
                             <button
-                                onClick={() => setIsEditMode(!isEditMode)}
+                                onClick={handleEditModeToggle}
                                 className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
                             >
                                 {isEditMode ? 'Done Editing' : 'Edit FAQs'}
@@ -389,15 +470,26 @@ const FAQ = () => {
                                                         </div>
                                                         <div className="flex items-center">
                                                             {isEditMode && (
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleEdit(faq);
-                                                                    }}
-                                                                    className="mr-4 text-[#009FDC] hover:text-[#007BB5]"
-                                                                >
-                                                                    <FaEdit />
-                                                                </button>
+                                                                <>
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleEdit(faq);
+                                                                        }}
+                                                                        className="mr-4 text-[#009FDC] hover:text-[#007BB5]"
+                                                                    >
+                                                                        <FaEdit />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDelete(faq.id);
+                                                                        }}
+                                                                        className="mr-4 text-red-500 hover:text-red-700"
+                                                                    >
+                                                                        <FontAwesomeIcon icon={faTrash} />
+                                                                    </button>
+                                                                </>
                                                             )}
                                                             <span className="text-[#009FDC]">
                                                                 {expandedIndex === index ? (
@@ -414,18 +506,6 @@ const FAQ = () => {
                                                                 <h3 className="font-semibold mb-2">{faq.title}</h3>
                                                                 <p>{faq.description}</p>
                                                             </div>
-                                                            {faq.screenshots && JSON.parse(faq.screenshots).length > 0 && (
-                                                                <div className="grid grid-cols-2 gap-4 mb-4">
-                                                                    {JSON.parse(faq.screenshots).map((screenshot, idx) => (
-                                                                        <img
-                                                                            key={idx}
-                                                                            src={`/storage/${screenshot}`}
-                                                                            alt={`Screenshot ${idx + 1}`}
-                                                                            className="rounded-lg"
-                                                                        />
-                                                                    ))}
-                                                                </div>
-                                                            )}
                                                             {faq.video_link && (
                                                                 <div className="mt-4">
                                                                     <a
@@ -436,6 +516,18 @@ const FAQ = () => {
                                                                     >
                                                                         Watch Video Tutorial
                                                                     </a>
+                                                                </div>
+                                                            )}
+                                                            {faq.screenshots && JSON.parse(faq.screenshots).length > 0 && (
+                                                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                                                    {JSON.parse(faq.screenshots).map((screenshot, idx) => (
+                                                                        <img
+                                                                            key={idx}
+                                                                            src={`/storage/${screenshot}`}
+                                                                            alt={`Screenshot ${idx + 1}`}
+                                                                            className="rounded-lg"
+                                                                        />
+                                                                    ))}
                                                                 </div>
                                                             )}
                                                         </div>

@@ -4,16 +4,18 @@ namespace App\Policies;
 
 use App\Models\Faq;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
 class FaqPolicy
 {
+    use HandlesAuthorization;
+
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return false;
+        return true; // All users can view FAQs
     }
 
     /**
@@ -21,7 +23,7 @@ class FaqPolicy
      */
     public function view(User $user, Faq $faq): bool
     {
-        return false;
+        return true; // All users can view individual FAQs
     }
 
     /**
@@ -29,7 +31,7 @@ class FaqPolicy
      */
     public function create(User $user): bool
     {
-        return false;
+        return $user->hasRole('admin'); // Only admins can create FAQs
     }
 
     /**
@@ -37,7 +39,7 @@ class FaqPolicy
      */
     public function update(User $user, Faq $faq): bool
     {
-        return false;
+        return $user->hasRole('admin'); // Only admins can update FAQs
     }
 
     /**
@@ -45,7 +47,7 @@ class FaqPolicy
      */
     public function delete(User $user, Faq $faq): bool
     {
-        return false;
+        return $user->hasRole('admin'); // Only admins can delete FAQs
     }
 
     /**
@@ -53,7 +55,7 @@ class FaqPolicy
      */
     public function restore(User $user, Faq $faq): bool
     {
-        return false;
+        return $user->hasRole('admin'); // Only admins can restore FAQs
     }
 
     /**
@@ -61,6 +63,6 @@ class FaqPolicy
      */
     public function forceDelete(User $user, Faq $faq): bool
     {
-        return false;
+        return $user->hasRole('admin'); // Only admins can permanently delete FAQs
     }
 }

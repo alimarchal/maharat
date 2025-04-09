@@ -19,7 +19,7 @@ const FileDisplay = ({ file, pendingFile }) => {
         const tempUrl = URL.createObjectURL(pendingFile);
         return (
             <div className="flex flex-col items-center justify-center space-y-2">
-                <DocumentArrowDownIcon
+                <DocumentArrowDownIcon 
                     className="h-10 w-10 text-orange-500 cursor-pointer hover:text-orange-700 transition-colors"
                     onClick={() => window.open(tempUrl, "_blank")}
                 />
@@ -48,11 +48,11 @@ const FileDisplay = ({ file, pendingFile }) => {
 
     return (
         <div className="flex flex-col items-center justify-center space-y-2">
-            <DocumentArrowDownIcon
+            <DocumentArrowDownIcon 
                 className="h-10 w-10 text-gray-500 cursor-pointer hover:text-gray-700 transition-colors"
                 onClick={() => fileUrl && window.open(fileUrl, "_blank")}
             />
-            <span
+            <span 
                 className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
                 onClick={() => fileUrl && window.open(fileUrl, "_blank")}
             >
@@ -86,7 +86,7 @@ export default function ApproveOrder({ auth }) {
             setLoading(false);
             return;
         }
-
+        
         setLoading(true);
         setProgress(0);
 
@@ -111,7 +111,7 @@ export default function ApproveOrder({ auth }) {
 
             // Get purchase orders with included relations and pagination
             const poResponse = await axios.get("/api/v1/purchase-orders", {
-                params: {
+                    params: {
                     quotation_id: quotationId,
                     include: "quotation,supplier",
                     per_page: 10,
@@ -179,11 +179,11 @@ export default function ApproveOrder({ auth }) {
                     attachment: null,
                     original_name: null,
                 };
-
+                
                 setPurchaseOrders([newPurchaseOrder]);
                 setLastPage(1);
             }
-
+            
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
         } catch (error) {
@@ -206,7 +206,7 @@ export default function ApproveOrder({ auth }) {
         try {
             const response = await axios.get("/api/v1/companies");
             if (response.data && response.data.data) {
-                setCompanies(response.data.data);
+            setCompanies(response.data.data);
                 console.log("Companies fetched:", response.data.data);
             } else {
                 console.error("Invalid companies data format:", response.data);
@@ -219,10 +219,10 @@ export default function ApproveOrder({ auth }) {
     useEffect(() => {
         // Load companies for dropdown
         fetchCompanies();
-
+        
         // Then fetch purchase orders
         fetchPurchaseOrders();
-
+        
         // Add event listener for beforeunload to warn about unsaved changes
         const handleBeforeUnload = (e) => {
             if (editingId !== null) {
@@ -231,9 +231,9 @@ export default function ApproveOrder({ auth }) {
                 return "You have unsaved changes. Are you sure you want to leave?";
             }
         };
-
+        
         window.addEventListener("beforeunload", handleBeforeUnload);
-
+        
         return () => {
             window.removeEventListener("beforeunload", handleBeforeUnload);
         };
@@ -243,19 +243,19 @@ export default function ApproveOrder({ auth }) {
         try {
             setAttachingFile(true);
             setProgress(0);
-
+            
             const interval = setInterval(() => {
                 setProgress((oldProgress) => Math.min(oldProgress + 5, 90));
             }, 200);
-
+            
             // Create FormData to handle file uploads
             const formData = new FormData();
-
+            
             // Required field status to avoid validation errors
             if (!editData.status) {
                 formData.append("status", "Draft");
             }
-
+            
             // Append basic purchase order fields
             // For new records, don't include purchase_order_no - let backend generate it
             Object.keys(editData).forEach((key) => {
@@ -279,27 +279,27 @@ export default function ApproveOrder({ auth }) {
                     }
                 }
             });
-
+            
             // Make sure required fields are present
             if (!formData.has("quotation_id") && quotationId) {
                 formData.append("quotation_id", quotationId);
             }
-
+            
             if (!formData.has("supplier_id") && quotationDetails?.supplier_id) {
                 formData.append("supplier_id", quotationDetails.supplier_id);
             }
-
+            
             // Handle temporary file if it exists
             if (tempDocuments[id]) {
                 formData.append("attachment", tempDocuments[id]);
                 formData.append("original_name", tempDocuments[id].name);
             }
-
+            
             console.log(
                 "Saving purchase order with data:",
                 Object.fromEntries(formData)
             );
-
+            
             let response;
             try {
                 if (id.toString().includes("new-")) {
@@ -391,18 +391,18 @@ export default function ApproveOrder({ auth }) {
                     console.error("Approval process error:", approvalError);
                     // Don't throw the error - allow the purchase order to be saved even if approval process fails
                 }
-
+                
                 // Reset editing state and refresh data
                 setEditingId(null);
                 setError("");
-
+                
                 // Clear interval and set progress to 100%
                 clearInterval(interval);
                 setProgress(100);
-
+                
                 // Show success message
                 alert("Purchase order saved successfully!");
-
+                
                 // Wait a moment to show the 100% progress, then refresh data
                 setTimeout(() => {
                     setAttachingFile(false);
@@ -429,7 +429,7 @@ export default function ApproveOrder({ auth }) {
             setProgress(0);
         }
     };
-
+            
     const handleEdit = (po) => {
         // Create a clean copy of the PO data for editing
         const editablePo = { ...po };
@@ -527,7 +527,7 @@ export default function ApproveOrder({ auth }) {
             setError("No file selected.");
             return;
         }
-
+        
         // Store the file temporarily - DO NOT upload immediately
         setTempDocuments({
             ...tempDocuments,
@@ -642,24 +642,24 @@ export default function ApproveOrder({ auth }) {
                     )}
 
                     {/* Loading Bar - Reverted to original style */}
-                    {(loading || attachingFile) && (
-                        <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
-                            <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
-                                <div
-                                    className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
-                                    style={{ width: `${progress}%` }}
-                                ></div>
-                                <span className="absolute text-white">
+                        {(loading || attachingFile) && (
+                            <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
+                                <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
+                                    <div
+                                        className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
+                                        style={{ width: `${progress}%` }}
+                                    ></div>
+                                    <span className="absolute text-white">
                                     {attachingFile
                                         ? "Saving Purchase Order..."
                                         : progress < 60
                                         ? "Please Wait, Fetching Details..."
                                         : `${progress}%`}
-                                </span>
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                    )}
-
+                        )}
+                        
                     {/* Error message */}
                     {!loading && error && (
                         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
@@ -671,10 +671,10 @@ export default function ApproveOrder({ auth }) {
                     {!loading && !attachingFile && (
                         <>
                             <div className="w-full overflow-hidden">
-                                <table className="w-full">
+                        <table className="w-full">
                                     {!loading && (
-                                        <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
-                                            <tr>
+                            <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                                <tr>
                                                 <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">
                                                     PO#
                                                 </th>
@@ -696,29 +696,29 @@ export default function ApproveOrder({ auth }) {
                                                 <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                                                     Actions
                                                 </th>
-                                            </tr>
-                                        </thead>
+                                </tr>
+                            </thead>
                                     )}
 
-                                    {!loading && !attachingFile && (
-                                        <tbody className="bg-transparent divide-y divide-gray-200">
-                                            {purchaseOrders.length > 0 ? (
+                            {!loading && !attachingFile && (
+                            <tbody className="bg-transparent divide-y divide-gray-200">
+                                {purchaseOrders.length > 0 ? (
                                                 getPaginationData().currentPageData.map(
                                                     (po) => (
-                                                        <tr key={po.id}>
-                                                            <td className="px-6 py-4 text-center break-words whitespace-normal min-w-[120px] max-w-[150px]">
-                                                                {/* PO Number is read-only as it's system generated */}
-                                                                <span className="inline-block break-words w-full text-[17px] text-black">
+                                        <tr key={po.id}>
+                                            <td className="px-6 py-4 text-center break-words whitespace-normal min-w-[120px] max-w-[150px]">
+                                                {/* PO Number is read-only as it's system generated */}
+                                                <span className="inline-block break-words w-full text-[17px] text-black">
                                                                     {
                                                                         po.purchase_order_no
                                                                     }
-                                                                </span>
-                                                            </td>
-
-                                                            <td className="px-6 py-4 text-center break-words whitespace-normal min-w-[150px] max-w-[170px]">
+                                                </span>
+                                            </td>
+                                            
+                                            <td className="px-6 py-4 text-center break-words whitespace-normal min-w-[150px] max-w-[170px]">
                                                                 {editingId ===
                                                                 po.id ? (
-                                                                    <select
+                                                    <select
                                                                         value={
                                                                             editData.company_name ||
                                                                             ""
@@ -735,8 +735,8 @@ export default function ApproveOrder({ auth }) {
                                                                                             .value,
                                                                                 }
                                                                             )
-                                                                        }
-                                                                        className="text-[17px] text-black bg-transparent border-none focus:ring-0 w-full text-center break-words"
+                                                        }
+                                                        className="text-[17px] text-black bg-transparent border-none focus:ring-0 w-full text-center break-words"
                                                                         style={{
                                                                             wordWrap:
                                                                                 "break-word",
@@ -748,7 +748,7 @@ export default function ApproveOrder({ auth }) {
                                                                             Select
                                                                             a
                                                                             company
-                                                                        </option>
+                                                            </option>
                                                                         {companies.map(
                                                                             (
                                                                                 company
@@ -767,20 +767,20 @@ export default function ApproveOrder({ auth }) {
                                                                                 </option>
                                                                             )
                                                                         )}
-                                                                    </select>
-                                                                ) : (
-                                                                    <span className="inline-block break-words w-full text-[17px] text-black">
+                                                    </select>
+                                                ) : (
+                                                    <span className="inline-block break-words w-full text-[17px] text-black">
                                                                         {po.company_name ||
                                                                             "N/A"}
-                                                                    </span>
-                                                                )}
-                                                            </td>
-
-                                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    </span>
+                                                )}
+                                            </td>
+                                            
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
                                                                 {editingId ===
                                                                 po.id ? (
-                                                                    <input
-                                                                        type="date"
+                                                    <input
+                                                        type="date"
                                                                         value={
                                                                             editData.purchase_order_date
                                                                                 ? formatDateForInput(
@@ -801,22 +801,22 @@ export default function ApproveOrder({ auth }) {
                                                                                 }
                                                                             )
                                                                         }
-                                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
-                                                                        placeholder="DD/MM/YYYY"
-                                                                    />
-                                                                ) : (
+                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
+                                                        placeholder="DD/MM/YYYY"
+                                                    />
+                                                ) : (
                                                                     formatDateForDisplay(
                                                                         po.purchase_order_date
                                                                     ) ||
                                                                     "DD/MM/YYYY"
-                                                                )}
-                                                            </td>
-
-                                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                )}
+                                            </td>
+                                            
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
                                                                 {editingId ===
                                                                 po.id ? (
-                                                                    <input
-                                                                        type="date"
+                                                    <input
+                                                        type="date"
                                                                         value={
                                                                             editData.expiry_date
                                                                                 ? formatDateForInput(
@@ -837,29 +837,29 @@ export default function ApproveOrder({ auth }) {
                                                                                 }
                                                                             )
                                                                         }
-                                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
-                                                                        placeholder="DD/MM/YYYY"
-                                                                    />
-                                                                ) : (
+                                                        className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
+                                                        placeholder="DD/MM/YYYY"
+                                                    />
+                                                ) : (
                                                                     formatDateForDisplay(
                                                                         po.expiry_date
                                                                     ) ||
                                                                     "DD/MM/YYYY"
-                                                                )}
-                                                            </td>
-
-                                                            <td className="px-6 py-4 whitespace-normal break-words text-center min-w-[120px]">
+                                                )}
+                                            </td>
+                                            
+                                            <td className="px-6 py-4 whitespace-normal break-words text-center min-w-[120px]">
                                                                 {editingId ===
                                                                 po.id ? (
-                                                                    <div className="flex items-center justify-center space-x-2">
-                                                                        {/* Decrement Button */}
-                                                                        <button
-                                                                            onClick={() =>
+                                                    <div className="flex items-center justify-center space-x-2">
+                                                        {/* Decrement Button */}
+                                                        <button
+                                                            onClick={() =>
                                                                                 setEditData(
                                                                                     (
                                                                                         prev
                                                                                     ) => ({
-                                                                                        ...prev,
+                                                                    ...prev,
                                                                                         amount: Math.max(
                                                                                             0,
                                                                                             parseInt(
@@ -870,9 +870,9 @@ export default function ApproveOrder({ auth }) {
                                                                                         ),
                                                                                     })
                                                                                 )
-                                                                            }
-                                                                            className="text-gray-600 hover:text-gray-900"
-                                                                        >
+                                                            }
+                                                            className="text-gray-600 hover:text-gray-900"
+                                                        >
                                                                             <svg
                                                                                 xmlns="http://www.w3.org/2000/svg"
                                                                                 className="h-5 w-5"
@@ -884,12 +884,12 @@ export default function ApproveOrder({ auth }) {
                                                                                     d="M4 10a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z"
                                                                                     clipRule="evenodd"
                                                                                 />
-                                                                            </svg>
-                                                                        </button>
+                                                            </svg>
+                                                        </button>
 
-                                                                        {/* Input Field */}
-                                                                        <input
-                                                                            type="number"
+                                                        {/* Input Field */}
+                                                        <input
+                                                            type="number"
                                                                             value={parseInt(
                                                                                 editData.amount ||
                                                                                     0
@@ -912,18 +912,18 @@ export default function ApproveOrder({ auth }) {
                                                                                         amount: value,
                                                                                     }
                                                                                 );
-                                                                            }}
-                                                                            className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-[70px] text-center [&::-webkit-inner-spin-button]:hidden"
-                                                                        />
+                                                            }}
+                                                            className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-[70px] text-center [&::-webkit-inner-spin-button]:hidden"
+                                                        />
 
-                                                                        {/* Increment Button */}
-                                                                        <button
-                                                                            onClick={() =>
+                                                        {/* Increment Button */}
+                                                        <button
+                                                            onClick={() =>
                                                                                 setEditData(
                                                                                     (
                                                                                         prev
                                                                                     ) => ({
-                                                                                        ...prev,
+                                                                    ...prev,
                                                                                         amount:
                                                                                             parseInt(
                                                                                                 prev.amount ||
@@ -932,9 +932,9 @@ export default function ApproveOrder({ auth }) {
                                                                                             1,
                                                                                     })
                                                                                 )
-                                                                            }
-                                                                            className="text-gray-600 hover:text-gray-900"
-                                                                        >
+                                                            }
+                                                            className="text-gray-600 hover:text-gray-900"
+                                                        >
                                                                             <svg
                                                                                 xmlns="http://www.w3.org/2000/svg"
                                                                                 className="h-5 w-5"
@@ -946,22 +946,22 @@ export default function ApproveOrder({ auth }) {
                                                                                     d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
                                                                                     clipRule="evenodd"
                                                                                 />
-                                                                            </svg>
-                                                                        </button>
-                                                                    </div>
-                                                                ) : (
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                ) : (
                                                                     <span className="break-words min-w-[100px] inline-block">
                                                                         {parseInt(
                                                                             po.amount ||
                                                                                 0
                                                                         ).toLocaleString()}
                                                                     </span>
-                                                                )}
-                                                            </td>
-
-                                                            <td className="px-6 py-4 text-center">
-                                                                <div className="flex flex-col items-center justify-center w-full">
-                                                                    {/* Show pending file preview or the existing document */}
+                                                )}
+                                            </td>
+                                            
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex flex-col items-center justify-center w-full">
+                                                    {/* Show pending file preview or the existing document */}
                                                                     {tempDocuments[
                                                                         po.id
                                                                     ] ? (
@@ -973,7 +973,7 @@ export default function ApproveOrder({ auth }) {
                                                                                 ]
                                                                             }
                                                                         />
-                                                                    ) : po.attachment ? (
+                                                    ) : po.attachment ? (
                                                                         <FileDisplay
                                                                             file={
                                                                                 po.attachment
@@ -989,9 +989,9 @@ export default function ApproveOrder({ auth }) {
 
                                                                     {editingId ===
                                                                         po.id && (
-                                                                        <>
-                                                                            <input
-                                                                                type="file"
+                                                        <>
+                                                            <input
+                                                                type="file"
                                                                                 onChange={(
                                                                                     e
                                                                                 ) =>
@@ -1002,14 +1002,14 @@ export default function ApproveOrder({ auth }) {
                                                                                             .files[0]
                                                                                     )
                                                                                 }
-                                                                                className="hidden"
-                                                                                id={`file-input-${po.id}`}
-                                                                                accept=".pdf,.doc,.docx"
-                                                                            />
-                                                                            <label
-                                                                                htmlFor={`file-input-${po.id}`}
-                                                                                className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-                                                                            >
+                                                                className="hidden"
+                                                                id={`file-input-${po.id}`}
+                                                                accept=".pdf,.doc,.docx"
+                                                            />
+                                                            <label 
+                                                                htmlFor={`file-input-${po.id}`}
+                                                                className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
+                                                            >
                                                                                 {tempDocuments[
                                                                                     po
                                                                                         .id
@@ -1017,71 +1017,71 @@ export default function ApproveOrder({ auth }) {
                                                                                 po.attachment
                                                                                     ? "Replace file"
                                                                                     : "Attach file"}
-                                                                            </label>
-                                                                        </>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-
-                                                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                                <div className="flex justify-center space-x-3">
+                                                            </label>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                <div className="flex justify-center space-x-3">
                                                                     {editingId ===
                                                                     po.id ? (
-                                                                        <button
+                                                        <button
                                                                             onClick={() =>
                                                                                 handleSave(
                                                                                     po.id
                                                                                 )
                                                                             }
-                                                                            className="text-green-600 hover:text-green-900"
-                                                                        >
+                                                            className="text-green-600 hover:text-green-900"
+                                                        >
                                                                             <FontAwesomeIcon
                                                                                 icon={
                                                                                     faCheck
                                                                                 }
                                                                                 className="h-5 w-5"
                                                                             />
-                                                                        </button>
-                                                                    ) : (
-                                                                        <button
+                                                        </button>
+                                                    ) : (
+                                                        <button
                                                                             onClick={() =>
                                                                                 handleEdit(
                                                                                     po
                                                                                 )
                                                                             }
-                                                                            className="text-gray-600 hover:text-gray-600"
-                                                                        >
+                                                            className="text-gray-600 hover:text-gray-600"
+                                                        >
                                                                             <FontAwesomeIcon
                                                                                 icon={
                                                                                     faEdit
                                                                                 }
                                                                                 className="h-5 w-5"
                                                                             />
-                                                                        </button>
-                                                                    )}
-
-                                                                    <button
+                                                        </button>
+                                                    )}
+                                                    
+                                                    <button
                                                                         onClick={() =>
                                                                             handleDelete(
                                                                                 po.id
                                                                             )
                                                                         }
-                                                                        className="text-red-600 hover:text-red-900"
-                                                                    >
+                                                        className="text-red-600 hover:text-red-900"
+                                                    >
                                                                         <FontAwesomeIcon
                                                                             icon={
                                                                                 faTrash
                                                                             }
                                                                             className="h-5 w-5"
                                                                         />
-                                                                    </button>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
                                                     )
                                                 )
-                                            ) : (
-                                                <tr>
+                                ) : (
+                                    <tr>
                                                     <td
                                                         colSpan="7"
                                                         className="text-center py-4"
@@ -1089,16 +1089,16 @@ export default function ApproveOrder({ auth }) {
                                                         No purchase order
                                                         available.
                                                     </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    )}
-                                </table>
-
+                                    </tr>
+                                )}
+                            </tbody>
+                            )}
+                        </table>
+                        
                                 {/* Add Purchase Order Button */}
-                                <div className="mt-4 flex justify-center">
-                                    <button
-                                        onClick={addItem}
+                            <div className="mt-4 flex justify-center">
+                                <button
+                                    onClick={addItem}
                                         className="px-3 py-1 bg-[#009FDC] text-white rounded-full"
                                     >
                                         Add Purchase Order
@@ -1171,10 +1171,10 @@ export default function ApproveOrder({ auth }) {
                                             }
                                         >
                                             Next
-                                        </button>
-                                    </div>
-                                )}
+                                </button>
                             </div>
+                        )}
+                    </div>
                         </>
                     )}
                 </div>
