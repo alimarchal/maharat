@@ -3,165 +3,154 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\V1\Faq\StoreFaqRequest;
-use App\Http\Requests\V1\Faq\UpdateFaqRequest;
-use App\Http\Resources\V1\FaqResource;
-use App\Http\Resources\V1\FaqCollection;
 use App\Models\Faq;
-use App\QueryParameters\FaqParameters;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Spatie\QueryBuilder\QueryBuilder;
+use Illuminate\Support\Facades\Log;
 
 class FaqController extends Controller
 {
-    /**
-     * Display a listing of the FAQs.
-     *
-     * @return \Illuminate\Http\JsonResponse|\App\Http\Resources\V1\FaqCollection
-     */
-    public function index(): JsonResponse|FaqCollection
-    {
-        $faqs = QueryBuilder::for(Faq::class)
-            ->allowedFilters(FaqParameters::ALLOWED_FILTERS)
-            ->allowedSorts(FaqParameters::ALLOWED_SORTS)
-            ->allowedIncludes(FaqParameters::ALLOWED_INCLUDES)
-            ->paginate()
-            ->appends(request()->query());
-
-        if ($faqs->isEmpty()) {
-            return response()->json([
-                'message' => 'No FAQs found',
-                'data' => []
-            ], Response::HTTP_OK);
-        }
-
-        return new FaqCollection($faqs);
-    }
-
-    /**
-     * Store a newly created FAQ in storage.
-     *
-     * @param  \App\Http\Requests\V1\Faq\StoreFaqRequest  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function store(StoreFaqRequest $request): JsonResponse
+    public function index()
     {
         try {
+            $faqs = Faq::orderBy('order', 'asc')->get();
+            return response()->json($faqs);
+        } catch (\Exception $e) {
+            Log::error('Error fetching FAQs: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to fetch FAQs'], 500);
+        }
+    }
+
+    public function store(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'question' => 'required|string|max:255',
+                'description' => 'required|string',
+                'screenshots' => 'nullable|array',
+                'screenshots.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+                'video_link' => 'nullable|url|max:255',
+            ]);
+
             DB::beginTransaction();
 
-            $data = $request->validated();
+            $faq = new Faq();
+            $faq->title = $validated['title'];
+            $faq->question = $validated['question'];
+            $faq->description = $validated['description'];
+            $faq->video_link = $validated['video_link'] ?? null;
 
-            // Handle screenshots upload
+            // Handle screenshots
             if ($request->hasFile('screenshots')) {
                 $screenshots = [];
                 foreach ($request->file('screenshots') as $file) {
-                    $path = $file->store('faqs/screenshots', 'public');
+                    $path = $file->store('faq/screenshots', 'public');
                     $screenshots[] = $path;
                 }
-                $data['screenshots'] = $screenshots;
+                $faq->screenshots = json_encode($screenshots);
             }
 
-            $faq = Faq::create($data);
+            // Set order to be the last
+            $lastOrder = Faq::max('order') ?? 0;
+            $faq->order = $lastOrder + 1;
+
+            $faq->save();
 
             DB::commit();
 
-            return response()->json([
-                'message' => 'FAQ created successfully',
-                'data' => new FaqResource($faq)
-            ], Response::HTTP_CREATED);
+            return response()->json($faq, 201);
         } catch (\Exception $e) {
             DB::rollBack();
-
-            return response()->json([
-                'message' => 'Failed to create FAQ',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            Log::error('Error creating FAQ: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to create FAQ'], 500);
         }
     }
 
-    /**
-     * Display the specified FAQ.
-     *
-     * @param  string  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function show(string $id): JsonResponse
-    {
-        $faq = QueryBuilder::for(Faq::class)
-            ->allowedIncludes(FaqParameters::ALLOWED_INCLUDES)
-            ->findOrFail($id);
-
-        return response()->json([
-            'data' => new FaqResource($faq)
-        ], Response::HTTP_OK);
-    }
-
-    /**
-     * Update the specified FAQ in storage.
-     *
-     * @param  \App\Http\Requests\V1\Faq\UpdateFaqRequest  $request
-     * @param  \App\Models\Faq  $faq
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function update(UpdateFaqRequest $request, Faq $faq): JsonResponse
+    public function update(Request $request, Faq $faq)
     {
         try {
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'question' => 'required|string|max:255',
+                'description' => 'required|string',
+                'screenshots' => 'nullable|array',
+                'screenshots.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+                'video_link' => 'nullable|url|max:255',
+            ]);
+
             DB::beginTransaction();
 
-            $data = $request->validated();
+            $faq->title = $validated['title'];
+            $faq->question = $validated['question'];
+            $faq->description = $validated['description'];
+            $faq->video_link = $validated['video_link'] ?? null;
 
-            // Handle screenshots upload
+            // Handle screenshots
             if ($request->hasFile('screenshots')) {
-                // Delete old screenshots if they exist
+                // Delete old screenshots
                 if ($faq->screenshots) {
-                    foreach ($faq->screenshots as $screenshot) {
-                        Storage::disk('public')->delete($screenshot);
+                    $oldScreenshots = json_decode($faq->screenshots, true);
+                    foreach ($oldScreenshots as $oldScreenshot) {
+                        Storage::disk('public')->delete($oldScreenshot);
                     }
                 }
 
                 $screenshots = [];
                 foreach ($request->file('screenshots') as $file) {
-                    $path = $file->store('faqs/screenshots', 'public');
+                    $path = $file->store('faq/screenshots', 'public');
                     $screenshots[] = $path;
                 }
-                $data['screenshots'] = $screenshots;
+                $faq->screenshots = json_encode($screenshots);
             }
 
-            $faq->update($data);
+            $faq->save();
 
             DB::commit();
 
-            return response()->json([
-                'message' => 'FAQ updated successfully',
-                'data' => new FaqResource($faq)
-            ], Response::HTTP_OK);
+            return response()->json($faq);
         } catch (\Exception $e) {
             DB::rollBack();
-
-            return response()->json([
-                'message' => 'Failed to update FAQ',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            Log::error('Error updating FAQ: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to update FAQ'], 500);
         }
     }
 
-    /**
-     * Remove the specified FAQ from storage.
-     *
-     * @param  \App\Models\Faq  $faq
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function destroy(Faq $faq): JsonResponse
+    public function reorder(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'items' => 'required|array',
+                'items.*.id' => 'required|exists:faqs,id',
+                'items.*.order' => 'required|integer|min:0',
+            ]);
+
+            DB::beginTransaction();
+
+            foreach ($validated['items'] as $item) {
+                Faq::where('id', $item['id'])->update(['order' => $item['order']]);
+            }
+
+            DB::commit();
+
+            return response()->json(['message' => 'FAQ order updated successfully']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error reordering FAQs: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to reorder FAQs'], 500);
+        }
+    }
+
+    public function destroy(Faq $faq)
     {
         try {
             DB::beginTransaction();
 
-            // Delete associated screenshots if they exist
+            // Delete screenshots if they exist
             if ($faq->screenshots) {
-                foreach ($faq->screenshots as $screenshot) {
+                $screenshots = json_decode($faq->screenshots, true);
+                foreach ($screenshots as $screenshot) {
                     Storage::disk('public')->delete($screenshot);
                 }
             }
@@ -170,16 +159,11 @@ class FaqController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'message' => 'FAQ deleted successfully'
-            ], Response::HTTP_OK);
+            return response()->json(null, 204);
         } catch (\Exception $e) {
             DB::rollBack();
-
-            return response()->json([
-                'message' => 'Failed to delete FAQ',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            Log::error('Error deleting FAQ: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to delete FAQ'], 500);
         }
     }
 }

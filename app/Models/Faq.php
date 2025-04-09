@@ -19,7 +19,8 @@ class Faq extends Model
         'question',
         'description',
         'screenshots',
-        'video_link'
+        'video_link',
+        'order'
     ];
 
     /**

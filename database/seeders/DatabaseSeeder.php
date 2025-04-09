@@ -84,6 +84,7 @@ class DatabaseSeeder extends Seeder
             PaymentOrderSeeder::class,
             PaymentOrderApprovalTransactionSeeder::class,
             MahratInvoiceApprovalTransactionSeeder::class,
+            FaqSeeder::class,
         ]);
     }
 }

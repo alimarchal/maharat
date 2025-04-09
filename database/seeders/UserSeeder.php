@@ -55,8 +55,8 @@ class UserSeeder extends Seeder
         $admin = User::firstOrCreate(
             ['email' => 'admin@example.com'],
             [
-                'name' => 'Sami Al Musalli',
-                'firstname' => 'Sami',
+                'name' => 'Mr. Sami Al Musalli',
+                'firstname' => 'Mr. Sami',
                 'lastname' => 'Al Musalli',
                 'username' => $generateUsername('Sami Al Musalli'),
                 'employee_id' => $generateEmployeeId(),
