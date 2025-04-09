@@ -68,6 +68,7 @@ class TaskController extends Controller
                     'invoice',
                     'budget',
                     'budget_approval_transaction',
+                    'request_budget',
                 ]))
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
@@ -114,6 +115,7 @@ class TaskController extends Controller
                     'invoice',
                     'budget',
                     'budget_approval_transaction',
+                    'request_budget',
                 ]))
             ], Response::HTTP_OK);
         } catch (\Exception $e) {

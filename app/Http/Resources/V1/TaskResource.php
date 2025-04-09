@@ -28,6 +28,7 @@ class TaskResource extends JsonResource
             'invoice_id' => $this->invoice_id,
             'budget_id' => $this->budget_id,
             'budget_approval_transaction_id' => $this->budget_approval_transaction_id,
+            'request_budget_id' => $this->request_budget_id,
             'read_status' => $this->read_status?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
@@ -46,6 +47,7 @@ class TaskResource extends JsonResource
             'invoice' => new InvoiceResource($this->whenLoaded('invoice')),
             'budget' => new BudgetResource($this->whenLoaded('budget')),
             'budget_approval_transaction' => new BudgetApprovalTransactionResource($this->whenLoaded('budget_approval_transaction')),
+            'request_budget' => new BudgetApprovalTransactionResource($this->whenLoaded('request_budget')),
         ];
     }
 }

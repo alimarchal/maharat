@@ -35,6 +35,7 @@ class TaskParameters
             AllowedFilter::exact('invoice_id'),
             AllowedFilter::exact('budget_id'),
             AllowedFilter::exact('budget_approval_transaction_id'),
+            AllowedFilter::exact('request_budget_id'),
         ];
     }
 
@@ -56,6 +57,7 @@ class TaskParameters
         'invoice_id',
         'budget_id',
         'budget_approval_transaction_id',
+        'request_budget_id',
         'read_status',
         'created_at',
         'updated_at',
@@ -75,5 +77,6 @@ class TaskParameters
         'invoice',
         'budget',
         'budget_approval_transaction',
+        'request_budget',
     ];
 }

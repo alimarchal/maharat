@@ -25,6 +25,7 @@ class UpdateTaskRequest extends FormRequest
             'invoice_id' => ['sometimes', 'exists:invoices,id'],
             'budget_id' => ['sometimes', 'exists:budgets,id'],
             'budget_approval_transaction_id' => ['sometimes', 'exists:budget_approval_transactions,id'],
+            'request_budget_id' => ['sometimes', 'exists:request_budgets,id'],
             'assigned_at' => ['nullable', 'date'],
             'deadline' => ['nullable', 'date', 'after_or_equal:assigned_at'],
             'urgency' => ['sometimes', 'required', Rule::in(['Normal', 'Medium', 'High', 'Low', 'ASAP'])],
