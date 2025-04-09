@@ -197,6 +197,8 @@ const FAQ = () => {
         name: "",
         email: "",
         question: "",
+        description: "",
+        screenshots: null
     });
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -324,48 +326,80 @@ const FAQ = () => {
     };
 
     const handleHelpFormChange = (e) => {
-        const { name, value } = e.target;
-        setHelpFormData((prevData) => ({
-            ...prevData,
-            [name]: value,
+        const { name, value, files } = e.target;
+        setHelpFormData(prev => ({
+            ...prev,
+            [name]: files ? files : value
         }));
-    };
-
-    const validateHelpForm = () => {
-        const tempErrors = {};
-        if (!helpFormData.name) tempErrors.name = "Name is required";
-        if (!helpFormData.email) tempErrors.email = "Email is required";
-        if (!helpFormData.question) tempErrors.question = "Question is required";
-        setErrors(tempErrors);
-        return Object.keys(tempErrors).length === 0;
+        // Clear error when user starts typing
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: null }));
+        }
     };
 
     const handleHelpFormSubmit = async (e) => {
         e.preventDefault();
-        if (!validateHelpForm()) return;
+        console.log('Form submitted with data:', helpFormData);
+        
+        // Basic validation
+        if (!helpFormData.question.trim()) {
+            setErrors({ question: "Question is required" });
+            return;
+        }
+        if (!helpFormData.description.trim()) {
+            setErrors({ description: "Description is required" });
+            return;
+        }
         
         setIsSubmitting(true);
+        setErrors({});
+        
         try {
-            // In a real application, you would send this to your backend
-            // await axios.post("/api/v1/help-requests", helpFormData);
+            const formData = new FormData();
+            formData.append('title', helpFormData.question);
+            formData.append('description', helpFormData.description);
             
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            setSubmitSuccess(true);
-            setHelpFormData({
-                name: "",
-                email: "",
-                question: "",
+            // Handle screenshots if they exist
+            if (helpFormData.screenshots) {
+                Array.from(helpFormData.screenshots).forEach((file, index) => {
+                    formData.append(`screenshots[${index}]`, file);
+                });
+            }
+
+            console.log('Sending form data to API...');
+            const response = await axios.post('/api/v1/faqs/approval', formData, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'multipart/form-data'
+                }
             });
-            
-            // Reset success message after 5 seconds
-            setTimeout(() => {
-                setSubmitSuccess(false);
-                setShowHelpForm(false);
-            }, 5000);
+
+            console.log('API Response:', response.data);
+
+            if (response.data) {
+                setSubmitSuccess(true);
+                setHelpFormData({
+                    name: "",
+                    email: "",
+                    question: "",
+                    description: "",
+                    screenshots: null
+                });
+                
+                setTimeout(() => {
+                    setSubmitSuccess(false);
+                    setShowHelpForm(false);
+                }, 5000);
+            }
         } catch (error) {
             console.error("Error submitting help request:", error);
+            if (error.response) {
+                console.error("Response data:", error.response.data);
+                console.error("Response status:", error.response.status);
+                setErrors({ submit: error.response.data.message || "Failed to submit question" });
+            } else {
+                setErrors({ submit: "Failed to submit question. Please try again." });
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -406,11 +440,17 @@ const FAQ = () => {
                                 Add FAQ
                             </button>
                             <button
-                                onClick={handleEditModeToggle}
+                                onClick={() => setIsEditMode(!isEditMode)}
                                 className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
                             >
                                 {isEditMode ? 'Done Editing' : 'Edit FAQs'}
                             </button>
+                            <Link
+                                href={route('faqs.view')}
+                                className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
+                            >
+                                View FAQs
+                            </Link>
                         </div>
                     )}
                 </div>
@@ -563,45 +603,54 @@ const FAQ = () => {
                         <form onSubmit={handleHelpFormSubmit} className="space-y-4">
                             {submitSuccess && (
                                 <div className="p-3 bg-green-100 text-green-700 rounded-md">
-                                    Your question has been submitted. We'll get back to you soon!
+                                    Your question has been submitted for approval. We'll review it soon!
                                 </div>
                             )}
                             
                             <InputFloating
-                                label="Your Name"
-                                name="name"
-                                value={helpFormData.name}
+                                label="Your Question"
+                                name="question"
+                                value={helpFormData.question}
                                 onChange={handleHelpFormChange}
-                                error={errors.name}
+                                error={errors.question}
                             />
-                            
-                            <InputFloating
-                                label="Your Email"
-                                name="email"
-                                type="email"
-                                value={helpFormData.email}
-                                onChange={handleHelpFormChange}
-                                error={errors.email}
-                            />
-                            
+
                             <div className="mb-4">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Your Question
+                                    Description
                                 </label>
                                 <textarea
-                                    name="question"
-                                    value={helpFormData.question}
+                                    name="description"
+                                    value={helpFormData.description}
                                     onChange={handleHelpFormChange}
                                     rows="4"
                                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#009FDC] ${
-                                        errors.question ? "border-red-500" : "border-gray-300"
+                                        errors.description ? "border-red-500" : "border-gray-300"
                                     }`}
-                                    placeholder="Please describe your question in detail"
+                                    placeholder="Please provide additional details about your question"
                                 ></textarea>
-                                {errors.question && (
-                                    <p className="text-red-500 text-sm mt-1">{errors.question}</p>
+                                {errors.description && (
+                                    <p className="text-red-500 text-sm mt-1">{errors.description}</p>
                                 )}
                             </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Screenshots (Optional)
+                                </label>
+                                <input
+                                    type="file"
+                                    multiple
+                                    name="screenshots"
+                                    onChange={handleHelpFormChange}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    accept="image/*"
+                                />
+                            </div>
+                            
+                            {errors.submit && (
+                                <div className="text-red-500 text-sm">{errors.submit}</div>
+                            )}
                             
                             <div className="flex space-x-4">
                                 <button

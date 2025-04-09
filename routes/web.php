@@ -14,6 +14,7 @@ use App\Http\Controllers\RfqController;
 use App\Models\Quotation;
 use App\Http\Controllers\QuotationPDFController;
 use Illuminate\Http\Request;
+use App\Http\Controllers\FAQController;
 
 // Redirect root to login
 Route::get('/', function () {
@@ -343,6 +344,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/faqs', function () {
         return Inertia::render('FAQs/FAQ');
     })->name('faqs.index');
+
+    Route::get('/faqs/view', [FAQController::class, 'view'])->name('faqs.view');
 });
 
 // Forgot Password Route (Guest Only)
