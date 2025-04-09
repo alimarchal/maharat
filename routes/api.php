@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\EquityAccountController;
 use App\Http\Controllers\Api\V1\EquityTransactionController;
 use App\Http\Controllers\Api\V1\ExternalDeliveryNoteController;
 use App\Http\Controllers\Api\V1\ExternalInvoiceController;
+use App\Http\Controllers\Api\V1\FaqController;
 use App\Http\Controllers\Api\V1\FinancialTransactionController;
 use App\Http\Controllers\Api\V1\FiscalPeriodController;
 use App\Http\Controllers\Api\V1\GrnController;
@@ -380,5 +381,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::get('/users/{user}/permissions', [UserController::class, 'getPermissions']);
     Route::post('/users/{user}/toggle-permission', [UserController::class, 'togglePermission']);
+
+    Route::apiResource('faqs', FaqController::class);
+
 
 });
