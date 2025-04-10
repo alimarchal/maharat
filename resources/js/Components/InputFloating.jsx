@@ -1,4 +1,4 @@
-const InputFloating = ({ label, name, value, onChange, type = "text" }) => {
+const InputFloating = ({ label, name, value, onChange, type = "text", error }) => {
     return (
         <div className="relative w-full">
             <input
@@ -6,8 +6,8 @@ const InputFloating = ({ label, name, value, onChange, type = "text" }) => {
                 name={name}
                 value={value}
                 onChange={onChange}
-                placeholder=" "
-                className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC] transition-all duration-300 ease-in-out"
+                placeholder={type === "date" ? "DD/MM/YYYY" : " "}
+                className={`peer border ${error ? 'border-red-500' : 'border-gray-300'} p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 ${error ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-[#009FDC] focus:border-[#009FDC]'} transition-all duration-300 ease-in-out`}
             />
 
             <label
@@ -22,6 +22,10 @@ const InputFloating = ({ label, name, value, onChange, type = "text" }) => {
             >
                 {label}
             </label>
+            
+            {error && (
+                <p className="mt-1 text-sm text-red-600">{error}</p>
+            )}
         </div>
     );
 };

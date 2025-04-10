@@ -82,7 +82,10 @@ export default function CreateOrder({ auth }) {
             const purchaseOrdersResponse = await axios.get('/api/v1/purchase-orders');
             const purchaseOrdersData = purchaseOrdersResponse.data.data || [];
             const quotationIdsWithPO = new Set(purchaseOrdersData.map(po => po.quotation_id));
-    
+            
+            // Store the purchase orders for potential use later (like in edit mode)
+            setPurchaseOrders(purchaseOrdersData);
+            
             const quotationsWithDetails = await Promise.all(
                 quotationsData.map(async (quotation) => {
                     let categoryName = 'N/A';
@@ -206,7 +209,7 @@ export default function CreateOrder({ auth }) {
                 <Head title="Create Purchase Order" />
 
                 <div className="w-full overflow-hidden">
-                    <div className="flex justify-between items-center mb-6 pt-4">
+                    <div className="flex justify-between items-center mb-2 pt-4">
                         <h2 className="text-[32px] font-bold text-[#2C323C]">Create Purchase Order</h2>
                         <div className="w-1/3">
                             <SelectFloating
@@ -215,7 +218,7 @@ export default function CreateOrder({ auth }) {
                                 value={selectedRfq || ''}
                                 onChange={handleRfqChange}
                                 options={[
-                                    { id: 'all', label: 'All RFQs' },
+                                    // { id: 'all', label: 'All RFQs' },
                                     ...rfqs.map(rfq => ({
                                         id: rfq.id,
                                         label: rfq.organization_name
@@ -224,6 +227,10 @@ export default function CreateOrder({ auth }) {
                                 className="min-h-[70px] py-2"
                             />
                         </div>
+                    </div>
+                    
+                    <div className="mb-4 -mt-1">
+                        <p className="text-lg text-gray-600">List of RFQs that have no Purchase Orders</p>
                     </div>
 
                     {/* Loading Bar */}
