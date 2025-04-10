@@ -323,6 +323,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // External Invoices
     Route::apiResource('external-invoices', ExternalInvoiceController::class);
     Route::post('external-invoices/{id}/restore', [ExternalInvoiceController::class, 'restore']);
+    Route::get('purchase-orders/available', [ExternalInvoiceController::class, 'getAvailablePurchaseOrders'])->name('purchase-orders.available');
 
     Route::apiResource('rfq-approval-transactions', RfqApprovalTransactionController::class);
     Route::apiResource('po-approval-transactions', PoApprovalTransactionController::class);

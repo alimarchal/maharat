@@ -21,6 +21,7 @@ export default function AddQuotationForm({ auth }) {
     const { rfqId } = usePage().props;
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
+        organization_name: "",
         organization_email: "",
         city: "",
         category_id: "",
@@ -186,6 +187,7 @@ export default function AddQuotationForm({ auth }) {
 
                     // Format the main form data
                     const formattedData = {
+                        organization_name: rfqData.organization_name || "",
                         organization_email: rfqData.organization_email || "",
                         city: rfqData.city || "",
 
@@ -605,23 +607,35 @@ export default function AddQuotationForm({ auth }) {
         e.preventDefault();
 
         try {
+            console.log('Initial formData:', formData); // Debug initial state
+
+            // Create a plain object first to ensure all data is properly formatted
+            const rfqData = {
+                organization_name: formData.organization_name || "",
+                organization_email: formData.organization_email || "",
+                city: formData.city || "",
+                category_id: formData.category_id || "",
+                warehouse_id: formData.warehouse_id || "",
+                request_date: formData.issue_date || "",
+                closing_date: formData.closing_date || "",
+                rfq_number: formData.rfq_id || "",
+                payment_type: formData.payment_type || "",
+                contact_number: formData.contact_no || "",
+                status_id: formData.status_id || "48"
+            };
+
+            console.log('Prepared RFQ data for API:', rfqData); // Debug prepared data
+
+            // Convert to FormData
             const formDataObj = new FormData();
-            formDataObj.append(
-                "organization_email",
-                formData.organization_email || ""
-            );
-            formDataObj.append("city", formData.city || "");
-            formDataObj.append("category_id", formData.category_id || "");
-            formDataObj.append("warehouse_id", formData.warehouse_id || "");
-            formDataObj.append("request_date", formData.issue_date || "");
-            formDataObj.append("closing_date", formData.closing_date || "");
-            formDataObj.append("rfq_number", formData.rfq_id || "");
-            formDataObj.append("payment_type", formData.payment_type || "");
-            formDataObj.append("contact_number", formData.contact_no || "");
-            formDataObj.append("status_id", formData.status_id || "48");
+            Object.entries(rfqData).forEach(([key, value]) => {
+                formDataObj.append(key, value);
+                console.log(`Appending to FormData: ${key}=${value}`); // Debug FormData construction
+            });
 
             let response;
             if (rfqId) {
+                console.log('Updating existing RFQ:', rfqId); // Debug update operation
                 response = await axios.put(
                     `/api/v1/rfqs/${rfqId}`,
                     formDataObj,
@@ -633,6 +647,7 @@ export default function AddQuotationForm({ auth }) {
                     }
                 );
             } else {
+                console.log('Creating new RFQ'); // Debug create operation
                 response = await axios.post("/api/v1/rfqs", formDataObj, {
                     headers: {
                         "Content-Type": "multipart/form-data",
@@ -641,12 +656,66 @@ export default function AddQuotationForm({ auth }) {
                 });
             }
 
+            console.log('API Response:', response.data); // Debug API response
+
             if (!response.data?.data?.id) {
+                console.error('No RFQ ID in response:', response.data); // Debug missing ID
                 throw new Error("Failed to get RFQ ID");
             }
-            console.log("Rfq:", response.data.data);
             const newRfqId = response.data.data?.id;
-            console.log("Rfq Id:".newRfqId);
+            console.log('New/Updated RFQ ID:', newRfqId); // Debug RFQ ID
+
+            // Update the form data with the response data
+            if (response.data?.data) {
+                const updatedData = response.data.data;
+                console.log('Data received from API:', updatedData); // Debug API data
+
+                // Format dates to match the form's expected format (yyyy-MM-dd)
+                const formatDate = (dateString) => {
+                    if (!dateString) return '';
+                    const date = new Date(dateString);
+                    return date.toISOString().split('T')[0];
+                };
+
+                // Create a new form data object with updated values
+                const newFormData = {
+                    organization_name: updatedData.organization_name || '',
+                    organization_email: updatedData.organization_email || '',
+                    city: updatedData.city || '',
+                    category_id: updatedData.category_id ? String(updatedData.category_id) : '',
+                    warehouse_id: updatedData.warehouse_id ? String(updatedData.warehouse_id) : '',
+                    issue_date: formatDate(updatedData.request_date) || '',
+                    closing_date: formatDate(updatedData.closing_date) || '',
+                    rfq_id: updatedData.rfq_number || '',
+                    payment_type: updatedData.payment_type ? String(updatedData.payment_type) : '',
+                    contact_no: updatedData.contact_number || '',
+                    status_id: updatedData.status?.id ? String(updatedData.status.id) : '',
+                    items: [...formData.items] // Keep existing items
+                  };
+                  
+                  // Use the functional form of setFormData
+                  setFormData(() => newFormData);
+
+                console.log('New form data to be set:', newFormData); // Debug new form data
+
+                // // Update the form data and force a re-render
+                // setFormData(prevData => {
+                //     console.log('Previous form data:', prevData);
+                //     console.log('Setting new form data:', newFormData);
+                //     return newFormData;
+                // });
+
+                // Force a re-render of the form
+                setTimeout(() => {
+                    console.log('Current form data after update:', formData); // Debug after update
+                    // Force a re-render of the form inputs
+                    const inputs = document.querySelectorAll('input, select');
+                    inputs.forEach(input => {
+                        const event = new Event('change', { bubbles: true });
+                        input.dispatchEvent(event);
+                    });
+                }, 0);
+            }
 
             // Now save the items with the new RFQ ID
             const itemsFormData = new FormData();
@@ -660,6 +729,8 @@ export default function AddQuotationForm({ auth }) {
                 rfq_id: newRfqId,
                 status_id: item.status_id || "48",
             }));
+
+            console.log('Items to be saved:', itemsToSend); // Debug items data
 
             itemsFormData.append("items", JSON.stringify(itemsToSend));
 
@@ -685,6 +756,8 @@ export default function AddQuotationForm({ auth }) {
                     },
                 }
             );
+
+            console.log('Items save response:', itemsResponse.data); // Debug items response
 
             // Only proceed with process steps if we have a successful RFQ response
             if (newRfqId) {
@@ -734,10 +807,13 @@ export default function AddQuotationForm({ auth }) {
             }
 
             if (itemsResponse.data.success) {
+                console.log('All operations completed successfully'); // Debug success
                 alert("RFQ and items saved successfully!");
-        router.visit(route("rfq.index"));
+                router.visit(route("rfq.index"));
             }
         } catch (error) {
+            console.error('Error in handleSaveAndSubmit:', error); // Debug error
+            console.error('Error response:', error.response); // Debug error response
             alert(
                 error.response?.data?.message ||
                     "Save failed. Please check your data and try again."
@@ -877,7 +953,7 @@ export default function AddQuotationForm({ auth }) {
                             icon={faChevronRight}
                             className="text-xl text-[#9B9DA2]"
                         />
-                        <Link
+                        {/* <Link
                             href="/purchase"
                             className="hover:text-[#009FDC] text-xl"
                         >
@@ -886,7 +962,7 @@ export default function AddQuotationForm({ auth }) {
                         <FontAwesomeIcon
                             icon={faChevronRight}
                             className="text-xl text-[#9B9DA2]"
-                        />
+                        /> */}
                         <Link
                             href="/rfq"
                             className="hover:text-[#009FDC] text-xl"
@@ -928,6 +1004,22 @@ export default function AddQuotationForm({ auth }) {
                     <div className="bg-blue-50 rounded-lg p-6 grid grid-cols-2 gap-6 shadow-md text-lg">
                         {/* Left Column */}
                         <div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-center">
+                            <span className="font-medium text-gray-600">
+                                Organization Name:
+                            </span>
+                            <input
+                                type="text"
+                                value={formData.organization_name}
+                                onChange={(e) =>
+                                    handleFormInputChange(
+                                        "organization_name",
+                                        e.target.value
+                                    )
+                                }
+                                className="text-black bg-blue-50 focus:ring-0 w-full outline-none border-none text-lg"
+                                required
+                            />
+
                             <span className="font-medium text-gray-600">
                                 Organization Email:
                             </span>

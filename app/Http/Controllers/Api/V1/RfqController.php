@@ -171,6 +171,7 @@ class RfqController extends Controller
 
             // Create base RFQ data array
             $rfqData = [
+                'organization_name' => $request->input('organization_name'),
                 'organization_email' => $request->input('organization_email'),
                 'city' => $request->input('city'),
                 'request_date' => $request->input('request_date'),
@@ -316,6 +317,7 @@ class RfqController extends Controller
 
             // Prepare data for updating
             $updateData = [
+                'organization_name' => $request->input('organization_name'),
                 'organization_email' => $request->input('organization_email'),
                 'city' => $request->input('city'),
                 'warehouse_id' => $request->input('warehouse_id'),
@@ -445,10 +447,10 @@ class RfqController extends Controller
             DB::table('rfq_categories')->where('rfq_id', $id)->delete();
 
             // Delete items
-            $rfq->items()->delete();
+            $rfq->items()->forceDelete();
 
-            // Delete RFQ
-            $rfq->delete();
+            // Delete RFQ with forceDelete
+            $rfq->forceDelete();
 
             DB::commit();
             Log::info("RFQ $id deleted successfully");
@@ -473,6 +475,7 @@ class RfqController extends Controller
 
             // Prepare response data
             $responseData = [
+                'organization_name' => '',
                 'organization_email' => '',
                 'city' => '',
                 'rfq_number' => $rfqNumber,
@@ -483,6 +486,7 @@ class RfqController extends Controller
 
             // Try to get authenticated user data if available
             if (auth()->check() && auth()->user()->company) {
+                $responseData['organization_name'] = auth()->user()->company->name ?? '';
                 $responseData['organization_email'] = auth()->user()->company->email ?? '';
                 $responseData['city'] = auth()->user()->company->city ?? '';
             }

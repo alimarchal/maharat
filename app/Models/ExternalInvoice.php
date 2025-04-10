@@ -20,7 +20,7 @@ class ExternalInvoice extends Model
         'vat_amount',
         'status',
         'type',
-        'payable_date',
+        'payable_date'
     ];
 
     protected $casts = [
@@ -32,7 +32,7 @@ class ExternalInvoice extends Model
     /**
      * Get the user who created the invoice.
      */
-    public function user(): BelongsTo
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
@@ -40,15 +40,15 @@ class ExternalInvoice extends Model
     /**
      * Get the purchase order associated with the invoice.
      */
-    public function purchaseOrder(): BelongsTo
+    public function purchaseOrder()
     {
-        return $this->belongsTo(PurchaseOrder::class);
+        return $this->belongsTo(PurchaseOrder::class, 'purchase_order_id', 'id');
     }
 
     /**
      * Get the supplier associated with the invoice.
      */
-    public function supplier(): BelongsTo
+    public function supplier()
     {
         return $this->belongsTo(Supplier::class);
     }
@@ -60,4 +60,7 @@ class ExternalInvoice extends Model
     {
         return $this->amount + $this->vat_amount;
     }
+
+    // Add this to ensure purchase order is always loaded
+    protected $with = ['purchaseOrder'];
 }

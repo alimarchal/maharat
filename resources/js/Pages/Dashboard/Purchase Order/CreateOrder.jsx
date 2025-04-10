@@ -3,9 +3,10 @@ import { PlusCircleIcon } from '@heroicons/react/24/outline';
 import { Link, router, Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeftLong, faEdit, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import SelectFloating from "@/Components/SelectFloating";
+import ApproveOrder from './ApproveOrder';
 
 export default function CreateOrder({ auth }) {
     const [quotations, setQuotations] = useState([]);
@@ -16,6 +17,9 @@ export default function CreateOrder({ auth }) {
     const [progress, setProgress] = useState(0);
     const [rfqs, setRfqs] = useState([]);
     const [selectedRfq, setSelectedRfq] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedQuotation, setSelectedQuotation] = useState(null);
+    const [purchaseOrders, setPurchaseOrders] = useState([]);
 
     const fetchRfqs = async () => {
         try {
@@ -54,7 +58,7 @@ export default function CreateOrder({ auth }) {
             let url = '/api/v1/quotations';
             const params = {
                 page: currentPage,
-                include: 'rfq',
+                include: 'rfq,purchaseOrder',
                 per_page: 10
             };
 
@@ -63,13 +67,21 @@ export default function CreateOrder({ auth }) {
             let quotationsData = response.data.data || [];
             
             // Filter quotations based on selected RFQ
-            if (selectedRfq) {
+            if (selectedRfq && selectedRfq !== 'all') {
                 quotationsData = quotationsData.filter(quotation => 
                     quotation.rfq && quotation.rfq.id === parseInt(selectedRfq)
                 );
+            } else if (selectedRfq === 'all') {
+                // Show all quotations
+                quotationsData = quotationsData;
             } else {
                 quotationsData = []; // Show no quotations if no RFQ is selected
             }
+    
+            // First, fetch all purchase orders to check which quotations have POs
+            const purchaseOrdersResponse = await axios.get('/api/v1/purchase-orders');
+            const purchaseOrdersData = purchaseOrdersResponse.data.data || [];
+            const quotationIdsWithPO = new Set(purchaseOrdersData.map(po => po.quotation_id));
     
             const quotationsWithDetails = await Promise.all(
                 quotationsData.map(async (quotation) => {
@@ -83,10 +95,21 @@ export default function CreateOrder({ auth }) {
                             console.error('Error fetching category:', error);
                         }
                     }
+
+                    // Check if quotation_id exists in purchase_orders table
+                    const hasPurchaseOrder = quotationIdsWithPO.has(quotation.id);
+                    
+                    console.log('Quotation Details:', {
+                        id: quotation.id,
+                        quotation_number: quotation.quotation_number,
+                        has_purchase_order: hasPurchaseOrder,
+                        purchaseOrders: purchaseOrdersData.filter(po => po.quotation_id === quotation.id)
+                    });
                     
                     return {
                         ...quotation,
-                        category_name: categoryName
+                        category_name: categoryName,
+                        has_purchase_order: hasPurchaseOrder
                     };
                 })
             );
@@ -95,6 +118,7 @@ export default function CreateOrder({ auth }) {
                 quotationsWithDetails.sort((a, b) => a.id - b.id);
             }
     
+            console.log('All Quotations with Purchase Order Status:', quotationsWithDetails);
             setQuotations(quotationsWithDetails);
             setLastPage(response.data.meta?.last_page || 1);
             setError("");
@@ -125,6 +149,30 @@ export default function CreateOrder({ auth }) {
         setCurrentPage(1); // Reset to first page when RFQ changes
     };
 
+    const handleCreatePO = (quotation) => {
+        console.log('Creating new PO for quotation:', quotation);
+        setSelectedQuotation(quotation);
+        setIsModalOpen(true);
+    };
+
+    const handleEditPO = (quotation) => {
+        console.log('Editing PO for quotation:', quotation);
+        // Find the purchase order for this quotation
+        const purchaseOrder = purchaseOrders.find(po => po.quotation_id === quotation.id);
+        console.log('Found purchase order:', purchaseOrder);
+        setSelectedQuotation({
+            ...quotation,
+            purchaseOrder: purchaseOrder
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleModalClose = () => {
+        setIsModalOpen(false);
+        setSelectedQuotation(null);
+        fetchQuotations(); // Refresh the quotations list
+    };
+
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
         
@@ -149,9 +197,7 @@ export default function CreateOrder({ auth }) {
                     </button>
                 </div>
                 <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2 mb-6">
-                    <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Home</Link>
-                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                    <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Procurement Center</Link>
+                    <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Dashboard</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                     <Link href="/view-order" className="hover:text-[#009FDC] text-xl">Purchase Orders</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
@@ -164,14 +210,17 @@ export default function CreateOrder({ auth }) {
                         <h2 className="text-[32px] font-bold text-[#2C323C]">Create Purchase Order</h2>
                         <div className="w-1/3">
                             <SelectFloating
-                                label="Select RFQ"
+                                label="RFQ to View Quotations"
                                 name="rfq"
                                 value={selectedRfq || ''}
                                 onChange={handleRfqChange}
-                                options={rfqs.map(rfq => ({
-                                    id: rfq.id,
-                                    label: rfq.organization_name
-                                }))}
+                                options={[
+                                    { id: 'all', label: 'All RFQs' },
+                                    ...rfqs.map(rfq => ({
+                                        id: rfq.id,
+                                        label: rfq.organization_name
+                                    }))
+                                ]}
                                 className="min-h-[70px] py-2"
                             />
                         </div>
@@ -232,12 +281,21 @@ export default function CreateOrder({ auth }) {
                                                 {quotation.category_name || "N/A"}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                <Link 
-                                                    href={`/approve-order?quotation_id=${quotation.id}`}
-                                                    onClick={() => console.log('Sending quotation_id:', quotation.id)}
-                                                >
-                                                    <PlusCircleIcon className="h-6 w-6 text-gray-400 hover:text-gray-600 cursor-pointer mx-auto" />
-                                                </Link>
+                                                {quotation.has_purchase_order ? (
+                                                    <button
+                                                        onClick={() => handleEditPO(quotation)}
+                                                        className="text-gray-600 hover:text-gray-800"
+                                                    >
+                                                        <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleCreatePO(quotation)}
+                                                        className="text-gray-400 hover:text-gray-600"
+                                                    >
+                                                        <PlusCircleIcon className="h-6 w-6" />
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))
@@ -264,7 +322,7 @@ export default function CreateOrder({ auth }) {
                                 >
                                     Previous
                                 </button>
-                                {Array.from({ length: Math.ceil(quotations.length / 10) }, (_, index) => index + 1).map((page) => (
+                                {Array.from({ length: lastPage }, (_, index) => index + 1).map((page) => (
                                     <button
                                         key={page}
                                         onClick={() => setCurrentPage(page)}
@@ -280,9 +338,9 @@ export default function CreateOrder({ auth }) {
                                 <button
                                     onClick={() => setCurrentPage(currentPage + 1)}
                                     className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                        currentPage >= Math.ceil(quotations.length / 10) ? "opacity-50 cursor-not-allowed" : ""
+                                        currentPage >= lastPage ? "opacity-50 cursor-not-allowed" : ""
                                     }`}
-                                    disabled={currentPage >= Math.ceil(quotations.length / 10)}
+                                    disabled={currentPage >= lastPage}
                                 >
                                     Next
                                 </button>
@@ -290,6 +348,18 @@ export default function CreateOrder({ auth }) {
                         )}
                     </div>
                 </div>
+
+                {/* ApproveOrder Modal */}
+                {isModalOpen && (
+                    <ApproveOrder
+                        isOpen={isModalOpen}
+                        onClose={handleModalClose}
+                        onSave={handleModalClose}
+                        quotationId={selectedQuotation?.id}
+                        purchaseOrder={selectedQuotation?.purchaseOrder}
+                        isEdit={selectedQuotation?.has_purchase_order}
+                    />
+                )}
             </div>
         </AuthenticatedLayout>
     );
