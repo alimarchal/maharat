@@ -64,9 +64,11 @@ import PMTStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFl
 import MInvoiceStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/MInvoiceStatusFlow";
 import BudgetRequestStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/BudgetRequestStatusFlow";
 import TotalBudgetStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/TotalBudgetStatusFlow";
+import UserProfile from "./UserProfile/UserProfile";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
+        if (page === "UserProfile/UserProfile") return <UserProfile />;
         if (page === "Requests/RequestIndex") return <RequestIndex />;
         if (page === "Requests/MakeRequest") return <MakeRequest />;
         if (page === "Status/StatusIndex") return <StatusIndex />;
