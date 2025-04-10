@@ -95,11 +95,14 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::put('/users/{user}', [UserController::class, 'update']);
     Route::get('/user/current', [UserController::class, 'current']);
 
+    // RFQ routes
+
     // Note the order is important - specific routes before resource routes
     Route::get('roles/hierarchy', [RoleController::class, 'hierarchy']);
     Route::post('roles/{role}/toggle-permission', [RoleController::class, 'togglePermission']);
-    Route::get('roles/{role}/permissions', [RoleController::class, 'getPermissions']);
+    Route::get('/rfqs/without-purchase-orders', [RfqController::class, 'getRfqsWithoutPurchaseOrders']);
     Route::apiResource('roles', RoleController::class);
+    Route::get('roles/{role}/permissions', [RoleController::class, 'getPermissions']);
     Route::get('roles/{role}/subordinates', [RoleController::class, 'subordinates']);
     Route::get('roles/{role}/superiors', [RoleController::class, 'superiors']);
 

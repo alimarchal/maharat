@@ -25,12 +25,14 @@ class CostCenter extends Model
         'manager_id',
         'budget_owner_id',
         'created_by',
-        'updated_by'
+        'updated_by',
+        'is_active'
     ];
 
     protected $casts = [
         'effective_start_date' => 'date',
         'effective_end_date' => 'date',
+        'is_active' => 'boolean'
     ];
 
     // Relationships
@@ -67,6 +69,16 @@ class CostCenter extends Model
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function subCostCenters(): HasMany
+    {
+        return $this->hasMany(SubCostCenter::class);
+    }
+
+    public function rfqs(): HasMany
+    {
+        return $this->hasMany(Rfq::class, 'cost_center_id');
     }
 
     // Query scopes

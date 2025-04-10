@@ -19,29 +19,27 @@ class Rfq extends Model
     public $incrementing = true;
 
     protected $fillable = [
-        'rfq_number',
-        'payment_type',
         'organization_name',
         'organization_email',
         'city',
-        'contact_number',
         'request_date',
-        'expected_delivery_date',
         'closing_date',
+        'rfq_number',
+        'payment_type',
+        'contact_number',
+        'status_id',
+        'warehouse_id',
+        'requester_id',
+        'category_id',
+        'department_id',
+        'cost_center_id',
+        'sub_cost_center_id',
         'attachments',
         'notes',
         'quotation_sent',
         'quotation_sent_at',
         'quotation_document',
-        'status_id',
-        'supplier_id',
-        'department_id',
-        'cost_center_id',
-        'sub_cost_center_id',
-        'warehouse_id',
-        'requester_id',
-        'payment_options',
-        'category_id'
+        'payment_options'
     ];
 
     protected $casts = [
@@ -65,6 +63,11 @@ class Rfq extends Model
             'rfq_id', 
             'category_id'
         )->withTimestamps();
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ProductCategory::class, 'category_id');
     }
 
     public function requester(): BelongsTo
@@ -138,6 +141,11 @@ class Rfq extends Model
      */
     public function subCostCenter(): BelongsTo
     {
-        return $this->belongsTo(CostCenter::class, 'sub_cost_center_id');
+        return $this->belongsTo(SubCostCenter::class, 'sub_cost_center_id');
+    }
+
+    public function purchaseOrders(): HasMany
+    {
+        return $this->hasMany(PurchaseOrder::class, 'rfq_id');
     }
 }
