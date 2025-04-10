@@ -39,7 +39,7 @@ const BudgetRequestStatusFlow = () => {
             }
 
             const response = await axios.get(
-                `/api/v1/budget-request-approval-trans?filter[budget_id]=${id}&include=requestBudget,requester,assignedUser,referredUser,createdByUser,updatedByUser`
+                `/api/v1/budget-request-approval-trans?filter[request_budgets_id]=${id}&include=requestBudget,requester,assignedUser,referredUser,createdByUser,updatedByUser`
             );
             setCardData(response.data?.data);
 

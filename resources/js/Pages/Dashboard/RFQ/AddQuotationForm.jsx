@@ -663,59 +663,7 @@ export default function AddQuotationForm({ auth }) {
                 throw new Error("Failed to get RFQ ID");
             }
             const newRfqId = response.data.data?.id;
-            console.log('New/Updated RFQ ID:', newRfqId); // Debug RFQ ID
-
-            // Update the form data with the response data
-            if (response.data?.data) {
-                const updatedData = response.data.data;
-                console.log('Data received from API:', updatedData); // Debug API data
-
-                // Format dates to match the form's expected format (yyyy-MM-dd)
-                const formatDate = (dateString) => {
-                    if (!dateString) return '';
-                    const date = new Date(dateString);
-                    return date.toISOString().split('T')[0];
-                };
-
-                // Create a new form data object with updated values
-                const newFormData = {
-                    organization_name: updatedData.organization_name || '',
-                    organization_email: updatedData.organization_email || '',
-                    city: updatedData.city || '',
-                    category_id: updatedData.category_id ? String(updatedData.category_id) : '',
-                    warehouse_id: updatedData.warehouse_id ? String(updatedData.warehouse_id) : '',
-                    issue_date: formatDate(updatedData.request_date) || '',
-                    closing_date: formatDate(updatedData.closing_date) || '',
-                    rfq_id: updatedData.rfq_number || '',
-                    payment_type: updatedData.payment_type ? String(updatedData.payment_type) : '',
-                    contact_no: updatedData.contact_number || '',
-                    status_id: updatedData.status?.id ? String(updatedData.status.id) : '',
-                    items: [...formData.items] // Keep existing items
-                  };
-                  
-                  // Use the functional form of setFormData
-                  setFormData(() => newFormData);
-
-                console.log('New form data to be set:', newFormData); // Debug new form data
-
-                // // Update the form data and force a re-render
-                // setFormData(prevData => {
-                //     console.log('Previous form data:', prevData);
-                //     console.log('Setting new form data:', newFormData);
-                //     return newFormData;
-                // });
-
-                // Force a re-render of the form
-                setTimeout(() => {
-                    console.log('Current form data after update:', formData); // Debug after update
-                    // Force a re-render of the form inputs
-                    const inputs = document.querySelectorAll('input, select');
-                    inputs.forEach(input => {
-                        const event = new Event('change', { bubbles: true });
-                        input.dispatchEvent(event);
-                    });
-                }, 0);
-            }
+            console.log("Rfq Id:".newRfqId);
 
             // Now save the items with the new RFQ ID
             const itemsFormData = new FormData();

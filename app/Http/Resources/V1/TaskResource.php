@@ -28,7 +28,7 @@ class TaskResource extends JsonResource
             'invoice_id' => $this->invoice_id,
             'budget_id' => $this->budget_id,
             'budget_approval_transaction_id' => $this->budget_approval_transaction_id,
-            'request_budget_id' => $this->request_budget_id,
+            'request_budgets_id' => $this->request_budgets_id,
             'read_status' => $this->read_status?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

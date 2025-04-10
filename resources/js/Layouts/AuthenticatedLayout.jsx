@@ -74,11 +74,15 @@ export default function AuthenticatedLayout({ header, children }) {
                         />
                     </div>
 
-                    <img
-                        src="/images/profile.jpg"
-                        alt="Profile"
-                        className="h-10 w-10 lg:h-12 lg:w-12 rounded-full object-cover border border-gray-300 shadow-sm"
-                    />
+                    <Link href="/user-profile" className="cursor-pointer">
+                        <img
+                            src={
+                                user.profile_photo_path || "/images/profile.jpg"
+                            }
+                            alt="Profile"
+                            className="h-10 w-10 lg:h-12 lg:w-12 rounded-full object-cover border border-gray-300 shadow-sm"
+                        />
+                    </Link>
                 </div>
             </header>
 
@@ -115,7 +119,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 <main className="flex-1 lg:ml-36 transition-all">
                     {header && <header className="p-6 mb-4">{header}</header>}
-                        {children}
+                    {children}
                 </main>
             </div>
         </div>

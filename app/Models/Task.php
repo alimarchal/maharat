@@ -27,7 +27,7 @@ class Task extends Model
         'payment_order_id',
         'budget_id',
         'budget_approval_transaction_id',
-        'request_budget_id',
+        'request_budgets_id',
         'invoice_id',
         'read_status',
         'tasks'
@@ -106,6 +106,6 @@ class Task extends Model
 
     public function request_budget(): BelongsTo
     {
-        return $this->belongsTo(RequestBudget::class);
+        return $this->belongsTo(RequestBudget::class, 'request_budgets_id');
     }
 }

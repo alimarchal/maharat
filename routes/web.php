@@ -27,6 +27,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
 
+    Route::get('/user-profile', function () {
+        return Inertia::render('Dashboard', ['page' => 'UserProfile/UserProfile']);
+    })->name('userProfile.index');
+
     Route::get('/my-requests', function () {
         return Inertia::render('Dashboard', ['page' => 'Requests/RequestIndex']);
     })->name('requests.index');

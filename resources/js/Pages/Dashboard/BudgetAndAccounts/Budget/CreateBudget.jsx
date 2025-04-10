@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import InputFloating from "../../../../Components/InputFloating";
 import SelectFloating from "../../../../Components/SelectFloating";
-import { router } from "@inertiajs/react";
+import { usePage, router } from "@inertiajs/react";
 import FiscalPeriodModal from "./FiscalPeriodModal";
 
 const CreateBudget = () => {
+    const user_id = usePage().props.auth.user.id;
+
     const [formData, setFormData] = useState({
         fiscal_period_id: "",
         department_id: "",
@@ -101,7 +103,53 @@ const CreateBudget = () => {
         setIsSubmitting(true);
 
         try {
-            await axios.post("/api/v1/budgets", formData);
+            const response = await axios.post("/api/v1/budgets", formData);
+            console.log("Budget:", response);
+            const budgetId = response.data.data?.id;
+            if (budgetId) {
+                const processResponse = await axios.get(
+                    "/api/v1/processes?include=steps,creator,updater&filter[title]=Total Budget Approval"
+                );
+
+                if (processResponse.data?.data?.[0]?.steps?.[0]) {
+                    const process = processResponse.data.data[0];
+                    const processStep = process.steps[0];
+
+                    // Only proceed if we have valid process step data
+                    if (processStep?.id && processStep?.order) {
+                        const processResponseViaUser = await axios.get(
+                            `/api/v1/process-steps/${processStep.order}/user/${user_id}`
+                        );
+                        const assignUser = processResponseViaUser?.data;
+
+                        if (assignUser?.user?.user?.id) {
+                            const BudgetTransactionPayload = {
+                                budget_id: budgetId,
+                                requester_id: user_id,
+                                assigned_to: assignUser.user.user.id,
+                                order: processStep.order,
+                                description: processStep.description,
+                                status: "Pending",
+                            };
+                            await axios.post(
+                                "/api/v1/budget-approval-transactions",
+                                BudgetTransactionPayload
+                            );
+
+                            const taskPayload = {
+                                process_step_id: processStep.id,
+                                process_id: processStep.process_id,
+                                assigned_at: new Date().toISOString(),
+                                urgency: "Normal",
+                                assigned_to_user_id: assignUser.user.user.id,
+                                assigned_from_user_id: user_id,
+                                budget_id: budgetId,
+                            };
+                            await axios.post("/api/v1/tasks", taskPayload);
+                        }
+                    }
+                }
+            }
             router.visit("/budget");
         } catch (error) {
             console.error("Error saving budget:", error);
