@@ -17,7 +17,7 @@ const RFQ = ({ auth }) => {
         setLoading(true);
         setProgress(0); // Reset progress
         try {
-            const response = await axios.get(`/api/v1/rfqs?page=${currentPage}`);
+            const response = await axios.get(`/api/v1/rfqs?page=${currentPage}&include=requester`);
             console.log("API Response:", response.data);
     
             if (response.data && response.data.data) {
@@ -32,18 +32,13 @@ const RFQ = ({ auth }) => {
                     });
                 }, 200);
     
-                // Fetch requester names for each RFQ log
-                let logsWithRequesterNames = await Promise.all(
-                    response.data.data.map(async (log) => {
-                        if (log.requester_id) {
-                            const userResponse = await axios.get(`/api/v1/users/${log.requester_id}`);
-                            log.requester_name = userResponse.data.data.name; // Ensure this is a string
-                        }
-                        return log;
-                    })
-                );
+                // Process the logs with requester data
+                const logsWithRequesterNames = response.data.data.map(log => ({
+                    ...log,
+                    requester_name: log.requester?.name || "N/A"
+                }));
     
-                // **Sort by created_at in ascending order**
+                // Sort by created_at in ascending order
                 logsWithRequesterNames.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     
                 setRfqLogs(logsWithRequesterNames);
@@ -139,13 +134,13 @@ const RFQ = ({ auth }) => {
                         href="/dashboard"
                         className="hover:text-[#009FDC] text-xl"
                     >
-                        Home
+                        Dashboard
                     </Link>
                     <FontAwesomeIcon
                         icon={faChevronRight}
                         className="text-xl text-[#9B9DA2]"
                     />
-                    <Link
+                    {/* <Link
                         href="/purchase"
                         className="hover:text-[#009FDC] text-xl"
                     >
@@ -154,7 +149,7 @@ const RFQ = ({ auth }) => {
                     <FontAwesomeIcon
                         icon={faChevronRight}
                         className="text-xl text-[#9B9DA2]"
-                    />
+                    /> */}
                     <span className="text-[#009FDC] text-xl">RFQs</span>
                 </div>
 
@@ -219,7 +214,7 @@ const RFQ = ({ auth }) => {
                                     {rfqLogs.map((log) => (
                                         <tr key={log.id}>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">{log.rfq_number || "N/A"}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-center">{log.requester?.name || "N/A"}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">{log.requester_name}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 {typeof log.status?.name === "object" ? (
                                                     <span className="text-red-500">Invalid Status</span> // Debugging UI

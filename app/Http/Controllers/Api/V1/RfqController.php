@@ -12,15 +12,44 @@ use App\Models\Status;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Spatie\QueryBuilder\QueryBuilder;
+use Illuminate\Support\Facades\Schema;
 
 class RfqController extends Controller
 {
     public function index()
     {
         try {
-            $rfqs = Rfq::with(['status', 'items', 'department', 'costCenter', 'subCostCenter', 'requester', 'warehouse', 'paymentType', 'categories'])
+            Log::info('Starting RFQ index request');
+            
+            // Check if sub_cost_centers table exists
+            $hasSubCostCenters = Schema::hasTable('sub_cost_centers');
+            Log::info('Sub cost centers table exists: ' . ($hasSubCostCenters ? 'yes' : 'no'));
+            
+            // Build the relationships array
+            $relationships = ['status', 'supplier', 'department', 'costCenter', 'requester'];
+            Log::info('Base relationships: ' . implode(', ', $relationships));
+            
+            // Only include subCostCenter if the table exists
+            if ($hasSubCostCenters) {
+                $relationships[] = 'subCostCenter';
+                Log::info('Added subCostCenter to relationships');
+            }
+
+            Log::info('Final relationships to load: ' . implode(', ', $relationships));
+
+            $rfqs = Rfq::with($relationships)
                 ->orderBy('created_at', 'desc')
                 ->paginate(10);
+
+            // Log requester information for each RFQ
+            foreach ($rfqs as $rfq) {
+                Log::info("RFQ ID: {$rfq->id}, Requester ID: {$rfq->requester_id}, Requester Loaded: " . ($rfq->relationLoaded('requester') ? 'yes' : 'no'));
+                if ($rfq->relationLoaded('requester') && $rfq->requester) {
+                    Log::info("Requester Name: {$rfq->requester->name}");
+                }
+            }
+
+            Log::info('Successfully fetched RFQs');
 
             return response()->json([
                 'data' => RfqResource::collection($rfqs),
@@ -35,6 +64,9 @@ class RfqController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to fetch RFQs: ' . $e->getMessage());
+            Log::error('Error occurred in file: ' . $e->getFile());
+            Log::error('Error occurred on line: ' . $e->getLine());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json([
                 'message' => 'Failed to fetch RFQs',
                 'error' => $e->getMessage()
@@ -139,6 +171,7 @@ class RfqController extends Controller
 
             // Create base RFQ data array
             $rfqData = [
+                'organization_name' => $request->input('organization_name'),
                 'organization_email' => $request->input('organization_email'),
                 'city' => $request->input('city'),
                 'request_date' => $request->input('request_date'),
@@ -284,6 +317,7 @@ class RfqController extends Controller
 
             // Prepare data for updating
             $updateData = [
+                'organization_name' => $request->input('organization_name'),
                 'organization_email' => $request->input('organization_email'),
                 'city' => $request->input('city'),
                 'warehouse_id' => $request->input('warehouse_id'),
@@ -413,10 +447,10 @@ class RfqController extends Controller
             DB::table('rfq_categories')->where('rfq_id', $id)->delete();
 
             // Delete items
-            $rfq->items()->delete();
+            $rfq->items()->forceDelete();
 
-            // Delete RFQ
-            $rfq->delete();
+            // Delete RFQ with forceDelete
+            $rfq->forceDelete();
 
             DB::commit();
             Log::info("RFQ $id deleted successfully");
@@ -441,6 +475,7 @@ class RfqController extends Controller
 
             // Prepare response data
             $responseData = [
+                'organization_name' => '',
                 'organization_email' => '',
                 'city' => '',
                 'rfq_number' => $rfqNumber,
@@ -451,6 +486,7 @@ class RfqController extends Controller
 
             // Try to get authenticated user data if available
             if (auth()->check() && auth()->user()->company) {
+                $responseData['organization_name'] = auth()->user()->company->name ?? '';
                 $responseData['organization_email'] = auth()->user()->company->email ?? '';
                 $responseData['city'] = auth()->user()->company->city ?? '';
             }
@@ -462,6 +498,39 @@ class RfqController extends Controller
 
             return response()->json([
                 'message' => 'Failed to fetch RFQ',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getRfqsWithoutPurchaseOrders()
+    {
+        try {
+            $rfqs = DB::select("
+                SELECT id, organization_name, rfq_number 
+                FROM rfqs 
+                WHERE id NOT IN (
+                    SELECT rfq_id 
+                    FROM purchase_orders 
+                    WHERE rfq_id IS NOT NULL
+                ) 
+                ORDER BY created_at DESC
+            ");
+
+            return response()->json([
+                'success' => true,
+                'data' => $rfqs
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in getRfqsWithoutPurchaseOrders:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch RFQs',
                 'error' => $e->getMessage()
             ], 500);
         }

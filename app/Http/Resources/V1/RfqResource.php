@@ -37,7 +37,9 @@ class RfqResource extends JsonResource
             // Relationships
             'department' => new DepartmentResource($this->whenLoaded('department')),
             'costCenter' => new CostCenterResource($this->whenLoaded('costCenter')),
-            'subCostCenter' => new CostCenterResource($this->whenLoaded('subCostCenter')),
+            'subCostCenter' => $this->whenLoaded('subCostCenter', function () {
+                return $this->subCostCenter ? new CostCenterResource($this->subCostCenter) : null;
+            }),
             'requester' => new UserResource($this->whenLoaded('requester')),
             'company' => new CompanyResource($this->whenLoaded('company')),
             'warehouse' => new WarehouseResource($this->whenLoaded('warehouse')),

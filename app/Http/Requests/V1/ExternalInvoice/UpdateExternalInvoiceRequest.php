@@ -33,7 +33,6 @@ class UpdateExternalInvoiceRequest extends FormRequest
                 Rule::unique('external_invoices', 'invoice_id')->ignore($this->external_invoice)
             ],
             'amount' => ['sometimes', 'required', 'numeric', 'min:0'],
-            'vat_amount' => ['sometimes', 'required', 'numeric', 'min:0'],
             'status' => ['sometimes', 'required', Rule::in(['Draft', 'Verified', 'Paid', 'UnPaid', 'Partially Paid'])],
             'type' => ['sometimes', 'required', Rule::in(['Cash', 'Credit'])],
             'payable_date' => ['sometimes', 'required', 'date'],

@@ -111,4 +111,9 @@ class PurchaseOrder extends Model
     {
         return $this->belongsTo(Rfq::class, 'rfq_id', 'id');
     }
+
+    public function externalInvoice()
+    {
+        return $this->hasOne(ExternalInvoice::class);
+    }
 }

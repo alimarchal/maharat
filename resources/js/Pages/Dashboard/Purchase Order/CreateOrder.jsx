@@ -3,8 +3,10 @@ import { PlusCircleIcon } from '@heroicons/react/24/outline';
 import { Link, router, Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeftLong, faEdit, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
+import SelectFloating from "@/Components/SelectFloating";
+import ApproveOrder from './ApproveOrder';
 
 export default function CreateOrder({ auth }) {
     const [quotations, setQuotations] = useState([]);
@@ -13,36 +15,81 @@ export default function CreateOrder({ auth }) {
     const [lastPage, setLastPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
+    const [rfqs, setRfqs] = useState([]);
+    const [selectedRfq, setSelectedRfq] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedQuotation, setSelectedQuotation] = useState(null);
+    const [purchaseOrders, setPurchaseOrders] = useState([]);
+
+    const fetchRfqs = async () => {
+        try {
+            console.log('Fetching RFQs without purchase orders...');
+            const response = await axios.get('/api/v1/rfqs/without-purchase-orders');
+            console.log('RFQ Response:', response.data);
+            
+            if (response.data && response.data.success && response.data.data) {
+                console.log('Setting RFQs:', response.data.data);
+                setRfqs(response.data.data);
+            } else {
+                console.warn('No RFQs found or invalid response format:', response.data);
+                setError("No RFQs found without purchase orders");
+                setRfqs([]);
+            }
+        } catch (error) {
+            console.error('Error fetching RFQs:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status
+            });
+            setError("Failed to load RFQs: " + (error.response?.data?.message || 'Unknown error'));
+            setRfqs([]);
+        }
+    };
 
     const fetchQuotations = async () => {
         setLoading(true);
         setProgress(0);
     
-        // Smoothly increase progress
         const interval = setInterval(() => {
             setProgress((oldProgress) => (oldProgress >= 90 ? 90 : oldProgress + 10));
         }, 300);
     
         try {
-            // Fetch quotations with their relationships
-            console.log('Fetching quotations...');
-            const response = await axios.get('/api/v1/quotations', {
-                params: { 
-                    page: currentPage,
-                    include: 'rfq',
-                    per_page: 10
-                }
-            });
-            console.log('API Response:', response.data);
+            let url = '/api/v1/quotations';
+            const params = {
+                page: currentPage,
+                include: 'rfq,purchaseOrder',
+                per_page: 10
+            };
+
+            const response = await axios.get(url, { params });
             
-            const quotationsData = response.data.data || [];
+            let quotationsData = response.data.data || [];
+            
+            // Filter quotations based on selected RFQ
+            if (selectedRfq && selectedRfq !== 'all') {
+                quotationsData = quotationsData.filter(quotation => 
+                    quotation.rfq && quotation.rfq.id === parseInt(selectedRfq)
+                );
+            } else if (selectedRfq === 'all') {
+                // Show all quotations
+                quotationsData = quotationsData;
+            } else {
+                quotationsData = []; // Show no quotations if no RFQ is selected
+            }
     
-            // Fetch category details for each quotation
+            // First, fetch all purchase orders to check which quotations have POs
+            const purchaseOrdersResponse = await axios.get('/api/v1/purchase-orders');
+            const purchaseOrdersData = purchaseOrdersResponse.data.data || [];
+            const quotationIdsWithPO = new Set(purchaseOrdersData.map(po => po.quotation_id));
+            
+            // Store the purchase orders for potential use later (like in edit mode)
+            setPurchaseOrders(purchaseOrdersData);
+            
             const quotationsWithDetails = await Promise.all(
                 quotationsData.map(async (quotation) => {
                     let categoryName = 'N/A';
                     
-                    // If quotation has an RFQ, fetch its category
                     if (quotation.rfq && quotation.rfq.id) {
                         try {
                             const categoryResponse = await axios.get(`/api/v1/rfq-categories/${quotation.rfq.id}`);
@@ -51,24 +98,34 @@ export default function CreateOrder({ auth }) {
                             console.error('Error fetching category:', error);
                         }
                     }
+
+                    // Check if quotation_id exists in purchase_orders table
+                    const hasPurchaseOrder = quotationIdsWithPO.has(quotation.id);
+                    
+                    console.log('Quotation Details:', {
+                        id: quotation.id,
+                        quotation_number: quotation.quotation_number,
+                        has_purchase_order: hasPurchaseOrder,
+                        purchaseOrders: purchaseOrdersData.filter(po => po.quotation_id === quotation.id)
+                    });
                     
                     return {
                         ...quotation,
-                        category_name: categoryName
+                        category_name: categoryName,
+                        has_purchase_order: hasPurchaseOrder
                     };
                 })
             );
     
-            // Sort quotations by id in ascending order
             if (quotationsWithDetails.length > 0) {
                 quotationsWithDetails.sort((a, b) => a.id - b.id);
             }
     
+            console.log('All Quotations with Purchase Order Status:', quotationsWithDetails);
             setQuotations(quotationsWithDetails);
             setLastPage(response.data.meta?.last_page || 1);
             setError("");
     
-            // Ensure full progress bar before hiding
             setProgress(100);
             setTimeout(() => setLoading(false), 500);
         } catch (error) {
@@ -80,11 +137,44 @@ export default function CreateOrder({ auth }) {
         } finally {
             clearInterval(interval);
         }
-    };    
+    };
+
+    useEffect(() => {
+        fetchRfqs();
+    }, []);
 
     useEffect(() => {
         fetchQuotations();
-    }, [currentPage]);
+    }, [currentPage, selectedRfq]);
+
+    const handleRfqChange = (e) => {
+        setSelectedRfq(e.target.value);
+        setCurrentPage(1); // Reset to first page when RFQ changes
+    };
+
+    const handleCreatePO = (quotation) => {
+        console.log('Creating new PO for quotation:', quotation);
+        setSelectedQuotation(quotation);
+        setIsModalOpen(true);
+    };
+
+    const handleEditPO = (quotation) => {
+        console.log('Editing PO for quotation:', quotation);
+        // Find the purchase order for this quotation
+        const purchaseOrder = purchaseOrders.find(po => po.quotation_id === quotation.id);
+        console.log('Found purchase order:', purchaseOrder);
+        setSelectedQuotation({
+            ...quotation,
+            purchaseOrder: purchaseOrder
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleModalClose = () => {
+        setIsModalOpen(false);
+        setSelectedQuotation(null);
+        fetchQuotations(); // Refresh the quotations list
+    };
 
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
@@ -110,9 +200,7 @@ export default function CreateOrder({ auth }) {
                     </button>
                 </div>
                 <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2 mb-6">
-                    <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Home</Link>
-                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                    <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Procurement Center</Link>
+                    <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Dashboard</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                     <Link href="/view-order" className="hover:text-[#009FDC] text-xl">Purchase Orders</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
@@ -121,8 +209,28 @@ export default function CreateOrder({ auth }) {
                 <Head title="Create Purchase Order" />
 
                 <div className="w-full overflow-hidden">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex justify-between items-center mb-2 pt-4">
                         <h2 className="text-[32px] font-bold text-[#2C323C]">Create Purchase Order</h2>
+                        <div className="w-1/3">
+                            <SelectFloating
+                                label="RFQ to View Quotations"
+                                name="rfq"
+                                value={selectedRfq || ''}
+                                onChange={handleRfqChange}
+                                options={[
+                                    // { id: 'all', label: 'All RFQs' },
+                                    ...rfqs.map(rfq => ({
+                                        id: rfq.id,
+                                        label: rfq.organization_name
+                                    }))
+                                ]}
+                                className="min-h-[70px] py-2"
+                            />
+                        </div>
+                    </div>
+                    
+                    <div className="mb-4 -mt-1">
+                        <p className="text-lg text-gray-600">List of RFQs that have no Purchase Orders</p>
                     </div>
 
                     {/* Loading Bar */}
@@ -161,7 +269,13 @@ export default function CreateOrder({ auth }) {
 
                             {!loading && (
                             <tbody className="bg-transparent divide-y divide-gray-200">
-                                {quotations.length > 0 ? (
+                                {!selectedRfq ? (
+                                    <tr>
+                                        <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
+                                            Please select an RFQ to view quotations
+                                        </td>
+                                    </tr>
+                                ) : quotations.length > 0 ? (
                                     quotations.map((quotation) => (
                                         <tr key={quotation.id}>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -174,19 +288,28 @@ export default function CreateOrder({ auth }) {
                                                 {quotation.category_name || "N/A"}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <Link 
-                                                    href={`/approve-order?quotation_id=${quotation.id}`}
-                                                    onClick={() => console.log('Sending quotation_id:', quotation.id)}
-                                                >
-                                                    <PlusCircleIcon className="h-6 w-6 text-gray-400 hover:text-gray-600 cursor-pointer mx-auto" />
-                                                </Link>
+                                                {quotation.has_purchase_order ? (
+                                                    <button
+                                                        onClick={() => handleEditPO(quotation)}
+                                                        className="text-gray-600 hover:text-gray-800"
+                                                    >
+                                                        <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleCreatePO(quotation)}
+                                                        className="text-gray-400 hover:text-gray-600"
+                                                    >
+                                                        <PlusCircleIcon className="h-6 w-6" />
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))
                                 ) : (
                                     <tr>
                                         <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
-                                            No quotations found.
+                                            No quotations found for the selected RFQ
                                         </td>
                                     </tr>
                                 )}
@@ -194,8 +317,8 @@ export default function CreateOrder({ auth }) {
                             )}
                         </table>
 
-                        {/* Pagination */}
-                        {!loading && !error && quotations.length > 0 && (
+                        {/* Pagination - Only show if there are quotations */}
+                        {!loading && !error && selectedRfq && quotations.length > 0 && (
                             <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                                 <button
                                     onClick={() => setCurrentPage(currentPage - 1)}
@@ -206,7 +329,7 @@ export default function CreateOrder({ auth }) {
                                 >
                                     Previous
                                 </button>
-                                {Array.from({ length: Math.ceil(quotations.length / 10) }, (_, index) => index + 1).map((page) => (
+                                {Array.from({ length: lastPage }, (_, index) => index + 1).map((page) => (
                                     <button
                                         key={page}
                                         onClick={() => setCurrentPage(page)}
@@ -222,9 +345,9 @@ export default function CreateOrder({ auth }) {
                                 <button
                                     onClick={() => setCurrentPage(currentPage + 1)}
                                     className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                        currentPage >= Math.ceil(quotations.length / 10) ? "opacity-50 cursor-not-allowed" : ""
+                                        currentPage >= lastPage ? "opacity-50 cursor-not-allowed" : ""
                                     }`}
-                                    disabled={currentPage >= Math.ceil(quotations.length / 10)}
+                                    disabled={currentPage >= lastPage}
                                 >
                                     Next
                                 </button>
@@ -232,6 +355,18 @@ export default function CreateOrder({ auth }) {
                         )}
                     </div>
                 </div>
+
+                {/* ApproveOrder Modal */}
+                {isModalOpen && (
+                    <ApproveOrder
+                        isOpen={isModalOpen}
+                        onClose={handleModalClose}
+                        onSave={handleModalClose}
+                        quotationId={selectedQuotation?.id}
+                        purchaseOrder={selectedQuotation?.purchaseOrder}
+                        isEdit={selectedQuotation?.has_purchase_order}
+                    />
+                )}
             </div>
         </AuthenticatedLayout>
     );

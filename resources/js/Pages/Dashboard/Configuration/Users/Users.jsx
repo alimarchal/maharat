@@ -238,7 +238,7 @@ useEffect(() => {
                     formDataToSend.append(key, value);
                 }
             });
-    
+            
             // Make sure the name field is constructed properly
             formDataToSend.append("name", `${formData.firstname} ${formData.lastname}`);
             
@@ -527,15 +527,15 @@ useEffect(() => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <SelectFloating
-                            label="Language"
-                            name="language"
-                            value={formData.language}
-                            onChange={handleChange}
+                        label="Language"
+                        name="language"
+                        value={formData.language}
+                        onChange={handleChange}
                             options={[
                                 { id: "english", label: "English" },
                                 { id: "arabic", label: "Arabic" }
                             ]}
-                        />
+                    />
                     </div>
                     <div>
                         <SelectFloating

@@ -95,11 +95,14 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::put('/users/{user}', [UserController::class, 'update']);
     Route::get('/user/current', [UserController::class, 'current']);
 
+    // RFQ routes
+
     // Note the order is important - specific routes before resource routes
     Route::get('roles/hierarchy', [RoleController::class, 'hierarchy']);
     Route::post('roles/{role}/toggle-permission', [RoleController::class, 'togglePermission']);
-    Route::get('roles/{role}/permissions', [RoleController::class, 'getPermissions']);
+    Route::get('/rfqs/without-purchase-orders', [RfqController::class, 'getRfqsWithoutPurchaseOrders']);
     Route::apiResource('roles', RoleController::class);
+    Route::get('roles/{role}/permissions', [RoleController::class, 'getPermissions']);
     Route::get('roles/{role}/subordinates', [RoleController::class, 'subordinates']);
     Route::get('roles/{role}/superiors', [RoleController::class, 'superiors']);
 
@@ -320,6 +323,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // External Invoices
     Route::apiResource('external-invoices', ExternalInvoiceController::class);
     Route::post('external-invoices/{id}/restore', [ExternalInvoiceController::class, 'restore']);
+    Route::get('purchase-orders/available', [ExternalInvoiceController::class, 'getAvailablePurchaseOrders'])->name('purchase-orders.available');
 
     Route::apiResource('rfq-approval-transactions', RfqApprovalTransactionController::class);
     Route::apiResource('po-approval-transactions', PoApprovalTransactionController::class);

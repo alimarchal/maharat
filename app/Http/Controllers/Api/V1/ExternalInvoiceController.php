@@ -51,9 +51,10 @@ class ExternalInvoiceController extends Controller
             
             // Set default values
             $data['invoice_id'] = $this->generateInvoiceId();
-            $data['type'] = 'Cash';
+            $data['type'] = $data['type'] ?? 'Cash';
+            
+            // Always calculate VAT as 15% of the amount
             $data['vat_amount'] = $data['amount'] * 0.15;
-            $data['status'] = 'Draft';
 
             // Create the invoice
             $invoice = ExternalInvoice::create($data);
@@ -97,7 +98,14 @@ class ExternalInvoiceController extends Controller
         try {
             DB::beginTransaction();
 
-            $externalInvoice->update($request->validated());
+            $data = $request->validated();
+            
+            // Always calculate VAT as 15% of the amount
+            if (isset($data['amount'])) {
+                $data['vat_amount'] = $data['amount'] * 0.15;
+            }
+
+            $externalInvoice->update($data);
 
             DB::commit();
 
@@ -124,7 +132,8 @@ class ExternalInvoiceController extends Controller
         try {
             DB::beginTransaction();
 
-            $externalInvoice->delete();
+            // Use forceDelete for hard delete
+            $externalInvoice->forceDelete();
 
             DB::commit();
 
@@ -135,32 +144,6 @@ class ExternalInvoiceController extends Controller
             DB::rollBack();
             return response()->json([
                 'message' => 'Failed to delete external invoice',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Restore a soft deleted external invoice.
-     */
-    public function restore(string $id): JsonResponse
-    {
-        try {
-            DB::beginTransaction();
-
-            $externalInvoice = ExternalInvoice::withTrashed()->findOrFail($id);
-            $externalInvoice->restore();
-
-            DB::commit();
-
-            return response()->json([
-                'message' => 'External invoice restored successfully',
-                'data' => new ExternalInvoiceResource($externalInvoice)
-            ], Response::HTTP_OK);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Failed to restore external invoice',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
@@ -182,5 +165,53 @@ class ExternalInvoiceController extends Controller
         
         $nextNumber = $lastNumber + 1;
         return $prefix . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Get purchase orders that don't have external invoices.
+     */
+    public function getAvailablePurchaseOrders()
+    {
+        try {
+            \Log::info('Starting getAvailablePurchaseOrders');
+            
+            // Execute raw SQL query without model dependency
+            $purchaseOrders = DB::select("
+                SELECT p.id, p.purchase_order_no 
+                FROM purchase_orders p 
+                LEFT JOIN external_invoices ei ON p.id = ei.purchase_order_id 
+                WHERE ei.id IS NULL
+                ORDER BY p.id DESC
+            ");
+
+            if (!$purchaseOrders) {
+                return response()->json([
+                    'success' => true,
+                    'data' => []
+                ]);
+            }
+
+            \Log::info('Query result:', [
+                'count' => count($purchaseOrders),
+                'data' => $purchaseOrders
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $purchaseOrders
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in getAvailablePurchaseOrders:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch available purchase orders',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
