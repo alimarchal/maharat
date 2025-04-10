@@ -104,9 +104,9 @@ const RequestBudgetTable = () => {
                                     <button className="text-gray-600 hover:text-gray-800">
                                         <FontAwesomeIcon icon={faEye} />
                                     </button>
-                                    <button className="text-gray-600 hover:text-gray-800">
+                                    {/* <button className="text-gray-600 hover:text-gray-800">
                                         <FontAwesomeIcon icon={faEdit} />
-                                    </button>
+                                    </button> */}
                                     <button className="text-red-600 hover:text-red-900">
                                         <FontAwesomeIcon icon={faTrash} />
                                     </button>

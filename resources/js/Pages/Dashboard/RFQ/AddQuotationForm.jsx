@@ -644,9 +644,7 @@ export default function AddQuotationForm({ auth }) {
             if (!response.data?.data?.id) {
                 throw new Error("Failed to get RFQ ID");
             }
-            console.log("Rfq:", response.data.data);
             const newRfqId = response.data.data?.id;
-            console.log("Rfq Id:".newRfqId);
 
             // Now save the items with the new RFQ ID
             const itemsFormData = new FormData();
