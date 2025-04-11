@@ -210,7 +210,7 @@ const Invoices = ({ auth }) => {
                     <h2 className="text-[32px] font-bold text-[#2C323C] whitespace-nowrap">Invoices</h2>
                     <button
                         onClick={handleAddInvoice}
-                        className="flex items-center px-4 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
+                        className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
                     >
                         Add Invoice
                     </button>

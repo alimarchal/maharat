@@ -13,9 +13,12 @@ import {
     faArrowLeftLong,
     faChevronRight,
     faTrash,
+    faEdit,
 } from "@fortawesome/free-solid-svg-icons";
 import { fetchRFQData, fetchLookupData, getSafeValue } from "./rfqUtils";
 import { FaTrash } from "react-icons/fa";
+import { PlusCircleIcon } from '@heroicons/react/24/outline';
+import ItemModal from "./ItemModal";
 
 export default function AddQuotationForm({ auth }) {
     const { rfqId } = usePage().props;
@@ -31,19 +34,7 @@ export default function AddQuotationForm({ auth }) {
         rfq_id: "",
         payment_type: "",
         contact_no: "",
-        items: [
-            {
-                item_name: "",
-                description: "",
-                unit_id: "",
-                quantity: "",
-                brand_id: "",
-                attachment: null,
-                expected_delivery_date: "",
-                rfq_id: null,
-                status_id: 48,
-            },
-        ],
+        items: [],
         status_id: 48,
     });
 
@@ -61,6 +52,11 @@ export default function AddQuotationForm({ auth }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [products, setProducts] = useState([]);
+
+    // Add state for modal
+    const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [isEditingItem, setIsEditingItem] = useState(false);
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -169,21 +165,6 @@ export default function AddQuotationForm({ auth }) {
                                 : "48",
                         };
                     });
-
-                    // If no items, add a default empty one
-                    if (formattedItems.length === 0) {
-                        formattedItems.push({
-                            item_name: "",
-                            description: "",
-                            unit_id: "",
-                            quantity: "",
-                            brand_id: "",
-                            attachment: null,
-                            expected_delivery_date: "",
-                            rfq_id: rfqId,
-                            status_id: "48",
-                        });
-                    }
 
                     // Format the main form data
                     const formattedData = {
@@ -499,63 +480,73 @@ export default function AddQuotationForm({ auth }) {
         fetchData();
     }, []);
 
+    // Replace the old addItem function
     const addItem = () => {
-        setFormData((prev) => ({
-            ...prev,
-            items: [
-                ...prev.items,
-                {
-                    product_id: "",
-                    item_name: "",
-                    description: "",
-                    unit_id: "",
-                    quantity: "",
-                    brand_id: "",
-                    attachment: null,
-                    expected_delivery_date: "",
-                    rfq_id: rfqId || null,
-                    status_id: 48,
-                },
-            ],
-        }));
+        setIsEditingItem(false);
+        setSelectedItem(null);
+        setIsItemModalOpen(true);
     };
-
-    const handleItemChange = (index, field, value) => {
-        const updatedItems = [...formData.items];
-
-        if (field === "product_id") {
-            const selectedProduct = products.find(
-                (p) => p.id === Number(value)
-            );
-            if (selectedProduct) {
-                updatedItems[index] = {
-                    ...updatedItems[index],
-                    product_id: selectedProduct.id,
-                    item_name: selectedProduct.name,
-                    description: selectedProduct.description || "",
-                };
+    
+    // Add a new handleEditItem function
+    const handleEditItem = (itemId) => {
+        // Find the item by ID instead of index
+        const itemToEdit = formData.items.find(item => (item.id === itemId));
+        
+        if (itemToEdit) {
+            console.log("Editing item:", itemToEdit);
+            setIsEditingItem(true);
+            setSelectedItem(itemToEdit);
+            setIsItemModalOpen(true);
             } else {
-                // If no product is selected (empty selection)
-                updatedItems[index] = {
-                    ...updatedItems[index],
-                    product_id: "",
-                    item_name: "",
-                    description: "",
+            console.error("Item not found for editing:", itemId);
+        }
+    };
+    
+    // Use the sorted array only for display, not for editing
+    const sortedItems = [...formData.items].sort((a, b) => {
+        // Sort by expected_delivery_date (earliest first)
+        const dateA = a.expected_delivery_date ? new Date(a.expected_delivery_date) : new Date(9999, 11, 31);
+        const dateB = b.expected_delivery_date ? new Date(b.expected_delivery_date) : new Date(9999, 11, 31);
+        return dateA - dateB;
+    });
+
+    // Replace handleSaveItem with this improved version
+    const handleSaveItem = (itemData) => {
+        const newItems = [...formData.items];
+        
+        if (isEditingItem && selectedItem) {
+            // Find and update the existing item by ID
+            const index = newItems.findIndex(item => item.id === selectedItem.id);
+            if (index !== -1) {
+                console.log("Updating item at index:", index, "with ID:", selectedItem.id);
+                newItems[index] = {
+                    ...itemData,
+                    id: selectedItem.id // Preserve the original ID
                 };
-            }
-        } else if (field === "quantity") {
-            if (value === "") {
-                updatedItems[index][field] = "";
+                setFormData({ ...formData, items: newItems });
             } else {
-                const numValue = parseFloat(value);
-                if (numValue < 0) return;
-                updatedItems[index][field] = numValue.toFixed(1);
+                console.error("Could not find item with ID:", selectedItem.id);
             }
         } else {
-            updatedItems[index][field] = value;
+            // Add a new item with a temporary ID
+            const tempId = `temp-${Date.now()}`;
+            console.log("Adding new item with temp ID:", tempId);
+            newItems.push({
+                ...itemData,
+                id: tempId,
+                rfq_id: formData.id || formData.rfq_id || null,
+                status_id: 48 // Keep the status ID from original implementation
+            });
+            setFormData({ ...formData, items: newItems });
         }
+    };
+    
+    // Update the handleRemoveItem function to use item ID
+    const handleRemoveItem = (itemId) => {
+        if (formData.items.length <= 1) return; // Do not remove the last item
 
-        setFormData({ ...formData, items: updatedItems });
+        const newItems = formData.items.filter(item => item.id !== itemId);
+        setFormData({ ...formData, items: newItems });
     };
 
     const handleFileChange = (index, e) => {
@@ -578,22 +569,54 @@ export default function AddQuotationForm({ auth }) {
         }
     };
 
-    const handleRemoveItem = (index) => {
-        if (formData.items.length <= 1) {
-            alert("You must have at least one item.");
-            return;
+    // Improve handleFileClick function to handle temporary file objects
+    const handleFileClick = (file) => {
+        if (!file) return;
+        
+        let fileUrl = null;
+        
+        // Handle File objects (newly added files)
+        if (file instanceof File) {
+            // Create a temporary object URL for viewing the file
+            fileUrl = URL.createObjectURL(file);
+        } 
+        // Handle file objects with file property (from ItemModal)
+        else if (file.file && file.file instanceof File) {
+            fileUrl = URL.createObjectURL(file.file);
         }
+        // Handle file objects with URLs
+        else if (typeof file === "object") {
+            if (file.url && file.url.startsWith("http")) {
+                fileUrl = file.url;
+            } else {
+                fileUrl = `/storage/${file.url || file.path || file}`.replace("/storage/storage/", "/storage/");
+            }
+        } 
+        // Handle string paths
+        else if (typeof file === "string") {
+            fileUrl = `/storage/${file}`.replace("/storage/storage/", "/storage/");
+        }
+        
+        if (fileUrl) {
+            console.log("Opening file URL:", fileUrl);
+            window.open(fileUrl, "_blank");
+        } else {
+            console.error("Unable to determine file URL:", file);
+        }
+    };
 
-        setFormData((prev) => ({
-            ...prev,
-            items: prev.items.filter((_, i) => i !== index),
-        }));
-
-        setAttachments((prev) => {
-            const newAttachments = { ...prev };
-            delete newAttachments[index];
-            return newAttachments;
-        });
+    // Add formatDate function to display dates in dd/mm/yyyy format
+    const formatDate = (dateString) => {
+        if (!dateString) return "";
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString; // Return original string if invalid date
+        
+        // Format as dd/mm/yyyy
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        
+        return `${day}/${month}/${year}`;
     };
 
     const handleFormInputChange = (field, value) => {
@@ -609,7 +632,7 @@ export default function AddQuotationForm({ auth }) {
         try {
             console.log('Initial formData:', formData); // Debug initial state
 
-            // Create a plain object first to ensure all data is properly formatted
+            // Create a plain object with all required data
             const rfqData = {
                 organization_name: formData.organization_name || "",
                 organization_email: formData.organization_email || "",
@@ -621,33 +644,33 @@ export default function AddQuotationForm({ auth }) {
                 rfq_number: formData.rfq_id || "",
                 payment_type: formData.payment_type || "",
                 contact_number: formData.contact_no || "",
-                status_id: formData.status_id || "48"
+                status_id: formData.status_id || "48",
+                updated_at: new Date().toISOString()
             };
 
             console.log('Prepared RFQ data for API:', rfqData); // Debug prepared data
 
-            // Convert to FormData
-            const formDataObj = new FormData();
-            Object.entries(rfqData).forEach(([key, value]) => {
-                formDataObj.append(key, value);
-                console.log(`Appending to FormData: ${key}=${value}`); // Debug FormData construction
-            });
-
             let response;
             if (rfqId) {
                 console.log('Updating existing RFQ:', rfqId); // Debug update operation
-                response = await axios.put(
-                    `/api/v1/rfqs/${rfqId}`,
-                    formDataObj,
-                    {
-                        headers: {
-                            "Content-Type": "multipart/form-data",
-                            Accept: "application/json",
-                        },
-                    }
-                );
+                
+                // For updates, use direct JSON data instead of FormData to avoid issues
+                response = await axios.put(`/api/v1/rfqs/${rfqId}`, rfqData, {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                    },
+                });
             } else {
                 console.log('Creating new RFQ'); // Debug create operation
+                
+                // Convert to FormData for new records
+                const formDataObj = new FormData();
+                Object.entries(rfqData).forEach(([key, value]) => {
+                    formDataObj.append(key, value);
+                    console.log(`Appending to FormData: ${key}=${value}`); // Debug FormData construction
+                });
+                
                 response = await axios.post("/api/v1/rfqs", formDataObj, {
                     headers: {
                         "Content-Type": "multipart/form-data",
@@ -663,102 +686,125 @@ export default function AddQuotationForm({ auth }) {
                 throw new Error("Failed to get RFQ ID");
             }
             const newRfqId = response.data.data?.id;
-            console.log("Rfq Id:".newRfqId);
+            console.log("RFQ ID:", newRfqId);
 
-            // Now save the items with the new RFQ ID
-            const itemsFormData = new FormData();
-            const itemsToSend = formData.items.map((item) => ({
-                id: item.id,
-                product_id: item.product_id,
-                unit_id: item.unit_id,
-                quantity: item.quantity,
-                brand_id: item.brand_id,
-                expected_delivery_date: item.expected_delivery_date,
-                rfq_id: newRfqId,
-                status_id: item.status_id || "48",
-            }));
-
-            console.log('Items to be saved:', itemsToSend); // Debug items data
-
-            itemsFormData.append("items", JSON.stringify(itemsToSend));
-
-            // Add attachments
-            if (attachments) {
-                Object.keys(attachments).forEach((index) => {
-                    if (attachments[index]) {
-                        itemsFormData.append(
-                        `attachments[${index}]`,
-                        attachments[index]
-                    );
+            // Only save items if there are items to save
+            if (formData.items.length > 0) {
+                console.log('Saving items for RFQ ID:', newRfqId);
+                console.log('Items data before sending:', formData.items);
+                
+                // For new items in edit mode, we need a different approach
+                // Split items into existing and new ones
+                const existingItems = [];
+                const newItems = [];
+                
+                formData.items.forEach(item => {
+                    // Check if this is a new item (has temp ID) or existing item
+                    if (item.id && !item.id.toString().startsWith('temp-') && !isNaN(parseInt(item.id))) {
+                        existingItems.push({
+                            id: item.id,
+                            product_id: item.product_id,
+                            item_name: item.item_name,
+                            description: item.description,
+                            unit_id: item.unit_id,
+                            quantity: item.quantity,
+                            brand_id: item.brand_id,
+                            expected_delivery_date: item.expected_delivery_date,
+                            rfq_id: newRfqId,
+                            status_id: item.status_id || "48",
+                        });
+                    } else {
+                        // This is a new item, don't include ID
+                        newItems.push({
+                            product_id: item.product_id,
+                            item_name: item.item_name,
+                            description: item.description,
+                            unit_id: item.unit_id,
+                            quantity: item.quantity,
+                            brand_id: item.brand_id,
+                            expected_delivery_date: item.expected_delivery_date,
+                            rfq_id: newRfqId,
+                            status_id: item.status_id || "48",
+                        });
                     }
                 });
-            }
-
-            const itemsResponse = await axios.post(
-                "/api/v1/rfq-items",
-                itemsFormData,
-                {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                        Accept: "application/json",
-                    },
-                }
-            );
-
-            console.log('Items save response:', itemsResponse.data); // Debug items response
-
-            // Only proceed with process steps if we have a successful RFQ response
-            if (newRfqId) {
-                const loggedUser = auth.user?.id;
-                const processResponse = await axios.get(
-                    "/api/v1/processes?include=steps,creator,updater&filter[title]=RFQ Approval"
-                );
-
-                if (processResponse.data?.data?.[0]?.steps?.[0]) {
-                    const process = processResponse.data.data[0];
-                    const processStep = process.steps[0];
-
-                    // Only proceed if we have valid process step data
-                    if (processStep?.id && processStep?.order) {
-                        const processResponseViaUser = await axios.get(
-                            `/api/v1/process-steps/${processStep.order}/user/${loggedUser}`
+                
+                console.log('Existing items to update:', existingItems);
+                console.log('New items to create:', newItems);
+                
+                // Handle existing items first if any
+                if (existingItems.length > 0) {
+                    try {
+                        const updateItemsFormData = new FormData();
+                        updateItemsFormData.append("items", JSON.stringify(existingItems));
+                        updateItemsFormData.append("rfq_id", newRfqId);
+                        
+                        console.log('Updating existing items...');
+                        const updateResponse = await axios.post(
+                            "/api/v1/rfq-items/update-batch",
+                            updateItemsFormData,
+                            {
+                                headers: {
+                                    "Content-Type": "multipart/form-data",
+                                    Accept: "application/json",
+                                },
+                            }
                         );
-                        const assignUser = processResponseViaUser?.data;
-
-                        if (assignUser?.user?.user?.id) {
-                            const RFQApprovalTransactionPayload = {
-                                rfq_id: newRfqId,
-                                requester_id: loggedUser,
-                                assigned_to: assignUser.user.user.id,
-                                order: processStep.order,
-                                description: processStep.description,
-                                status: "Pending",
-                            };
-                            await axios.post(
-                                "/api/v1/rfq-approval-transactions",
-                                RFQApprovalTransactionPayload
-                            );
-
-                            const taskPayload = {
-                                process_step_id: processStep.id,
-                                process_id: processStep.process_id,
-                                assigned_at: new Date().toISOString(),
-                                urgency: "Normal",
-                                assigned_to_user_id: assignUser.user.user.id,
-                                assigned_from_user_id: loggedUser,
-                                rfq_id: newRfqId,
-                            };
-                            await axios.post("/api/v1/tasks", taskPayload);
-                        }
+                        console.log('Update response:', updateResponse.data);
+                    } catch (updateError) {
+                        console.error('Error updating existing items:', updateError);
                     }
                 }
+                
+                // Handle new items (always create, even in edit mode)
+                if (newItems.length > 0) {
+                    try {
+                        const newItemsFormData = new FormData();
+                        newItemsFormData.append("items", JSON.stringify(newItems));
+                        newItemsFormData.append("rfq_id", newRfqId);
+                        
+                        // Add attachments for new items
+                        let attachmentIndex = 0;
+                        formData.items.forEach((item, index) => {
+                            if (!item.id || item.id.toString().startsWith('temp-') || isNaN(parseInt(item.id))) {
+                                if (item.tempFile) {
+                                    console.log(`Adding tempFile for new item ${attachmentIndex}:`, item.tempFile.name);
+                                    newItemsFormData.append(`attachments[${attachmentIndex}]`, item.tempFile);
+                                    attachmentIndex++;
+                                } else if (attachments && attachments[index]) {
+                                    console.log(`Adding attachment for new item ${attachmentIndex}:`, attachments[index].name);
+                                    newItemsFormData.append(`attachments[${attachmentIndex}]`, attachments[index]);
+                                    attachmentIndex++;
+                                }
+                            }
+                        });
+                        
+                        console.log('Creating new items...');
+                        const createResponse = await axios.post(
+                            "/api/v1/rfq-items",
+                            newItemsFormData,
+                            {
+                                headers: {
+                                    "Content-Type": "multipart/form-data",
+                                    Accept: "application/json",
+                                },
+                            }
+                        );
+                        console.log('Create response:', createResponse.data);
+                    } catch (createError) {
+                        console.error('Error creating new items:', createError);
+                        console.error('Error response:', createError.response?.data);
+                        alert("RFQ was saved, but there was an error saving new items: " + 
+                              (createError.response?.data?.message || "Unknown error"));
+                    }
+                }
+            } else {
+                console.log('No items to save');
             }
 
-            if (itemsResponse.data.success) {
-                console.log('All operations completed successfully'); // Debug success
-                alert("RFQ and items saved successfully!");
-                router.visit(route("rfq.index"));
-            }
+            // Success message and redirect
+            alert("RFQ and items saved successfully!");
+            router.visit(route("rfq.index"));
         } catch (error) {
             console.error('Error in handleSaveAndSubmit:', error); // Debug error
             console.error('Error response:', error.response); // Debug error response
@@ -1012,7 +1058,7 @@ export default function AddQuotationForm({ auth }) {
                                             e.target.value
                                         )
                                     }
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
+                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-72 appearance-none pl-0 pr-4 cursor-pointer outline-none border-none"
                                     required
                                 >
                                     <option value="">Select Category</option>
@@ -1159,247 +1205,86 @@ export default function AddQuotationForm({ auth }) {
                         </div>
                     </div>
 
-                    {/* Item Table */}
-                    <table className="w-full mt-4 table-fixed border-collapse">
+                    {/* Table for Items with no border/outline in cells */}
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full table-auto mt-4 border-collapse">
                         <thead>
                             <tr>
-                                <th className="px-2 py-2 rounded-tl-2xl rounded-bl-2xl text-center w-[13%] bg-[#C7E7DE]">
-                                    Item Name
-                                </th>
-                                <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">
-                                    Description
-                                </th>
-                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
-                                    Unit
-                                </th>
-                                <th className="px-2 py-2 text-center w-[8%] bg-[#C7E7DE]">
-                                    Quantity
-                                </th>
-                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
-                                    Brand
-                                </th>
-                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
-                                    Attachment
-                                </th>
-                                <th className="px-2 py-2 text-center w-[14%] bg-[#C7E7DE]">
-                                    Expected Delivery Date
-                                </th>
-                                <th className="px-2 py-2 rounded-tr-2xl rounded-br-2xl text-center w-[6%] bg-[#C7E7DE]">
-                                    Action
-                                </th>
+                                    <th className="px-2 py-2 text-center w-[5%] bg-[#C7E7DE] rounded-tl-2xl rounded-bl-2xl">#</th>
+                                    <th className="px-2 py-2 text-center w-[13%] bg-[#C7E7DE]">Products</th>
+                                    <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">Description</th>
+                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Unit</th>
+                                    <th className="px-2 py-2 text-center w-[8%] bg-[#C7E7DE]">Quantity</th>
+                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Brand</th>
+                                    <th className="px-2 py-2 text-center w-[14%] bg-[#C7E7DE]">Expected Delivery Date</th>
+                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Attachment</th>
+                                    <th className="px-2 py-2 text-center w-[6%] bg-[#C7E7DE] rounded-tr-2xl rounded-br-2xl">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {formData.items.map((item, index) => (
-                                <tr key={index}>
-                                    <td className="px-6 py-6 text-center align-middle">
-                                        <select
-                                            value={item.product_id || ""}
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    index,
-                                                    "product_id",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent cursor-pointer"
-                                            required
-                                        >
-                                            <option value="">
-                                                Select Product
-                                            </option>
-                                            {products.map((product) => (
-                                                <option
-                                                    key={product.id}
-                                                    value={product.id}
-                                                >
-                                                    {product.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                {sortedItems.length > 0 ? (
+                                    sortedItems.map((item, index) => (
+                                        <tr key={item.id || index}>
+                                            <td className="px-4 py-2 text-center">{index + 1}</td>
+                                            <td className="px-4 py-2 text-center">{item.item_name}</td>
+                                            <td className="px-4 py-2 text-center">{item.description}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                {units.find((u) => u.id === parseInt(item.unit_id))?.name || item.unit_id}
                                     </td>
-                                    <td className="px-6 py-6 text-center align-middle">
-                                        <textarea
-                                            value={item.description || ""}
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center min-h-[3rem] resize-none overflow-hidden bg-gray-100"
-                                            style={{
-                                                background: "none",
-                                                outline: "none",
-                                                textAlign: "center",
-                                                wordWrap: "break-word",
-                                                whiteSpace: "normal",
-                                            }}
-                                            rows="1"
-                                            readOnly
-                                        />
+                                            <td className="px-4 py-2 text-center">{item.quantity}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                {brands.find((b) => b.id === parseInt(item.brand_id))?.name || item.brand_id}
                                     </td>
-                                    <td className="px-6 py-6 text-center align-middle">
-                                        <select
-                                            value={item.unit_id || ""}
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    index,
-                                                    "unit_id",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent cursor-pointer"
-                                            style={{
-                                                background: "none",
-                                                outline: "none",
-                                                textAlign: "center",
-                                                paddingRight: "1rem",
-                                                appearance:
-                                                    "none" /* Removes default dropdown arrow in most browsers */,
-                                            }}
-                                            required
-                                        >
-                                            <option value="">
-                                                Select Unit
-                                            </option>
-                                            {units.map((unit) => (
-                                                <option
-                                                    key={unit.id}
-                                                    value={unit.id}
-                                                >
-                                                    {unit.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </td>
-
-                                    <td className="px-6 py-6 text-center align-middle">
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            min="0"
-                                            value={item.quantity}
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    index,
-                                                    "quantity",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none"
-                                            style={{
-                                                background: "none",
-                                                outline: "none",
-                                                textAlign: "center",
-                                            }}
-                                            required
-                                            onWheel={(e) => e.target.blur()} // Prevents changing value with mouse scroll
-                                        />
-                                    </td>
-                                    <td className="px-6 py-6 text-center align-middle">
-                                        <select
-                                            value={item.brand_id || ""}
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    index,
-                                                    "brand_id",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent"
-                                            style={{
-                                                background: "none",
-                                                outline: "none",
-                                                textAlign: "center",
-                                                paddingRight: "1rem",
-                                            }}
-                                            required
-                                        >
-                                            <option value="">
-                                                Select Brand
-                                            </option>
-                                            {brands.map((brand) => (
-                                                <option
-                                                    key={brand.id}
-                                                    value={brand.id}
-                                                >
-                                                    {brand.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <div className="flex flex-col items-center justify-center w-full">
+                                            <td className="px-4 py-2 text-center">{formatDate(item.expected_delivery_date)}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                {item.attachment ? (
                                             <FileDisplay
                                                 file={item.attachment}
-                                                onFileClick={(url) =>
-                                                    window.open(url, "_blank")
-                                                }
-                                            />
-                                            <input
-                                                type="file"
-                                                onChange={(e) =>
-                                                    handleFileChange(index, e)
-                                                }
-                                                className="hidden"
-                                                id={`file-input-${index}`}
-                                                accept=".pdf,.doc,.docx"
-                                            />
-                                            <label
-                                                htmlFor={`file-input-${index}`}
-                                                className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer break-words whitespace-normal text-center"
-                                            >
-                                                {item.attachment
-                                                    ? "Replace file"
-                                                    : "Attach file"}
-                                            </label>
-                                        </div>
+                                                        onFileClick={() => handleFileClick(item.attachment)}
+                                                    />
+                                                ) : (
+                                                    <span className="text-gray-500 text-sm">No Attachment</span>
+                                                )}
                                     </td>
-                                    <td className="px-6 py-6 whitespace-nowrap">
-                                        <input
-                                            type="date"
-                                            value={
-                                                item.expected_delivery_date ||
-                                                ""
-                                            }
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    index,
-                                                    "expected_delivery_date",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
-                                            required
-                                        />
-                                    </td>
-                                    <td className="px-8 py-3 whitespace-nowrap text-right pl-2">
-                                        {" "}
-                                        {/* Adjusted alignment */}
+                                            <td className="px-4 py-2 text-center">
+                                                <div className="flex space-x-2 justify-center">
                                         <button
                                             type="button"
-                                            onClick={() =>
-                                                handleRemoveItem(index)
-                                            }
-                                            className="text-red-600 hover:text-red-900 ml-2" // Added margin to move it right
-                                            disabled={
-                                                formData.items.length <= 1
-                                            }
-                                        >
-                                            <FontAwesomeIcon
-                                                icon={faTrash}
-                                                className="h-5 w-5"
-                                            />
+                                                        onClick={() => handleEditItem(item.id)}
+                                                        className="text-blue-500 hover:text-blue-700"
+                                                    >
+                                                        <FontAwesomeIcon icon={faEdit} />
                                         </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveItem(item.id)}
+                                                        className="text-red-500 hover:text-red-700"
+                                                    >
+                                                        <FontAwesomeIcon icon={faTrash} />
+                                                    </button>
+                                                </div>
                                     </td>
                                 </tr>
-                            ))}
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="9" className="px-4 py-6 text-center text-gray-500">
+                                            No items added yet. Use the "Add Item" button below to add items to this RFQ.
+                                        </td>
+                                    </tr>
+                                )}
                         </tbody>
                     </table>
+                    </div>
 
-                    {/* Add Item Button */}
+                    {/* Add Item Button - centered at bottom */}
                     <div className="mt-4 flex justify-center">
                         <button
                             type="button"
                             onClick={addItem}
-                            className="text-blue-600 flex items-center"
+                            className="bg-[#009FDC] text-white px-5 py-2 rounded-full flex items-center text-base font-medium"
                         >
-                            + Add Item
+                            Add Item
                         </button>
                     </div>
 
@@ -1415,6 +1300,19 @@ export default function AddQuotationForm({ auth }) {
                     </div>
                 </form>
             </div>
+
+            {/* Add the ItemModal component */}
+            <ItemModal
+                isOpen={isItemModalOpen}
+                onClose={() => setIsItemModalOpen(false)}
+                onSave={handleSaveItem}
+                item={selectedItem}
+                isEdit={isEditingItem}
+                products={products}
+                units={units}
+                brands={brands}
+                rfqId={formData.id || formData.rfq_id}
+            />
         </AuthenticatedLayout>
     );
 }
