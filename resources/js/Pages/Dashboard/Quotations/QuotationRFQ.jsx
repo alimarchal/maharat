@@ -7,6 +7,7 @@ import { faArrowLeftLong, faEdit, faTrash, faCheck, faChevronRight } from "@fort
 import axios from "axios";
 import { DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 import { usePage } from '@inertiajs/react';
+import QuotationModal from './QuotationModal';
 
 const FileDisplay = ({ file, pendingFile }) => {
     // If there's a pending file to be uploaded, show it as a preview with an indicator
@@ -64,15 +65,16 @@ export default function QuotationRFQ({ auth }) {
     const [lastPage, setLastPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
-    const [editingId, setEditingId] = useState(null);
-    const [editData, setEditData] = useState({});
-    const [companies, setCompanies] = useState([]);
     const [companiesMap, setCompaniesMap] = useState({}); // Map company IDs to names
-    const [suppliers, setSuppliers] = useState([]);
     const [suppliersMap, setSuppliersMap] = useState({}); // Map supplier IDs to names
     const [rfqNumber, setRfqNumber] = useState("");
     const [attachingFile, setAttachingFile] = useState(false);
     const [tempDocuments, setTempDocuments] = useState({});
+    
+    // Modal state
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedQuotation, setSelectedQuotation] = useState(null);
+    const [isEditMode, setIsEditMode] = useState(false);
 
     const fetchQuotations = async () => {
         setLoading(true);
@@ -158,7 +160,6 @@ export default function QuotationRFQ({ auth }) {
     const fetchCompanies = async () => {
         try {
             const response = await axios.get('/api/v1/companies');
-            setCompanies(response.data.data);
             
             // Create a map of company IDs to names for easier lookup
             const compMap = {};
@@ -174,7 +175,6 @@ export default function QuotationRFQ({ auth }) {
     const fetchSuppliers = async () => {
         try {
             const response = await axios.get('/api/v1/suppliers');
-            setSuppliers(response.data.data);
             
             // Create a map of supplier IDs to names for easier lookup
             const suppMap = {};
@@ -184,30 +184,6 @@ export default function QuotationRFQ({ auth }) {
             setSuppliersMap(suppMap);
         } catch (error) {
             console.error('Error fetching suppliers:', error);
-        }
-    };
-
-    const handleFileChange = async (index, e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('quotation_id', quotations[index].id);
-
-        try {
-            const response = await axios.post('/api/v1/quotations/upload-terms', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                }
-            });
-
-            const updatedQuotations = [...quotations];
-            updatedQuotations[index].terms_and_conditions = response.data.file_path;
-            setQuotations(updatedQuotations);
-        } catch (error) {
-            console.error('Upload error:', error);
-            setError("Failed to upload file");
         }
     };
 
@@ -223,126 +199,38 @@ export default function QuotationRFQ({ auth }) {
         }
     }, [currentPage, rfqId]);
 
-    const handleSave = async (id) => {
-        try {
-            let companyId = null;
-            if (editData.company_name) {
-                const company = companies.find(c => c.name === editData.company_name);
-                companyId = company ? company.id : null;
-            }
-            
-            let supplierId = null;
-            if (editData.supplier_name) {
-                const supplier = suppliers.find(s => s.name === editData.supplier_name);
-                supplierId = supplier ? supplier.id : null;
-            }
-    
-            const isNewRecord = id.toString().includes('new-');
-            
-            const updatedData = {
-                ...editData,
-                company_id: companyId,
-                rfq_company_id: companyId,
-                supplier_id: supplierId,
-                issue_date: formatDateForInput(editData.issue_date),
-                valid_until: formatDateForInput(editData.valid_until),
-                rfq_id: rfqId,
-                update_rfq: true
-            };
-    
-            // For new records, the system should generate the quotation number
-            if (isNewRecord) {
-                delete updatedData.id;
-                // Let the server generate the quotation number by setting it to empty
-                updatedData.quotation_number = '';
-            }
-    
-            let response;
-            if (isNewRecord) {
-                response = await axios.post('/api/v1/quotations', updatedData);
-            } else {
-                response = await axios.put(`/api/v1/quotations/${id}`, updatedData);
-            }
-    
-            if (response.data.success) {
-                // Get the actual quotation ID (either the new one from response or the existing one)
-                const quotationId = isNewRecord ? response.data.data.id : id;
-                
-                // Handle temporary documents if they exist
-                if (tempDocuments[id]) {
-                    await uploadDocumentToServer(quotationId, tempDocuments[id]);
-                    
-                    // Clear the temporary document
-                    const newTempDocs = {...tempDocuments};
-                    delete newTempDocs[id];
-                    setTempDocuments(newTempDocs);
-                }
-                
-                setEditingId(null);
-                setError(""); // Clear any errors
-                
-                // Always fetch fresh data after saving
-                await fetchQuotations();
-            } else {
-                console.error('Update failed:', response.data);
-                setError('Failed to save changes');
-            }
-        } catch (error) {
-            console.error('Save error:', error.response ? error.response.data : error.message);
-            setError('Failed to save changes: ' + (error.response?.data?.message || error.message));
-        }
-    };
-
-    const handleEdit = (quotation) => {
-        setEditingId(quotation.id);
-        setEditData({
-            ...quotation,
-            company_name: quotation.company_name || '',
-            supplier_name: quotation.supplier_name || ''
-        });
-    };
-
     const handleDelete = async (id) => {
         if (!confirm("Are you sure you want to delete this record?")) return;
 
         try {
-            if (id.toString().includes('new-')) {
-                setQuotations(prevQuotations => prevQuotations.filter(q => q.id !== id));
-            } else {
-                await axios.delete(`/api/v1/quotations/${id}`);
-                fetchQuotations();
-            }
+            await axios.delete(`/api/v1/quotations/${id}`);
+            fetchQuotations();
         } catch (error) {
             console.error('Delete error:', error);
             setError('Failed to delete record');
         }
     };
 
-    const addItem = () => {
-        const newQuotation = {
-            id: `new-${Date.now()}`, 
-            quotation_number: '', 
-            company_name: '',
-            supplier_name: '',
-            supplier_id: null,
-            original_name: '',
-            file_path: '',
-            issue_date: '',
-            valid_until: '',
-            total_amount: '',
-            terms_and_conditions: '',
-            rfq_id: rfqId,
-            documents: []
-        };
-        setQuotations([...quotations, newQuotation]);
-        setEditingId(newQuotation.id);
-        setEditData(newQuotation);
+    const handleAddQuotation = () => {
+        setSelectedQuotation(null);
+        setIsEditMode(false);
+        setIsModalOpen(true);
     };
 
-    const formatDateForInput = (dateString) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toISOString().split('T')[0];
+    const handleEditQuotation = (quotation) => {
+        setSelectedQuotation(quotation);
+        setIsEditMode(true);
+        setIsModalOpen(true);
+    };
+
+    const handleSaveQuotation = () => {
+        // Refresh the quotations after save
+        fetchQuotations();
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedQuotation(null);
     };
 
     const formatDateForDisplay = (dateString) => {
@@ -353,54 +241,6 @@ export default function QuotationRFQ({ auth }) {
             month: '2-digit',
             year: 'numeric'
         });
-    };
-
-    const handleFileUpload = (quotationId, file) => {
-        if (!file) {
-            setError("No file selected.");
-            return;
-        }
-        
-        // Store the file temporarily - DO NOT upload immediately
-        setTempDocuments({
-            ...tempDocuments,
-            [quotationId]: file
-        });
-        
-        // Show a visual indicator by updating the UI
-        // This will trigger the temporary file preview
-        const updatedQuotations = [...quotations];
-        const index = updatedQuotations.findIndex(q => q.id === quotationId);
-        if (index !== -1) {
-            // We'll use the same quotation object, but the FileDisplay component
-            // will show the temp file preview since tempDocuments has the file
-            setQuotations(updatedQuotations);
-        }
-    };
-
-    const uploadDocumentToServer = async (quotationId, file) => {
-        setAttachingFile(true);
-        
-        const formData = new FormData();
-        formData.append('document', file);
-        formData.append('quotation_id', quotationId);
-        formData.append('type', 'quotation');
-    
-        try {
-            // Upload new file - the controller will handle replacing or creating
-            const response = await axios.post('/api/v1/quotation-documents', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
-    
-            console.log("File upload response:", response.data);
-            setError(""); // Clear any existing errors
-    
-        } catch (error) {
-            console.error("Upload Error:", error.response?.data || error.message);
-            setError("Failed to upload document: " + (error.response?.data?.message || error.message));
-        } finally {
-            setAttachingFile(false);
-        }
     };
 
     return (
@@ -419,8 +259,6 @@ export default function QuotationRFQ({ auth }) {
                 <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2 mb-6">
                     <Link href="/dashboard" className="hover:text-[#009FDC] text-xl">Dashboard</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
-                    {/* <Link href="/purchase" className="hover:text-[#009FDC] text-xl">Procurement Center</Link>
-                    <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" /> */}
                     <Link href="/quotation" className="hover:text-[#009FDC] text-xl">Quotations</Link>
                     <FontAwesomeIcon icon={faChevronRight} className="text-xl text-[#9B9DA2]" />
                     <Link href="/new-quotation" className="hover:text-[#009FDC] text-xl"> Add Quotations</Link>
@@ -432,6 +270,13 @@ export default function QuotationRFQ({ auth }) {
                 <div className="w-full">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-[32px] font-bold text-[#2C323C]">Add Quotation to RFQ</h2>
+                        <button
+                            onClick={handleAddQuotation}
+                            className="px-4 py-2 bg-[#009FDC] text-white rounded-lg hover:bg-[#007BB5] transition-colors duration-300 flex items-center"
+                        >
+                            <PlusCircleIcon className="h-5 w-5 mr-2" />
+                            Add Quotation
+                        </button>
                     </div>
     
                     <p className="text-purple-600 text-2xl mb-6">{rfqNumber}</p>
@@ -482,203 +327,56 @@ export default function QuotationRFQ({ auth }) {
                                     <tr key={quotation.id}>
                                         {/* Quotation Number */}
                                         <td className="px-4 py-4 text-center break-words whitespace-normal min-w-[120px] max-w-[150px]">
-                                            {editingId === quotation.id ? (
-                                                quotation.id.toString().includes('new-') ? (
-                                                    /* For new records, show the next generated number with the same styling as regular display */
-                                                    <span className="inline-block break-words w-full text-[17px] text-black">
-                                                        {editData.next_quotation_number || quotation.next_quotation_number || `QUO-${new Date().getFullYear()}-00001`}
-                                                    </span>
-                                                ) : (
-                                                    /* For existing records in edit mode, make it look exactly like regular text */
-                                                    <span className="inline-block break-words w-full text-[17px] text-black">
-                                                        {editData.quotation_number}
-                                                    </span>
-                                                )
-                                            ) : (
-                                                /* Regular display mode */
-                                                <span className="inline-block break-words w-full text-[17px] text-black">
-                                                    {quotation.quotation_number}
-                                                </span>
-                                            )}
+                                            <span className="inline-block break-words w-full text-[17px] text-black">
+                                                {quotation.quotation_number}
+                                            </span>
                                         </td>
 
-                                        {/* Company Name Dropdown */}
+                                        {/* Company Name */}
                                         <td className="px-4 py-4 text-center break-words whitespace-normal min-w-[150px] max-w-[170px]">
-                                            {editingId === quotation.id ? (
-                                                <select
-                                                    value={editData.company_name || ''}
-                                                    onChange={(e) =>
-                                                        setEditData({ ...editData, company_name: e.target.value })
-                                                    }
-                                                    className="text-[17px] text-black bg-transparent border-none focus:ring-0 w-full text-center break-words"
-                                                    style={{ wordWrap: "break-word", overflowWrap: "break-word" }}
-                                                >
-                                                    <option value="">Select a company</option>
-                                                    {companies.map((company) => (
-                                                        <option key={company.id} value={company.name}>
-                                                            {company.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            ) : (
-                                                <span className="inline-block break-words w-full text-[17px] text-black">
-                                                    {quotation.company_name || 'No company'}
-                                                </span>
-                                            )}
+                                            <span className="inline-block break-words w-full text-[17px] text-black">
+                                                {quotation.company_name || 'No company'}
+                                            </span>
                                         </td>
 
-                                        {/* Supplier Name Dropdown */}
+                                        {/* Supplier Name */}
                                         <td className="px-4 py-4 text-center break-words whitespace-normal min-w-[150px] max-w-[170px]">
-                                            {editingId === quotation.id ? (
-                                                <select
-                                                    value={editData.supplier_name || ''}
-                                                    onChange={(e) =>
-                                                        setEditData({ ...editData, supplier_name: e.target.value })
-                                                    }
-                                                    className="text-[17px] text-black bg-transparent border-none focus:ring-0 w-full text-center break-words"
-                                                    style={{ wordWrap: "break-word", overflowWrap: "break-word" }}
-                                                >
-                                                    <option value="">Select a supplier</option>
-                                                    {suppliers.map((supplier) => (
-                                                        <option key={supplier.id} value={supplier.name}>
-                                                            {supplier.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            ) : (
-                                                <span className="inline-block break-words w-full text-[17px] text-black">
-                                                    {quotation.supplier_name || 'No supplier'}
-                                                </span>
-                                            )}
+                                            <span className="inline-block break-words w-full text-[17px] text-black">
+                                                {quotation.supplier_name || 'No supplier'}
+                                            </span>
                                         </td>
 
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            {editingId === quotation.id ? (
-                                                <input
-                                                    type="date"
-                                                    value={editData.issue_date ? formatDateForInput(editData.issue_date) : ""}
-                                                    onChange={(e) => setEditData({ ...editData, issue_date: e.target.value })}
-                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
-                                                />
-                                            ) : (
-                                                formatDateForDisplay(quotation.issue_date)
-                                            )}
+                                            {formatDateForDisplay(quotation.issue_date)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            {editingId === quotation.id ? (
-                                                <input
-                                                    type="date"
-                                                    value={editData.valid_until ? formatDateForInput(editData.valid_until) : ""}
-                                                    onChange={(e) => setEditData({ ...editData, valid_until: e.target.value })}
-                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-full text-center"
-                                                />
-                                            ) : (
-                                                formatDateForDisplay(quotation.valid_until)
-                                            )}
+                                            {formatDateForDisplay(quotation.valid_until)}
                                         </td>
 
                                         <td className="px-6 py-4 whitespace-normal break-words text-center min-w-[120px]">
-                                        {editingId === quotation.id ? (
-                                            <div className="flex items-center justify-center space-x-2">
-                                                {/* Decrement Button */}
-                                                <button
-                                                    onClick={() =>
-                                                        setEditData((prev) => ({
-                                                            ...prev,
-                                                            total_amount: Math.max(0, parseInt(prev.total_amount || 0) - 1),
-                                                        }))
-                                                    }
-                                                    className="text-gray-600 hover:text-gray-900"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path fillRule="evenodd" d="M4 10a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z" clipRule="evenodd" />
-                                                    </svg>
-                                                </button>
-
-                                                {/* Input Field */}
-                                                <input
-                                                    type="number"
-                                                    value={parseInt(editData.total_amount || 0)}
-                                                    onChange={(e) => {
-                                                        const value = Math.max(0, Math.floor(e.target.value)); // Ensure whole number & no negatives
-                                                        setEditData({ ...editData, total_amount: value });
-                                                    }}
-                                                    className="text-[17px] text-gray-900 bg-transparent border-none focus:ring-0 w-[70px] text-center [&::-webkit-inner-spin-button]:hidden"
-                                                />
-
-                                                {/* Increment Button */}
-                                                <button
-                                                    onClick={() =>
-                                                        setEditData((prev) => ({
-                                                            ...prev,
-                                                            total_amount: parseInt(prev.total_amount || 0) + 1,
-                                                        }))
-                                                    }
-                                                    className="text-gray-600 hover:text-gray-900"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <span className="break-words min-w-[100px] inline-block">{parseInt(quotation.total_amount || 0).toLocaleString()}</span>
-                                        )}
-                                    </td>
+                                            <span className="break-words min-w-[100px] inline-block">
+                                                {parseInt(quotation.total_amount || 0).toLocaleString()}
+                                            </span>
+                                        </td>
 
                                         <td className="px-6 py-4 text-center">
-                                        <div className="flex flex-col items-center justify-center w-full">
-                                            {/* Show pending file preview or the existing document */}
-                                            {editingId === quotation.id && tempDocuments[quotation.id] ? (
-                                                <FileDisplay pendingFile={tempDocuments[quotation.id]} />
-                                            ) : (
-                                                quotation.documents && quotation.documents[0] ? (
+                                            <div className="flex flex-col items-center justify-center w-full">
+                                                {quotation.documents && quotation.documents[0] ? (
                                                     <FileDisplay file={quotation.documents[0]} />
                                                 ) : (
                                                     <span className="text-gray-500">No document attached</span>
-                                                )
-                                            )}
-
-                                            {editingId === quotation.id && (
-                                                <>
-                                                    <input
-                                                        type="file"
-                                                        onChange={(e) => handleFileUpload(quotation.id, e.target.files[0])}
-                                                        className="hidden"
-                                                        id={`file-input-${quotation.id}`}
-                                                        accept=".pdf,.doc,.docx"
-                                                    />
-                                                    <label 
-                                                        htmlFor={`file-input-${quotation.id}`}
-                                                        className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-                                                    >
-                                                        {(quotation.documents && quotation.documents.length > 0) || tempDocuments[quotation.id] 
-                                                            ? 'Replace file' 
-                                                            : 'Attach file'
-                                                        }
-                                                    </label>
-                                                </>
-                                            )}
-                                        </div>
-                                    </td>
-                                    
+                                                )}
+                                            </div>
+                                        </td>
+                                        
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
                                             <div className="flex justify-center space-x-3">
-                                                {editingId === quotation.id ? (
-                                                    <button
-                                                        onClick={() => handleSave(quotation.id)}
-                                                        className="text-green-600 hover:text-green-900"
-                                                    >
-                                                        <FontAwesomeIcon icon={faCheck} className="h-5 w-5" />
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => handleEdit(quotation)}
-                                                        className="text-gray-600 hover:text-gray-600"
-                                                    >
-                                                        <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
-                                                    </button>
-                                                )}
+                                                <button
+                                                    onClick={() => handleEditQuotation(quotation)}
+                                                    className="text-gray-600 hover:text-gray-600"
+                                                >
+                                                    <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
+                                                </button>
                                                 <button
                                                     onClick={() => handleDelete(quotation.id)}
                                                     className="text-red-600 hover:text-red-900"
@@ -697,19 +395,6 @@ export default function QuotationRFQ({ auth }) {
                             </tbody>
                             )}
                         </table>
-
-                        {/* Add Quotation Button - Only show when not loading */}
-                        {!loading && !attachingFile && (
-                            <div className="mt-4 flex justify-center">
-                                <button
-                                    type="button"
-                                    onClick={addItem}
-                                    className="text-blue-600 flex items-center"
-                                >
-                                    + Add Quotation
-                                </button>
-                            </div>
-                        )}
 
                         {/* Pagination */}
                         {!loading && !error && quotations.length > 0 && lastPage > 1 && (
@@ -750,6 +435,17 @@ export default function QuotationRFQ({ auth }) {
                     </div>
                 </div>
             </div>
+            
+            {/* Quotation Modal */}
+            <QuotationModal
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+                onSave={handleSaveQuotation}
+                quotation={selectedQuotation}
+                isEdit={isEditMode}
+                rfqId={rfqId}
+            />
+            
         </AuthenticatedLayout>
     );
 }

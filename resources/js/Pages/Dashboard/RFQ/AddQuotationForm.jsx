@@ -609,7 +609,7 @@ export default function AddQuotationForm({ auth }) {
         try {
             console.log('Initial formData:', formData); // Debug initial state
 
-            // Create a plain object first to ensure all data is properly formatted
+            // Create a plain object with all required data
             const rfqData = {
                 organization_name: formData.organization_name || "",
                 organization_email: formData.organization_email || "",
@@ -621,33 +621,33 @@ export default function AddQuotationForm({ auth }) {
                 rfq_number: formData.rfq_id || "",
                 payment_type: formData.payment_type || "",
                 contact_number: formData.contact_no || "",
-                status_id: formData.status_id || "48"
+                status_id: formData.status_id || "48",
+                updated_at: new Date().toISOString()
             };
 
             console.log('Prepared RFQ data for API:', rfqData); // Debug prepared data
 
-            // Convert to FormData
-            const formDataObj = new FormData();
-            Object.entries(rfqData).forEach(([key, value]) => {
-                formDataObj.append(key, value);
-                console.log(`Appending to FormData: ${key}=${value}`); // Debug FormData construction
-            });
-
             let response;
             if (rfqId) {
                 console.log('Updating existing RFQ:', rfqId); // Debug update operation
-                response = await axios.put(
-                    `/api/v1/rfqs/${rfqId}`,
-                    formDataObj,
-                    {
-                        headers: {
-                            "Content-Type": "multipart/form-data",
-                            Accept: "application/json",
-                        },
-                    }
-                );
+                
+                // For updates, use direct JSON data instead of FormData to avoid issues
+                response = await axios.put(`/api/v1/rfqs/${rfqId}`, rfqData, {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                    },
+                });
             } else {
                 console.log('Creating new RFQ'); // Debug create operation
+                
+                // Convert to FormData for new records
+                const formDataObj = new FormData();
+                Object.entries(rfqData).forEach(([key, value]) => {
+                    formDataObj.append(key, value);
+                    console.log(`Appending to FormData: ${key}=${value}`); // Debug FormData construction
+                });
+                
                 response = await axios.post("/api/v1/rfqs", formDataObj, {
                     headers: {
                         "Content-Type": "multipart/form-data",
@@ -663,7 +663,7 @@ export default function AddQuotationForm({ auth }) {
                 throw new Error("Failed to get RFQ ID");
             }
             const newRfqId = response.data.data?.id;
-            console.log("Rfq Id:".newRfqId);
+            console.log("RFQ ID:", newRfqId);
 
             // Now save the items with the new RFQ ID
             const itemsFormData = new FormData();
@@ -756,6 +756,12 @@ export default function AddQuotationForm({ auth }) {
 
             if (itemsResponse.data.success) {
                 console.log('All operations completed successfully'); // Debug success
+                
+                // Force a refresh to verify the update if in edit mode
+                if (rfqId) {
+                    await axios.get(`/api/v1/rfqs/${rfqId}?t=${new Date().getTime()}`);
+                }
+                
                 alert("RFQ and items saved successfully!");
                 router.visit(route("rfq.index"));
             }
