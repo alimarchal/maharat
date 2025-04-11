@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\BudgetApprovalTransactionController;
 use App\Http\Controllers\Api\V1\BudgetController;
 use App\Http\Controllers\Api\V1\BudgetRequestApprovalTransactionController;
+use App\Http\Controllers\Api\V1\BudgetUsageController;
 use App\Http\Controllers\Api\V1\CashFlowTransactionController;
 use App\Http\Controllers\Api\V1\ChartOfAccountController;
 use App\Http\Controllers\Api\V1\CompanyController;
@@ -389,15 +390,20 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     // FAQ routes
     Route::get('/faqs', [FaqController::class, 'index']);
-    Route::post('/faqs', [FaqController::class, 'store'])->middleware('auth:sanctum');
-    Route::put('/faqs/{faq}', [FaqController::class, 'update'])->middleware('auth:sanctum');
-    Route::delete('/faqs/{faq}', [FaqController::class, 'destroy'])->middleware('auth:sanctum');
-    Route::post('/faqs/reorder', [FaqController::class, 'reorder'])->middleware('auth:sanctum');
-    
+    Route::post('/faqs', [FaqController::class, 'store']);
+    Route::put('/faqs/{faq}', [FaqController::class, 'update']);
+    Route::delete('/faqs/{faq}', [FaqController::class, 'destroy']);
+    Route::post('/faqs/reorder', [FaqController::class, 'reorder']);
+
     // FAQ Approval routes
-    Route::get('/faqs/approval', [FaqApprovalController::class, 'view'])->middleware('auth:sanctum');
-    Route::post('/faqs/approval', [FaqApprovalController::class, 'store'])->middleware('auth:sanctum');
-    Route::put('/faqs/approval/{id}', [FaqApprovalController::class, 'update'])->middleware('auth:sanctum');
-    Route::delete('/faqs/approval/{id}', [FaqApprovalController::class, 'destroy'])->middleware('auth:sanctum');
+    Route::get('/faqs/approval', [FaqApprovalController::class, 'view']);
+    Route::post('/faqs/approval', [FaqApprovalController::class, 'store']);
+    Route::put('/faqs/approval/{id}', [FaqApprovalController::class, 'update']);
+    Route::delete('/faqs/approval/{id}', [FaqApprovalController::class, 'destroy']);
+
+    Route::apiResource('budget-usages', BudgetUsageController::class);
+    Route::get('budget-usages/cost-center/{costCenterId}/statistics', [BudgetUsageController::class, 'costCenterStatistics']);
+    Route::get('budget-usages/fiscal-period/{fiscalPeriodId}/statistics', [BudgetUsageController::class, 'fiscalPeriodStatistics']);
+
 
 });
