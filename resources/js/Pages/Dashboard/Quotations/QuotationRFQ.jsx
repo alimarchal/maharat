@@ -10,6 +10,67 @@ import { usePage } from '@inertiajs/react';
 import QuotationModal from './QuotationModal';
 
 const FileDisplay = ({ file, pendingFile }) => {
+    // Helper function to fix file paths and extensions
+    const fixFilePath = (filePath) => {
+        if (!filePath) return null;
+        
+        // Log the original path to debug
+        console.log('Original file path:', filePath);
+        
+        // Fix duplicate extensions
+        let fixedPath = filePath;
+        if (fixedPath.endsWith('.pdf.pdf')) {
+            fixedPath = fixedPath.replace('.pdf.pdf', '.pdf');
+        }
+        
+        // For paths that have /storage/ but don't have /public/
+        if (fixedPath.includes('/storage/') && !fixedPath.includes('/storage/public/')) {
+            // Insert 'public/' after storage/
+            fixedPath = fixedPath.replace('/storage/', '/storage/public/');
+        }
+        
+        // If URL already contains http, just return it with the public path fix
+        if (fixedPath.startsWith('http')) {
+            console.log('Fixed URL path:', fixedPath);
+            return fixedPath;
+        }
+        
+        // Otherwise, construct the full URL
+        fixedPath = `/storage/public/${fixedPath}`.replace('/storage/public/public/', '/storage/public/');
+        console.log('Constructed URL path:', fixedPath);
+        return fixedPath;
+    };
+    
+    // Try direct download via API
+    const downloadFile = async (filePath) => {
+        try {
+            // Extract file ID from path
+            const filePathSegments = filePath.split('/');
+            const fileName = filePathSegments[filePathSegments.length - 1];
+            
+            // Log the attempt
+            console.log('Attempting direct download for:', fileName);
+            
+            // First try direct URL
+            window.open(filePath, '_blank');
+            
+            // As a fallback, try to get a download URL from the server
+            try {
+                const response = await axios.get(`/api/v1/download-file?path=${encodeURIComponent(fileName)}&type=quotation`);
+                if (response.data && response.data.download_url) {
+                    window.open(response.data.download_url, '_blank');
+                }
+            } catch (error) {
+                console.error('Error getting download URL:', error);
+                // Still try the direct URL as last resort
+                window.open(filePath, '_blank');
+            }
+        } catch (error) {
+            console.error('Download failed:', error);
+            alert('Could not download file. Please contact support.');
+        }
+    };
+    
     // If there's a pending file to be uploaded, show it as a preview with an indicator
     if (pendingFile) {
         // For local file preview, create a temporary URL
@@ -32,22 +93,30 @@ const FileDisplay = ({ file, pendingFile }) => {
         <span className="text-gray-500">No document attached</span>
     );
 
-    // Show the existing file
-    const fileUrl = file.file_path;
+    // Get the fixed file URL
+    const fileUrl = file.file_path ? fixFilePath(file.file_path) : null;
+    
+    // Fix display name if needed
+    let displayName = file.original_name || 'Document';
+    if (displayName.endsWith('.pdf.pdf')) {
+        displayName = displayName.replace('.pdf.pdf', '.pdf');
+    }
+    
+    console.log('Prepared document URL:', fileUrl);
 
     return (
         <div className="flex flex-col items-center justify-center space-y-2">
             <DocumentArrowDownIcon 
                 className="h-10 w-10 text-gray-500 cursor-pointer hover:text-gray-700 transition-colors"
-                onClick={() => fileUrl && window.open(fileUrl, '_blank')}
+                onClick={() => fileUrl && downloadFile(fileUrl)}
             />
             
-            {file.original_name && (
+            {displayName && (
                 <span 
                     className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
-                    onClick={() => fileUrl && window.open(fileUrl, '_blank')}
+                    onClick={() => fileUrl && downloadFile(fileUrl)}
                 >
-                    {file.original_name}
+                    {displayName}
                 </span>
             )}
         </div>
@@ -272,9 +341,8 @@ export default function QuotationRFQ({ auth }) {
                         <h2 className="text-[32px] font-bold text-[#2C323C]">Add Quotation to RFQ</h2>
                         <button
                             onClick={handleAddQuotation}
-                            className="px-4 py-2 bg-[#009FDC] text-white rounded-lg hover:bg-[#007BB5] transition-colors duration-300 flex items-center"
+                            className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium flex items-center"
                         >
-                            <PlusCircleIcon className="h-5 w-5 mr-2" />
                             Add Quotation
                         </button>
                     </div>
