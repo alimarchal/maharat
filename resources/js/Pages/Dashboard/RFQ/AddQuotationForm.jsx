@@ -13,9 +13,12 @@ import {
     faArrowLeftLong,
     faChevronRight,
     faTrash,
+    faEdit,
 } from "@fortawesome/free-solid-svg-icons";
 import { fetchRFQData, fetchLookupData, getSafeValue } from "./rfqUtils";
 import { FaTrash } from "react-icons/fa";
+import { PlusCircleIcon } from '@heroicons/react/24/outline';
+import ItemModal from "./ItemModal";
 
 export default function AddQuotationForm({ auth }) {
     const { rfqId } = usePage().props;
@@ -61,6 +64,11 @@ export default function AddQuotationForm({ auth }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [products, setProducts] = useState([]);
+
+    // Add state for modal
+    const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [isEditingItem, setIsEditingItem] = useState(false);
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -499,63 +507,45 @@ export default function AddQuotationForm({ auth }) {
         fetchData();
     }, []);
 
+    // Replace the old addItem function
     const addItem = () => {
-        setFormData((prev) => ({
-            ...prev,
-            items: [
-                ...prev.items,
-                {
-                    product_id: "",
-                    item_name: "",
-                    description: "",
-                    unit_id: "",
-                    quantity: "",
-                    brand_id: "",
-                    attachment: null,
-                    expected_delivery_date: "",
-                    rfq_id: rfqId || null,
-                    status_id: 48,
-                },
-            ],
-        }));
+        setIsEditingItem(false);
+        setSelectedItem(null);
+        setIsItemModalOpen(true);
     };
-
-    const handleItemChange = (index, field, value) => {
-        const updatedItems = [...formData.items];
-
-        if (field === "product_id") {
-            const selectedProduct = products.find(
-                (p) => p.id === Number(value)
-            );
-            if (selectedProduct) {
-                updatedItems[index] = {
-                    ...updatedItems[index],
-                    product_id: selectedProduct.id,
-                    item_name: selectedProduct.name,
-                    description: selectedProduct.description || "",
+    
+    // Add a new handleEditItem function
+    const handleEditItem = (index) => {
+        setIsEditingItem(true);
+        setSelectedItem(formData.items[index]);
+        setIsItemModalOpen(true);
+    };
+    
+    // Replace handleItemChange with handleSaveItem
+    const handleSaveItem = (itemData) => {
+        const newItems = [...formData.items];
+        
+        if (isEditingItem && selectedItem) {
+            // Find and update the existing item
+            const index = newItems.findIndex(item => item.id === selectedItem.id);
+            if (index !== -1) {
+                newItems[index] = {
+                    ...itemData,
+                    id: selectedItem.id // Preserve the original ID
                 };
-            } else {
-                // If no product is selected (empty selection)
-                updatedItems[index] = {
-                    ...updatedItems[index],
-                    product_id: "",
-                    item_name: "",
-                    description: "",
-                };
-            }
-        } else if (field === "quantity") {
-            if (value === "") {
-                updatedItems[index][field] = "";
-            } else {
-                const numValue = parseFloat(value);
-                if (numValue < 0) return;
-                updatedItems[index][field] = numValue.toFixed(1);
+                setFormData({ ...formData, items: newItems });
             }
         } else {
-            updatedItems[index][field] = value;
+            // Add a new item with a temporary ID
+            const tempId = `temp-${Date.now()}`;
+            newItems.push({
+                ...itemData,
+                id: tempId,
+                rfq_id: formData.id || formData.rfq_id || null,
+                status_id: 48 // Keep the status ID from original implementation
+            });
+            setFormData({ ...formData, items: newItems });
         }
-
-        setFormData({ ...formData, items: updatedItems });
     };
 
     const handleFileChange = (index, e) => {
@@ -579,21 +569,61 @@ export default function AddQuotationForm({ auth }) {
     };
 
     const handleRemoveItem = (index) => {
-        if (formData.items.length <= 1) {
-            alert("You must have at least one item.");
-            return;
+        if (formData.items.length <= 1) return; // Do not remove the last item
+
+        const newItems = [...formData.items];
+        newItems.splice(index, 1);
+        setFormData({ ...formData, items: newItems });
+    };
+
+    // Improve handleFileClick function to handle temporary file objects
+    const handleFileClick = (file) => {
+        if (!file) return;
+        
+        let fileUrl = null;
+        
+        // Handle File objects (newly added files)
+        if (file instanceof File) {
+            // Create a temporary object URL for viewing the file
+            fileUrl = URL.createObjectURL(file);
+        } 
+        // Handle file objects with file property (from ItemModal)
+        else if (file.file && file.file instanceof File) {
+            fileUrl = URL.createObjectURL(file.file);
         }
+        // Handle file objects with URLs
+        else if (typeof file === "object") {
+            if (file.url && file.url.startsWith("http")) {
+                fileUrl = file.url;
+            } else {
+                fileUrl = `/storage/${file.url || file.path || file}`.replace("/storage/storage/", "/storage/");
+            }
+        } 
+        // Handle string paths
+        else if (typeof file === "string") {
+            fileUrl = `/storage/${file}`.replace("/storage/storage/", "/storage/");
+        }
+        
+        if (fileUrl) {
+            console.log("Opening file URL:", fileUrl);
+            window.open(fileUrl, "_blank");
+        } else {
+            console.error("Unable to determine file URL:", file);
+        }
+    };
 
-        setFormData((prev) => ({
-            ...prev,
-            items: prev.items.filter((_, i) => i !== index),
-        }));
-
-        setAttachments((prev) => {
-            const newAttachments = { ...prev };
-            delete newAttachments[index];
-            return newAttachments;
-        });
+    // Add formatDate function to display dates in dd/mm/yyyy format
+    const formatDate = (dateString) => {
+        if (!dateString) return "";
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString; // Return original string if invalid date
+        
+        // Format as dd/mm/yyyy
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        
+        return `${day}/${month}/${year}`;
     };
 
     const handleFormInputChange = (field, value) => {
@@ -1018,7 +1048,7 @@ export default function AddQuotationForm({ auth }) {
                                             e.target.value
                                         )
                                     }
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
+                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-72 appearance-none pl-0 pr-4 cursor-pointer outline-none border-none"
                                     required
                                 >
                                     <option value="">Select Category</option>
@@ -1165,247 +1195,85 @@ export default function AddQuotationForm({ auth }) {
                         </div>
                     </div>
 
-                    {/* Item Table */}
-                    <table className="w-full mt-4 table-fixed border-collapse">
-                        <thead>
-                            <tr>
-                                <th className="px-2 py-2 rounded-tl-2xl rounded-bl-2xl text-center w-[13%] bg-[#C7E7DE]">
-                                    Item Name
-                                </th>
-                                <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">
-                                    Description
-                                </th>
-                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
-                                    Unit
-                                </th>
-                                <th className="px-2 py-2 text-center w-[8%] bg-[#C7E7DE]">
-                                    Quantity
-                                </th>
-                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
-                                    Brand
-                                </th>
-                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
-                                    Attachment
-                                </th>
-                                <th className="px-2 py-2 text-center w-[14%] bg-[#C7E7DE]">
-                                    Expected Delivery Date
-                                </th>
-                                <th className="px-2 py-2 rounded-tr-2xl rounded-br-2xl text-center w-[6%] bg-[#C7E7DE]">
-                                    Action
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {formData.items.map((item, index) => (
-                                <tr key={index}>
-                                    <td className="px-6 py-6 text-center align-middle">
-                                        <select
-                                            value={item.product_id || ""}
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    index,
-                                                    "product_id",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent cursor-pointer"
-                                            required
-                                        >
-                                            <option value="">
-                                                Select Product
-                                            </option>
-                                            {products.map((product) => (
-                                                <option
-                                                    key={product.id}
-                                                    value={product.id}
-                                                >
-                                                    {product.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </td>
-                                    <td className="px-6 py-6 text-center align-middle">
-                                        <textarea
-                                            value={item.description || ""}
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm break-words whitespace-normal text-center min-h-[3rem] resize-none overflow-hidden bg-gray-100"
-                                            style={{
-                                                background: "none",
-                                                outline: "none",
-                                                textAlign: "center",
-                                                wordWrap: "break-word",
-                                                whiteSpace: "normal",
-                                            }}
-                                            rows="1"
-                                            readOnly
-                                        />
-                                    </td>
-                                    <td className="px-6 py-6 text-center align-middle">
-                                        <select
-                                            value={item.unit_id || ""}
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    index,
-                                                    "unit_id",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent cursor-pointer"
-                                            style={{
-                                                background: "none",
-                                                outline: "none",
-                                                textAlign: "center",
-                                                paddingRight: "1rem",
-                                                appearance:
-                                                    "none" /* Removes default dropdown arrow in most browsers */,
-                                            }}
-                                            required
-                                        >
-                                            <option value="">
-                                                Select Unit
-                                            </option>
-                                            {units.map((unit) => (
-                                                <option
-                                                    key={unit.id}
-                                                    value={unit.id}
-                                                >
-                                                    {unit.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </td>
-
-                                    <td className="px-6 py-6 text-center align-middle">
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            min="0"
-                                            value={item.quantity}
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    index,
-                                                    "quantity",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none"
-                                            style={{
-                                                background: "none",
-                                                outline: "none",
-                                                textAlign: "center",
-                                            }}
-                                            required
-                                            onWheel={(e) => e.target.blur()} // Prevents changing value with mouse scroll
-                                        />
-                                    </td>
-                                    <td className="px-6 py-6 text-center align-middle">
-                                        <select
-                                            value={item.brand_id || ""}
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    index,
-                                                    "brand_id",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="mt-1 block w-full border-none shadow-none focus:ring-0 sm:text-sm text-center appearance-none bg-transparent"
-                                            style={{
-                                                background: "none",
-                                                outline: "none",
-                                                textAlign: "center",
-                                                paddingRight: "1rem",
-                                            }}
-                                            required
-                                        >
-                                            <option value="">
-                                                Select Brand
-                                            </option>
-                                            {brands.map((brand) => (
-                                                <option
-                                                    key={brand.id}
-                                                    value={brand.id}
-                                                >
-                                                    {brand.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <div className="flex flex-col items-center justify-center w-full">
-                                            <FileDisplay
-                                                file={item.attachment}
-                                                onFileClick={(url) =>
-                                                    window.open(url, "_blank")
-                                                }
-                                            />
-                                            <input
-                                                type="file"
-                                                onChange={(e) =>
-                                                    handleFileChange(index, e)
-                                                }
-                                                className="hidden"
-                                                id={`file-input-${index}`}
-                                                accept=".pdf,.doc,.docx"
-                                            />
-                                            <label
-                                                htmlFor={`file-input-${index}`}
-                                                className="mt-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer break-words whitespace-normal text-center"
-                                            >
-                                                {item.attachment
-                                                    ? "Replace file"
-                                                    : "Attach file"}
-                                            </label>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-6 whitespace-nowrap">
-                                        <input
-                                            type="date"
-                                            value={
-                                                item.expected_delivery_date ||
-                                                ""
-                                            }
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    index,
-                                                    "expected_delivery_date",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="text-sm text-gray-900 bg-transparent border-none focus:ring-0 w-full"
-                                            required
-                                        />
-                                    </td>
-                                    <td className="px-8 py-3 whitespace-nowrap text-right pl-2">
-                                        {" "}
-                                        {/* Adjusted alignment */}
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                handleRemoveItem(index)
-                                            }
-                                            className="text-red-600 hover:text-red-900 ml-2" // Added margin to move it right
-                                            disabled={
-                                                formData.items.length <= 1
-                                            }
-                                        >
-                                            <FontAwesomeIcon
-                                                icon={faTrash}
-                                                className="h-5 w-5"
-                                            />
-                                        </button>
-                                    </td>
+                    {/* Table for Items with no border/outline in cells */}
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full table-auto mt-4 border-collapse">
+                            <thead>
+                                <tr>
+                                    <th className="px-2 py-2 text-center w-[5%] bg-[#C7E7DE] rounded-tl-2xl rounded-bl-2xl">#</th>
+                                    <th className="px-2 py-2 text-center w-[13%] bg-[#C7E7DE]">Products</th>
+                                    <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">Description</th>
+                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Unit</th>
+                                    <th className="px-2 py-2 text-center w-[8%] bg-[#C7E7DE]">Quantity</th>
+                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Brand</th>
+                                    <th className="px-2 py-2 text-center w-[14%] bg-[#C7E7DE]">Expected Delivery Date</th>
+                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Attachment</th>
+                                    <th className="px-2 py-2 text-center w-[6%] bg-[#C7E7DE] rounded-tr-2xl rounded-br-2xl">Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {[...formData.items]
+                                    .sort((a, b) => {
+                                        // Sort by expected_delivery_date (earliest first)
+                                        const dateA = a.expected_delivery_date ? new Date(a.expected_delivery_date) : new Date(9999, 11, 31);
+                                        const dateB = b.expected_delivery_date ? new Date(b.expected_delivery_date) : new Date(9999, 11, 31);
+                                        return dateA - dateB;
+                                    })
+                                    .map((item, index) => (
+                                    <tr key={item.id || index}>
+                                        <td className="px-4 py-2 text-center">{index + 1}</td>
+                                        <td className="px-4 py-2 text-center">{item.item_name}</td>
+                                        <td className="px-4 py-2 text-center">{item.description}</td>
+                                        <td className="px-4 py-2 text-center">
+                                            {units.find((u) => u.id === parseInt(item.unit_id))?.name || item.unit_id}
+                                        </td>
+                                        <td className="px-4 py-2 text-center">{item.quantity}</td>
+                                        <td className="px-4 py-2 text-center">
+                                            {brands.find((b) => b.id === parseInt(item.brand_id))?.name || item.brand_id}
+                                        </td>
+                                        <td className="px-4 py-2 text-center">{formatDate(item.expected_delivery_date)}</td>
+                                        <td className="px-4 py-2 text-center">
+                                            {item.attachment ? (
+                                                <FileDisplay 
+                                                    file={item.attachment} 
+                                                    onFileClick={() => handleFileClick(item.attachment)}
+                                                />
+                                            ) : (
+                                                <span className="text-gray-500 text-sm">No Attachment</span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-2 text-center">
+                                            <div className="flex space-x-2 justify-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleEditItem(index)}
+                                                    className="text-blue-500 hover:text-blue-700"
+                                                >
+                                                    <FontAwesomeIcon icon={faEdit} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveItem(index)}
+                                                    className="text-red-500 hover:text-red-700"
+                                                >
+                                                    <FontAwesomeIcon icon={faTrash} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
 
-                    {/* Add Item Button */}
+                    {/* Add Item Button - centered at bottom */}
                     <div className="mt-4 flex justify-center">
                         <button
                             type="button"
                             onClick={addItem}
-                            className="text-blue-600 flex items-center"
+                            className="bg-[#009FDC] text-white px-5 py-2 rounded-full flex items-center text-base font-medium"
                         >
-                            + Add Item
+                            Add Item
                         </button>
                     </div>
 
@@ -1421,6 +1289,19 @@ export default function AddQuotationForm({ auth }) {
                     </div>
                 </form>
             </div>
+
+            {/* Add the ItemModal component */}
+            <ItemModal
+                isOpen={isItemModalOpen}
+                onClose={() => setIsItemModalOpen(false)}
+                onSave={handleSaveItem}
+                item={selectedItem}
+                isEdit={isEditingItem}
+                products={products}
+                units={units}
+                brands={brands}
+                rfqId={formData.id || formData.rfq_id}
+            />
         </AuthenticatedLayout>
     );
 }
