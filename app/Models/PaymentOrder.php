@@ -14,6 +14,8 @@ class PaymentOrder extends Model
     protected $fillable = [
         'user_id',
         'purchase_order_id',
+        'cost_center_id',
+        'sub_cost_center_id',
         'payment_order_number',
         'date',
         'attachment',

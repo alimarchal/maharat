@@ -19,7 +19,7 @@ return new class extends Migration
             $table->foreignId('warehouse_id')->nullable()->constrained('warehouses');
             $table->foreignId('department_id')->nullable()->constrained('departments', 'id');
             $table->foreignId('cost_center_id')->nullable()->constrained('cost_centers', 'id');
-            $table->foreignId('sub_cost_center_id')->nullable()->constrained('cost_centers', 'id');
+            $table->foreignId('sub_cost_center_id')->nullable()->comment('in cost center we are using parent_id for sub cost center')->constrained('cost_centers', 'id');
 
             // Organization Details
             $table->string('organization_name')->nullable();

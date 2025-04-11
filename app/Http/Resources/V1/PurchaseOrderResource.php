@@ -21,6 +21,8 @@ class PurchaseOrderResource extends JsonResource
             'supplier_id' => $this->supplier_id,
             'user_id' => $this->user_id,
             'rfq_id' => $this->rfq_id,
+            'cost_center_id' => $this->cost_center_id,
+            'sub_cost_center_id' => $this->sub_cost_center_id,
             'purchase_order_date' => $this->purchase_order_date->toDateString(),
             'expiry_date' => $this->expiry_date->toDateString(),
             'amount' => $this->amount,

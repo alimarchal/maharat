@@ -37,6 +37,7 @@ return new class extends Migration
 
                 $table->string('landline')->nullable();        // Landline phone number
                 $table->string('mobile')->nullable();          // Mobile phone number
+                $table->enum('gender',['Male','Female'])->nullable();
                 $table->string('favourite_module')->nullable(); // User's preferred module
 
                 // User Settings & Preferences

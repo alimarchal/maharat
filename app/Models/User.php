@@ -43,6 +43,7 @@ class User extends Authenticatable
         'login_id',
         'api_token',
         'is_active',
+        'gender',
         'is_admin',
         'profile_photo_path',
     ];

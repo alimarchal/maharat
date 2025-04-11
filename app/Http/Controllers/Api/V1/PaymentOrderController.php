@@ -40,6 +40,8 @@ class PaymentOrderController extends Controller
             $query = QueryBuilder::for(PaymentOrder::class)
                 ->allowedFilters([
                     AllowedFilter::exact('status'),
+                    AllowedFilter::exact('cost_center_id'),
+                    AllowedFilter::exact('sub_cost_center_id'),
                 ])
                 ->allowedIncludes([
                     'user',

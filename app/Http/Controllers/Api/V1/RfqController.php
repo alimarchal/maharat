@@ -20,15 +20,15 @@ class RfqController extends Controller
     {
         try {
             Log::info('Starting RFQ index request');
-            
+
             // Check if sub_cost_centers table exists
             $hasSubCostCenters = Schema::hasTable('sub_cost_centers');
             Log::info('Sub cost centers table exists: ' . ($hasSubCostCenters ? 'yes' : 'no'));
-            
+
             // Build the relationships array
             $relationships = ['status', 'supplier', 'department', 'costCenter', 'requester'];
             Log::info('Base relationships: ' . implode(', ', $relationships));
-            
+
             // Only include subCostCenter if the table exists
             if ($hasSubCostCenters) {
                 $relationships[] = 'subCostCenter';
@@ -181,6 +181,8 @@ class RfqController extends Controller
                 'status_id' => $request->input('status_id', 47),
                 'rfq_number' => $rfq_number,
                 'warehouse_id' => $request->input('warehouse_id'),
+                'cost_center_id' => $request->input('cost_center_id'),
+                'sub_cost_center_id' => $request->input('sub_cost_center_id'),
                 'requester_id' => auth()->id() ?? 1,
                 'created_at' => now(),
                 'updated_at' => now()
@@ -324,6 +326,8 @@ class RfqController extends Controller
                 'request_date' => $request->input('request_date'),
                 'closing_date' => $request->input('closing_date'),
                 'rfq_number' => $request->input('rfq_number'),
+                'cost_center_id' => $request->input('cost_center_id'),
+                'sub_cost_center_id' => $request->input('sub_cost_center_id'),
                 'payment_type' => $request->input('payment_type'),
                 'contact_number' => $request->input('contact_number'),
                 'status_id' => $request->input('status_id', 47),
@@ -507,13 +511,13 @@ class RfqController extends Controller
     {
         try {
             $rfqs = DB::select("
-                SELECT id, organization_name, rfq_number 
-                FROM rfqs 
+                SELECT id, organization_name, rfq_number
+                FROM rfqs
                 WHERE id NOT IN (
-                    SELECT rfq_id 
-                    FROM purchase_orders 
+                    SELECT rfq_id
+                    FROM purchase_orders
                     WHERE rfq_id IS NOT NULL
-                ) 
+                )
                 ORDER BY created_at DESC
             ");
 
