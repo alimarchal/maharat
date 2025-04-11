@@ -104,13 +104,9 @@ export default function AddQuotationForm({ auth }) {
         updateSubCostCenter(value);
     };
 
-    // Add this useEffect to track formData changes
+    // Add a useEffect to track formData changes
     useEffect(() => {
-        console.log('FormData changed:', {
-            cost_center_id: formData.cost_center_id,
-            sub_cost_center_id: formData.sub_cost_center_id,
-            category_id: formData.category_id
-        });
+        // Removed console.log for formData changes
     }, [formData.cost_center_id, formData.sub_cost_center_id, formData.category_id]);
 
     useEffect(() => {
@@ -139,12 +135,8 @@ export default function AddQuotationForm({ auth }) {
                     setLoading(true);
                     setIsEditing(true);
 
-                    console.log('Fetching RFQ data for ID:', rfqId); // Debug log
-
                     const response = await axios.get(`/api/v1/rfqs/${rfqId}`);
                     const rfqData = response.data?.data;
-
-                    console.log('Received RFQ data:', rfqData); // Debug log
 
                     if (!rfqData) {
                         setError("RFQ not found or has invalid data format");
@@ -158,17 +150,14 @@ export default function AddQuotationForm({ auth }) {
                     // First check if we have categories in the RFQ data
                     if (rfqData.categories && rfqData.categories.length > 0) {
                         categoryId = String(rfqData.categories[0].id);
-                        console.log('Found category ID from RFQ categories:', categoryId); // Debug log
                     }
                     
                     // If still empty, try to get from rfq_categories relationship
                     if (!categoryId) {
                         try {
-                            console.log('Fetching category from rfq_categories'); // Debug log
                             const categoryResponse = await axios.get(
                                 `/api/v1/rfq-categories/${rfqId}`
                             );
-                            console.log('Category response:', categoryResponse.data); // Debug log
                             if (
                                 categoryResponse.data &&
                                 categoryResponse.data.data &&
@@ -177,7 +166,6 @@ export default function AddQuotationForm({ auth }) {
                                 categoryId = String(
                                     categoryResponse.data.data[0].category_id
                                 );
-                                console.log('Found category ID from relationship:', categoryId); // Debug log
                             }
                         } catch (err) {
                             console.error("Error fetching category:", err);
@@ -187,17 +175,7 @@ export default function AddQuotationForm({ auth }) {
                     // If still empty, try to get from rfqData
                     if (!categoryId && rfqData.category_id) {
                         categoryId = String(rfqData.category_id);
-                        console.log('Using category ID from RFQ data:', categoryId); // Debug log
                     }
-
-                    console.log('Final category ID to be used:', categoryId); // Debug log
-
-                    // Debug log for category data
-                    console.log("Response category data:", {
-                        category_id: rfqData.category_id,
-                        categories: rfqData.categories,
-                        extracted_id: categoryId
-                    });
 
                     const rfqItems = rfqData.items || [];
 
@@ -261,8 +239,6 @@ export default function AddQuotationForm({ auth }) {
                         };
                     });
 
-                    console.log('Setting category ID in formData:', categoryId); // Debug log
-
                     // Format the main form data
                     const formattedData = {
                         organization_name: rfqData.organization_name || "",
@@ -289,7 +265,6 @@ export default function AddQuotationForm({ auth }) {
                         items: formattedItems,
                     };
 
-                    console.log('Setting formData:', formattedData); // Debug log
                     setFormData(formattedData);
                     setLoading(false);
                 } else {
@@ -332,7 +307,6 @@ export default function AddQuotationForm({ auth }) {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                console.log('Fetching lookup data...'); // Debug log
 
                 const endpoints = [
                     { name: "units", url: "/api/v1/units", params: { per_page: 100 } },
@@ -391,7 +365,6 @@ export default function AddQuotationForm({ auth }) {
                 results.forEach((result) => {
                     switch (result.name) {
                         case "categories":
-                            console.log('Setting categories:', result.data); // Debug log
                             setCategories(result.data);
 
                             // Create lookup map for categories
@@ -401,12 +374,10 @@ export default function AddQuotationForm({ auth }) {
                                     categoryLookup[String(category.id)] = category.name;
                                 }
                             });
-                            console.log('Setting category names lookup:', categoryLookup); // Debug log
                             setCategoryNames(categoryLookup);
                             break;
 
                         case "units":
-                            console.log('Setting units:', result.data); // Debug log
                             setUnits(result.data);
 
                             // Create lookup map for units
@@ -416,7 +387,6 @@ export default function AddQuotationForm({ auth }) {
                                     unitLookup[String(unit.id)] = unit.name;
                                 }
                             });
-                            console.log('Setting unit names lookup:', unitLookup); // Debug log
                             setUnitNames(unitLookup);
                             break;
 
@@ -472,8 +442,6 @@ export default function AddQuotationForm({ auth }) {
 
                         const meta = statusesResponse.data.meta;
                         if (meta) {
-                            console.log("Pagination metadata:", meta);
-
                             if (
                                 meta.last_page &&
                                 meta.last_page > 1 &&
@@ -555,10 +523,6 @@ export default function AddQuotationForm({ auth }) {
                             fallbackResponse.data.data
                         ) {
                             const fallbackStatuses = fallbackResponse.data.data;
-                            console.log(
-                                "Fallback: using initial statuses:",
-                                fallbackStatuses
-                            );
 
                             setPaymentTypes(fallbackStatuses);
 
@@ -608,25 +572,17 @@ export default function AddQuotationForm({ auth }) {
 
     // Add a useEffect to log category state changes
     useEffect(() => {
-        console.log('Categories state updated:', categories);
-        console.log('Category names updated:', categoryNames);
+        // Removed console.log for category state changes
     }, [categories, categoryNames]);
 
     // Add debug logs for units
     useEffect(() => {
-        console.log('Units state:', units);
-        console.log('Unit names lookup:', unitNames);
-        console.log('Current items with units:', formData.items.map(item => ({
-            id: item.id,
-            unit_id: item.unit_id,
-            unit_name: unitNames[String(item.unit_id)]
-        })));
+        // Removed console.log for units state
     }, [units, unitNames, formData.items]);
 
     // Update the unit display in the table
     const getUnitName = (unitId) => {
         const unitName = unitNames[String(unitId)];
-        console.log('Getting unit name for ID:', unitId, 'Result:', unitName);
         return unitName || unitId;
     };
 
@@ -637,18 +593,17 @@ export default function AddQuotationForm({ auth }) {
         setIsItemModalOpen(true);
     };
     
-    // Add a new handleEditItem function
+    // Update the handleEditItem function
     const handleEditItem = (itemId) => {
-        // Find the item by ID instead of index
-        const itemToEdit = formData.items.find(item => (item.id === itemId));
+        // Find the item by ID using proper type conversion
+        const itemToEdit = formData.items.find(item => 
+            String(item.id) === String(itemId)
+        );
         
         if (itemToEdit) {
-            console.log("Editing item:", itemToEdit);
             setIsEditingItem(true);
             setSelectedItem(itemToEdit);
             setIsItemModalOpen(true);
-            } else {
-            console.error("Item not found for editing:", itemId);
         }
     };
     
@@ -668,19 +623,15 @@ export default function AddQuotationForm({ auth }) {
             // Find and update the existing item by ID
             const index = newItems.findIndex(item => item.id === selectedItem.id);
             if (index !== -1) {
-                console.log("Updating item at index:", index, "with ID:", selectedItem.id);
                 newItems[index] = {
                     ...itemData,
                     id: selectedItem.id // Preserve the original ID
                 };
                 setFormData({ ...formData, items: newItems });
-            } else {
-                console.error("Could not find item with ID:", selectedItem.id);
             }
         } else {
             // Add a new item with a temporary ID
             const tempId = `temp-${Date.now()}`;
-            console.log("Adding new item with temp ID:", tempId);
             newItems.push({
                 ...itemData,
                 id: tempId,
@@ -748,10 +699,7 @@ export default function AddQuotationForm({ auth }) {
         }
         
         if (fileUrl) {
-            console.log("Opening file URL:", fileUrl);
             window.open(fileUrl, "_blank");
-        } else {
-            console.error("Unable to determine file URL:", file);
         }
     };
 
@@ -780,9 +728,6 @@ export default function AddQuotationForm({ auth }) {
         e.preventDefault();
 
         try {
-            console.log('Starting form submission...'); // Debug log
-            console.log('Current formData:', formData); // Debug log
-
             // Create a plain object with all required data
             const rfqData = {
                 organization_name: formData.organization_name || "",
@@ -790,8 +735,6 @@ export default function AddQuotationForm({ auth }) {
                 city: formData.city || "",
                 category_id: formData.category_id || "",
                 warehouse_id: formData.warehouse_id || "",
-                cost_center_id: formData.cost_center_id || "",
-                sub_cost_center_id: formData.sub_cost_center_id || "",
                 request_date: formData.issue_date || "",
                 closing_date: formData.closing_date || "",
                 rfq_number: formData.rfq_id || "",
@@ -801,14 +744,9 @@ export default function AddQuotationForm({ auth }) {
                 updated_at: new Date().toISOString()
             };
 
-            console.log('Prepared RFQ data:', rfqData); // Debug log
-
             let response;
             if (rfqId) {
-                console.log('Updating RFQ with ID:', rfqId); // Debug log
-                console.log('Category ID being sent:', rfqData.category_id); // Debug log
-                
-                // For updates, use direct JSON data
+                // For updates, use direct JSON data instead of FormData to avoid issues
                 response = await axios.put(`/api/v1/rfqs/${rfqId}`, rfqData, {
                     headers: {
                         "Content-Type": "application/json",
@@ -816,13 +754,10 @@ export default function AddQuotationForm({ auth }) {
                     },
                 });
             } else {
-                console.log('Creating new RFQ'); // Debug log
-                
                 // Convert to FormData for new records
                 const formDataObj = new FormData();
                 Object.entries(rfqData).forEach(([key, value]) => {
                     formDataObj.append(key, value);
-                    console.log(`Adding to FormData: ${key} = ${value}`); // Debug log
                 });
                 
                 response = await axios.post("/api/v1/rfqs", formDataObj, {
@@ -833,21 +768,13 @@ export default function AddQuotationForm({ auth }) {
                 });
             }
 
-            console.log('API Response:', response.data); // Debug log
-
             if (!response.data?.data?.id) {
-                console.error('No RFQ ID in response:', response.data);
                 throw new Error("Failed to get RFQ ID");
             }
-
             const newRfqId = response.data.data?.id;
-            console.log("RFQ ID received:", newRfqId);
 
             // Only save items if there are items to save
             if (formData.items.length > 0) {
-                console.log('Saving items for RFQ ID:', newRfqId);
-                console.log('Items data before sending:', formData.items);
-                
                 // For new items in edit mode, we need a different approach
                 // Split items into existing and new ones
                 const existingItems = [];
@@ -857,16 +784,16 @@ export default function AddQuotationForm({ auth }) {
                     // Check if this is a new item (has temp ID) or existing item
                     if (item.id && !item.id.toString().startsWith('temp-') && !isNaN(parseInt(item.id))) {
                         existingItems.push({
-                id: item.id,
-                product_id: item.product_id,
+                            id: item.id,
+                            product_id: item.product_id,
                             item_name: item.item_name,
                             description: item.description,
-                unit_id: item.unit_id,
-                quantity: item.quantity,
-                brand_id: item.brand_id,
-                expected_delivery_date: item.expected_delivery_date,
-                rfq_id: newRfqId,
-                status_id: item.status_id || "48",
+                            unit_id: item.unit_id,
+                            quantity: item.quantity,
+                            brand_id: item.brand_id,
+                            expected_delivery_date: item.expected_delivery_date,
+                            rfq_id: newRfqId,
+                            status_id: item.status_id || "48",
                         });
                     } else {
                         // This is a new item, don't include ID
@@ -884,19 +811,15 @@ export default function AddQuotationForm({ auth }) {
                     }
                 });
                 
-                console.log('Existing items to update:', existingItems);
-                console.log('New items to create:', newItems);
-                
                 // Handle existing items first if any
                 if (existingItems.length > 0) {
                     try {
                         const updateItemsFormData = new FormData();
                         updateItemsFormData.append("items", JSON.stringify(existingItems));
-                        updateItemsFormData.append("rfq_id", newRfqId);
                         
                         console.log('Updating existing items...');
                         const updateResponse = await axios.post(
-                            "/api/v1/rfq-items/update-batch",
+                            "/api/v1/rfq-items",
                             updateItemsFormData,
                             {
                                 headers: {
@@ -908,6 +831,12 @@ export default function AddQuotationForm({ auth }) {
                         console.log('Update response:', updateResponse.data);
                     } catch (updateError) {
                         console.error('Error updating existing items:', updateError);
+                        if (updateError.response) {
+                            console.error('Error response:', updateError.response.data);
+                            console.error('Error status:', updateError.response.status);
+                            console.error('Error headers:', updateError.response.headers);
+                        }
+                        alert("RFQ was saved, but there was an error updating some items. Please try again.");
                     }
                 }
                 
@@ -923,46 +852,38 @@ export default function AddQuotationForm({ auth }) {
                         formData.items.forEach((item, index) => {
                             if (!item.id || item.id.toString().startsWith('temp-') || isNaN(parseInt(item.id))) {
                                 if (item.tempFile) {
-                                    console.log(`Adding tempFile for new item ${attachmentIndex}:`, item.tempFile.name);
                                     newItemsFormData.append(`attachments[${attachmentIndex}]`, item.tempFile);
                                     attachmentIndex++;
                                 } else if (attachments && attachments[index]) {
-                                    console.log(`Adding attachment for new item ${attachmentIndex}:`, attachments[index].name);
                                     newItemsFormData.append(`attachments[${attachmentIndex}]`, attachments[index]);
                                     attachmentIndex++;
                                 }
                             }
                         });
                         
-                        console.log('Creating new items...');
-                        const createResponse = await axios.post(
-                "/api/v1/rfq-items",
+                        await axios.post(
+                            "/api/v1/rfq-items",
                             newItemsFormData,
-                {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                        Accept: "application/json",
-                    },
-                }
-            );
-                        console.log('Create response:', createResponse.data);
+                            {
+                                headers: {
+                                    "Content-Type": "multipart/form-data",
+                                    Accept: "application/json",
+                                },
+                            }
+                        );
                     } catch (createError) {
                         console.error('Error creating new items:', createError);
-                        console.error('Error response:', createError.response?.data);
                         alert("RFQ was saved, but there was an error saving new items: " + 
                               (createError.response?.data?.message || "Unknown error"));
                     }
                 }
-            } else {
-                console.log('No items to save');
             }
 
             // Success message and redirect
-                alert("RFQ and items saved successfully!");
-                router.visit(route("rfq.index"));
+            alert("RFQ and items saved successfully!");
+            router.visit(route("rfq.index"));
         } catch (error) {
-            console.error('Error in handleSaveAndSubmit:', error); // Debug error
-            console.error('Error response:', error.response); // Debug error response
+            console.error('Error in handleSaveAndSubmit:', error);
             alert(
                 error.response?.data?.message ||
                     "Save failed. Please check your data and try again."
