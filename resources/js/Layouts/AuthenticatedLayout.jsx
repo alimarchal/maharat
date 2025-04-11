@@ -2,6 +2,7 @@ import ApplicationLogo from "@/Components/ApplicationLogo";
 import { Link, usePage } from "@inertiajs/react";
 import { useState, useEffect } from "react";
 import { faSearch, faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { FaUserCircle } from "react-icons/fa";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Sidebar from "@/Components/Sidebar";
 
@@ -75,13 +76,15 @@ export default function AuthenticatedLayout({ header, children }) {
                     </div>
 
                     <Link href="/user-profile" className="cursor-pointer">
-                        <img
-                            src={
-                                user.profile_photo_path || "/images/profile.jpg"
-                            }
-                            alt="Profile"
-                            className="h-10 w-10 lg:h-12 lg:w-12 rounded-full object-cover border border-gray-300 shadow-sm"
-                        />
+                        {user.profile_photo_path ? (
+                            <img
+                                src={`/storage/${user.profile_photo_path}`}
+                                alt="Profile"
+                                className="h-10 w-10 lg:h-12 lg:w-12 rounded-full object-cover border border-gray-300 shadow-sm"
+                            />
+                        ) : (
+                            <FaUserCircle className="h-10 w-10 lg:h-12 lg:w-12 text-gray-400" />
+                        )}
                     </Link>
                 </div>
             </header>
