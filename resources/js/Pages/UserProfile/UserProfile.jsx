@@ -3,11 +3,10 @@ import { FaCamera } from "react-icons/fa";
 import SelectFloating from "../../Components/SelectFloating";
 import InputFloating from "../../Components/InputFloating";
 import axios from "axios";
-import { router } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 
 const UserProfile = () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const id = urlParams.get("id");
+    const user = usePage().props.auth.user;
 
     const [formData, setFormData] = useState({
         employee_id: "",
@@ -28,7 +27,7 @@ const UserProfile = () => {
 
     const [designations, setDesignations] = useState([]);
     const [departments, setDepartments] = useState([]);
-    const [reportingManager, setReportingManager] = useState("");
+    const [reportingManager, setReportingManager] = useState([]);
     const [errors, setErrors] = useState({});
     const [isEditing, setIsEditing] = useState(false);
     const [photo, setPhoto] = useState(null);
@@ -37,66 +36,53 @@ const UserProfile = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [designationsResponse, departmentsResponse] =
-                    await Promise.all([
-                        axios.get("/api/v1/designations"),
-                        axios.get("/api/v1/departments"),
-                    ]);
-
+                const [
+                    designationsResponse,
+                    departmentsResponse,
+                    managerResponse,
+                ] = await Promise.all([
+                    axios.get("/api/v1/designations"),
+                    axios.get("/api/v1/departments"),
+                    axios.get("/api/v1/users"),
+                ]);
                 setDesignations(designationsResponse.data.data);
                 setDepartments(departmentsResponse.data.data);
+                setReportingManager(managerResponse.data.data);
 
-                let userData = null;
-
-                if (id) {
-                    const userResponse = await axios.get(`/api/v1/users/${id}`);
-                    userData = userResponse.data.data;
-
+                if (user) {
                     setFormData({
-                        employee_id: userData.employee_id,
-                        username: userData.username,
-                        firstname: userData.firstname,
-                        lastname: userData.lastname,
-                        email: userData.email,
-                        landline: userData.landline,
-                        mobile: userData.mobile,
-                        photo: userData.profile_photo_path,
-                        designation_id: userData.designation_id,
-                        department_id: userData.department_id,
-                        language: userData.language || "english",
-                        employee_type: userData.employee_type || "full-time",
-                        description: userData.description || "",
-                        parent_id: userData.parent_id,
-                        hierarchy_level: userData.hierarchy_level,
+                        employee_id: user.employee_id,
+                        username: user.username,
+                        firstname: user.firstname,
+                        lastname: user.lastname,
+                        email: user.email,
+                        landline: user.landline,
+                        mobile: user.mobile,
+                        photo: user.profile_photo_path,
+                        designation_id: user.designation_id,
+                        department_id: user.department_id,
+                        language: user.language,
+                        employee_type: user.employee_type,
+                        description: user.description,
+                        parent_id: user.parent_id,
                     });
 
-                    if (userData.profile_photo_path) {
-                        setPhotoPreview(
-                            `/storage/${userData.profile_photo_path}`
-                        );
+                    if (user.profile_photo_path) {
+                        setPhotoPreview(`/storage/${user.profile_photo_path}`);
                     }
 
                     setIsEditing(true);
-
-                    if (userData?.parent_id) {
-                        const reportingManagerResponse = await axios.get(
-                            `/api/v1/users/${userData.parent_id}`
-                        );
-                        setReportingManager(
-                            reportingManagerResponse.data.data.name
-                        );
-                    }
                 }
             } catch (error) {
                 console.error(
-                    "Error details:",
+                    "Error:",
                     error.response ? error.response.data : error.message
                 );
             }
         };
 
         fetchData();
-    }, [id]);
+    }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -162,19 +148,14 @@ const UserProfile = () => {
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            // Validate file type
             if (!file.type.match("image.*")) {
                 alert("Please select an image file");
                 return;
             }
-
-            // Validate file size (max 2MB)
             if (file.size > 2 * 1024 * 1024) {
                 alert("File size should be less than 2MB");
                 return;
             }
-
-            // Create preview URL
             const previewUrl = URL.createObjectURL(file);
             setPhotoPreview(previewUrl);
 
@@ -188,64 +169,43 @@ const UserProfile = () => {
 
         try {
             const formDataToSend = new FormData();
-            console.log("FORM DATA BEFORE SUBMIT:", formData);
-
             Object.entries(formData).forEach(([key, value]) => {
                 if (value !== null && value !== undefined && value !== "") {
                     formDataToSend.append(key, value);
                 }
             });
-
             formDataToSend.append(
                 "name",
                 `${formData.firstname} ${formData.lastname}`
             );
-
             if (photo) {
                 formDataToSend.append("profile_photo_path", photo);
             }
-
             if (formData.designation_id) {
                 formDataToSend.append("role_id", formData.designation_id);
             }
-
             const formObject = {};
             formDataToSend.forEach((value, key) => {
                 formObject[key] = value;
             });
-            console.log("FORM DATA BEING SENT:", formObject);
 
-            let response;
-
-            if (id) {
-                const apiUrl = `/api/v1/users/${id}`;
+            if (user) {
+                const apiUrl = `/api/v1/users/${user.id}`;
                 formDataToSend.append("_method", "PATCH");
 
-                response = await axios.post(apiUrl, formDataToSend, {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                        Accept: "application/json",
-                    },
-                });
-                const refreshResponse = await axios.get(apiUrl);
+                await axios.post(apiUrl, formDataToSend);
             } else {
                 const apiUrl = "/api/v1/users";
-                formDataToSend.append("password", "Password123");
+                formDataToSend.append("_method", "POST");
 
-                response = await axios.post(apiUrl, formDataToSend, {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                        Accept: "application/json",
-                    },
-                });
+                await axios.post(apiUrl, formDataToSend);
             }
-
             alert(
                 isEditing
                     ? "User updated successfully!"
                     : "User added successfully!"
             );
-            router.visit("/dashbaord");
+            router.visit("/dashboard");
         } catch (error) {
             console.error("Server Response Error:", error.response.data);
         }
@@ -278,11 +238,9 @@ const UserProfile = () => {
                                     }}
                                 />
                             ) : (
-                                <img
-                                    src="/images/profile.jpg"
-                                    alt="User Profile"
-                                    className="w-full h-full object-contain"
-                                />
+                                <div className="text-gray-600 text-base">
+                                    No Image
+                                </div>
                             )}
                         </div>
                         <input
@@ -302,7 +260,7 @@ const UserProfile = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div className="flex flex-col">
+                    <div>
                         <InputFloating
                             label="Maharat Employee ID"
                             name="employee_id"
@@ -315,7 +273,7 @@ const UserProfile = () => {
                             </p>
                         )}
                     </div>
-                    <div className="flex flex-col">
+                    <div>
                         <InputFloating
                             label="Username"
                             name="username"
@@ -328,9 +286,7 @@ const UserProfile = () => {
                             </p>
                         )}
                     </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div className="flex flex-col">
+                    <div>
                         <InputFloating
                             label="First Name"
                             name="firstname"
@@ -343,7 +299,7 @@ const UserProfile = () => {
                             </p>
                         )}
                     </div>
-                    <div className="flex flex-col">
+                    <div>
                         <InputFloating
                             label="Last Name"
                             name="lastname"
@@ -402,7 +358,7 @@ const UserProfile = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
                         <SelectFloating
-                            label="Select Designation"
+                            label="Designation"
                             name="designation_id"
                             value={formData.designation_id}
                             onChange={handleChange}
@@ -419,7 +375,7 @@ const UserProfile = () => {
                     </div>
                     <div>
                         <SelectFloating
-                            label="Select Department"
+                            label="Department"
                             name="department_id"
                             value={formData.department_id}
                             onChange={handleChange}
@@ -435,12 +391,15 @@ const UserProfile = () => {
                         )}
                     </div>
                     <div>
-                        <InputFloating
+                        <SelectFloating
                             label="Reporting Manager"
                             name="parent_id"
-                            value={reportingManager}
+                            value={formData.parent_id}
                             onChange={handleChange}
-                            disabled
+                            options={reportingManager.map((manager) => ({
+                                id: manager.id,
+                                label: manager.name,
+                            }))}
                         />
                     </div>
                 </div>
