@@ -34,19 +34,7 @@ export default function AddQuotationForm({ auth }) {
         rfq_id: "",
         payment_type: "",
         contact_no: "",
-        items: [
-            {
-                item_name: "",
-                description: "",
-                unit_id: "",
-                quantity: "",
-                brand_id: "",
-                attachment: null,
-                expected_delivery_date: "",
-                rfq_id: null,
-                status_id: 48,
-            },
-        ],
+        items: [],
         status_id: 48,
     });
 
@@ -177,21 +165,6 @@ export default function AddQuotationForm({ auth }) {
                                 : "48",
                         };
                     });
-
-                    // If no items, add a default empty one
-                    if (formattedItems.length === 0) {
-                        formattedItems.push({
-                            item_name: "",
-                            description: "",
-                            unit_id: "",
-                            quantity: "",
-                            brand_id: "",
-                            attachment: null,
-                            expected_delivery_date: "",
-                            rfq_id: rfqId,
-                            status_id: "48",
-                        });
-                    }
 
                     // Format the main form data
                     const formattedData = {
@@ -515,29 +488,49 @@ export default function AddQuotationForm({ auth }) {
     };
     
     // Add a new handleEditItem function
-    const handleEditItem = (index) => {
-        setIsEditingItem(true);
-        setSelectedItem(formData.items[index]);
-        setIsItemModalOpen(true);
+    const handleEditItem = (itemId) => {
+        // Find the item by ID instead of index
+        const itemToEdit = formData.items.find(item => (item.id === itemId));
+        
+        if (itemToEdit) {
+            console.log("Editing item:", itemToEdit);
+            setIsEditingItem(true);
+            setSelectedItem(itemToEdit);
+            setIsItemModalOpen(true);
+            } else {
+            console.error("Item not found for editing:", itemId);
+        }
     };
     
-    // Replace handleItemChange with handleSaveItem
+    // Use the sorted array only for display, not for editing
+    const sortedItems = [...formData.items].sort((a, b) => {
+        // Sort by expected_delivery_date (earliest first)
+        const dateA = a.expected_delivery_date ? new Date(a.expected_delivery_date) : new Date(9999, 11, 31);
+        const dateB = b.expected_delivery_date ? new Date(b.expected_delivery_date) : new Date(9999, 11, 31);
+        return dateA - dateB;
+    });
+
+    // Replace handleSaveItem with this improved version
     const handleSaveItem = (itemData) => {
         const newItems = [...formData.items];
         
         if (isEditingItem && selectedItem) {
-            // Find and update the existing item
+            // Find and update the existing item by ID
             const index = newItems.findIndex(item => item.id === selectedItem.id);
             if (index !== -1) {
+                console.log("Updating item at index:", index, "with ID:", selectedItem.id);
                 newItems[index] = {
                     ...itemData,
                     id: selectedItem.id // Preserve the original ID
                 };
                 setFormData({ ...formData, items: newItems });
+            } else {
+                console.error("Could not find item with ID:", selectedItem.id);
             }
         } else {
             // Add a new item with a temporary ID
             const tempId = `temp-${Date.now()}`;
+            console.log("Adding new item with temp ID:", tempId);
             newItems.push({
                 ...itemData,
                 id: tempId,
@@ -546,6 +539,14 @@ export default function AddQuotationForm({ auth }) {
             });
             setFormData({ ...formData, items: newItems });
         }
+    };
+    
+    // Update the handleRemoveItem function to use item ID
+    const handleRemoveItem = (itemId) => {
+        if (formData.items.length <= 1) return; // Do not remove the last item
+
+        const newItems = formData.items.filter(item => item.id !== itemId);
+        setFormData({ ...formData, items: newItems });
     };
 
     const handleFileChange = (index, e) => {
@@ -566,14 +567,6 @@ export default function AddQuotationForm({ auth }) {
             };
             setFormData({ ...formData, items: updatedItems });
         }
-    };
-
-    const handleRemoveItem = (index) => {
-        if (formData.items.length <= 1) return; // Do not remove the last item
-
-        const newItems = [...formData.items];
-        newItems.splice(index, 1);
-        setFormData({ ...formData, items: newItems });
     };
 
     // Improve handleFileClick function to handle temporary file objects
@@ -695,106 +688,123 @@ export default function AddQuotationForm({ auth }) {
             const newRfqId = response.data.data?.id;
             console.log("RFQ ID:", newRfqId);
 
-            // Now save the items with the new RFQ ID
-            const itemsFormData = new FormData();
-            const itemsToSend = formData.items.map((item) => ({
-                id: item.id,
-                product_id: item.product_id,
-                unit_id: item.unit_id,
-                quantity: item.quantity,
-                brand_id: item.brand_id,
-                expected_delivery_date: item.expected_delivery_date,
-                rfq_id: newRfqId,
-                status_id: item.status_id || "48",
-            }));
-
-            console.log('Items to be saved:', itemsToSend); // Debug items data
-
-            itemsFormData.append("items", JSON.stringify(itemsToSend));
-
-            // Add attachments
-            if (attachments) {
-                Object.keys(attachments).forEach((index) => {
-                    if (attachments[index]) {
-                        itemsFormData.append(
-                        `attachments[${index}]`,
-                        attachments[index]
-                    );
+            // Only save items if there are items to save
+            if (formData.items.length > 0) {
+                console.log('Saving items for RFQ ID:', newRfqId);
+                console.log('Items data before sending:', formData.items);
+                
+                // For new items in edit mode, we need a different approach
+                // Split items into existing and new ones
+                const existingItems = [];
+                const newItems = [];
+                
+                formData.items.forEach(item => {
+                    // Check if this is a new item (has temp ID) or existing item
+                    if (item.id && !item.id.toString().startsWith('temp-') && !isNaN(parseInt(item.id))) {
+                        existingItems.push({
+                            id: item.id,
+                            product_id: item.product_id,
+                            item_name: item.item_name,
+                            description: item.description,
+                            unit_id: item.unit_id,
+                            quantity: item.quantity,
+                            brand_id: item.brand_id,
+                            expected_delivery_date: item.expected_delivery_date,
+                            rfq_id: newRfqId,
+                            status_id: item.status_id || "48",
+                        });
+                    } else {
+                        // This is a new item, don't include ID
+                        newItems.push({
+                            product_id: item.product_id,
+                            item_name: item.item_name,
+                            description: item.description,
+                            unit_id: item.unit_id,
+                            quantity: item.quantity,
+                            brand_id: item.brand_id,
+                            expected_delivery_date: item.expected_delivery_date,
+                            rfq_id: newRfqId,
+                            status_id: item.status_id || "48",
+                        });
                     }
                 });
-            }
-
-            const itemsResponse = await axios.post(
-                "/api/v1/rfq-items",
-                itemsFormData,
-                {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                        Accept: "application/json",
-                    },
-                }
-            );
-
-            console.log('Items save response:', itemsResponse.data); // Debug items response
-
-            // Only proceed with process steps if we have a successful RFQ response
-            if (newRfqId) {
-                const loggedUser = auth.user?.id;
-                const processResponse = await axios.get(
-                    "/api/v1/processes?include=steps,creator,updater&filter[title]=RFQ Approval"
-                );
-
-                if (processResponse.data?.data?.[0]?.steps?.[0]) {
-                    const process = processResponse.data.data[0];
-                    const processStep = process.steps[0];
-
-                    // Only proceed if we have valid process step data
-                    if (processStep?.id && processStep?.order) {
-                        const processResponseViaUser = await axios.get(
-                            `/api/v1/process-steps/${processStep.order}/user/${loggedUser}`
+                
+                console.log('Existing items to update:', existingItems);
+                console.log('New items to create:', newItems);
+                
+                // Handle existing items first if any
+                if (existingItems.length > 0) {
+                    try {
+                        const updateItemsFormData = new FormData();
+                        updateItemsFormData.append("items", JSON.stringify(existingItems));
+                        updateItemsFormData.append("rfq_id", newRfqId);
+                        
+                        console.log('Updating existing items...');
+                        const updateResponse = await axios.post(
+                            "/api/v1/rfq-items/update-batch",
+                            updateItemsFormData,
+                            {
+                                headers: {
+                                    "Content-Type": "multipart/form-data",
+                                    Accept: "application/json",
+                                },
+                            }
                         );
-                        const assignUser = processResponseViaUser?.data;
-
-                        if (assignUser?.user?.user?.id) {
-                            const RFQApprovalTransactionPayload = {
-                                rfq_id: newRfqId,
-                                requester_id: loggedUser,
-                                assigned_to: assignUser.user.user.id,
-                                order: processStep.order,
-                                description: processStep.description,
-                                status: "Pending",
-                            };
-                            await axios.post(
-                                "/api/v1/rfq-approval-transactions",
-                                RFQApprovalTransactionPayload
-                            );
-
-                            const taskPayload = {
-                                process_step_id: processStep.id,
-                                process_id: processStep.process_id,
-                                assigned_at: new Date().toISOString(),
-                                urgency: "Normal",
-                                assigned_to_user_id: assignUser.user.user.id,
-                                assigned_from_user_id: loggedUser,
-                                rfq_id: newRfqId,
-                            };
-                            await axios.post("/api/v1/tasks", taskPayload);
-                        }
+                        console.log('Update response:', updateResponse.data);
+                    } catch (updateError) {
+                        console.error('Error updating existing items:', updateError);
                     }
                 }
+                
+                // Handle new items (always create, even in edit mode)
+                if (newItems.length > 0) {
+                    try {
+                        const newItemsFormData = new FormData();
+                        newItemsFormData.append("items", JSON.stringify(newItems));
+                        newItemsFormData.append("rfq_id", newRfqId);
+                        
+                        // Add attachments for new items
+                        let attachmentIndex = 0;
+                        formData.items.forEach((item, index) => {
+                            if (!item.id || item.id.toString().startsWith('temp-') || isNaN(parseInt(item.id))) {
+                                if (item.tempFile) {
+                                    console.log(`Adding tempFile for new item ${attachmentIndex}:`, item.tempFile.name);
+                                    newItemsFormData.append(`attachments[${attachmentIndex}]`, item.tempFile);
+                                    attachmentIndex++;
+                                } else if (attachments && attachments[index]) {
+                                    console.log(`Adding attachment for new item ${attachmentIndex}:`, attachments[index].name);
+                                    newItemsFormData.append(`attachments[${attachmentIndex}]`, attachments[index]);
+                                    attachmentIndex++;
+                                }
+                            }
+                        });
+                        
+                        console.log('Creating new items...');
+                        const createResponse = await axios.post(
+                            "/api/v1/rfq-items",
+                            newItemsFormData,
+                            {
+                                headers: {
+                                    "Content-Type": "multipart/form-data",
+                                    Accept: "application/json",
+                                },
+                            }
+                        );
+                        console.log('Create response:', createResponse.data);
+                    } catch (createError) {
+                        console.error('Error creating new items:', createError);
+                        console.error('Error response:', createError.response?.data);
+                        alert("RFQ was saved, but there was an error saving new items: " + 
+                              (createError.response?.data?.message || "Unknown error"));
+                    }
+                }
+            } else {
+                console.log('No items to save');
             }
 
-            if (itemsResponse.data.success) {
-                console.log('All operations completed successfully'); // Debug success
-                
-                // Force a refresh to verify the update if in edit mode
-                if (rfqId) {
-                    await axios.get(`/api/v1/rfqs/${rfqId}?t=${new Date().getTime()}`);
-                }
-                
-                alert("RFQ and items saved successfully!");
-                router.visit(route("rfq.index"));
-            }
+            // Success message and redirect
+            alert("RFQ and items saved successfully!");
+            router.visit(route("rfq.index"));
         } catch (error) {
             console.error('Error in handleSaveAndSubmit:', error); // Debug error
             console.error('Error response:', error.response); // Debug error response
@@ -1198,8 +1208,8 @@ export default function AddQuotationForm({ auth }) {
                     {/* Table for Items with no border/outline in cells */}
                     <div className="overflow-x-auto">
                         <table className="min-w-full table-auto mt-4 border-collapse">
-                            <thead>
-                                <tr>
+                        <thead>
+                            <tr>
                                     <th className="px-2 py-2 text-center w-[5%] bg-[#C7E7DE] rounded-tl-2xl rounded-bl-2xl">#</th>
                                     <th className="px-2 py-2 text-center w-[13%] bg-[#C7E7DE]">Products</th>
                                     <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">Description</th>
@@ -1209,61 +1219,62 @@ export default function AddQuotationForm({ auth }) {
                                     <th className="px-2 py-2 text-center w-[14%] bg-[#C7E7DE]">Expected Delivery Date</th>
                                     <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Attachment</th>
                                     <th className="px-2 py-2 text-center w-[6%] bg-[#C7E7DE] rounded-tr-2xl rounded-br-2xl">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                {sortedItems.length > 0 ? (
+                                    sortedItems.map((item, index) => (
+                                        <tr key={item.id || index}>
+                                            <td className="px-4 py-2 text-center">{index + 1}</td>
+                                            <td className="px-4 py-2 text-center">{item.item_name}</td>
+                                            <td className="px-4 py-2 text-center">{item.description}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                {units.find((u) => u.id === parseInt(item.unit_id))?.name || item.unit_id}
+                                    </td>
+                                            <td className="px-4 py-2 text-center">{item.quantity}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                {brands.find((b) => b.id === parseInt(item.brand_id))?.name || item.brand_id}
+                                    </td>
+                                            <td className="px-4 py-2 text-center">{formatDate(item.expected_delivery_date)}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                {item.attachment ? (
+                                            <FileDisplay
+                                                file={item.attachment}
+                                                        onFileClick={() => handleFileClick(item.attachment)}
+                                                    />
+                                                ) : (
+                                                    <span className="text-gray-500 text-sm">No Attachment</span>
+                                                )}
+                                    </td>
+                                            <td className="px-4 py-2 text-center">
+                                                <div className="flex space-x-2 justify-center">
+                                        <button
+                                            type="button"
+                                                        onClick={() => handleEditItem(item.id)}
+                                                        className="text-blue-500 hover:text-blue-700"
+                                                    >
+                                                        <FontAwesomeIcon icon={faEdit} />
+                                        </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveItem(item.id)}
+                                                        className="text-red-500 hover:text-red-700"
+                                                    >
+                                                        <FontAwesomeIcon icon={faTrash} />
+                                                    </button>
+                                                </div>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {[...formData.items]
-                                    .sort((a, b) => {
-                                        // Sort by expected_delivery_date (earliest first)
-                                        const dateA = a.expected_delivery_date ? new Date(a.expected_delivery_date) : new Date(9999, 11, 31);
-                                        const dateB = b.expected_delivery_date ? new Date(b.expected_delivery_date) : new Date(9999, 11, 31);
-                                        return dateA - dateB;
-                                    })
-                                    .map((item, index) => (
-                                    <tr key={item.id || index}>
-                                        <td className="px-4 py-2 text-center">{index + 1}</td>
-                                        <td className="px-4 py-2 text-center">{item.item_name}</td>
-                                        <td className="px-4 py-2 text-center">{item.description}</td>
-                                        <td className="px-4 py-2 text-center">
-                                            {units.find((u) => u.id === parseInt(item.unit_id))?.name || item.unit_id}
-                                        </td>
-                                        <td className="px-4 py-2 text-center">{item.quantity}</td>
-                                        <td className="px-4 py-2 text-center">
-                                            {brands.find((b) => b.id === parseInt(item.brand_id))?.name || item.brand_id}
-                                        </td>
-                                        <td className="px-4 py-2 text-center">{formatDate(item.expected_delivery_date)}</td>
-                                        <td className="px-4 py-2 text-center">
-                                            {item.attachment ? (
-                                                <FileDisplay 
-                                                    file={item.attachment} 
-                                                    onFileClick={() => handleFileClick(item.attachment)}
-                                                />
-                                            ) : (
-                                                <span className="text-gray-500 text-sm">No Attachment</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-2 text-center">
-                                            <div className="flex space-x-2 justify-center">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleEditItem(index)}
-                                                    className="text-blue-500 hover:text-blue-700"
-                                                >
-                                                    <FontAwesomeIcon icon={faEdit} />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveItem(index)}
-                                                    className="text-red-500 hover:text-red-700"
-                                                >
-                                                    <FontAwesomeIcon icon={faTrash} />
-                                                </button>
-                                            </div>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="9" className="px-4 py-6 text-center text-gray-500">
+                                            No items added yet. Use the "Add Item" button below to add items to this RFQ.
                                         </td>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                )}
+                        </tbody>
+                    </table>
                     </div>
 
                     {/* Add Item Button - centered at bottom */}
