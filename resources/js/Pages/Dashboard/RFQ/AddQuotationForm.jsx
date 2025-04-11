@@ -29,6 +29,8 @@ export default function AddQuotationForm({ auth }) {
         city: "",
         category_id: "",
         warehouse_id: "",
+        cost_center_id: "",
+        sub_cost_center_id: "",
         issue_date: new Date().toISOString().split("T")[0],
         closing_date: "",
         rfq_id: "",
@@ -41,6 +43,9 @@ export default function AddQuotationForm({ auth }) {
     const [warehouses, setWarehouses] = useState([]);
     const [categories, setCategories] = useState([]);
     const [paymentTypes, setPaymentTypes] = useState([]);
+    const [costCenters, setCostCenters] = useState([]);
+    const [subCostCenters, setSubCostCenters] = useState([]);
+    const [costCenterTree, setCostCenterTree] = useState([]);
     const [units, setUnits] = useState([]);
     const [brands, setBrands] = useState([]);
     const [attachments, setAttachments] = useState({});
@@ -49,6 +54,8 @@ export default function AddQuotationForm({ auth }) {
     const [warehouseNames, setWarehouseNames] = useState({});
     const [categoryNames, setCategoryNames] = useState({});
     const [paymentTypeNames, setPaymentTypeNames] = useState({});
+    const [costCenterNames, setCostCenterNames] = useState({});
+    const [subCostCenterNames, setSubCostCenterNames] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [products, setProducts] = useState([]);
@@ -58,6 +65,54 @@ export default function AddQuotationForm({ auth }) {
     const [selectedItem, setSelectedItem] = useState(null);
     const [isEditingItem, setIsEditingItem] = useState(false);
 
+    // Function to get all children of a cost center recursively
+    const getAllChildren = (node) => {
+        let children = [];
+        if (node.children && node.children.length > 0) {
+            node.children.forEach(child => {
+                children.push(child);
+                children = [...children, ...getAllChildren(child)];
+            });
+        }
+        return children;
+    };
+
+    // Function to update sub cost center when cost center changes
+    const updateSubCostCenter = (selectedCostCenterId) => {
+        if (!selectedCostCenterId) {
+            handleFormInputChange("sub_cost_center_id", "");
+            return;
+        }
+
+        // Find the cost center that has this selected cost center as its parent
+        const subCostCenter = costCenters.find(
+            center => center.parent_id === parseInt(selectedCostCenterId)
+        );
+        
+        // If found, set it as the sub cost center
+        if (subCostCenter) {
+            handleFormInputChange("sub_cost_center_id", subCostCenter.id.toString());
+        } else {
+            handleFormInputChange("sub_cost_center_id", "");
+        }
+    };
+
+    // Handle cost center change
+    const handleCostCenterChange = (e) => {
+        const value = e.target.value;
+        handleFormInputChange("cost_center_id", value);
+        updateSubCostCenter(value);
+    };
+
+    // Add this useEffect to track formData changes
+    useEffect(() => {
+        console.log('FormData changed:', {
+            cost_center_id: formData.cost_center_id,
+            sub_cost_center_id: formData.sub_cost_center_id,
+            category_id: formData.category_id
+        });
+    }, [formData.cost_center_id, formData.sub_cost_center_id, formData.category_id]);
+
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
@@ -66,12 +121,30 @@ export default function AddQuotationForm({ auth }) {
                 const productsData = productsResponse.data?.data || [];
                 setProducts(productsData);
 
-        if (rfqId) {
-            setLoading(true);
-            setIsEditing(true);
+                // Fetch cost centers
+                const costCentersResponse = await axios.get("/api/v1/cost-centers");
+                const costCentersData = costCentersResponse.data?.data || [];
+                setCostCenters(costCentersData);
+
+                // Create lookup map for cost centers
+                const costCenterLookup = {};
+                costCentersData.forEach((center) => {
+                    if (center && center.id) {
+                        costCenterLookup[String(center.id)] = center.name;
+                    }
+                });
+                setCostCenterNames(costCenterLookup);
+
+                if (rfqId) {
+                    setLoading(true);
+                    setIsEditing(true);
+
+                    console.log('Fetching RFQ data for ID:', rfqId); // Debug log
 
                     const response = await axios.get(`/api/v1/rfqs/${rfqId}`);
                     const rfqData = response.data?.data;
+
+                    console.log('Received RFQ data:', rfqData); // Debug log
 
                     if (!rfqData) {
                         setError("RFQ not found or has invalid data format");
@@ -80,16 +153,22 @@ export default function AddQuotationForm({ auth }) {
                     }
 
                     // For category, we need to fetch from rfq_categories
-                    let categoryId = rfqData.category_id
-                        ? String(rfqData.category_id)
-                        : "";
-
-                    // If category_id is empty, try to fetch from rfq_categories relationship
-                    if (!categoryId && rfqId) {
+                    let categoryId = "";
+                    
+                    // First check if we have categories in the RFQ data
+                    if (rfqData.categories && rfqData.categories.length > 0) {
+                        categoryId = String(rfqData.categories[0].id);
+                        console.log('Found category ID from RFQ categories:', categoryId); // Debug log
+                    }
+                    
+                    // If still empty, try to get from rfq_categories relationship
+                    if (!categoryId) {
                         try {
+                            console.log('Fetching category from rfq_categories'); // Debug log
                             const categoryResponse = await axios.get(
                                 `/api/v1/rfq-categories/${rfqId}`
                             );
+                            console.log('Category response:', categoryResponse.data); // Debug log
                             if (
                                 categoryResponse.data &&
                                 categoryResponse.data.data &&
@@ -98,11 +177,27 @@ export default function AddQuotationForm({ auth }) {
                                 categoryId = String(
                                     categoryResponse.data.data[0].category_id
                                 );
+                                console.log('Found category ID from relationship:', categoryId); // Debug log
                             }
                         } catch (err) {
                             console.error("Error fetching category:", err);
                         }
                     }
+
+                    // If still empty, try to get from rfqData
+                    if (!categoryId && rfqData.category_id) {
+                        categoryId = String(rfqData.category_id);
+                        console.log('Using category ID from RFQ data:', categoryId); // Debug log
+                    }
+
+                    console.log('Final category ID to be used:', categoryId); // Debug log
+
+                    // Debug log for category data
+                    console.log("Response category data:", {
+                        category_id: rfqData.category_id,
+                        categories: rfqData.categories,
+                        extracted_id: categoryId
+                    });
 
                     const rfqItems = rfqData.items || [];
 
@@ -166,26 +261,24 @@ export default function AddQuotationForm({ auth }) {
                         };
                     });
 
+                    console.log('Setting category ID in formData:', categoryId); // Debug log
+
                     // Format the main form data
                     const formattedData = {
                         organization_name: rfqData.organization_name || "",
                         organization_email: rfqData.organization_email || "",
                         city: rfqData.city || "",
-
-                        category_id:
-                            rfqData.categories && rfqData.categories.length > 0
-                                ? String(rfqData.categories[0].id)
-                                : "",
-
+                        category_id: categoryId || (rfqData.category_id ? String(rfqData.category_id) : ""),
                         warehouse_id: rfqData.warehouse
                             ? String(rfqData.warehouse.id)
                             : "",
+                        cost_center_id: rfqData.cost_center_id?.toString() || "",
+                        sub_cost_center_id: rfqData.sub_cost_center_id?.toString() || "",
                         issue_date:
                             rfqData.request_date?.split("T")[0] ||
                             new Date().toISOString().split("T")[0],
                         closing_date: rfqData.closing_date?.split("T")[0] || "",
                         rfq_id: rfqData.rfq_number || "",
-
                         payment_type: rfqData.payment_type
                             ? String(rfqData.payment_type.id)
                             : "",
@@ -195,33 +288,35 @@ export default function AddQuotationForm({ auth }) {
                             : "48",
                         items: formattedItems,
                     };
+
+                    console.log('Setting formData:', formattedData); // Debug log
                     setFormData(formattedData);
                     setLoading(false);
-        } else {
-            // In create mode, get new RFQ number
-            axios
-                .get("/api/v1/rfqs/form-data")
-                .then((response) => {
-                    if (response.data && response.data.rfq_number) {
-                        setFormData((prev) => ({
-                            ...prev,
-                            rfq_id: response.data.rfq_number,
-                            issue_date:
-                                response.data.request_date ||
-                                new Date().toISOString().split("T")[0],
-                        }));
-                    }
-                })
-                .catch((error) => {
+                } else {
+                    // In create mode, get new RFQ number
+                    axios
+                        .get("/api/v1/rfqs/form-data")
+                        .then((response) => {
+                            if (response.data && response.data.rfq_number) {
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    rfq_id: response.data.rfq_number,
+                                    issue_date:
+                                        response.data.request_date ||
+                                        new Date().toISOString().split("T")[0],
+                                }));
+                            }
+                        })
+                        .catch((error) => {
                             console.error(
                                 "Error fetching new RFQ number:",
                                 error
                             );
-                })
-                .finally(() => {
-                    setLoading(false);
-                });
-        }
+                        })
+                        .finally(() => {
+                            setLoading(false);
+                        });
+                }
             } catch (error) {
                 console.error("Error fetching initial data:", error);
                 setError("Failed to load data");
@@ -237,8 +332,10 @@ export default function AddQuotationForm({ auth }) {
         const fetchData = async () => {
             try {
                 setLoading(true);
+                console.log('Fetching lookup data...'); // Debug log
+
                 const endpoints = [
-                    { name: "units", url: "/api/v1/units" },
+                    { name: "units", url: "/api/v1/units", params: { per_page: 100 } },
                     { name: "brands", url: "/api/v1/brands" },
                     { name: "categories", url: "/api/v1/product-categories" },
                     { name: "warehouses", url: "/api/v1/warehouses" },
@@ -249,10 +346,36 @@ export default function AddQuotationForm({ auth }) {
                 const results = await Promise.all(
                     endpoints.map(async (endpoint) => {
                         try {
-                            const response = await axios.get(endpoint.url);
+                            const response = await axios.get(endpoint.url, { params: endpoint.params });
+                            let data = response.data?.data || [];
+                            
+                            // Handle pagination for units
+                            if (endpoint.name === "units" && response.data?.meta) {
+                                const meta = response.data.meta;
+                                if (meta.last_page > 1) {
+                                    const remainingRequests = [];
+                                    for (let page = 2; page <= meta.last_page; page++) {
+                                        remainingRequests.push(
+                                            axios.get(endpoint.url, { 
+                                                params: { 
+                                                    ...endpoint.params,
+                                                    page 
+                                                } 
+                                            })
+                                        );
+                                    }
+                                    const remainingResponses = await Promise.all(remainingRequests);
+                                    remainingResponses.forEach(response => {
+                                        if (response.data?.data) {
+                                            data = [...data, ...response.data.data];
+                                        }
+                                    });
+                                }
+                            }
+                            
                             return {
                                 name: endpoint.name,
-                                data: response.data?.data || [],
+                                data: data,
                             };
                         } catch (error) {
                             console.warn(
@@ -267,7 +390,23 @@ export default function AddQuotationForm({ auth }) {
                 // Apply results to state
                 results.forEach((result) => {
                     switch (result.name) {
+                        case "categories":
+                            console.log('Setting categories:', result.data); // Debug log
+                            setCategories(result.data);
+
+                            // Create lookup map for categories
+                            const categoryLookup = {};
+                            result.data.forEach((category) => {
+                                if (category && category.id) {
+                                    categoryLookup[String(category.id)] = category.name;
+                                }
+                            });
+                            console.log('Setting category names lookup:', categoryLookup); // Debug log
+                            setCategoryNames(categoryLookup);
+                            break;
+
                         case "units":
+                            console.log('Setting units:', result.data); // Debug log
                             setUnits(result.data);
 
                             // Create lookup map for units
@@ -277,6 +416,7 @@ export default function AddQuotationForm({ auth }) {
                                     unitLookup[String(unit.id)] = unit.name;
                                 }
                             });
+                            console.log('Setting unit names lookup:', unitLookup); // Debug log
                             setUnitNames(unitLookup);
                             break;
 
@@ -291,20 +431,6 @@ export default function AddQuotationForm({ auth }) {
                                 }
                             });
                             setBrandNames(brandLookup);
-                            break;
-
-                        case "categories":
-                            setCategories(result.data);
-
-                            // Create lookup map for categories
-                            const categoryLookup = {};
-                            result.data.forEach((category) => {
-                                if (category && category.id) {
-                                    categoryLookup[String(category.id)] =
-                                        category.name;
-                                }
-                            });
-                            setCategoryNames(categoryLookup);
                             break;
 
                         case "warehouses":
@@ -480,6 +606,30 @@ export default function AddQuotationForm({ auth }) {
         fetchData();
     }, []);
 
+    // Add a useEffect to log category state changes
+    useEffect(() => {
+        console.log('Categories state updated:', categories);
+        console.log('Category names updated:', categoryNames);
+    }, [categories, categoryNames]);
+
+    // Add debug logs for units
+    useEffect(() => {
+        console.log('Units state:', units);
+        console.log('Unit names lookup:', unitNames);
+        console.log('Current items with units:', formData.items.map(item => ({
+            id: item.id,
+            unit_id: item.unit_id,
+            unit_name: unitNames[String(item.unit_id)]
+        })));
+    }, [units, unitNames, formData.items]);
+
+    // Update the unit display in the table
+    const getUnitName = (unitId) => {
+        const unitName = unitNames[String(unitId)];
+        console.log('Getting unit name for ID:', unitId, 'Result:', unitName);
+        return unitName || unitId;
+    };
+
     // Replace the old addItem function
     const addItem = () => {
         setIsEditingItem(false);
@@ -630,7 +780,8 @@ export default function AddQuotationForm({ auth }) {
         e.preventDefault();
 
         try {
-            console.log('Initial formData:', formData); // Debug initial state
+            console.log('Starting form submission...'); // Debug log
+            console.log('Current formData:', formData); // Debug log
 
             // Create a plain object with all required data
             const rfqData = {
@@ -639,6 +790,8 @@ export default function AddQuotationForm({ auth }) {
                 city: formData.city || "",
                 category_id: formData.category_id || "",
                 warehouse_id: formData.warehouse_id || "",
+                cost_center_id: formData.cost_center_id || "",
+                sub_cost_center_id: formData.sub_cost_center_id || "",
                 request_date: formData.issue_date || "",
                 closing_date: formData.closing_date || "",
                 rfq_number: formData.rfq_id || "",
@@ -648,13 +801,14 @@ export default function AddQuotationForm({ auth }) {
                 updated_at: new Date().toISOString()
             };
 
-            console.log('Prepared RFQ data for API:', rfqData); // Debug prepared data
+            console.log('Prepared RFQ data:', rfqData); // Debug log
 
             let response;
             if (rfqId) {
-                console.log('Updating existing RFQ:', rfqId); // Debug update operation
+                console.log('Updating RFQ with ID:', rfqId); // Debug log
+                console.log('Category ID being sent:', rfqData.category_id); // Debug log
                 
-                // For updates, use direct JSON data instead of FormData to avoid issues
+                // For updates, use direct JSON data
                 response = await axios.put(`/api/v1/rfqs/${rfqId}`, rfqData, {
                     headers: {
                         "Content-Type": "application/json",
@@ -662,13 +816,13 @@ export default function AddQuotationForm({ auth }) {
                     },
                 });
             } else {
-                console.log('Creating new RFQ'); // Debug create operation
+                console.log('Creating new RFQ'); // Debug log
                 
                 // Convert to FormData for new records
                 const formDataObj = new FormData();
                 Object.entries(rfqData).forEach(([key, value]) => {
                     formDataObj.append(key, value);
-                    console.log(`Appending to FormData: ${key}=${value}`); // Debug FormData construction
+                    console.log(`Adding to FormData: ${key} = ${value}`); // Debug log
                 });
                 
                 response = await axios.post("/api/v1/rfqs", formDataObj, {
@@ -679,14 +833,15 @@ export default function AddQuotationForm({ auth }) {
                 });
             }
 
-            console.log('API Response:', response.data); // Debug API response
+            console.log('API Response:', response.data); // Debug log
 
             if (!response.data?.data?.id) {
-                console.error('No RFQ ID in response:', response.data); // Debug missing ID
+                console.error('No RFQ ID in response:', response.data);
                 throw new Error("Failed to get RFQ ID");
             }
+
             const newRfqId = response.data.data?.id;
-            console.log("RFQ ID:", newRfqId);
+            console.log("RFQ ID received:", newRfqId);
 
             // Only save items if there are items to save
             if (formData.items.length > 0) {
@@ -702,16 +857,16 @@ export default function AddQuotationForm({ auth }) {
                     // Check if this is a new item (has temp ID) or existing item
                     if (item.id && !item.id.toString().startsWith('temp-') && !isNaN(parseInt(item.id))) {
                         existingItems.push({
-                            id: item.id,
-                            product_id: item.product_id,
+                id: item.id,
+                product_id: item.product_id,
                             item_name: item.item_name,
                             description: item.description,
-                            unit_id: item.unit_id,
-                            quantity: item.quantity,
-                            brand_id: item.brand_id,
-                            expected_delivery_date: item.expected_delivery_date,
-                            rfq_id: newRfqId,
-                            status_id: item.status_id || "48",
+                unit_id: item.unit_id,
+                quantity: item.quantity,
+                brand_id: item.brand_id,
+                expected_delivery_date: item.expected_delivery_date,
+                rfq_id: newRfqId,
+                status_id: item.status_id || "48",
                         });
                     } else {
                         // This is a new item, don't include ID
@@ -781,15 +936,15 @@ export default function AddQuotationForm({ auth }) {
                         
                         console.log('Creating new items...');
                         const createResponse = await axios.post(
-                            "/api/v1/rfq-items",
+                "/api/v1/rfq-items",
                             newItemsFormData,
-                            {
-                                headers: {
-                                    "Content-Type": "multipart/form-data",
-                                    Accept: "application/json",
-                                },
-                            }
-                        );
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                        Accept: "application/json",
+                    },
+                }
+            );
                         console.log('Create response:', createResponse.data);
                     } catch (createError) {
                         console.error('Error creating new items:', createError);
@@ -803,8 +958,8 @@ export default function AddQuotationForm({ auth }) {
             }
 
             // Success message and redirect
-            alert("RFQ and items saved successfully!");
-            router.visit(route("rfq.index"));
+                alert("RFQ and items saved successfully!");
+                router.visit(route("rfq.index"));
         } catch (error) {
             console.error('Error in handleSaveAndSubmit:', error); // Debug error
             console.error('Error response:', error.response); // Debug error response
@@ -1065,13 +1220,18 @@ export default function AddQuotationForm({ auth }) {
                                     {categories.map((category) => (
                                         <option
                                             key={category.id}
-                                            value={category.id.toString()}
+                                            value={String(category.id)}
                                             className="text-[#009FDC] bg-blue-50"
                                         >
                                             {category.name}
                                         </option>
                                     ))}
                                 </select>
+                                {/* Debug output */}
+                                <div style={{display: 'none'}}>
+                                    Selected category_id: {formData.category_id}
+                                    Available categories: {JSON.stringify(categories.map(c => ({id: c.id, name: c.name})))}
+                                </div>
                             </div>
 
                             <span className="font-medium text-gray-600">
@@ -1097,6 +1257,29 @@ export default function AddQuotationForm({ auth }) {
                                             className="text-[#009FDC] bg-blue-50"
                                         >
                                             {warehouse.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <span className="font-medium text-gray-600">
+                                Cost Center:
+                            </span>
+                            <div className="relative ml-3">
+                                <select
+                                    value={formData.cost_center_id || ""}
+                                    onChange={handleCostCenterChange}
+                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-72 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
+                                    required
+                                >
+                                    <option value="">Select Cost Center</option>
+                                    {costCenters.map((center) => (
+                                        <option
+                                            key={center.id}
+                                            value={center.id.toString()}
+                                            className="text-[#009FDC] bg-blue-50"
+                                        >
+                                            {center.name}
                                         </option>
                                     ))}
                                 </select>
@@ -1202,6 +1385,18 @@ export default function AddQuotationForm({ auth }) {
                                 className="text-black bg-blue-50 focus:ring-0 outline-none border-none w-full ml-2 text-lg"
                                 required
                             />
+
+                            <span className="font-medium text-gray-600">
+                                Sub Cost Center:
+                            </span>
+                            <div className="relative ml-5">
+                                <input
+                                    type="text"
+                                    value={costCenterNames[formData.sub_cost_center_id] || ""}
+                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 pl-0 pr-6 cursor-default outline-none border-none"
+                                    readOnly
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -1229,12 +1424,12 @@ export default function AddQuotationForm({ auth }) {
                                             <td className="px-4 py-2 text-center">{item.item_name}</td>
                                             <td className="px-4 py-2 text-center">{item.description}</td>
                                             <td className="px-4 py-2 text-center">
-                                                {units.find((u) => u.id === parseInt(item.unit_id))?.name || item.unit_id}
-                                    </td>
+                                                {getUnitName(item.unit_id)}
+                                            </td>
                                             <td className="px-4 py-2 text-center">{item.quantity}</td>
                                             <td className="px-4 py-2 text-center">
-                                                {brands.find((b) => b.id === parseInt(item.brand_id))?.name || item.brand_id}
-                                    </td>
+                                                {brandNames[String(item.brand_id)] || item.brand_id}
+                                            </td>
                                             <td className="px-4 py-2 text-center">{formatDate(item.expected_delivery_date)}</td>
                                             <td className="px-4 py-2 text-center">
                                                 {item.attachment ? (
