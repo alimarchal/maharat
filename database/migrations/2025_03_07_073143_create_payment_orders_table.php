@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->nullable()->comment('Created By')->constrained('users', 'id');
             $table->foreignId('purchase_order_id')->nullable()->constrained('purchase_orders', 'id');
+            $table->foreignId('cost_center_id')->nullable()->constrained('cost_centers', 'id');
+            $table->foreignId('sub_cost_center_id')->nullable()->comment('in cost center we are using parent_id for sub cost center')->constrained('cost_centers', 'id');
             $table->string('payment_order_number')->unique();
             $table->date('date')->nullable();
             $table->string('attachment')->nullable();

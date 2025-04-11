@@ -16,6 +16,8 @@ class UpdatePaymentOrderRequest extends FormRequest
         return [
             'user_id' => ['sometimes', 'nullable', 'exists:users,id'],
             'purchase_order_id' => ['sometimes', 'required', 'exists:purchase_orders,id'],
+            'cost_center_id' => ['nullable', 'exists:cost_centers,id'],
+            'sub_cost_center_id' => ['nullable', 'exists:cost_centers,id'],
             'date' => ['nullable', 'date'],
             'attachment' => ['nullable', 'string'],
             'total_amount' => ['nullable', 'string'],

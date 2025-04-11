@@ -37,6 +37,7 @@ class StoreUserRequest extends FormRequest
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
             'landline' => 'nullable|string|max:10',
+            'gender' => 'nullable|in:Male,Female',
             'mobile' => 'required|string|regex:/^05\d{8}$/|unique:users',
             'is_salesman_linked' => 'nullable|string',
             'language' => 'nullable|string|max:10',

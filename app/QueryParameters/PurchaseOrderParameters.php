@@ -20,6 +20,8 @@ class PurchaseOrderParameters
     ];
 
     public const ALLOWED_SORTS = [
+        'cost_center_id',
+        'sub_cost_center_id',
         'purchase_order_no',
         'rfq_id',
         'purchase_order_date',

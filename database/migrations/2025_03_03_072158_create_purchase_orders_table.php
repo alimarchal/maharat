@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('warehouse_id')->nullable()->constrained('warehouses');
             $table->foreignId('department_id')->nullable()->constrained('departments', 'id');
             $table->foreignId('cost_center_id')->nullable()->constrained('cost_centers', 'id');
-            $table->foreignId('sub_cost_center_id')->nullable()->constrained('cost_centers', 'id');
+            $table->foreignId('sub_cost_center_id')->nullable()->comment('in cost center we are using parent_id for sub cost center')->constrained('cost_centers', 'id');
             $table->string('purchase_order_no')->comment("Purchase Order Number NO (e.g., PO-2023-001)")->unique();
             $table->foreignId('quotation_id')->nullable()->constrained('quotations', 'id');
             $table->foreignId('supplier_id')->nullable()->comment('Supplier who submitted the quotation')->constrained();

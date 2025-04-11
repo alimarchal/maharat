@@ -90,6 +90,7 @@ class UpdateUserRequest extends FormRequest
             'password' => 'sometimes|nullable|string|min:8',
             'landline' => 'sometimes|nullable|string|max:20',
             'mobile' => 'sometimes|nullable|string|max:20',
+            'gender' => 'nullable|in:Male,Female',
             'language' => 'sometimes|nullable|string|max:10',
             'profile_photo_path' => 'sometimes|nullable|file|image|max:10240',
             'employee_type' => 'sometimes|nullable|string',

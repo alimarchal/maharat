@@ -13,6 +13,8 @@ class PaymentOrderResource extends JsonResource
             'id' => $this->id,
             'user_id' => $this->user_id,
             'purchase_order_id' => $this->purchase_order_id,
+            'cost_center_id' => $this->cost_center_id,
+            'sub_cost_center_id' => $this->sub_cost_center_id,
             'payment_order_number' => $this->payment_order_number,
             'date' => $this->date?->toDateString(),
             'attachment' => $this->attachment,
