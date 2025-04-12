@@ -23,6 +23,7 @@ const UserProfile = () => {
         employee_type: "",
         description: "",
         parent_id: "",
+        gender: "",
     });
 
     const [designations, setDesignations] = useState([]);
@@ -65,6 +66,7 @@ const UserProfile = () => {
                         employee_type: user.employee_type,
                         description: user.description,
                         parent_id: user.parent_id,
+                        gender: user.gender,
                     });
 
                     if (user.profile_photo_path) {
@@ -113,6 +115,7 @@ const UserProfile = () => {
             newErrors.designation_id = "Designation is required.";
         if (!formData.department_id)
             newErrors.department_id = "Department is required.";
+        if (!formData.gender) newErrors.gender = "Gender is required.";
 
         const employeeIdRegex = /^MAH-\d{6}$/;
         if (
@@ -335,9 +338,9 @@ const UserProfile = () => {
                             value={formData.landline}
                             onChange={handleChange}
                         />
-                        {errors.username && (
+                        {errors.landline && (
                             <p className="text-red-500 text-sm mt-1">
-                                {errors.username}
+                                {errors.landline}
                             </p>
                         )}
                     </div>
@@ -403,7 +406,7 @@ const UserProfile = () => {
                         />
                     </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
                         <SelectFloating
                             label="Language"
@@ -429,6 +432,23 @@ const UserProfile = () => {
                                 { id: "intern", label: "Intern" },
                             ]}
                         />
+                    </div>
+                    <div>
+                        <SelectFloating
+                            label="Gender"
+                            name="gender"
+                            value={formData.gender}
+                            onChange={handleChange}
+                            options={[
+                                { id: "Male", label: "Male" },
+                                { id: "Female", label: "Female" },
+                            ]}
+                        />
+                        {errors.gender && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.gender}
+                            </p>
+                        )}
                     </div>
                 </div>
 

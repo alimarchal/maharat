@@ -2,7 +2,7 @@ import ApplicationLogo from "@/Components/ApplicationLogo";
 import { Link, usePage } from "@inertiajs/react";
 import { useState, useEffect } from "react";
 import { faSearch, faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FaUserCircle } from "react-icons/fa";
+import { FaUserCircle, FaMale, FaFemale } from "react-icons/fa";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Sidebar from "@/Components/Sidebar";
 
@@ -82,8 +82,18 @@ export default function AuthenticatedLayout({ header, children }) {
                                 alt="Profile"
                                 className="h-10 w-10 lg:h-12 lg:w-12 rounded-full object-cover border border-gray-300 shadow-sm"
                             />
+                        ) : user.gender === "Male" ? (
+                            <div className="h-10 w-10 lg:h-12 lg:w-12 rounded-full bg-blue-100 flex items-center justify-center border border-blue-400 shadow-sm">
+                                <FaMale className="text-blue-400 text-xl lg:text-2xl" />
+                            </div>
+                        ) : user.gender === "Female" ? (
+                            <div className="h-10 w-10 lg:h-12 lg:w-12 rounded-full bg-pink-100 flex items-center justify-center border border-pink-400 shadow-sm">
+                                <FaFemale className="text-pink-400 text-xl lg:text-2xl" />
+                            </div>
                         ) : (
-                            <FaUserCircle className="h-10 w-10 lg:h-12 lg:w-12 text-gray-400" />
+                            <div className="h-10 w-10 lg:h-12 lg:w-12 rounded-full bg-gray-100 flex items-center justify-center border border-gray-400 shadow-sm">
+                                <FaUserCircle className="text-gray-400 text-xl lg:text-2xl" />
+                            </div>
                         )}
                     </Link>
                 </div>
