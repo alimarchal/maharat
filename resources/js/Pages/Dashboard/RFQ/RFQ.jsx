@@ -4,6 +4,7 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeftLong, faTrash, faFilePdf, faChevronRight, faFileExcel, faPen, faEdit } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
+import RFQPDF from "./RFQPDF";
 
 const RFQ = ({ auth }) => {
     const [rfqLogs, setRfqLogs] = useState([]);
@@ -12,6 +13,10 @@ const RFQ = ({ auth }) => {
     const [lastPage, setLastPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0); // For loading bar
+    
+    // Add new state for PDF generation
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+    const [selectedRfqId, setSelectedRfqId] = useState(null);
 
     const fetchRFQLogs = async () => {
         setLoading(true);
@@ -90,6 +95,21 @@ const RFQ = ({ auth }) => {
         } else {
             console.error("No ID found for RFQ log");
         }
+    };
+
+    // Add new function to handle PDF generation
+    const handleGeneratePDF = (rfqId) => {
+        setIsGeneratingPDF(true);
+        setSelectedRfqId(rfqId);
+    };
+    
+    // Add callback for when PDF generation is complete
+    const handlePDFGenerated = (documentUrl) => {
+        setIsGeneratingPDF(false);
+        setSelectedRfqId(null);
+        
+        // Refresh the RFQ list to show updated document URLs
+        fetchRFQLogs();
     };
 
     const formatDateTime = (dateString) => {
@@ -183,6 +203,20 @@ const RFQ = ({ auth }) => {
                     </div>
                 )}
 
+                {/* PDF Generation Component (conditionally rendered) */}
+                {isGeneratingPDF && selectedRfqId && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white p-8 rounded-lg shadow-lg">
+                            <h3 className="text-xl font-semibold mb-4">Generating PDF</h3>
+                            <div className="flex items-center">
+                                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mr-3"></div>
+                                <p>Please wait, generating PDF document...</p>
+                            </div>
+                            <RFQPDF rfqId={selectedRfqId} onGenerated={handlePDFGenerated} />
+                        </div>
+                    </div>
+                )}
+
                 {/* RFQs Table */}
                 <div className="w-full overflow-hidden">
                     {!loading && error && (
@@ -247,16 +281,17 @@ const RFQ = ({ auth }) => {
                                                     <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
                                                 </button>
 
-                                                {/* PDF Icon */}
-                                                <a
-                                                    href={log.attachments || "#"}
-                                                    target={log.attachments ? "_blank" : ""}
-                                                    rel={log.attachments ? "noopener noreferrer" : ""}
-                                                    className={`text-blue-600 ${!log.attachments ? "opacity-50 cursor-not-allowed" : ""}`}
-                                                    onClick={(e) => !log.attachments && e.preventDefault()} // Prevent click if no file
+                                                {/* PDF Icon - Updated to use our generate function */}
+                                                <button
+                                                    onClick={() => handleGeneratePDF(log.id)}
+                                                    className={`text-blue-600 hover:text-blue-800`}
+                                                    title="Generate or download PDF"
                                                 >
-                                                    <FontAwesomeIcon icon={faFilePdf} className="h-5 w-5" />
-                                                </a>
+                                                    <FontAwesomeIcon 
+                                                        icon={faFilePdf} 
+                                                        className={`h-5 w-5 ${log.quotation_document ? 'text-blue-800' : 'text-blue-600'}`} 
+                                                    />
+                                                </button>
 
                                                 {/* Excel Icon */}
                                                 <a

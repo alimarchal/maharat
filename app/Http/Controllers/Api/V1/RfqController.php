@@ -471,6 +471,57 @@ class RfqController extends Controller
         }
     }
 
+    /**
+     * Upload a PDF document for an RFQ
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    
+    public function uploadDocument(Request $request, $id)
+    {
+        try {
+            // Find the RFQ
+            $rfq = Rfq::findOrFail($id);
+            
+            // Validate request
+            $request->validate([
+                'quotation_document' => 'required|file|mimes:pdf|max:10240', // Max 10MB
+            ]);
+            
+            // Get the uploaded file
+            $file = $request->file('quotation_document');
+            
+            // Store the file in the public disk under the 'rfq-documents' directory
+            $path = $file->store('rfq-documents', 'public');
+            
+            // Update the RFQ record with the file path
+            $rfq->quotation_document = $path;
+            $rfq->save();
+            
+            // Return success response
+            return response()->json([
+                'success' => true,
+                'message' => 'Document uploaded successfully',
+                'document_url' => $path,
+            ]);
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'RFQ not found'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error uploading document: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upload document',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function getFormData()
     {
         try {

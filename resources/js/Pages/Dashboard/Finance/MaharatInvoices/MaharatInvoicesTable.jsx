@@ -7,6 +7,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, router } from "@inertiajs/react";
 import axios from "axios";
+import MaharatPDF from "./MaharatPDF";
 
 const MaharatInvoicesTable = () => {
     const [invoices, setInvoices] = useState([]);
@@ -16,6 +17,10 @@ const MaharatInvoicesTable = () => {
     const [lastPage, setLastPage] = useState(1);
     const [progress, setProgress] = useState(0);
     const [isDeleting, setIsDeleting] = useState(false);
+    
+    // Add state for PDF generation
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+    const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
 
     const [selectedFilter, setSelectedFilter] = useState("All");
     const filters = ["All", "Draft", "Pending", "Paid", "Overdue", "Cancelled"];
@@ -49,7 +54,8 @@ const MaharatInvoicesTable = () => {
                         customer_name: invoice.client?.name || 'N/A',
                         total_amount: invoice.total_amount || 0,
                         status: invoice.status || 'Draft',
-                        updated_at: invoice.updated_at
+                        updated_at: invoice.updated_at,
+                        invoice_document: invoice.invoice_document
                     };
                 });
 
@@ -92,6 +98,21 @@ const MaharatInvoicesTable = () => {
         } finally {
             setIsDeleting(false);
         }
+    };
+    
+    // Handle PDF generation
+    const handleGeneratePDF = (invoiceId) => {
+        setIsGeneratingPDF(true);
+        setSelectedInvoiceId(invoiceId);
+    };
+    
+    // Callback for when PDF generation is complete
+    const handlePDFGenerated = (documentUrl) => {
+        setIsGeneratingPDF(false);
+        setSelectedInvoiceId(null);
+        
+        // Refresh the invoices list to show updated document URLs
+        fetchInvoices();
     };
 
     const getStatusClass = (status) => {
@@ -200,6 +221,20 @@ const MaharatInvoicesTable = () => {
                     </div>
                 </div>
             )}
+            
+            {/* PDF Generation Component (conditionally rendered) */}
+            {isGeneratingPDF && selectedInvoiceId && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-8 rounded-lg shadow-lg">
+                        <h3 className="text-xl font-semibold mb-4">Generating PDF</h3>
+                        <div className="flex items-center">
+                            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mr-3"></div>
+                            <p>Please wait, generating PDF document...</p>
+                        </div>
+                        <MaharatPDF invoiceId={selectedInvoiceId} onGenerated={handlePDFGenerated} />
+                    </div>
+                </div>
+            )}
 
             {/* Table section */}
             <div className="w-full overflow-hidden">
@@ -241,11 +276,15 @@ const MaharatInvoicesTable = () => {
                                                 href={`/maharat-invoices/create/${invoice.id}`}
                                                 className="text-gray-600 hover:text-gray-800"
                                             >
-                                            <FontAwesomeIcon icon={faEdit} />
+                                                <FontAwesomeIcon icon={faEdit} />
                                             </Link>
-                                        <button className="text-blue-600 hover:text-blue-900">
-                                            <FontAwesomeIcon icon={faFilePdf} />
-                                        </button>
+                                            <button 
+                                                className={`text-blue-600 hover:text-blue-900 ${invoice.invoice_document ? 'text-blue-800' : 'text-blue-600'}`}
+                                                onClick={() => handleGeneratePDF(invoice.id)}
+                                                title="Generate or download PDF"
+                                            >
+                                                <FontAwesomeIcon icon={faFilePdf} />
+                                            </button>
                                             <button
                                                 onClick={() => handleDelete(invoice.id)}
                                                 className="text-red-600 hover:text-red-900"
