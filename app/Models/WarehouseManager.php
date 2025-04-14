@@ -17,11 +17,21 @@ class WarehouseManager extends Model
         'type',
     ];
 
+    protected $casts = [
+        'type' => 'string',
+    ];
+
+    /**
+     * Get the warehouse that this manager is associated with
+     */
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class);
     }
 
+    /**
+     * Get the user record for this warehouse manager
+     */
     public function manager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manager_id');
