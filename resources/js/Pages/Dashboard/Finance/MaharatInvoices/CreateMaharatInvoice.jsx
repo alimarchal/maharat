@@ -676,16 +676,26 @@ export default function CreateMaharatInvoice() {
     };
 
     // QR Code content
-    const qrCodeData = JSON.stringify({
-        seller: companyDetails?.name || "",
-        seller_vat: companyDetails?.vat_no || "",
-        invoice_no: invoiceNumber || "",
-        date: new Date().toISOString(),
-        total_amount: formData?.total || "",
-        currency: companyDetails?.currency || "",
-        buyer_vat: formData?.vat_no || "",
-    });
-    const qrCodeText = btoa(qrCodeData);
+    function toTLV(tag, value) {
+        const textEncoder = new TextEncoder();
+        const valueBytes = textEncoder.encode(value);
+        return new Uint8Array([tag, valueBytes.length, ...valueBytes]);
+    }
+
+    const tlvArray = [
+        toTLV(1, companyDetails.name),
+        toTLV(2, companyDetails.vat_no),
+        toTLV(3, new Date().toISOString()),
+        toTLV(4, parseFloat(formData.total).toFixed(2)),
+        toTLV(5, parseFloat(formData.vat_amount).toFixed(2)),
+    ];
+    const qrCodeText = btoa(
+        String.fromCharCode(
+            ...new Uint8Array(
+                tlvArray.reduce((acc, curr) => acc.concat(Array.from(curr)), [])
+            )
+        )
+    );
 
     return (
         <div className="flex flex-col bg-white rounded-2xl shadow-lg p-6 max-w-7xl mx-auto">
