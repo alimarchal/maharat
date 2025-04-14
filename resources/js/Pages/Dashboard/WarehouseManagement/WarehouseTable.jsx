@@ -26,6 +26,7 @@ const WarehouseTable = () => {
             );
             const data = await response.json();
             if (response.ok) {
+                console.log("W:", data.data);
                 setWarehouses(data.data || []);
                 setLastPage(data.meta?.last_page || 1);
             } else {
