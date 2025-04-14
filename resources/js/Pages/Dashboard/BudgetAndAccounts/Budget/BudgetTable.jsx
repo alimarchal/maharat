@@ -77,7 +77,7 @@ const BudgetTable = () => {
             </div>
 
             <table className="w-full border-collapse">
-                <thead className="bg-[#C7E7DE] text-[#2C323C] text-center text-xl font-medium">
+                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                     <tr>
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             Year
@@ -87,12 +87,12 @@ const BudgetTable = () => {
                         <th className="py-3 px-4">Total Revenue Actual</th>
                         <th className="py-3 px-4">Total Expense Planned</th>
                         <th className="py-3 px-4">Total Expense Actual</th>
-                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                             Actions
                         </th>
                     </tr>
                 </thead>
-                <tbody className="text-[#2C323C] text-center text-base font-medium divide-y divide-[#D7D8D9]">
+                <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
                             <td colSpan="7" className="text-center py-12">
@@ -135,17 +135,28 @@ const BudgetTable = () => {
                                     <td className="py-3 px-4">
                                         {budget.total_expense_actual}
                                     </td>
-                                    <td className="py-3 px-4 flex items-center justify-center gap-4">
+                                    <td className="py-3 px-4 flex items-center justify-center text-center gap-4">
                                         <Link
                                             href={`budget/details/${budget.id}`}
-                                            className="text-[#9B9DA2] hover:text-gray-800 transition duration-200"
+                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            title="View Budget"
                                         >
                                             <FontAwesomeIcon icon={faEye} />
                                         </Link>
-                                        <button className="text-red-500 hover:text-red-700 transition duration-200">
-                                            <FontAwesomeIcon icon={faFilePdf} />
+                                        <button
+                                            className="w-4 h-4"
+                                            title="Download Budget"
+                                        >
+                                            <img
+                                                src="/images/pdf-file.png"
+                                                alt="PDF"
+                                                className="w-full h-full"
+                                            />
                                         </button>
-                                        <button className="text-green-500 hover:text-green-700 transition duration-200">
+                                        <button
+                                            className="text-green-500 hover:text-green-700 transition duration-200"
+                                            title="Export to Excel"
+                                        >
                                             <FontAwesomeIcon
                                                 icon={faFileExcel}
                                             />

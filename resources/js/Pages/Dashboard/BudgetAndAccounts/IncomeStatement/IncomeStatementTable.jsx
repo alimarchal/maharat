@@ -21,85 +21,78 @@ const IncomeStatementTable = () => {
 
     const fetchIncomeStatementData = async () => {
         if (!formData.from_date || !formData.to_date) return;
-
         setLoading(true);
-        setProgress(0);
-        let progressInterval;
-
         try {
-            progressInterval = setInterval(() => {
-                setProgress((prev) => prev >= 90 ? 90 : prev + 10);
-            }, 200);
-
-            // Fetch revenue
-            const revenueResponse = await axios.get('/api/v1/income-statement/revenue', {
-                params: {
-                    from_date: formData.from_date,
-                    to_date: formData.to_date
+            const revenueResponse = await axios.get(
+                "/api/v1/income-statement/revenue",
+                {
+                    params: {
+                        from_date: formData.from_date,
+                        to_date: formData.to_date,
+                    },
                 }
-            });
-
-            // Fetch expenses
-            const expensesResponse = await axios.get('/api/v1/income-statement/expenses', {
-                params: {
-                    from_date: formData.from_date,
-                    to_date: formData.to_date
+            );
+            const expensesResponse = await axios.get(
+                "/api/v1/income-statement/expenses",
+                {
+                    params: {
+                        from_date: formData.from_date,
+                        to_date: formData.to_date,
+                    },
                 }
-            });
-
-            // Fetch financial transactions
-            const transactionsResponse = await axios.get('/api/v1/income-statement/transactions', {
-                params: {
-                    from_date: formData.from_date,
-                    to_date: formData.to_date
+            );
+            const transactionsResponse = await axios.get(
+                "/api/v1/income-statement/transactions",
+                {
+                    params: {
+                        from_date: formData.from_date,
+                        to_date: formData.to_date,
+                    },
                 }
-            });
+            );
+            const totalRevenue =
+                parseFloat(revenueResponse.data.data.total_revenue) || 0;
+            const totalExpenses =
+                parseFloat(expensesResponse.data.data.total_expenses) || 0;
+            const previousTransactions =
+                parseFloat(transactionsResponse.data.data.total_amount) || 0;
 
-            // Parse values as floats and handle null/undefined
-            const totalRevenue = parseFloat(revenueResponse.data.data.total_revenue) || 0;
-            const totalExpenses = parseFloat(expensesResponse.data.data.total_expenses) || 0;
-            const previousTransactions = parseFloat(transactionsResponse.data.data.total_amount) || 0;
-
-            // Calculate derived values
             const change = totalExpenses - totalRevenue;
             const finalNetAssets = change + previousTransactions;
 
-            // Format dates for display
             const fromDate = new Date(formData.from_date);
             const toDate = new Date(formData.to_date);
-            const monthPeriod = `${fromDate.toLocaleDateString('en-US', { 
-                month: 'long', 
-                day: 'numeric',
-                year: 'numeric'
-            })} - ${toDate.toLocaleDateString('en-US', { 
-                month: 'long',
-                day: 'numeric', 
-                year: 'numeric'
+            const monthPeriod = `${fromDate.toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+            })} - ${toDate.toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
             })}`;
 
-            setIncomeStatements([{
-                id: 1,
-                month: monthPeriod,
-                total_revenue: totalRevenue.toFixed(2),
-                total_expenses: totalExpenses.toFixed(2),
-                change: change.toFixed(2),
-                previous: previousTransactions.toFixed(2),
-                final_net_assets: finalNetAssets.toFixed(2)
-            }]);
+            setIncomeStatements([
+                {
+                    id: 1,
+                    month: monthPeriod,
+                    total_revenue: totalRevenue.toFixed(2),
+                    total_expenses: totalExpenses.toFixed(2),
+                    change: change.toFixed(2),
+                    previous: previousTransactions.toFixed(2),
+                    final_net_assets: finalNetAssets.toFixed(2),
+                },
+            ]);
 
             setError("");
         } catch (error) {
-            console.error('Error fetching data:', error);
             setError(
-                error.response?.data?.message || 
-                error.response?.data?.error || 
-                "Failed to fetch income statement data"
+                error.response?.data?.message ||
+                    error.response?.data?.error ||
+                    "Failed to fetch income statement data"
             );
-            console.log('Full error response:', error.response?.data);
         } finally {
-            if (progressInterval) clearInterval(progressInterval);
-            setProgress(100);
-            setTimeout(() => setLoading(false), 500);
+            setLoading(false);
         }
     };
 
@@ -111,7 +104,7 @@ const IncomeStatementTable = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     return (
@@ -129,9 +122,15 @@ const IncomeStatementTable = () => {
                             onChange={handleChange}
                             className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
                         />
-                        <label className={`absolute left-3 px-2 bg-white text-gray-500 text-base transition-all
-                            ${formData.from_date ? "-top-2 text-[#009FDC] text-sm" : "top-1/2 -translate-y-1/2"}
-                            peer-focus:-top-2 peer-focus:text-sm peer-focus:text-[#009FDC]`}>
+                        <label
+                            className={`absolute left-3 px-2 bg-white text-gray-500 text-base transition-all
+                            ${
+                                formData.from_date
+                                    ? "-top-2 text-[#009FDC] text-sm"
+                                    : "top-1/2 -translate-y-1/2"
+                            }
+                            peer-focus:-top-2 peer-focus:text-sm peer-focus:text-[#009FDC]`}
+                        >
                             Select From Date
                         </label>
                     </div>
@@ -143,105 +142,123 @@ const IncomeStatementTable = () => {
                             onChange={handleChange}
                             className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
                         />
-                        <label className={`absolute left-3 px-2 bg-white text-gray-500 text-base transition-all
-                            ${formData.to_date ? "-top-2 text-[#009FDC] text-sm" : "top-1/2 -translate-y-1/2"}
-                            peer-focus:-top-2 peer-focus:text-sm peer-focus:text-[#009FDC]`}>
+                        <label
+                            className={`absolute left-3 px-2 bg-white text-gray-500 text-base transition-all
+                            ${
+                                formData.to_date
+                                    ? "-top-2 text-[#009FDC] text-sm"
+                                    : "top-1/2 -translate-y-1/2"
+                            }
+                            peer-focus:-top-2 peer-focus:text-sm peer-focus:text-[#009FDC]`}
+                        >
                             Select To Date
                         </label>
                     </div>
                 </div>
             </div>
 
-            {/* Loading Bar */}
-            {loading && (
-                <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
-                    <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
-                        <div
-                            className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
-                            style={{ width: `${progress}%` }}
-                        ></div>
-                        <span className="absolute text-white">
-                            {progress < 60 ? "Please Wait, Fetching Details..." : `${progress}%`}
-                        </span>
-                    </div>
-                </div>
-            )}
-
-            {/* Error Message */}
-            {!loading && error && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-                    <span className="block sm:inline">{error}</span>
-                </div>
-            )}
-
-            {/* Table */}
-            {!loading && (
-                <table className="w-full border-collapse">
-                    <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
+            <table className="w-full border-collapse">
+                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                    <tr>
+                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
+                            Month Period
+                        </th>
+                        <th className="py-3 px-4">Total Revenue</th>
+                        <th className="py-3 px-4">Total Expenses</th>
+                        <th className="py-3 px-4">Change</th>
+                        <th className="py-3 px-4">Previous</th>
+                        <th className="py-3 px-4">Final Net Assets</th>
+                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
+                    {loading ? (
                         <tr>
-                            <th className="py-4 px-6 rounded-tl-2xl rounded-bl-2xl text-center whitespace-nowrap">
-                                Month Period
-                            </th>
-                            <th className="py-4 px-6 text-center whitespace-nowrap">Total Revenue</th>
-                            <th className="py-4 px-6 text-center whitespace-nowrap">Total Expenses</th>
-                            <th className="py-4 px-6 text-center whitespace-nowrap">Change</th>
-                            <th className="py-4 px-6 text-center whitespace-nowrap">Previous</th>
-                            <th className="py-4 px-6 text-center whitespace-nowrap">Final Net Assets</th>
-                            <th className="py-4 px-6 rounded-tr-2xl rounded-br-2xl text-center whitespace-nowrap">
-                                Action
-                            </th>
+                            <td colSpan="7" className="text-center py-12">
+                                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                        {incomeStatements.length > 0 ? (
-                            incomeStatements.map((statement) => (
-                                <tr key={statement.id}>
-                                    <td className="py-4 px-6 text-center whitespace-nowrap">
-                                        {statement.month}
-                                    </td>
-                                    <td className="py-4 px-6 text-center">
-                                        {Number(statement.total_revenue).toLocaleString()} SAR
-                                    </td>
-                                    <td className="py-4 px-6 text-center">
-                                        {Number(statement.total_expenses).toLocaleString()} SAR
-                                    </td>
-                                    <td className="py-4 px-6 text-center">
-                                        {Number(statement.change).toLocaleString()} SAR
-                                    </td>
-                                    <td className="py-4 px-6 text-center">
-                                        {Number(statement.previous).toLocaleString()} SAR
-                                    </td>
-                                    <td className="py-4 px-6 text-center">
-                                        {Number(statement.final_net_assets).toLocaleString()} SAR
-                                    </td>
-                                    <td className="py-4 px-6 flex items-center justify-center gap-4">
-                                        <Link
-                                            href={`income-statement/details/${statement.id}`}
-                                            className="text-[#9B9DA2] hover:text-gray-800 transition duration-200"
-                                        >
-                                            <FontAwesomeIcon icon={faEye} />
-                                        </Link>
-                                        <button className="text-red-500 hover:text-red-700 transition duration-200">
-                                            <FontAwesomeIcon icon={faFilePdf} />
-                                        </button>
-                                        <button className="text-green-500 hover:text-green-700 transition duration-200">
-                                            <FontAwesomeIcon icon={faFileExcel} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan="7" className="text-center py-4">
-                                    {formData.from_date && formData.to_date 
-                                        ? "No data found for selected date range" 
-                                        : "Please select date range"}
+                    ) : error ? (
+                        <tr>
+                            <td
+                                colSpan="7"
+                                className="text-center text-red-500 font-medium py-4"
+                            >
+                                {error}
+                            </td>
+                        </tr>
+                    ) : incomeStatements.length > 0 ? (
+                        incomeStatements.map((statement) => (
+                            <tr key={statement.id}>
+                                <td className="py-3 px-4">{statement.month}</td>
+                                <td className="py-3 px-4">
+                                    {Number(
+                                        statement.total_revenue
+                                    ).toLocaleString()}{" "}
+                                    SAR
+                                </td>
+                                <td className="py-3 px-4">
+                                    {Number(
+                                        statement.total_expenses
+                                    ).toLocaleString()}{" "}
+                                    SAR
+                                </td>
+                                <td className="py-3 px-4">
+                                    {Number(statement.change).toLocaleString()}{" "}
+                                    SAR
+                                </td>
+                                <td className="py-3 px-4">
+                                    {Number(
+                                        statement.previous
+                                    ).toLocaleString()}{" "}
+                                    SAR
+                                </td>
+                                <td className="py-3 px-4">
+                                    {Number(
+                                        statement.final_net_assets
+                                    ).toLocaleString()}{" "}
+                                    SAR
+                                </td>
+                                <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
+                                    <Link
+                                        href={`income-statement/details/${statement.id}`}
+                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                        title="View Income Statement"
+                                    >
+                                        <FontAwesomeIcon icon={faEye} />
+                                    </Link>
+                                    <button
+                                        className="w-4 h-4"
+                                        title="Download Income Statement"
+                                    >
+                                        <img
+                                            src="/images/pdf-file.png"
+                                            alt="PDF"
+                                            className="w-full h-full"
+                                        />
+                                    </button>
+                                    <button
+                                        className="text-green-500 hover:text-green-600"
+                                        title="Export to Excel"
+                                    >
+                                        <FontAwesomeIcon icon={faFileExcel} />
+                                    </button>
                                 </td>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
-            )}
+                        ))
+                    ) : (
+                        <tr>
+                            <td colSpan="7" className="text-center py-4">
+                                {formData.from_date && formData.to_date
+                                    ? "No data found for selected date range"
+                                    : "Please select date range"}
+                            </td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
         </div>
     );
 };

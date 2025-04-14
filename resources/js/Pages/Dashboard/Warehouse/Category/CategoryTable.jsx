@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 
 const CategoryTable = () => {
     const [category, setCategory] = useState([]);
@@ -68,7 +68,7 @@ const CategoryTable = () => {
                             ID
                         </th>
                         <th className="py-3 px-4">Category Name</th>
-                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                             Actions
                         </th>
                     </tr>
@@ -94,19 +94,18 @@ const CategoryTable = () => {
                             <tr key={cat.id}>
                                 <td className="py-3 px-4">{cat.id}</td>
                                 <td className="py-3 px-4">{cat.name}</td>
-                                <td className="py-3 px-4 flex space-x-3">
-                                    {/* <Link className="text-[#9B9DA2] hover:text-gray-500">
-                                        <FontAwesomeIcon icon={faEye} />
-                                    </Link> */}
+                                <td className="py-3 px-4 flex justify-center text-center space-x-3">
                                     <Link
                                         href={`/category/${cat.id}/edit`}
-                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                        className="text-blue-400 hover:text-blue-500"
+                                        title="Edit Category"
                                     >
                                         <FontAwesomeIcon icon={faEdit} />
                                     </Link>
                                     <button
                                         onClick={() => handleDelete(cat.id)}
-                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                        className="text-red-600 hover:text-red-800"
+                                        title="Delete Category"
                                     >
                                         <FontAwesomeIcon icon={faTrash} />
                                     </button>
@@ -140,7 +139,7 @@ const CategoryTable = () => {
                                 currentPage === page
                                     ? "bg-[#009FDC] text-white"
                                     : "border border-[#B9BBBD] bg-white"
-                            } rounded-full hover:bg-[#0077B6] transition`}
+                            } rounded-full hover:bg-[#0077B6] hover:text-white transition`}
                         >
                             {page}
                         </button>

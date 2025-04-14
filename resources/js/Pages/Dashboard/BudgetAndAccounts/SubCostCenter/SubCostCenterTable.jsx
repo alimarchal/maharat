@@ -90,8 +90,8 @@ const SubCostCenterTable = () => {
                         <th className="py-3 px-4">Manager</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">Description</th>
-                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
-                            Action
+                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
+                            Actions
                         </th>
                     </tr>
                 </thead>
@@ -140,7 +140,7 @@ const SubCostCenterTable = () => {
                                     <td className="py-3 px-4">
                                         {center.description}
                                     </td>
-                                    <td className="py-3 px-4 flex space-x-3">
+                                    <td className="py-3 px-4 flex justify-center text-center space-x-3">
                                         <button
                                             onClick={() => {
                                                 setSelectedSubCostCenter(
@@ -148,15 +148,17 @@ const SubCostCenterTable = () => {
                                                 );
                                                 setIsModalOpen(true);
                                             }}
-                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            className="text-blue-400 hover:text-blue-500"
+                                            title="Edit Sub Cost Center"
                                         >
                                             <FontAwesomeIcon icon={faEdit} />
                                         </button>
                                         <button
-                                            className="text-[#9B9DA2] hover:text-gray-500"
                                             onClick={() =>
                                                 handleDelete(center.id)
                                             }
+                                            className="text-red-600 hover:text-red-800"
+                                            title="Delete Sub Cost Center"
                                         >
                                             <FontAwesomeIcon icon={faTrash} />
                                         </button>

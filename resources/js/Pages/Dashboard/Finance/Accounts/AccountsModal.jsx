@@ -5,7 +5,13 @@ import axios from "axios";
 import InputFloating from "../../../../Components/InputFloating";
 import SelectFloating from "../../../../Components/SelectFloating";
 
-const AccountsModal = ({ isOpen, onClose, onSave, account = null, isEdit = false }) => {
+const AccountsModal = ({
+    isOpen,
+    onClose,
+    onSave,
+    account = null,
+    isEdit = false,
+}) => {
     const [formData, setFormData] = useState({
         name: "",
         status: "",
@@ -28,7 +34,7 @@ const AccountsModal = ({ isOpen, onClose, onSave, account = null, isEdit = false
                     description: account.description || "",
                     chart_of_account_id: account.chart_of_account_id || "",
                     cost_center_id: account.cost_center_id || "",
-                    status: account.status || "Pending"
+                    status: account.status || "Pending",
                 });
             } else {
                 setFormData({
@@ -36,7 +42,7 @@ const AccountsModal = ({ isOpen, onClose, onSave, account = null, isEdit = false
                     description: "",
                     chart_of_account_id: "",
                     cost_center_id: "",
-                    status: "Pending"
+                    status: "Pending",
                 });
             }
         }
@@ -44,30 +50,29 @@ const AccountsModal = ({ isOpen, onClose, onSave, account = null, isEdit = false
 
     const fetchFormData = async () => {
         try {
-            // Fetch cost centers
-            const costCentersResponse = await axios.get('/api/v1/cost-centers');
+            const costCentersResponse = await axios.get("/api/v1/cost-centers");
             setCostCenters(costCentersResponse.data.data || []);
-            
-            // Fetch chart of accounts with account code relationship
-            const chartOfAccountsResponse = await axios.get('/api/v1/chart-of-accounts?include=accountCode');
-            console.log('Chart of accounts response:', chartOfAccountsResponse.data);
-            
-            // Extract unique account types from chart of accounts
+
+            const chartOfAccountsResponse = await axios.get(
+                "/api/v1/chart-of-accounts?include=accountCode"
+            );
+
             const uniqueTypes = new Map();
-            chartOfAccountsResponse.data.data.forEach(item => {
-                if (item.account_code && !uniqueTypes.has(item.account_code.id)) {
+            chartOfAccountsResponse.data.data.forEach((item) => {
+                if (
+                    item.account_code &&
+                    !uniqueTypes.has(item.account_code.id)
+                ) {
                     uniqueTypes.set(item.account_code.id, {
                         id: item.account_code.id,
-                        label: item.account_code.account_type
+                        label: item.account_code.account_type,
                     });
                 }
             });
-            
+
             const formattedTypes = Array.from(uniqueTypes.values());
-            console.log('Formatted account types:', formattedTypes);
             setAccountTypes(formattedTypes);
         } catch (error) {
-            console.error('Error fetching form data:', error);
             setErrors({ fetch: "Failed to load form data" });
         }
     };
@@ -78,98 +83,83 @@ const AccountsModal = ({ isOpen, onClose, onSave, account = null, isEdit = false
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('Form submitted with data:', formData);
         setIsSaving(true);
         setErrors({});
-        
-        // Validate required fields
+
         const validationErrors = {};
         if (!formData.name) validationErrors.name = "Name is required";
-        if (!formData.cost_center_id) validationErrors.cost_center_id = "Cost Center is required";
-        if (!formData.chart_of_account_id) validationErrors.chart_of_account_id = "Type is required";
+        if (!formData.cost_center_id)
+            validationErrors.cost_center_id = "Cost Center is required";
+        if (!formData.chart_of_account_id)
+            validationErrors.chart_of_account_id = "Type is required";
         if (!formData.status) validationErrors.status = "Status is required";
-        
+
         if (Object.keys(validationErrors).length > 0) {
-            console.log('Validation errors:', validationErrors);
             setErrors(validationErrors);
             setIsSaving(false);
             return;
         }
-        
+
         try {
             if (isEdit && account) {
-                // For editing, just pass the form data to the parent component
-                console.log('Editing account with data:', formData);
                 onSave(formData);
             } else {
-                // For creating a new account, first create a chart of account
-                console.log('Creating new account with data:', formData);
-                console.log('Available account types:', accountTypes);
-                
-                // Convert chart_of_account_id to a number for comparison
-                const selectedTypeId = parseInt(formData.chart_of_account_id, 10);
-                console.log('Looking for account type with ID:', selectedTypeId);
-                
-                const selectedType = accountTypes.find(type => type.id === selectedTypeId);
-                console.log('Selected account type:', selectedType);
-                
+                const selectedTypeId = parseInt(
+                    formData.chart_of_account_id,
+                    10
+                );
+                const selectedType = accountTypes.find(
+                    (type) => type.id === selectedTypeId
+                );
+
                 if (!selectedType) {
-                    console.error('No valid account type selected');
-                    setErrors({ chart_of_account_id: "Please select a valid account type" });
+                    setErrors({
+                        chart_of_account_id:
+                            "Please select a valid account type",
+                    });
                     setIsSaving(false);
                     return;
                 }
-                
+
                 try {
-                    // Create a new chart of account
                     const chartOfAccountData = {
                         account_name: formData.name,
                         description: formData.description,
-                        account_code_id: selectedType.id.toString(), // Convert to string
+                        account_code_id: selectedType.id.toString(),
                         is_active: true,
-                        parent_id: null
+                        parent_id: null,
                     };
-                    
-                    console.log('Creating chart of account with:', chartOfAccountData);
-                    
-                    const chartOfAccountResponse = await axios.post('/api/v1/chart-of-accounts', chartOfAccountData);
-                    console.log('Chart of account created:', chartOfAccountResponse.data);
-                    
-                    // Use the new chart of account's ID for the account
+                    const chartOfAccountResponse = await axios.post(
+                        "/api/v1/chart-of-accounts",
+                        chartOfAccountData
+                    );
                     const accountData = {
                         name: formData.name,
                         description: formData.description,
-                        chart_of_account_id: chartOfAccountResponse.data.data.id.toString(), // Convert to string
-                        cost_center_id: formData.cost_center_id.toString(), // Convert to string
+                        chart_of_account_id:
+                            chartOfAccountResponse.data.data.id.toString(),
+                        cost_center_id: formData.cost_center_id.toString(),
                         department_id: null,
-                        status: formData.status
+                        status: formData.status,
                     };
-                    
-                    console.log('Creating account with data:', accountData);
-                    
-                    // Pass the account data to the parent component
                     onSave(accountData);
                 } catch (chartError) {
-                    console.error("Error with chart of account:", chartError);
                     if (chartError.response?.data?.errors) {
-                        console.log('Chart of account validation errors:', chartError.response.data.errors);
                         setErrors(chartError.response.data.errors);
                     } else {
-                        setErrors({ submit: chartError.response?.data?.message || "Failed to process chart of account" });
+                        setErrors({
+                            submit:
+                                chartError.response?.data?.message ||
+                                "Failed to process chart of account",
+                        });
                     }
                     setIsSaving(false);
                     return;
                 }
             }
-            
             onClose();
         } catch (error) {
-            console.error("Error saving account:", error);
-            if (error.response?.data?.errors) {
-                setErrors(error.response.data.errors);
-            } else {
-                setErrors({ submit: error.response?.data?.message || "Failed to save account" });
-            }
+            setErrors(error.response.data.errors);
         } finally {
             setIsSaving(false);
         }
@@ -177,16 +167,14 @@ const AccountsModal = ({ isOpen, onClose, onSave, account = null, isEdit = false
 
     if (!isOpen) return null;
 
-    // Format cost centers for SelectFloating
-    const costCenterOptions = costCenters.map(center => ({
+    const costCenterOptions = costCenters.map((center) => ({
         id: center.id,
-        label: center.name
+        label: center.name,
     }));
 
-    // Status options
     const statusOptions = [
         { id: "Approved", label: "Approved" },
-        { id: "Pending", label: "Pending" }
+        { id: "Pending", label: "Pending" },
     ];
 
     return (
@@ -248,7 +236,11 @@ const AccountsModal = ({ isOpen, onClose, onSave, account = null, isEdit = false
                             className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full"
                             disabled={isSaving}
                         >
-                            {isSaving ? "Saving..." : (isEdit ? "Save" : "Submit")}
+                            {isSaving
+                                ? "Saving..."
+                                : isEdit
+                                ? "Update"
+                                : "Submit"}
                         </button>
                     </div>
                 </form>

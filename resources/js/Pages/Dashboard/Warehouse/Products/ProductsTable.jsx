@@ -70,7 +70,7 @@ const ProductsTable = () => {
                         <th className="py-3 px-4">Units</th>
                         <th className="py-3 px-4">Item Code</th>
                         <th className="py-3 px-4">Description</th>
-                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                             Actions
                         </th>
                     </tr>
@@ -106,19 +106,18 @@ const ProductsTable = () => {
                                 <td className="py-3 px-4">
                                     {product.description}
                                 </td>
-                                <td className="py-3 px-4 flex space-x-3">
-                                    {/* <Link className="text-[#9B9DA2] hover:text-gray-500">
-                                        <FontAwesomeIcon icon={faEye} />
-                                    </Link> */}
+                                <td className="py-3 px-4 flex justify-center text-center space-x-3">
                                     <Link
                                         href={`/items/${product.id}/edit`}
-                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                        className="text-blue-400 hover:text-blue-500"
+                                        title="Edit Item"
                                     >
                                         <FontAwesomeIcon icon={faEdit} />
                                     </Link>
                                     <button
                                         onClick={() => handleDelete(product.id)}
-                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                        className="text-red-600 hover:text-red-800"
+                                        title="Delete Item"
                                     >
                                         <FontAwesomeIcon icon={faTrash} />
                                     </button>
@@ -152,7 +151,7 @@ const ProductsTable = () => {
                                 currentPage === page
                                     ? "bg-[#009FDC] text-white"
                                     : "border border-[#B9BBBD] bg-white"
-                            } rounded-full hover:bg-[#0077B6] transition`}
+                            } rounded-full hover:bg-[#0077B6] hover:text-white transition`}
                         >
                             {page}
                         </button>
