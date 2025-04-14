@@ -124,7 +124,7 @@ const ReceivedMRsTable = () => {
                         <th className="py-3 px-4">Priority</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">Date & Time</th>
-                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                             Actions
                         </th>
                     </tr>
@@ -215,8 +215,11 @@ const ReceivedMRsTable = () => {
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="py-3 px-4 flex space-x-3">
-                                        <button className="text-[#9B9DA2] hover:text-gray-500">
+                                    <td className="py-3 px-4 flex justify-center text-center space-x-3">
+                                        <button
+                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            title="View Request"
+                                        >
                                             <FontAwesomeIcon icon={faEye} />
                                         </button>
                                         <button
@@ -225,6 +228,7 @@ const ReceivedMRsTable = () => {
                                                 setIsModalOpen(true);
                                             }}
                                             className="text-[#9B9DA2] hover:text-gray-500"
+                                            title="Issue Material Request"
                                         >
                                             <FontAwesomeIcon
                                                 icon={faChevronRight}

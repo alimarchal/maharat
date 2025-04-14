@@ -24,9 +24,9 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
                     requestData.items
                         ?.map((item) => item.product?.name)
                         .join(", ") || "",
-                cost_center_id: requestData.costCenter?.id || "",
-                sub_cost_center_id: requestData.subCostCenter?.id || "",
-                department_id: requestData.department?.id || "",
+                cost_center_id: requestData.costCenter?.name || "",
+                sub_cost_center_id: requestData.subCostCenter?.name || "",
+                department_id: requestData.department?.name || "",
                 priority: "",
                 status: "",
                 description: "",

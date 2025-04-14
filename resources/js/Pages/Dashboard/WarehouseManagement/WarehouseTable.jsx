@@ -5,8 +5,6 @@ import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 
 const WarehouseTable = () => {
     const [warehouses, setWarehouses] = useState([]);
-    const [managers, setManagers] = useState({});
-    const [users, setUsers] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -14,8 +12,6 @@ const WarehouseTable = () => {
 
     useEffect(() => {
         fetchWarehouses();
-        fetchManagers();
-        fetchUsers();
     }, [currentPage]);
 
     const fetchWarehouses = async () => {
@@ -26,56 +22,15 @@ const WarehouseTable = () => {
             );
             const data = await response.json();
             if (response.ok) {
-                console.log("W:", data.data);
                 setWarehouses(data.data || []);
                 setLastPage(data.meta?.last_page || 1);
             } else {
                 setError(data.message || "Failed to fetch warehouses.");
             }
         } catch (err) {
-            console.error("Error fetching warehouses:", err);
             setError("Error loading warehouses.");
         } finally {
             setLoading(false);
-        }
-    };
-
-    // Fetch Warehouse Managers
-    const fetchManagers = async () => {
-        try {
-            const response = await fetch(`/api/v1/warehouse-managers`);
-            const data = await response.json();
-            if (response.ok) {
-                const managerMap = {};
-                data.data.forEach((manager) => {
-                    if (
-                        !managerMap[manager.warehouse_id] ||
-                        manager.role === "Manager"
-                    ) {
-                        managerMap[manager.warehouse_id] = manager.manager_id;
-                    }
-                });
-                setManagers(managerMap);
-            }
-        } catch (err) {
-            console.error("Error fetching warehouse managers:", err);
-        }
-    };
-
-    // Fetch Users (Managers)
-    const fetchUsers = async () => {
-        try {
-            const response = await fetch(`/api/v1/users`);
-            const data = await response.json();
-            if (response.ok) {
-                const userMap = {};
-                data.data.forEach((user) => {
-                    userMap[user.id] = user.name;
-                });
-                setUsers(userMap);
-            }
-        } catch (err) {
-            console.error("Error fetching users:", err);
         }
     };
 
@@ -96,7 +51,6 @@ const WarehouseTable = () => {
                 alert(data.message || "Failed to delete warehouse.");
             }
         } catch (err) {
-            console.error("Error deleting warehouse:", err);
             alert("An error occurred while deleting the warehouse.");
         }
     };
@@ -113,7 +67,7 @@ const WarehouseTable = () => {
                         <th className="py-3 px-4">Manager Name</th>
                         <th className="py-3 px-4">Code</th>
                         <th className="py-3 px-4">Address</th>
-                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                             Actions
                         </th>
                     </tr>
@@ -136,9 +90,6 @@ const WarehouseTable = () => {
                         </tr>
                     ) : warehouses.length > 0 ? (
                         warehouses.map((warehouse) => {
-                            const managerId = managers[warehouse.id];
-                            const managerName = users[managerId];
-
                             return (
                                 <tr key={warehouse.id}>
                                     <td className="py-3 px-4">
@@ -147,22 +98,20 @@ const WarehouseTable = () => {
                                     <td className="py-3 px-4">
                                         {warehouse.name}
                                     </td>
-                                    <td className="py-3 px-4">{managerName}</td>
+                                    <td className="py-3 px-4">
+                                        {warehouse.manager?.user.name}
+                                    </td>
                                     <td className="py-3 px-4">
                                         {warehouse.code}
                                     </td>
                                     <td className="py-3 px-4">
                                         {warehouse.address}
                                     </td>
-                                    <td className="py-3 px-4 flex space-x-3">
-                                        {/* <button
-                                        className="text-[#9B9DA2] hover:text-gray-500"
-                                    >
-                                        <FontAwesomeIcon icon={faEye} />
-                                    </button> */}
+                                    <td className="py-3 px-4 flex justify-center text-center space-x-3">
                                         <Link
                                             href={`/warehouse-management/${warehouse.id}/edit`}
-                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            className="text-blue-400 hover:text-blue-500"
+                                            title="Edit Warehouse"
                                         >
                                             <FontAwesomeIcon icon={faEdit} />
                                         </Link>
@@ -170,7 +119,8 @@ const WarehouseTable = () => {
                                             onClick={() =>
                                                 handleDelete(warehouse.id)
                                             }
-                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            className="text-red-600 hover:text-red-800"
+                                            title="Delete Warehouse"
                                         >
                                             <FontAwesomeIcon icon={faTrash} />
                                         </button>
@@ -205,7 +155,7 @@ const WarehouseTable = () => {
                                 currentPage === page
                                     ? "bg-[#009FDC] text-white"
                                     : "border border-[#B9BBBD] bg-white"
-                            } rounded-full hover:bg-[#0077B6] transition`}
+                            } rounded-full hover:bg-[#0077B6] hover:text-white transition`}
                         >
                             {page}
                         </button>

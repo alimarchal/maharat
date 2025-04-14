@@ -42,7 +42,7 @@ const RequestBudgetTable = () => {
             </div>
 
             <table className="w-full border-collapse">
-                <thead className="bg-[#C7E7DE] text-[#2C323C] text-center text-xl font-medium">
+                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                     <tr>
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             Year
@@ -54,12 +54,12 @@ const RequestBudgetTable = () => {
                         <th className="py-3 px-4">Requested Amount</th>
                         <th className="py-3 px-4">Urgency</th>
                         <th className="py-3 px-4">Description</th>
-                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                             Actions
                         </th>
                     </tr>
                 </thead>
-                <tbody className="text-[#2C323C] text-center text-base font-medium divide-y divide-[#D7D8D9]">
+                <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
                             <td colSpan="9" className="text-center py-12">
@@ -101,13 +101,19 @@ const RequestBudgetTable = () => {
                                     {request.reason_for_increase}
                                 </td>
                                 <td className="py-3 px-4 flex items-center justify-center gap-4">
-                                    <button className="text-gray-600 hover:text-gray-800">
+                                    <button
+                                        className="text-gray-500 hover:text-gray-600"
+                                        title="View Budget Request"
+                                    >
                                         <FontAwesomeIcon icon={faEye} />
                                     </button>
                                     {/* <button className="text-gray-600 hover:text-gray-800">
                                         <FontAwesomeIcon icon={faEdit} />
                                     </button> */}
-                                    <button className="text-red-600 hover:text-red-900">
+                                    <button
+                                        className="text-red-500 hover:text-red-800"
+                                        title="Delete Budget Request"
+                                    >
                                         <FontAwesomeIcon icon={faTrash} />
                                     </button>
                                 </td>
