@@ -3,7 +3,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faEdit,
     faTrash,
-    faFilePdf,
     faRemove,
 } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
@@ -29,8 +28,14 @@ const MaharatInvoicesTable = () => {
 
     const fetchInvoices = async () => {
         setLoading(true);
-        setProgress(10);
+        setProgress(0);
+        let progressInterval;
+        
         try {
+            progressInterval = setInterval(() => {
+                setProgress((prev) => prev >= 90 ? 90 : prev + 10);
+            }, 200);
+
             const status = selectedFilter.toLowerCase();
             let url = `/api/v1/invoices?page=${currentPage}&include=client`;
 
@@ -38,9 +43,7 @@ const MaharatInvoicesTable = () => {
                 url += `&filter[status]=${status}`;
             }
             
-            setProgress(50);
             const response = await axios.get(url);
-            setProgress(80);
 
             if (response.data && response.data.data) {
                 const mappedData = response.data.data.map((invoice) => {
@@ -69,11 +72,13 @@ const MaharatInvoicesTable = () => {
                 setLastPage(response.data.meta.last_page);
                 setError("");
             }
-            setProgress(100);
         } catch (error) {
+            console.error('Error fetching invoices:', error);
             setError("Failed to load invoices");
         } finally {
-            setLoading(false);
+            if (progressInterval) clearInterval(progressInterval);
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
         }
     };
 
@@ -224,9 +229,9 @@ const MaharatInvoicesTable = () => {
                 </div>
             </div>
 
-            {/* Loading Bar */}
+            {/* Loading Bar - This is the only loading indicator we'll keep */}
             {loading && (
-                <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3">
+                <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3 z-10">
                     <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
                         <div
                             className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
@@ -291,6 +296,7 @@ const MaharatInvoicesTable = () => {
             )}
 
             <table className="w-full">
+            {!loading && (
                 <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                     <tr>
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
@@ -305,11 +311,12 @@ const MaharatInvoicesTable = () => {
                         </th>
                     </tr>
                 </thead>
+            )}
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="6" className="text-center py-12">
-                                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+                            <td colSpan="6" className="py-20 text-center opacity-0">
+                                Loading... {/* Hidden text, just for spacing */}
                             </td>
                         </tr>
                     ) : error ? (
@@ -355,12 +362,16 @@ const MaharatInvoicesTable = () => {
                                     >
                                         <FontAwesomeIcon icon={faEdit} />
                                     </Link>
-                                    <button 
-                                        className={`${invoice.invoice_document ? 'text-blue-800' : 'text-blue-600'} hover:text-blue-900`}
+                                    <button
+                                        className="w-4 h-4"
                                         onClick={() => handleGeneratePDF(invoice.id)}
                                         title={invoice.invoice_document ? "Download PDF" : "Generate PDF"}
                                     >
-                                        <FontAwesomeIcon icon={faFilePdf} />
+                                        <img
+                                            src="/images/pdf-file.png"
+                                            alt="PDF"
+                                            className="w-full h-full"
+                                        />
                                     </button>
                                     <button
                                         onClick={() => handleDelete(invoice.id)}
