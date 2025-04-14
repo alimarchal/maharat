@@ -21,13 +21,39 @@ class WarehouseController extends Controller
     public function index(): JsonResponse|ResourceCollection
     {
         try {
-            $warehouses = Warehouse::select('id', 'name')->get();
-            
+            // Add debugging to see what's happening
+            $query = QueryBuilder::for(Warehouse::class);
+
+            // Log the SQL query to see what's being executed
+            \Log::info('Warehouse Query: ' . $query->toSql());
+
+            $warehouses = $query
+                ->allowedFilters(WarehouseParameters::ALLOWED_FILTERS)
+                ->allowedSorts(WarehouseParameters::ALLOWED_SORTS)
+                ->allowedIncludes(WarehouseParameters::ALLOWED_INCLUDES)
+                ->paginate()
+                ->appends(request()->query());
+
+            // Check what's being returned
+            \Log::info('Warehouse Count: ' . $warehouses->count());
+
+            if ($warehouses->isEmpty()) {
+                return response()->json([
+                    'message' => 'No warehouses found',
+                    'data' => []
+                ], Response::HTTP_OK);
+            }
+
             return response()->json([
-                'data' => $warehouses,
-                'message' => 'Warehouses retrieved successfully'
-            ]);
+                'message' => 'List of warehouses',
+                'data' => WarehouseResource::collection($warehouses)
+            ], Response::HTTP_OK);
+
         } catch (\Exception $e) {
+            // Log the exception to understand what's failing
+            \Log::error('Warehouse Error: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+
             return response()->json([
                 'message' => 'No warehouses found',
                 'data' => []

@@ -90,7 +90,7 @@ const RequestTable = ({ selectedFilter }) => {
                         <th className="py-3 px-4">Priority</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">Date & Time</th>
-                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                             More
                         </th>
                     </tr>
@@ -179,19 +179,24 @@ const RequestTable = ({ selectedFilter }) => {
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="py-3 px-4 flex space-x-3">
-                                        {/* <button className="text-[#9B9DA2] hover:text-gray-500">
+                                    <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
+                                        <button
+                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            title="View Request"
+                                        >
                                             <FontAwesomeIcon icon={faEye} />
-                                        </button> */}
+                                        </button>
                                         <Link
                                             href={`/my-requests/${req.id}/edit`}
-                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            className="text-blue-400 hover:text-blue-500"
+                                            title="Edit Request"
                                         >
                                             <FontAwesomeIcon icon={faEdit} />
                                         </Link>
                                         <button
                                             onClick={() => handleDelete(req.id)}
-                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            className="text-red-600 hover:text-red-800"
+                                            title="Delete Request"
                                         >
                                             <FontAwesomeIcon icon={faTrash} />
                                         </button>

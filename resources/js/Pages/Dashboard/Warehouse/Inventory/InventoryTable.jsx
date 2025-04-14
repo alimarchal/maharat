@@ -64,7 +64,7 @@ const InventoryTable = () => {
                         <th className="py-3 px-4">Quantity</th>
                         <th className="py-3 px-4">Reorder Level</th>
                         <th className="py-3 px-4">Description</th>
-                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                             Actions
                         </th>
                     </tr>
@@ -104,22 +104,23 @@ const InventoryTable = () => {
                                 <td className="py-3 px-4">
                                     {inventory.description}
                                 </td>
-                                <td className="py-3 px-4 flex space-x-3">
-                                    {/* <button
+                                <td className="py-3 px-4 flex justify-center text-center space-x-3">
+                                    <button
                                         onClick={() => {
                                             setSelectedInventory(inventory);
                                             setIsModalOpen(true);
                                         }}
-                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                        className="text-blue-400 hover:text-blue-500"
+                                        title="Edit Inventory"
                                     >
                                         <FontAwesomeIcon icon={faEdit} />
-                                    </button> */}
-
+                                    </button>
                                     <button
-                                        className="text-[#9B9DA2] hover:text-gray-500"
                                         onClick={() =>
                                             handleDelete(inventory.id)
                                         }
+                                        className="text-red-600 hover:text-red-800"
+                                        title="Delete Inventory"
                                     >
                                         <FontAwesomeIcon icon={faTrash} />
                                     </button>

@@ -8,7 +8,6 @@ class WarehouseParameters
         'name',
         'code',
         'address',
-        'manager_id',
         'created_at',
     ];
 
@@ -17,8 +16,8 @@ class WarehouseParameters
         'code',
         'created_at',
     ];
-
     public const ALLOWED_INCLUDES = [
-        'manager',
+        'managers', // If you want all managers
+        'manager',  // If you want just the primary manager
     ];
 }

@@ -132,8 +132,11 @@ export default function GRNTable() {
                                                 {grn.delivery_date}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <div className="flex justify-center space-x-3">
-                                                    <button className="text-[#9B9DA2] hover:text-gray-500">
+                                                <div className="flex justify-center text-center space-x-3">
+                                                    <button
+                                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                                        title="View GRN"
+                                                    >
                                                         <FontAwesomeIcon
                                                             icon={faEye}
                                                         />
@@ -142,7 +145,8 @@ export default function GRNTable() {
                                                         onClick={() =>
                                                             handleDelete(grn.id)
                                                         }
-                                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                                        className="text-red-600 hover:text-red-800"
+                                                        title="Delete GRN"
                                                     >
                                                         <FontAwesomeIcon
                                                             icon={faTrash}

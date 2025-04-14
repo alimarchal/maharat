@@ -72,7 +72,7 @@ const TasksTable = () => {
                         <th className="py-3 px-4">Urgency</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">From</th>
-                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                             Actions
                         </th>
                     </tr>
@@ -145,7 +145,7 @@ const TasksTable = () => {
                                     <td className="py-3 px-4">
                                         {req.assigned_from_user?.name}
                                     </td>
-                                    <td className="py-3 px-4 flex space-x-3">
+                                    <td className="py-3 px-4 flex justify-center text-center space-x-3">
                                         <button className="text-[#9B9DA2] hover:text-gray-500">
                                             <FontAwesomeIcon icon={faEye} />
                                         </button>

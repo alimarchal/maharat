@@ -4,8 +4,9 @@ import {
     faEdit,
     faTrash,
     faFilePdf,
+    faRemove,
 } from "@fortawesome/free-solid-svg-icons";
-import { Link, router } from "@inertiajs/react";
+import { Link } from "@inertiajs/react";
 import axios from "axios";
 import MaharatPDF from "./MaharatPDF";
 
@@ -15,68 +16,64 @@ const MaharatInvoicesTable = () => {
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
-    const [progress, setProgress] = useState(0);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [progress, setProgress] = useState(0);
     
     // Add state for PDF generation
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
     const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
+    const [savedPdfUrl, setSavedPdfUrl] = useState(null);
 
     const [selectedFilter, setSelectedFilter] = useState("All");
     const filters = ["All", "Draft", "Pending", "Paid", "Overdue", "Cancelled"];
 
     const fetchInvoices = async () => {
         setLoading(true);
-        setProgress(0);
-        let progressInterval;
-        
+        setProgress(10);
         try {
-            progressInterval = setInterval(() => {
-                setProgress((prev) => prev >= 90 ? 90 : prev + 10);
-            }, 200);
-
-            // Convert filter to lowercase for consistency
             const status = selectedFilter.toLowerCase();
             let url = `/api/v1/invoices?page=${currentPage}&include=client`;
-            
-            // Only add status filter if not "all"
-            if (selectedFilter !== "All") {
-                url += `&filter[status]=${status}`;  // Using filter[status] format for Laravel API
-            }
 
-            const response = await axios.get(url);
+            if (selectedFilter !== "All") {
+                url += `&filter[status]=${status}`;
+            }
             
+            setProgress(50);
+            const response = await axios.get(url);
+            setProgress(80);
+
             if (response.data && response.data.data) {
-                const mappedData = response.data.data.map(invoice => {
+                const mappedData = response.data.data.map((invoice) => {
                     return {
                         id: invoice.id,
-                        invoice_number: invoice.invoice_number || `INV-${invoice.id.toString().padStart(5, '0')}`,
-                        customer_name: invoice.client?.name || 'N/A',
+                        invoice_number:
+                            invoice.invoice_number ||
+                            `INV-${invoice.id.toString().padStart(5, "0")}`,
+                        customer_name: invoice.client?.name || "N/A",
                         total_amount: invoice.total_amount || 0,
-                        status: invoice.status || 'Draft',
+                        status: invoice.status || "Draft",
                         updated_at: invoice.updated_at,
                         invoice_document: invoice.invoice_document
                     };
                 });
 
-                // Additional client-side filtering as backup
-                const filteredData = selectedFilter === "All" 
-                    ? mappedData 
-                    : mappedData.filter(invoice => 
-                        invoice.status.toLowerCase() === status
-                    );
+                const filteredData =
+                    selectedFilter === "All"
+                        ? mappedData
+                        : mappedData.filter(
+                              (invoice) =>
+                                  invoice.status.toLowerCase() === status
+                          );
 
                 setInvoices(filteredData);
                 setLastPage(response.data.meta.last_page);
                 setError("");
             }
+            setProgress(100);
         } catch (error) {
-            console.error('Error fetching invoices:', error);
             setError("Failed to load invoices");
         } finally {
-            if (progressInterval) clearInterval(progressInterval);
-            setProgress(100);
-            setTimeout(() => setLoading(false), 500);
+            setLoading(false);
         }
     };
 
@@ -86,15 +83,17 @@ const MaharatInvoicesTable = () => {
 
     const handleDelete = async (id) => {
         if (!confirm("Are you sure you want to delete this record?")) return;
-        if (isDeleting) return; // Prevent multiple clicks
+        if (isDeleting) return;
 
         setIsDeleting(true);
         try {
             await axios.delete(`/api/v1/invoices/${id}`);
-            fetchInvoices(); // Refresh the data
+            fetchInvoices();
         } catch (error) {
-            console.error('Error deleting record:', error);
-            setError('Failed to delete record: ' + (error.response?.data?.message || error.message));
+            setError(
+                "Failed to delete record: " +
+                    (error.response?.data?.message || error.message)
+            );
         } finally {
             setIsDeleting(false);
         }
@@ -102,13 +101,35 @@ const MaharatInvoicesTable = () => {
     
     // Handle PDF generation
     const handleGeneratePDF = (invoiceId) => {
+        // If there's already a saved document, open it
+        const invoice = invoices.find(inv => inv.id === invoiceId);
+        if (invoice && invoice.invoice_document) {
+            window.open(invoice.invoice_document, '_blank');
+            return;
+        }
+        
+        // Otherwise generate a new PDF
         setIsGeneratingPDF(true);
         setSelectedInvoiceId(invoiceId);
+        setSavedPdfUrl(null);
     };
     
     // Callback for when PDF generation is complete
     const handlePDFGenerated = (documentUrl) => {
+        setSavedPdfUrl(documentUrl);
         setIsGeneratingPDF(false);
+        
+        // Update the invoice with the new document URL in our local state
+        if (documentUrl) {
+            setInvoices(prevInvoices => 
+                prevInvoices.map(invoice => 
+                    invoice.id === selectedInvoiceId 
+                        ? { ...invoice, invoice_document: documentUrl } 
+                        : invoice
+                )
+            );
+        }
+        
         setSelectedInvoiceId(null);
         
         // Refresh the invoices list to show updated document URLs
@@ -117,50 +138,46 @@ const MaharatInvoicesTable = () => {
 
     const getStatusClass = (status) => {
         switch (status?.toLowerCase()) {
-            case 'paid':
-                return 'bg-green-100 text-green-800';
-            case 'cancelled':
-                return 'bg-red-100 text-red-800';
-            case 'overdue':
-                return 'bg-purple-100 text-purple-800';
-            case 'pending':
-                return 'bg-yellow-100 text-yellow-800';
-            case 'draft':
-                return 'bg-gray-100 text-gray-800';
+            case "paid":
+                return "text-green-500";
+            case "cancelled":
+                return "text-red-500";
+            case "overdue":
+                return "text-purple-500";
+            case "pending":
+                return "text-yellow-500";
+            case "draft":
+                return "text-gray-500";
             default:
-                return 'bg-gray-100 text-gray-800';
+                return "text-gray-500";
         }
     };
 
     const formatDateTime = (dateString) => {
         if (!dateString) {
-            return 'N/A';
+            return "N/A";
         }
 
         try {
-            const optionsDate = { year: "numeric", month: "long", day: "numeric" };
-            const optionsTime = { hour: "2-digit", minute: "2-digit", hour12: true };
-        
             const dateObj = new Date(dateString);
-            
+
             if (isNaN(dateObj.getTime())) {
-                console.error('Invalid date:', dateString);
-                return 'Invalid Date';
+                console.error("Invalid date:", dateString);
+                return "Invalid Date";
             }
 
-            const formattedDate = dateObj.toLocaleDateString("en-US", optionsDate);
-            const formattedTime = dateObj.toLocaleTimeString("en-US", optionsTime);
-        
+            const formattedDate = dateObj.toLocaleDateString();
+            const formattedTime = dateObj.toLocaleTimeString();
+
             return (
-                <div>
+                <div className="flex flex-col">
                     {formattedDate}
-                    <br />
-                    <span className="text-gray-500">at {formattedTime}</span>
+                    <span className="text-gray-400">{formattedTime}</span>
                 </div>
             );
         } catch (error) {
-            console.error('Date formatting error:', error);
-            return 'Date Error';
+            console.error("Date formatting error:", error);
+            return "Date Error";
         }
     };
 
@@ -170,7 +187,7 @@ const MaharatInvoicesTable = () => {
     };
 
     return (
-        <div className="w-full">
+        <div className="w-full overflow-hidden">
             <div className="flex justify-between items-center text-center mb-6">
                 <h2 className="text-3xl font-bold text-[#2C323C]">
                     Maharat Invoices
@@ -225,123 +242,181 @@ const MaharatInvoicesTable = () => {
             {/* PDF Generation Component (conditionally rendered) */}
             {isGeneratingPDF && selectedInvoiceId && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white p-8 rounded-lg shadow-lg">
-                        <h3 className="text-xl font-semibold mb-4">Generating PDF</h3>
-                        <div className="flex items-center">
-                            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mr-3"></div>
-                            <p>Please wait, generating PDF document...</p>
+                    <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-semibold">Generating PDF</h3>
+                            <button 
+                                onClick={() => setIsGeneratingPDF(false)}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <FontAwesomeIcon icon={faRemove} />
+                            </button>
                         </div>
-                        <MaharatPDF invoiceId={selectedInvoiceId} onGenerated={handlePDFGenerated} />
+                        
+                        {savedPdfUrl ? (
+                            <div className="text-center">
+                                <div className="mb-4 text-green-600">
+                                    <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <p className="mb-4">PDF has been generated successfully!</p>
+                                <div className="flex justify-center space-x-4">
+                                    <a 
+                                        href={savedPdfUrl} 
+                                        target="_blank" 
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                    >
+                                        Download PDF
+                                    </a>
+                                    <button 
+                                        onClick={() => setIsGeneratingPDF(false)}
+                                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <div className="flex items-center mb-4">
+                                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mr-3"></div>
+                                    <p>Please wait, generating PDF document...</p>
+                                </div>
+                                <MaharatPDF invoiceId={selectedInvoiceId} onGenerated={handlePDFGenerated} />
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
 
-            {/* Table section */}
-            <div className="w-full overflow-hidden">
-                {!loading && error && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 text-center" role="alert">
-                        <span className="block sm:inline">{error}</span>
-                    </div>
-                )}
-
-                {!loading && (
-                    <table className="w-full">
-                        <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
-                            <tr>
-                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">Invoice ID</th>
-                                <th className="py-3 px-4 text-center">Customer</th>
-                                <th className="py-3 px-4 text-center">Total Amount</th>
-                                <th className="py-3 px-4 text-center">Status</th>
-                                <th className="py-3 px-4 text-center">Date & Time</th>
-                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Actions</th>
+            <table className="w-full">
+                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                    <tr>
+                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
+                            Invoice #
+                        </th>
+                        <th className="py-3 px-4">Customer</th>
+                        <th className="py-3 px-4">Total Amount</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4 text-center">Date & Time</th>
+                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
+                            More
+                        </th>
                     </tr>
                 </thead>
-                        <tbody className="bg-transparent divide-y divide-gray-200">
-                            {invoices.length > 0 ? (
-                                invoices.map((invoice) => (
-                                <tr key={invoice.id}>
-                                        <td className="py-3 px-4 text-center">{invoice.invoice_number || 'N/A'}</td>
-                                        <td className="py-3 px-4 text-center">{invoice.customer_name || 'N/A'}</td>
-                                        <td className="py-3 px-4 text-center">
-                                            {invoice.total_amount ? `${Math.floor(invoice.total_amount).toLocaleString()} SAR` : 'N/A'}
-                                    </td>
-                                        <td className="py-3 px-4 text-center">
-                                            <span className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(invoice.status)}`}>
-                                                {invoice.status}
-                                        </span>
-                                    </td>
-                                        <td className="py-3 px-4 text-center">{formatDateTime(invoice.updated_at)}</td>
-                                        <td className="py-3 px-4 flex justify-center space-x-3">
-                                            <Link
-                                                href={`/maharat-invoices/create/${invoice.id}`}
-                                                className="text-gray-600 hover:text-gray-800"
-                                            >
-                                                <FontAwesomeIcon icon={faEdit} />
-                                            </Link>
-                                            <button 
-                                                className={`text-blue-600 hover:text-blue-900 ${invoice.invoice_document ? 'text-blue-800' : 'text-blue-600'}`}
-                                                onClick={() => handleGeneratePDF(invoice.id)}
-                                                title="Generate or download PDF"
-                                            >
-                                                <FontAwesomeIcon icon={faFilePdf} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(invoice.id)}
-                                                className="text-red-600 hover:text-red-900"
-                                            >
-                                                <FontAwesomeIcon icon={faTrash} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
+                <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
+                    {loading ? (
+                        <tr>
+                            <td colSpan="6" className="text-center py-12">
+                                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+                            </td>
+                        </tr>
+                    ) : error ? (
+                        <tr>
+                            <td
+                                colSpan="6"
+                                className="text-center text-red-500 font-medium py-4"
+                            >
+                                {error}
+                            </td>
+                        </tr>
+                    ) : invoices.length > 0 ? (
+                        invoices.map((invoice) => (
+                            <tr key={invoice.id}>
+                                <td className="py-3 px-4">
+                                    {invoice.invoice_number || "N/A"}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {invoice.customer_name || "N/A"}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {invoice.total_amount
+                                        ? `${Math.floor(
+                                              invoice.total_amount
+                                          ).toLocaleString()} SAR`
+                                        : "N/A"}
+                                </td>
+                                <td
+                                    className={`py-3 px-4 font-semibold ${getStatusClass(
+                                        invoice.status
+                                    )}`}
+                                >
+                                    {invoice.status}
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                    {formatDateTime(invoice.updated_at)}
+                                </td>
+                                <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
+                                    <Link
+                                        href={`/maharat-invoices/create/${invoice.id}`}
+                                        className="text-blue-400 hover:text-blue-500"
+                                        title="Edit Invoice"
+                                    >
+                                        <FontAwesomeIcon icon={faEdit} />
+                                    </Link>
+                                    <button 
+                                        className={`${invoice.invoice_document ? 'text-blue-800' : 'text-blue-600'} hover:text-blue-900`}
+                                        onClick={() => handleGeneratePDF(invoice.id)}
+                                        title={invoice.invoice_document ? "Download PDF" : "Generate PDF"}
+                                    >
+                                        <FontAwesomeIcon icon={faFilePdf} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(invoice.id)}
+                                        className="text-red-600 hover:text-red-900"
+                                        title="Delete Invoice"
+                                    >
+                                        <FontAwesomeIcon icon={faTrash} />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))
                     ) : (
                         <tr>
-                                    <td colSpan="6" className="text-center text-[#2C323C] font-medium py-4">
+                            <td
+                                colSpan="6"
+                                className="text-center text-[#2C323C] font-medium py-4"
+                            >
                                 No Maharat Invoices found.
                             </td>
                         </tr>
                     )}
                 </tbody>
             </table>
-                )}
 
-                {/* Pagination */}
-                {!loading && !error && invoices.length > 0 && (
-                    <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+            {/* Pagination */}
+            {!loading && !error && invoices.length > 0 && (
+                <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    {Array.from(
+                        { length: lastPage },
+                        (_, index) => index + 1
+                    ).map((page) => (
                         <button
-                            onClick={() => setCurrentPage(currentPage - 1)}
-                            className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""
-                            }`}
-                            disabled={currentPage <= 1}
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-1 ${
+                                currentPage === page
+                                    ? "bg-[#009FDC] text-white"
+                                    : "border border-[#B9BBBD] bg-white"
+                            } rounded-full hover:bg-[#0077B6] transition`}
                         >
-                            Previous
+                            {page}
                         </button>
-                        {Array.from({ length: lastPage }, (_, index) => index + 1).map((page) => (
-                            <button
-                                key={page}
-                                onClick={() => setCurrentPage(page)}
-                                className={`px-3 py-1 ${
-                                    currentPage === page
-                                        ? "bg-[#009FDC] text-white"
-                                        : "border border-[#B9BBBD] bg-white text-black"
-                                } rounded-full`}
-                            >
-                                {page}
-                            </button>
-                        ))}
-                        <button
-                            onClick={() => setCurrentPage(currentPage + 1)}
-                            className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                currentPage >= lastPage ? "opacity-50 cursor-not-allowed" : ""
-                            }`}
-                            disabled={currentPage >= lastPage}
-                        >
-                            Next
-                        </button>
-                    </div>
-                )}
-            </div>
+                    ))}
+                    <button
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage >= lastPage
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage >= lastPage}
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
