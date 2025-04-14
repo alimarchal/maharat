@@ -136,6 +136,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // RFQ routes
     Route::get('/rfqs/form-data', [RfqController::class, 'getFormData']);
     Route::apiResource('rfqs', RfqController::class);
+    Route::post('/rfqs/{id}/upload-document', [RfqController::class, 'uploadDocument']);
     // RFQ Items routes
     Route::apiResource('rfq-items', RfqItemController::class);
 
@@ -272,8 +273,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('customers/{id}/restore', [CustomerController::class, 'restore']);
 
     // Maharat Invoices
-    Route::get('/invoices/next-number', [InvoiceController::class, 'getNextInvoiceNumber']);
+    Route::get('/next-invoice-number', [InvoiceController::class, 'getNextInvoiceNumber']);
     Route::apiResource('invoices', InvoiceController::class);
+    Route::post('/invoices/{id}/upload-document', [InvoiceController::class, 'uploadDocument']);
     Route::post('invoices/{id}/restore', [InvoiceController::class, 'restore']);
 
     Route::get('/invoices/payment-methods', [InvoiceController::class, 'getPaymentMethods']);

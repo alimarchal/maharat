@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+    faEdit,
+    faTrash,
+    faRemove,
+} from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import axios from "axios";
+import MaharatPDF from "./MaharatPDF";
 
 const MaharatInvoicesTable = () => {
     const [invoices, setInvoices] = useState([]);
@@ -11,20 +16,33 @@ const MaharatInvoicesTable = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [progress, setProgress] = useState(0);
+    
+    // Add state for PDF generation
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+    const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
+    const [savedPdfUrl, setSavedPdfUrl] = useState(null);
 
     const [selectedFilter, setSelectedFilter] = useState("All");
     const filters = ["All", "Draft", "Pending", "Paid", "Overdue", "Cancelled"];
 
     const fetchInvoices = async () => {
         setLoading(true);
+        setProgress(0);
+        let progressInterval;
+        
         try {
+            progressInterval = setInterval(() => {
+                setProgress((prev) => prev >= 90 ? 90 : prev + 10);
+            }, 200);
+
             const status = selectedFilter.toLowerCase();
             let url = `/api/v1/invoices?page=${currentPage}&include=client`;
 
             if (selectedFilter !== "All") {
                 url += `&filter[status]=${status}`;
             }
-
+            
             const response = await axios.get(url);
 
             if (response.data && response.data.data) {
@@ -38,6 +56,7 @@ const MaharatInvoicesTable = () => {
                         total_amount: invoice.total_amount || 0,
                         status: invoice.status || "Draft",
                         updated_at: invoice.updated_at,
+                        invoice_document: invoice.invoice_document
                     };
                 });
 
@@ -54,9 +73,12 @@ const MaharatInvoicesTable = () => {
                 setError("");
             }
         } catch (error) {
+            console.error('Error fetching invoices:', error);
             setError("Failed to load invoices");
         } finally {
-            setLoading(false);
+            if (progressInterval) clearInterval(progressInterval);
+            setProgress(100);
+            setTimeout(() => setLoading(false), 500);
         }
     };
 
@@ -80,6 +102,43 @@ const MaharatInvoicesTable = () => {
         } finally {
             setIsDeleting(false);
         }
+    };
+    
+    // Handle PDF generation
+    const handleGeneratePDF = (invoiceId) => {
+        // If there's already a saved document, open it
+        const invoice = invoices.find(inv => inv.id === invoiceId);
+        if (invoice && invoice.invoice_document) {
+            window.open(invoice.invoice_document, '_blank');
+            return;
+        }
+        
+        // Otherwise generate a new PDF
+        setIsGeneratingPDF(true);
+        setSelectedInvoiceId(invoiceId);
+        setSavedPdfUrl(null);
+    };
+    
+    // Callback for when PDF generation is complete
+    const handlePDFGenerated = (documentUrl) => {
+        setSavedPdfUrl(documentUrl);
+        setIsGeneratingPDF(false);
+        
+        // Update the invoice with the new document URL in our local state
+        if (documentUrl) {
+            setInvoices(prevInvoices => 
+                prevInvoices.map(invoice => 
+                    invoice.id === selectedInvoiceId 
+                        ? { ...invoice, invoice_document: documentUrl } 
+                        : invoice
+                )
+            );
+        }
+        
+        setSelectedInvoiceId(null);
+        
+        // Refresh the invoices list to show updated document URLs
+        fetchInvoices();
     };
 
     const getStatusClass = (status) => {
@@ -170,7 +229,74 @@ const MaharatInvoicesTable = () => {
                 </div>
             </div>
 
+            {/* Loading Bar - This is the only loading indicator we'll keep */}
+            {loading && (
+                <div className="absolute left-[55%] transform -translate-x-1/2 mt-12 w-2/3 z-10">
+                    <div className="relative w-full h-12 bg-gray-300 rounded-full flex items-center justify-center text-xl font-bold text-white">
+                        <div
+                            className="absolute left-0 top-0 h-12 bg-[#009FDC] rounded-full transition-all duration-500"
+                            style={{ width: `${progress}%` }}
+                        ></div>
+                        <span className="absolute text-white">
+                            {progress < 60 ? "Please Wait, Fetching Details..." : `${progress}%`}
+                        </span>
+                    </div>
+                </div>
+            )}
+            
+            {/* PDF Generation Component (conditionally rendered) */}
+            {isGeneratingPDF && selectedInvoiceId && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-semibold">Generating PDF</h3>
+                            <button 
+                                onClick={() => setIsGeneratingPDF(false)}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <FontAwesomeIcon icon={faRemove} />
+                            </button>
+                        </div>
+                        
+                        {savedPdfUrl ? (
+                            <div className="text-center">
+                                <div className="mb-4 text-green-600">
+                                    <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <p className="mb-4">PDF has been generated successfully!</p>
+                                <div className="flex justify-center space-x-4">
+                                    <a 
+                                        href={savedPdfUrl} 
+                                        target="_blank" 
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                    >
+                                        Download PDF
+                                    </a>
+                                    <button 
+                                        onClick={() => setIsGeneratingPDF(false)}
+                                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <div className="flex items-center mb-4">
+                                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mr-3"></div>
+                                    <p>Please wait, generating PDF document...</p>
+                                </div>
+                                <MaharatPDF invoiceId={selectedInvoiceId} onGenerated={handlePDFGenerated} />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             <table className="w-full">
+            {!loading && (
                 <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                     <tr>
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
@@ -185,11 +311,12 @@ const MaharatInvoicesTable = () => {
                         </th>
                     </tr>
                 </thead>
+            )}
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="6" className="text-center py-12">
-                                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+                            <td colSpan="6" className="py-20 text-center opacity-0">
+                                Loading... {/* Hidden text, just for spacing */}
                             </td>
                         </tr>
                     ) : error ? (
@@ -237,7 +364,8 @@ const MaharatInvoicesTable = () => {
                                     </Link>
                                     <button
                                         className="w-4 h-4"
-                                        title="Download PDF"
+                                        onClick={() => handleGeneratePDF(invoice.id)}
+                                        title={invoice.invoice_document ? "Download PDF" : "Generate PDF"}
                                     >
                                         <img
                                             src="/images/pdf-file.png"

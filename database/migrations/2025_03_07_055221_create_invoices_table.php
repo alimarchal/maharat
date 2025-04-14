@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('invoice_number')->unique()->comment('Maharat Invoice Table');
             $table->foreignId('client_id')->nullable()->constrained('customers')->onDelete('cascade');
             $table->enum('status', ['Draft', 'Approved', 'Pending', 'Paid', 'Overdue', 'Cancelled'])->default('Draft');
+            $table->string('invoice_document')->nullable()->comment('Path to the PDF document');
             $table->string('payment_method')->nullable();
             $table->string('representative_id')->nullable();
             $table->string('representative_email')->nullable();
