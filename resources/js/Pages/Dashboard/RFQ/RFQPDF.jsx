@@ -171,23 +171,23 @@ export default function RFQPDF({ rfqId, onGenerated }) {
                 });
                 
                 // Calculate appropriate dimensions - reduced height instead of width
-                const logoHeight = 18; // Reduced height to 18mm
-                const logoWidth = 25; // Keep width at 25mm
+                const logoHeight = 15; // Increase height slightly
+                const logoWidth = 20; // Increase width slightly
                 
-                // Reduced height and positioned on right
-                doc.addImage(img, 'PNG', pageWidth - margin - logoWidth, margin, logoWidth, logoHeight);
+                // Position logo closer to the first line (more down)
+                doc.addImage(img, 'PNG', pageWidth - margin - logoWidth, margin + 4, logoWidth, logoHeight);
             } catch (imgErr) {
                 console.error("Error adding logo:", imgErr);
                 // Continue without the logo
             }
             
-            // Title - left aligned
-            doc.setFontSize(20);
+            // Title - centered instead of left aligned, smaller size
+            doc.setFontSize(14); // Reduced from 20 to match other headings
             doc.setFont("helvetica", "bold");
-            doc.text("REQUEST FOR QUOTATION", margin, margin + 15);
+            doc.text("REQUEST FOR QUOTATION", pageWidth / 2, margin + 15, { align: "center" });
             
             // Add a horizontal line below the title and logo
-            doc.setLineWidth(0.5);
+            doc.setLineWidth(0.3); // Explicitly set line thickness
             doc.line(margin, margin + 20, pageWidth - margin, margin + 20);
             
             // RFQ Number, dates in left section (without status)
@@ -203,23 +203,18 @@ export default function RFQPDF({ rfqId, onGenerated }) {
             doc.text(formatDateForDisplay(rfqData.request_date), margin + 25, margin + 37);
             doc.text(formatDateForDisplay(rfqData.closing_date), margin + 25, margin + 44);
             
-            // Add a horizontal line below the header info
-            doc.setLineWidth(0.5);
+            // Add a horizontal line below the header info - reduced space after this line
+            doc.setLineWidth(0.3); // Explicitly set line thickness
             doc.line(margin, margin + 50, pageWidth - margin, margin + 50);
             
-            // Organization Information Section Title - centered - moved closer to the header
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text("Organization Information", pageWidth / 2, margin + 60, { align: "center" });
-            
-            // Organization Info - left column - moved up
+            // Organization Info - left column - reduced space after line
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
-            doc.text("Name:", margin, margin + 70);
-            doc.text("Email:", margin, margin + 77);
-            doc.text("City:", margin, margin + 84);
-            doc.text("Warehouse:", margin, margin + 91);
-            doc.text("Contact:", margin, margin + 98);
+            doc.text("Name:", margin, margin + 60); // Changed from +70 to +60
+            doc.text("Email:", margin, margin + 67); // Changed from +77 to +67
+            doc.text("City:", margin, margin + 74); // Changed from +84 to +74
+            doc.text("Warehouse:", margin, margin + 81); // Changed from +91 to +81
+            doc.text("Contact:", margin, margin + 88); // Changed from +98 to +88
             
             // Left column values with text overflow handling - use more space for values
             doc.setFont("helvetica", "normal");
@@ -237,20 +232,20 @@ export default function RFQPDF({ rfqId, onGenerated }) {
                 return text;
             };
             
-            doc.text(fitTextInColumn(getSafeValue(rfqData, 'organization_name'), maxLeftWidth), margin + 30, margin + 70);
-            doc.text(fitTextInColumn(getSafeValue(rfqData, 'organization_email'), maxLeftWidth), margin + 30, margin + 77);
-            doc.text(fitTextInColumn(getSafeValue(rfqData, 'city'), maxLeftWidth), margin + 30, margin + 84);
-            doc.text(fitTextInColumn(getSafeValue(rfqData, 'warehouse.name'), maxLeftWidth), margin + 30, margin + 91);
-            doc.text(fitTextInColumn(getSafeValue(rfqData, 'contact_number'), maxLeftWidth), margin + 30, margin + 98);
+            doc.text(fitTextInColumn(getSafeValue(rfqData, 'organization_name'), maxLeftWidth), margin + 30, margin + 60);
+            doc.text(fitTextInColumn(getSafeValue(rfqData, 'organization_email'), maxLeftWidth), margin + 30, margin + 67);
+            doc.text(fitTextInColumn(getSafeValue(rfqData, 'city'), maxLeftWidth), margin + 30, margin + 74);
+            doc.text(fitTextInColumn(getSafeValue(rfqData, 'warehouse.name'), maxLeftWidth), margin + 30, margin + 81);
+            doc.text(fitTextInColumn(getSafeValue(rfqData, 'contact_number'), maxLeftWidth), margin + 30, margin + 88);
             
-            // Category and Cost Centers - right column
+            // Category and Cost Centers - right column - adjust to match new spacing
             const centerX = pageWidth / 2 + 5;
             doc.setFont("helvetica", "bold");
-            doc.text("Category:", centerX, margin + 70);
-            doc.text("Cost Center:", centerX, margin + 77);
-            doc.text("Sub Cost Center:", centerX, margin + 84);
-            doc.text("Payment Type:", centerX, margin + 91);
-            doc.text("Status:", centerX, margin + 98);
+            doc.text("Category:", centerX, margin + 60); // Changed from +70 to +60
+            doc.text("Cost Center:", centerX, margin + 67); // Changed from +77 to +67
+            doc.text("Sub Cost Center:", centerX, margin + 74); // Changed from +84 to +74
+            doc.text("Payment Type:", centerX, margin + 81); // Changed from +91 to +81
+            doc.text("Status:", centerX, margin + 88); // Changed from +98 to +88
             
             // Right column values with consistent spacing from labels
             doc.setFont("helvetica", "normal");
@@ -267,7 +262,7 @@ export default function RFQPDF({ rfqId, onGenerated }) {
             } else if (rfqData.category_name) {
                 categoryName = rfqData.category_name;
             }
-            doc.text(fitTextInColumn(categoryName, maxRightWidth), valueX, margin + 70);
+            doc.text(fitTextInColumn(categoryName, maxRightWidth), valueX, margin + 60);
             
             // Cost Center
             let costCenterName = 'N/A';
@@ -278,7 +273,7 @@ export default function RFQPDF({ rfqId, onGenerated }) {
             } else if (rfqData.cost_center_id) {
                 costCenterName = `ID: ${rfqData.cost_center_id}`;
             }
-            doc.text(fitTextInColumn(costCenterName, maxRightWidth), valueX, margin + 77);
+            doc.text(fitTextInColumn(costCenterName, maxRightWidth), valueX, margin + 67);
             
             // Sub Cost Center
             let subCostCenterName = 'N/A';
@@ -289,14 +284,14 @@ export default function RFQPDF({ rfqId, onGenerated }) {
             } else if (rfqData.sub_cost_center_id) {
                 subCostCenterName = `ID: ${rfqData.sub_cost_center_id}`;
             }
-            doc.text(fitTextInColumn(subCostCenterName, maxRightWidth), valueX, margin + 84);
+            doc.text(fitTextInColumn(subCostCenterName, maxRightWidth), valueX, margin + 74);
             
             // Payment Type
             let paymentTypeName = getSafeValue(rfqData, 'paymentType.name');
             if (paymentTypeName === 'N/A' && rfqData.payment_type) {
                 paymentTypeName = getSafeValue(rfqData, 'payment_type.name');
             }
-            doc.text(fitTextInColumn(paymentTypeName, maxRightWidth), valueX, margin + 91);
+            doc.text(fitTextInColumn(paymentTypeName, maxRightWidth), valueX, margin + 81);
             
             // Status with color
             const statusName = getSafeValue(rfqData, 'status.name');
@@ -312,23 +307,23 @@ export default function RFQPDF({ rfqId, onGenerated }) {
                 doc.setTextColor(0, 0, 0); // Black
             }
             
-            doc.text(fitTextInColumn(statusName, maxRightWidth), valueX, margin + 98);
+            doc.text(fitTextInColumn(statusName, maxRightWidth), valueX, margin + 88);
             doc.setTextColor(0, 0, 0); // Reset to black
             
-            // Add a horizontal line below the organization info
-            doc.setLineWidth(0.5);
-            doc.line(margin, margin + 105, pageWidth - margin, margin + 105);
+            // Add a horizontal line below the organization info - reduced spacing
+            doc.setLineWidth(0.3); // Explicitly set line thickness
+            doc.line(margin, margin + 95, pageWidth - margin, margin + 95);
             
             // Items Section Title - centered - moved up
             doc.setFontSize(14);
             doc.setFont("helvetica", "bold");
-            doc.text("Items", pageWidth / 2, margin + 115, { align: "center" });
+            doc.text("Items", pageWidth / 2, margin + 105, { align: "center" }); // Changed from +115 to +105
             
             // Check if items exist and are in an array
             let tableResult;
             if (rfqData.items && Array.isArray(rfqData.items) && rfqData.items.length > 0) {
                 const tableColumn = [
-                    "No", "Product", "Description", "Unit", 
+                    "#", "Product", "Description", "Unit", 
                     "Quantity", "Brand", "Expected Delivery Date"
                 ];
                 
@@ -380,7 +375,7 @@ export default function RFQPDF({ rfqId, onGenerated }) {
                 tableResult = autoTable(doc, {
                     head: [tableColumn],
                     body: tableRows,
-                    startY: margin + 120,
+                    startY: margin + 110, // Changed from +120 to +110
                     margin: { left: margin, right: margin },
                     styles: { 
                         fontSize: 9, 
@@ -399,11 +394,11 @@ export default function RFQPDF({ rfqId, onGenerated }) {
                     },
                     tableWidth: availableWidth, // Exactly fit to available width
                     columnStyles: {
-                        0: { cellWidth: 12, halign: 'center' }, // No column
+                        0: { cellWidth: 8, halign: 'center' }, // # column - reduced width
                         1: { cellWidth: 28, halign: 'center' }, // Product
-                        2: { cellWidth: 45, halign: 'center' }, // Description - reduced width
-                        3: { cellWidth: 22, halign: 'center' }, // Unit - increased width
-                        4: { cellWidth: 22, halign: 'center' }, // Quantity - increased width
+                        2: { cellWidth: 49, halign: 'center' }, // Description - increased width to compensate
+                        3: { cellWidth: 22, halign: 'center' }, // Unit
+                        4: { cellWidth: 22, halign: 'center' }, // Quantity
                         5: { cellWidth: 25, halign: 'center' }, // Brand
                         6: { cellWidth: 26, halign: 'center' } // Expected Delivery Date
                     },

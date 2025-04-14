@@ -205,24 +205,24 @@ export default function MaharatPDF({ invoiceId, onGenerated }) {
                 // If we get here, QR generation succeeded within the timeout
                 const qrDataUrl = qrCanvas.toDataURL('image/png');
                 
-                // Add QR code image to PDF
+                // Add QR code image to PDF - smaller size to align with company text
                 doc.addImage(
                     qrDataUrl, 
                     'PNG', 
-                    pageWidth - margin - 30, 
-                    margin + 20, 
-                    30, 
-                    30
+                    pageWidth - margin - 25, 
+                    margin + 26, 
+                    25, 
+                    25
                 );
             } catch (qrError) {
                 console.error("Error generating QR code:", qrError);
-                // Fallback to placeholder - use a simple rounded rectangle instead
+                // Fallback to placeholder - use a simple rounded rectangle instead - smaller size
                 doc.setDrawColor(200, 200, 200);
                 doc.setFillColor(240, 240, 240);
-                doc.roundedRect(pageWidth - margin - 30, margin + 20, 30, 30, 2, 2, 'FD');
+                doc.roundedRect(pageWidth - margin - 25, margin + 20, 25, 25, 2, 2, 'FD');
                 doc.setFontSize(6);
                 doc.setTextColor(100, 100, 100);
-                doc.text("QR Code", pageWidth - margin - 15, margin + 35, { align: "center" });
+                doc.text("QR Code", pageWidth - margin - 12.5, margin + 35, { align: "center" });
                 doc.setTextColor(0, 0, 0);
             }
             
@@ -333,7 +333,7 @@ export default function MaharatPDF({ invoiceId, onGenerated }) {
             
             // Add a black horizontal line above the title
             doc.setDrawColor(0);
-            doc.setLineWidth(0.5);
+            doc.setLineWidth(0.3);
             doc.line(margin, itemsStartY, pageWidth - margin, itemsStartY);
             
             // Increase space after line before title
@@ -441,7 +441,7 @@ export default function MaharatPDF({ invoiceId, onGenerated }) {
                                 
                                 // Add line below the header
                                 doc.setDrawColor(0, 0, 0);
-                                doc.setLineWidth(0.5);
+                                doc.setLineWidth(0.3);
                                 doc.line(margin, margin + 20, pageWidth - margin, margin + 20);
                                 
                                 // Adjust the table starting position on continued pages
@@ -530,7 +530,7 @@ export default function MaharatPDF({ invoiceId, onGenerated }) {
                     
                     // Add line ABOVE the title
                     doc.setDrawColor(0, 0, 0);
-                    doc.setLineWidth(0.5);
+                    doc.setLineWidth(0.3);
                     doc.line(margin, newPageSummaryY - 5, pageWidth - margin, newPageSummaryY - 5);
                     
                     // Add summary title at top of new page with larger font
@@ -653,7 +653,7 @@ export default function MaharatPDF({ invoiceId, onGenerated }) {
                     
                     // Add line ABOVE the title
                     doc.setDrawColor(0, 0, 0);
-                    doc.setLineWidth(0.5);
+                    doc.setLineWidth(0.3);
                     doc.line(margin, summaryStartY - 15, pageWidth - margin, summaryStartY - 15);
                     
                     doc.setFontSize(12);
@@ -717,7 +717,7 @@ export default function MaharatPDF({ invoiceId, onGenerated }) {
                 
                 // Add separator line
                 doc.setDrawColor(0, 0, 0);
-                doc.setLineWidth(0.5);
+                doc.setLineWidth(0.3);
                 doc.line(margin, summaryStartY - 10, pageWidth - margin, summaryStartY - 10);
                 
                 // Company bank details on the left - ensure proper width
