@@ -6,7 +6,6 @@ import axios from "axios";
 import {
     DocumentTextIcon,
     DocumentArrowDownIcon,
-    EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -15,9 +14,6 @@ import {
     faTrash,
     faEdit,
 } from "@fortawesome/free-solid-svg-icons";
-import { fetchRFQData, fetchLookupData, getSafeValue } from "./rfqUtils";
-import { FaTrash } from "react-icons/fa";
-import { PlusCircleIcon } from '@heroicons/react/24/outline';
 import ItemModal from "./ItemModal";
 
 export default function AddQuotationForm({ auth }) {
@@ -44,8 +40,6 @@ export default function AddQuotationForm({ auth }) {
     const [categories, setCategories] = useState([]);
     const [paymentTypes, setPaymentTypes] = useState([]);
     const [costCenters, setCostCenters] = useState([]);
-    const [subCostCenters, setSubCostCenters] = useState([]);
-    const [costCenterTree, setCostCenterTree] = useState([]);
     const [units, setUnits] = useState([]);
     const [brands, setBrands] = useState([]);
     const [attachments, setAttachments] = useState({});
@@ -55,7 +49,6 @@ export default function AddQuotationForm({ auth }) {
     const [categoryNames, setCategoryNames] = useState({});
     const [paymentTypeNames, setPaymentTypeNames] = useState({});
     const [costCenterNames, setCostCenterNames] = useState({});
-    const [subCostCenterNames, setSubCostCenterNames] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [products, setProducts] = useState([]);
@@ -69,7 +62,7 @@ export default function AddQuotationForm({ auth }) {
     const getAllChildren = (node) => {
         let children = [];
         if (node.children && node.children.length > 0) {
-            node.children.forEach(child => {
+            node.children.forEach((child) => {
                 children.push(child);
                 children = [...children, ...getAllChildren(child)];
             });
@@ -86,12 +79,14 @@ export default function AddQuotationForm({ auth }) {
 
         // Find the cost center that has this selected cost center as its parent
         const subCostCenter = costCenters.find(
-            center => center.parent_id === parseInt(selectedCostCenterId)
+            (center) => center.parent_id === parseInt(selectedCostCenterId)
         );
-        
-        // If found, set it as the sub cost center
+
         if (subCostCenter) {
-            handleFormInputChange("sub_cost_center_id", subCostCenter.id.toString());
+            handleFormInputChange(
+                "sub_cost_center_id",
+                subCostCenter.id.toString()
+            );
         } else {
             handleFormInputChange("sub_cost_center_id", "");
         }
@@ -105,24 +100,25 @@ export default function AddQuotationForm({ auth }) {
     };
 
     // Add a useEffect to track formData changes
-    useEffect(() => {
-        // Removed console.log for formData changes
-    }, [formData.cost_center_id, formData.sub_cost_center_id, formData.category_id]);
+    useEffect(() => {}, [
+        formData.cost_center_id,
+        formData.sub_cost_center_id,
+        formData.category_id,
+    ]);
 
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                // First fetch products
                 const productsResponse = await axios.get("/api/v1/products");
                 const productsData = productsResponse.data?.data || [];
                 setProducts(productsData);
 
-                // Fetch cost centers
-                const costCentersResponse = await axios.get("/api/v1/cost-centers");
+                const costCentersResponse = await axios.get(
+                    "/api/v1/cost-centers"
+                );
                 const costCentersData = costCentersResponse.data?.data || [];
                 setCostCenters(costCentersData);
 
-                // Create lookup map for cost centers
                 const costCenterLookup = {};
                 costCentersData.forEach((center) => {
                     if (center && center.id) {
@@ -143,15 +139,11 @@ export default function AddQuotationForm({ auth }) {
                         setLoading(false);
                         return;
                     }
-
-                    // For category, we need to fetch from rfq_categories
                     let categoryId = "";
-                    
-                    // First check if we have categories in the RFQ data
                     if (rfqData.categories && rfqData.categories.length > 0) {
                         categoryId = String(rfqData.categories[0].id);
                     }
-                    
+
                     // If still empty, try to get from rfq_categories relationship
                     if (!categoryId) {
                         try {
@@ -172,7 +164,6 @@ export default function AddQuotationForm({ auth }) {
                         }
                     }
 
-                    // If still empty, try to get from rfqData
                     if (!categoryId && rfqData.category_id) {
                         categoryId = String(rfqData.category_id);
                     }
@@ -244,12 +235,18 @@ export default function AddQuotationForm({ auth }) {
                         organization_name: rfqData.organization_name || "",
                         organization_email: rfqData.organization_email || "",
                         city: rfqData.city || "",
-                        category_id: categoryId || (rfqData.category_id ? String(rfqData.category_id) : ""),
+                        category_id:
+                            categoryId ||
+                            (rfqData.category_id
+                                ? String(rfqData.category_id)
+                                : ""),
                         warehouse_id: rfqData.warehouse
                             ? String(rfqData.warehouse.id)
                             : "",
-                        cost_center_id: rfqData.cost_center_id?.toString() || "",
-                        sub_cost_center_id: rfqData.sub_cost_center_id?.toString() || "",
+                        cost_center_id:
+                            rfqData.cost_center_id?.toString() || "",
+                        sub_cost_center_id:
+                            rfqData.sub_cost_center_id?.toString() || "",
                         issue_date:
                             rfqData.request_date?.split("T")[0] ||
                             new Date().toISOString().split("T")[0],
@@ -293,7 +290,6 @@ export default function AddQuotationForm({ auth }) {
                         });
                 }
             } catch (error) {
-                console.error("Error fetching initial data:", error);
                 setError("Failed to load data");
             } finally {
                 setLoading(false);
@@ -309,7 +305,11 @@ export default function AddQuotationForm({ auth }) {
                 setLoading(true);
 
                 const endpoints = [
-                    { name: "units", url: "/api/v1/units", params: { per_page: 100 } },
+                    {
+                        name: "units",
+                        url: "/api/v1/units",
+                        params: { per_page: 100 },
+                    },
                     { name: "brands", url: "/api/v1/brands" },
                     { name: "categories", url: "/api/v1/product-categories" },
                     { name: "warehouses", url: "/api/v1/warehouses" },
@@ -320,42 +320,51 @@ export default function AddQuotationForm({ auth }) {
                 const results = await Promise.all(
                     endpoints.map(async (endpoint) => {
                         try {
-                            const response = await axios.get(endpoint.url, { params: endpoint.params });
+                            const response = await axios.get(endpoint.url, {
+                                params: endpoint.params,
+                            });
                             let data = response.data?.data || [];
-                            
+
                             // Handle pagination for units
-                            if (endpoint.name === "units" && response.data?.meta) {
+                            if (
+                                endpoint.name === "units" &&
+                                response.data?.meta
+                            ) {
                                 const meta = response.data.meta;
                                 if (meta.last_page > 1) {
                                     const remainingRequests = [];
-                                    for (let page = 2; page <= meta.last_page; page++) {
+                                    for (
+                                        let page = 2;
+                                        page <= meta.last_page;
+                                        page++
+                                    ) {
                                         remainingRequests.push(
-                                            axios.get(endpoint.url, { 
-                                                params: { 
+                                            axios.get(endpoint.url, {
+                                                params: {
                                                     ...endpoint.params,
-                                                    page 
-                                                } 
+                                                    page,
+                                                },
                                             })
                                         );
                                     }
-                                    const remainingResponses = await Promise.all(remainingRequests);
-                                    remainingResponses.forEach(response => {
+                                    const remainingResponses =
+                                        await Promise.all(remainingRequests);
+                                    remainingResponses.forEach((response) => {
                                         if (response.data?.data) {
-                                            data = [...data, ...response.data.data];
+                                            data = [
+                                                ...data,
+                                                ...response.data.data,
+                                            ];
                                         }
                                     });
                                 }
                             }
-                            
+
                             return {
                                 name: endpoint.name,
                                 data: data,
                             };
                         } catch (error) {
-                            console.warn(
-                                `Failed to fetch ${endpoint.name}:`,
-                                error
-                            );
                             return { name: endpoint.name, data: [] };
                         }
                     })
@@ -371,7 +380,8 @@ export default function AddQuotationForm({ auth }) {
                             const categoryLookup = {};
                             result.data.forEach((category) => {
                                 if (category && category.id) {
-                                    categoryLookup[String(category.id)] = category.name;
+                                    categoryLookup[String(category.id)] =
+                                        category.name;
                                 }
                             });
                             setCategoryNames(categoryLookup);
@@ -512,8 +522,6 @@ export default function AddQuotationForm({ auth }) {
                         }
                     }
                 } catch (error) {
-                    console.error("Error fetching all statuses:", error);
-
                     try {
                         const fallbackResponse = await axios.get(
                             "/api/v1/statuses"
@@ -537,17 +545,12 @@ export default function AddQuotationForm({ auth }) {
                             setPaymentTypeNames(fallbackLookup);
                         }
                     } catch (fallbackError) {
-                        console.error(
-                            "Fallback fetch also failed:",
-                            fallbackError
-                        );
                         setPaymentTypes([]);
                         setPaymentTypeNames({});
                     }
                 }
                 setLoading(false);
             } catch (error) {
-                console.error("Error fetching lookup data:", error);
                 setError(
                     "Failed to load reference data. Some options may be unavailable."
                 );
@@ -571,14 +574,10 @@ export default function AddQuotationForm({ auth }) {
     }, []);
 
     // Add a useEffect to log category state changes
-    useEffect(() => {
-        // Removed console.log for category state changes
-    }, [categories, categoryNames]);
+    useEffect(() => {}, [categories, categoryNames]);
 
     // Add debug logs for units
-    useEffect(() => {
-        // Removed console.log for units state
-    }, [units, unitNames, formData.items]);
+    useEffect(() => {}, [units, unitNames, formData.items]);
 
     // Update the unit display in the table
     const getUnitName = (unitId) => {
@@ -592,74 +591,74 @@ export default function AddQuotationForm({ auth }) {
         setSelectedItem(null);
         setIsItemModalOpen(true);
     };
-    
+
     // Update the handleEditItem function
     const handleEditItem = (itemId) => {
-        // Find the item by ID using proper type conversion
-        const itemToEdit = formData.items.find(item => 
-            String(item.id) === String(itemId)
+        const itemToEdit = formData.items.find(
+            (item) => String(item.id) === String(itemId)
         );
-        
+
         if (itemToEdit) {
             setIsEditingItem(true);
             setSelectedItem(itemToEdit);
             setIsItemModalOpen(true);
         }
     };
-    
+
     // Use the sorted array only for display, not for editing
     const sortedItems = [...formData.items].sort((a, b) => {
-        // Sort by expected_delivery_date (earliest first)
-        const dateA = a.expected_delivery_date ? new Date(a.expected_delivery_date) : new Date(9999, 11, 31);
-        const dateB = b.expected_delivery_date ? new Date(b.expected_delivery_date) : new Date(9999, 11, 31);
+        const dateA = a.expected_delivery_date
+            ? new Date(a.expected_delivery_date)
+            : new Date(9999, 11, 31);
+        const dateB = b.expected_delivery_date
+            ? new Date(b.expected_delivery_date)
+            : new Date(9999, 11, 31);
         return dateA - dateB;
     });
 
     // Replace handleSaveItem with this improved version
     const handleSaveItem = (itemData) => {
         const newItems = [...formData.items];
-        
+
         if (isEditingItem && selectedItem) {
-            // Find and update the existing item by ID
-            const index = newItems.findIndex(item => item.id === selectedItem.id);
+            const index = newItems.findIndex(
+                (item) => item.id === selectedItem.id
+            );
             if (index !== -1) {
                 newItems[index] = {
                     ...itemData,
-                    id: selectedItem.id // Preserve the original ID
+                    id: selectedItem.id,
                 };
                 setFormData({ ...formData, items: newItems });
             }
         } else {
-            // Add a new item with a temporary ID
             const tempId = `temp-${Date.now()}`;
             newItems.push({
                 ...itemData,
                 id: tempId,
                 rfq_id: formData.id || formData.rfq_id || null,
-                status_id: 48 // Keep the status ID from original implementation
+                status_id: 48,
             });
             setFormData({ ...formData, items: newItems });
         }
     };
-    
+
     // Update the handleRemoveItem function to use item ID
     const handleRemoveItem = (itemId) => {
-        if (formData.items.length <= 1) return; // Do not remove the last item
+        if (formData.items.length <= 1) return;
 
-        const newItems = formData.items.filter(item => item.id !== itemId);
+        const newItems = formData.items.filter((item) => item.id !== itemId);
         setFormData({ ...formData, items: newItems });
     };
 
     const handleFileChange = (index, e) => {
         const file = e.target.files[0];
         if (file) {
-            // Store the actual file object
             setAttachments((prev) => ({
                 ...prev,
                 [index]: file,
             }));
 
-            // Update the form data with the file info
             const updatedItems = [...formData.items];
             updatedItems[index].attachment = {
                 name: file.name,
@@ -673,14 +672,11 @@ export default function AddQuotationForm({ auth }) {
     // Improve handleFileClick function to handle temporary file objects
     const handleFileClick = (file) => {
         if (!file) return;
-        
+
         let fileUrl = null;
-        
-        // Handle File objects (newly added files)
         if (file instanceof File) {
-            // Create a temporary object URL for viewing the file
             fileUrl = URL.createObjectURL(file);
-        } 
+        }
         // Handle file objects with file property (from ItemModal)
         else if (file.file && file.file instanceof File) {
             fileUrl = URL.createObjectURL(file.file);
@@ -690,14 +686,18 @@ export default function AddQuotationForm({ auth }) {
             if (file.url && file.url.startsWith("http")) {
                 fileUrl = file.url;
             } else {
-                fileUrl = `/storage/${file.url || file.path || file}`.replace("/storage/storage/", "/storage/");
+                fileUrl = `/storage/${file.url || file.path || file}`.replace(
+                    "/storage/storage/",
+                    "/storage/"
+                );
             }
-        } 
-        // Handle string paths
-        else if (typeof file === "string") {
-            fileUrl = `/storage/${file}`.replace("/storage/storage/", "/storage/");
+        } else if (typeof file === "string") {
+            fileUrl = `/storage/${file}`.replace(
+                "/storage/storage/",
+                "/storage/"
+            );
         }
-        
+
         if (fileUrl) {
             window.open(fileUrl, "_blank");
         }
@@ -707,13 +707,13 @@ export default function AddQuotationForm({ auth }) {
     const formatDate = (dateString) => {
         if (!dateString) return "";
         const date = new Date(dateString);
-        if (isNaN(date.getTime())) return dateString; // Return original string if invalid date
-        
+        if (isNaN(date.getTime())) return dateString;
+
         // Format as dd/mm/yyyy
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, "0");
+        const month = (date.getMonth() + 1).toString().padStart(2, "0");
         const year = date.getFullYear();
-        
+
         return `${day}/${month}/${year}`;
     };
 
@@ -728,7 +728,6 @@ export default function AddQuotationForm({ auth }) {
         e.preventDefault();
 
         try {
-            // Create a plain object with all required data
             const rfqData = {
                 organization_name: formData.organization_name || "",
                 organization_email: formData.organization_email || "",
@@ -741,12 +740,11 @@ export default function AddQuotationForm({ auth }) {
                 payment_type: formData.payment_type || "",
                 contact_number: formData.contact_no || "",
                 status_id: formData.status_id || "48",
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
             };
 
             let response;
             if (rfqId) {
-                // For updates, use direct JSON data instead of FormData to avoid issues
                 response = await axios.put(`/api/v1/rfqs/${rfqId}`, rfqData, {
                     headers: {
                         "Content-Type": "application/json",
@@ -754,12 +752,11 @@ export default function AddQuotationForm({ auth }) {
                     },
                 });
             } else {
-                // Convert to FormData for new records
                 const formDataObj = new FormData();
                 Object.entries(rfqData).forEach(([key, value]) => {
                     formDataObj.append(key, value);
                 });
-                
+
                 response = await axios.post("/api/v1/rfqs", formDataObj, {
                     headers: {
                         "Content-Type": "multipart/form-data",
@@ -775,14 +772,15 @@ export default function AddQuotationForm({ auth }) {
 
             // Only save items if there are items to save
             if (formData.items.length > 0) {
-                // For new items in edit mode, we need a different approach
-                // Split items into existing and new ones
                 const existingItems = [];
                 const newItems = [];
-                
-                formData.items.forEach(item => {
-                    // Check if this is a new item (has temp ID) or existing item
-                    if (item.id && !item.id.toString().startsWith('temp-') && !isNaN(parseInt(item.id))) {
+
+                formData.items.forEach((item) => {
+                    if (
+                        item.id &&
+                        !item.id.toString().startsWith("temp-") &&
+                        !isNaN(parseInt(item.id))
+                    ) {
                         existingItems.push({
                             id: item.id,
                             product_id: item.product_id,
@@ -810,14 +808,16 @@ export default function AddQuotationForm({ auth }) {
                         });
                     }
                 });
-                
+
                 // Handle existing items first if any
                 if (existingItems.length > 0) {
                     try {
                         const updateItemsFormData = new FormData();
-                        updateItemsFormData.append("items", JSON.stringify(existingItems));
-                        
-                        console.log('Updating existing items...');
+                        updateItemsFormData.append(
+                            "items",
+                            JSON.stringify(existingItems)
+                        );
+
                         const updateResponse = await axios.post(
                             "/api/v1/rfq-items",
                             updateItemsFormData,
@@ -828,39 +828,53 @@ export default function AddQuotationForm({ auth }) {
                                 },
                             }
                         );
-                        console.log('Update response:', updateResponse.data);
                     } catch (updateError) {
-                        console.error('Error updating existing items:', updateError);
                         if (updateError.response) {
-                            console.error('Error response:', updateError.response.data);
-                            console.error('Error status:', updateError.response.status);
-                            console.error('Error headers:', updateError.response.headers);
+                            console.error(
+                                "Error response:",
+                                updateError.response.data
+                            );
                         }
-                        alert("RFQ was saved, but there was an error updating some items. Please try again.");
+                        alert(
+                            "RFQ was saved, but there was an error updating some items. Please try again."
+                        );
                     }
                 }
-                
+
                 // Handle new items (always create, even in edit mode)
                 if (newItems.length > 0) {
                     try {
                         const newItemsFormData = new FormData();
-                        newItemsFormData.append("items", JSON.stringify(newItems));
+                        newItemsFormData.append(
+                            "items",
+                            JSON.stringify(newItems)
+                        );
                         newItemsFormData.append("rfq_id", newRfqId);
-                        
+
                         // Add attachments for new items
                         let attachmentIndex = 0;
                         formData.items.forEach((item, index) => {
-                            if (!item.id || item.id.toString().startsWith('temp-') || isNaN(parseInt(item.id))) {
+                            if (
+                                !item.id ||
+                                item.id.toString().startsWith("temp-") ||
+                                isNaN(parseInt(item.id))
+                            ) {
                                 if (item.tempFile) {
-                                    newItemsFormData.append(`attachments[${attachmentIndex}]`, item.tempFile);
+                                    newItemsFormData.append(
+                                        `attachments[${attachmentIndex}]`,
+                                        item.tempFile
+                                    );
                                     attachmentIndex++;
                                 } else if (attachments && attachments[index]) {
-                                    newItemsFormData.append(`attachments[${attachmentIndex}]`, attachments[index]);
+                                    newItemsFormData.append(
+                                        `attachments[${attachmentIndex}]`,
+                                        attachments[index]
+                                    );
                                     attachmentIndex++;
                                 }
                             }
                         });
-                        
+
                         await axios.post(
                             "/api/v1/rfq-items",
                             newItemsFormData,
@@ -872,18 +886,17 @@ export default function AddQuotationForm({ auth }) {
                             }
                         );
                     } catch (createError) {
-                        console.error('Error creating new items:', createError);
-                        alert("RFQ was saved, but there was an error saving new items: " + 
-                              (createError.response?.data?.message || "Unknown error"));
+                        alert(
+                            "RFQ was saved, but there was an error saving new items: " +
+                                (createError.response?.data?.message ||
+                                    "Unknown error")
+                        );
                     }
                 }
             }
-
-            // Success message and redirect
             alert("RFQ and items saved successfully!");
             router.visit(route("rfq.index"));
         } catch (error) {
-            console.error('Error in handleSaveAndSubmit:', error);
             alert(
                 error.response?.data?.message ||
                     "Save failed. Please check your data and try again."
@@ -915,15 +928,14 @@ export default function AddQuotationForm({ auth }) {
             fileName = file.original_filename || file.name || file.file_name;
             // Fix the URL construction
             if (file.url && file.url.startsWith("http")) {
-                    fileUrl = file.url;
-                } else {
+                fileUrl = file.url;
+            } else {
                 fileUrl = `/storage/${file.url || file.path || file}`.replace(
                     "/storage/storage/",
                     "/storage/"
                 );
             }
         } else if (typeof file === "string") {
-            // Legacy format - just the path
             fileName = file.split("/").pop();
             fileUrl = `/storage/${file}`.replace(
                 "/storage/storage/",
@@ -1017,22 +1029,12 @@ export default function AddQuotationForm({ auth }) {
                             href="/dashboard"
                             className="hover:text-[#009FDC] text-xl"
                         >
-                            Home
+                            Dashboard
                         </Link>
                         <FontAwesomeIcon
                             icon={faChevronRight}
                             className="text-xl text-[#9B9DA2]"
                         />
-                        {/* <Link
-                            href="/purchase"
-                            className="hover:text-[#009FDC] text-xl"
-                        >
-                            Procurement Center
-                        </Link>
-                        <FontAwesomeIcon
-                            icon={faChevronRight}
-                            className="text-xl text-[#9B9DA2]"
-                        /> */}
                         <Link
                             href="/rfq"
                             className="hover:text-[#009FDC] text-xl"
@@ -1068,9 +1070,7 @@ export default function AddQuotationForm({ auth }) {
                     />
                 </div>
 
-                {/* Form */}
                 <form onSubmit={handleSaveAndSubmit}>
-                    {/* Info Grid */}
                     <div className="bg-blue-50 rounded-lg p-6 grid grid-cols-2 gap-6 shadow-md text-lg">
                         {/* Left Column */}
                         <div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-center">
@@ -1086,7 +1086,7 @@ export default function AddQuotationForm({ auth }) {
                                         e.target.value
                                     )
                                 }
-                                className="text-black bg-blue-50 focus:ring-0 w-full outline-none border-none text-lg"
+                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                 required
                             />
 
@@ -1102,7 +1102,7 @@ export default function AddQuotationForm({ auth }) {
                                         e.target.value
                                     )
                                 }
-                                className="text-black bg-blue-50 focus:ring-0 w-full outline-none border-none text-lg"
+                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                 required
                             />
 
@@ -1118,14 +1118,14 @@ export default function AddQuotationForm({ auth }) {
                                         e.target.value
                                     )
                                 }
-                                className="text-black bg-blue-50 focus:ring-0 w-full outline-none border-none text-lg"
+                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                 required
                             />
 
                             <span className="font-medium text-gray-600">
                                 Category:
                             </span>
-                            <div className="relative ml-3">
+                            <div className="relative">
                                 <select
                                     value={formData.category_id || ""}
                                     onChange={(e) =>
@@ -1134,7 +1134,7 @@ export default function AddQuotationForm({ auth }) {
                                             e.target.value
                                         )
                                     }
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-72 appearance-none pl-0 pr-4 cursor-pointer outline-none border-none"
+                                    className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                     required
                                 >
                                     <option value="">Select Category</option>
@@ -1148,17 +1148,12 @@ export default function AddQuotationForm({ auth }) {
                                         </option>
                                     ))}
                                 </select>
-                                {/* Debug output */}
-                                <div style={{display: 'none'}}>
-                                    Selected category_id: {formData.category_id}
-                                    Available categories: {JSON.stringify(categories.map(c => ({id: c.id, name: c.name})))}
-                                </div>
                             </div>
 
                             <span className="font-medium text-gray-600">
                                 Warehouse:
                             </span>
-                            <div className="relative ml-3">
+                            <div className="relative">
                                 <select
                                     value={formData.warehouse_id || ""}
                                     onChange={(e) =>
@@ -1167,7 +1162,7 @@ export default function AddQuotationForm({ auth }) {
                                             e.target.value
                                         )
                                     }
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-72 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
+                                    className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                     required
                                 >
                                     <option value="">Select Warehouse</option>
@@ -1186,11 +1181,11 @@ export default function AddQuotationForm({ auth }) {
                             <span className="font-medium text-gray-600">
                                 Cost Center:
                             </span>
-                            <div className="relative ml-3">
+                            <div className="relative">
                                 <select
                                     value={formData.cost_center_id || ""}
                                     onChange={handleCostCenterChange}
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-72 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
+                                    className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                     required
                                 >
                                     <option value="">Select Cost Center</option>
@@ -1221,7 +1216,7 @@ export default function AddQuotationForm({ auth }) {
                                         e.target.value
                                     )
                                 }
-                                className="text-black bg-blue-50 focus:ring-0 outline-none border-none w-40 ml-2 text-lg"
+                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                 required
                             />
 
@@ -1237,12 +1232,12 @@ export default function AddQuotationForm({ auth }) {
                                         e.target.value
                                     )
                                 }
-                                className="text-black bg-blue-50 focus:ring-0 outline-none border-none w-40 ml-2 text-lg"
+                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                 required
                             />
 
                             <span className="font-medium text-gray-600">
-                                RFQ#:
+                                RFQ #:
                             </span>
                             <input
                                 type="text"
@@ -1253,7 +1248,7 @@ export default function AddQuotationForm({ auth }) {
                                         e.target.value
                                     )
                                 }
-                                className="text-black bg-blue-50 focus:ring-0 outline-none border-none w-full ml-2 text-lg"
+                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                 readOnly={!isEditing}
                                 placeholder={
                                     isEditing ? "" : "Auto-generated by system"
@@ -1264,7 +1259,7 @@ export default function AddQuotationForm({ auth }) {
                             <span className="font-medium text-gray-600">
                                 Payment Type:
                             </span>
-                            <div className="relative ml-5">
+                            <div className="relative">
                                 <select
                                     value={formData.payment_type || ""}
                                     onChange={(e) =>
@@ -1273,7 +1268,7 @@ export default function AddQuotationForm({ auth }) {
                                             e.target.value
                                         )
                                     }
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 appearance-none pl-0 pr-6 cursor-pointer outline-none border-none"
+                                    className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                     required
                                 >
                                     <option value="">
@@ -1292,7 +1287,7 @@ export default function AddQuotationForm({ auth }) {
                             </div>
 
                             <span className="font-medium text-gray-600">
-                                Contact No#:
+                                Contact No:
                             </span>
                             <input
                                 type="text"
@@ -1303,18 +1298,22 @@ export default function AddQuotationForm({ auth }) {
                                         e.target.value
                                     )
                                 }
-                                className="text-black bg-blue-50 focus:ring-0 outline-none border-none w-full ml-2 text-lg"
+                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                 required
                             />
 
                             <span className="font-medium text-gray-600">
                                 Sub Cost Center:
                             </span>
-                            <div className="relative ml-5">
+                            <div className="relative">
                                 <input
                                     type="text"
-                                    value={costCenterNames[formData.sub_cost_center_id] || ""}
-                                    className="text-lg text-[#009FDC] font-medium bg-blue-50 focus:ring-0 w-64 pl-0 pr-6 cursor-default outline-none border-none"
+                                    value={
+                                        costCenterNames[
+                                            formData.sub_cost_center_id
+                                        ] || ""
+                                    }
+                                    className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                     readOnly
                                 />
                             </div>
@@ -1324,73 +1323,128 @@ export default function AddQuotationForm({ auth }) {
                     {/* Table for Items with no border/outline in cells */}
                     <div className="overflow-x-auto">
                         <table className="min-w-full table-auto mt-4 border-collapse">
-                        <thead>
-                            <tr>
-                                    <th className="px-2 py-2 text-center w-[5%] bg-[#C7E7DE] rounded-tl-2xl rounded-bl-2xl">#</th>
-                                    <th className="px-2 py-2 text-center w-[13%] bg-[#C7E7DE]">Products</th>
-                                    <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">Description</th>
-                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Unit</th>
-                                    <th className="px-2 py-2 text-center w-[8%] bg-[#C7E7DE]">Quantity</th>
-                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Brand</th>
-                                    <th className="px-2 py-2 text-center w-[14%] bg-[#C7E7DE]">Expected Delivery Date</th>
-                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">Attachment</th>
-                                    <th className="px-2 py-2 text-center w-[6%] bg-[#C7E7DE] rounded-tr-2xl rounded-br-2xl">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                            <thead>
+                                <tr>
+                                    <th className="px-2 py-2 text-center w-[5%] bg-[#C7E7DE] rounded-tl-2xl rounded-bl-2xl">
+                                        #
+                                    </th>
+                                    <th className="px-2 py-2 text-center w-[13%] bg-[#C7E7DE]">
+                                        Products
+                                    </th>
+                                    <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">
+                                        Description
+                                    </th>
+                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
+                                        Unit
+                                    </th>
+                                    <th className="px-2 py-2 text-center w-[8%] bg-[#C7E7DE]">
+                                        Quantity
+                                    </th>
+                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
+                                        Brand
+                                    </th>
+                                    <th className="px-2 py-2 text-center w-[14%] bg-[#C7E7DE]">
+                                        Expected Delivery Date
+                                    </th>
+                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
+                                        Attachment
+                                    </th>
+                                    <th className="px-2 py-2 text-center w-[6%] bg-[#C7E7DE] rounded-tr-2xl rounded-br-2xl">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
                                 {sortedItems.length > 0 ? (
                                     sortedItems.map((item, index) => (
                                         <tr key={item.id || index}>
-                                            <td className="px-4 py-2 text-center">{index + 1}</td>
-                                            <td className="px-4 py-2 text-center">{item.item_name}</td>
-                                            <td className="px-4 py-2 text-center">{item.description}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                {index + 1}
+                                            </td>
+                                            <td className="px-4 py-2 text-center">
+                                                {item.item_name}
+                                            </td>
+                                            <td className="px-4 py-2 text-center">
+                                                {item.description}
+                                            </td>
                                             <td className="px-4 py-2 text-center">
                                                 {getUnitName(item.unit_id)}
                                             </td>
-                                            <td className="px-4 py-2 text-center">{item.quantity}</td>
                                             <td className="px-4 py-2 text-center">
-                                                {brandNames[String(item.brand_id)] || item.brand_id}
+                                                {item.quantity}
                                             </td>
-                                            <td className="px-4 py-2 text-center">{formatDate(item.expected_delivery_date)}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                {brandNames[
+                                                    String(item.brand_id)
+                                                ] || item.brand_id}
+                                            </td>
+                                            <td className="px-4 py-2 text-center">
+                                                {formatDate(
+                                                    item.expected_delivery_date
+                                                )}
+                                            </td>
                                             <td className="px-4 py-2 text-center">
                                                 {item.attachment ? (
-                                            <FileDisplay
-                                                file={item.attachment}
-                                                        onFileClick={() => handleFileClick(item.attachment)}
+                                                    <FileDisplay
+                                                        file={item.attachment}
+                                                        onFileClick={() =>
+                                                            handleFileClick(
+                                                                item.attachment
+                                                            )
+                                                        }
                                                     />
                                                 ) : (
-                                                    <span className="text-gray-500 text-sm">No Attachment</span>
+                                                    <span className="text-gray-500 text-sm">
+                                                        No Attachment
+                                                    </span>
                                                 )}
-                                    </td>
+                                            </td>
                                             <td className="px-4 py-2 text-center">
                                                 <div className="flex space-x-2 justify-center">
-                                        <button
-                                            type="button"
-                                                        onClick={() => handleEditItem(item.id)}
-                                                        className="text-blue-500 hover:text-blue-700"
-                                                    >
-                                                        <FontAwesomeIcon icon={faEdit} />
-                                        </button>
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleRemoveItem(item.id)}
+                                                        onClick={() =>
+                                                            handleEditItem(
+                                                                item.id
+                                                            )
+                                                        }
+                                                        className="text-blue-500 hover:text-blue-700"
+                                                    >
+                                                        <FontAwesomeIcon
+                                                            icon={faEdit}
+                                                        />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            handleRemoveItem(
+                                                                item.id
+                                                            )
+                                                        }
                                                         className="text-red-500 hover:text-red-700"
                                                     >
-                                                        <FontAwesomeIcon icon={faTrash} />
+                                                        <FontAwesomeIcon
+                                                            icon={faTrash}
+                                                        />
                                                     </button>
                                                 </div>
-                                    </td>
-                                </tr>
+                                            </td>
+                                        </tr>
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="9" className="px-4 py-6 text-center text-gray-500">
-                                            No items added yet. Use the "Add Item" button below to add items to this RFQ.
+                                        <td
+                                            colSpan="9"
+                                            className="px-4 py-6 text-center text-gray-500"
+                                        >
+                                            No items added yet. Use the "Add
+                                            Item" button below to add items to
+                                            this RFQ.
                                         </td>
                                     </tr>
                                 )}
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
                     </div>
 
                     {/* Add Item Button - centered at bottom */}
@@ -1404,7 +1458,6 @@ export default function AddQuotationForm({ auth }) {
                         </button>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="mt-8 flex justify-end space-x-4">
                         <button
                             type="submit"
