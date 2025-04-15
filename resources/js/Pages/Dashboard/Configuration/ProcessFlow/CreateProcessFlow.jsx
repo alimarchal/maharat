@@ -149,7 +149,7 @@ const CreateProcessFlow = () => {
                             </th>
                             <th className="py-3 px-4">Title</th>
                             <th className="py-3 px-4">Status</th>
-                            <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                            <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                                 Actions
                             </th>
                         </tr>
@@ -165,10 +165,10 @@ const CreateProcessFlow = () => {
                                     <td className="py-3 px-4">
                                         {process.status}
                                     </td>
-                                    <td className="py-3 px-4 flex space-x-3">
+                                    <td className="py-3 px-4 flex justify-center text-center space-x-3">
                                         <button
                                             onClick={() => handleEdit(process)}
-                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            className="text-blue-400 hover:text-blue-500"
                                         >
                                             <FontAwesomeIcon icon={faEdit} />
                                         </button>
@@ -176,7 +176,7 @@ const CreateProcessFlow = () => {
                                             onClick={() =>
                                                 handleDelete(process.id)
                                             }
-                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            className="text-red-600 hover:text-red-800"
                                         >
                                             <FontAwesomeIcon icon={faTrash} />
                                         </button>
