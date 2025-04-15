@@ -58,7 +58,7 @@ const PaymentOrderTable = () => {
                         <th className="py-3 px-4">Amount</th>
                         <th className="py-3 px-4 text-center">Attachment</th>
                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
-                            View
+                            Actions
                         </th>
                     </tr>
                 </thead>
@@ -114,10 +114,17 @@ const PaymentOrderTable = () => {
                                         "N/A"
                                     )}
                                 </td>
-                                <td className="py-3 px-4 flex justify-center text-center space-x-3">
+                                <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
                                     <Link className="text-[#9B9DA2] hover:text-gray-500">
                                         <FontAwesomeIcon icon={faEye} />
                                     </Link>
+                                    <button className="w-4 h-4">
+                                        <img
+                                            src="/images/pdf-file.png"
+                                            alt="PDF"
+                                            className="w-full h-full"
+                                        />
+                                    </button>
                                 </td>
                             </tr>
                         ))

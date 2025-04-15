@@ -5,7 +5,14 @@ import axios from "axios";
 import InputFloating from "../../../Components/InputFloating";
 import SelectFloating from "../../../Components/SelectFloating";
 
-const ApproveOrder = ({ isOpen, onClose, onSave, quotationId, purchaseOrder = null, isEdit = false }) => {
+const ApproveOrder = ({
+    isOpen,
+    onClose,
+    onSave,
+    quotationId,
+    purchaseOrder = null,
+    isEdit = false,
+}) => {
     const [formData, setFormData] = useState({
         purchase_order_no: "",
         supplier_id: "",
@@ -15,7 +22,7 @@ const ApproveOrder = ({ isOpen, onClose, onSave, quotationId, purchaseOrder = nu
         attachment: null,
         status: "Approved",
         quotation_id: quotationId,
-        rfq_id: ""
+        rfq_id: "",
     });
 
     const [companies, setCompanies] = useState([]);
@@ -25,55 +32,47 @@ const ApproveOrder = ({ isOpen, onClose, onSave, quotationId, purchaseOrder = nu
     const [quotationDetails, setQuotationDetails] = useState(null);
 
     const generatePONumber = () => {
-        // Simple PO number format: PO-YYYYMMDD-XXXX
         const date = new Date();
         const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const random = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const random = Math.floor(1000 + Math.random() * 9000);
         return `PO-${year}${month}${day}-${random}`;
     };
 
     const fetchQuotationDetails = async () => {
         try {
-            console.log('Fetching quotation details for quotation ID:', quotationId);
-            const response = await axios.get(`/api/v1/quotations/${quotationId}`);
-            console.log('Quotation details:', response.data);
-            
+            const response = await axios.get(
+                `/api/v1/quotations/${quotationId}`
+            );
             if (response.data.data) {
                 const quotation = response.data.data;
                 setQuotationDetails(quotation);
-                
-                // Set the RFQ ID from the quotation
                 const rfqId = quotation.rfq?.id;
-                console.log('RFQ ID from quotation:', rfqId);
-                
+
                 if (rfqId) {
-                    setFormData(prev => ({
+                    setFormData((prev) => ({
                         ...prev,
-                        rfq_id: rfqId
+                        rfq_id: rfqId,
                     }));
                 }
-                
-                // Set supplier_id from quotation if available
                 if (quotation.supplier_id) {
-                    setFormData(prev => ({
+                    setFormData((prev) => ({
                         ...prev,
-                        supplier_id: quotation.supplier_id
+                        supplier_id: quotation.supplier_id,
                     }));
                 }
             }
         } catch (error) {
-            console.error('Error fetching quotation details:', error);
+            console.error("Error fetching quotation details:", error);
         }
     };
 
     const fetchPurchaseOrderDetails = async () => {
         try {
-            console.log('Fetching purchase order details for ID:', purchaseOrder?.id);
-            const response = await axios.get(`/api/v1/purchase-orders/${purchaseOrder?.id}`);
-            console.log('Purchase order details:', response.data);
-            
+            const response = await axios.get(
+                `/api/v1/purchase-orders/${purchaseOrder?.id}`
+            );
             if (response.data.data) {
                 const orderData = response.data.data;
                 setFormData({
@@ -85,16 +84,14 @@ const ApproveOrder = ({ isOpen, onClose, onSave, quotationId, purchaseOrder = nu
                     attachment: orderData.attachment || null,
                     status: orderData.status || "Approved",
                     quotation_id: quotationId,
-                    rfq_id: orderData.rfq_id || ""
+                    rfq_id: orderData.rfq_id || "",
                 });
-                
-                // If the RFQ ID is missing in the purchase order, fetch it from the quotation
                 if (!orderData.rfq_id) {
                     fetchQuotationDetails();
                 }
             }
         } catch (error) {
-            console.error('Error fetching purchase order details:', error);
+            console.error("Error fetching purchase order details:", error);
         }
     };
 
@@ -102,18 +99,15 @@ const ApproveOrder = ({ isOpen, onClose, onSave, quotationId, purchaseOrder = nu
         if (isOpen && quotationId) {
             fetchCompanies();
             fetchQuotationDetails();
-            
+
             if (isEdit && purchaseOrder) {
-                console.log('Loading existing purchase order:', purchaseOrder);
                 fetchPurchaseOrderDetails();
             } else {
-                console.log('Setting up new purchase order form');
-                // Generate PO number for new purchase orders
                 const poNumber = generatePONumber();
-                setFormData(prev => ({
+                setFormData((prev) => ({
                     ...prev,
                     purchase_order_no: poNumber,
-                    quotation_id: quotationId
+                    quotation_id: quotationId,
                 }));
             }
         }
@@ -121,18 +115,18 @@ const ApproveOrder = ({ isOpen, onClose, onSave, quotationId, purchaseOrder = nu
 
     const fetchCompanies = async () => {
         try {
-            const response = await axios.get('/api/v1/suppliers');
+            const response = await axios.get("/api/v1/suppliers");
             setCompanies(response.data.data || []);
         } catch (error) {
-            console.error('Error fetching suppliers:', error);
+            console.error("Error fetching suppliers:", error);
         }
     };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            [name]: value
+            [name]: value,
         }));
     };
 
@@ -148,12 +142,15 @@ const ApproveOrder = ({ isOpen, onClose, onSave, quotationId, purchaseOrder = nu
         setIsSaving(true);
         setErrors({});
 
-        // Validate required fields
         const validationErrors = {};
-        if (!formData.supplier_id) validationErrors.supplier_id = "Supplier is required";
-        if (!formData.purchase_order_date) validationErrors.purchase_order_date = "Issue date is required";
+        if (!formData.supplier_id)
+            validationErrors.supplier_id = "Supplier is required";
+        if (!formData.purchase_order_date)
+            validationErrors.purchase_order_date = "Issue date is required";
         if (!formData.amount) validationErrors.amount = "Amount is required";
-        if (!formData.rfq_id) validationErrors.rfq_id = "RFQ ID is missing. Please refresh and try again.";
+        if (!formData.rfq_id)
+            validationErrors.rfq_id =
+                "RFQ ID is missing. Please refresh and try again.";
 
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
@@ -163,56 +160,42 @@ const ApproveOrder = ({ isOpen, onClose, onSave, quotationId, purchaseOrder = nu
 
         try {
             const formDataToSend = new FormData();
-            
-            // Make sure we have all necessary data
             const dataToSubmit = { ...formData };
-            
+
             // Ensure we have a purchase order number
             if (!dataToSubmit.purchase_order_no) {
                 dataToSubmit.purchase_order_no = generatePONumber();
             }
-            
-            // Ensure we have status set to Approved
-            dataToSubmit.status = 'Approved';
-            
-            console.log('Data before sending to API:', dataToSubmit);
-            
-            Object.keys(dataToSubmit).forEach(key => {
-                if (dataToSubmit[key] !== null && dataToSubmit[key] !== undefined) {
+            dataToSubmit.status = "Approved";
+
+            Object.keys(dataToSubmit).forEach((key) => {
+                if (
+                    dataToSubmit[key] !== null &&
+                    dataToSubmit[key] !== undefined
+                ) {
                     formDataToSend.append(key, dataToSubmit[key]);
-                    console.log(`Adding field ${key}:`, dataToSubmit[key]);
                 }
             });
 
             if (tempDocument) {
-                console.log('Adding attachment:', tempDocument.name);
-                formDataToSend.append('attachment', tempDocument);
+                formDataToSend.append("attachment", tempDocument);
             }
-
-            console.log('Submitting purchase order:', {
-                isEdit,
-                purchaseOrderId: purchaseOrder?.id,
-                endpoint: isEdit ? `/api/v1/purchase-orders/${purchaseOrder.id}` : '/api/v1/purchase-orders'
-            });
-
             if (isEdit && purchaseOrder) {
-                // Update existing purchase order
-                const response = await axios.put(`/api/v1/purchase-orders/${purchaseOrder.id}`, formDataToSend);
-                console.log('Purchase order updated successfully:', response.data);
+                await axios.put(
+                    `/api/v1/purchase-orders/${purchaseOrder.id}`,
+                    formDataToSend
+                );
             } else {
-                // Create new purchase order
-                const response = await axios.post('/api/v1/purchase-orders', formDataToSend);
-                console.log('Purchase order created successfully:', response.data);
+                await axios.post("/api/v1/purchase-orders", formDataToSend);
             }
-
             onSave();
             onClose();
         } catch (error) {
-            console.error('Error saving purchase order:', error);
-            console.error('Error response:', error.response?.data);
-            setErrors({ 
-                submit: error.response?.data?.message || "Failed to save purchase order",
-                ...error.response?.data?.errors
+            setErrors({
+                submit:
+                    error.response?.data?.message ||
+                    "Failed to save purchase order",
+                ...error.response?.data?.errors,
             });
         } finally {
             setIsSaving(false);
@@ -226,7 +209,9 @@ const ApproveOrder = ({ isOpen, onClose, onSave, quotationId, purchaseOrder = nu
             <div className="bg-white p-8 rounded-2xl w-[90%] max-w-4xl">
                 <div className="flex justify-between border-b pb-2 mb-4">
                     <h2 className="text-3xl font-bold text-[#2C323C]">
-                        {isEdit ? "Edit Purchase Order" : "Create Purchase Order"}
+                        {isEdit
+                            ? "Edit Purchase Order"
+                            : "Create Purchase Order"}
                     </h2>
                     <button
                         onClick={onClose}
@@ -236,27 +221,32 @@ const ApproveOrder = ({ isOpen, onClose, onSave, quotationId, purchaseOrder = nu
                     </button>
                 </div>
                 {errors.rfq_id && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <div
+                        className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+                        role="alert"
+                    >
                         <span className="block sm:inline">{errors.rfq_id}</span>
                     </div>
                 )}
                 {errors.submit && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <div
+                        className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+                        role="alert"
+                    >
                         <span className="block sm:inline">{errors.submit}</span>
                     </div>
                 )}
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-2 gap-6">
-                        {/* Row 1 */}
                         <div>
                             <SelectFloating
                                 label="Supplier"
                                 name="supplier_id"
                                 value={formData.supplier_id}
                                 onChange={handleChange}
-                                options={companies.map(company => ({
+                                options={companies.map((company) => ({
                                     id: company.id,
-                                    label: company.name
+                                    label: company.name,
                                 }))}
                                 error={errors.supplier_id}
                             />
@@ -271,11 +261,9 @@ const ApproveOrder = ({ isOpen, onClose, onSave, quotationId, purchaseOrder = nu
                                 error={errors.amount}
                             />
                         </div>
-
-                        {/* Row 2 */}
                         <div>
                             <InputFloating
-                                label="Issue Date"
+                                label="Select Issue Date"
                                 name="purchase_order_date"
                                 type="date"
                                 value={formData.purchase_order_date}
@@ -285,7 +273,7 @@ const ApproveOrder = ({ isOpen, onClose, onSave, quotationId, purchaseOrder = nu
                         </div>
                         <div>
                             <InputFloating
-                                label="Expiry Date"
+                                label="Select Expiry Date"
                                 name="expiry_date"
                                 type="date"
                                 value={formData.expiry_date}
@@ -295,7 +283,6 @@ const ApproveOrder = ({ isOpen, onClose, onSave, quotationId, purchaseOrder = nu
                         </div>
                     </div>
 
-                    {/* Row 3 - Attachment (Centered) */}
                     <div className="flex justify-center mt-2">
                         <div className="w-1/2 text-center">
                             <div className="space-y-2 text-center">
@@ -321,10 +308,14 @@ const ApproveOrder = ({ isOpen, onClose, onSave, quotationId, purchaseOrder = nu
                     <div className="flex justify-center w-full mt-4">
                         <button
                             type="submit"
-                            className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-1/2"
+                            className="w-full px-6 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5]"
                             disabled={isSaving}
                         >
-                            {isSaving ? "Saving..." : (isEdit ? "Update" : "Create")}
+                            {isSaving
+                                ? "Saving..."
+                                : isEdit
+                                ? "Update"
+                                : "Create"}
                         </button>
                     </div>
                 </form>

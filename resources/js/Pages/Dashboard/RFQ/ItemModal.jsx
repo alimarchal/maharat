@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
-import { DocumentArrowDownIcon } from '@heroicons/react/24/outline';
+import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 
-const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, products, units, brands, rfqId }) => {
+const ItemModal = ({
+    isOpen,
+    onClose,
+    onSave,
+    item = null,
+    isEdit = false,
+    products,
+    units,
+    brands,
+    rfqId,
+}) => {
     const [formData, setFormData] = useState({
         product_id: "",
         item_name: "",
@@ -13,7 +23,7 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
         brand_id: "",
         expected_delivery_date: "",
         attachment: null,
-        rfq_id: rfqId
+        rfq_id: rfqId,
     });
 
     const [errors, setErrors] = useState({});
@@ -23,8 +33,6 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
     useEffect(() => {
         if (isOpen) {
             if (isEdit && item) {
-                console.log("Setting up form for edit mode with item:", item);
-                
                 setFormData({
                     product_id: item.product_id || "",
                     item_name: item.item_name || "",
@@ -34,15 +42,14 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
                     brand_id: item.brand_id || "",
                     expected_delivery_date: item.expected_delivery_date || "",
                     attachment: item.attachment || null,
-                    id: item.id, // Keep the original ID for editing
-                    rfq_id: rfqId
+                    id: item.id,
+                    rfq_id: rfqId,
                 });
             } else {
-                // Reset form for new item
                 const today = new Date();
                 const nextMonth = new Date(today);
                 nextMonth.setMonth(today.getMonth() + 1);
-                
+
                 setFormData({
                     product_id: "",
                     item_name: "",
@@ -50,9 +57,11 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
                     unit_id: "",
                     quantity: "",
                     brand_id: "",
-                    expected_delivery_date: nextMonth.toISOString().split('T')[0],
+                    expected_delivery_date: nextMonth
+                        .toISOString()
+                        .split("T")[0],
                     attachment: null,
-                    rfq_id: rfqId
+                    rfq_id: rfqId,
                 });
             }
             setTempFile(null);
@@ -62,22 +71,24 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        
+
         if (name === "product_id") {
-            const selectedProduct = products.find(p => p.id === Number(value));
+            const selectedProduct = products.find(
+                (p) => p.id === Number(value)
+            );
             if (selectedProduct) {
                 setFormData({
                     ...formData,
                     product_id: selectedProduct.id,
                     item_name: selectedProduct.name,
-                    description: selectedProduct.description || ""
+                    description: selectedProduct.description || "",
                 });
             } else {
                 setFormData({
                     ...formData,
                     product_id: "",
                     item_name: "",
-                    description: ""
+                    description: "",
                 });
             }
         } else if (name === "quantity") {
@@ -96,8 +107,8 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
                 attachment: {
                     name: file.name,
                     original_filename: file.name,
-                    file: file
-                }
+                    file: file,
+                },
             });
         }
     };
@@ -105,14 +116,17 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
     const handleSubmit = (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        
-        // Validate required fields
+
         const validationErrors = {};
-        if (!formData.product_id) validationErrors.product_id = "Product is required";
+        if (!formData.product_id)
+            validationErrors.product_id = "Product is required";
         if (!formData.unit_id) validationErrors.unit_id = "Unit is required";
-        if (!formData.quantity) validationErrors.quantity = "Quantity is required";
+        if (!formData.quantity)
+            validationErrors.quantity = "Quantity is required";
         if (!formData.brand_id) validationErrors.brand_id = "Brand is required";
-        if (!formData.expected_delivery_date) validationErrors.expected_delivery_date = "Delivery date is required";
+        if (!formData.expected_delivery_date)
+            validationErrors.expected_delivery_date =
+                "Delivery date is required";
 
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
@@ -121,16 +135,13 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
         }
 
         try {
-            // Include temporary file if it exists
-            const itemData = {...formData};
+            const itemData = { ...formData };
             if (tempFile) {
                 itemData.tempFile = tempFile;
             }
-            
             onSave(itemData);
             onClose();
         } catch (error) {
-            console.error("Error saving item:", error);
             setErrors({ submit: "Failed to save item" });
         } finally {
             setIsSubmitting(false);
@@ -142,7 +153,9 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
             return (
                 <div className="flex flex-col items-center justify-center space-y-2">
                     <DocumentArrowDownIcon className="h-6 w-6 text-gray-400" />
-                    <span className="text-sm text-gray-500">No file attached</span>
+                    <span className="text-sm text-gray-500">
+                        No file attached
+                    </span>
                 </div>
             );
         }
@@ -151,15 +164,12 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
         let fileUrl = null;
 
         if (file instanceof File) {
-            // New file being uploaded - create object URL
             fileName = file.name;
             fileUrl = URL.createObjectURL(file);
         } else if (file.file && file.file instanceof File) {
-            // Handle case where file is wrapped in an object with file property
             fileName = file.name || file.file.name;
             fileUrl = URL.createObjectURL(file.file);
         } else if (typeof file === "object") {
-            // File from database
             fileName = file.original_filename || file.name || file.file_name;
             if (file.url && file.url.startsWith("http")) {
                 fileUrl = file.url;
@@ -178,21 +188,19 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
             );
         }
 
-        console.log("File display:", { fileName, fileUrl, file });
-        
         return (
             <div className="flex flex-col items-center justify-center space-y-2">
                 <DocumentArrowDownIcon
                     className="h-6 w-6 text-blue-500 cursor-pointer hover:text-blue-700"
                     onClick={() => {
-                        if (fileUrl) window.open(fileUrl, '_blank');
+                        if (fileUrl) window.open(fileUrl, "_blank");
                     }}
                 />
                 {fileName && (
                     <span
                         className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
                         onClick={() => {
-                            if (fileUrl) window.open(fileUrl, '_blank');
+                            if (fileUrl) window.open(fileUrl, "_blank");
                         }}
                     >
                         {fileName}
@@ -206,7 +214,7 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-            <div className="bg-white p-8 rounded-2xl w-[90%] max-w-2xl">
+            <div className="bg-white p-8 rounded-2xl w-[90%] max-w-3xl">
                 <div className="flex justify-between border-b pb-2 mb-4">
                     <h2 className="text-3xl font-bold text-[#2C323C]">
                         {isEdit ? "Edit Item" : "Add Item"}
@@ -218,18 +226,22 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
                         <FontAwesomeIcon icon={faTimes} />
                     </button>
                 </div>
-                
+
                 {errors.submit && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <div
+                        className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+                        role="alert"
+                    >
                         <span className="block sm:inline">{errors.submit}</span>
                     </div>
                 )}
-                
+
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Row 1: Product and Description */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Product</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Product
+                            </label>
                             <select
                                 name="product_id"
                                 value={formData.product_id || ""}
@@ -244,12 +256,15 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
                                 ))}
                             </select>
                             {errors.product_id && (
-                                <p className="text-red-500 text-sm mt-1">{errors.product_id}</p>
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.product_id}
+                                </p>
                             )}
                         </div>
-                        
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Description
+                            </label>
                             <textarea
                                 name="description"
                                 value={formData.description || ""}
@@ -258,12 +273,10 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
                                 rows="2"
                             />
                         </div>
-                    </div>
-                    
-                    {/* Row 2: Unit and Quantity */}
-                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Unit
+                            </label>
                             <select
                                 name="unit_id"
                                 value={formData.unit_id || ""}
@@ -278,12 +291,15 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
                                 ))}
                             </select>
                             {errors.unit_id && (
-                                <p className="text-red-500 text-sm mt-1">{errors.unit_id}</p>
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.unit_id}
+                                </p>
                             )}
                         </div>
-                        
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Quantity
+                            </label>
                             <input
                                 type="text"
                                 name="quantity"
@@ -292,15 +308,15 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
                                 className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                             />
                             {errors.quantity && (
-                                <p className="text-red-500 text-sm mt-1">{errors.quantity}</p>
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.quantity}
+                                </p>
                             )}
                         </div>
-                    </div>
-                    
-                    {/* Row 3: Brand and Expected Delivery Date */}
-                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Brand
+                            </label>
                             <select
                                 name="brand_id"
                                 value={formData.brand_id || ""}
@@ -315,12 +331,15 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
                                 ))}
                             </select>
                             {errors.brand_id && (
-                                <p className="text-red-500 text-sm mt-1">{errors.brand_id}</p>
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.brand_id}
+                                </p>
                             )}
                         </div>
-                        
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Expected Delivery Date</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Expected Delivery Date
+                            </label>
                             <input
                                 type="date"
                                 name="expected_delivery_date"
@@ -329,27 +348,29 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
                                 className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                             />
                             {errors.expected_delivery_date && (
-                                <p className="text-red-500 text-sm mt-1">{errors.expected_delivery_date}</p>
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.expected_delivery_date}
+                                </p>
                             )}
                         </div>
                     </div>
-                    
-                    {/* Row 4: Attachment */}
                     <div className="flex flex-col items-center justify-center space-y-4">
                         <div className="space-y-2 text-center w-1/2">
-                            <label className="block text-sm font-medium text-gray-700">Attachment (Optional)</label>
-                            
-                            {/* Show existing document or pending document */}
+                            <label className="block text-sm font-medium text-gray-700">
+                                Attachment (Optional)
+                            </label>
                             <div className="mb-2">
                                 {tempFile ? (
-                                    <div className="text-sm text-orange-600 truncate max-w-full" title={tempFile.name}>
+                                    <div
+                                        className="text-sm text-orange-600 truncate max-w-full"
+                                        title={tempFile.name}
+                                    >
                                         Selected: {tempFile.name}
                                     </div>
                                 ) : (
                                     <FileDisplay file={formData.attachment} />
                                 )}
                             </div>
-                            
                             <input
                                 type="file"
                                 onChange={handleFileChange}
@@ -363,12 +384,12 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
                             />
                         </div>
                     </div>
-                    
+
                     {/* Submit Button */}
-                    <div className="mt-6 flex justify-center">
+                    <div className="w-full">
                         <button
                             type="submit"
-                            className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-1/2"
+                            className="w-full px-6 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5]"
                             disabled={isSubmitting}
                         >
                             {isSubmitting ? "Saving..." : "Save Item"}
@@ -380,4 +401,4 @@ const ItemModal = ({ isOpen, onClose, onSave, item = null, isEdit = false, produ
     );
 };
 
-export default ItemModal; 
+export default ItemModal;
