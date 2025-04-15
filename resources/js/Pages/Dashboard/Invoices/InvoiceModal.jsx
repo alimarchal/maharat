@@ -83,7 +83,36 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
 
     const fetchAvailablePurchaseOrders = async () => {
         try {
-            console.log('Fetching available purchase orders...');
+            console.log('Fetching purchase orders...');
+            // First try to get all purchase orders and use the client-side filtering approach
+            const allPOsResponse = await axios.get('/api/v1/purchase-orders');
+            const allInvoicesResponse = await axios.get('/api/v1/external-invoices');
+            
+            console.log('All purchase orders:', allPOsResponse.data);
+            console.log('All external invoices:', allInvoicesResponse.data);
+            
+            if (allPOsResponse.data.data && allInvoicesResponse.data.data) {
+                // Get IDs of purchase orders that already have invoices
+                const usedPOIds = allInvoicesResponse.data.data
+                    .filter(invoice => invoice.purchase_order_id)
+                    .map(invoice => invoice.purchase_order_id);
+                
+                console.log('Used purchase order IDs:', usedPOIds);
+                
+                // Filter out purchase orders that already have invoices
+                const availablePOs = allPOsResponse.data.data
+                    .filter(po => !usedPOIds.includes(po.id))
+                    .map(po => ({
+                        id: po.id,
+                        label: po.purchase_order_no || `PO-${po.id}`
+                    }));
+                
+                console.log('Available purchase orders:', availablePOs);
+                setPurchaseOrders(availablePOs);
+                return;
+            }
+            
+            // If the client-side approach failed, try the server endpoint
             const response = await axios.get('/api/v1/purchase-orders/available');
             console.log('Purchase orders API response:', response.data);
 
@@ -91,7 +120,7 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
                 // Map the raw SQL results to dropdown format
                 const purchaseOrdersData = response.data.data.map(po => ({
                     id: po.id,
-                    label: po.purchase_order_no
+                    label: po.purchase_order_no || `PO-${po.id}`
                 }));
                 console.log('Processed purchase orders for dropdown:', purchaseOrdersData);
                 setPurchaseOrders(purchaseOrdersData);
@@ -105,40 +134,8 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
                 console.error('Error response data:', error.response.data);
             }
             
-            // Fallback: try to get all purchase orders and filter manually
-            try {
-                console.log('Using fallback method to get purchase orders');
-                const allPOsResponse = await axios.get('/api/v1/purchase-orders');
-                const allInvoicesResponse = await axios.get('/api/v1/external-invoices');
-                
-                console.log('All purchase orders:', allPOsResponse.data);
-                console.log('All external invoices:', allInvoicesResponse.data);
-                
-                if (allPOsResponse.data.data && allInvoicesResponse.data.data) {
-                    // Get IDs of purchase orders that already have invoices
-                    const usedPOIds = allInvoicesResponse.data.data
-                        .filter(invoice => invoice.purchase_order_id)
-                        .map(invoice => invoice.purchase_order_id);
-                    
-                    console.log('Used purchase order IDs:', usedPOIds);
-                    
-                    // Filter out purchase orders that already have invoices
-                    const availablePOs = allPOsResponse.data.data
-                        .filter(po => !usedPOIds.includes(po.id))
-                        .map(po => ({
-                            id: po.id,
-                            label: po.purchase_order_no || `PO-${po.id}`
-                        }));
-                    
-                    console.log('Available purchase orders (fallback):', availablePOs);
-                    setPurchaseOrders(availablePOs);
-                } else {
-                    setPurchaseOrders([]);
-                }
-            } catch (fallbackError) {
-                console.error('Fallback method also failed:', fallbackError);
-                setPurchaseOrders([]);
-            }
+            // Set empty array as fallback
+            setPurchaseOrders([]);
         }
     };
 
