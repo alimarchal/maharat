@@ -74,8 +74,14 @@ const PayablesTable = () => {
 
     const formatStatus = (status) => {
         if (!status) return "Pending";
+        
+        // Check for draft status specifically
+        if (status.toLowerCase() === "draft") {
+            return "Draft";
+        }
+        
         return status
-            .replace("_", " ")
+            .replace(/_/g, " ") // Replace all underscores, not just the first one
             .replace(/\b\w/g, (l) => l.toUpperCase());
     };
 

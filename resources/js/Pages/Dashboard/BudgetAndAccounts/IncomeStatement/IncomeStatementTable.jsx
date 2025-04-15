@@ -224,6 +224,10 @@ const IncomeStatementTable = () => {
                                 <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
                                     <Link
                                         href={`income-statement/details/${statement.id}`}
+                                        data={{
+                                            from_date: formData.from_date,
+                                            to_date: formData.to_date
+                                        }}
                                         className="text-[#9B9DA2] hover:text-gray-500"
                                         title="View Income Statement"
                                     >

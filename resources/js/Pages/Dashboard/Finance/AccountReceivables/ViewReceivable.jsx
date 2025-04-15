@@ -32,8 +32,8 @@ const ViewReceivable = ({ id }) => {
             setLoading(true);
             
             try {
-                // First get invoice details
-                const response = await axios.get(`/api/v1/invoices/${invoiceId}`);
+                // First get invoice details with client included
+                const response = await axios.get(`/api/v1/invoices/${invoiceId}?include=client`);
                 console.log("Invoice Response:", response.data);
                 
                 if (!response.data || !response.data.data) {
@@ -48,39 +48,39 @@ const ViewReceivable = ({ id }) => {
                 // Calculate balance
                 const balance = (invoice.total_amount || 0) - (invoice.paid_amount || 0);
                 
-                // Create formatted invoice with placeholder customer data
+                // Set customer data variables
+                let customerName = "N/A";
+                let contactNumber = "N/A";
+                
+                // If client is included in the response
+                if (invoice.client) {
+                    customerName = invoice.client.name || "N/A";
+                    contactNumber = invoice.client.contact_number || "N/A";
+                } 
+                // If we need to fetch client separately
+                else if (invoice.client_id) {
+                    try {
+                        const customerResponse = await axios.get(`/api/v1/customers/${invoice.client_id}`);
+                        if (customerResponse.data && customerResponse.data.data) {
+                            const customerData = customerResponse.data.data;
+                            customerName = customerData.name || "N/A";
+                            contactNumber = customerData.contact_number || "N/A";
+                        }
+                    } catch (customerError) {
+                        console.error("Error fetching customer:", customerError);
+                    }
+                }
+                
+                // Create formatted invoice with customer data
                 let formattedInvoice = {
                     ...invoice,
                     invoice_no: invoice.invoice_number || `INV-${invoice.id.toString().padStart(5, "0")}`,
-                    customer: "N/A",
-                    contact: "N/A",
+                    customer: customerName,
+                    contact: contactNumber,
                     status: invoice.status || "Pending",
                     amount: invoice.total_amount || 0,
                     balance: balance
                 };
-                
-                // If we have a client_id, fetch the customer data
-                if (invoice.client_id) {
-                    try {
-                        // Directly fetch customer data using client_id
-                        const customerResponse = await axios.get(`/api/v1/customers/${invoice.client_id}`);
-                        console.log("Customer Response:", customerResponse.data);
-                        
-                        if (customerResponse.data && customerResponse.data.data) {
-                            const customerData = customerResponse.data.data;
-                            
-                            // Update the formatted invoice with customer data
-                            formattedInvoice = {
-                                ...formattedInvoice,
-                                customer: customerData.name || "N/A",
-                                contact: customerData.contact_number || "N/A"
-                            };
-                        }
-                    } catch (customerError) {
-                        console.error("Error fetching customer:", customerError);
-                        // Continue with default customer data
-                    }
-                }
                 
                 console.log("Final formatted invoice:", formattedInvoice);
                 setInvoiceData(formattedInvoice);
@@ -185,19 +185,42 @@ const ViewReceivable = ({ id }) => {
         // Use a short timeout to allow the server to process the update
         setTimeout(async () => {
             try {
-                const response = await axios.get(`/api/v1/invoices/${invoiceId}`);
+                // Fetch the updated invoice with client included
+                const response = await axios.get(`/api/v1/invoices/${invoiceId}?include=client`);
                 console.log("Refreshed invoice data:", response.data);
                 
                 if (response.data && response.data.data) {
                     const invoice = response.data.data;
                     const balance = (invoice.total_amount || 0) - (invoice.paid_amount || 0);
                     
-                    // Create updated invoice with existing customer data
+                    // If we have a client_id but client data is missing, fetch it separately
+                    let customerName = "N/A";
+                    let contactNumber = "N/A";
+                    
+                    if (invoice.client) {
+                        // If client is included in the response
+                        customerName = invoice.client.name || "N/A";
+                        contactNumber = invoice.client.contact_number || "N/A";
+                    } else if (invoice.client_id) {
+                        // If we need to fetch client separately
+                        try {
+                            const clientResponse = await axios.get(`/api/v1/customers/${invoice.client_id}`);
+                            if (clientResponse.data && clientResponse.data.data) {
+                                const clientData = clientResponse.data.data;
+                                customerName = clientData.name || "N/A";
+                                contactNumber = clientData.contact_number || "N/A";
+                            }
+                        } catch (clientError) {
+                            console.error("Error fetching client details:", clientError);
+                        }
+                    }
+                    
+                    // Create updated invoice with client data
                     let updatedInvoice = {
                         ...invoice,
                         invoice_no: invoice.invoice_number || `INV-${invoice.id.toString().padStart(5, "0")}`,
-                        customer: invoice.client?.name || "N/A",
-                        contact: invoice.client?.contact_number || "N/A",
+                        customer: customerName,
+                        contact: contactNumber,
                         status: invoice.status || "Pending",
                         amount: invoice.total_amount || 0,
                         balance: balance
@@ -348,7 +371,7 @@ const ViewReceivable = ({ id }) => {
                     </thead>
                     <tbody className="text-[#2C323C] text-sm md:text-base font-medium divide-y divide-[#D7D8D9]">
                         <tr>
-                            <td className="py-3 px-4">{invoiceData.payment_method || "Net 30"}</td>
+                            <td className="py-3 px-4">{invoiceData.payment_method || ""}</td>
                             <td className="py-3 px-4">{formatCurrency(invoiceData.amount)} SAR</td>
                             <td className="py-3 px-4">{formatCurrency(invoiceData.paid_amount)} SAR</td>
                             <td className="py-3 px-4">{formatCurrency(invoiceData.balance)} SAR</td>

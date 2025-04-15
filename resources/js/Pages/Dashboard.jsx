@@ -65,6 +65,7 @@ import MInvoiceStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/Sta
 import BudgetRequestStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/BudgetRequestStatusFlow";
 import TotalBudgetStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/TotalBudgetStatusFlow";
 import UserProfile from "./UserProfile/UserProfile";
+import CreatePayable from "./Dashboard/Finance/AccountPayables/CreatePayable";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -116,6 +117,7 @@ export default function Dashboard({ auth, page }) {
             return <ViewReceivable />;
         if (page === "AccountPayables/PayablesTable") return <PayablesTable />;
         if (page === "AccountPayables/ViewPayable") return <ViewPayable />;
+        if (page === "AccountPayables/CreatePayable") return <CreatePayable isOpen={true} onClose={() => router.push("/account-payables")} onSave={() => router.push("/account-payables")} />;
         if (page === "BudgetAndAccounts/CostCenter/CostCenterTable")
             return <CostCenterTable />;
         if (page === "BudgetAndAccounts/SubCostCenter/SubCostCenterTable")
