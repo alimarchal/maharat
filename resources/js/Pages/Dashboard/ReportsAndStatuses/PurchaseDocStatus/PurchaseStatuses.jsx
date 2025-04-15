@@ -11,6 +11,7 @@ import axios from "axios";
 
 const PurchaseStatus = () => {
     const [rfqLogs, setRfqLogs] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
@@ -26,9 +27,10 @@ const PurchaseStatus = () => {
             setLastPage(response.data.meta.last_page);
             setError("");
         } catch (error) {
-            console.error("API Error:", error);
             setError("Failed to load RFQ logs");
             setRfqLogs([]);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -52,7 +54,6 @@ const PurchaseStatus = () => {
                 fetchRFQLogs();
             }
         } catch (error) {
-            console.error("Save error:", error);
             setError("Failed to save changes");
         }
     };
@@ -99,44 +100,48 @@ const PurchaseStatus = () => {
     return (
         <div className="w-full">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-[32px] font-bold text-[#2C323C] whitespace-nowrap">
+                <h2 className="text-[32px] font-bold text-[#2C323C]">
                     Purchase Docs Statuses
                 </h2>
             </div>
 
-            <div className="w-full overflow-hidden">
-                {error && (
-                    <div
-                        className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
-                        role="alert"
-                    >
-                        <span className="block sm:inline">{error}</span>
-                    </div>
-                )}
-                <table className="w-full">
-                    <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
-                        <tr>
-                            <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center">
-                                Doc ID
-                            </th>
-                            <th className="py-3 px-4 text-center">Type</th>
-                            <th className="py-3 px-4 text-center">Status</th>
-                            <th className="py-3 px-4 text-center">
-                                Date & Time
-                            </th>
-                            <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
-                                Actions
-                            </th>
-                        </tr>
-                    </thead>
+            <table className="w-full overflow-hidden">
+                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                    <tr>
+                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
+                            Doc ID
+                        </th>
+                        <th className="py-3 px-4">Type</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4">Date & Time</th>
+                        <th className="py-3 px-4">Remarks</th>
+                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
 
-                    <tbody className="bg-transparent divide-y divide-gray-200">
-                        {rfqLogs.map((log) => (
+                <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
+                    {loading ? (
+                        <tr>
+                            <td colSpan="6" className="text-center py-12">
+                                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+                            </td>
+                        </tr>
+                    ) : error ? (
+                        <tr>
+                            <td
+                                colSpan="6"
+                                className="text-center text-red-500 font-medium py-4"
+                            >
+                                {error}
+                            </td>
+                        </tr>
+                    ) : rfqLogs.length > 0 ? (
+                        rfqLogs.map((log) => (
                             <tr key={log.id}>
-                                <td className="px-6 py-4 whitespace-nowrap text-center">
-                                    {log.rfq_id}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <td className="px-3 py-4">{log.rfq_id}</td>
+                                <td className="px-3 py-4">
                                     {editingId === log.id ? (
                                         <input
                                             type="text"
@@ -153,7 +158,7 @@ const PurchaseStatus = () => {
                                         log.supplier_name || "N/A"
                                     )}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <td className="px-3 py-4">
                                     <span
                                         className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${
                                             log.status_name === "Active"
@@ -168,109 +173,88 @@ const PurchaseStatus = () => {
                                         {log.status_name}
                                     </span>
                                 </td>
-
-                                {/* Format Date & Time */}
-                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <td className="px-3 py-4">
                                     {formatDateTime(log.created_at)}
                                 </td>
-
-                                {/* Centered Buttons */}
-                                <td className="px-6 py-4 whitespace-nowrap text-center">
-                                    <div className="flex justify-center space-x-3">
+                                <td className="px-3 py-4">{log?.remarks}</td>
+                                <td className="px-3 py-4 flex justify-center text-center space-x-3">
+                                    <button
+                                        onClick={() =>
+                                            router.visit("/dummy-page")
+                                        }
+                                        className="text-gray-500 hover:text-gray-600"
+                                    >
+                                        <FontAwesomeIcon icon={faEye} />
+                                    </button>
+                                    {editingId === log.id ? (
                                         <button
-                                            onClick={() =>
-                                                router.visit("/dummy-page")
-                                            }
-                                            className="text-gray-600 hover:text-gray-600"
+                                            onClick={() => handleSave(log.id)}
+                                            className="text-green-600 hover:text-green-900"
                                         >
-                                            <FontAwesomeIcon
-                                                icon={faEye}
-                                                className="h-5 w-5"
-                                            />
+                                            <FontAwesomeIcon icon={faCheck} />
                                         </button>
-                                        {editingId === log.id ? (
-                                            <button
-                                                onClick={() =>
-                                                    handleSave(log.id)
-                                                }
-                                                className="text-green-600 hover:text-green-900"
-                                            >
-                                                <FontAwesomeIcon
-                                                    icon={faCheck}
-                                                    className="h-5 w-5"
-                                                />
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => handleEdit(log)}
-                                                className="text-gray-600 hover:text-gray-600"
-                                            >
-                                                <FontAwesomeIcon
-                                                    icon={faEdit}
-                                                    className="h-5 w-5"
-                                                />
-                                            </button>
-                                        )}
+                                    ) : (
                                         <button
-                                            onClick={() => handleDelete(log.id)}
-                                            className="text-red-600 hover:text-red-900"
+                                            onClick={() => handleEdit(log)}
+                                            className="text-blue-400 hover:text-blue-500"
                                         >
-                                            <FontAwesomeIcon
-                                                icon={faTrash}
-                                                className="h-5 w-5"
-                                            />
+                                            <FontAwesomeIcon icon={faEdit} />
                                         </button>
-                                    </div>
+                                    )}
+                                    <button
+                                        onClick={() => handleDelete(log.id)}
+                                        className="text-red-600 hover:text-red-800"
+                                    >
+                                        <FontAwesomeIcon icon={faTrash} />
+                                    </button>
                                 </td>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-
-                {/* Pagination */}
-                {!error && rfqLogs.length > 0 && (
-                    <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
-                        <button
-                            onClick={() => setCurrentPage(currentPage - 1)}
-                            className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                currentPage <= 1
-                                    ? "opacity-50 cursor-not-allowed"
-                                    : ""
-                            }`}
-                            disabled={currentPage <= 1}
-                        >
-                            Previous
-                        </button>
-                        {Array.from(
-                            { length: lastPage },
-                            (_, index) => index + 1
-                        ).map((page) => (
-                            <button
-                                key={page}
-                                onClick={() => setCurrentPage(page)}
-                                className={`px-3 py-1 ${
-                                    currentPage === page
-                                        ? "bg-[#009FDC] text-white"
-                                        : "border border-[#B9BBBD] bg-white text-black"
-                                } rounded-full`}
+                        ))
+                    ) : (
+                        <tr>
+                            <td
+                                colSpan="6"
+                                className="text-center text-[#2C323C] font-medium py-4"
                             >
-                                {page}
-                            </button>
-                        ))}
+                                No Purchase Doc Statuses found.
+                            </td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+
+            {/* Pagination */}
+            {!loading && !error && rfqLogs.length > 0 && (
+                <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    {Array.from(
+                        { length: lastPage },
+                        (_, index) => index + 1
+                    ).map((page) => (
                         <button
-                            onClick={() => setCurrentPage(currentPage + 1)}
-                            className={`px-3 py-1 bg-[#009FDC] text-white rounded-full ${
-                                currentPage >= lastPage
-                                    ? "opacity-50 cursor-not-allowed"
-                                    : ""
-                            }`}
-                            disabled={currentPage >= lastPage}
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-1 ${
+                                currentPage === page
+                                    ? "bg-[#009FDC] text-white"
+                                    : "border border-[#B9BBBD] bg-white"
+                            } rounded-full hover:bg-[#0077B6] hover:text-white transition`}
                         >
-                            Next
+                            {page}
                         </button>
-                    </div>
-                )}
-            </div>
+                    ))}
+                    <button
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage >= lastPage
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage >= lastPage}
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
