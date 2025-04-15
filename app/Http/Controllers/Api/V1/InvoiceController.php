@@ -75,11 +75,9 @@ class InvoiceController extends Controller
     public function index(): JsonResponse|ResourceCollection
     {
         $invoices = QueryBuilder::for(Invoice::class)
-            ->allowedFilters([
-                AllowedFilter::exact('status'),
-                // Add other filters if needed
-            ])
-            ->allowedIncludes(['client','items'])
+            ->allowedFilters(InvoiceParameters::getAllowedFilters())
+            ->allowedSorts(InvoiceParameters::ALLOWED_SORTS)
+            ->allowedIncludes(InvoiceParameters::ALLOWED_INCLUDES)
             ->paginate()
             ->appends(request()->query());
 
@@ -340,45 +338,45 @@ class InvoiceController extends Controller
     {
         try {
             $invoice = Invoice::findOrFail($id);
-            
+
             $request->validate([
                 'invoice_document' => 'required|file|mimes:pdf|max:10240', // max 10MB
             ]);
-            
+
             if ($request->hasFile('invoice_document')) {
                 // Delete old file if exists
                 if ($invoice->invoice_document && file_exists(public_path($invoice->invoice_document))) {
                     unlink(public_path($invoice->invoice_document));
                 }
-                
+
                 $file = $request->file('invoice_document');
                 $fileName = 'invoice_' . $invoice->invoice_number . '_' . time() . '.pdf';
                 $path = 'uploads/invoices/';
-                
+
                 // Make sure the directory exists
                 if (!file_exists(public_path($path))) {
                     mkdir(public_path($path), 0777, true);
                 }
-                
+
                 // Move the file to the public directory
                 $file->move(public_path($path), $fileName);
-                
+
                 // Update the invoice with the document path
                 $invoice->invoice_document = $path . $fileName;
                 $invoice->save();
-                
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Document uploaded successfully',
                     'document_url' => $invoice->invoice_document
                 ]);
             }
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'No document found in request'
             ], 400);
-            
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
