@@ -12,7 +12,7 @@ const ReceivableTable = () => {
     const [lastPage, setLastPage] = useState(1);
     const [selectedFilter, setSelectedFilter] = useState("All");
 
-    const filters = ["All", "Pending", "Paid", "Partially Paid", "Overdue"];
+    const filters = ["All", "Pending", "Partially Paid", "Overdue"];
 
     const fetchReceivables = async () => {
         setLoading(true);
@@ -24,6 +24,7 @@ const ReceivableTable = () => {
             if (selectedFilter !== "All") {
                 url += `&filter[status]=${status}`;
             }
+            
             const response = await axios.get(url);
 
             if (response.data && response.data.data) {
@@ -44,20 +45,26 @@ const ReceivableTable = () => {
                     };
                 });
 
-                const filteredData =
-                    selectedFilter === "All"
-                        ? mappedData
-                        : mappedData.filter(
-                              (invoice) =>
-                                  invoice.status.toLowerCase() === status
-                          );
+                let finalData;
+                
+                if (selectedFilter === "All") {
+                    finalData = mappedData.filter(invoice => 
+                        invoice.status.toLowerCase() !== 'paid' && 
+                        invoice.status.toLowerCase() !== 'draft'
+                    );
+                } else {
+                    finalData = mappedData.filter(
+                        (invoice) => invoice.status.toLowerCase() === status
+                    );
+                }
 
-                setReceivables(filteredData);
+                setReceivables(finalData);
                 setLastPage(response.data.meta?.last_page || 1);
                 setError("");
             }
         } catch (error) {
-            setError("Failed to load receivables");
+            console.error("Error fetching receivables:", error);
+            setError("Failed to load receivables. " + (error.response?.data?.message || error.message));
         } finally {
             setLoading(false);
         }
