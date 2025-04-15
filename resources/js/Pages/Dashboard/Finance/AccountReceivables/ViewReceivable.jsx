@@ -3,14 +3,23 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDownload, faEye, faArrowLeftLong } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import { Link, router, usePage } from "@inertiajs/react";
+import CreateReceivable from "./CreateReceivable";
 
 const ViewReceivable = ({ id }) => {
     // Get invoice ID from props first, or try to get from route params as fallback
-    const invoiceId = id || (usePage().props.params ? usePage().props.params.id : null);
+    const params = usePage().props.params || {};
+    const invoiceId = id || params.id;
+    const showEditModal = params.showEditModal || false;
     
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [invoiceData, setInvoiceData] = useState(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(showEditModal);
+    
+    useEffect(() => {
+        // Update the edit modal state when params change
+        setIsEditModalOpen(params.showEditModal || false);
+    }, [params.showEditModal]);
     
     useEffect(() => {
         const fetchInvoiceDetails = async () => {
@@ -161,6 +170,57 @@ const ViewReceivable = ({ id }) => {
         link.click();
         document.body.removeChild(link);
     };
+
+    const handleEditModalClose = () => {
+        setIsEditModalOpen(false);
+    };
+
+    const handleEditModalSave = async (data) => {
+        console.log("Invoice updated with data:", data);
+        setIsEditModalOpen(false);
+        
+        // Show loading indicator
+        setLoading(true);
+        
+        // Use a short timeout to allow the server to process the update
+        setTimeout(async () => {
+            try {
+                const response = await axios.get(`/api/v1/invoices/${invoiceId}`);
+                console.log("Refreshed invoice data:", response.data);
+                
+                if (response.data && response.data.data) {
+                    const invoice = response.data.data;
+                    const balance = (invoice.total_amount || 0) - (invoice.paid_amount || 0);
+                    
+                    // Create updated invoice with existing customer data
+                    let updatedInvoice = {
+                        ...invoice,
+                        invoice_no: invoice.invoice_number || `INV-${invoice.id.toString().padStart(5, "0")}`,
+                        customer: invoice.client?.name || "N/A",
+                        contact: invoice.client?.contact_number || "N/A",
+                        status: invoice.status || "Pending",
+                        amount: invoice.total_amount || 0,
+                        balance: balance
+                    };
+                    
+                    console.log("Setting updated invoice data:", updatedInvoice);
+                    setInvoiceData(updatedInvoice);
+                    setError("");
+                } else {
+                    console.error("Invalid or empty response data:", response.data);
+                    // If we can't get the updated data, reload the page
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error("Error refreshing invoice data:", error);
+                console.error("Error details:", error.response?.data);
+                // If we encounter an error, reload the page to get fresh data
+                window.location.reload();
+            } finally {
+                setLoading(false);
+            }
+        }, 1000); // Wait 1 second before fetching updated data
+    };
     
     if (loading) {
         return (
@@ -298,13 +358,24 @@ const ViewReceivable = ({ id }) => {
             </div>
 
             <div className="my-8 flex flex-col md:flex-row items-center md:justify-end gap-4">
-                <Link 
-                    href={`/account-receivables/edit/${invoiceData.id}`} 
+                <button 
+                    onClick={() => setIsEditModalOpen(true)} 
                     className="px-8 py-3 text-lg md:text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto text-center"
                 >
                     Update
-                </Link>
+                </button>
             </div>
+
+            {/* Edit Modal */}
+            {isEditModalOpen && invoiceData && (
+                <CreateReceivable
+                    isOpen={isEditModalOpen}
+                    onClose={handleEditModalClose}
+                    onSave={handleEditModalSave}
+                    invoice={invoiceData}
+                    isEdit={true}
+                />
+            )}
         </div>
     );
 };

@@ -267,6 +267,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account-receivables/view/{id}', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ViewReceivable', 'params' => ['id' => $id]]);
     })->name('receivable.view');
+    Route::get('/account-receivables/edit/{id}', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ViewReceivable', 'params' => ['id' => $id, 'showEditModal' => true]]);
+    })->name('receivable.edit');
 
     Route::get('/account-payables', function () {
         return Inertia::render('Dashboard', ['page' => 'AccountPayables/PayablesTable']);
