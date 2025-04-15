@@ -5,18 +5,24 @@ import axios from "axios";
 import InputFloating from "../../../Components/InputFloating";
 import SelectFloating from "../../../Components/SelectFloating";
 
-const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false }) => {
+const InvoiceModal = ({
+    isOpen,
+    onClose,
+    onSave,
+    invoice = null,
+    isEdit = false,
+}) => {
     const [formData, setFormData] = useState({
         supplier_id: "",
         amount: "",
         status: "Draft",
-        type: "Cash", // Default payment type
-        payable_date: new Date().toISOString().split('T')[0],
+        type: "Cash",
+        payable_date: new Date().toISOString().split("T")[0],
         purchase_order_id: "",
         invoice_no: "",
         invoice_date: "",
         total_amount: "",
-        attachment: null
+        attachment: null,
     });
 
     const [suppliers, setSuppliers] = useState([]);
@@ -29,12 +35,12 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
         { id: "Verified", label: "Verified" },
         { id: "Paid", label: "Paid" },
         { id: "UnPaid", label: "Unpaid" },
-        { id: "Partially Paid", label: "Partially Paid" }
+        { id: "Partially Paid", label: "Partially Paid" },
     ];
 
     const paymentTypeOptions = [
         { id: "Cash", label: "Cash" },
-        { id: "Credit", label: "Credit" }
+        { id: "Credit", label: "Credit" },
     ];
 
     useEffect(() => {
@@ -47,12 +53,14 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
                     amount: invoice.amount || "",
                     status: invoice.status || "pending",
                     type: invoice.type || "Cash",
-                    payable_date: invoice.payable_date || new Date().toISOString().split('T')[0],
+                    payable_date:
+                        invoice.payable_date ||
+                        new Date().toISOString().split("T")[0],
                     purchase_order_id: invoice.purchase_order_id || "",
                     invoice_no: invoice.invoice_no || "",
                     invoice_date: invoice.invoice_date || "",
                     total_amount: invoice.total_amount || "",
-                    attachment: invoice.attachment || null
+                    attachment: invoice.attachment || null,
                 });
             } else {
                 setFormData({
@@ -60,12 +68,12 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
                     amount: "",
                     status: "Draft",
                     type: "Cash",
-                    payable_date: new Date().toISOString().split('T')[0],
+                    payable_date: new Date().toISOString().split("T")[0],
                     purchase_order_id: "",
                     invoice_no: "",
                     invoice_date: "",
                     total_amount: "",
-                    attachment: null
+                    attachment: null,
                 });
             }
         }
@@ -73,10 +81,9 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
 
     const fetchSuppliers = async () => {
         try {
-            const response = await axios.get('/api/v1/suppliers');
+            const response = await axios.get("/api/v1/suppliers");
             setSuppliers(response.data.data || []);
         } catch (error) {
-            console.error('Error fetching suppliers:', error);
             setErrors({ fetch: "Failed to load suppliers" });
         }
     };
@@ -141,41 +148,27 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        console.log('Form field changed:', name, value);
-        
-        // Convert numeric values to numbers for appropriate fields
-        const processedValue = name === 'purchase_order_id' || name === 'supplier_id' 
-            ? parseInt(value, 10) 
-            : value;
-            
-        console.log(`Processing ${name} with value:`, value, 'to:', processedValue);
-        
-        // Log current form data before update
-        console.log('Form data before update:', formData);
-        
-        setFormData(prev => {
+        const processedValue =
+            name === "purchase_order_id" || name === "supplier_id"
+                ? parseInt(value, 10)
+                : value;
+
+        setFormData((prev) => {
             const newData = {
                 ...prev,
-                [name]: processedValue
+                [name]: processedValue,
             };
-            
-            // Log new form data after update
-            console.log('Form data updated to:', newData);
             return newData;
         });
     };
 
-    // Debugging hook to log form data on every change
-    useEffect(() => {
-        console.log('Current form data state:', formData);
-    }, [formData]);
+    useEffect(() => {}, [formData]);
 
-    // Fix for the purchase order dropdown to ensure proper selection display
     useEffect(() => {
         if (isOpen && purchaseOrders.length > 0 && formData.purchase_order_id) {
-            console.log('Checking purchase order selection display with ID:', formData.purchase_order_id);
-            const selectedPO = purchaseOrders.find(po => po.id === formData.purchase_order_id);
-            console.log('Selected purchase order:', selectedPO);
+            const selectedPO = purchaseOrders.find(
+                (po) => po.id === formData.purchase_order_id
+            );
         }
     }, [isOpen, purchaseOrders, formData.purchase_order_id]);
 
@@ -184,45 +177,49 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
         setIsSaving(true);
         setErrors({});
 
-        // Log all form data before submission
-        console.log('Submitting form with data:', formData);
-
-        // Ensure numerical values are properly converted
         const submissionData = {
             ...formData,
-            purchase_order_id: formData.purchase_order_id ? parseInt(formData.purchase_order_id, 10) : null,
-            supplier_id: formData.supplier_id ? parseInt(formData.supplier_id, 10) : null,
-            amount: formData.amount ? parseFloat(formData.amount) : null
+            purchase_order_id: formData.purchase_order_id
+                ? parseInt(formData.purchase_order_id, 10)
+                : null,
+            supplier_id: formData.supplier_id
+                ? parseInt(formData.supplier_id, 10)
+                : null,
+            amount: formData.amount ? parseFloat(formData.amount) : null,
         };
 
-        console.log('Processed submission data:', submissionData);
-
-        // Validate required fields
         const validationErrors = {};
-        if (!submissionData.supplier_id) validationErrors.supplier_id = "Supplier is required";
-        if (!submissionData.amount) validationErrors.amount = "Amount is required";
-        if (!submissionData.status) validationErrors.status = "Status is required";
-        if (!submissionData.type) validationErrors.type = "Payment Type is required";
-        if (!submissionData.payable_date) validationErrors.payable_date = "Payable date is required";
-        if (!isEdit && !submissionData.purchase_order_id) validationErrors.purchase_order_id = "Purchase Order is required";
+        if (!submissionData.supplier_id)
+            validationErrors.supplier_id = "Supplier is required";
+        if (!submissionData.amount)
+            validationErrors.amount = "Amount is required";
+        if (!submissionData.status)
+            validationErrors.status = "Status is required";
+        if (!submissionData.type)
+            validationErrors.type = "Payment Type is required";
+        if (!submissionData.payable_date)
+            validationErrors.payable_date = "Payable date is required";
+        if (!isEdit && !submissionData.purchase_order_id)
+            validationErrors.purchase_order_id = "Purchase Order is required";
 
         if (Object.keys(validationErrors).length > 0) {
-            console.error('Validation errors:', validationErrors);
             setErrors(validationErrors);
             setIsSaving(false);
             return;
         }
 
         try {
-            console.log('Saving invoice with processed data:', submissionData);
             onSave(submissionData);
             onClose();
         } catch (error) {
-            console.error("Error saving invoice:", error);
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             } else {
-                setErrors({ submit: error.response?.data?.message || "Failed to save invoice" });
+                setErrors({
+                    submit:
+                        error.response?.data?.message ||
+                        "Failed to save invoice",
+                });
             }
         } finally {
             setIsSaving(false);
@@ -247,19 +244,25 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                        {/* Column 1, Row 1 */}
                         <div>
                             {!isEdit && (
                                 <SelectFloating
                                     label="Purchase Order"
                                     name="purchase_order_id"
-                                    value={formData.purchase_order_id ? formData.purchase_order_id.toString() : ""}
+                                    value={
+                                        formData.purchase_order_id
+                                            ? formData.purchase_order_id.toString()
+                                            : ""
+                                    }
                                     onChange={handleChange}
-                                    options={purchaseOrders.map(po => {
-                                        console.log('Mapping purchase order for dropdown:', po);
+                                    options={purchaseOrders.map((po) => {
+                                        console.log(
+                                            "Mapping purchase order for dropdown:",
+                                            po
+                                        );
                                         return {
                                             id: po.id.toString(),
-                                            label: po.label
+                                            label: po.label,
                                         };
                                     })}
                                     error={errors.purchase_order_id}
@@ -276,23 +279,23 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
                                 />
                             )}
                         </div>
-
-                        {/* Column 2, Row 1 */}
                         <div>
                             <SelectFloating
                                 label="Supplier"
                                 name="supplier_id"
-                                value={formData.supplier_id ? formData.supplier_id.toString() : ""}
+                                value={
+                                    formData.supplier_id
+                                        ? formData.supplier_id.toString()
+                                        : ""
+                                }
                                 onChange={handleChange}
-                                options={suppliers.map(supplier => ({
+                                options={suppliers.map((supplier) => ({
                                     id: supplier.id.toString(),
-                                    label: supplier.name
+                                    label: supplier.name,
                                 }))}
                                 error={errors.supplier_id}
                             />
                         </div>
-
-                        {/* Column 1, Row 2 */}
                         <div>
                             <InputFloating
                                 label="Amount"
@@ -306,8 +309,6 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
                                 VAT (15%) will be automatically calculated
                             </p>
                         </div>
-
-                        {/* Column 2, Row 2 */}
                         <div>
                             <SelectFloating
                                 label="Payment Type"
@@ -318,8 +319,6 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
                                 error={errors.type}
                             />
                         </div>
-
-                        {/* Column 1, Row 3 - Only show in non-edit mode */}
                         {!isEdit && (
                             <>
                                 <div>
@@ -347,7 +346,6 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
                         )}
                     </div>
 
-                    {/* Status field for edit mode - centered above submit button */}
                     {isEdit && (
                         <div className="w-full flex justify-center mt-6">
                             <div className="w-1/2">
@@ -363,13 +361,17 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
                         </div>
                     )}
 
-                    <div className="my-6 flex justify-center w-full">
+                    <div className="mt-8 flex justify-center w-full">
                         <button
                             type="submit"
-                            className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-1/2"
+                            className="w-full px-6 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5]"
                             disabled={isSaving}
                         >
-                            {isSaving ? "Saving..." : (isEdit ? "Save" : "Submit")}
+                            {isSaving
+                                ? "Saving..."
+                                : isEdit
+                                ? "Save"
+                                : "Submit"}
                         </button>
                     </div>
                 </form>
@@ -378,4 +380,4 @@ const InvoiceModal = ({ isOpen, onClose, onSave, invoice = null, isEdit = false 
     );
 };
 
-export default InvoiceModal; 
+export default InvoiceModal;

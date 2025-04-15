@@ -10,23 +10,22 @@ const documentTypes = [
     "Payment Orders",
 ];
 
-// Map document types to their database permission keys
 const documentTypeKeys = {
-    "RFQs": "rfqs",
-    "Quotations": "quotations",
+    RFQs: "rfqs",
+    Quotations: "quotations",
     "Goods Receiving Notes": "goods_receiving_notes",
     "Material Requests": "material_requests",
-    "Invoices": "invoices",
-    "Payment Orders": "payment_orders"
+    Invoices: "invoices",
+    "Payment Orders": "payment_orders",
 };
 
 const displayNames = {
-    'rfqs': 'RFQs',
-    'quotations': 'Quotations',
-    'goods_receiving_notes': 'Goods Receiving Notes',
-    'material_requests': 'Material Requests',
-    'invoices': 'Invoices',
-    'payment_orders': 'Payment Orders'
+    rfqs: "RFQs",
+    quotations: "Quotations",
+    goods_receiving_notes: "Goods Receiving Notes",
+    material_requests: "Material Requests",
+    invoices: "Invoices",
+    payment_orders: "Payment Orders",
 };
 
 const RolesPermissions = () => {
@@ -46,27 +45,21 @@ const RolesPermissions = () => {
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                // Get current user's role
-                const userResponse = await axios.get('/api/v1/user/current-role');
-                console.log('Current user role:', userResponse.data);
+                const userResponse = await axios.get(
+                    "/api/v1/user/current-role"
+                );
                 setCurrentUserRole(userResponse.data.role);
 
-                // Get all users
-                const usersResponse = await axios.get('/api/v1/users');
-                console.log('All users:', usersResponse.data);
+                const usersResponse = await axios.get("/api/v1/users");
                 setUsers(usersResponse.data.data);
-
                 setLoading(false);
             } catch (error) {
-                console.error("Failed to fetch initial data:", error);
                 setLoading(false);
             }
         };
-
         fetchInitialData();
     }, []);
 
-    // Fetch user permissions when a user is selected
     useEffect(() => {
         if (selectedUser) {
             fetchUserPermissions(selectedUser);
@@ -75,22 +68,18 @@ const RolesPermissions = () => {
 
     const fetchUserPermissions = async (userId) => {
         try {
-            console.log('Fetching permissions for user:', userId);
             const response = await axios.get(`/api/v1/users/${userId}`);
-            console.log('Raw user data:', response.data.data);
             const userPermissions = response.data.data.permissions || [];
-            
+
             const newPermissions = documentTypes.map((docType) => {
                 const docTypeKey = documentTypeKeys[docType];
                 return {
                     read: userPermissions.includes(`view_${docTypeKey}`),
                     create: userPermissions.includes(`create_${docTypeKey}`),
                     modify: userPermissions.includes(`edit_${docTypeKey}`),
-                    delete: userPermissions.includes(`delete_${docTypeKey}`)
+                    delete: userPermissions.includes(`delete_${docTypeKey}`),
                 };
             });
-
-            console.log('Mapped permissions:', newPermissions);
             setPermissions(newPermissions);
         } catch (error) {
             console.error("Failed to fetch user permissions:", error);
@@ -99,44 +88,35 @@ const RolesPermissions = () => {
 
     const togglePermission = async (index, type) => {
         if (!selectedUser || !canManageUser(selectedUser)) return;
-
         try {
             const permissionMapping = {
-                'read': 'view',
-                'create': 'create',
-                'modify': 'edit',
-                'delete': 'delete'
+                read: "view",
+                create: "create",
+                modify: "edit",
+                delete: "delete",
             };
 
             const docType = documentTypes[index];
             const docTypeKey = documentTypeKeys[docType];
             const permissionName = `${permissionMapping[type]}_${docTypeKey}`;
             const currentValue = permissions[index][type];
-            
-            console.log('Current permissions state:', permissions);
-            console.log('Toggling permission:', permissionName, 'Current value:', currentValue);
-            
-            // Update UI immediately for better UX
+
             const newPermissions = [...permissions];
             newPermissions[index][type] = !currentValue;
             setPermissions(newPermissions);
-            
-            // Use the togglePermission endpoint
-            const response = await axios.post(`/api/v1/users/${selectedUser}/toggle-permission`, {
-                permission: permissionName,
-                value: !currentValue
-            });
+
+            const response = await axios.post(
+                `/api/v1/users/${selectedUser}/toggle-permission`,
+                {
+                    permission: permissionName,
+                    value: !currentValue,
+                }
+            );
 
             if (response.data.success) {
-                console.log('Permission toggled successfully');
-                // Refresh permissions to ensure we have the latest state
                 fetchUserPermissions(selectedUser);
             }
         } catch (error) {
-            console.error("Failed to toggle permission:", error);
-            console.error("Error details:", error.response?.data);
-            
-            // Revert the UI change if the API call failed
             const newPermissions = [...permissions];
             newPermissions[index][type] = currentValue;
             setPermissions(newPermissions);
@@ -144,13 +124,13 @@ const RolesPermissions = () => {
     };
 
     const canManageUser = (userId) => {
-        return currentUserRole?.name === 'Admin';
+        return currentUserRole?.name === "Admin";
     };
 
     if (loading) {
         return (
             <div className="flex justify-center items-center h-full">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#009FDC]"></div>
+                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
@@ -164,17 +144,16 @@ const RolesPermissions = () => {
                 Manage permissions for individual users
             </p>
 
-            {/* User Selection */}
             <div className="mb-6">
-                <select 
-                    value={selectedUser || ''} 
+                <select
+                    value={selectedUser || ""}
                     onChange={(e) => setSelectedUser(e.target.value)}
                     className="mt-4 p-2 border rounded-md bg-white text-[#2C323C] w-1/3"
                 >
                     <option value="">Select a user</option>
-                    {users.map(user => (
-                        <option 
-                            key={user.id} 
+                    {users.map((user) => (
+                        <option
+                            key={user.id}
                             value={user.id}
                             disabled={!canManageUser(user.id)}
                         >
@@ -184,7 +163,6 @@ const RolesPermissions = () => {
                 </select>
             </div>
 
-            {/* CRUD Header */}
             <div className="bg-[#DCECF2] p-4 md:p-6 my-6 rounded-2xl grid grid-cols-2 md:grid-cols-5 items-center text-lg md:text-xl font-medium text-[#2C323C]">
                 <span className="text-xl md:text-2xl font-bold">CRUD :</span>
                 <span className="flex items-center justify-center">Read</span>
@@ -193,21 +171,30 @@ const RolesPermissions = () => {
                 <span className="flex items-center justify-center">Delete</span>
             </div>
 
-            {/* Document Types Header */}
             <div className="p-2 grid grid-cols-2 md:grid-cols-5 gap-4 items-center text-lg md:text-xl font-medium text-[#0086B9]">
                 <span className="text-[#6E66AC] text-xl md:text-2xl">
                     Document Types
                 </span>
-                <span className="flex items-center justify-center">Turn On/Off</span>
-                <span className="flex items-center justify-center">Turn On/Off</span>
-                <span className="flex items-center justify-center">Turn On/Off</span>
-                <span className="flex items-center justify-center">Turn On/Off</span>
+                <span className="flex items-center justify-center">
+                    Turn On/Off
+                </span>
+                <span className="flex items-center justify-center">
+                    Turn On/Off
+                </span>
+                <span className="flex items-center justify-center">
+                    Turn On/Off
+                </span>
+                <span className="flex items-center justify-center">
+                    Turn On/Off
+                </span>
             </div>
 
-            {/* Document List */}
             <div className="bg-white p-4 mt-4 rounded-2xl shadow-md">
                 {documentTypes.map((doc, index) => (
-                    <div key={index} className="grid grid-cols-2 md:grid-cols-5 gap-4 items-center py-4">
+                    <div
+                        key={index}
+                        className="grid grid-cols-2 md:grid-cols-5 gap-4 items-center py-4"
+                    >
                         <span className="text-lg md:text-xl font-medium text-[#000000]">
                             {doc}
                         </span>
@@ -215,20 +202,34 @@ const RolesPermissions = () => {
                             <label
                                 key={type}
                                 className={`flex items-center cursor-pointer justify-center ${
-                                    !selectedUser || !canManageUser(selectedUser) ? 'opacity-50 cursor-not-allowed' : ''
+                                    !selectedUser ||
+                                    !canManageUser(selectedUser)
+                                        ? "opacity-50 cursor-not-allowed"
+                                        : ""
                                 }`}
                             >
                                 <input
                                     type="checkbox"
                                     className="hidden"
                                     checked={permissions[index][type]}
-                                    onChange={() => togglePermission(index, type)}
-                                    disabled={!selectedUser || !canManageUser(selectedUser)}
+                                    onChange={() =>
+                                        togglePermission(index, type)
+                                    }
+                                    disabled={
+                                        !selectedUser ||
+                                        !canManageUser(selectedUser)
+                                    }
                                 />
-                                <div className={`w-14 h-7 flex items-center rounded-full border border-[#2C323C33] p-1 shadow-md transition duration-300`}>
-                                    <div className={`w-5 h-5 rounded-full shadow-md transform transition duration-300 ${
-                                        permissions[index][type] ? "translate-x-6 bg-[#009FDC]" : "bg-[#D7D8D9]"
-                                    }`}></div>
+                                <div
+                                    className={`w-14 h-7 flex items-center rounded-full border border-[#2C323C33] p-1 shadow-md transition duration-300`}
+                                >
+                                    <div
+                                        className={`w-5 h-5 rounded-full shadow-md transform transition duration-300 ${
+                                            permissions[index][type]
+                                                ? "translate-x-6 bg-[#009FDC]"
+                                                : "bg-[#D7D8D9]"
+                                        }`}
+                                    ></div>
                                 </div>
                             </label>
                         ))}
