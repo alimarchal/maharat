@@ -6,14 +6,9 @@ import { Link, router, usePage } from "@inertiajs/react";
 import CreatePayable from "./CreatePayable";
 
 const ViewPayable = ({ id }) => {
-    // Get payment order ID from props first, or try to get from route params as fallback
     const params = usePage().props.params || {};
     const paymentOrderId = id || params.id;
     const showEditModal = params.showEditModal || false;
-    
-    console.log("ViewPayable component - Direct ID prop:", id);
-    console.log("ViewPayable component - Params from usePage:", params);
-    console.log("ViewPayable component - Final paymentOrderId:", paymentOrderId);
     
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -36,37 +31,16 @@ const ViewPayable = ({ id }) => {
             setLoading(true);
             
             try {
-                // First get payment order details with user (supplier) included
                 const response = await axios.get(`/api/v1/payment-orders/${paymentOrderId}?include=user`);
-                console.log("Payment Order Response:", response.data);
-                
                 if (!response.data || !response.data.data) {
                     setError("Invalid payment order data");
                     setLoading(false);
                     return;
                 }
-                
                 const paymentOrder = response.data.data;
-                
-                // Log all fields to identify what's coming from the server
-                console.log("Raw Payment Order object:", paymentOrder);
-                console.log("Payment Order fields:", Object.keys(paymentOrder));
-                
-                console.log("Payment Order details:", {
-                    id: paymentOrder.id,
-                    payment_order_number: paymentOrder.payment_order_number,
-                    status: paymentOrder.status,
-                    total_amount: paymentOrder.total_amount,
-                    paid_amount: paymentOrder.paid_amount,
-                    attachment: paymentOrder.attachment,
-                    document: paymentOrder.document,
-                    user: paymentOrder.user,
-                });
                 
                 // Calculate balance
                 const balance = (paymentOrder.total_amount || 0) - (paymentOrder.paid_amount || 0);
-                console.log("Calculated balance:", balance);
-                console.log("Total amount:", paymentOrder.total_amount, "Paid amount:", paymentOrder.paid_amount);
                 
                 // Set supplier data variables
                 let supplierName = "N/A";
@@ -94,30 +68,19 @@ const ViewPayable = ({ id }) => {
                 // Format the status from snake_case to title case
                 let formattedStatus = "Pending";
                 if (paymentOrder.status) {
-                    console.log("Original status from API before any formatting:", paymentOrder.status);
-                    console.log("Status lowercase:", paymentOrder.status.toLowerCase());
-                    console.log("Is status 'draft'?", paymentOrder.status.toLowerCase() === "draft");
-                    console.log("Status type:", typeof paymentOrder.status);
                     
                     // Check if it's draft status - convert to lowercase first
                     const statusLower = String(paymentOrder.status).toLowerCase().trim();
-                    console.log("Normalized status lowercase:", statusLower);
-                    console.log("Is normalized status 'draft'?", statusLower === "draft");
                     
                     if (statusLower === "draft") {
                         formattedStatus = "Draft";
-                        console.log("Setting status to Draft");
                     } else {
                         // Handle other statuses
                         formattedStatus = paymentOrder.status
                             .replace(/_/g, " ") // Replace all underscores with spaces
                             .replace(/\b\w/g, (l) => l.toUpperCase());
-                        console.log("Formatted non-draft status:", formattedStatus);
                     }
                 }
-                
-                console.log("Final formatted status:", formattedStatus);
-                
                 // Create formatted payment order with supplier data
                 let formattedPaymentOrder = {
                     ...paymentOrder,
@@ -130,12 +93,9 @@ const ViewPayable = ({ id }) => {
                     paid_amount: paymentOrder.paid_amount || 0,
                     balance: balance
                 };
-                
-                console.log("Final formatted payment order:", formattedPaymentOrder);
                 setPaymentOrderData(formattedPaymentOrder);
                 setError("");
             } catch (error) {
-                console.error("Error fetching payment order details:", error);
                 setError("Failed to load payable details: " + (error.response?.data?.message || error.message));
             } finally {
                 setLoading(false);
@@ -181,40 +141,28 @@ const ViewPayable = ({ id }) => {
     // Handle view document
     const handleViewDocument = (documentUrl) => {
         if (!documentUrl) {
-            console.log("No document URL provided");
             alert("No payment order document available");
             return;
         }
-        
-        console.log("Opening document:", documentUrl);
         
         // Construct full URL with proper base path
         const fullUrl = documentUrl.startsWith('http') 
             ? documentUrl 
             : `/${documentUrl.replace(/^\//g, '')}`; // Ensure we have a single leading slash
-        
-        console.log("Full document URL:", fullUrl);
-        
-        // Open the document URL in a new tab
         window.open(fullUrl, '_blank');
     };
     
     // Handle download document
     const handleDownloadDocument = (documentUrl, orderNumber) => {
         if (!documentUrl) {
-            console.log("No document URL provided");
             alert("No payment order document available");
             return;
         }
-        
-        console.log("Downloading document:", documentUrl);
         
         // Construct full URL with proper base path
         const fullUrl = documentUrl.startsWith('http') 
             ? documentUrl 
             : `/${documentUrl.replace(/^\//g, '')}`; // Ensure we have a single leading slash
-            
-        console.log("Full document URL for download:", fullUrl);
         
         // Create a temporary link element to trigger download
         const link = document.createElement('a');
@@ -231,7 +179,6 @@ const ViewPayable = ({ id }) => {
     };
 
     const handleEditModalSave = async (data) => {
-        console.log("Payment Order updated with data:", data);
         setIsEditModalOpen(false);
         
         // Show loading indicator
@@ -242,55 +189,26 @@ const ViewPayable = ({ id }) => {
             try {
                 // Fetch the updated payment order with user included
                 const response = await axios.get(`/api/v1/payment-orders/${paymentOrderId}?include=user`);
-                console.log("Refreshed payment order data:", response.data);
-                
                 if (response.data && response.data.data) {
                     const paymentOrder = response.data.data;
                     
-                    // Log all fields to identify what's coming from the server after update
-                    console.log("Raw updated Payment Order object:", paymentOrder);
-                    console.log("Updated Payment Order fields:", Object.keys(paymentOrder));
-                    
-                    console.log("Updated payment order details:", {
-                        id: paymentOrder.id,
-                        payment_order_number: paymentOrder.payment_order_number,
-                        status: paymentOrder.status,
-                        total_amount: paymentOrder.total_amount,
-                        paid_amount: paymentOrder.paid_amount,
-                        attachment: paymentOrder.attachment,
-                    });
-                    
                     const balance = (paymentOrder.total_amount || 0) - (paymentOrder.paid_amount || 0);
-                    console.log("Updated calculated balance:", balance);
-                    console.log("Updated Total amount:", paymentOrder.total_amount, "Updated Paid amount:", paymentOrder.paid_amount);
                     
                     // Format the status from snake_case to title case
                     let formattedStatus = "Pending";
                     if (paymentOrder.status) {
-                        console.log("Original status from API before any formatting:", paymentOrder.status);
-                        console.log("Status lowercase:", paymentOrder.status.toLowerCase());
-                        console.log("Is status 'draft'?", paymentOrder.status.toLowerCase() === "draft");
-                        console.log("Status type:", typeof paymentOrder.status);
-                        
                         // Check if it's draft status - convert to lowercase first
                         const statusLower = String(paymentOrder.status).toLowerCase().trim();
-                        console.log("Normalized status lowercase:", statusLower);
-                        console.log("Is normalized status 'draft'?", statusLower === "draft");
                         
                         if (statusLower === "draft") {
                             formattedStatus = "Draft";
-                            console.log("Setting status to Draft");
                         } else {
                             // Handle other statuses
                             formattedStatus = paymentOrder.status
                                 .replace(/_/g, " ") // Replace all underscores with spaces
                                 .replace(/\b\w/g, (l) => l.toUpperCase());
-                            console.log("Formatted non-draft status:", formattedStatus);
                         }
                     }
-                    
-                    console.log("Updated formatted status:", formattedStatus);
-                    
                     // If we have a user_id but user data is missing, fetch it separately
                     let supplierName = "N/A";
                     let contactNumber = "N/A";
@@ -325,18 +243,13 @@ const ViewPayable = ({ id }) => {
                         paid_amount: paymentOrder.paid_amount || 0,
                         balance: balance
                     };
-                    
-                    console.log("Setting updated payment order data:", updatedPaymentOrder);
                     setPaymentOrderData(updatedPaymentOrder);
                     setError("");
                 } else {
-                    console.error("Invalid or empty response data:", response.data);
                     // If we can't get the updated data, reload the page
                     window.location.reload();
                 }
             } catch (error) {
-                console.error("Error refreshing payment order data:", error);
-                console.error("Error details:", error.response?.data);
                 // If we encounter an error, reload the page to get fresh data
                 window.location.reload();
             } finally {

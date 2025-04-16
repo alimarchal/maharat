@@ -1,26 +1,29 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faDownload, faEye, faArrowLeftLong } from "@fortawesome/free-solid-svg-icons";
+import {
+    faDownload,
+    faEye,
+    faArrowLeftLong,
+} from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import { Link, router, usePage } from "@inertiajs/react";
 import CreateReceivable from "./CreateReceivable";
 
 const ViewReceivable = ({ id }) => {
-    // Get invoice ID from props first, or try to get from route params as fallback
     const params = usePage().props.params || {};
     const invoiceId = id || params.id;
     const showEditModal = params.showEditModal || false;
-    
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [invoiceData, setInvoiceData] = useState(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(showEditModal);
-    
+
     useEffect(() => {
         // Update the edit modal state when params change
         setIsEditModalOpen(params.showEditModal || false);
     }, [params.showEditModal]);
-    
+
     useEffect(() => {
         const fetchInvoiceDetails = async () => {
             if (!invoiceId) {
@@ -28,144 +31,141 @@ const ViewReceivable = ({ id }) => {
                 setLoading(false);
                 return;
             }
-            
+
             setLoading(true);
-            
+
             try {
-                // First get invoice details with client included
-                const response = await axios.get(`/api/v1/invoices/${invoiceId}?include=client`);
-                console.log("Invoice Response:", response.data);
-                
+                const response = await axios.get(
+                    `/api/v1/invoices/${invoiceId}?include=client`
+                );
                 if (!response.data || !response.data.data) {
                     setError("Invalid invoice data");
                     setLoading(false);
                     return;
                 }
-                
+
                 const invoice = response.data.data;
-                console.log("Invoice document:", invoice.invoice_document);
-                
+
                 // Calculate balance
-                const balance = (invoice.total_amount || 0) - (invoice.paid_amount || 0);
-                
+                const balance =
+                    (invoice.total_amount || 0) - (invoice.paid_amount || 0);
+
                 // Set customer data variables
                 let customerName = "N/A";
                 let contactNumber = "N/A";
-                
+
                 // If client is included in the response
                 if (invoice.client) {
                     customerName = invoice.client.name || "N/A";
                     contactNumber = invoice.client.contact_number || "N/A";
-                } 
+                }
                 // If we need to fetch client separately
                 else if (invoice.client_id) {
                     try {
-                        const customerResponse = await axios.get(`/api/v1/customers/${invoice.client_id}`);
-                        if (customerResponse.data && customerResponse.data.data) {
+                        const customerResponse = await axios.get(
+                            `/api/v1/customers/${invoice.client_id}`
+                        );
+                        if (
+                            customerResponse.data &&
+                            customerResponse.data.data
+                        ) {
                             const customerData = customerResponse.data.data;
                             customerName = customerData.name || "N/A";
-                            contactNumber = customerData.contact_number || "N/A";
+                            contactNumber =
+                                customerData.contact_number || "N/A";
                         }
                     } catch (customerError) {
-                        console.error("Error fetching customer:", customerError);
+                        console.error(
+                            "Error fetching customer:",
+                            customerError
+                        );
                     }
                 }
-                
+
                 // Create formatted invoice with customer data
                 let formattedInvoice = {
                     ...invoice,
-                    invoice_no: invoice.invoice_number || `INV-${invoice.id.toString().padStart(5, "0")}`,
+                    invoice_no:
+                        invoice.invoice_number ||
+                        `INV-${invoice.id.toString().padStart(5, "0")}`,
                     customer: customerName,
                     contact: contactNumber,
                     status: invoice.status || "Pending",
                     amount: invoice.total_amount || 0,
-                    balance: balance
+                    balance: balance,
                 };
-                
-                console.log("Final formatted invoice:", formattedInvoice);
                 setInvoiceData(formattedInvoice);
                 setError("");
             } catch (error) {
-                console.error("Error fetching invoice details:", error);
-                setError("Failed to load receivable details: " + (error.response?.data?.message || error.message));
+                setError(
+                    "Failed to load receivable details: " +
+                        (error.response?.data?.message || error.message)
+                );
             } finally {
                 setLoading(false);
             }
         };
-        
+
         fetchInvoiceDetails();
     }, [invoiceId]);
-    
+
     const formatDate = (dateString) => {
         if (!dateString) return "N/A";
-        
+
         try {
             const date = new Date(dateString);
             if (isNaN(date.getTime())) return dateString;
-            
-            return date.toLocaleDateString('en-US', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric'
+
+            return date.toLocaleDateString("en-US", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
             });
         } catch (error) {
             console.error("Date formatting error:", error);
             return dateString;
         }
     };
-    
+
     const formatCurrency = (amount) => {
         if (amount === null || amount === undefined) return "N/A";
-        
+
         return parseFloat(amount).toLocaleString(undefined, {
             minimumFractionDigits: 2,
-            maximumFractionDigits: 2
+            maximumFractionDigits: 2,
         });
     };
-    
+
     // Handle view document - use the same approach as MaharatInvoicesTable.jsx
     const handleViewDocument = (documentUrl) => {
         if (!documentUrl) {
-            console.log("No document URL provided");
             alert("No invoice document available");
             return;
         }
-        
-        console.log("Opening document:", documentUrl);
-        
-        // Construct full URL with proper base path
-        const fullUrl = documentUrl.startsWith('http') 
-            ? documentUrl 
-            : `/${documentUrl.replace(/^\//g, '')}`; // Ensure we have a single leading slash
-        
-        console.log("Full document URL:", fullUrl);
-        
-        // Open the document URL in a new tab
-        window.open(fullUrl, '_blank');
+        const fullUrl = documentUrl.startsWith("http")
+            ? documentUrl
+            : `/${documentUrl.replace(/^\//g, "")}`;
+        window.open(fullUrl, "_blank");
     };
-    
+
     // Handle download document - same approach as MaharatInvoicesTable.jsx
     const handleDownloadDocument = (documentUrl, invoiceNumber) => {
         if (!documentUrl) {
-            console.log("No document URL provided");
             alert("No invoice document available");
             return;
         }
-        
-        console.log("Downloading document:", documentUrl);
-        
-        // Construct full URL with proper base path
-        const fullUrl = documentUrl.startsWith('http') 
-            ? documentUrl 
-            : `/${documentUrl.replace(/^\//g, '')}`; // Ensure we have a single leading slash
-            
-        console.log("Full document URL for download:", fullUrl);
-        
+        const fullUrl = documentUrl.startsWith("http")
+            ? documentUrl
+            : `/${documentUrl.replace(/^\//g, "")}`;
+
         // Create a temporary link element to trigger download
-        const link = document.createElement('a');
+        const link = document.createElement("a");
         link.href = fullUrl;
-        link.setAttribute('download', `Invoice_${invoiceNumber || 'document'}.pdf`);
-        link.setAttribute('target', '_blank');
+        link.setAttribute(
+            "download",
+            `Invoice_${invoiceNumber || "document"}.pdf`
+        );
+        link.setAttribute("target", "_blank");
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -176,27 +176,29 @@ const ViewReceivable = ({ id }) => {
     };
 
     const handleEditModalSave = async (data) => {
-        console.log("Invoice updated with data:", data);
         setIsEditModalOpen(false);
-        
+
         // Show loading indicator
         setLoading(true);
-        
+
         // Use a short timeout to allow the server to process the update
         setTimeout(async () => {
             try {
                 // Fetch the updated invoice with client included
-                const response = await axios.get(`/api/v1/invoices/${invoiceId}?include=client`);
-                console.log("Refreshed invoice data:", response.data);
-                
+                const response = await axios.get(
+                    `/api/v1/invoices/${invoiceId}?include=client`
+                );
+
                 if (response.data && response.data.data) {
                     const invoice = response.data.data;
-                    const balance = (invoice.total_amount || 0) - (invoice.paid_amount || 0);
-                    
+                    const balance =
+                        (invoice.total_amount || 0) -
+                        (invoice.paid_amount || 0);
+
                     // If we have a client_id but client data is missing, fetch it separately
                     let customerName = "N/A";
                     let contactNumber = "N/A";
-                    
+
                     if (invoice.client) {
                         // If client is included in the response
                         customerName = invoice.client.name || "N/A";
@@ -204,47 +206,52 @@ const ViewReceivable = ({ id }) => {
                     } else if (invoice.client_id) {
                         // If we need to fetch client separately
                         try {
-                            const clientResponse = await axios.get(`/api/v1/customers/${invoice.client_id}`);
-                            if (clientResponse.data && clientResponse.data.data) {
+                            const clientResponse = await axios.get(
+                                `/api/v1/customers/${invoice.client_id}`
+                            );
+                            if (
+                                clientResponse.data &&
+                                clientResponse.data.data
+                            ) {
                                 const clientData = clientResponse.data.data;
                                 customerName = clientData.name || "N/A";
-                                contactNumber = clientData.contact_number || "N/A";
+                                contactNumber =
+                                    clientData.contact_number || "N/A";
                             }
                         } catch (clientError) {
-                            console.error("Error fetching client details:", clientError);
+                            console.error(
+                                "Error fetching client details:",
+                                clientError
+                            );
                         }
                     }
-                    
+
                     // Create updated invoice with client data
                     let updatedInvoice = {
                         ...invoice,
-                        invoice_no: invoice.invoice_number || `INV-${invoice.id.toString().padStart(5, "0")}`,
+                        invoice_no:
+                            invoice.invoice_number ||
+                            `INV-${invoice.id.toString().padStart(5, "0")}`,
                         customer: customerName,
                         contact: contactNumber,
                         status: invoice.status || "Pending",
                         amount: invoice.total_amount || 0,
-                        balance: balance
+                        balance: balance,
                     };
-                    
-                    console.log("Setting updated invoice data:", updatedInvoice);
                     setInvoiceData(updatedInvoice);
                     setError("");
                 } else {
-                    console.error("Invalid or empty response data:", response.data);
                     // If we can't get the updated data, reload the page
                     window.location.reload();
                 }
             } catch (error) {
-                console.error("Error refreshing invoice data:", error);
-                console.error("Error details:", error.response?.data);
-                // If we encounter an error, reload the page to get fresh data
                 window.location.reload();
             } finally {
                 setLoading(false);
             }
         }, 1000); // Wait 1 second before fetching updated data
     };
-    
+
     if (loading) {
         return (
             <div className="w-full flex items-center justify-center py-12">
@@ -252,7 +259,7 @@ const ViewReceivable = ({ id }) => {
             </div>
         );
     }
-    
+
     if (error) {
         return (
             <div className="w-full">
@@ -263,14 +270,17 @@ const ViewReceivable = ({ id }) => {
                     <strong className="font-bold">Error!</strong>
                     <span className="block sm:inline"> {error}</span>
                 </div>
-                <Link href="/account-receivables" className="text-[#009FDC] hover:underline flex items-center">
+                <Link
+                    href="/account-receivables"
+                    className="text-[#009FDC] hover:underline flex items-center"
+                >
                     <FontAwesomeIcon icon={faArrowLeftLong} className="mr-2" />
                     Back to Account Receivables
                 </Link>
             </div>
         );
     }
-    
+
     if (!invoiceData) {
         return (
             <div className="w-full">
@@ -278,9 +288,14 @@ const ViewReceivable = ({ id }) => {
                     Account Receivables Details
                 </h2>
                 <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4">
-                    {!invoiceId ? "Invoice ID is missing. Please access this page through the proper route." : "No data found for this receivable."}
+                    {!invoiceId
+                        ? "Invoice ID is missing. Please access this page through the proper route."
+                        : "No data found for this receivable."}
                 </div>
-                <Link href="/account-receivables" className="text-[#009FDC] hover:underline flex items-center">
+                <Link
+                    href="/account-receivables"
+                    className="text-[#009FDC] hover:underline flex items-center"
+                >
                     <FontAwesomeIcon icon={faArrowLeftLong} className="mr-2" />
                     Back to Account Receivables
                 </Link>
@@ -327,11 +342,16 @@ const ViewReceivable = ({ id }) => {
                     </thead>
                     <tbody className="text-[#2C323C] text-sm md:text-base font-medium divide-y divide-[#D7D8D9]">
                         <tr>
-                            <td className="py-3 px-4">{invoiceData.customer}</td>
+                            <td className="py-3 px-4">
+                                {invoiceData.customer}
+                            </td>
                             <td className="py-3 px-4">{invoiceData.contact}</td>
                             <td className="py-3 px-4">{invoiceData.status}</td>
                             <td className="py-3 px-4">
-                                {formatDate(invoiceData.issue_date || invoiceData.created_at)}
+                                {formatDate(
+                                    invoiceData.issue_date ||
+                                        invoiceData.created_at
+                                )}
                             </td>
                             <td className="py-3 px-4">
                                 {formatDate(invoiceData.due_date)}
@@ -339,15 +359,40 @@ const ViewReceivable = ({ id }) => {
                             <td className="py-3 px-4 text-center flex justify-center gap-4">
                                 <FontAwesomeIcon
                                     icon={faEye}
-                                    className={`text-lg md:text-xl ${invoiceData.invoice_document ? 'text-[#009FDC] cursor-pointer hover:text-blue-700' : 'text-gray-400'}`}
-                                    onClick={() => handleViewDocument(invoiceData.invoice_document)}
-                                    title={invoiceData.invoice_document ? "View Invoice" : "No document available"}
+                                    className={`text-lg md:text-xl ${
+                                        invoiceData.invoice_document
+                                            ? "text-[#009FDC] cursor-pointer hover:text-blue-700"
+                                            : "text-gray-400"
+                                    }`}
+                                    onClick={() =>
+                                        handleViewDocument(
+                                            invoiceData.invoice_document
+                                        )
+                                    }
+                                    title={
+                                        invoiceData.invoice_document
+                                            ? "View Invoice"
+                                            : "No document available"
+                                    }
                                 />
                                 <FontAwesomeIcon
                                     icon={faDownload}
-                                    className={`text-lg md:text-xl ${invoiceData.invoice_document ? 'text-[#009FDC] cursor-pointer hover:text-blue-700' : 'text-gray-400'}`}
-                                    onClick={() => handleDownloadDocument(invoiceData.invoice_document, invoiceData.invoice_no)}
-                                    title={invoiceData.invoice_document ? "Download Invoice" : "No document available"}
+                                    className={`text-lg md:text-xl ${
+                                        invoiceData.invoice_document
+                                            ? "text-[#009FDC] cursor-pointer hover:text-blue-700"
+                                            : "text-gray-400"
+                                    }`}
+                                    onClick={() =>
+                                        handleDownloadDocument(
+                                            invoiceData.invoice_document,
+                                            invoiceData.invoice_no
+                                        )
+                                    }
+                                    title={
+                                        invoiceData.invoice_document
+                                            ? "Download Invoice"
+                                            : "No document available"
+                                    }
                                 />
                             </td>
                         </tr>
@@ -371,18 +416,26 @@ const ViewReceivable = ({ id }) => {
                     </thead>
                     <tbody className="text-[#2C323C] text-sm md:text-base font-medium divide-y divide-[#D7D8D9]">
                         <tr>
-                            <td className="py-3 px-4">{invoiceData.payment_method || ""}</td>
-                            <td className="py-3 px-4">{formatCurrency(invoiceData.amount)} SAR</td>
-                            <td className="py-3 px-4">{formatCurrency(invoiceData.paid_amount)} SAR</td>
-                            <td className="py-3 px-4">{formatCurrency(invoiceData.balance)} SAR</td>
+                            <td className="py-3 px-4">
+                                {invoiceData.payment_method || ""}
+                            </td>
+                            <td className="py-3 px-4">
+                                {formatCurrency(invoiceData.amount)} SAR
+                            </td>
+                            <td className="py-3 px-4">
+                                {formatCurrency(invoiceData.paid_amount)} SAR
+                            </td>
+                            <td className="py-3 px-4">
+                                {formatCurrency(invoiceData.balance)} SAR
+                            </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
             <div className="my-8 flex flex-col md:flex-row items-center md:justify-end gap-4">
-                <button 
-                    onClick={() => setIsEditModalOpen(true)} 
+                <button
+                    onClick={() => setIsEditModalOpen(true)}
                     className="px-8 py-3 text-lg md:text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto text-center"
                 >
                     Update

@@ -150,30 +150,16 @@ const CreateReceivable = ({ isOpen, onClose, onSave, invoice = null, isEdit = fa
                     total: total
                 }]
             };
-            
-            console.log("Submitting data:", updateData);
-            
             let response;
             
             if (isEdit && invoice) {
-                // Update existing invoice
-                console.log(`Updating invoice ID: ${invoice.id} with data:`, updateData);
                 response = await axios.put(`/api/v1/invoices/${invoice.id}`, updateData);
-                console.log("Update response:", response.data);
             } else {
-                // Create new invoice
-                console.log("Creating new invoice with data:", updateData);
                 response = await axios.post('/api/v1/invoices', updateData);
-                console.log("Create response:", response.data);
             }
-            
-            console.log('API Response:', response.data);
             onSave(response.data.data);
             onClose();
         } catch (error) {
-            console.error('Error saving invoice:', error);
-            console.error('Error details:', error.response?.data);
-            
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             } else {

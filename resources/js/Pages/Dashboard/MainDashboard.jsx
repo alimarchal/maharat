@@ -240,18 +240,18 @@ export default function MainDashboard({ roles }) {
     const isProcurementManager = roles && roles.includes("Procurement Manager");
     const isWarehouseManager = roles && roles.includes("Warehouse Manager");
 
-    const tasksDropdownItems = [
-        {
-            text: "My Tasks",
-            icon: faTasks,
-            onClick: () => router.visit("/tasks"),
-        },
-        {
-            text: "Approve a Budget",
-            icon: faMoneyBillWave,
-            onClick: () => router.visit("/approve-budget"),
-        },
-    ];
+    // const tasksDropdownItems = [
+    //     {
+    //         text: "My Tasks",
+    //         icon: faTasks,
+    //         onClick: () => router.visit("/tasks"),
+    //     },
+    //     {
+    //         text: "Approve a Budget",
+    //         icon: faMoneyBillWave,
+    //         onClick: () => router.visit("/approve-budget"),
+    //     },
+    // ];
 
     const purchaseDropdownItems = [
         {
@@ -431,7 +431,8 @@ export default function MainDashboard({ roles }) {
                     subtitle="My Tasks & History"
                     bgColor="bg-[#F7EBBA]"
                     iconColor="text-[#665200]"
-                    dropdownItems={tasksDropdownItems}
+                    // dropdownItems={tasksDropdownItems}
+                    onClick={() => router.visit("/tasks")}
                 />
                 <DashboardCard
                     icon={faShoppingCart}
