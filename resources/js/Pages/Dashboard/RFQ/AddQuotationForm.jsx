@@ -734,6 +734,8 @@ export default function AddQuotationForm({ auth }) {
                 city: formData.city || "",
                 category_id: formData.category_id || "",
                 warehouse_id: formData.warehouse_id || "",
+                cost_center_id: formData.cost_center_id || null,
+                sub_cost_center_id: formData.sub_cost_center_id || null,
                 request_date: formData.issue_date || "",
                 closing_date: formData.closing_date || "",
                 rfq_number: formData.rfq_id || "",
@@ -754,7 +756,9 @@ export default function AddQuotationForm({ auth }) {
             } else {
                 const formDataObj = new FormData();
                 Object.entries(rfqData).forEach(([key, value]) => {
-                    formDataObj.append(key, value);
+                    if (value !== null) {
+                        formDataObj.append(key, value);
+                    }
                 });
 
                 response = await axios.post("/api/v1/rfqs", formDataObj, {

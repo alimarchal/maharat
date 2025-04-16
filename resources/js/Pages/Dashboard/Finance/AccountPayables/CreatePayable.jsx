@@ -5,84 +5,115 @@ import axios from "axios";
 import InputFloating from "@/Components/InputFloating";
 import SelectFloating from "@/Components/SelectFloating";
 
-const CreateReceivable = ({ isOpen, onClose, onSave, invoice = null, isEdit = false }) => {
+const CreatePayable = ({ isOpen, onClose, onSave, paymentOrder = null, isEdit = false }) => {
     const [formData, setFormData] = useState({
-        customer_id: "",
+        supplier_id: "",
         status: "",
         issue_date: "",
         due_date: "",
         payment_method: "",
-        total_amount: "",
-        paid_amount: "",
-        balance: ""
+        total_amount: "0.00",
+        paid_amount: "0.00",
+        balance: "0.00"
     });
 
-    const [customers, setCustomers] = useState([]);
+    const [suppliers, setSuppliers] = useState([]);
     const [errors, setErrors] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (isOpen) {
-            fetchCustomers();
+            fetchSuppliers();
             setDefaultFormData();
         }
-    }, [isOpen, invoice, isEdit]);
+    }, [isOpen, paymentOrder, isEdit]);
 
-    const fetchCustomers = async () => {
+    const fetchSuppliers = async () => {
         try {
             setLoading(true);
-            const response = await axios.get('/api/v1/customers');
-            setCustomers(response.data.data || []);
+            const response = await axios.get('/api/v1/users?role=supplier');
+            setSuppliers(response.data.data || []);
             setLoading(false);
         } catch (error) {
-            console.error('Error fetching customers:', error);
-            setErrors({ fetch: "Failed to load customers" });
+            console.error('Error fetching suppliers:', error);
+            setErrors({ fetch: "Failed to load suppliers" });
             setLoading(false);
         }
     };
 
     const setDefaultFormData = async () => {
-        if (isEdit && invoice) {
+        if (isEdit && paymentOrder) {
             try {
-                // If we're editing, fetch the full invoice details
-                const invoiceResponse = await axios.get(`/api/v1/invoices/${invoice.id}`);
-                const invoiceData = invoiceResponse.data.data;
+                // If we're editing, fetch the full payment order details
+                const orderResponse = await axios.get(`/api/v1/payment-orders/${paymentOrder.id}`);
+                const orderData = orderResponse.data.data;
+                
+                // Format the status properly
+                let formattedStatus = "Pending";
+                if (orderData.status) {
+                    // Check if it's draft status
+                    if (orderData.status.toLowerCase() === "draft") {
+                        formattedStatus = "Draft";
+                    } else {
+                        // Convert snake_case to Title Case
+                        formattedStatus = orderData.status
+                            .replace(/_/g, " ")
+                            .replace(/\b\w/g, (l) => l.toUpperCase());
+                    }
+                        
+                    // Ensure it matches one of our status options
+                    const validStatuses = ["Pending", "Paid", "Partially Paid", "Overdue", "Draft"];
+                    if (!validStatuses.includes(formattedStatus)) {
+                        formattedStatus = "Pending";
+                    }
+                }
+                
+                console.log("Original status:", orderData.status);
+                console.log("Formatted status for form:", formattedStatus);
                 
                 setFormData({
-                    customer_id: invoiceData.client_id?.toString() || "",
-                    status: invoiceData.status || "Pending",
-                    issue_date: formatDateForInput(invoiceData.issue_date) || "",
-                    due_date: formatDateForInput(invoiceData.due_date) || "",
-                    payment_method: invoiceData.payment_method || "",
-                    total_amount: invoiceData.total_amount?.toString() || "",
-                    paid_amount: invoiceData.paid_amount?.toString() || "",
-                    balance: ((invoiceData.total_amount || 0) - (invoiceData.paid_amount || 0)).toFixed(2)
+                    supplier_id: orderData.user_id?.toString() || "",
+                    status: formattedStatus,
+                    issue_date: formatDateForInput(orderData.issue_date) || "",
+                    due_date: formatDateForInput(orderData.due_date) || "",
+                    payment_method: orderData.payment_method || "",
+                    total_amount: orderData.total_amount?.toString() || "0.00",
+                    paid_amount: orderData.paid_amount?.toString() || "0.00",
+                    balance: ((orderData.total_amount || 0) - (orderData.paid_amount || 0)).toFixed(2)
                 });
             } catch (error) {
-                console.error('Error fetching invoice details:', error);
-                setErrors({ fetch: "Failed to load invoice details" });
+                console.error('Error fetching payment order details:', error);
+                setErrors({ fetch: "Failed to load payment order details" });
             }
         } else {
-            // For new invoices, set default values
+            // For new payment orders, set default values
             const today = new Date().toISOString().split('T')[0];
             setFormData({
-                customer_id: "",
+                supplier_id: "",
                 status: "",
                 issue_date: today,
                 due_date: "",
                 payment_method: "",
-                total_amount: "",
-                paid_amount: "",
-                balance: ""
+                total_amount: "0.00",
+                paid_amount: "0.00",
+                balance: "0.00"
             });
         }
     };
 
     const formatDateForInput = (dateString) => {
         if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toISOString().split('T')[0];
+        
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return dateString;
+            
+            return date.toISOString().split('T')[0];
+        } catch (error) {
+            console.error("Date formatting error:", error);
+            return dateString;
+        }
     };
 
     const handleChange = (e) => {
@@ -106,7 +137,7 @@ const CreateReceivable = ({ isOpen, onClose, onSave, invoice = null, isEdit = fa
 
         // Validate required fields
         const validationErrors = {};
-        if (!formData.customer_id) validationErrors.customer_id = "Customer is required";
+        if (!formData.supplier_id) validationErrors.supplier_id = "Supplier is required";
         if (!formData.status) validationErrors.status = "Status is required";
         if (!formData.issue_date) validationErrors.issue_date = "Issue date is required";
         if (!formData.payment_method) validationErrors.payment_method = "Payment terms is required";
@@ -119,51 +150,31 @@ const CreateReceivable = ({ isOpen, onClose, onSave, invoice = null, isEdit = fa
         }
 
         try {
-            // Calculate the subtotal, tax amount, and total amount
-            const subtotal = parseFloat(formData.total_amount) || 0;
-            const vatRate = 15; // Default VAT rate
-            const taxAmount = (subtotal * vatRate) / 100;
-            const total = subtotal + taxAmount;
-            const paidAmount = parseFloat(formData.paid_amount) || 0;
-            
+            // Prepare update data
             const updateData = {
-                client_id: formData.customer_id,
-                status: formData.status,
+                user_id: formData.supplier_id,
+                status: formData.status.toLowerCase().replace(/ /g, "_"),
                 issue_date: formData.issue_date,
                 due_date: formData.due_date,
                 payment_method: formData.payment_method,
-                vat_rate: vatRate,
-                subtotal: subtotal,
-                tax_amount: taxAmount,
                 total_amount: formData.total_amount,
                 paid_amount: formData.paid_amount,
                 currency: "SAR",
-                // Add a dummy items array to satisfy validation
-                items: [{
-                    name: "Product",
-                    description: "Service",
-                    quantity: 1,
-                    unit_price: subtotal,
-                    subtotal: subtotal,
-                    tax_rate: vatRate,
-                    tax_amount: taxAmount,
-                    total: total
-                }]
             };
             
             console.log("Submitting data:", updateData);
             
             let response;
             
-            if (isEdit && invoice) {
-                // Update existing invoice
-                console.log(`Updating invoice ID: ${invoice.id} with data:`, updateData);
-                response = await axios.put(`/api/v1/invoices/${invoice.id}`, updateData);
+            if (isEdit && paymentOrder) {
+                // Update existing payment order
+                console.log(`Updating payment order ID: ${paymentOrder.id} with data:`, updateData);
+                response = await axios.put(`/api/v1/payment-orders/${paymentOrder.id}`, updateData);
                 console.log("Update response:", response.data);
             } else {
-                // Create new invoice
-                console.log("Creating new invoice with data:", updateData);
-                response = await axios.post('/api/v1/invoices', updateData);
+                // Create new payment order
+                console.log("Creating new payment order with data:", updateData);
+                response = await axios.post('/api/v1/payment-orders', updateData);
                 console.log("Create response:", response.data);
             }
             
@@ -171,14 +182,14 @@ const CreateReceivable = ({ isOpen, onClose, onSave, invoice = null, isEdit = fa
             onSave(response.data.data);
             onClose();
         } catch (error) {
-            console.error('Error saving invoice:', error);
+            console.error('Error saving payment order:', error);
             console.error('Error details:', error.response?.data);
             
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             } else {
                 setErrors({ 
-                    submit: error.response?.data?.message || "Failed to save invoice" 
+                    submit: error.response?.data?.message || "Failed to save payment order" 
                 });
             }
         } finally {
@@ -190,10 +201,11 @@ const CreateReceivable = ({ isOpen, onClose, onSave, invoice = null, isEdit = fa
 
     // Status options
     const statusOptions = [
+        { id: "Draft", label: "Draft" },
         { id: "Pending", label: "Pending" },
         { id: "Paid", label: "Paid" },
-        { id: "Overdue", label: "Overdue" },
-        { id: "Cancelled", label: "Cancelled" }
+        { id: "Partially Paid", label: "Partially Paid" },
+        { id: "Overdue", label: "Overdue" }
     ];
 
     // Payment terms options
@@ -204,10 +216,10 @@ const CreateReceivable = ({ isOpen, onClose, onSave, invoice = null, isEdit = fa
         { id: "Cheque", label: "Cheque" }
     ];
 
-    // Customer options
-    const customerOptions = customers.map(customer => ({
-        id: customer.id.toString(),
-        label: customer.name
+    // Supplier options
+    const supplierOptions = suppliers.map(supplier => ({
+        id: supplier.id.toString(),
+        label: supplier.name
     }));
 
     return (
@@ -215,7 +227,7 @@ const CreateReceivable = ({ isOpen, onClose, onSave, invoice = null, isEdit = fa
             <div className="bg-white p-8 rounded-2xl w-[90%] max-w-2xl">
                 <div className="flex justify-between border-b pb-2 mb-4">
                     <h2 className="text-3xl font-bold text-[#2C323C]">
-                        {isEdit ? "Edit Account Receivable" : "Create Account Receivable"}
+                        {isEdit ? "Edit Account Payable" : "Create Account Payable"}
                     </h2>
                     <button
                         onClick={onClose}
@@ -240,12 +252,12 @@ const CreateReceivable = ({ isOpen, onClose, onSave, invoice = null, isEdit = fa
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <SelectFloating
-                                label="Customer"
-                                name="customer_id"
-                                value={formData.customer_id}
+                                label="Supplier"
+                                name="supplier_id"
+                                value={formData.supplier_id}
                                 onChange={handleChange}
-                                options={customerOptions}
-                                error={errors.customer_id}
+                                options={supplierOptions}
+                                error={errors.supplier_id}
                             />
                             <SelectFloating
                                 label="Status"
@@ -331,4 +343,4 @@ const CreateReceivable = ({ isOpen, onClose, onSave, invoice = null, isEdit = fa
     );
 };
 
-export default CreateReceivable;
+export default CreatePayable; 

@@ -150,6 +150,7 @@ class InvoiceController extends Controller
                     'paid_amount' => $invoice->paid_amount,
                     'currency' => $invoice->currency,
                     'notes' => $invoice->notes,
+                    'invoice_document' => $invoice->invoice_document,
                     'items' => $invoice->items->map(function($item) {
                         return [
                             'id' => $item->id,

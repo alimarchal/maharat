@@ -90,49 +90,59 @@ const InvoiceModal = ({
 
     const fetchAvailablePurchaseOrders = async () => {
         try {
-            const response = await axios.get(
-                "/api/v1/purchase-orders/available"
-            );
+            console.log('Fetching purchase orders...');
+            // First try to get all purchase orders and use the client-side filtering approach
+            const allPOsResponse = await axios.get('/api/v1/purchase-orders');
+            const allInvoicesResponse = await axios.get('/api/v1/external-invoices');
+            
+            console.log('All purchase orders:', allPOsResponse.data);
+            console.log('All external invoices:', allInvoicesResponse.data);
+            
+            if (allPOsResponse.data.data && allInvoicesResponse.data.data) {
+                // Get IDs of purchase orders that already have invoices
+                const usedPOIds = allInvoicesResponse.data.data
+                    .filter(invoice => invoice.purchase_order_id)
+                    .map(invoice => invoice.purchase_order_id);
+                
+                console.log('Used purchase order IDs:', usedPOIds);
+                
+                // Filter out purchase orders that already have invoices
+                const availablePOs = allPOsResponse.data.data
+                    .filter(po => !usedPOIds.includes(po.id))
+                    .map(po => ({
+                        id: po.id,
+                        label: po.purchase_order_no || `PO-${po.id}`
+                    }));
+                
+                console.log('Available purchase orders:', availablePOs);
+                setPurchaseOrders(availablePOs);
+                return;
+            }
+            
+            // If the client-side approach failed, try the server endpoint
+            const response = await axios.get('/api/v1/purchase-orders/available');
+            console.log('Purchase orders API response:', response.data);
+
             if (response.data.success) {
-                const purchaseOrdersData = response.data.data.map((po) => ({
+                // Map the raw SQL results to dropdown format
+                const purchaseOrdersData = response.data.data.map(po => ({
                     id: po.id,
-                    label: po.purchase_order_no,
+                    label: po.purchase_order_no || `PO-${po.id}`
                 }));
+                console.log('Processed purchase orders for dropdown:', purchaseOrdersData);
                 setPurchaseOrders(purchaseOrdersData);
             } else {
+                console.error('API returned success: false');
                 setPurchaseOrders([]);
             }
         } catch (error) {
+            console.error('Error fetching purchase orders:', error);
             if (error.response?.data) {
-                console.error("Error response data:", error.response.data);
+                console.error('Error response data:', error.response.data);
             }
-
-            try {
-                const allPOsResponse = await axios.get(
-                    "/api/v1/purchase-orders"
-                );
-                const allInvoicesResponse = await axios.get(
-                    "/api/v1/external-invoices"
-                );
-                if (allPOsResponse.data.data && allInvoicesResponse.data.data) {
-                    const usedPOIds = allInvoicesResponse.data.data
-                        .filter((invoice) => invoice.purchase_order_id)
-                        .map((invoice) => invoice.purchase_order_id);
-
-                    const availablePOs = allPOsResponse.data.data
-                        .filter((po) => !usedPOIds.includes(po.id))
-                        .map((po) => ({
-                            id: po.id,
-                            label: po.purchase_order_no || `PO-${po.id}`,
-                        }));
-                    setPurchaseOrders(availablePOs);
-                } else {
-                    setPurchaseOrders([]);
-                }
-            } catch (fallbackError) {
-                console.error("Fallback method also failed:", fallbackError);
-                setPurchaseOrders([]);
-            }
+            
+            // Set empty array as fallback
+            setPurchaseOrders([]);
         }
     };
 
