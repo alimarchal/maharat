@@ -69,9 +69,6 @@ const CreatePayable = ({ isOpen, onClose, onSave, paymentOrder = null, isEdit = 
                     }
                 }
                 
-                console.log("Original status:", orderData.status);
-                console.log("Formatted status for form:", formattedStatus);
-                
                 setFormData({
                     supplier_id: orderData.user_id?.toString() || "",
                     status: formattedStatus,
@@ -162,29 +159,18 @@ const CreatePayable = ({ isOpen, onClose, onSave, paymentOrder = null, isEdit = 
                 currency: "SAR",
             };
             
-            console.log("Submitting data:", updateData);
-            
             let response;
             
             if (isEdit && paymentOrder) {
                 // Update existing payment order
-                console.log(`Updating payment order ID: ${paymentOrder.id} with data:`, updateData);
                 response = await axios.put(`/api/v1/payment-orders/${paymentOrder.id}`, updateData);
-                console.log("Update response:", response.data);
             } else {
                 // Create new payment order
-                console.log("Creating new payment order with data:", updateData);
                 response = await axios.post('/api/v1/payment-orders', updateData);
-                console.log("Create response:", response.data);
             }
-            
-            console.log('API Response:', response.data);
             onSave(response.data.data);
             onClose();
-        } catch (error) {
-            console.error('Error saving payment order:', error);
-            console.error('Error details:', error.response?.data);
-            
+        } catch (error) {            
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             } else {

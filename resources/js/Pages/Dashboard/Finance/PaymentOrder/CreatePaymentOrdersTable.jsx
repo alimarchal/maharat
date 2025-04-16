@@ -66,7 +66,6 @@ const CreatePaymentOrdersTable = () => {
                             name="from_date"
                             value={formData.from_date}
                             onChange={handleChange}
-                            min={new Date().toISOString().split("T")[0]}
                             className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
                         />
                         <label
@@ -87,7 +86,6 @@ const CreatePaymentOrdersTable = () => {
                             name="to_date"
                             value={formData.to_date}
                             onChange={handleChange}
-                            min={new Date().toISOString().split("T")[0]}
                             className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
                         />
                         <label
