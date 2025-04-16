@@ -99,15 +99,58 @@ const IncomeStatementTable = (props) => {
                 })}`;
                 setDateRange(formattedDateRange);
                 
-                // Fetch invoices with items for the date range
-                const invoicesResponse = await axios.get("/api/v1/invoices", {
-                    params: {
-                        from_date: fromDate,
-                        to_date: toDate,
-                        include: 'items'
-                    }
+                // Get official financial data from the same APIs as IncomeStatementTable.jsx
+                const [revenueResponse, expensesResponse, transactionsResponse, invoicesResponse] = await Promise.all([
+                    axios.get("/api/v1/income-statement/revenue", {
+                        params: {
+                            from_date: fromDate,
+                            to_date: toDate,
+                        },
+                    }),
+                    axios.get("/api/v1/income-statement/expenses", {
+                        params: {
+                            from_date: fromDate,
+                            to_date: toDate,
+                        },
+                    }),
+                    axios.get("/api/v1/income-statement/transactions", {
+                        params: {
+                            from_date: fromDate,
+                            to_date: toDate,
+                        },
+                    }),
+                    // Still fetch invoices for detailed breakdown
+                    axios.get("/api/v1/invoices", {
+                        params: {
+                            from_date: fromDate,
+                            to_date: toDate,
+                            include: 'items'
+                        }
+                    })
+                ]);
+                
+                // Get totals from the API responses (same as IncomeStatementTable.jsx)
+                const officialTotalRevenue = parseFloat(revenueResponse.data.data.total_revenue) || 0;
+                const officialTotalExpenses = parseFloat(expensesResponse.data.data.total_expenses) || 0;
+                const previousTransactions = parseFloat(transactionsResponse.data.data.total_amount) || 0;
+                
+                // IMPORTANT: Match the exact logic in IncomeStatementTable.jsx
+                // In that file, the change is calculated as expenses MINUS revenue (not revenue minus expenses)
+                const change = officialTotalExpenses - officialTotalRevenue;
+                const finalNetAssets = change + previousTransactions;
+                
+                console.log('Official financial totals:', {
+                    totalRevenue: officialTotalRevenue,
+                    totalExpenses: officialTotalExpenses,
+                    previousTransactions,
+                    change,
+                    finalNetAssets
                 });
+                
                 console.log('Invoices API response:', invoicesResponse.data);
+                
+                // Continue with the existing code to process detailed transactions
+                // but ensure the totals match the official numbers
                 
                 // Fetch expense transactions from cash_flow_transactions table
                 try {
@@ -170,6 +213,31 @@ const IncomeStatementTable = (props) => {
                     "Other": { unrestricted: 0, restricted: 0 }
                 };
                 
+                // Calculate change in net assets to exactly match IncomeStatementTable.jsx
+                const changeInNetAssets = {
+                    // The unrestricted change is the negative of the total change (not just expenses)
+                    // This represents the net change in Regular Funds
+                    unrestricted: -change, // Should match the "Change" column in the main table but negative
+                    // All revenue is shown in restricted
+                    restricted: officialTotalRevenue
+                };
+                
+                // Net assets at beginning of year
+                const beginningOfYear = { 
+                    unrestricted: previousTransactions,
+                    restricted: 0
+                };
+                
+                // Calculate end of year to exactly match the Final Net Assets in the main table
+                const endOfYear = {
+                    // Final balance for unrestricted should be previousTransactions minus change
+                    unrestricted: previousTransactions - change,
+                    restricted: officialTotalRevenue,
+                    // Total should match the Final Net Assets column
+                    total: finalNetAssets
+                };
+                
+                // Still process invoice items for detailed breakdown
                 if (invoicesResponse.data && invoicesResponse.data.data) {
                     const invoices = invoicesResponse.data.data;
                     
@@ -224,7 +292,7 @@ const IncomeStatementTable = (props) => {
                     });
                 }
                 
-                // Calculate revenue totals
+                // For backwards compatibility, calculate these sums even though we'll use official numbers
                 let unrestrictedRevenueTotal = 0;
                 let restrictedRevenueTotal = 0;
                 
@@ -234,7 +302,7 @@ const IncomeStatementTable = (props) => {
                 });
                 
                 // Calculate total revenue from invoice items directly
-                const totalRevenue = invoiceItems.reduce((sum, item) => 
+                const detailedTotalRevenue = invoiceItems.reduce((sum, item) => 
                     sum + parseFloat(item.total || 0), 0);
                 
                 // Convert to array format for rendering
@@ -244,75 +312,24 @@ const IncomeStatementTable = (props) => {
                     restricted: values.restricted
                 }));
                 
-                // For expenses, we'll use the data from expense transactions
-                // Let's calculate the totals from the transactions
-                let totalExpenseAmount = 0;
+                // For expenses, use the data from expense transactions
+                // Calculate totals from the transactions
+                let detailedTotalExpenses = 0;
                 
                 if (expenseTransactions && expenseTransactions.length > 0) {
-                    totalExpenseAmount = expenseTransactions.reduce((sum, transaction) => {
+                    detailedTotalExpenses = expenseTransactions.reduce((sum, transaction) => {
                         return sum + parseFloat(transaction.amount || 0);
                     }, 0);
                 }
                 
-                // Set the expense data
-                const expensesTotal = totalExpenseAmount;
-                const unrestrictedExpensesTotal = expensesTotal; // Assuming all expenses are unrestricted
-                const restrictedExpensesTotal = 0; // Assuming all expenses are unrestricted
+                // Use the official totals, not the detailed ones for consistency
+                const totalRevenue = officialTotalRevenue;
+                const totalExpenses = officialTotalExpenses;
                 
-                // For the expense categories, we'll use the chart_of_account data
-                // If we don't have real transaction data, use the default allocation
-                const expensesArray = [
-                    { 
-                        category: "Program Services", 
-                        unrestricted: unrestrictedExpensesTotal * 0.7, 
-                        restricted: 0 
-                    },
-                    { 
-                        category: "General and Administrative", 
-                        unrestricted: unrestrictedExpensesTotal * 0.2, 
-                        restricted: 0 
-                    },
-                    { 
-                        category: "Fundraising", 
-                        unrestricted: unrestrictedExpensesTotal * 0.1, 
-                        restricted: 0 
-                    }
-                ];
-                
-                // Calculate net assets
-                // Split revenue into unrestricted and restricted based on item property
-                const unrestrictedRevenue = invoiceItems
-                    .filter(item => !item.restricted)
-                    .reduce((sum, item) => sum + parseFloat(item.total || 0), 0);
-                    
-                const restrictedRevenue = invoiceItems
-                    .filter(item => item.restricted)
-                    .reduce((sum, item) => sum + parseFloat(item.total || 0), 0);
-                
-                // Calculate change in net assets (Revenue - Expenses)
-                // We assume all expenses are unrestricted as per common non-profit accounting practice
-                const changeInNetAssets = {
-                    unrestricted: unrestrictedRevenue - totalExpenseAmount,
-                    restricted: restrictedRevenue
-                };
-                
-                // Set beginning of year values
-                // This could come from an API in a real system
-                const beginningOfYear = { 
-                    unrestricted: 4300, // Default beginning unrestricted balance
-                    restricted: 0       // Default beginning restricted balance
-                };
-                
-                // Calculate end of year (beginning + change)
-                const endOfYear = {
-                    unrestricted: beginningOfYear.unrestricted + changeInNetAssets.unrestricted,
-                    restricted: beginningOfYear.restricted + changeInNetAssets.restricted
-                };
-                
-                // Set the income data state
+                // Set the income data state using the official numbers
                 setIncomeData({
                     revenues: revenuesArray,
-                    expenses: expensesArray,
+                    expenses: [], // No need for expense categories since we use transactions
                     netAssets: {
                         changeInNetAssets,
                         beginningOfYear,
@@ -320,14 +337,14 @@ const IncomeStatementTable = (props) => {
                     },
                     totals: {
                         revenue: {
-                            unrestricted: unrestrictedRevenue,
-                            restricted: restrictedRevenue,
-                            total: totalRevenue
+                            unrestricted: 0, // All revenue is considered restricted per our visual approach
+                            restricted: officialTotalRevenue,
+                            total: officialTotalRevenue
                         },
                         expenses: {
-                            unrestricted: totalExpenseAmount,
-                            restricted: 0, // Assuming all expenses are unrestricted
-                            total: totalExpenseAmount
+                            unrestricted: officialTotalExpenses, // All expenses are from unrestricted funds
+                            restricted: 0,
+                            total: officialTotalExpenses
                         }
                     },
                     invoiceItems: invoiceItems
@@ -338,39 +355,64 @@ const IncomeStatementTable = (props) => {
                 console.error("Error fetching income statement data:", err);
                 setError(`Failed to load income statement data: ${err.message}`);
                 
-                // Fallback data for all metrics
+                // Calculate fallback values for net assets that will be somewhat consistent
+                // with IncomeStatementTable.jsx even without API access
+                let fallbackRevenue = 0;
+                let fallbackExpenses = 0;
+                let fallbackPrevious = 4300; // Default value if we can't get previous transactions
+                
+                // Try to get totals from UI components if possible
+                if (invoiceItems && invoiceItems.length > 0) {
+                    fallbackRevenue = invoiceItems.reduce((sum, item) => sum + parseFloat(item.total || 0), 0);
+                }
+                
+                if (expenseTransactions && expenseTransactions.length > 0) {
+                    fallbackExpenses = expenseTransactions.reduce((sum, transaction) => sum + parseFloat(transaction.amount || 0), 0);
+                }
+                
+                // Calculate changes using the same logic as IncomeStatementTable.jsx
+                const fallbackChange = fallbackExpenses - fallbackRevenue;
+                const fallbackFinalNet = fallbackChange + fallbackPrevious;
+                
+                // Set default values for all metrics
                 setIncomeData({
                     revenues: [
                         { category: "Individual Donations", unrestricted: 0, restricted: 0 },
                         { category: "Grants", unrestricted: 0, restricted: 0 },
                         { category: "Investment Income", unrestricted: 0, restricted: 0 },
-                        { category: "Other", unrestricted: 11500, restricted: 28721 }
+                        { category: "Other", unrestricted: 0, restricted: fallbackRevenue }
                     ],
-                    expenses: [
-                        { category: "Program Services", unrestricted: 8050, restricted: 0 },
-                        { category: "General and Administrative", unrestricted: 2300, restricted: 0 },
-                        { category: "Fundraising", unrestricted: 1150, restricted: 0 }
-                    ],
+                    expenses: [],
                     netAssets: {
-                        changeInNetAssets: { unrestricted: 0, restricted: 28721 },
-                        beginningOfYear: { unrestricted: 4300, restricted: 0 },
-                        endOfYear: { unrestricted: 4300, restricted: 28721 }
+                        changeInNetAssets: { 
+                            unrestricted: -fallbackChange, 
+                            restricted: fallbackRevenue 
+                        },
+                        beginningOfYear: { 
+                            unrestricted: fallbackPrevious, 
+                            restricted: 0 
+                        },
+                        endOfYear: {
+                            unrestricted: fallbackPrevious - fallbackChange,
+                            restricted: fallbackRevenue,
+                            total: fallbackFinalNet
+                        }
                     },
                     totals: {
                         revenue: {
-                            unrestricted: 11500,
-                            restricted: 28721,
-                            total: 40221
+                            unrestricted: 0,
+                            restricted: fallbackRevenue,
+                            total: fallbackRevenue
                         },
                         expenses: {
-                            unrestricted: 11500,
+                            unrestricted: fallbackExpenses,
                             restricted: 0,
-                            total: 11500
+                            total: fallbackExpenses
                         }
                     },
-                    invoiceItems: [
-                        { id: 1, name: "Sample Item 1", subtotal: 5000, tax_amount: 250, total: 5250, restricted: false },
-                        { id: 2, name: "Sample Item 2", subtotal: 6000, tax_amount: 300, total: 6300, restricted: false },
+                    invoiceItems: invoiceItems || [
+                        { id: 1, name: "Sample Item 1", subtotal: 5000, tax_amount: 250, total: 5250, restricted: true },
+                        { id: 2, name: "Sample Item 2", subtotal: 6000, tax_amount: 300, total: 6300, restricted: true },
                         { id: 3, name: "Sample Item 3", subtotal: 25000, tax_amount: 1250, total: 26250, restricted: true },
                         { id: 4, name: "Sample Item 4", subtotal: 2356, tax_amount: 115, total: 2471, restricted: true }
                     ]
@@ -638,7 +680,9 @@ const IncomeStatementTable = (props) => {
                             <td className="py-3 px-4 text-center">{formatNumber(netAssets.endOfYear.unrestricted)}</td>
                             <td className="py-3 px-4 text-center">{formatNumber(netAssets.endOfYear.restricted)}</td>
                             <td className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
-                                {formatNumber(netAssets.endOfYear.unrestricted + netAssets.endOfYear.restricted)}
+                                {netAssets.endOfYear.total !== undefined 
+                                    ? formatNumber(netAssets.endOfYear.total) 
+                                    : formatNumber(netAssets.endOfYear.unrestricted + netAssets.endOfYear.restricted)}
                             </td>
                         </tr>
                     </tbody>

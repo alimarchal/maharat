@@ -32,25 +32,26 @@ class PaymentOrderController extends Controller
     public function index(Request $request)
     {
         try {
-            Log::info('Payment Orders Request:', [
-                'request' => $request->all(),
-                'url' => $request->fullUrl()
-            ]);
 
             $query = QueryBuilder::for(PaymentOrder::class)
                 ->allowedFilters([
                     AllowedFilter::exact('status'),
                     AllowedFilter::exact('cost_center_id'),
                     AllowedFilter::exact('sub_cost_center_id'),
+                    AllowedFilter::exact('purchase_order_id'),
+                    AllowedFilter::exact('payment_order_number'),
+                    AllowedFilter::callback('date', function ($query, $value) {
+                        $dates = explode(',', $value);
+                        if (count($dates) === 2) {
+                            $query->whereBetween('date', [$dates[0], $dates[1]]);
+                        }
+                    }),
+                    // Other filters
                 ])
-                ->allowedIncludes([
-                    'user',
-                    'purchaseOrder',
-                    'purchaseOrder.supplier',
-                    'purchaseOrder.quotation',
-                    'logs'
-                ])
+                ->allowedSorts(PaymentOrderParameters::ALLOWED_SORTS)
+                ->allowedIncludes(PaymentOrderParameters::ALLOWED_INCLUDES)
                 ->defaultSort('-created_at');
+
 
             $perPage = $request->input('per_page', 10);
             $paymentOrders = $query->paginate($perPage);
@@ -66,10 +67,10 @@ class PaymentOrderController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Payment Orders Error:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+//            Log::error('Payment Orders Error:', [
+//                'message' => $e->getMessage(),
+//                'trace' => $e->getTraceAsString()
+//            ]);
 
             return response()->json([
                 'error' => 'Failed to fetch payment orders',
