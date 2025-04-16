@@ -16,6 +16,8 @@ const AccountsTable = () => {
     const filters = ["All", "Approved", "Pending"];
 
     const [accounts, setAccounts] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [lastPage, setLastPage] = useState(1);
     const [costCenters, setCostCenters] = useState([]);
     const [accountTypes, setAccountTypes] = useState([]);
 
@@ -23,7 +25,7 @@ const AccountsTable = () => {
         setLoading(true);
         try {
             const response = await axios.get(
-                `/api/v1/accounts?include=costCenter,chartOfAccount,chartOfAccount.accountCode`
+                `/api/v1/accounts?include=costCenter,chartOfAccount,chartOfAccount.accountCode&page=${currentPage}`
             );
             if (response.data && response.data.data) {
                 let filteredAccounts = response.data.data;
@@ -35,6 +37,7 @@ const AccountsTable = () => {
                     );
                 }
                 setAccounts(filteredAccounts);
+                setLastPage(response.data.meta?.last_page || 1);
                 setError("");
             }
         } catch (error) {
@@ -75,7 +78,7 @@ const AccountsTable = () => {
     useEffect(() => {
         fetchAccounts();
         fetchFormData();
-    }, [selectedFilter]);
+    }, [selectedFilter, currentPage]);
 
     const handleFilterChange = (filter) => {
         setSelectedFilter(filter);
@@ -97,7 +100,7 @@ const AccountsTable = () => {
     const handleEdit = (account) => {
         setSelectedAccount({
             ...account,
-            chart_of_account_id: account.chart_of_account_id,
+            chart_of_account_id: String(account.chart_of_account_id),
             cost_center_id: account.cost_center_id,
             status: account.status,
         });
@@ -170,8 +173,16 @@ const AccountsTable = () => {
                             </button>
                         ))}
                     </div>
+                    <button
+                        type="button"
+                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                        onClick={() => setIsModalOpen(true)}
+                    >
+                        Create an Account
+                    </button>
                 </div>
             </div>
+
             <table className="w-full">
                 <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                     <tr>
@@ -257,30 +268,36 @@ const AccountsTable = () => {
                 </tbody>
             </table>
 
-            {!loading && (
-                <div className="flex justify-center items-center relative w-full my-8">
-                    <div
-                        className="absolute top-1/2 left-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
-                        style={{
-                            background:
-                                "linear-gradient(to right, #9B9DA2, #9B9DA200)",
-                        }}
-                    ></div>
+            {/* Pagination */}
+            {!loading && !error && accounts.length > 0 && (
+                <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    {Array.from(
+                        { length: lastPage },
+                        (_, index) => index + 1
+                    ).map((page) => (
+                        <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-1 ${
+                                currentPage === page
+                                    ? "bg-[#009FDC] text-white"
+                                    : "border border-[#B9BBBD] bg-white"
+                            } rounded-full hover:bg-[#0077B6] hover:text-white transition`}
+                        >
+                            {page}
+                        </button>
+                    ))}
                     <button
-                        type="button"
-                        className="p-2 text-base sm:text-lg flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] transition-all duration-300 hover:border-[#009FDC] hover:bg-[#009FDC] hover:text-white hover:scale-105"
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage >= lastPage
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage >= lastPage}
                     >
-                        <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add
-                        an Account
+                        Next
                     </button>
-                    <div
-                        className="absolute top-1/2 right-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
-                        style={{
-                            background:
-                                "linear-gradient(to left, #9B9DA2, #9B9DA200)",
-                        }}
-                    ></div>
                 </div>
             )}
 
