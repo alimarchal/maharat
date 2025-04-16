@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\DepartmentController;
 use App\Http\Controllers\Api\V1\DesignationController;
 use App\Http\Controllers\Api\V1\EquityAccountController;
 use App\Http\Controllers\Api\V1\EquityTransactionController;
+use App\Http\Controllers\Api\V1\ExpenseTransactionController;
 use App\Http\Controllers\Api\V1\ExternalDeliveryNoteController;
 use App\Http\Controllers\Api\V1\ExternalInvoiceController;
 use App\Http\Controllers\Api\V1\FaqController;
@@ -347,6 +348,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('financial-transactions/{financialTransaction}/reverse', [FinancialTransactionController::class, 'reverse']);
 
     Route::apiResource('cash-flow-transactions', CashFlowTransactionController::class);
+
+    // Expense transactions endpoint
+    Route::get('/expense-transactions', [ExpenseTransactionController::class, 'index']);
 
     Route::controller(IncomeStatementController::class)->group(function () {
         Route::get('/income-statement/revenue', 'getRevenue');

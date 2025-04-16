@@ -267,11 +267,11 @@ const ViewPayable = ({ id }) => {
     }
     
     if (error) {
-        return (
-            <div className="w-full">
-                <h2 className="text-2xl md:text-3xl font-bold text-[#2C323C] mb-6">
-                    Account Payables Details
-                </h2>
+    return (
+        <div className="w-full">
+            <h2 className="text-2xl md:text-3xl font-bold text-[#2C323C] mb-6">
+                Account Payables Details
+            </h2>
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
                     <strong className="font-bold">Error!</strong>
                     <span className="block sm:inline"> {error}</span>
@@ -342,7 +342,7 @@ const ViewPayable = ({ id }) => {
                         <tr>
                             <td className="py-3 px-4">{paymentOrderData.supplier}</td>
                             <td className="py-3 px-4">{paymentOrderData.contact}</td>
-                            <td className="py-3 px-4">
+                                <td className="py-3 px-4">
                                 {console.log("Status displayed in the UI:", paymentOrderData.status)}
                                 {console.log("Original raw status:", paymentOrderData.originalStatus || 'N/A')}
                                 <div>
@@ -351,28 +351,28 @@ const ViewPayable = ({ id }) => {
                                         API: {String(paymentOrderData.originalStatus || '')}
                                     </div>
                                 </div>
-                            </td>
-                            <td className="py-3 px-4">
+                                </td>
+                                <td className="py-3 px-4">
                                 {formatDate(paymentOrderData.issue_date || paymentOrderData.created_at)}
-                            </td>
-                            <td className="py-3 px-4">
+                                </td>
+                                <td className="py-3 px-4">
                                 {formatDate(paymentOrderData.due_date)}
-                            </td>
-                            <td className="py-3 px-4 text-center flex justify-center gap-4">
-                                <FontAwesomeIcon
-                                    icon={faEye}
+                                </td>
+                                <td className="py-3 px-4 text-center flex justify-center gap-4">
+                                    <FontAwesomeIcon
+                                        icon={faEye}
                                     className={`text-lg md:text-xl ${paymentOrderData.attachment ? 'text-[#009FDC] cursor-pointer hover:text-blue-700' : 'text-gray-400'}`}
                                     onClick={() => handleViewDocument(paymentOrderData.attachment)}
                                     title={paymentOrderData.attachment ? "View Document" : "No document available"}
-                                />
-                                <FontAwesomeIcon
-                                    icon={faDownload}
+                                    />
+                                    <FontAwesomeIcon
+                                        icon={faDownload}
                                     className={`text-lg md:text-xl ${paymentOrderData.attachment ? 'text-[#009FDC] cursor-pointer hover:text-blue-700' : 'text-gray-400'}`}
                                     onClick={() => handleDownloadDocument(paymentOrderData.attachment, paymentOrderData.payment_order_no)}
                                     title={paymentOrderData.attachment ? "Download Document" : "No document available"}
-                                />
-                            </td>
-                        </tr>
+                                    />
+                                </td>
+                            </tr>
                     </tbody>
                 </table>
             </div>
@@ -400,7 +400,7 @@ const ViewPayable = ({ id }) => {
                                 {formatCurrency(paymentOrderData.paid_amount)} SAR
                             </td>
                             <td className="py-3 px-4">{formatCurrency(paymentOrderData.balance)} SAR</td>
-                        </tr>
+                            </tr>
                     </tbody>
                 </table>
             </div>
