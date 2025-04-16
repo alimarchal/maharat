@@ -18,7 +18,9 @@ return new class extends Migration
             $table->foreignId('cost_center_id')->nullable()->constrained('cost_centers', 'id');
             $table->foreignId('sub_cost_center_id')->nullable()->comment('in cost center we are using parent_id for sub cost center')->constrained('cost_centers', 'id');
             $table->string('payment_order_number')->unique();
-            $table->date('date')->nullable();
+            $table->date('issue_date')->nullable();
+            $table->date('due_date')->nullable();
+            $table->enum('payment_type', ['Cash', 'Card', 'Bank Transfer', 'Cheque'])->nullable();
             $table->string('attachment')->nullable();
             $table->decimal('total_amount',15,2)->default(0);
             $table->decimal('paid_amount',15,2)->default(0);

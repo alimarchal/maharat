@@ -291,6 +291,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     // Payment Orders routes
     Route::apiResource('payment-orders', PaymentOrderController::class);
+    Route::post('/payment-orders/{id}/upload-document', [PaymentOrderController::class, 'uploadDocument']);
+    Route::get('/payment-orders/{id}/raw-data', [PaymentOrderController::class, 'rawData']);
     // Payment Order Logs routes
     Route::apiResource('payment-order-logs', PaymentOrderLogController::class);
 

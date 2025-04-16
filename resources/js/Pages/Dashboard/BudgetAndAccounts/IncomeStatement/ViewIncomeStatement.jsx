@@ -121,11 +121,11 @@ const IncomeStatementTable = (props) => {
                     }),
                     // Still fetch invoices for detailed breakdown
                     axios.get("/api/v1/invoices", {
-                        params: {
-                            from_date: fromDate,
-                            to_date: toDate,
-                            include: 'items'
-                        }
+                    params: {
+                        from_date: fromDate,
+                        to_date: toDate,
+                        include: 'items'
+                    }
                     })
                 ]);
                 
@@ -581,29 +581,29 @@ const IncomeStatementTable = (props) => {
             {/* Expense Transactions Table */}
             <div className="my-8 overflow-x-auto">
                 <h3 className="text-xl font-semibold text-[#2C323C] mb-4">Expense Summary</h3>
-                <table className="w-full border-collapse">
-                    <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
-                        <tr>
+            <table className="w-full border-collapse">
+                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
+                    <tr>
                             <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl w-[40%] text-left">
                                 Expense Account
-                            </th>
+                        </th>
                             <th className="py-3 px-4 w-[30%]">Transaction Amount</th>
-                            <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl w-[30%]">
+                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl w-[30%]">
                                 Total Balance
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
+                        </th>
+                    </tr>
+                </thead>
+                <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                         {expenseTransactions.length > 0 ? (
                             expenseTransactions.map((transaction, index) => (
-                                <tr key={index}>
+                        <tr key={index}>
                                     <td className="py-3 px-4 text-left">
                                         {transaction.chart_of_account?.description || transaction.chart_of_account?.account_name || 'Unknown Account'}
                                     </td>
                                     <td className="py-3 px-4 text-center">
                                         {formatNumber(transaction.amount)}
                                     </td>
-                                    <td className="py-3 px-4 text-center">
+                            <td className="py-3 px-4 text-center">
                                         {formatNumber(transaction.balance_amount)}
                                     </td>
                                 </tr>
@@ -652,41 +652,41 @@ const IncomeStatementTable = (props) => {
                             <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl w-[30%]">
                                 Total
                             </th>
-                        </tr>
+                    </tr>
                     </thead>
                     <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                        <tr className="border-none">
-                            <td className="py-3 px-4 text-left">Change in Net Assets</td>
-                            <td className="py-3 px-4 text-center">{formatNumber(netAssets.changeInNetAssets.unrestricted)}</td>
-                            <td className="py-3 px-4 text-center">{formatNumber(netAssets.changeInNetAssets.restricted)}</td>
-                            <td className="py-3 px-4 text-center">
-                                {formatNumber(netAssets.changeInNetAssets.unrestricted + netAssets.changeInNetAssets.restricted)}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td className="py-3 px-4 text-left">
-                                Net Assets, Beginning of Year
-                            </td>
-                            <td className="py-3 px-4 text-center">{formatNumber(netAssets.beginningOfYear.unrestricted)}</td>
-                            <td className="py-3 px-4 text-center">{formatNumber(netAssets.beginningOfYear.restricted)}</td>
-                            <td className="py-3 px-4 text-center">
-                                {formatNumber(netAssets.beginningOfYear.unrestricted + netAssets.beginningOfYear.restricted)}
-                            </td>
-                        </tr>
-                        <tr className="font-bold text-xl bg-[#DCECF2] border-none">
-                            <td className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-left">
-                                Net Assets, End of Period
-                            </td>
-                            <td className="py-3 px-4 text-center">{formatNumber(netAssets.endOfYear.unrestricted)}</td>
-                            <td className="py-3 px-4 text-center">{formatNumber(netAssets.endOfYear.restricted)}</td>
-                            <td className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
+                    <tr className="border-none">
+                        <td className="py-3 px-4 text-left">Change in Net Assets</td>
+                        <td className="py-3 px-4 text-center">{formatNumber(netAssets.changeInNetAssets.unrestricted)}</td>
+                        <td className="py-3 px-4 text-center">{formatNumber(netAssets.changeInNetAssets.restricted)}</td>
+                        <td className="py-3 px-4 text-center">
+                            {formatNumber(netAssets.changeInNetAssets.unrestricted + netAssets.changeInNetAssets.restricted)}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td className="py-3 px-4 text-left">
+                            Net Assets, Beginning of Year
+                        </td>
+                        <td className="py-3 px-4 text-center">{formatNumber(netAssets.beginningOfYear.unrestricted)}</td>
+                        <td className="py-3 px-4 text-center">{formatNumber(netAssets.beginningOfYear.restricted)}</td>
+                        <td className="py-3 px-4 text-center">
+                            {formatNumber(netAssets.beginningOfYear.unrestricted + netAssets.beginningOfYear.restricted)}
+                        </td>
+                    </tr>
+                    <tr className="font-bold text-xl bg-[#DCECF2] border-none">
+                        <td className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-left">
+                            Net Assets, End of Period
+                        </td>
+                        <td className="py-3 px-4 text-center">{formatNumber(netAssets.endOfYear.unrestricted)}</td>
+                        <td className="py-3 px-4 text-center">{formatNumber(netAssets.endOfYear.restricted)}</td>
+                        <td className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                                 {netAssets.endOfYear.total !== undefined 
                                     ? formatNumber(netAssets.endOfYear.total) 
                                     : formatNumber(netAssets.endOfYear.unrestricted + netAssets.endOfYear.restricted)}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
                 <div className="mt-3 text-sm text-gray-600">
                     <p><strong>Note:</strong> "Regular Funds" represent unrestricted resources from paid invoices minus expenses. "Restricted Funds" reflect revenue from pending or incomplete invoices. All expenses are allocated to Regular Funds.</p>
                 </div>
