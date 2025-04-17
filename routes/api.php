@@ -138,6 +138,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('/rfqs/form-data', [RfqController::class, 'getFormData']);
     Route::apiResource('rfqs', RfqController::class);
     Route::post('/rfqs/{id}/upload-document', [RfqController::class, 'uploadDocument']);
+    Route::post('/rfqs/{id}/upload-excel', [RfqController::class, 'uploadExcel']);
     // RFQ Items routes
     Route::apiResource('rfq-items', RfqItemController::class);
 

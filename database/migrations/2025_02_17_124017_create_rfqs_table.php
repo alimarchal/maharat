@@ -52,6 +52,7 @@ return new class extends Migration
             $table->boolean('quotation_sent')->default(false);
             $table->timestamp('quotation_sent_at')->nullable();
             $table->string('quotation_document')->nullable();
+            $table->string('excel_attachment')->nullable();
 
             $table->timestamps();
             $table->softDeletes();

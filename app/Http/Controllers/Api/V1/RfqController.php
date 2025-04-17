@@ -89,6 +89,8 @@ class RfqController extends Controller
                 'paymentType',
                 'categories',
                 'items.product',
+                'statusLogs.status',
+                'statusLogs.changedBy'
             ])->findOrFail($id);
 
             // Get category info for this RFQ
@@ -517,6 +519,56 @@ class RfqController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to upload document',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Upload an Excel document for an RFQ
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function uploadExcel(Request $request, $id)
+    {
+        try {
+            // Find the RFQ
+            $rfq = Rfq::findOrFail($id);
+            
+            // Validate request
+            $request->validate([
+                'excel_attachment' => 'required|file|mimes:xlsx,xls,csv|max:10240', // Max 10MB
+            ]);
+            
+            // Get the uploaded file
+            $file = $request->file('excel_attachment');
+            
+            // Store the file in the public disk under the 'rfq-excel' directory
+            $path = $file->store('rfq-excel', 'public');
+            
+            // Update the RFQ record with the file path
+            $rfq->excel_attachment = $path;
+            $rfq->save();
+            
+            // Return success response
+            return response()->json([
+                'success' => true,
+                'message' => 'Excel file uploaded successfully',
+                'excel_url' => $path,
+            ]);
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'RFQ not found'
+            ], 404);
+        } catch (\Exception $e) {
+            \Log::error('Error uploading Excel file: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upload Excel file',
                 'error' => $e->getMessage()
             ], 500);
         }
