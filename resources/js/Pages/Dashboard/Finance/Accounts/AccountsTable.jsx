@@ -178,7 +178,7 @@ const AccountsTable = () => {
                         className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                         onClick={() => setIsModalOpen(true)}
                     >
-                        Create an Account
+                        Create a new Account
                     </button>
                 </div>
             </div>
