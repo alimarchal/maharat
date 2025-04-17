@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
@@ -9,49 +9,97 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
     const userId = usePage().props.auth.user.id;
 
     const [formData, setFormData] = useState({
-        description: "",
-        action: "",
-        priority: "",
+        issue_date: new Date().toISOString().substr(0, 10),
+        due_date: "",
+        payment_type: "",
+        total_amount: 0,
+        paid_amount: 0,
+        status: "Draft"
     });
+    
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
 
+    useEffect(() => {
+        // Update total amount when selected order changes
+        if (selectedOrder?.amount) {
+            let amount = selectedOrder.amount;
+            // Ensure amount is stored as a number
+            if (typeof amount === 'string') {
+                amount = parseFloat(amount);
+            }
+            setFormData(prev => ({
+                ...prev,
+                total_amount: amount
+            }));
+        }
+    }, [selectedOrder]);
+
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
+
+        // When total_amount changes, reset paid_amount validation errors
+        if (name === 'total_amount' || name === 'paid_amount') {
+            setErrors(prev => ({
+                ...prev,
+                paid_amount: undefined
+            }));
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         let newErrors = {};
-        if (!formData.description)
-            newErrors.description = "Description is required";
-        if (!formData.action) newErrors.action = "Action is required";
-        if (!formData.priority) newErrors.priority = "Priority is required";
+        if (!formData.issue_date) newErrors.issue_date = "Issue date is required";
+        if (!formData.due_date) newErrors.due_date = "Due date is required";
+        if (!formData.payment_type) newErrors.payment_type = "Payment type is required";
+        if (!formData.total_amount || formData.total_amount <= 0) newErrors.total_amount = "Total amount must be greater than 0";
+        if (!formData.status) newErrors.status = "Status is required";
+        if (parseFloat(formData.paid_amount) > parseFloat(formData.total_amount)) 
+            newErrors.paid_amount = "Paid amount cannot exceed total amount";
 
         setErrors(newErrors);
         if (Object.keys(newErrors).length === 0) {
             try {
                 setLoading(true);
 
+                // Format dates for the API
+                const issueDate = formData.issue_date ? new Date(formData.issue_date).toISOString().split('T')[0] : null;
+                const dueDate = formData.due_date ? new Date(formData.due_date).toISOString().split('T')[0] : null;
+
+                // Prepare payment order data
                 const paymentOrderPayload = {
                     user_id: userId,
                     purchase_order_id: selectedOrder?.id,
-                    date: selectedOrder?.purchase_order_date,
+                    issue_date: issueDate,
+                    due_date: dueDate,
+                    payment_type: formData.payment_type,
+                    total_amount: parseFloat(formData.total_amount).toFixed(2),
+                    paid_amount: parseFloat(formData.paid_amount).toFixed(2),
+                    status: formData.status,
                     attachment: selectedOrder?.attachment,
                 };
 
+                console.log("Submitting payment order payload:", paymentOrderPayload);
+
+                // Create payment order
                 const response = await axios.post(
                     "/api/v1/payment-orders",
                     paymentOrderPayload
                 );
                 const paymentOrderResponse = response.data.data?.id;
 
+                // Create payment order logs
                 const paymentLogsPayload = {
-                    ...formData,
+                    description: "Payment order created",
+                    action: "Approved",
+                    priority: "Standard",
                     payment_order_id: paymentOrderResponse,
                 };
 
+                // Update purchase order has_payment_order status
                 const purchaseOrderPayload = {
                     has_payment_order: true,
                 };
@@ -60,11 +108,13 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                     purchaseOrderPayload
                 );
 
+                // Create payment order logs
                 await axios.post(
                     "/api/v1/payment-order-logs",
                     paymentLogsPayload
                 );
 
+                // Create approval workflow
                 try {
                     const processResponse = await axios.get(
                         "/api/v1/processes?include=steps,creator,updater&filter[title]=Payment Order Approval"
@@ -137,13 +187,45 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
             } catch (error) {
                 setLoading(false);
                 console.error("Error creating payment order:", error);
+                
+                if (error.response && error.response.data && error.response.data.errors) {
+                    setErrors(error.response.data.errors);
+                } else {
+                    setErrors({ general: "Failed to create payment order. Please try again." });
+                }
             }
         }
     };
 
+    // Calculate suggested status based on dates and paid amount
+    const calculateSuggestedStatus = () => {
+        const today = new Date();
+        const dueDate = formData.due_date ? new Date(formData.due_date) : null;
+        const totalAmount = parseFloat(formData.total_amount) || 0;
+        const paidAmount = parseFloat(formData.paid_amount) || 0;
+
+        if (paidAmount === 0) {
+            return dueDate && today > dueDate ? "Overdue" : "Pending";
+        } else if (paidAmount < totalAmount) {
+            return "Partially Paid";
+        } else if (paidAmount >= totalAmount) {
+            return "Paid";
+        }
+        return "Draft";
+    };
+
+    // Update status when relevant fields change
+    useEffect(() => {
+        const suggestedStatus = calculateSuggestedStatus();
+        setFormData(prev => ({
+            ...prev,
+            status: suggestedStatus
+        }));
+    }, [formData.due_date, formData.total_amount, formData.paid_amount]);
+
     return (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white p-8 rounded-2xl w-[90%] max-w-4xl">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+            <div className="bg-white p-8 rounded-2xl w-[90%] max-w-4xl max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between border-b pb-2 mb-6">
                     <h2 className="text-3xl font-bold text-[#2C323C]">
                         Create New Payment Order
@@ -157,75 +239,161 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 items-start gap-6">
+                        {/* Issue Date */}
                         <div className="w-full">
-                            <SelectFloating
-                                label="Action"
-                                name="action"
-                                value={formData.action}
-                                onChange={handleChange}
-                                options={[
-                                    { id: "Approved", label: "Approved" },
-                                    { id: "Reject", label: "Reject" },
-                                    // { id: "Refer", label: "Refer" },
-                                ]}
-                            />
-                            {errors.action && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.action}
-                                </p>
-                            )}
-                        </div>
-                        <div className="w-full">
-                            <SelectFloating
-                                label="Priority"
-                                name="priority"
-                                value={formData.priority}
-                                onChange={handleChange}
-                                options={[
-                                    { id: "Urgent", label: "Urgent" },
-                                    { id: "High", label: "High" },
-                                    { id: "Standard", label: "Standard" },
-                                    { id: "Low", label: "Low" },
-                                ]}
-                            />
-                            {errors.priority && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.priority}
-                                </p>
-                            )}
-                        </div>
-                        <div className="md:col-span-2">
                             <div className="relative w-full">
-                                <textarea
-                                    name="description"
-                                    value={formData.description}
+                                <input
+                                    type="date"
+                                    name="issue_date"
+                                    value={formData.issue_date}
                                     onChange={handleChange}
-                                    className="peer border border-gray-300 p-5 rounded-2xl w-full h-36 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
-                                ></textarea>
+                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
+                                />
                                 <label
                                     className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
-                            peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400
-                            peer-focus:-top-2 peer-focus:left-2 peer-focus:text-base peer-focus:text-[#009FDC] peer-focus:px-1
-                            ${
-                                formData.description
-                                    ? "-top-2 left-2 text-base text-[#009FDC] px-1"
-                                    : "top-4 text-base text-gray-400"
-                            }`}
+                                        ${formData.issue_date ? "-top-2 left-2 text-base text-[#009FDC] px-1" : "top-4 text-base text-gray-400"}`}
                                 >
-                                    Description
+                                    Issue Date
                                 </label>
-                                {errors.description && (
+                                {errors.issue_date && (
                                     <p className="text-red-500 text-sm mt-1">
-                                        {errors.description}
+                                        {errors.issue_date}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Due Date */}
+                        <div className="w-full">
+                            <div className="relative w-full">
+                                <input
+                                    type="date"
+                                    name="due_date"
+                                    value={formData.due_date}
+                                    onChange={handleChange}
+                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
+                                />
+                                <label
+                                    className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
+                                        ${formData.due_date ? "-top-2 left-2 text-base text-[#009FDC] px-1" : "top-4 text-base text-gray-400"}`}
+                                >
+                                    Due Date
+                                </label>
+                                {errors.due_date && (
+                                    <p className="text-red-500 text-sm mt-1">
+                                        {errors.due_date}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Payment Type */}
+                        <div className="w-full">
+                            <SelectFloating
+                                label="Payment Type"
+                                name="payment_type"
+                                value={formData.payment_type}
+                                onChange={handleChange}
+                                options={[
+                                    { id: "Cash", label: "Cash" },
+                                    { id: "Card", label: "Card" },
+                                    { id: "Bank Transfer", label: "Bank Transfer" },
+                                    { id: "Cheque", label: "Cheque" },
+                                ]}
+                            />
+                            {errors.payment_type && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.payment_type}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Status */}
+                        <div className="w-full">
+                            <SelectFloating
+                                label="Status"
+                                name="status"
+                                value={formData.status}
+                                onChange={handleChange}
+                                options={[
+                                    { id: "Draft", label: "Draft" },
+                                    { id: "Pending", label: "Pending" },
+                                    { id: "Paid", label: "Paid" },
+                                    { id: "Partially Paid", label: "Partially Paid" },
+                                    { id: "Overdue", label: "Overdue" },
+                                    { id: "Cancelled", label: "Cancelled" },
+                                ]}
+                            />
+                            {errors.status && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.status}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Total Amount */}
+                        <div className="w-full">
+                            <div className="relative w-full">
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    name="total_amount"
+                                    value={formData.total_amount}
+                                    onChange={handleChange}
+                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
+                                />
+                                <label
+                                    className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
+                                        ${formData.total_amount !== "" ? "-top-2 left-2 text-base text-[#009FDC] px-1" : "top-4 text-base text-gray-400"}`}
+                                >
+                                    Total Amount
+                                </label>
+                                {errors.total_amount && (
+                                    <p className="text-red-500 text-sm mt-1">
+                                        {errors.total_amount}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Paid Amount */}
+                        <div className="w-full">
+                            <div className="relative w-full">
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    name="paid_amount"
+                                    value={formData.paid_amount}
+                                    onChange={handleChange}
+                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
+                                />
+                                <label
+                                    className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
+                                        ${formData.paid_amount !== "" ? "-top-2 left-2 text-base text-[#009FDC] px-1" : "top-4 text-base text-gray-400"}`}
+                                >
+                                    Paid Amount
+                                </label>
+                                {errors.paid_amount && (
+                                    <p className="text-red-500 text-sm mt-1">
+                                        {errors.paid_amount}
                                     </p>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    <div className="my-4 flex justify-center md:justify-end w-full">
+                    {/* General Error Message */}
+                    {errors.general && (
+                        <div className="text-red-500 text-sm mt-2 text-center">
+                            {errors.general}
+                        </div>
+                    )}
+
+                    <div className="my-4 flex justify-center w-full">
                         <button
-                            className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto"
+                            className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full"
                             disabled={loading}
                         >
                             {loading ? "Submitting..." : "Submit"}

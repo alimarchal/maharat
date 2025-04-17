@@ -17,7 +17,9 @@ class PaymentOrder extends Model
         'cost_center_id',
         'sub_cost_center_id',
         'payment_order_number',
-        'date',
+        'issue_date',
+        'due_date',
+        'payment_type',
         'attachment',
         'total_amount',
         'paid_amount',
@@ -25,7 +27,8 @@ class PaymentOrder extends Model
     ];
 
     protected $casts = [
-        'date' => 'date'
+        'issue_date' => 'date',
+        'due_date' => 'date'
     ];
 
     /**

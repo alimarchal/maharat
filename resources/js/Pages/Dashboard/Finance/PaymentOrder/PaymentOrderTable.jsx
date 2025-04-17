@@ -43,35 +43,48 @@ const PaymentOrderTable = () => {
 
     // Handle PDF generation
     const handleGeneratePDF = (paymentId) => {
-        const paymentOrder = orders.find((order) => order.id === paymentId);
-
-        if (paymentOrder && paymentOrder.pdf_url) {
-            window.open(paymentOrder.pdf_url, "_blank");
-            return;
-        }
-
-        // If no pre-generated PDF, show PDF generation modal
+        // Always show PDF generation modal regardless of existing attachment
         setIsGeneratingPDF(true);
         setSelectedPaymentId(paymentId);
         setSavedPdfUrl(null);
     };
 
     const handlePDFGenerated = (documentUrl) => {
+        console.log("handlePDFGenerated called with:", documentUrl);
         setSavedPdfUrl(documentUrl);
         setIsGeneratingPDF(false);
 
         if (documentUrl) {
-            setOrders((prevPayment) =>
-                prevPayment.map((payment) =>
-                    payment.id === selectedPaymentId
-                        ? { ...payment, pdf_url: documentUrl }
-                        : payment
-                )
+            // Update the attachment field in the local state
+            setOrders((prevPayments) =>
+                prevPayments.map((payment) => {
+                    if (payment.id === selectedPaymentId) {
+                        console.log("Updating payment order:", payment.id);
+                        // Extract just the filename from the URL path
+                        const fileName = documentUrl.split('/').pop();
+                        console.log("Extracted filename:", fileName);
+                        return { ...payment, attachment: fileName };
+                    }
+                    return payment;
+                })
             );
         }
 
         setSelectedPaymentId(null);
-        fetchOrders();
+        fetchOrders(); // Refresh the data from the server
+    };
+
+    // For viewing existing attachments only
+    const viewAttachment = (attachment) => {
+        if (attachment) {
+            window.open(`/uploads/${attachment}`, "_blank");
+        }
+    };
+
+    // Format number to currency
+    const formatCurrency = (value) => {
+        if (!value && value !== 0) return 'N/A';
+        return `$${parseFloat(value).toFixed(2)}`;
     };
 
     return (
@@ -209,14 +222,18 @@ const PaymentOrderTable = () => {
                                         "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
-                                    ${order.purchase_order?.amount || "N/A"}
+                                    {formatCurrency(order.total_amount)}
                                 </td>
                                 <td className="py-3 px-4 text-center text-[#009FDC] hover:text-blue-800 cursor-pointer">
                                     {order.attachment ? (
                                         <a
-                                            href={`/uploads/${order.attachment}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
+                                            href="#"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                viewAttachment(order.attachment);
+                                                console.log("Opening attachment:", order.attachment);
+                                            }}
+                                            title={order.attachment}
                                         >
                                             <FontAwesomeIcon
                                                 icon={faPaperclip}

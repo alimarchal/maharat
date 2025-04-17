@@ -18,10 +18,12 @@ class StorePaymentOrderRequest extends FormRequest
             'purchase_order_id' => ['required', 'exists:purchase_orders,id'],
             'cost_center_id' => ['nullable', 'exists:cost_centers,id'],
             'sub_cost_center_id' => ['nullable', 'exists:cost_centers,id'],
-            'date' => ['nullable', 'date'],
+            'issue_date' => ['nullable', 'date'],
+            'due_date' => ['nullable', 'date'],
+            'payment_type' => ['nullable', 'string'],
             'attachment' => ['nullable', 'string'],
-            'total_amount' => ['nullable', 'string'],
-            'paid_amount' => ['nullable', 'string'],
+            'total_amount' => ['nullable', 'numeric'],
+            'paid_amount' => ['nullable', 'numeric'],
             'status' => ['nullable', 'string'],
         ];
     }

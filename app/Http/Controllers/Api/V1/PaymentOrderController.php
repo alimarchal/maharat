@@ -187,4 +187,129 @@ class PaymentOrderController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+    /**
+     * Get raw payment order data directly from the database
+     * This endpoint bypasses the PaymentOrderResource to include all fields
+     *
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function rawData(string $id): JsonResponse
+    {
+        try {
+            $paymentOrder = PaymentOrder::with([
+                'user',
+                'purchaseOrder',
+                'purchaseOrder.supplier',
+                'purchaseOrder.quotation',
+                'logs'
+            ])->findOrFail($id);
+            
+            // Log the actual data being returned for debugging
+            Log::info('Raw Payment Order Data', [
+                'payment_order_id' => $id,
+                'status' => $paymentOrder->status,
+                'total_amount' => $paymentOrder->total_amount,
+                'paid_amount' => $paymentOrder->paid_amount,
+                'payment_type' => $paymentOrder->payment_type
+            ]);
+
+            // Return the model data directly without using the resource
+            return response()->json([
+                'data' => $paymentOrder
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            Log::error('Raw Payment Order Data Error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get raw payment order data',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Upload a document for a payment order and save it in the attachment field
+     *
+     * @param Request $request
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function uploadDocument(Request $request, $id): JsonResponse
+    {
+        try {
+            // Log the incoming request
+            Log::info('Upload Document Request', [
+                'payment_order_id' => $id,
+                'has_file' => $request->hasFile('payment_document'),
+                'all_files' => $request->allFiles(),
+            ]);
+
+            // Validate the request
+            $request->validate([
+                'payment_document' => 'required|file|mimes:pdf|max:10240', // 10MB limit
+            ]);
+
+            // Find the payment order
+            $paymentOrder = PaymentOrder::findOrFail($id);
+            Log::info('Payment Order Found', ['payment_order' => $paymentOrder->payment_order_number]);
+
+            // Handle file upload
+            if ($request->hasFile('payment_document')) {
+                $file = $request->file('payment_document');
+                $fileName = 'payment_order_' . $paymentOrder->payment_order_number . '_' . time() . '.' . $file->getClientOriginalExtension();
+                
+                Log::info('Uploading file', [
+                    'original_name' => $file->getClientOriginalName(),
+                    'new_filename' => $fileName,
+                    'size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                ]);
+                
+                // Create uploads directory if it doesn't exist
+                $uploadsPath = public_path('uploads');
+                if (!file_exists($uploadsPath)) {
+                    mkdir($uploadsPath, 0755, true);
+                }
+                
+                // Store the file
+                $file->move($uploadsPath, $fileName);
+                
+                // Update the payment order with the attachment filename
+                $paymentOrder->update([
+                    'attachment' => $fileName
+                ]);
+
+                Log::info('File uploaded successfully', ['filename' => $fileName]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Document uploaded successfully',
+                    'document_url' => '/uploads/' . $fileName
+                ], Response::HTTP_OK);
+            }
+
+            Log::warning('No file was uploaded');
+            return response()->json([
+                'success' => false,
+                'message' => 'No file was uploaded'
+            ], Response::HTTP_BAD_REQUEST);
+        } catch (\Exception $e) {
+            Log::error('Upload Document Error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upload document',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
 }

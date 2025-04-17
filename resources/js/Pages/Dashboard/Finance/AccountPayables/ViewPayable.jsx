@@ -31,16 +31,33 @@ const ViewPayable = ({ id }) => {
             setLoading(true);
             
             try {
-                const response = await axios.get(`/api/v1/payment-orders/${paymentOrderId}?include=user`);
-                if (!response.data || !response.data.data) {
+                // Try to use the raw-data endpoint first for complete data
+                let paymentOrder;
+                let response;
+                
+                try {
+                    response = await axios.get(`/api/v1/payment-orders/${paymentOrderId}/raw-data`);
+                    console.log("Raw data response:", response.data);
+                    paymentOrder = response.data.data;
+                } catch (rawDataError) {
+                    console.log("Raw data API failed, falling back to standard API");
+                    response = await axios.get(`/api/v1/payment-orders/${paymentOrderId}?include=user,purchaseOrder`);
+                    paymentOrder = response.data.data;
+                }
+                
+                if (!paymentOrder) {
                     setError("Invalid payment order data");
                     setLoading(false);
                     return;
                 }
-                const paymentOrder = response.data.data;
+                
+                console.log("Payment order data:", paymentOrder);
+                console.log("Available fields:", Object.keys(paymentOrder));
                 
                 // Calculate balance
-                const balance = (paymentOrder.total_amount || 0) - (paymentOrder.paid_amount || 0);
+                const totalAmount = paymentOrder.total_amount || 0;
+                const paidAmount = paymentOrder.paid_amount || 0;
+                const balance = totalAmount - paidAmount;
                 
                 // Set supplier data variables
                 let supplierName = "N/A";
@@ -67,8 +84,10 @@ const ViewPayable = ({ id }) => {
                 
                 // Format the status from snake_case to title case
                 let formattedStatus = "Pending";
+                let originalStatus = "";
+                
                 if (paymentOrder.status) {
-                    
+                    originalStatus = paymentOrder.status;
                     // Check if it's draft status - convert to lowercase first
                     const statusLower = String(paymentOrder.status).toLowerCase().trim();
                     
@@ -81,6 +100,17 @@ const ViewPayable = ({ id }) => {
                             .replace(/\b\w/g, (l) => l.toUpperCase());
                     }
                 }
+                
+                // Get payment terms/method with fallbacks
+                const paymentTerms = paymentOrder.payment_type || 
+                                     paymentOrder.payment_terms || 
+                                     paymentOrder.payment_method || 
+                                     "N/A";
+                
+                // Prepare dates
+                const issueDate = paymentOrder.issue_date || paymentOrder.date || paymentOrder.created_at;
+                const dueDate = paymentOrder.due_date || null;
+                
                 // Create formatted payment order with supplier data
                 let formattedPaymentOrder = {
                     ...paymentOrder,
@@ -88,14 +118,20 @@ const ViewPayable = ({ id }) => {
                     supplier: supplierName,
                     contact: contactNumber,
                     status: formattedStatus,
-                    originalStatus: paymentOrder.status,
-                    amount: paymentOrder.total_amount || 0,
-                    paid_amount: paymentOrder.paid_amount || 0,
-                    balance: balance
+                    originalStatus: originalStatus,
+                    amount: totalAmount,
+                    paid_amount: paidAmount,
+                    balance: balance,
+                    payment_method: paymentTerms,
+                    issue_date: issueDate,
+                    due_date: dueDate
                 };
+                
+                console.log("Formatted payment order:", formattedPaymentOrder);
                 setPaymentOrderData(formattedPaymentOrder);
                 setError("");
             } catch (error) {
+                console.error("API error:", error);
                 setError("Failed to load payable details: " + (error.response?.data?.message || error.message));
             } finally {
                 setLoading(false);
@@ -148,7 +184,11 @@ const ViewPayable = ({ id }) => {
         // Construct full URL with proper base path
         const fullUrl = documentUrl.startsWith('http') 
             ? documentUrl 
-            : `/${documentUrl.replace(/^\//g, '')}`; // Ensure we have a single leading slash
+            : documentUrl.startsWith('/uploads/') 
+                ? documentUrl 
+                : `/uploads/${documentUrl}`;
+            
+        console.log("Opening document URL:", fullUrl);
         window.open(fullUrl, '_blank');
     };
     
@@ -162,7 +202,11 @@ const ViewPayable = ({ id }) => {
         // Construct full URL with proper base path
         const fullUrl = documentUrl.startsWith('http') 
             ? documentUrl 
-            : `/${documentUrl.replace(/^\//g, '')}`; // Ensure we have a single leading slash
+            : documentUrl.startsWith('/uploads/') 
+                ? documentUrl 
+                : `/uploads/${documentUrl}`;
+            
+        console.log("Downloading document URL:", fullUrl);
         
         // Create a temporary link element to trigger download
         const link = document.createElement('a');
@@ -187,16 +231,31 @@ const ViewPayable = ({ id }) => {
         // Use a short timeout to allow the server to process the update
         setTimeout(async () => {
             try {
-                // Fetch the updated payment order with user included
-                const response = await axios.get(`/api/v1/payment-orders/${paymentOrderId}?include=user`);
-                if (response.data && response.data.data) {
-                    const paymentOrder = response.data.data;
-                    
-                    const balance = (paymentOrder.total_amount || 0) - (paymentOrder.paid_amount || 0);
+                // Try to fetch the updated data using raw-data endpoint first
+                let paymentOrder;
+                let response;
+                
+                try {
+                    response = await axios.get(`/api/v1/payment-orders/${paymentOrderId}/raw-data`);
+                    paymentOrder = response.data.data;
+                } catch (rawDataError) {
+                    // Fall back to standard API
+                    response = await axios.get(`/api/v1/payment-orders/${paymentOrderId}?include=user,purchaseOrder`);
+                    paymentOrder = response.data.data;
+                }
+                
+                if (paymentOrder) {
+                    // Calculate balance from updated data
+                    const totalAmount = paymentOrder.total_amount || 0;
+                    const paidAmount = paymentOrder.paid_amount || 0;
+                    const balance = totalAmount - paidAmount;
                     
                     // Format the status from snake_case to title case
                     let formattedStatus = "Pending";
+                    let originalStatus = "";
+                    
                     if (paymentOrder.status) {
+                        originalStatus = paymentOrder.status;
                         // Check if it's draft status - convert to lowercase first
                         const statusLower = String(paymentOrder.status).toLowerCase().trim();
                         
@@ -209,6 +268,17 @@ const ViewPayable = ({ id }) => {
                                 .replace(/\b\w/g, (l) => l.toUpperCase());
                         }
                     }
+                    
+                    // Get payment terms/method with fallbacks
+                    const paymentTerms = paymentOrder.payment_type || 
+                                         paymentOrder.payment_terms || 
+                                         paymentOrder.payment_method || 
+                                         "N/A";
+                    
+                    // Prepare dates
+                    const issueDate = paymentOrder.issue_date || paymentOrder.date || paymentOrder.created_at;
+                    const dueDate = paymentOrder.due_date || null;
+                    
                     // If we have a user_id but user data is missing, fetch it separately
                     let supplierName = "N/A";
                     let contactNumber = "N/A";
@@ -238,11 +308,16 @@ const ViewPayable = ({ id }) => {
                         supplier: supplierName,
                         contact: contactNumber,
                         status: formattedStatus,
-                        originalStatus: paymentOrder.status,
-                        amount: paymentOrder.total_amount || 0,
-                        paid_amount: paymentOrder.paid_amount || 0,
-                        balance: balance
+                        originalStatus: originalStatus,
+                        amount: totalAmount,
+                        paid_amount: paidAmount,
+                        balance: balance,
+                        payment_method: paymentTerms,
+                        issue_date: issueDate,
+                        due_date: dueDate
                     };
+                    
+                    console.log("Updated payment order after edit:", updatedPaymentOrder);
                     setPaymentOrderData(updatedPaymentOrder);
                     setError("");
                 } else {
@@ -250,6 +325,7 @@ const ViewPayable = ({ id }) => {
                     window.location.reload();
                 }
             } catch (error) {
+                console.error("Error updating after edit:", error);
                 // If we encounter an error, reload the page to get fresh data
                 window.location.reload();
             } finally {
@@ -343,14 +419,7 @@ const ViewPayable = ({ id }) => {
                             <td className="py-3 px-4">{paymentOrderData.supplier}</td>
                             <td className="py-3 px-4">{paymentOrderData.contact}</td>
                                 <td className="py-3 px-4">
-                                {console.log("Status displayed in the UI:", paymentOrderData.status)}
-                                {console.log("Original raw status:", paymentOrderData.originalStatus || 'N/A')}
-                                <div>
-                                    <div className="font-medium">{paymentOrderData.status}</div>
-                                    <div className="text-xs text-gray-500 mt-1">
-                                        API: {String(paymentOrderData.originalStatus || '')}
-                                    </div>
-                                </div>
+                                <div className="font-medium">{paymentOrderData.status}</div>
                                 </td>
                                 <td className="py-3 px-4">
                                 {formatDate(paymentOrderData.issue_date || paymentOrderData.created_at)}
@@ -361,15 +430,15 @@ const ViewPayable = ({ id }) => {
                                 <td className="py-3 px-4 text-center flex justify-center gap-4">
                                     <FontAwesomeIcon
                                         icon={faEye}
-                                    className={`text-lg md:text-xl ${paymentOrderData.attachment ? 'text-[#009FDC] cursor-pointer hover:text-blue-700' : 'text-gray-400'}`}
-                                    onClick={() => handleViewDocument(paymentOrderData.attachment)}
-                                    title={paymentOrderData.attachment ? "View Document" : "No document available"}
+                                        className={`text-lg md:text-xl ${paymentOrderData.attachment ? 'text-[#009FDC] cursor-pointer hover:text-blue-700' : 'text-gray-400'}`}
+                                        onClick={() => paymentOrderData.attachment ? handleViewDocument(paymentOrderData.attachment) : null}
+                                        title={paymentOrderData.attachment ? "View Document" : "No document available"}
                                     />
                                     <FontAwesomeIcon
                                         icon={faDownload}
-                                    className={`text-lg md:text-xl ${paymentOrderData.attachment ? 'text-[#009FDC] cursor-pointer hover:text-blue-700' : 'text-gray-400'}`}
-                                    onClick={() => handleDownloadDocument(paymentOrderData.attachment, paymentOrderData.payment_order_no)}
-                                    title={paymentOrderData.attachment ? "Download Document" : "No document available"}
+                                        className={`text-lg md:text-xl ${paymentOrderData.attachment ? 'text-[#009FDC] cursor-pointer hover:text-blue-700' : 'text-gray-400'}`}
+                                        onClick={() => paymentOrderData.attachment ? handleDownloadDocument(paymentOrderData.attachment, paymentOrderData.payment_order_no) : null}
+                                        title={paymentOrderData.attachment ? "Download Document" : "No document available"}
                                     />
                                 </td>
                             </tr>
@@ -396,7 +465,6 @@ const ViewPayable = ({ id }) => {
                             <td className="py-3 px-4">{paymentOrderData.payment_method || ""}</td>
                             <td className="py-3 px-4">{formatCurrency(paymentOrderData.amount)} SAR</td>
                             <td className="py-3 px-4">
-                                {console.log("Paid amount:", paymentOrderData.paid_amount)}
                                 {formatCurrency(paymentOrderData.paid_amount)} SAR
                             </td>
                             <td className="py-3 px-4">{formatCurrency(paymentOrderData.balance)} SAR</td>

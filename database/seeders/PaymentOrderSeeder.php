@@ -59,33 +59,60 @@ class PaymentOrderSeeder extends Seeder
                 $this->command->warn('No purchase orders found. Please run PurchaseOrderSeeder first.');
                 return;
             }
+
+            // Get amounts from purchase orders if possible
+            $purchaseOrderAmounts = [];
+            foreach ($purchaseOrders as $poId) {
+                $amount = DB::table('purchase_orders')->where('id', $poId)->value('amount') ?? (5000 + (1000 * $poId));
+                $purchaseOrderAmounts[$poId] = $amount;
+            }
+            
+            // Payment types
+            $paymentTypes = ['Cash', 'Card', 'Bank Transfer', 'Cheque'];
+            // Statuses
+            $statuses = ['Draft', 'Approved', 'Overdue', 'Cancelled', 'Paid', 'Pending', 'Partially Paid'];
             
             // Insert sample records
             DB::table('payment_orders')->insert([
                 [
                     'user_id' => $users[0] ?? 1,
                     'purchase_order_id' => $purchaseOrders[0] ?? 1,
-                    'payment_order_number' => 'PO-20250301',
-                    'date' => '2025-03-01',
+                    'payment_order_number' => 'PMT-00001',
+                    'issue_date' => '2025-03-01',
+                    'due_date' => '2025-03-15',
+                    'payment_type' => $paymentTypes[0],
                     'attachment' => 'payment_receipt_1.pdf',
+                    'total_amount' => $purchaseOrderAmounts[$purchaseOrders[0] ?? 1] ?? 5000,
+                    'paid_amount' => 5000,
+                    'status' => 'Paid',
                     'created_at' => now(),
                     'updated_at' => now(),
                 ],
                 [
                     'user_id' => $users[1] ?? 2,
                     'purchase_order_id' => $purchaseOrders[1] ?? 2,
-                    'payment_order_number' => 'PO-20250302',
-                    'date' => '2025-03-02',
+                    'payment_order_number' => 'PMT-00002',
+                    'issue_date' => '2025-03-02',
+                    'due_date' => '2025-03-20',
+                    'payment_type' => $paymentTypes[2],
                     'attachment' => 'payment_receipt_2.pdf',
+                    'total_amount' => $purchaseOrderAmounts[$purchaseOrders[1] ?? 2] ?? 6000,
+                    'paid_amount' => 3000,
+                    'status' => 'Partially Paid',
                     'created_at' => now(),
                     'updated_at' => now(),
                 ],
                 [
                     'user_id' => $users[2] ?? 3,
                     'purchase_order_id' => $purchaseOrders[2] ?? 3,
-                    'payment_order_number' => 'PO-20250303',
-                    'date' => '2025-03-03',
+                    'payment_order_number' => 'PMT-00003',
+                    'issue_date' => '2025-03-03',
+                    'due_date' => '2025-04-03',
+                    'payment_type' => $paymentTypes[3],
                     'attachment' => 'payment_receipt_3.pdf',
+                    'total_amount' => $purchaseOrderAmounts[$purchaseOrders[2] ?? 3] ?? 7000,
+                    'paid_amount' => 0,
+                    'status' => 'Pending',
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]

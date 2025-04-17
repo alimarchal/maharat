@@ -29,6 +29,14 @@ const CreatePayable = ({ isOpen, onClose, onSave, paymentOrder = null, isEdit = 
         }
     }, [isOpen, paymentOrder, isEdit]);
 
+    useEffect(() => {
+        if (paymentOrder) {
+            console.log("CreatePayable - paymentOrder prop:", paymentOrder);
+            console.log("CreatePayable - paymentOrder.status:", paymentOrder.status);
+            console.log("CreatePayable - original status value:", paymentOrder.status);
+        }
+    }, [paymentOrder]);
+
     const fetchSuppliers = async () => {
         try {
             setLoading(true);
@@ -45,57 +53,93 @@ const CreatePayable = ({ isOpen, onClose, onSave, paymentOrder = null, isEdit = 
     const setDefaultFormData = async () => {
         if (isEdit && paymentOrder) {
             try {
-                // If we're editing, fetch the full payment order details
-                const orderResponse = await axios.get(`/api/v1/payment-orders/${paymentOrder.id}`);
-                const orderData = orderResponse.data.data;
+                console.log("Setting default data from payment order:", paymentOrder);
                 
-                // Format the status properly
+                let orderData;
+                if (paymentOrder.id) {
+                    // Try to use the raw-data endpoint first for complete data
+                    try {
+                        const rawResponse = await axios.get(`/api/v1/payment-orders/${paymentOrder.id}/raw-data`);
+                        orderData = rawResponse.data.data;
+                        console.log("Fetched raw order data from API:", orderData);
+                    } catch (rawError) {
+                        console.log("Raw data endpoint failed, falling back to standard API:", rawError);
+                        const orderResponse = await axios.get(`/api/v1/payment-orders/${paymentOrder.id}?include=user,purchaseOrder`);
+                        orderData = orderResponse.data.data;
+                        console.log("Fetched standard order data from API:", orderData);
+                    }
+                } else {
+                    orderData = paymentOrder;
+                    console.log("Using provided payment order data:", orderData);
+                }
+                
                 let formattedStatus = "Pending";
                 if (orderData.status) {
-                    // Check if it's draft status
-                    if (orderData.status.toLowerCase() === "draft") {
+                    if (typeof orderData.status === 'string' && 
+                        ["Draft", "Pending", "Paid", "Partially Paid", "Overdue"].includes(orderData.status)) {
+                        formattedStatus = orderData.status;
+                        console.log("Using status directly from UI:", formattedStatus);
+                    } 
+                    else if (orderData.status.toLowerCase() === "draft") {
                         formattedStatus = "Draft";
-                    } else {
-                        // Convert snake_case to Title Case
+                        console.log("Setting draft status");
+                    } 
+                    else {
                         formattedStatus = orderData.status
                             .replace(/_/g, " ")
                             .replace(/\b\w/g, (l) => l.toUpperCase());
+                        console.log("Converted status from snake_case:", formattedStatus);
                     }
                         
-                    // Ensure it matches one of our status options
                     const validStatuses = ["Pending", "Paid", "Partially Paid", "Overdue", "Draft"];
                     if (!validStatuses.includes(formattedStatus)) {
+                        console.log("Invalid status found, defaulting to Pending:", formattedStatus);
                         formattedStatus = "Pending";
                     }
                 }
                 
-                setFormData({
+                // Get payment method with fallbacks
+                const paymentMethod = orderData.payment_type || 
+                                      orderData.payment_method || 
+                                      orderData.payment_terms || 
+                                      "Net 30";
+                
+                console.log("Original status:", orderData.status);
+                console.log("Formatted status for form:", formattedStatus);
+                console.log("Payment method/terms:", paymentMethod);
+                
+                const newFormData = {
                     supplier_id: orderData.user_id?.toString() || "",
                     status: formattedStatus,
-                    issue_date: formatDateForInput(orderData.issue_date) || "",
+                    issue_date: formatDateForInput(orderData.issue_date || orderData.date) || "",
                     due_date: formatDateForInput(orderData.due_date) || "",
-                    payment_method: orderData.payment_method || "",
+                    payment_method: paymentMethod,
                     total_amount: orderData.total_amount?.toString() || "0.00",
                     paid_amount: orderData.paid_amount?.toString() || "0.00",
                     balance: ((orderData.total_amount || 0) - (orderData.paid_amount || 0)).toFixed(2)
-                });
+                };
+                
+                console.log("Setting form data to:", newFormData);
+                setFormData(newFormData);
             } catch (error) {
                 console.error('Error fetching payment order details:', error);
                 setErrors({ fetch: "Failed to load payment order details" });
             }
         } else {
-            // For new payment orders, set default values
             const today = new Date().toISOString().split('T')[0];
-            setFormData({
+            const defaultData = {
                 supplier_id: "",
-                status: "",
+                status: "Pending",
                 issue_date: today,
                 due_date: "",
-                payment_method: "",
+                payment_method: "Net 30",
                 total_amount: "0.00",
                 paid_amount: "0.00",
                 balance: "0.00"
-            });
+            };
+            
+            console.log("Setting default form data for new payment order:", defaultData);
+            setFormData(defaultData);
         }
     };
 
@@ -131,6 +175,8 @@ const CreatePayable = ({ isOpen, onClose, onSave, paymentOrder = null, isEdit = 
         e.preventDefault();
         setIsSaving(true);
         setErrors({});
+        
+        console.log("Form data at submission:", formData);
 
         // Validate required fields
         const validationErrors = {};
@@ -147,30 +193,59 @@ const CreatePayable = ({ isOpen, onClose, onSave, paymentOrder = null, isEdit = 
         }
 
         try {
+            // Convert status to the API format
+            let statusValue = formData.status.toLowerCase();
+            
+            // Special handling for UI-formatted statuses
+            if (statusValue === "partially paid") {
+                statusValue = "partially_paid";
+            } else if (statusValue !== "draft" && statusValue !== "paid" && statusValue !== "pending" && statusValue !== "overdue") {
+                // Only replace spaces with underscores if it's not a simple status
+                statusValue = statusValue.replace(/ /g, "_");
+            }
+            
             // Prepare update data
             const updateData = {
                 user_id: formData.supplier_id,
-                status: formData.status.toLowerCase().replace(/ /g, "_"),
+                status: statusValue,
                 issue_date: formData.issue_date,
                 due_date: formData.due_date,
-                payment_method: formData.payment_method,
+                payment_type: formData.payment_method, // Use payment_type as primary field
+                payment_method: formData.payment_method, // Include for backward compatibility
                 total_amount: formData.total_amount,
                 paid_amount: formData.paid_amount,
                 currency: "SAR",
             };
             
+            console.log("Submitting data to API:", updateData);
+            
             let response;
             
-            if (isEdit && paymentOrder) {
+            if (isEdit && paymentOrder && paymentOrder.id) {
                 // Update existing payment order
+                console.log(`Updating payment order ID: ${paymentOrder.id} with data:`, updateData);
                 response = await axios.put(`/api/v1/payment-orders/${paymentOrder.id}`, updateData);
+                console.log("Update response:", response.data);
             } else {
                 // Create new payment order
+                console.log("Creating new payment order with data:", updateData);
                 response = await axios.post('/api/v1/payment-orders', updateData);
+                console.log("Create response:", response.data);
             }
-            onSave(response.data.data);
+            
+            console.log('API Response:', response.data);
+            
+            if (response.data && response.data.data) {
+                onSave(response.data.data);
+            } else {
+                onSave(formData);
+            }
+            
             onClose();
-        } catch (error) {            
+        } catch (error) {
+            console.error('Error saving payment order:', error);
+            console.error('Error details:', error.response?.data);
+            
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             } else {
@@ -199,7 +274,9 @@ const CreatePayable = ({ isOpen, onClose, onSave, paymentOrder = null, isEdit = 
         { id: "Cash", label: "Cash" },
         { id: "Credit", label: "Credit" },
         { id: "Bank Transfer", label: "Bank Transfer" },
-        { id: "Cheque", label: "Cheque" }
+        { id: "Cheque", label: "Cheque" },
+        { id: "Net 30", label: "Net 30" },
+        { id: "Net 60", label: "Net 60" }
     ];
 
     // Supplier options
@@ -236,25 +313,7 @@ const CreatePayable = ({ isOpen, onClose, onSave, paymentOrder = null, isEdit = 
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <SelectFloating
-                                label="Supplier"
-                                name="supplier_id"
-                                value={formData.supplier_id}
-                                onChange={handleChange}
-                                options={supplierOptions}
-                                error={errors.supplier_id}
-                            />
-                            <SelectFloating
-                                label="Status"
-                                name="status"
-                                value={formData.status}
-                                onChange={handleChange}
-                                options={statusOptions}
-                                error={errors.status}
-                            />
-                        </div>
-                        
+                        {/* First row: Issue date and due date */}
                         <div className="grid grid-cols-2 gap-4">
                             <InputFloating
                                 label="Issue Date"
@@ -274,7 +333,8 @@ const CreatePayable = ({ isOpen, onClose, onSave, paymentOrder = null, isEdit = 
                             />
                         </div>
                         
-                        <div className="grid grid-cols-3 gap-4">
+                        {/* Second row: Payment terms and status */}
+                        <div className="grid grid-cols-2 gap-4">
                             <SelectFloating
                                 label="Payment Terms"
                                 name="payment_method"
@@ -283,6 +343,18 @@ const CreatePayable = ({ isOpen, onClose, onSave, paymentOrder = null, isEdit = 
                                 options={paymentTermsOptions}
                                 error={errors.payment_method}
                             />
+                            <SelectFloating
+                                label="Status"
+                                name="status"
+                                value={formData.status}
+                                onChange={handleChange}
+                                options={statusOptions}
+                                error={errors.status}
+                            />
+                        </div>
+                        
+                        {/* Third row: Amount and paid amount */}
+                        <div className="grid grid-cols-2 gap-4">
                             <InputFloating
                                 label="Amount"
                                 name="total_amount"
@@ -302,6 +374,20 @@ const CreatePayable = ({ isOpen, onClose, onSave, paymentOrder = null, isEdit = 
                                 error={errors.paid_amount}
                             />
                         </div>
+                        
+                        {/* Only show supplier dropdown if creating new record */}
+                        {!isEdit && (
+                            <div className="mt-2">
+                                <SelectFloating
+                                    label="Supplier"
+                                    name="supplier_id"
+                                    value={formData.supplier_id}
+                                    onChange={handleChange}
+                                    options={supplierOptions}
+                                    error={errors.supplier_id}
+                                />
+                            </div>
+                        )}
                         
                         <div className="text-center mt-4">
                             <div className="text-xl font-semibold text-gray-700">
