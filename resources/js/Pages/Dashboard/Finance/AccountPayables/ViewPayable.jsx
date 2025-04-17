@@ -181,12 +181,10 @@ const ViewPayable = ({ id }) => {
             return;
         }
         
-        // Construct full URL with proper base path
+        // Construct the correct storage URL
         const fullUrl = documentUrl.startsWith('http') 
             ? documentUrl 
-            : documentUrl.startsWith('/uploads/') 
-                ? documentUrl 
-                : `/uploads/${documentUrl}`;
+            : `/storage/${documentUrl}`;
             
         console.log("Opening document URL:", fullUrl);
         window.open(fullUrl, '_blank');
@@ -199,12 +197,10 @@ const ViewPayable = ({ id }) => {
             return;
         }
         
-        // Construct full URL with proper base path
+        // Construct the correct storage URL
         const fullUrl = documentUrl.startsWith('http') 
             ? documentUrl 
-            : documentUrl.startsWith('/uploads/') 
-                ? documentUrl 
-                : `/uploads/${documentUrl}`;
+            : `/storage/${documentUrl}`;
             
         console.log("Downloading document URL:", fullUrl);
         

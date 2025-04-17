@@ -626,21 +626,22 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
                 fileType: pdfFile.type
             });
 
-            // Save to server
+            // Upload the PDF file to the server and save in the attachment column
             const formData = new FormData();
-            formData.append("payment_document", pdfFile);
+            formData.append("attachment", pdfFile);
             
             console.log("FormData:", {
-                hasPaymentDocument: formData.has("payment_document"),
+                hasAttachment: formData.has("attachment"),
                 fileName: pdfFile.name,
                 fileSize: pdfFile.size
             });
 
             try {
-                console.log("Uploading to:", `/api/v1/payment-orders/${paymentOrderId}/upload-document`);
+                console.log("Uploading PDF to server to save in attachment column");
                 
+                // First, upload the file using a POST request to a dedicated endpoint
                 const uploadResponse = await axios.post(
-                    `/api/v1/payment-orders/${paymentOrderId}/upload-document`,
+                    `/api/v1/payment-orders/${paymentOrderId}/save-attachment`,
                     formData,
                     {
                         headers: {
@@ -652,21 +653,21 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
                 console.log("Upload Response:", uploadResponse.data);
 
                 if (uploadResponse.data?.success) {
-                    // Pass the document_url to be saved as attachment
-                    const documentUrl = uploadResponse.data?.document_url;
-                    console.log("Document URL:", documentUrl);
+                    const documentPath = uploadResponse.data?.file_path;
+                    console.log("Document saved at path:", documentPath);
                     
                     if (onGenerated && typeof onGenerated === "function") {
-                        onGenerated(documentUrl);
+                        onGenerated(documentPath);
                     }
                 } else {
                     console.warn("Document generated but not saved to server:", uploadResponse.data);
+                    // Fall back to local URL
                     if (onGenerated && typeof onGenerated === "function") {
-                        onGenerated(fileUrl); // Return the local URL
+                        onGenerated(fileUrl);
                     }
                 }
             } catch (uploadError) {
-                console.error("Error uploading document:", uploadError);
+                console.error("Error saving PDF to server:", uploadError);
                 // Still return the local URL even if upload fails
                 if (onGenerated && typeof onGenerated === "function") {
                     onGenerated(fileUrl);

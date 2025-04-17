@@ -22,6 +22,7 @@ return new class extends Migration
             $table->date('due_date')->nullable();
             $table->enum('payment_type', ['Cash', 'Card', 'Bank Transfer', 'Cheque'])->nullable();
             $table->string('attachment')->nullable();
+            $table->string('uploaded_attachment')->nullable()->comment('Path to uploaded PDF document');
             $table->decimal('total_amount',15,2)->default(0);
             $table->decimal('paid_amount',15,2)->default(0);
             $table->enum('status', ['Draft', 'Approved','Overdue', 'Cancelled','Paid', 'Pending', 'Partially Paid'])->default('Draft');

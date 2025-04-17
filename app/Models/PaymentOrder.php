@@ -21,6 +21,7 @@ class PaymentOrder extends Model
         'due_date',
         'payment_type',
         'attachment',
+        'uploaded_attachment',
         'total_amount',
         'paid_amount',
         'status'
