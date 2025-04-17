@@ -207,6 +207,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     // Purchase Orders API Routes
     Route::apiResource('purchase-orders', PurchaseOrderController::class);
+    Route::post('purchase-orders/{id}/upload-document', [PurchaseOrderController::class, 'uploadDocument']);
     // GRN routes
     Route::apiResource('grns', GrnController::class);
     Route::post('/grns/save-all', [GrnController::class, 'saveAll']);

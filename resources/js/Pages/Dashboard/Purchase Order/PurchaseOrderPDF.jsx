@@ -620,8 +620,10 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
             // Save to server
             const formData = new FormData();
             formData.append("purchase_order_document", pdfFile);
+            formData.append("update_attachment", false); // Don't update the attachment column, only generated_document
 
             try {
+                console.log(`Uploading PDF to: /api/v1/purchase-orders/${purchaseOrderId}/upload-document`);
                 const uploadResponse = await axios.post(
                     `/api/v1/purchase-orders/${purchaseOrderId}/upload-document`,
                     formData,
@@ -633,11 +635,12 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
                 );
 
                 if (uploadResponse.data?.success) {
+                    console.log("Document uploaded successfully:", uploadResponse.data);
                     if (onGenerated && typeof onGenerated === "function") {
                         onGenerated(uploadResponse.data?.document_url);
                     }
                 } else {
-                    console.warn("Document generated but not saved to server");
+                    console.warn("Document generated but not saved to server:", uploadResponse.data);
                     if (onGenerated && typeof onGenerated === "function") {
                         onGenerated(fileUrl); // Still return the local URL
                     }

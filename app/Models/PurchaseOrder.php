@@ -26,6 +26,7 @@ class PurchaseOrder extends Model
         'amount',
         'attachment',
         'original_name',
+        'generated_document',
         'status'
     ];
 

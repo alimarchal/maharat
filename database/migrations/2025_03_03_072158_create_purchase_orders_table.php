@@ -27,6 +27,7 @@ return new class extends Migration
             $table->decimal('amount',15,2)->default(0)->comment("Amount");
             $table->string('attachment')->nullable()->comment("Attachment");
             $table->string('original_name')->nullable()->comment('Original filename');
+            $table->string('generated_document')->nullable()->comment('Generated PDF document path');
             $table->enum('status',['Approved','Draft', 'Rejected'])->default('Approved');
             $table->softDeletes();
             $table->timestamps();

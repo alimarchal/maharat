@@ -7,12 +7,13 @@ import SelectFloating from "../../../../Components/SelectFloating";
 
 const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
     const userId = usePage().props.auth.user.id;
+    console.log("Selected order in modal:", selectedOrder);
 
     const [formData, setFormData] = useState({
         issue_date: new Date().toISOString().substr(0, 10),
         due_date: "",
         payment_type: "",
-        total_amount: 0,
+        total_amount: selectedOrder?.amount ? parseFloat(selectedOrder.amount) : 0,
         paid_amount: 0,
         status: "Draft"
     });
@@ -242,6 +243,13 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                         {/* Issue Date */}
                         <div className="w-full">
                             <div className="relative w-full">
+                                <select
+                                    className="absolute opacity-0 pointer-events-none"
+                                    tabIndex="-1"
+                                    aria-hidden="true"
+                                >
+                                    <option value="">placeholder</option>
+                                </select>
                                 <input
                                     type="date"
                                     name="issue_date"
@@ -251,7 +259,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                 />
                                 <label
                                     className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
-                                        ${formData.issue_date ? "-top-2 left-2 text-base text-[#009FDC] px-1" : "top-4 text-base text-gray-400"}`}
+                                        ${"-top-2 left-2 text-base text-[#009FDC] px-1"}`}
                                 >
                                     Issue Date
                                 </label>
@@ -266,6 +274,13 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                         {/* Due Date */}
                         <div className="w-full">
                             <div className="relative w-full">
+                                <select
+                                    className="absolute opacity-0 pointer-events-none"
+                                    tabIndex="-1"
+                                    aria-hidden="true"
+                                >
+                                    <option value="">placeholder</option>
+                                </select>
                                 <input
                                     type="date"
                                     name="due_date"
@@ -275,7 +290,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                 />
                                 <label
                                     className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
-                                        ${formData.due_date ? "-top-2 left-2 text-base text-[#009FDC] px-1" : "top-4 text-base text-gray-400"}`}
+                                        ${"-top-2 left-2 text-base text-[#009FDC] px-1"}`}
                                 >
                                     Due Date
                                 </label>
