@@ -138,6 +138,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('/rfqs/form-data', [RfqController::class, 'getFormData']);
     Route::apiResource('rfqs', RfqController::class);
     Route::post('/rfqs/{id}/upload-document', [RfqController::class, 'uploadDocument']);
+    Route::post('/rfqs/{id}/upload-excel', [RfqController::class, 'uploadExcel']);
     // RFQ Items routes
     Route::apiResource('rfq-items', RfqItemController::class);
 
@@ -207,6 +208,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     // Purchase Orders API Routes
     Route::apiResource('purchase-orders', PurchaseOrderController::class);
+    Route::post('purchase-orders/{id}/upload-document', [PurchaseOrderController::class, 'uploadDocument']);
     // GRN routes
     Route::apiResource('grns', GrnController::class);
     Route::post('/grns/save-all', [GrnController::class, 'saveAll']);
@@ -292,6 +294,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // Payment Orders routes
     Route::apiResource('payment-orders', PaymentOrderController::class);
     Route::post('/payment-orders/{id}/upload-document', [PaymentOrderController::class, 'uploadDocument']);
+    Route::post('/payment-orders/{id}/save-attachment', [PaymentOrderController::class, 'saveAttachment']);
     Route::get('/payment-orders/{id}/raw-data', [PaymentOrderController::class, 'rawData']);
     // Payment Order Logs routes
     Route::apiResource('payment-order-logs', PaymentOrderLogController::class);

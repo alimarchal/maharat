@@ -28,6 +28,7 @@ class PurchaseOrderResource extends JsonResource
             'amount' => $this->amount,
             'attachment' => $this->attachment,
             'original_name' => $this->original_name,
+            'generated_document' => $this->generated_document,
             'status' => $this->status,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

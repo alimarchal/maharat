@@ -94,6 +94,14 @@ class PaymentOrderController extends Controller
             // Generate unique payment order number
             $data['payment_order_number'] = $this->generatePaymentOrderNumber();
 
+            // Handle file upload if provided
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $filename = 'payment_order_' . time() . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('payment-orders', $filename, 'public');
+                $data['attachment'] = $path;
+            }
+
             $paymentOrder = PaymentOrder::create($data);
 
             DB::commit();
@@ -234,80 +242,86 @@ class PaymentOrderController extends Controller
     }
 
     /**
-     * Upload a document for a payment order and save it in the attachment field
-     *
-     * @param Request $request
-     * @param string $id
-     * @return JsonResponse
+     * Upload a document to the payment order
      */
     public function uploadDocument(Request $request, $id): JsonResponse
     {
         try {
-            // Log the incoming request
-            Log::info('Upload Document Request', [
-                'payment_order_id' => $id,
-                'has_file' => $request->hasFile('payment_document'),
-                'all_files' => $request->allFiles(),
-            ]);
-
-            // Validate the request
-            $request->validate([
-                'payment_document' => 'required|file|mimes:pdf|max:10240', // 10MB limit
-            ]);
-
-            // Find the payment order
             $paymentOrder = PaymentOrder::findOrFail($id);
-            Log::info('Payment Order Found', ['payment_order' => $paymentOrder->payment_order_number]);
-
-            // Handle file upload
-            if ($request->hasFile('payment_document')) {
-                $file = $request->file('payment_document');
-                $fileName = 'payment_order_' . $paymentOrder->payment_order_number . '_' . time() . '.' . $file->getClientOriginalExtension();
-                
-                Log::info('Uploading file', [
-                    'original_name' => $file->getClientOriginalName(),
-                    'new_filename' => $fileName,
-                    'size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
-                ]);
-                
-                // Create uploads directory if it doesn't exist
-                $uploadsPath = public_path('uploads');
-                if (!file_exists($uploadsPath)) {
-                    mkdir($uploadsPath, 0755, true);
-                }
-                
-                // Store the file
-                $file->move($uploadsPath, $fileName);
-                
-                // Update the payment order with the attachment filename
-                $paymentOrder->update([
-                    'attachment' => $fileName
-                ]);
-
-                Log::info('File uploaded successfully', ['filename' => $fileName]);
-
+            
+            if (!$request->hasFile('payment_order_document')) {
                 return response()->json([
-                    'success' => true,
-                    'message' => 'Document uploaded successfully',
-                    'document_url' => '/uploads/' . $fileName
-                ], Response::HTTP_OK);
+                    'success' => false,
+                    'message' => 'No document provided'
+                ], Response::HTTP_BAD_REQUEST);
             }
-
-            Log::warning('No file was uploaded');
+            
+            $file = $request->file('payment_order_document');
+            $filename = 'po_' . $paymentOrder->payment_order_number . '_' . time() . '.' . $file->getClientOriginalExtension();
+            
+            // Store the document
+            $path = $file->storeAs('payment-orders/documents', $filename, 'public');
+            
+            // Update the payment order with the uploaded document
+            $paymentOrder->uploaded_attachment = $path;
+            $paymentOrder->save();
+            
             return response()->json([
-                'success' => false,
-                'message' => 'No file was uploaded'
-            ], Response::HTTP_BAD_REQUEST);
+                'success' => true,
+                'message' => 'Document uploaded successfully',
+                'document_url' => '/storage/' . $path
+            ], Response::HTTP_OK);
+            
         } catch (\Exception $e) {
-            Log::error('Upload Document Error', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            \Log::error('Failed to upload document: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
             
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to upload document',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Save a generated PDF to the payment order's attachment column
+     */
+    public function saveAttachment(Request $request, $id): JsonResponse
+    {
+        try {
+            $paymentOrder = PaymentOrder::findOrFail($id);
+            
+            if (!$request->hasFile('attachment')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No attachment provided'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+            
+            $file = $request->file('attachment');
+            $filename = 'payment_order_' . $paymentOrder->payment_order_number . '_' . time() . '.' . $file->getClientOriginalExtension();
+            
+            // Store the document in a specific folder for payment order attachments
+            $path = $file->storeAs('payment-orders/attachments', $filename, 'public');
+            
+            // Update the payment order's attachment field
+            $paymentOrder->attachment = $path;
+            $paymentOrder->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Attachment saved successfully',
+                'file_path' => $path
+            ], Response::HTTP_OK);
+            
+        } catch (\Exception $e) {
+            \Log::error('Failed to save attachment: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to save attachment',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }

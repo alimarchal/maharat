@@ -63,7 +63,8 @@ const PaymentOrderTable = () => {
                         // Extract just the filename from the URL path
                         const fileName = documentUrl.split('/').pop();
                         console.log("Extracted filename:", fileName);
-                        return { ...payment, attachment: fileName };
+                        // Generated PDFs are saved to the attachment column
+                        return { ...payment, attachment: documentUrl };
                     }
                     return payment;
                 })
@@ -77,7 +78,7 @@ const PaymentOrderTable = () => {
     // For viewing existing attachments only
     const viewAttachment = (attachment) => {
         if (attachment) {
-            window.open(`/uploads/${attachment}`, "_blank");
+            window.open(`/storage/${attachment}`, "_blank");
         }
     };
 
@@ -225,19 +226,17 @@ const PaymentOrderTable = () => {
                                     {formatCurrency(order.total_amount)}
                                 </td>
                                 <td className="py-3 px-4 text-center text-[#009FDC] hover:text-blue-800 cursor-pointer">
-                                    {order.attachment ? (
+                                    {order.uploaded_attachment ? (
                                         <a
                                             href="#"
                                             onClick={(e) => {
                                                 e.preventDefault();
-                                                viewAttachment(order.attachment);
-                                                console.log("Opening attachment:", order.attachment);
+                                                viewAttachment(order.uploaded_attachment);
+                                                console.log("Opening uploaded attachment:", order.uploaded_attachment);
                                             }}
-                                            title={order.attachment}
+                                            title="Uploaded Document"
                                         >
-                                            <FontAwesomeIcon
-                                                icon={faPaperclip}
-                                            />
+                                            <FontAwesomeIcon icon={faPaperclip} />
                                         </a>
                                     ) : (
                                         "N/A"

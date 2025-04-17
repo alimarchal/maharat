@@ -39,6 +39,7 @@ class Rfq extends Model
         'quotation_sent',
         'quotation_sent_at',
         'quotation_document',
+        'excel_attachment',
         'payment_options'
     ];
 

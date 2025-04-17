@@ -101,6 +101,7 @@ export default function ViewOrder({ auth }) {
                             ? order.attachment
                             : `/storage/${order.attachment}`;
                     }
+                    
                     return {
                         ...order,
                         quotation_number: quotationDetails.quotation_number,
@@ -163,17 +164,27 @@ export default function ViewOrder({ auth }) {
         setIsGeneratingPDF(false);
 
         if (documentUrl) {
-            setPurchaseOrders((preOrder) =>
-                preOrder.map((order) =>
+            // Update purchase orders list with the new PDF URL
+            setPurchaseOrders((prevOrders) =>
+                prevOrders.map((order) =>
                     order.id === selectedOrderId
-                        ? { ...order, pdf_url: documentUrl }
+                        ? { 
+                            ...order, 
+                            pdf_url: documentUrl,
+                            formatted_attachment: documentUrl,
+                            attachment: documentUrl,
+                            original_name: `purchase_order_${order.purchase_order_no || order.id}.pdf`
+                          }
                         : order
                 )
             );
         }
 
         setSelectedOrderId(null);
-        fetchPurchaseOrders();
+        // Refresh the data to get updated attachment information
+        setTimeout(() => {
+            fetchPurchaseOrders();
+        }, 1000);
     };
 
     return (

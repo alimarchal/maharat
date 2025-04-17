@@ -11,6 +11,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import RFQPDF from "./RFQPDF";
+import RFQExcel from "./RFQExcel";
 
 const RFQ = ({ auth }) => {
     const [rfqLogs, setRfqLogs] = useState([]);
@@ -20,7 +21,9 @@ const RFQ = ({ auth }) => {
     const [loading, setLoading] = useState(true);
 
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+    const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
     const [selectedRfqId, setSelectedRfqId] = useState(null);
+    const [selectedExcelRfqId, setSelectedExcelRfqId] = useState(null);
 
     const fetchRFQLogs = async () => {
         setLoading(true);
@@ -87,9 +90,28 @@ const RFQ = ({ auth }) => {
         setSelectedRfqId(rfqId);
     };
 
+    // Add new function to handle Excel generation
+    const handleGenerateExcel = (rfqId, existingExcelUrl = null) => {
+        // If there's already an Excel file, just download it
+        if (existingExcelUrl) {
+            window.open(`/storage/${existingExcelUrl}`, '_blank');
+            return;
+        }
+        
+        // Otherwise generate a new Excel file
+        setIsGeneratingExcel(true);
+        setSelectedExcelRfqId(rfqId);
+    };
+
     const handlePDFGenerated = (documentUrl) => {
         setIsGeneratingPDF(false);
         setSelectedRfqId(null);
+        fetchRFQLogs();
+    };
+
+    const handleExcelGenerated = (excelUrl) => {
+        setIsGeneratingExcel(false);
+        setSelectedExcelRfqId(null);
         fetchRFQLogs();
     };
 
@@ -172,6 +194,25 @@ const RFQ = ({ auth }) => {
                             <RFQPDF
                                 rfqId={selectedRfqId}
                                 onGenerated={handlePDFGenerated}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* Excel Generation Component (conditionally rendered) */}
+                {isGeneratingExcel && selectedExcelRfqId && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white p-8 rounded-lg shadow-lg">
+                            <h3 className="text-xl font-semibold mb-4">
+                                Generating Excel
+                            </h3>
+                            <div className="flex items-center">
+                                <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mr-3"></div>
+                                <p>Please wait, generating Excel file...</p>
+                            </div>
+                            <RFQExcel
+                                rfqId={selectedExcelRfqId}
+                                onGenerated={handleExcelGenerated}
                             />
                         </div>
                     </div>
@@ -277,34 +318,17 @@ const RFQ = ({ auth }) => {
                                                     className="w-full h-full"
                                                 />
                                             </button>
-                                            <a
-                                                href={
-                                                    log.excel_attachment || "#"
+                                            <button
+                                                onClick={() => 
+                                                    handleGenerateExcel(log.id, log.excel_attachment)
                                                 }
-                                                target={
-                                                    log.excel_attachment
-                                                        ? "_blank"
-                                                        : ""
-                                                }
-                                                rel={
-                                                    log.excel_attachment
-                                                        ? "noopener noreferrer"
-                                                        : ""
-                                                }
-                                                className={`text-green-600 ${
-                                                    !log.excel_attachment
-                                                        ? "opacity-50 cursor-not-allowed"
-                                                        : ""
-                                                }`}
-                                                onClick={(e) =>
-                                                    !log.excel_attachment &&
-                                                    e.preventDefault()
-                                                }
+                                                className="text-green-600 hover:text-green-800"
+                                                title="Export to Excel"
                                             >
                                                 <FontAwesomeIcon
                                                     icon={faFileExcel}
                                                 />
-                                            </a>
+                                            </button>
                                             <button
                                                 onClick={() =>
                                                     handleDelete(log.id)

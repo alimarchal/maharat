@@ -281,4 +281,58 @@ class PurchaseOrderController extends Controller
         return sprintf("PO-%s-%04d", $year, $newNumber);
     }
 
+    /**
+     * Upload a document to the purchase order
+     */
+    public function uploadDocument(Request $request, $id): JsonResponse
+    {
+        try {
+            $purchaseOrder = PurchaseOrder::findOrFail($id);
+            
+            if (!$request->hasFile('purchase_order_document')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No document provided'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+            
+            $file = $request->file('purchase_order_document');
+            $filename = 'po_' . $purchaseOrder->purchase_order_no . '_' . time() . '.' . $file->getClientOriginalExtension();
+            
+            // Store the document
+            $path = $file->storeAs('purchase-orders/documents', $filename, 'public');
+            
+            // Update the purchase order with the generated document
+            $purchaseOrder->generated_document = $path;
+            
+            // If update_attachment flag is set, also update the attachment column
+            if ($request->boolean('update_attachment')) {
+                // Remove old attachment if exists
+                if ($purchaseOrder->attachment && Storage::disk('public')->exists($purchaseOrder->attachment)) {
+                    Storage::disk('public')->delete($purchaseOrder->attachment);
+                }
+                
+                $purchaseOrder->attachment = $path;
+                $purchaseOrder->original_name = $file->getClientOriginalName();
+            }
+            
+            $purchaseOrder->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Document uploaded successfully',
+                'document_url' => Storage::disk('public')->url($path)
+            ], Response::HTTP_OK);
+            
+        } catch (\Exception $e) {
+            \Log::error('Failed to upload document: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upload document',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
 }
