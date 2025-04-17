@@ -360,23 +360,23 @@ export default function MainDashboard({ roles }) {
         },
     ];
 
-    const reportsDropdownItems = [
-        {
-            text: "Reports",
-            icon: faFileAlt,
-            onClick: () => router.visit("/reports"),
-        },
-        {
-            text: "Purchase Document Status",
-            icon: faSignal,
-            onClick: () => router.visit("/purchase-doc-status"),
-        },
-        {
-            text: "Statuses",
-            icon: faSync,
-            onClick: () => router.visit("/statuses"),
-        },
-    ];
+    // const reportsDropdownItems = [
+    //     {
+    //         text: "Reports",
+    //         icon: faFileAlt,
+    //         onClick: () => router.visit("/reports"),
+    //     },
+    //     {
+    //         text: "Purchase Document Status",
+    //         icon: faSignal,
+    //         onClick: () => router.visit("/purchase-doc-status"),
+    //     },
+    //     {
+    //         text: "Statuses",
+    //         icon: faSync,
+    //         onClick: () => router.visit("/statuses"),
+    //     },
+    // ];
 
     const configDropdownItems = [
         {
@@ -473,11 +473,12 @@ export default function MainDashboard({ roles }) {
                     />
                     <DashboardCard
                         icon={faClipboardList}
-                        title="Reports & Statuses"
-                        subtitle="All Reports & Statuses"
+                        title="Statuses"
+                        subtitle="All Statuses"
                         bgColor="bg-[#B9BBBD]"
                         iconColor="text-[#2C323C]"
-                        dropdownItems={reportsDropdownItems}
+                        // dropdownItems={reportsDropdownItems}
+                        onClick={() => router.visit("/statuses")}
                     />
                     <DashboardCard
                         icon={faCogs}
