@@ -17,7 +17,6 @@ export default function BudgetPDF({ budgetId, onGenerated }) {
                 );
                 if (response.data?.data) {
                     const data = response.data.data;
-                    console.log("Fetched Budget data:", data);
                     setBudget(data);
                 } else {
                     throw new Error("Invalid budget data format");
