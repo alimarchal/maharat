@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit, faTrash, faPlus, faFileExcel } from "@fortawesome/free-solid-svg-icons";
+import { faEdit, faTrash, faPlus, faFileExcel, faSyncAlt } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import InventoryModal from "./InventoryModal";
 import InventoryExcel from "./InventoryExcel";
+import InventoryPDF from "./InventoryPDF";
 
 const InventoryTable = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -13,6 +14,8 @@ const InventoryTable = () => {
     const [selectedInventory, setSelectedInventory] = useState(null);
     const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
     const [selectedExcelInventoryId, setSelectedExcelInventoryId] = useState(null);
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+    const [selectedPDFInventoryId, setSelectedPDFInventoryId] = useState(null);
 
     const fetchInventories = async () => {
         try {
@@ -50,17 +53,8 @@ const InventoryTable = () => {
         setSelectedInventory(null);
     };
 
-    const handleGenerateExcel = (inventoryId, existingExcelDoc = null) => {
-        // If there's already an Excel file, just download it
-        console.log(`handleGenerateExcel called with ID: ${inventoryId}, Type: ${typeof inventoryId}, Excel doc: ${existingExcelDoc}`);
-        
-        if (existingExcelDoc) {
-            console.log(`Opening existing Excel document: ${existingExcelDoc}`);
-            window.open(`/storage/${existingExcelDoc}`, '_blank');
-            return;
-        }
-        
-        // Otherwise generate a new Excel file
+    const handleGenerateExcel = (inventoryId) => {
+        // Generate a new Excel file
         console.log(`Setting up Excel generation for inventory ID: ${inventoryId}`);
         setIsGeneratingExcel(true);
         setSelectedExcelInventoryId(inventoryId);
@@ -85,6 +79,52 @@ const InventoryTable = () => {
             console.log("Excel generation succeeded with fallback method");
         } else {
             console.log("Excel generation completed successfully");
+        }
+        
+        // Refresh the data regardless of whether there was an error
+        fetchInventories();
+    };
+
+    const handleGeneratePDF = (inventoryId) => {
+        // Generate a new PDF file
+        console.log(`Setting up PDF generation for inventory ID: ${inventoryId}`);
+        setIsGeneratingPDF(true);
+        setSelectedPDFInventoryId(inventoryId);
+    };
+
+    // Function to force generating a new PDF
+    const handleForceGeneratePDF = (inventoryId) => {
+        console.log(`Forcing new PDF generation for inventory ID: ${inventoryId}`);
+        setIsGeneratingPDF(true);
+        setSelectedPDFInventoryId(inventoryId);
+    };
+
+    // Function to force generating a new Excel
+    const handleForceGenerateExcel = (inventoryId) => {
+        console.log(`Forcing new Excel generation for inventory ID: ${inventoryId}`);
+        setIsGeneratingExcel(true);
+        setSelectedExcelInventoryId(inventoryId);
+    };
+
+    const handlePDFGenerated = (result, error) => {
+        setIsGeneratingPDF(false);
+        setSelectedPDFInventoryId(null);
+        
+        console.log("PDF generation completed with result:", result);
+        
+        if (error) {
+            console.warn("PDF generation encountered errors:", error);
+            
+            // Show a more detailed message based on the result
+            if (result === "downloaded_only") {
+                alert("PDF file was generated and downloaded, but could not be saved to the server.");
+            } else {
+                alert("PDF file was generated but encountered an error: " + (error.message || "Unknown error"));
+            }
+        } else if (result === "success_fallback") {
+            console.log("PDF generation succeeded with fallback method");
+        } else {
+            console.log("PDF generation completed successfully");
         }
         
         // Refresh the data regardless of whether there was an error
@@ -159,24 +199,64 @@ const InventoryTable = () => {
                                     >
                                         <FontAwesomeIcon icon={faEdit} />
                                     </button>
+                                    {/* PDF Button */}
+                                    {inventory.pdf_document ? (
+                                        <button
+                                            onClick={() => {
+                                                console.log("Regenerating PDF for inventory:", inventory.id);
+                                                handleGeneratePDF(inventory.id);
+                                            }}
+                                            className="w-4 h-4"
+                                            title="Regenerate PDF"
+                                        >
+                                            <img
+                                                src="/images/pdf-file.png"
+                                                alt="PDF"
+                                                className="w-full h-full"
+                                            />
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => {
+                                                console.log("Generating PDF for inventory:", inventory.id);
+                                                handleGeneratePDF(inventory.id);
+                                            }}
+                                            className="w-4 h-4"
+                                            title="Generate PDF"
+                                        >
+                                            <img
+                                                src="/images/pdf-file.png"
+                                                alt="PDF"
+                                                className="w-full h-full"
+                                            />
+                                        </button>
+                                    )}
+                                    {/* Excel Button */}
+                                    {inventory.excel_document ? (
+                                        <button
+                                            onClick={() => {
+                                                console.log("Regenerating Excel for inventory:", inventory.id);
+                                                handleGenerateExcel(inventory.id);
+                                            }}
+                                            className="text-green-600 hover:text-green-800"
+                                            title="Regenerate Excel"
+                                        >
+                                            <FontAwesomeIcon icon={faFileExcel} />
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => {
+                                                console.log("Generating Excel for inventory:", inventory.id);
+                                                handleGenerateExcel(inventory.id);
+                                            }}
+                                            className="text-green-600 hover:text-green-800"
+                                            title="Generate Excel"
+                                        >
+                                            <FontAwesomeIcon icon={faFileExcel} />
+                                        </button>
+                                    )}
                                     <button
-                                        onClick={() => {
-                                            console.log("Excel button clicked for inventory:", {
-                                                id: inventory.id,
-                                                idType: typeof inventory.id,
-                                                excelDoc: inventory.excel_document
-                                            });
-                                            handleGenerateExcel(inventory.id, inventory.excel_document);
-                                        }}
-                                        className="text-green-600 hover:text-green-800"
-                                        title="Export to Excel"
-                                    >
-                                        <FontAwesomeIcon icon={faFileExcel} />
-                                    </button>
-                                    <button
-                                        onClick={() =>
-                                            handleDelete(inventory.id)
-                                        }
+                                        onClick={() => handleDelete(inventory.id)}
                                         className="text-red-600 hover:text-red-800"
                                         title="Delete Inventory"
                                     >
@@ -245,6 +325,25 @@ const InventoryTable = () => {
                         <InventoryExcel
                             inventoryId={selectedExcelInventoryId}
                             onGenerated={handleExcelGenerated}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* PDF Generation Component (conditionally rendered) */}
+            {isGeneratingPDF && selectedPDFInventoryId && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-8 rounded-lg shadow-lg">
+                        <h3 className="text-xl font-semibold mb-4">
+                            Generating PDF
+                        </h3>
+                        <div className="flex items-center">
+                            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mr-3"></div>
+                            <p>Please wait, generating PDF document...</p>
+                        </div>
+                        <InventoryPDF
+                            inventoryId={selectedPDFInventoryId}
+                            onGenerated={handlePDFGenerated}
                         />
                     </div>
                 </div>

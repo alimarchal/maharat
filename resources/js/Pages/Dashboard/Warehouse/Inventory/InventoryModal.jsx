@@ -17,14 +17,13 @@ const InventoryModal = ({
         quantity: "",
         reorder_level: "",
         description: "",
-        transaction_type: "",
+        transaction_type: "stock_in",
     });
 
     const [errors, setErrors] = useState({});
     const [warehouses, setWarehouses] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [isExistingProduct, setIsExistingProduct] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -35,8 +34,12 @@ const InventoryModal = ({
                     quantity: inventoryData.quantity || "",
                     reorder_level: inventoryData.reorder_level || "",
                     description: inventoryData.description || "",
-                    transaction_type: "",
+                    transaction_type: "adjustment",
                 });
+                
+                if (inventoryData.id) {
+                    fetchLastTransaction(inventoryData.id);
+                }
             } else {
                 setFormData({
                     warehouse_id: "",
@@ -44,12 +47,38 @@ const InventoryModal = ({
                     quantity: "",
                     reorder_level: "",
                     description: "",
-                    transaction_type: "",
+                    transaction_type: "stock_in",
                 });
             }
             setErrors({});
         }
     }, [isOpen, inventoryData]);
+
+    const fetchLastTransaction = async (inventoryId) => {
+        try {
+            const response = await axios.get(`/api/v1/inventory-transactions`, {
+                params: {
+                    filter: {
+                        inventory_id: inventoryId
+                    },
+                    sort: "-created_at",
+                    perPage: 1
+                }
+            });
+            
+            if (response.data && response.data.data && response.data.data.length > 0) {
+                const lastTransaction = response.data.data[0];
+                console.log("Last transaction found:", lastTransaction);
+                
+                setFormData(prev => ({
+                    ...prev,
+                    transaction_type: lastTransaction.transaction_type || "adjustment"
+                }));
+            }
+        } catch (error) {
+            console.error("Error fetching last transaction:", error);
+        }
+    };
 
     useEffect(() => {
         if (isOpen) {
@@ -76,16 +105,6 @@ const InventoryModal = ({
         }
     }, [isOpen]);
 
-    useEffect(() => {
-        if (formData.product_id && products.length > 0) {
-            const existingProduct = products.some(
-                (product) =>
-                    product.id.toString() === formData.product_id.toString()
-            );
-            setIsExistingProduct(existingProduct);
-        }
-    }, [formData.product_id, products]);
-
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
@@ -101,8 +120,8 @@ const InventoryModal = ({
             newErrors.reorder_level = "Reorder Level is required.";
         if (!formData.description)
             newErrors.description = "Description is required.";
-        if (isExistingProduct && !formData.transaction_type)
-            newErrors.transaction_type = "Transaction type is required.";
+        if (!formData.transaction_type)
+            newErrors.transaction_type = "Transaction Type is required.";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -115,24 +134,27 @@ const InventoryModal = ({
         setLoading(true);
         try {
             let apiUrl = "/api/v1/inventories";
-            if (isExistingProduct) {
-                apiUrl = `/api/v1/inventories/product/${formData.product_id}/${
-                    formData.transaction_type === "stock_in"
-                        ? "stock-in"
-                        : "stock-out"
-                }`;
-            }
+            console.log("Form data to be submitted:", formData);
 
             if (inventoryData && inventoryData.id) {
-                await axios.put(`${apiUrl}/${inventoryData.id}`, formData);
+                console.log(`Updating inventory ID: ${inventoryData.id}`);
+                console.log("Full update payload:", formData);
+                console.log("API endpoint:", `${apiUrl}/${inventoryData.id}`);
+                const response = await axios.post(`${apiUrl}/${inventoryData.id}`, formData);
+                console.log("Update response:", response.data);
             } else {
-                await axios.post(apiUrl, formData);
+                console.log("Creating new inventory");
+                console.log("Full create payload:", formData);
+                const response = await axios.post(apiUrl, formData);
+                console.log("Create response:", response.data);
             }
 
+            console.log("Refreshing inventory data");
             await fetchInventories();
             onClose();
         } catch (error) {
             console.error("Error saving inventory:", error);
+            console.error("Response details:", error.response?.data);
             setErrors(
                 error.response?.data?.errors || {
                     general: "Error saving inventory. Please try again.",
@@ -166,13 +188,7 @@ const InventoryModal = ({
                             {errors.general}
                         </p>
                     )}
-                    <div
-                        className={`grid grid-cols-1 ${
-                            isExistingProduct
-                                ? "md:grid-cols-3"
-                                : "md:grid-cols-2"
-                        } gap-6`}
-                    >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <SelectFloating
                                 label="Warehouse"
@@ -207,25 +223,6 @@ const InventoryModal = ({
                                 </p>
                             )}
                         </div>
-                        {isExistingProduct && (
-                            <div>
-                                <SelectFloating
-                                    label="Transaction Type"
-                                    name="transaction_type"
-                                    value={formData.transaction_type}
-                                    onChange={handleChange}
-                                    options={[
-                                        { id: "stock_in", label: "Stock In" },
-                                        { id: "stock_out", label: "Stock Out" },
-                                    ]}
-                                />
-                                {errors.transaction_type && (
-                                    <p className="text-red-500 text-sm">
-                                        {errors.transaction_type}
-                                    </p>
-                                )}
-                            </div>
-                        )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -254,7 +251,25 @@ const InventoryModal = ({
                                 </p>
                             )}
                         </div>
-                        <div className="md:col-span-2">
+                        <div>
+                            <SelectFloating
+                                label="Transaction Type"
+                                name="transaction_type"
+                                value={formData.transaction_type}
+                                onChange={handleChange}
+                                options={[
+                                    { id: "stock_in", label: "Stock In" },
+                                    { id: "stock_out", label: "Stock Out" },
+                                    { id: "adjustment", label: "Adjustment" }
+                                ]}
+                            />
+                            {errors.transaction_type && (
+                                <p className="text-red-500 text-sm">
+                                    {errors.transaction_type}
+                                </p>
+                            )}
+                        </div>
+                        <div>
                             <InputFloating
                                 label="Description"
                                 name="description"

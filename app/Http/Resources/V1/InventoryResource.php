@@ -22,6 +22,7 @@ class InventoryResource extends JsonResource
             'reorder_level' => $this->reorder_level,
             'description' => $this->description,
             'excel_document' => $this->excel_document,
+            'pdf_document' => $this->pdf_document,
             'warehouse' => new WarehouseResource($this->whenLoaded('warehouse')),
             'product' => new ProductResource($this->whenLoaded('product')),
             'user' => new UserResource($this->whenLoaded('user')),

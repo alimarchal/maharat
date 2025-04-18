@@ -24,6 +24,7 @@ return new class extends Migration
             $table->decimal('reorder_level', 15, 4)->default(0)->comment('Minimum stock level that triggers replenishment');
             $table->text('description')->nullable();
             $table->string('excel_document')->nullable()->comment('Path to saved Excel file');
+            $table->string('pdf_document')->nullable()->comment('Path to saved PDF file');
             //$table->decimal('safety_stock', 15, 4)->default(0)->comment('Buffer stock to maintain during lead time');
             $table->timestamps();
             $table->unique(['warehouse_id', 'product_id']);
