@@ -353,12 +353,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     
-    // FAQ route
+    // FAQ routes
     Route::get('/faqs', function () {
-        return Inertia::render('FAQs/FAQ');
+        return Inertia::render('Dashboard', ['page' => 'FAQs/FAQ']);
     })->name('faqs.index');
-
-    Route::get('/faqs/view', [FAQController::class, 'view'])->name('faqs.view');
+    Route::get('/faqs/view', function () {
+        return Inertia::render('Dashboard', ['page' => 'FAQs/ViewFAQ']);
+    })->name('faqs.view');    
 });
 
 // Forgot Password Route (Guest Only)
