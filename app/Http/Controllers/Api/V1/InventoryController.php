@@ -14,6 +14,7 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
+use Illuminate\Http\Request;
 
 class InventoryController extends Controller
 {
@@ -83,13 +84,40 @@ class InventoryController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $inventory = QueryBuilder::for(Inventory::class)
-            ->allowedIncludes(InventoryParameters::ALLOWED_INCLUDES)
-            ->findOrFail($id);
-
-        return response()->json([
-            'data' => new InventoryResource($inventory)
-        ], Response::HTTP_OK);
+        try {
+            \Log::info('Inventory show method called with ID: ' . $id);
+            
+            // Check if the ID is numeric and valid
+            if (!is_numeric($id) || $id <= 0) {
+                \Log::warning('Invalid inventory ID format: ' . $id);
+                return response()->json([
+                    'message' => 'Invalid inventory ID format',
+                    'error' => 'ID must be a positive number'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+            
+            // Check if the inventory exists
+            $exists = Inventory::where('id', $id)->exists();
+            \Log::info('Inventory exists check for ID ' . $id . ': ' . ($exists ? 'Yes' : 'No'));
+            
+            $inventory = QueryBuilder::for(Inventory::class)
+                ->allowedIncludes(InventoryParameters::ALLOWED_INCLUDES)
+                ->findOrFail($id);
+            
+            \Log::info('Inventory found with ID: ' . $id . ', includes loaded: ' . implode(', ', $inventory->getRelations()));
+            
+            return response()->json([
+                'data' => new InventoryResource($inventory)
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            \Log::error('Error in Inventory show method for ID ' . $id . ': ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            
+            return response()->json([
+                'message' => 'Failed to fetch inventory data',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     public function update(UpdateInventoryRequest $request, Inventory $inventory): JsonResponse
@@ -385,5 +413,60 @@ class InventoryController extends Controller
         return response()->json([
             'data' => InventoryResource::collection($lowStockItems)
         ], Response::HTTP_OK);
+    }
+
+    /**
+     * Upload an Excel document for an inventory
+     */
+    public function uploadExcel(Request $request, $id)
+    {
+        try {
+            $inventory = Inventory::findOrFail($id);
+
+            $request->validate([
+                'excel_document' => 'required|file|mimes:xlsx,xls|max:10240', // max 10MB
+            ]);
+
+            if ($request->hasFile('excel_document')) {
+                // Delete old file if exists
+                if ($inventory->excel_document && file_exists(public_path('storage/' . $inventory->excel_document))) {
+                    unlink(public_path('storage/' . $inventory->excel_document));
+                }
+
+                $file = $request->file('excel_document');
+                $fileName = 'inventory_' . $inventory->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $path = 'uploads/inventories/';
+
+                // Make sure the directory exists
+                if (!file_exists(public_path('storage/' . $path))) {
+                    mkdir(public_path('storage/' . $path), 0777, true);
+                }
+
+                // Store the file using Laravel's storage system
+                $filePath = $file->storeAs($path, $fileName, 'public');
+
+                // Update the inventory with the document path
+                $inventory->excel_document = $filePath;
+                $inventory->save();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Excel document uploaded successfully',
+                    'excel_url' => $filePath
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No document found in request'
+            ], 400);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upload Excel document',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
