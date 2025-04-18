@@ -14,6 +14,8 @@ class UpdateInventoryRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'warehouse_id' => ['sometimes', 'required', 'exists:warehouses,id'],
+            'product_id' => ['sometimes', 'required', 'exists:products,id'],
             'quantity' => ['sometimes', 'required', 'numeric', 'min:0'],
             'reorder_level' => ['sometimes', 'required', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],

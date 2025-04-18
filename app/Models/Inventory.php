@@ -18,6 +18,7 @@ class Inventory extends Model
         'description',
         'user_id',
         'excel_document',
+        'pdf_document',
     ];
 
     public function warehouse(): BelongsTo

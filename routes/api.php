@@ -152,9 +152,11 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::get('/inventories', [InventoryController::class, 'index']);
     Route::post('/inventories', [InventoryController::class, 'store']);
-    Route::put('/inventories/{id}', [InventoryController::class, 'update']);
+    Route::put('/inventories/{id}', [InventoryController::class, 'update'])->where('id', '[0-9]+');
+    Route::post('/inventories/{id}', [InventoryController::class, 'update'])->where('id', '[0-9]+');
     Route::delete('/inventories/{id}', [InventoryController::class, 'destroy']);
     Route::post('/inventories/{id}/upload-excel', [InventoryController::class, 'uploadExcel']);
+    Route::post('/inventories/{id}/upload-pdf', [InventoryController::class, 'uploadPDF']);
 
     // Process routes
     Route::apiResource('processes', ProcessController::class);

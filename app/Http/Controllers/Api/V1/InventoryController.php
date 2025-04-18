@@ -120,39 +120,188 @@ class InventoryController extends Controller
         }
     }
 
-    public function update(UpdateInventoryRequest $request, Inventory $inventory): JsonResponse
+    public function update(UpdateInventoryRequest $request, $id): JsonResponse
     {
         try {
             DB::beginTransaction();
-
-            $quantityChange = $request->quantity;
-            $transactionType = $quantityChange >= 0 ? $request->transaction_type : $request->transaction_type;
-
-            // Record the transaction before updating inventory
-            if ($inventory->quantity > 0) {
-                $this->transactionService->recordTransaction(
-                    $inventory,
-                    $transactionType,
-                    abs($quantityChange),
-                    $request->reference_type,
-                    $request->reference_id,
-                    'UPD-' . $inventory->id,
-                    $request->notes .  'Manual inventory update',
-                );
+            
+            \Log::info('Updating inventory with data:', [
+                'id' => $id,
+                'request' => $request->all()
+            ]);
+            
+            // First, check if the inventory exists using DB query to avoid model resolution issues
+            $inventoryExists = DB::table('inventories')->where('id', $id)->exists();
+            
+            if (!$inventoryExists) {
+                \Log::error('Inventory record not found in database', ['id' => $id]);
+                return response()->json([
+                    'message' => 'Inventory record not found',
+                    'error' => 'No inventory with the provided ID exists'
+                ], 404);
+            }
+            
+            // Get the inventory record using find instead of model binding
+            $inventory = Inventory::find($id);
+            
+            if (!$inventory) {
+                \Log::error('Inventory model not found', ['id' => $id]);
+                return response()->json([
+                    'message' => 'Inventory record not found',
+                    'error' => 'Could not load inventory model'
+                ], 404);
+            }
+            
+            \Log::info('Initial inventory object:', [
+                'id' => $inventory->id, 
+                'warehouse_id' => $inventory->warehouse_id, 
+                'product_id' => $inventory->product_id,
+                'object_type' => get_class($inventory),
+                'exists' => $inventory->exists
+            ]);
+            
+            // Check if we have a transaction_type specified (for adjustments)
+            if ($request->has('transaction_type') && !empty($request->transaction_type)) {
+                // This is an adjustment - use the adjustInventory method
+                \Log::info('Update with transaction type detected, routing to adjustment method');
+                return $this->adjustInventory($request, $inventory);
+            }
+            
+            // Verify inventory record exists in DB before refreshing
+            $inventoryExists = Inventory::where('id', $inventory->id)->exists();
+            \Log::info('Inventory exists in database: ' . ($inventoryExists ? 'Yes' : 'No'), [
+                'id' => $inventory->id
+            ]);
+            
+            // Direct update from the inventory form
+            // Record previous quantity for reference
+            $previousQuantity = $inventory->quantity;
+            $newQuantity = $request->quantity;
+            
+            \Log::info('Regular inventory update', [
+                'inventory_id' => $inventory->id,
+                'previous_quantity' => $previousQuantity,
+                'new_quantity' => $newQuantity,
+                'reorder_level' => $request->reorder_level,
+                'description' => $request->description
+            ]);
+            
+            // Update inventory with new values directly using query builder for reliability
+            $updateResult = DB::table('inventories')
+                ->where('id', $inventory->id)
+                ->update([
+                    'warehouse_id' => $request->warehouse_id,
+                    'product_id' => $request->product_id,
+                    'quantity' => $newQuantity,
+                    'reorder_level' => $request->reorder_level,
+                    'description' => $request->description,
+                    'updated_at' => now()
+                ]);
+            
+            \Log::info('Inventory update result using query builder: ' . ($updateResult ? 'Success' : 'Failed'), [
+                'inventory_id' => $inventory->id,
+                'rows_affected' => $updateResult
+            ]);
+            
+            // Reload the model from the database
+            $inventory = Inventory::find($inventory->id);
+            
+            if (!$inventory) {
+                \Log::error('Could not reload inventory after update', ['id' => $id]);
+                throw new \Exception('Could not reload inventory after update');
+            }
+            
+            \Log::info('Inventory loaded after update:', [
+                'id' => $inventory->id,
+                'warehouse_id' => $inventory->warehouse_id,
+                'product_id' => $inventory->product_id,
+                'quantity' => $inventory->quantity,
+                'object_type' => get_class($inventory),
+                'exists' => $inventory->exists
+            ]);
+            
+            // Convert values to floats for proper comparison
+            $previousQuantity = (float)$previousQuantity;
+            $newQuantity = (float)$newQuantity;
+            
+            \Log::info('Comparing quantities', [
+                'previous_quantity' => $previousQuantity,
+                'new_quantity' => $newQuantity,
+                'difference' => $newQuantity - $previousQuantity,
+                'are_different' => $previousQuantity !== $newQuantity
+            ]);
+            
+            // Only record a transaction if quantity is changing
+            if ($previousQuantity !== $newQuantity) {
+                // Determine if this is a stock in or stock out
+                $transactionType = $newQuantity > $previousQuantity ? 'stock_in' : 'stock_out';
+                $quantityChange = abs($newQuantity - $previousQuantity);
+                
+                \Log::info('Recording inventory transaction', [
+                    'inventory_id' => $inventory->id,
+                    'type' => $transactionType,
+                    'change' => $quantityChange,
+                    'inventory_class' => get_class($inventory),
+                    'inventory_exists' => $inventory->exists
+                ]);
+                
+                // Double-check inventory is a valid object with an ID  
+                if (!$inventory) {
+                    throw new \Exception('Inventory object is null before creating transaction');
+                }
+                
+                if (!$inventory->id) {
+                    \Log::error('Invalid inventory object:', [
+                        'inventory' => $inventory,
+                        'inventory_array' => $inventory ? $inventory->toArray() : null
+                    ]);
+                    throw new \Exception('Invalid inventory object for transaction. ID is missing.');
+                }
+                
+                try {
+                    // Use service to create transaction
+                    $transaction = $this->transactionService->recordTransaction(
+                        $inventory,
+                        $transactionType,
+                        $quantityChange,
+                        'manual_update',
+                        null,
+                        'UPD-' . $inventory->id,
+                        $request->notes ?? 'Manual inventory update'
+                    );
+                    
+                    \Log::info('Created inventory transaction via service', [
+                        'transaction_id' => $transaction->id ?? 'unknown'
+                    ]);
+                } catch (\Exception $txException) {
+                    \Log::error('Error in transaction service, falling back to direct DB insert', [
+                        'error' => $txException->getMessage()
+                    ]);
+                    
+                    // Last resort: Use direct DB query instead of the service
+                    DB::table('inventory_transactions')->insert([
+                        'inventory_id' => $inventory->id,
+                        'transaction_type' => $transactionType,
+                        'quantity' => $quantityChange,
+                        'previous_quantity' => $previousQuantity,
+                        'new_quantity' => $newQuantity,
+                        'user_id' => auth()->id() ?? 1,
+                        'reference_type' => 'manual_update',
+                        'reference_number' => 'UPD-' . $inventory->id,
+                        'notes' => $request->notes ?? 'Manual inventory update (fallback)',
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    
+                    \Log::info('Successfully created transaction via direct DB insert');
+                }
+            } else {
+                \Log::info('Quantity unchanged, no transaction recorded');
             }
 
-
-
-            // Update inventory with new values
-            $newQuantity = $inventory->quantity + $quantityChange;
-
-            $inventory->update([
-                'quantity' => $newQuantity,
-                'reorder_level' => $request->reorder_level,
-                'description' => $request->description,
-            ]);
-
             DB::commit();
+            
+            \Log::info('Inventory update completed successfully');
 
             return response()->json([
                 'message' => 'Inventory updated successfully',
@@ -160,6 +309,9 @@ class InventoryController extends Controller
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Failed to update inventory: ' . $e->getMessage());
+            \Log::error('Exception trace: ' . $e->getTraceAsString());
+            \Log::error('Exception location: ' . $e->getFile() . ':' . $e->getLine());
 
             return response()->json([
                 'message' => 'Failed to update inventory',
@@ -465,6 +617,61 @@ class InventoryController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to upload Excel document',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Upload a PDF document for an inventory
+     */
+    public function uploadPDF(Request $request, $id)
+    {
+        try {
+            $inventory = Inventory::findOrFail($id);
+
+            $request->validate([
+                'pdf_document' => 'required|file|mimes:pdf|max:10240', // max 10MB
+            ]);
+
+            if ($request->hasFile('pdf_document')) {
+                // Delete old file if exists
+                if ($inventory->pdf_document && file_exists(public_path('storage/' . $inventory->pdf_document))) {
+                    unlink(public_path('storage/' . $inventory->pdf_document));
+                }
+
+                $file = $request->file('pdf_document');
+                $fileName = 'inventory_' . $inventory->id . '_' . time() . '.pdf';
+                $path = 'uploads/inventories/';
+
+                // Make sure the directory exists
+                if (!file_exists(public_path('storage/' . $path))) {
+                    mkdir(public_path('storage/' . $path), 0777, true);
+                }
+
+                // Store the file using Laravel's storage system
+                $filePath = $file->storeAs($path, $fileName, 'public');
+
+                // Update the inventory with the document path
+                $inventory->pdf_document = $filePath;
+                $inventory->save();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'PDF document uploaded successfully',
+                    'pdf_url' => $filePath
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No document found in request'
+            ], 400);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upload PDF document',
                 'error' => $e->getMessage()
             ], 500);
         }
