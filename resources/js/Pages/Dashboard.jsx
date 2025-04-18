@@ -66,6 +66,8 @@ import BudgetRequestStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatu
 import TotalBudgetStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/TotalBudgetStatusFlow";
 import UserProfile from "./UserProfile/UserProfile";
 import CreatePayable from "./Dashboard/Finance/AccountPayables/CreatePayable";
+import ViewFAQ from "./FAQs/ViewFAQ";
+import FAQAccordion from "./FAQs/FAQ";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -117,7 +119,14 @@ export default function Dashboard({ auth, page }) {
             return <ViewReceivable />;
         if (page === "AccountPayables/PayablesTable") return <PayablesTable />;
         if (page === "AccountPayables/ViewPayable") return <ViewPayable />;
-        if (page === "AccountPayables/CreatePayable") return <CreatePayable isOpen={true} onClose={() => router.push("/account-payables")} onSave={() => router.push("/account-payables")} />;
+        if (page === "AccountPayables/CreatePayable")
+            return (
+                <CreatePayable
+                    isOpen={true}
+                    onClose={() => router.push("/account-payables")}
+                    onSave={() => router.push("/account-payables")}
+                />
+            );
         if (page === "BudgetAndAccounts/CostCenter/CostCenterTable")
             return <CostCenterTable />;
         if (page === "BudgetAndAccounts/SubCostCenter/SubCostCenterTable")
@@ -184,6 +193,8 @@ export default function Dashboard({ auth, page }) {
             "ReportsAndStatuses/ProcessStatus/StatusFlow/TotalBudgetStatusFlow"
         )
             return <TotalBudgetStatusFlow />;
+        if (page === "FAQs/FAQ") return <FAQAccordion />;
+        if (page === "FAQs/ViewFAQ") return <ViewFAQ />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };
