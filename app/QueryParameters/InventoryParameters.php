@@ -22,5 +22,6 @@ class InventoryParameters
     public const ALLOWED_INCLUDES = [
         'warehouse',
         'product',
+        'user',
     ];
 }

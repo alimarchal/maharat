@@ -154,6 +154,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/inventories', [InventoryController::class, 'store']);
     Route::put('/inventories/{id}', [InventoryController::class, 'update']);
     Route::delete('/inventories/{id}', [InventoryController::class, 'destroy']);
+    Route::post('/inventories/{id}/upload-excel', [InventoryController::class, 'uploadExcel']);
 
     // Process routes
     Route::apiResource('processes', ProcessController::class);

@@ -17,6 +17,7 @@ class Inventory extends Model
         'reorder_level',
         'description',
         'user_id',
+        'excel_document',
     ];
 
     public function warehouse(): BelongsTo
@@ -29,6 +30,8 @@ class Inventory extends Model
         return $this->belongsTo(Product::class);
     }
 
-
-
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

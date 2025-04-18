@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit, faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faEdit, faTrash, faPlus, faFileExcel } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import InventoryModal from "./InventoryModal";
+import InventoryExcel from "./InventoryExcel";
 
 const InventoryTable = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -10,6 +11,8 @@ const InventoryTable = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedInventory, setSelectedInventory] = useState(null);
+    const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
+    const [selectedExcelInventoryId, setSelectedExcelInventoryId] = useState(null);
 
     const fetchInventories = async () => {
         try {
@@ -45,6 +48,47 @@ const InventoryTable = () => {
     const handleModalClose = () => {
         setIsModalOpen(false);
         setSelectedInventory(null);
+    };
+
+    const handleGenerateExcel = (inventoryId, existingExcelDoc = null) => {
+        // If there's already an Excel file, just download it
+        console.log(`handleGenerateExcel called with ID: ${inventoryId}, Type: ${typeof inventoryId}, Excel doc: ${existingExcelDoc}`);
+        
+        if (existingExcelDoc) {
+            console.log(`Opening existing Excel document: ${existingExcelDoc}`);
+            window.open(`/storage/${existingExcelDoc}`, '_blank');
+            return;
+        }
+        
+        // Otherwise generate a new Excel file
+        console.log(`Setting up Excel generation for inventory ID: ${inventoryId}`);
+        setIsGeneratingExcel(true);
+        setSelectedExcelInventoryId(inventoryId);
+    };
+
+    const handleExcelGenerated = (result, error) => {
+        setIsGeneratingExcel(false);
+        setSelectedExcelInventoryId(null);
+        
+        console.log("Excel generation completed with result:", result);
+        
+        if (error) {
+            console.warn("Excel generation encountered errors:", error);
+            
+            // Show a more detailed message based on the result
+            if (result === "downloaded_only") {
+                alert("Excel file was generated and downloaded, but could not be saved to the server.");
+            } else {
+                alert("Excel file was generated but encountered an error: " + (error.message || "Unknown error"));
+            }
+        } else if (result === "success_fallback") {
+            console.log("Excel generation succeeded with fallback method");
+        } else {
+            console.log("Excel generation completed successfully");
+        }
+        
+        // Refresh the data regardless of whether there was an error
+        fetchInventories();
     };
 
     return (
@@ -116,6 +160,20 @@ const InventoryTable = () => {
                                         <FontAwesomeIcon icon={faEdit} />
                                     </button>
                                     <button
+                                        onClick={() => {
+                                            console.log("Excel button clicked for inventory:", {
+                                                id: inventory.id,
+                                                idType: typeof inventory.id,
+                                                excelDoc: inventory.excel_document
+                                            });
+                                            handleGenerateExcel(inventory.id, inventory.excel_document);
+                                        }}
+                                        className="text-green-600 hover:text-green-800"
+                                        title="Export to Excel"
+                                    >
+                                        <FontAwesomeIcon icon={faFileExcel} />
+                                    </button>
+                                    <button
                                         onClick={() =>
                                             handleDelete(inventory.id)
                                         }
@@ -172,6 +230,25 @@ const InventoryTable = () => {
                 inventoryData={selectedInventory}
                 fetchInventories={fetchInventories}
             />
+
+            {/* Excel Generation Component (conditionally rendered) */}
+            {isGeneratingExcel && selectedExcelInventoryId && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-8 rounded-lg shadow-lg">
+                        <h3 className="text-xl font-semibold mb-4">
+                            Generating Excel
+                        </h3>
+                        <div className="flex items-center">
+                            <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mr-3"></div>
+                            <p>Please wait, generating Excel file...</p>
+                        </div>
+                        <InventoryExcel
+                            inventoryId={selectedExcelInventoryId}
+                            onGenerated={handleExcelGenerated}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
