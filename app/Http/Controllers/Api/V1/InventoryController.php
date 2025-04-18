@@ -120,6 +120,9 @@ class InventoryController extends Controller
         }
     }
 
+    /**
+     * Update the specified resource in storage.
+     */
     public function update(UpdateInventoryRequest $request, $id): JsonResponse
     {
         try {
@@ -162,10 +165,119 @@ class InventoryController extends Controller
             
             // Check if we have a transaction_type specified (for adjustments)
             if ($request->has('transaction_type') && !empty($request->transaction_type)) {
-                // This is an adjustment - use the adjustInventory method
-                \Log::info('Update with transaction type detected, routing to adjustment method');
-                return $this->adjustInventory($request, $inventory);
+                // This is an adjustment - process the transaction with the specified type
+                \Log::info('Update with transaction type detected:', [
+                    'transaction_type' => $request->transaction_type
+                ]);
+                
+                // Get the previous quantity for reference
+                $previousQuantity = $inventory->quantity;
+                $newQuantity = $request->quantity;
+                $type = $request->transaction_type;
+
+                if (!in_array($type, ['stock_in', 'stock_out', 'adjustment'])) {
+                    \Log::warning('Invalid transaction type specified, defaulting to adjustment', [
+                        'provided_type' => $type
+                    ]);
+                    $type = 'adjustment';
+                }
+                
+                \Log::info('Processing inventory transaction', [
+                    'inventory_id' => $inventory->id,
+                    'type' => $type,
+                    'previous_quantity' => $previousQuantity,
+                    'new_quantity' => $newQuantity,
+                ]);
+                
+                $quantity = abs($newQuantity - $previousQuantity);
+                
+                if ($type === 'stock_in') {
+                    $newQuantity = $previousQuantity + $quantity;
+                } elseif ($type === 'stock_out') {
+                    $newQuantity = $previousQuantity - $quantity;
+                    // Prevent negative inventory
+                    if ($newQuantity < 0) {
+                        $newQuantity = 0;
+                        \Log::warning('Attempted to set negative inventory, capped at 0', [
+                            'inventory_id' => $inventory->id
+                        ]);
+                    }
+                } elseif ($type === 'adjustment') {
+                    // For adjustment, use the quantity in request as is
+                    $newQuantity = $request->quantity;
+                    $quantity = abs($newQuantity - $previousQuantity);
+                }
+                
+                // Update inventory with new values
+                $updateResult = DB::table('inventories')
+                    ->where('id', $inventory->id)
+                    ->update([
+                        'warehouse_id' => $request->warehouse_id,
+                        'product_id' => $request->product_id,
+                        'quantity' => $newQuantity,
+                        'reorder_level' => $request->reorder_level,
+                        'description' => $request->description,
+                        'updated_at' => now()
+                    ]);
+                
+                // Only record a transaction if quantity has changed
+                if ($previousQuantity != $newQuantity) {
+                    try {
+                        // Use service to create transaction
+                        $transaction = $this->transactionService->recordTransaction(
+                            $inventory,
+                            $type,
+                            $quantity,
+                            'manual_update',
+                            null,
+                            'UPD-' . $inventory->id,
+                            $request->notes ?? 'Manual inventory update'
+                        );
+                        
+                        \Log::info('Created inventory transaction via service', [
+                            'transaction_id' => $transaction->id ?? 'unknown',
+                            'transaction_type' => $type
+                        ]);
+                    } catch (\Exception $txException) {
+                        \Log::error('Error in transaction service, falling back to direct DB insert', [
+                            'error' => $txException->getMessage()
+                        ]);
+                        
+                        // Last resort: Use direct DB query instead of the service
+                        DB::table('inventory_transactions')->insert([
+                            'inventory_id' => $inventory->id,
+                            'transaction_type' => $type,
+                            'quantity' => $quantity,
+                            'previous_quantity' => $previousQuantity,
+                            'new_quantity' => $newQuantity,
+                            'user_id' => auth()->id() ?? 1,
+                            'reference_type' => 'manual_update',
+                            'reference_number' => 'UPD-' . $inventory->id,
+                            'notes' => $request->notes ?? 'Manual inventory update (fallback)',
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                        
+                        \Log::info('Successfully created transaction via direct DB insert');
+                    }
+                } else {
+                    \Log::info('Quantity unchanged, no transaction recorded');
+                }
+                
+                DB::commit();
+                
+                \Log::info('Inventory update with transaction type completed successfully');
+                
+                // Reload the inventory with relationships
+                $inventory = Inventory::with(['warehouse', 'product'])->find($inventory->id);
+                
+                return response()->json([
+                    'message' => 'Inventory updated successfully',
+                    'data' => new InventoryResource($inventory)
+                ], Response::HTTP_OK);
             }
+            
+            // Proceed with regular update if no transaction_type specified
             
             // Verify inventory record exists in DB before refreshing
             $inventoryExists = Inventory::where('id', $inventory->id)->exists();
