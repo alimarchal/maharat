@@ -251,12 +251,6 @@ export default function UserManual({ auth }) {
                     <h2 className="text-[32px] font-bold text-[#2C323C]">
                         User Manual
                     </h2>
-                    <Link
-                        href="/faqs"
-                        className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
-                    >
-                        FAQ's
-                    </Link>
                 </div>
 
                 {isLoading ? (
