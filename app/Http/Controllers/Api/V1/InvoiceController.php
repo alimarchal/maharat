@@ -98,7 +98,7 @@ class InvoiceController extends Controller
             'client_id' => 'required|exists:customers,id',
             'status' => 'required|in:Draft,Pending,Paid,Overdue,Cancelled',
             'payment_method' => 'nullable|string',
-            'representative' => 'nullable|string',
+            'representative_id' => 'nullable|string',
             'issue_date' => 'required|date',
             'due_date' => 'nullable|date|after_or_equal:issue_date',
             'vat_rate' => 'required|numeric|min:0',

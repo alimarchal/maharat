@@ -99,6 +99,10 @@ class InvoiceItemController extends Controller
                 'items.*.quantity' => 'required|numeric|min:0',
                 'items.*.unit_price' => 'required|numeric|min:0',
                 'items.*.subtotal' => 'required|numeric|min:0',
+                'items.*.tax_rate' => 'required|numeric|min:0',
+                'items.*.tax_amount' => 'required|numeric|min:0',
+                'items.*.total' => 'required|numeric|min:0',
+                'items.*.discount' => 'nullable|numeric|min:0',
             ]);
 
             foreach ($validatedData['items'] as $item) {
@@ -108,6 +112,10 @@ class InvoiceItemController extends Controller
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
                     'subtotal' => $item['subtotal'],
+                    'tax_rate' => $item['tax_rate'],
+                    'tax_amount' => $item['tax_amount'],
+                    'total' => $item['total'],
+                    'discount' => $item['discount'] ?? 0,
                 ]);
             }
 

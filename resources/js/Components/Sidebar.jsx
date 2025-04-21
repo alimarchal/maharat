@@ -1,9 +1,21 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faHome, faBell, faCog, faCommentDots, faQuestionCircle, faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
+import { 
+  faHome, 
+  faBell, 
+  faCog, 
+  faCommentDots, 
+  faQuestionCircle, 
+  faRightFromBracket,
+  faBook,
+  faBookOpen,
+  faFileAlt,
+  faInfoCircle,
+  faInfo
+} from "@fortawesome/free-solid-svg-icons";
 import { router, usePage } from "@inertiajs/react";
 
-const SidebarButton = ({ icon, link, isActive, isLogout }) => {
+const SidebarButton = ({ icon, link, isActive, isLogout, doubleIcon, secondaryIcon, iconPosition = "top-right", iconSize = "0.65rem" }) => {
   const handleLogout = (e) => {
     if (isLogout) {
       e.preventDefault();
@@ -18,6 +30,12 @@ const SidebarButton = ({ icon, link, isActive, isLogout }) => {
         }
       });
     }
+  };
+
+  // Position styles for the secondary icon
+  const positionStyles = {
+    "top-right": "absolute -top-2 -right-2 text-xs",
+    "bottom-center": "absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/3 text-xs"
   };
 
   return isLogout ? (
@@ -36,7 +54,20 @@ const SidebarButton = ({ icon, link, isActive, isLogout }) => {
           : "bg-white text-[#9B9DA2] border border-[#B9BBBD] hover:bg-[#009FDC] hover:text-white hover:border-none"
       }`}
     >
-      <FontAwesomeIcon icon={icon} size="xl" />
+      {doubleIcon ? (
+        <div className="relative">
+          <FontAwesomeIcon icon={icon} size="xl" />
+          <div className={`${positionStyles[iconPosition]} w-4 h-4 flex items-center justify-center bg-white rounded-full border border-[#B9BBBD] shadow-sm`}
+               style={{ zIndex: 5 }}>
+            <FontAwesomeIcon 
+              icon={secondaryIcon} 
+              style={{ fontSize: iconSize, color: "#9B9DA2" }}
+            />
+          </div>
+        </div>
+      ) : (
+        <FontAwesomeIcon icon={icon} size="xl" />
+      )}
     </a>
   );
 };
@@ -74,11 +105,23 @@ const Sidebar = ({ isOpen }) => {
           />
         </nav>
 
-        <SidebarButton
-          icon={faQuestionCircle}
-          link="/faqs"
-          isActive={url === "/faqs"}
-        />
+        <div className="flex flex-col gap-6">
+          <SidebarButton
+            icon={faBookOpen}
+            secondaryIcon={faInfo}
+            doubleIcon={true}
+            iconPosition="bottom-center"
+            iconSize="0.5rem"
+            link="/user-manual"
+            isActive={url === "/user-manual"}
+          />
+          
+          <SidebarButton
+            icon={faQuestionCircle}
+            link="/faqs"
+            isActive={url === "/faqs"}
+          />
+        </div>
       </aside>
 
       {/* Logout button */}

@@ -296,17 +296,27 @@ export default function MaharatPDF({ invoiceId, onGenerated }) {
             if (representativeDetails.name) {
                 representativeName = representativeDetails.name;
             } else if (invoiceData.representative_id) {
-                representativeName = `ID: ${invoiceData.representative_id}`;
+                // Try to get representative info from the users array if available in state
+                if (invoiceData.representativeDetails?.name) {
+                    representativeName = invoiceData.representativeDetails.name;
+                } else {
+                    representativeName = `ID: ${invoiceData.representative_id}`;
+                }
             }
             
             doc.setFont("helvetica", "normal");
-            doc.text(representativeName, margin + 35, clientStartY + 18);
+            // Split representative name text to fit within box if needed
+            const representativeNameLines = doc.splitTextToSize(representativeName, leftBoxWidth - 40);
+            doc.text(representativeNameLines, margin + 35, clientStartY + 18);
             
             doc.setFont("helvetica", "bold");
             doc.text("Address:", margin + 5, clientStartY + 28);
             
             doc.setFont("helvetica", "normal");
-            doc.text(clientDetails.address || client?.address || 'N/A', margin + 35, clientStartY + 28);
+            // Proper text wrapping for address field
+            const clientAddress = clientDetails.address || client?.address || 'N/A';
+            const addressLines = doc.splitTextToSize(clientAddress, leftBoxWidth - 40);
+            doc.text(addressLines, margin + 35, clientStartY + 28);
             
             // Right box - Client VAT and contact - REDUCED INTERNAL PADDING
             doc.setFillColor(240, 240, 240); // Light gray
