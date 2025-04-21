@@ -19,7 +19,8 @@ class InvoiceItem extends Model
         'tax_amount',
         'subtotal',
         'total',
-        'tax_rate'
+        'tax_rate',
+        'discount'
     ];
 
     protected $casts = [

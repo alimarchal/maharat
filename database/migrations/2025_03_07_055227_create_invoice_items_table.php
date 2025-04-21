@@ -20,6 +20,7 @@ return new class extends Migration
             $table->decimal('unit_price', 15, 2);
             $table->decimal('tax_rate', 8, 2);
             $table->decimal('tax_amount', 15, 2);
+            $table->decimal('discount', 15, 2)->default(0.00);
             $table->decimal('subtotal', 15, 2); // Before tax
             $table->decimal('total', 15, 2); // Including tax
             $table->string('identification')->nullable(); // Item identification code

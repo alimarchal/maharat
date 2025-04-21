@@ -627,7 +627,7 @@ export default function CreateMaharatInvoice() {
                 vat_rate: formData.vat_rate,
                 company_id: 1,
                 client_id: formData.client_id,
-                representative_id: formData.representative,
+                representative_id: formData.representative || null,
                 subtotal: formData.subtotal,
                 discount_amount: formData.discount,
                 tax_amount: formData.vat_amount,
@@ -641,17 +641,38 @@ export default function CreateMaharatInvoice() {
             console.log("Sending invoice payload:", invoicePayload);
 
             let response;
+            let newInvoiceId;
+            
             if (isEditMode) {
                 response = await axios.put(
                     `/api/v1/invoices/${invoiceId}`,
                     invoicePayload
                 );
+                newInvoiceId = invoiceId;
             } else {
-                response = await axios.post("/api/v1/invoices", invoicePayload);
+                // For new invoices, we must first create the invoice, then add items separately
+                // since the store endpoint doesn't handle items directly
+                const invoiceDataOnly = { ...invoicePayload };
+                delete invoiceDataOnly.items; // Remove items for initial creation
+                
+                // Log the payload to verify representative_id is included
+                console.log("Creating invoice with data:", {
+                    ...invoiceDataOnly,
+                    representative_id: invoiceDataOnly.representative_id // Explicitly logging representative_id
+                });
+                
+                response = await axios.post("/api/v1/invoices", invoiceDataOnly);
+                console.log("Invoice save response:", response.data);
+                
+                newInvoiceId = response.data?.data?.id;
+                
+                if (newInvoiceId && formattedItems.length > 0) {
+                    // Now save the invoice items
+                    await saveInvoiceItems(newInvoiceId, formattedItems);
+                }
             }
             
             console.log("Invoice save response:", response.data);
-            const newInvoiceId = response.data?.data?.id;
 
             // Handle process approval workflow
             try {
@@ -741,6 +762,56 @@ export default function CreateMaharatInvoice() {
                     general: "An error occurred while saving the invoice",
                 }
             );
+        }
+    };
+    
+    // Helper function to save invoice items separately
+    const saveInvoiceItems = async (invoiceId, items) => {
+        if (!invoiceId || !items || items.length === 0) {
+            console.warn("No invoice ID or items to save");
+            return;
+        }
+        
+        try {
+            // Format items according to the database schema:
+            // - item_name goes to name field
+            // - description to description field
+            // - quantity to quantity field
+            // - unit_price to unit_price field
+            // - subtotal to subtotal field
+            // - vat rate to tax_rate field
+            // - vat amount to tax_amount field
+            // - add discount field (even though it's not in the form yet)
+            
+            const formattedItems = items.map(item => {
+                // Calculate tax amount based on subtotal and vat rate
+                const vatRate = parseFloat(item.tax_rate || formData.vat_rate);
+                const vatAmount = parseFloat(item.subtotal) * (vatRate / 100);
+                const total = parseFloat(item.subtotal) + vatAmount;
+                
+                return {
+                    item_name: item.name, // For validation
+                    name: item.name, // Actual database field
+                    description: item.description || "",
+                    quantity: parseFloat(item.quantity),
+                    unit_price: parseFloat(item.unit_price),
+                    subtotal: parseFloat(item.subtotal),
+                    tax_rate: vatRate,
+                    tax_amount: vatAmount,
+                    total: total,
+                    discount: 0.00 // Default to zero for now
+                };
+            });
+            
+            console.log(`Saving ${items.length} items for invoice #${invoiceId}`, formattedItems);
+            const response = await axios.post(`/api/v1/invoices/${invoiceId}/items`, { 
+                items: formattedItems
+            });
+            console.log("Items saved successfully:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Error saving invoice items:", error.response?.data || error);
+            throw error; // Re-throw to be handled by the caller
         }
     };
 
