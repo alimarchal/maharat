@@ -27,8 +27,8 @@ import PaymentOrderTable from "./Dashboard/Finance/PaymentOrder/PaymentOrderTabl
 import CostCenterTable from "./Dashboard/BudgetAndAccounts/CostCenter/CostCenterTable";
 import CreatePaymentOrdersTable from "./Dashboard/Finance/PaymentOrder/CreatePaymentOrdersTable";
 import ReceivableTable from "./Dashboard/Finance/AccountReceivables/ReceivableTable";
-import CreateReceivable from "./Dashboard/Finance/AccountReceivables/CreateReceivable";
-import ViewReceivable from "./Dashboard/Finance/AccountReceivables/ViewReceivable";
+import CreateReceivable from "./Dashboard/Finance/AccountReceivables/EditReceivableModal";
+import ViewReceivable from "./Dashboard/Finance/AccountReceivables/ViewReceivableModal";
 import PayablesTable from "./Dashboard/Finance/AccountPayables/PayablesTable";
 import ViewPayable from "./Dashboard/Finance/AccountPayables/ViewPayable";
 import IncomeStatementTable from "./Dashboard/BudgetAndAccounts/IncomeStatement/IncomeStatementTable";

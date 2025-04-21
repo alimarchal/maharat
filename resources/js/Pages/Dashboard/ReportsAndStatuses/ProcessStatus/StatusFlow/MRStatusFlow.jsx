@@ -8,6 +8,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { usePage } from "@inertiajs/react";
 import axios from "axios";
+import UserInfoModal from "../UserInfoModal";
 
 const MRStatusFlow = () => {
     const { id } = usePage().props;
@@ -15,6 +16,9 @@ const MRStatusFlow = () => {
     const [statuses, setStatuses] = useState([]);
     const [cardData, setCardData] = useState([]);
     const [currentStep, setCurrentStep] = useState(0);
+    const [showModal, setShowModal] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [modalType, setModalType] = useState("");
 
     useEffect(() => {
         if (id) {
@@ -51,13 +55,24 @@ const MRStatusFlow = () => {
         }
     };
 
+    const openModal = (user, type) => {
+        setSelectedUser(user);
+        setModalType(type);
+        setShowModal(true);
+    };
+
+    const closeModal = () => {
+        setShowModal(false);
+        setSelectedUser(null);
+    };
+
     return (
         <div className="w-full overflow-hidden">
             <h1 className="text-2xl font-bold text-gray-800 mb-6">
                 Material Request Statuses for Regular Purchase Flow
             </h1>
 
-            <div className="border border-dashed border-gray-300 rounded-3xl p-6 bg-white">
+            <div className="border border-dashed border-gray-300 rounded-3xl p-6 bg-white shadow-sm">
                 <div className="p-4 border-b border-gray-300">
                     <div className="flex justify-between items-center">
                         <div className="font-medium">
@@ -177,14 +192,14 @@ const MRStatusFlow = () => {
                                             {cardData.map((card) => (
                                                 <div
                                                     key={`card-container-${card.id}`}
-                                                    className="flex-none w-full md:w-2/3 lg:w-1/2 xl:w-1/3 border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white"
+                                                    className="flex-none w-full md:w-2/3 lg:w-1/2 xl:w-1/3 border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white shadow-md"
                                                     style={{
                                                         minWidth: "400px",
                                                         maxWidth: "500px",
                                                     }}
                                                 >
                                                     <div className="flex flex-row gap-4">
-                                                        <div className="w-1/2 rounded-xl p-6 bg-gray-100">
+                                                        <div className="w-1/2 rounded-xl p-5 bg-gray-100 shadow-sm">
                                                             <div className="mb-4">
                                                                 <button className="border border-[#22c55e] text-[#22c55e] rounded-full px-4 py-1 text-base flex items-center">
                                                                     Filled
@@ -194,9 +209,21 @@ const MRStatusFlow = () => {
 
                                                             <div className="flex justify-between items-center gap-4">
                                                                 <span className="text-sm font-medium">
-                                                                    User
+                                                                    {card
+                                                                        .requester
+                                                                        ?.designation
+                                                                        ?.designation ||
+                                                                        "Requester"}
                                                                 </span>
-                                                                <span className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full">
+                                                                <span
+                                                                    className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:bg-green-600 transition-colors duration-200"
+                                                                    onClick={() =>
+                                                                        openModal(
+                                                                            card.requester,
+                                                                            "requester"
+                                                                        )
+                                                                    }
+                                                                >
                                                                     <FontAwesomeIcon
                                                                         icon={
                                                                             faInfoCircle
@@ -209,8 +236,8 @@ const MRStatusFlow = () => {
                                                             <div className="h-px bg-gray-300 w-full my-4"></div>
 
                                                             <div className="flex items-start">
-                                                                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                                                                    <span className="text-sm">
+                                                                <div className="w-10 h-10 bg-blue-200 text-blue-600 rounded-full flex items-center justify-center">
+                                                                    <span className="text-sm font-medium">
                                                                         {
                                                                             card
                                                                                 .requester
@@ -245,7 +272,7 @@ const MRStatusFlow = () => {
                                                             </div>
                                                         </div>
 
-                                                        <div className="w-1/2 rounded-xl p-6 bg-gray-100">
+                                                        <div className="w-1/2 rounded-xl p-5 bg-gray-100 shadow-sm">
                                                             <div className="mb-4">
                                                                 <button className="border border-[#22c55e] text-[#22c55e] rounded-full px-4 py-1 text-base flex items-center">
                                                                     {
@@ -262,10 +289,21 @@ const MRStatusFlow = () => {
 
                                                             <div className="flex justify-between items-center gap-4">
                                                                 <span className="text-sm font-medium">
-                                                                    Direct
-                                                                    Manager
+                                                                    {card
+                                                                        .assigned_user
+                                                                        ?.designation
+                                                                        ?.designation ||
+                                                                        "Manager"}
                                                                 </span>
-                                                                <span className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full">
+                                                                <span
+                                                                    className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:bg-green-600 transition-colors duration-200"
+                                                                    onClick={() =>
+                                                                        openModal(
+                                                                            card.assigned_user,
+                                                                            "assigned"
+                                                                        )
+                                                                    }
+                                                                >
                                                                     <FontAwesomeIcon
                                                                         icon={
                                                                             faInfoCircle
@@ -278,8 +316,8 @@ const MRStatusFlow = () => {
                                                             <div className="h-px bg-gray-300 w-full my-4"></div>
 
                                                             <div className="flex items-start">
-                                                                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                                                                    <span className="text-sm">
+                                                                <div className="w-10 h-10 bg-purple-200 text-purple-600 rounded-full flex items-center justify-center">
+                                                                    <span className="text-sm font-medium">
                                                                         {
                                                                             card
                                                                                 .assigned_user
@@ -331,6 +369,14 @@ const MRStatusFlow = () => {
                     </div>
                 )}
             </div>
+
+            {/* Modal Component */}
+            <UserInfoModal
+                isOpen={showModal}
+                onClose={closeModal}
+                user={selectedUser}
+                type={modalType}
+            />
         </div>
     );
 };

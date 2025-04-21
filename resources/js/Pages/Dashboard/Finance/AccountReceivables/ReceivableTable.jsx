@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEllipsisH } from "@fortawesome/free-solid-svg-icons";
-import { Link } from "@inertiajs/react";
+import { faEye, faEdit } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
+import ViewReceivableModal from "./ViewReceivableModal";
+import EditReceivableModal from "./EditReceivableModal";
 
 const ReceivableTable = () => {
     const [receivables, setReceivables] = useState([]);
@@ -10,9 +11,18 @@ const ReceivableTable = () => {
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
-    const [selectedFilter, setSelectedFilter] = useState("All");
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
 
-    const filters = ["All", "Pending", "Partially Paid", "Overdue"];
+    const [selectedFilter, setSelectedFilter] = useState("All");
+    const filters = [
+        "All",
+        "Pending",
+        "Partially Paid",
+        "Overdue",
+        "Cancelled",
+    ];
 
     const fetchReceivables = async () => {
         setLoading(true);
@@ -24,9 +34,7 @@ const ReceivableTable = () => {
             if (selectedFilter !== "All") {
                 url += `&filter[status]=${status}`;
             }
-            
             const response = await axios.get(url);
-
             if (response.data && response.data.data) {
                 const mappedData = response.data.data.map((invoice) => {
                     const balance =
@@ -44,13 +52,13 @@ const ReceivableTable = () => {
                         balance: balance,
                     };
                 });
-
                 let finalData;
-                
+
                 if (selectedFilter === "All") {
-                    finalData = mappedData.filter(invoice => 
-                        invoice.status.toLowerCase() !== 'paid' && 
-                        invoice.status.toLowerCase() !== 'draft'
+                    finalData = mappedData.filter(
+                        (invoice) =>
+                            invoice.status.toLowerCase() !== "paid" &&
+                            invoice.status.toLowerCase() !== "draft"
                     );
                 } else {
                     finalData = mappedData.filter(
@@ -64,7 +72,10 @@ const ReceivableTable = () => {
             }
         } catch (error) {
             console.error("Error fetching receivables:", error);
-            setError("Failed to load receivables. " + (error.response?.data?.message || error.message));
+            setError(
+                "Failed to load receivables. " +
+                    (error.response?.data?.message || error.message)
+            );
         } finally {
             setLoading(false);
         }
@@ -72,20 +83,40 @@ const ReceivableTable = () => {
 
     useEffect(() => {
         fetchReceivables();
-    }, [selectedFilter]);
+    }, [selectedFilter, currentPage]);
+
+    const handleViewInvoice = (invoiceId) => {
+        setSelectedInvoiceId(invoiceId);
+        setIsViewModalOpen(true);
+    };
+
+    const handleEditInvoice = (invoiceId) => {
+        setSelectedInvoiceId(invoiceId);
+        setIsEditModalOpen(true);
+    };
+
+    const handleModalClose = () => {
+        setIsViewModalOpen(false);
+        setIsEditModalOpen(false);
+    };
+
+    const handleEditModalSave = async () => {
+        setIsEditModalOpen(false);
+        await fetchReceivables();
+    };
 
     const getStatusClass = (status) => {
         switch (status?.toLowerCase()) {
-            case "paid":
+            case "approved":
                 return "bg-green-100 text-green-800";
             case "partially paid":
-                return "bg-blue-100 text-blue-800";
+                return "bg-red-100 text-red-800";
             case "overdue":
                 return "bg-purple-100 text-purple-800";
             case "pending":
                 return "bg-yellow-100 text-yellow-800";
             default:
-                return "bg-gray-100 text-gray-800";
+                return "bg-gray-300 text-gray-800";
         }
     };
 
@@ -124,7 +155,7 @@ const ReceivableTable = () => {
                         <th className="py-3 px-4">Amount</th>
                         <th className="py-3 px-4">Balance</th>
                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
-                            Details
+                            Actions
                         </th>
                     </tr>
                 </thead>
@@ -179,13 +210,25 @@ const ReceivableTable = () => {
                                     )}{" "}
                                     SAR
                                 </td>
-                                <td className="py-3 px-4 flex justify-center text-center">
-                                    <Link
-                                        href={`/account-receivables/view/${data.id}`}
-                                        className="flex items-center justify-center w-8 h-8 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200"
+                                <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
+                                    <button
+                                        onClick={() =>
+                                            handleViewInvoice(data.id)
+                                        }
+                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                        title="View Receivable"
                                     >
-                                        <FontAwesomeIcon icon={faEllipsisH} />
-                                    </Link>
+                                        <FontAwesomeIcon icon={faEye} />
+                                    </button>
+                                    <button
+                                        onClick={() =>
+                                            handleEditInvoice(data.id)
+                                        }
+                                        className="text-blue-400 hover:text-blue-500"
+                                        title="Edit Receivable"
+                                    >
+                                        <FontAwesomeIcon icon={faEdit} />
+                                    </button>
                                 </td>
                             </tr>
                         ))
@@ -233,6 +276,26 @@ const ReceivableTable = () => {
                         Next
                     </button>
                 </div>
+            )}
+
+            {/* View Modal */}
+            {isViewModalOpen && (
+                <ViewReceivableModal
+                    id={selectedInvoiceId}
+                    isOpen={isViewModalOpen}
+                    onClose={handleModalClose}
+                />
+            )}
+
+            {/* Edit Modal */}
+            {isEditModalOpen && (
+                <EditReceivableModal
+                    isOpen={isEditModalOpen}
+                    onClose={handleModalClose}
+                    onSave={handleEditModalSave}
+                    invoiceId={selectedInvoiceId}
+                    isEdit={true}
+                />
             )}
         </div>
     );
