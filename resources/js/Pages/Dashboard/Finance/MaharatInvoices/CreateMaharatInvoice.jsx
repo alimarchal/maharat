@@ -134,21 +134,97 @@ export default function CreateMaharatInvoice() {
 
     const fetchNextInvoiceNumber = async () => {
         try {
-            const response = await axios.get("/api/v1/invoices/next-number");
-            if (response.data.success) {
-                setInvoiceNumber(response.data.next_number);
-            } else {
-                console.error(
-                    "Failed to get next invoice number:",
-                    response.data.message
-                );
+            // The proper endpoint from routes/api.php is /api/v1/next-invoice-number
+            let retries = 3;
+            let success = false;
+            let error = null;
+            
+            while (retries > 0 && !success) {
+                try {
+                    console.log(`Attempting to fetch invoice number (${retries} retries left)`);
+                    // Use the correct endpoint based on routes/api.php
+                    const response = await axios.get("/api/v1/next-invoice-number", {
+                        timeout: 5000
+                    });
+                    
+                    if (response.data && response.data.success) {
+                        console.log("Successfully fetched invoice number:", response.data.next_number);
+                        setInvoiceNumber(response.data.next_number);
+                        success = true;
+                        break;
+                    } else {
+                        console.warn("API returned success: false", response.data);
+                        retries--;
+                    }
+                } catch (err) {
+                    console.error(`Error on attempt ${4-retries}:`, err);
+                    error = err;
+                    retries--;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+            
+            if (!success) {
+                console.warn("All attempts to fetch invoice number failed, using fallback");
+                if (error?.response?.data?.message) {
+                    console.error("Server error message:", error.response.data.message);
+                }
+                generateFallbackInvoiceNumber();
             }
         } catch (error) {
-            setErrors((prev) => ({
-                ...prev,
-                fetch: "Failed to generate invoice number",
-            }));
+            console.error("Error in invoice number generation:", error);
+            generateFallbackInvoiceNumber();
         }
+    };
+
+    // Fallback function to generate an invoice number when the API fails
+    const generateFallbackInvoiceNumber = async () => {
+        try {
+            // Attempt to determine the next invoice number based on existing invoices
+            const response = await axios.get("/api/v1/invoices");
+            
+            if (response.data && response.data.data && response.data.data.length > 0) {
+                // Find the pattern INV-XXXXX that matches the backend format
+                const invoiceNumbers = response.data.data
+                    .map(invoice => {
+                        // Extract the numeric part, matching the backend format exactly
+                        const match = invoice.invoice_number?.match(/INV-(\d+)/);
+                        return match ? parseInt(match[1], 10) : 0;
+                    })
+                    .filter(num => !isNaN(num));
+                
+                if (invoiceNumbers.length > 0) {
+                    // Get the highest number and add 1
+                    const highestNumber = Math.max(0, ...invoiceNumbers);
+                    const nextNumber = `INV-${String(highestNumber + 1).padStart(5, '0')}`;
+                    
+                    console.log("Generated fallback invoice number:", nextNumber);
+                    setInvoiceNumber(nextNumber);
+                    return;
+                }
+            }
+            
+            // If we couldn't extract any numbers, use the default
+            generateDefaultInvoiceNumber();
+        } catch (error) {
+            console.error("Fallback invoice number generation failed:", error);
+            generateDefaultInvoiceNumber();
+        }
+    };
+
+    // Final fallback with default pattern if all else fails
+    const generateDefaultInvoiceNumber = () => {
+        const year = new Date().getFullYear();
+        const randomNum = Math.floor(10000 + Math.random() * 90000);
+        const defaultNumber = `INV-${randomNum.toString().padStart(5, '0')}`;
+        
+        console.log("Generated default invoice number:", defaultNumber);
+        setInvoiceNumber(defaultNumber);
+        
+        setErrors(prev => ({
+            ...prev,
+            fetch: "Generated a temporary invoice number due to server error"
+        }));
     };
 
     const fetchPaymentMethods = async () => {
@@ -525,6 +601,25 @@ export default function CreateMaharatInvoice() {
         if (!validateForm()) return;
 
         try {
+            // Ensure items have proper structure for the API
+            const formattedItems = formData.items.map((item) => {
+                const itemTaxAmount =
+                    (Number(item.subtotal) * Number(formData.vat_rate)) /
+                    100;
+                const itemTotal = Number(item.subtotal) + itemTaxAmount;
+
+                return {
+                    name: item.item_id,
+                    description: item.description,
+                    quantity: Number(item.quantity),
+                    unit_price: Number(item.unit_price),
+                    subtotal: Number(item.subtotal),
+                    tax_rate: Number(formData.vat_rate),
+                    tax_amount: itemTaxAmount,
+                    total: itemTotal,
+                };
+            });
+
             const invoicePayload = {
                 invoice_number: invoiceNumber,
                 issue_date: formData.invoice_date,
@@ -540,24 +635,11 @@ export default function CreateMaharatInvoice() {
                 status: "Draft",
                 currency: "SAR",
                 account_code_id: 4,
-                items: formData.items.map((item) => {
-                    const itemTaxAmount =
-                        (Number(item.subtotal) * Number(formData.vat_rate)) /
-                        100;
-                    const itemTotal = Number(item.subtotal) + itemTaxAmount;
-
-                    return {
-                        name: item.item_id,
-                        description: item.description,
-                        quantity: Number(item.quantity),
-                        unit_price: Number(item.unit_price),
-                        subtotal: Number(item.subtotal),
-                        tax_rate: Number(formData.vat_rate),
-                        tax_amount: itemTaxAmount,
-                        total: itemTotal,
-                    };
-                }),
+                items: formattedItems,
             };
+
+            console.log("Sending invoice payload:", invoicePayload);
+
             let response;
             if (isEditMode) {
                 response = await axios.put(
@@ -567,48 +649,93 @@ export default function CreateMaharatInvoice() {
             } else {
                 response = await axios.post("/api/v1/invoices", invoicePayload);
             }
+            
+            console.log("Invoice save response:", response.data);
             const newInvoiceId = response.data?.data?.id;
 
-            const processResponse = await axios.get(
-                "/api/v1/processes?include=steps,creator,updater&filter[title]=Maharat Invoice Approval"
-            );
-            const processList = processResponse.data.data;
-            const process = processList[0];
-            const processStep = process.steps[0];
+            // Handle process approval workflow
+            try {
+                const processResponse = await axios.get(
+                    "/api/v1/processes?include=steps,creator,updater&filter[title]=Maharat Invoice Approval"
+                );
+                const processList = processResponse.data.data;
+                
+                // Check if process and first step exist
+                if (processList && processList.length > 0) {
+                    const process = processList[0];
+                    
+                    if (process.steps && process.steps.length > 0) {
+                        const processStep = process.steps[0];
+                        
+                        // Make sure we have a valid processStep with an order before proceeding
+                        if (processStep && processStep.order) {
+                            try {
+                                const processResponseViaUser = await axios.get(
+                                    `/api/v1/process-steps/${processStep.order}/user/${user_id}`
+                                );
+                                
+                                const assignUser = processResponseViaUser?.data;
+                                
+                                if (assignUser && assignUser.user && assignUser.user.user && assignUser.user.user.id) {
+                                    // Create transaction record
+                                    const transactionPayload = {
+                                        invoice_id: newInvoiceId,
+                                        requester_id: user_id,
+                                        assigned_to: assignUser.user.user.id,
+                                        order: String(processStep.order),
+                                        description: processStep.description,
+                                        status: "Pending",
+                                    };
+                                    
+                                    await axios.post(
+                                        "/api/v1/mahrat-invoice-approval-trans",
+                                        transactionPayload
+                                    );
+                                    
+                                    // Create task
+                                    const taskPayload = {
+                                        process_step_id: processStep.id,
+                                        process_id: processStep.process_id,
+                                        assigned_at: new Date().toISOString(),
+                                        urgency: "Normal",
+                                        assigned_to_user_id: assignUser.user.user.id,
+                                        assigned_from_user_id: user_id,
+                                        read_status: null,
+                                        invoice_id: newInvoiceId,
+                                    };
+                                    
+                                    await axios.post("/api/v1/tasks", taskPayload);
+                                } else {
+                                    console.warn("No valid user assignment found for this process step");
+                                }
+                            } catch (processUserError) {
+                                console.error("Error getting user for process step:", processUserError);
+                                // Continue with invoice creation even if approval workflow fails
+                            }
+                        } else {
+                            console.warn("Process step or step order is undefined");
+                        }
+                    } else {
+                        console.warn("No steps found for the process");
+                    }
+                } else {
+                    console.warn("No approval process found with the specified title");
+                }
+            } catch (processError) {
+                console.error("Error setting up approval process:", processError);
+                // Continue with invoice creation even if approval workflow fails
+            }
 
-            const processResponseViaUser = await axios.get(
-                `/api/v1/process-steps/${processStep?.order}/user/${user_id}`
-            );
-            const assignUser = processResponseViaUser?.data;
-
-            const transactionPayload = {
-                invoice_id: newInvoiceId,
-                requester_id: user_id,
-                assigned_to: assignUser.user.user.id,
-                order: String(processStep.order),
-                description: processStep.description,
-                status: "Pending",
-            };
-            await axios.post(
-                "/api/v1/mahrat-invoice-approval-trans",
-                transactionPayload
-            );
-
-            const taskPayload = {
-                process_step_id: processStep.id,
-                process_id: processStep.process_id,
-                assigned_at: new Date().toISOString(),
-                urgency: "Normal",
-                assigned_to_user_id: assignUser.user?.user?.id,
-                assigned_from_user_id: user_id,
-                read_status: null,
-                invoice_id: newInvoiceId,
-            };
-            await axios.post("/api/v1/tasks", taskPayload);
-
+            // Navigate to invoices page regardless of approval process success
             router.visit("/maharat-invoices");
         } catch (error) {
-            console.error("Error submitting form:", error.response?.data);
+            console.error("Error submitting form:", error.response?.data || error);
+            
+            // Check specifically for items-related errors
+            if (error.response?.data?.errors?.items) {
+                console.error("Items error:", error.response.data.errors.items);
+            }
+            
             setErrors(
                 error.response?.data?.errors || {
                     general: "An error occurred while saving the invoice",
