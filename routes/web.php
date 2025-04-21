@@ -27,6 +27,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
 
+    // User Manual Route
+    Route::get('/user-manual', function () {
+        return Inertia::render('Dashboard/UserManual');
+    })->name('user.manual');
+
     Route::get('/user-profile', function () {
         return Inertia::render('Dashboard', ['page' => 'UserProfile/UserProfile']);
     })->name('userProfile.index');
