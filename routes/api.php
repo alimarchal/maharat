@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\InvoiceItemController;
 use App\Http\Controllers\Api\V1\IssueMaterialController;
 use App\Http\Controllers\Api\V1\MahratInvoiceApprovalTransactionController;
+use App\Http\Controllers\Api\V1\ManualStepController;
 use App\Http\Controllers\Api\V1\MaterialRequestController;
 use App\Http\Controllers\Api\V1\MaterialRequestItemController;
 use App\Http\Controllers\Api\V1\MaterialRequestTransactionController;
@@ -61,6 +62,7 @@ use App\Http\Controllers\Api\V1\SupplierController;
 use App\Http\Controllers\Api\V1\TaskController;
 use App\Http\Controllers\Api\V1\TaskDescriptionController;
 use App\Http\Controllers\Api\V1\UnitController;
+use App\Http\Controllers\Api\V1\UserManualController;
 use App\Http\Controllers\Api\V1\UserRoleController;
 use App\Http\Controllers\Api\V1\WarehouseManagerController;
 use Illuminate\Http\Request;
@@ -419,5 +421,22 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('budget-usages/cost-center/{costCenterId}/statistics', [BudgetUsageController::class, 'costCenterStatistics']);
     Route::get('budget-usages/fiscal-period/{fiscalPeriodId}/statistics', [BudgetUsageController::class, 'fiscalPeriodStatistics']);
 
+
+    // User Manual Routes
+    Route::get('user-manuals', [UserManualController::class, 'index']); // GET /api/v1/user-manuals
+    Route::post('user-manuals', [UserManualController::class, 'store']); // POST /api/v1/user-manuals
+    Route::get('user-manuals/{userManual}', [UserManualController::class, 'show']); // GET /api/v1/user-manuals/{id}
+    Route::put('user-manuals/{userManual}', [UserManualController::class, 'update']); // PUT /api/v1/user-manuals/{id}
+    Route::delete('user-manuals/{userManual}', [UserManualController::class, 'destroy']); // DELETE /api/v1/user-manuals/{id}
+
+    // Manual Step Routes
+    Route::prefix('user-manuals/{userManual}')->group(function () {
+        Route::get('steps', [ManualStepController::class, 'index']); // GET /api/v1/user-manuals/{userManualId}/steps
+        Route::post('steps', [ManualStepController::class, 'store']); // POST /api/v1/user-manuals/{userManualId}/steps
+        Route::get('steps/{step}', [ManualStepController::class, 'show']); // GET /api/v1/user-manuals/{userManualId}/steps/{stepId}
+        Route::put('steps/{step}', [ManualStepController::class, 'update']); // PUT /api/v1/user-manuals/{userManualId}/steps/{stepId}
+        Route::delete('steps/{step}', [ManualStepController::class, 'destroy']); // DELETE /api/v1/user-manuals/{userManualId}/steps/{stepId}
+        Route::post('steps/reorder', [ManualStepController::class, 'reorder']); // POST /api/v1/user-manuals/{userManualId}/steps/reorder
+    });
 
 });
