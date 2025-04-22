@@ -9,89 +9,157 @@ import {
     faCircleCheck,
     faCircleExclamation,
     faCircleXmark,
+    faFileLines,
 } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 
-const ViewReceivableModal = ({ id, isOpen, onClose }) => {
+const ViewPayableModal = ({ id, isOpen, onClose }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [invoiceData, setInvoiceData] = useState(null);
+    const [payableData, setPayableData] = useState(null);
     const [downloadLoading, setDownloadLoading] = useState(false);
 
     useEffect(() => {
         if (isOpen && id) {
-            fetchInvoiceDetails();
+            fetchPayableDetails();
         }
     }, [isOpen, id]);
 
-    const fetchInvoiceDetails = async () => {
+    const fetchPayableDetails = async () => {
         if (!id) {
-            setError("Invoice ID is missing");
+            setError("Payment Order ID is missing");
             setLoading(false);
             return;
         }
         setLoading(true);
         try {
-            const response = await axios.get(
-                `/api/v1/invoices/${id}?include=client`
-            );
-            if (!response.data || !response.data.data) {
-                setError("Invalid invoice data");
+            let paymentOrder;
+            let response;
+            try {
+                response = await axios.get(
+                    `/api/v1/payment-orders/${id}/raw-data`
+                );
+                paymentOrder = response.data.data;
+            } catch (rawDataError) {
+                response = await axios.get(
+                    `/api/v1/payment-orders/${id}?include=user,purchaseOrder`
+                );
+                paymentOrder = response.data.data;
+            }
+
+            if (!paymentOrder) {
+                setError("Invalid payment order data");
                 setLoading(false);
                 return;
             }
-            const invoice = response.data.data;
 
             // Calculate balance
-            const balance =
-                (invoice.total_amount || 0) - (invoice.paid_amount || 0);
+            const totalAmount = paymentOrder.total_amount || 0;
+            const paidAmount = paymentOrder.paid_amount || 0;
+            const balance = totalAmount - paidAmount;
 
-            // Set customer data variables
-            let customerName = "N/A";
+            // Set supplier data variables
+            let supplierName = "N/A";
             let contactNumber = "N/A";
-            let customerEmail = "N/A";
+            let supplierEmail = "N/A";
 
-            // If client is included in the response
-            if (invoice.client) {
-                customerName = invoice.client.name || "N/A";
-                contactNumber = invoice.client.contact_number || "N/A";
-                customerEmail = invoice.client.email || "N/A";
+            // If user is included in the response
+            if (paymentOrder.user) {
+                supplierName = paymentOrder.user.name || "N/A";
+                contactNumber = paymentOrder.user.mobile || "N/A";
+                supplierEmail = paymentOrder.user.email || "N/A";
             }
-            // If we need to fetch client separately
-            else if (invoice.client_id) {
+            // If we need to fetch user separately
+            else if (paymentOrder.user_id) {
                 try {
-                    const customerResponse = await axios.get(
-                        `/api/v1/customers/${invoice.client_id}`
+                    const supplierResponse = await axios.get(
+                        `/api/v1/users/${paymentOrder.user_id}`
                     );
-                    if (customerResponse.data && customerResponse.data.data) {
-                        const customerData = customerResponse.data.data;
-                        customerName = customerData.name || "N/A";
-                        contactNumber = customerData.contact_number || "N/A";
-                        customerEmail = customerData.email || "N/A";
+                    if (supplierResponse.data && supplierResponse.data.data) {
+                        const supplierData = supplierResponse.data.data;
+                        supplierName = supplierData.name || "N/A";
+                        contactNumber = supplierData.mobile || "N/A";
+                        supplierEmail = supplierData.email || "N/A";
                     }
-                } catch (customerError) {
-                    console.error("Error fetching customer:", customerError);
+                } catch (supplierError) {
+                    console.error("Error fetching supplier:", supplierError);
                 }
             }
 
-            // Create formatted invoice with customer data
-            let formattedInvoice = {
-                ...invoice,
-                invoice_no:
-                    invoice.invoice_number ||
-                    `INV-${invoice.id.toString().padStart(5, "0")}`,
-                customer: customerName,
+            // Format the status from snake_case to title case
+            let formattedStatus = "Pending";
+
+            if (paymentOrder.status) {
+                // Check if it's draft status - convert to lowercase first
+                const statusLower = String(paymentOrder.status)
+                    .toLowerCase()
+                    .trim();
+
+                if (statusLower === "draft") {
+                    formattedStatus = "Draft";
+                } else {
+                    // Handle other statuses
+                    formattedStatus = paymentOrder.status
+                        .replace(/_/g, " ") // Replace all underscores with spaces
+                        .replace(/\b\w/g, (l) => l.toUpperCase());
+                }
+            }
+
+            // Get payment terms/method with fallbacks
+            const paymentTerms =
+                paymentOrder.payment_type ||
+                paymentOrder.payment_terms ||
+                paymentOrder.payment_method ||
+                "N/A";
+
+            // Prepare dates
+            const issueDate =
+                paymentOrder.issue_date ||
+                paymentOrder.date ||
+                paymentOrder.created_at;
+            const dueDate = paymentOrder.due_date || null;
+
+            // Extract purchase order details if available
+            let purchaseOrderInfo = null;
+            if (paymentOrder.purchase_order) {
+                purchaseOrderInfo = {
+                    purchase_order_no:
+                        paymentOrder.purchase_order.purchase_order_no,
+                    purchase_order_date:
+                        paymentOrder.purchase_order.purchase_order_date,
+                    supplier_name:
+                        paymentOrder.purchase_order.supplier?.name || "N/A",
+                };
+            }
+
+            // Create formatted payment order with supplier data
+            let formattedPaymentOrder = {
+                ...paymentOrder,
+                payment_order_no:
+                    paymentOrder.payment_order_number ||
+                    `PO-${paymentOrder.id.toString().padStart(5, "0")}`,
+                supplier: supplierName,
                 contact: contactNumber,
-                email: customerEmail,
-                status: invoice.status || "Pending",
-                amount: invoice.total_amount || 0,
+                email: supplierEmail,
+                status: formattedStatus,
+                amount: totalAmount,
+                paid_amount: paidAmount,
                 balance: balance,
+                payment_method: paymentTerms,
+                issue_date: issueDate,
+                due_date: dueDate,
+                purchase_order: purchaseOrderInfo,
+                notes:
+                    paymentOrder.notes ||
+                    paymentOrder.purchase_order?.notes ||
+                    "",
             };
-            setInvoiceData(formattedInvoice);
+
+            setPayableData(formattedPaymentOrder);
             setError("");
         } catch (error) {
             setError(
-                "Failed to load receivable details: " +
+                "Failed to load payable details: " +
                     (error.response?.data?.message || error.message)
             );
         } finally {
@@ -127,9 +195,9 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
     };
 
     // Generate PDF version of invoice for download
-    const generatePdfInvoice = async (documentUrl, invoiceNumber) => {
+    const generatePdfPayable = async (documentUrl, payableNumber) => {
         if (!documentUrl) {
-            alert("No invoice document available");
+            alert("No payment order document available");
             return;
         }
         setDownloadLoading(true);
@@ -137,21 +205,20 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
         try {
             const fullUrl = documentUrl.startsWith("http")
                 ? documentUrl
-                : `/${documentUrl.replace(/^\//g, "")}`;
+                : `/storage/${documentUrl.replace(/^\//g, "")}`;
 
             // Create a temporary link element to trigger download
             const link = document.createElement("a");
             link.href = fullUrl;
             link.setAttribute(
                 "download",
-                `Invoice_${invoiceNumber || "document"}.pdf`
+                `PaymentOrder_${payableNumber || "document"}.pdf`
             );
             link.setAttribute("target", "_blank");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         } catch (error) {
-            console.error("PDF generation error:", error);
             alert("Failed to generate PDF. Please try again.");
         } finally {
             setDownloadLoading(false);
@@ -164,7 +231,7 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
         let icon = null;
 
         switch (status?.toLowerCase()) {
-            case "approved":
+            case "paid":
                 badgeClass += " bg-green-100 text-green-800";
                 icon = faCircleCheck;
                 break;
@@ -172,13 +239,21 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                 badgeClass += " bg-yellow-100 text-yellow-800";
                 icon = faCircleExclamation;
                 break;
-            case "partial":
+            case "draft":
+                badgeClass += " bg-blue-100 text-blue-800";
+                icon = faNoteSticky;
+                break;
+            case "partially paid":
+                badgeClass += " bg-purple-100 text-purple-800";
+                icon = faCircleExclamation;
+                break;
+            case "overdue":
                 badgeClass += " bg-red-100 text-red-800";
                 icon = faCircleXmark;
                 break;
-            case "overdue":
-                badgeClass += " bg-purple-100 text-purple-800";
-                icon = faCircleXmark;
+            case "approved":
+                badgeClass += " bg-green-100 text-green-800";
+                icon = faCircleCheck;
                 break;
             default:
                 badgeClass += " bg-gray-300 text-gray-800";
@@ -203,11 +278,12 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                     <div className="flex justify-between items-center">
                         <div>
                             <h2 className="text-2xl md:text-3xl font-bold">
-                                Account Receivable Details
+                                Account Payable Details
                             </h2>
-                            {!loading && !error && invoiceData && (
+                            {!loading && !error && payableData && (
                                 <p className="mt-1">
-                                    Invoice #{invoiceData.invoice_no}
+                                    Payment Order #{" "}
+                                    {payableData.payment_order_no}
                                 </p>
                             )}
                         </div>
@@ -223,7 +299,7 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                         <div className="flex flex-col items-center justify-center py-16">
                             <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                             <p className="mt-4 text-gray-600">
-                                Loading invoice details...
+                                Loading payment order details...
                             </p>
                         </div>
                     ) : error ? (
@@ -239,27 +315,27 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                                 </div>
                             </div>
                         </div>
-                    ) : !invoiceData ? (
+                    ) : !payableData ? (
                         <div className="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded mb-6">
                             <div className="flex items-center">
                                 <FontAwesomeIcon
                                     icon={faCircleExclamation}
                                     className="text-yellow-500 mr-3"
                                 />
-                                <p>No data found for this receivable.</p>
+                                <p>No data found for this payable.</p>
                             </div>
                         </div>
                     ) : (
                         <>
                             {/* Generate PDF Button */}
                             <div className="flex flex-wrap justify-end gap-3 mb-4">
-                                {invoiceData.invoice_document ? (
+                                {payableData.attachment ? (
                                     <button
                                         disabled={downloadLoading}
                                         onClick={() =>
-                                            generatePdfInvoice(
-                                                invoiceData.invoice_document,
-                                                invoiceData.invoice_no
+                                            generatePdfPayable(
+                                                payableData.attachment,
+                                                payableData.payment_order_number
                                             )
                                         }
                                         className={`flex items-center ${
@@ -294,19 +370,19 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                                 )}
                             </div>
 
-                            {/* Invoice Summary Card */}
+                            {/* Payable Summary Card */}
                             <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
                                 <div className="flex flex-wrap justify-between items-center">
                                     <div>
                                         <h3 className="text-xl font-bold text-gray-800">
-                                            Invoice Summary
+                                            Payment Order Summary
                                         </h3>
                                         <p className="text-gray-500">
-                                            {formatDate(invoiceData.issue_date)}{" "}
-                                            - {formatDate(invoiceData.due_date)}
+                                            {formatDate(payableData.issue_date)}{" "}
+                                            - {formatDate(payableData.due_date)}
                                         </p>
                                     </div>
-                                    <StatusBadge status={invoiceData.status} />
+                                    <StatusBadge status={payableData.status} />
                                 </div>
                             </div>
 
@@ -319,16 +395,16 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                                             className="mr-3"
                                         />
                                         <h3 className="text-lg font-semibold">
-                                            Invoice Details
+                                            Payment Order Details
                                         </h3>
                                     </div>
                                     <div className="space-y-2">
                                         <div className="flex justify-between border-b border-gray-100 pb-2">
                                             <span className="text-gray-600">
-                                                Invoice Number:
+                                                Payment Order Number:
                                             </span>
                                             <span className="font-medium">
-                                                {invoiceData.invoice_no}
+                                                {payableData.payment_order_no}
                                             </span>
                                         </div>
                                         <div className="flex justify-between border-b border-gray-100 pb-2">
@@ -337,7 +413,7 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                                             </span>
                                             <span className="font-medium">
                                                 {formatDate(
-                                                    invoiceData.issue_date
+                                                    payableData.issue_date
                                                 )}
                                             </span>
                                         </div>
@@ -347,7 +423,7 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                                             </span>
                                             <span className="font-medium">
                                                 {formatDate(
-                                                    invoiceData.due_date
+                                                    payableData.due_date
                                                 )}
                                             </span>
                                         </div>
@@ -361,16 +437,16 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                                             className="mr-3"
                                         />
                                         <h3 className="text-lg font-semibold">
-                                            Customer Information
+                                            Supplier Information
                                         </h3>
                                     </div>
                                     <div className="space-y-2">
                                         <div className="flex justify-between border-b border-gray-100 pb-2">
                                             <span className="text-gray-600">
-                                                Customer Name:
+                                                Supplier Name:
                                             </span>
                                             <span className="font-medium">
-                                                {invoiceData.customer}
+                                                {payableData.supplier}
                                             </span>
                                         </div>
                                         <div className="flex justify-between border-b border-gray-100 pb-2">
@@ -378,7 +454,7 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                                                 Contact Number:
                                             </span>
                                             <span className="font-medium">
-                                                {invoiceData.contact}
+                                                {payableData.contact}
                                             </span>
                                         </div>
                                         <div className="flex justify-between border-b border-gray-100 pb-2">
@@ -386,7 +462,7 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                                                 Email:
                                             </span>
                                             <span className="font-medium">
-                                                {invoiceData.email}
+                                                {payableData.email}
                                             </span>
                                         </div>
                                     </div>
@@ -410,7 +486,7 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                                             <span className="font-medium">
                                                 $
                                                 {formatCurrency(
-                                                    invoiceData.amount
+                                                    payableData.amount
                                                 )}
                                             </span>
                                         </div>
@@ -421,7 +497,7 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                                             <span className="font-medium">
                                                 $
                                                 {formatCurrency(
-                                                    invoiceData.paid_amount
+                                                    payableData.paid_amount
                                                 )}
                                             </span>
                                         </div>
@@ -432,7 +508,7 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                                             <span
                                                 className={`font-bold ${
                                                     parseFloat(
-                                                        invoiceData.balance
+                                                        payableData.balance
                                                     ) > 0
                                                         ? "text-red-600"
                                                         : "text-green-600"
@@ -440,24 +516,79 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                                             >
                                                 $
                                                 {formatCurrency(
-                                                    invoiceData.balance
+                                                    payableData.balance
                                                 )}
                                             </span>
                                         </div>
-                                        {invoiceData.payment_method && (
+                                        {payableData.payment_method && (
                                             <div className="flex justify-between border-b border-gray-100 pb-2">
                                                 <span className="text-gray-600">
                                                     Payment Method:
                                                 </span>
                                                 <span className="font-medium">
-                                                    {invoiceData.payment_method}
+                                                    {payableData.payment_method}
                                                 </span>
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
-                                {invoiceData.notes && (
+                                {payableData.purchase_order && (
+                                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                                        <div className="flex items-center text-teal-600 mb-4">
+                                            <FontAwesomeIcon
+                                                icon={faFileLines}
+                                                className="mr-3"
+                                            />
+                                            <h3 className="text-lg font-semibold">
+                                                Purchase Order Details
+                                            </h3>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between border-b border-gray-100 pb-2">
+                                                <span className="text-gray-600">
+                                                    PO Number:
+                                                </span>
+                                                <span className="font-medium">
+                                                    {
+                                                        payableData
+                                                            .purchase_order
+                                                            .purchase_order_no
+                                                    }
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between border-b border-gray-100 pb-2">
+                                                <span className="text-gray-600">
+                                                    PO Date:
+                                                </span>
+                                                <span className="font-medium">
+                                                    {formatDate(
+                                                        payableData
+                                                            .purchase_order
+                                                            .purchase_order_date
+                                                    )}
+                                                </span>
+                                            </div>
+                                            {payableData.purchase_order
+                                                .supplier_name && (
+                                                <div className="flex justify-between border-b border-gray-100 pb-2">
+                                                    <span className="text-gray-600">
+                                                        PO Supplier:
+                                                    </span>
+                                                    <span className="font-medium">
+                                                        {
+                                                            payableData
+                                                                .purchase_order
+                                                                .supplier_name
+                                                        }
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {payableData.notes && (
                                     <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                                         <div className="flex items-center text-orange-600 mb-4">
                                             <FontAwesomeIcon
@@ -469,7 +600,7 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                                             </h3>
                                         </div>
                                         <p className="text-gray-700 whitespace-pre-line">
-                                            {invoiceData.notes}
+                                            {payableData.notes}
                                         </p>
                                     </div>
                                 )}
@@ -482,4 +613,4 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
     );
 };
 
-export default ViewReceivableModal;
+export default ViewPayableModal;
