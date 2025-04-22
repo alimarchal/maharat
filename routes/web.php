@@ -27,11 +27,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
 
-    // User Manual Route
-    Route::get('/user-manual', function () {
-        return Inertia::render('Dashboard/UserManual');
-    })->name('user.manual');
-
     Route::get('/user-profile', function () {
         return Inertia::render('Dashboard', ['page' => 'UserProfile/UserProfile']);
     })->name('userProfile.index');
@@ -340,6 +335,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     
+    Route::get('/user-manual', function () {
+        return Inertia::render('Dashboard', ['page' => 'UserManual/UserManual']);
+    })->name('user.manual');
+    
+    Route::get('/user-manual/{section}', function ($section) {
+        return Inertia::render('Dashboard', ['page' => 'UserManual/GuideDetail', 'section' => $section]);
+    })->name('user.manual.detail');
+
     // FAQ routes
     Route::get('/faqs', function () {
         return Inertia::render('Dashboard', ['page' => 'FAQs/FAQ']);
