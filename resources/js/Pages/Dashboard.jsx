@@ -27,10 +27,7 @@ import PaymentOrderTable from "./Dashboard/Finance/PaymentOrder/PaymentOrderTabl
 import CostCenterTable from "./Dashboard/BudgetAndAccounts/CostCenter/CostCenterTable";
 import CreatePaymentOrdersTable from "./Dashboard/Finance/PaymentOrder/CreatePaymentOrdersTable";
 import ReceivableTable from "./Dashboard/Finance/AccountReceivables/ReceivableTable";
-import CreateReceivable from "./Dashboard/Finance/AccountReceivables/EditReceivableModal";
-import ViewReceivable from "./Dashboard/Finance/AccountReceivables/ViewReceivableModal";
 import PayablesTable from "./Dashboard/Finance/AccountPayables/PayablesTable";
-import ViewPayable from "./Dashboard/Finance/AccountPayables/ViewPayable";
 import IncomeStatementTable from "./Dashboard/BudgetAndAccounts/IncomeStatement/IncomeStatementTable";
 import ViewIncomeStatement from "./Dashboard/BudgetAndAccounts/IncomeStatement/ViewIncomeStatement";
 import BudgetTable from "./Dashboard/BudgetAndAccounts/Budget/BudgetTable";
@@ -65,7 +62,6 @@ import MInvoiceStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/Sta
 import BudgetRequestStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/BudgetRequestStatusFlow";
 import TotalBudgetStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/TotalBudgetStatusFlow";
 import UserProfile from "./UserProfile/UserProfile";
-import CreatePayable from "./Dashboard/Finance/AccountPayables/CreatePayable";
 import ViewFAQ from "./FAQs/ViewFAQ";
 import FAQAccordion from "./FAQs/FAQ";
 
@@ -113,20 +109,7 @@ export default function Dashboard({ auth, page }) {
             return <CreatePaymentOrdersTable />;
         if (page === "AccountReceivables/ReceivableTable")
             return <ReceivableTable />;
-        if (page === "AccountReceivables/CreateReceivable")
-            return <CreateReceivable />;
-        if (page === "AccountReceivables/ViewReceivable")
-            return <ViewReceivable />;
         if (page === "AccountPayables/PayablesTable") return <PayablesTable />;
-        if (page === "AccountPayables/ViewPayable") return <ViewPayable />;
-        if (page === "AccountPayables/CreatePayable")
-            return (
-                <CreatePayable
-                    isOpen={true}
-                    onClose={() => router.push("/account-payables")}
-                    onSave={() => router.push("/account-payables")}
-                />
-            );
         if (page === "BudgetAndAccounts/CostCenter/CostCenterTable")
             return <CostCenterTable />;
         if (page === "BudgetAndAccounts/SubCostCenter/SubCostCenterTable")

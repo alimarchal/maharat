@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEllipsisH } from "@fortawesome/free-solid-svg-icons";
-import { Link } from "@inertiajs/react";
+import { faEye, faEdit } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
+import ViewPayableModal from "./ViewPayableModal";
+import EditPayableModal from "./EditPayableModal";
 
 const PayablesTable = () => {
     const [payables, setPayables] = useState([]);
@@ -11,6 +12,9 @@ const PayablesTable = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [selectedFilter, setSelectedFilter] = useState("All");
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedPayableId, setSelectedPayableId] = useState(null);
 
     const filters = ["All", "Pending", "Paid", "Partially Paid", "Overdue"];
 
@@ -56,6 +60,26 @@ const PayablesTable = () => {
         setCurrentPage(1);
     };
 
+    const handleViewPayable = (payableId) => {
+        setSelectedPayableId(payableId);
+        setIsViewModalOpen(true);
+    };
+
+    const handleEditPayable = (payableId) => {
+        setSelectedPayableId(payableId);
+        setIsEditModalOpen(true);
+    };
+
+    const handleModalClose = () => {
+        setIsViewModalOpen(false);
+        setIsEditModalOpen(false);
+    };
+
+    const handleEditModalSave = async () => {
+        setIsEditModalOpen(false);
+        await fetchPayables();
+    };
+
     const getStatusClass = (status) => {
         switch (status?.toLowerCase()) {
             case "paid":
@@ -74,12 +98,12 @@ const PayablesTable = () => {
 
     const formatStatus = (status) => {
         if (!status) return "Pending";
-        
+
         // Check for draft status specifically
         if (status.toLowerCase() === "draft") {
             return "Draft";
         }
-        
+
         return status
             .replace(/_/g, " ") // Replace all underscores, not just the first one
             .replace(/\b\w/g, (l) => l.toUpperCase());
@@ -120,7 +144,7 @@ const PayablesTable = () => {
                         <th className="py-3 px-4">Amount</th>
                         <th className="py-3 px-4">Balance</th>
                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
-                            Details
+                            Actions
                         </th>
                     </tr>
                 </thead>
@@ -181,15 +205,25 @@ const PayablesTable = () => {
                                         })}{" "}
                                         SAR
                                     </td>
-                                    <td className="py-3 px-4 flex justify-center text-center">
-                                        <Link
-                                            href={`/account-payables/view/${data.id}`}
-                                            className="flex items-center justify-center w-8 h-8 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200"
+                                    <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
+                                        <button
+                                            onClick={() =>
+                                                handleViewPayable(data.id)
+                                            }
+                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            title="View Payable"
                                         >
-                                            <FontAwesomeIcon
-                                                icon={faEllipsisH}
-                                            />
-                                        </Link>
+                                            <FontAwesomeIcon icon={faEye} />
+                                        </button>
+                                        <button
+                                            onClick={() =>
+                                                handleEditPayable(data.id)
+                                            }
+                                            className="text-blue-400 hover:text-blue-500"
+                                            title="Edit Payable"
+                                        >
+                                            <FontAwesomeIcon icon={faEdit} />
+                                        </button>
                                     </td>
                                 </tr>
                             );
@@ -238,6 +272,26 @@ const PayablesTable = () => {
                         Next
                     </button>
                 </div>
+            )}
+
+            {/* View Modal */}
+            {isViewModalOpen && (
+                <ViewPayableModal
+                    id={selectedPayableId}
+                    isOpen={isViewModalOpen}
+                    onClose={handleModalClose}
+                />
+            )}
+
+            {/* Edit Modal */}
+            {isEditModalOpen && (
+                <EditPayableModal
+                    isOpen={isEditModalOpen}
+                    onClose={handleModalClose}
+                    onSave={handleEditModalSave}
+                    paymentOrderId={selectedPayableId}
+                    isEdit={true}
+                />
             )}
         </div>
     );

@@ -266,28 +266,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account-receivables', function () {
         return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ReceivableTable']);
     })->name('receivable.index');
-    Route::get('/account-receivables/create', function () {
-        return Inertia::render('Dashboard', ['page' => 'AccountReceivables/CreateReceivable']);
-    })->name('receivable.create');
-    Route::get('/account-receivables/view/{id}', function ($id) {
-        return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ViewReceivable', 'params' => ['id' => $id]]);
-    })->name('receivable.view');
-    Route::get('/account-receivables/edit/{id}', function ($id) {
-        return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ViewReceivable', 'params' => ['id' => $id, 'showEditModal' => true]]);
-    })->name('receivable.edit');
 
     Route::get('/account-payables', function () {
         return Inertia::render('Dashboard', ['page' => 'AccountPayables/PayablesTable']);
     })->name('payables.index');
-    Route::get('/account-payables/create', function () {
-        return Inertia::render('Dashboard', ['page' => 'AccountPayables/CreatePayable']);
-    })->name('payables.create');
-    Route::get('/account-payables/view/{id}', function ($id) {
-        return Inertia::render('Dashboard', ['page' => 'AccountPayables/ViewPayable', 'params' => ['id' => $id]]);
-    })->name('payables.view');
-    Route::get('/account-payables/edit/{id}', function ($id) {
-        return Inertia::render('Dashboard', ['page' => 'AccountPayables/ViewPayable', 'params' => ['id' => $id, 'showEditModal' => true]]);
-    })->name('payables.edit');
 
     Route::get('/cost-centers', function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/CostCenter/CostCenterTable']);
