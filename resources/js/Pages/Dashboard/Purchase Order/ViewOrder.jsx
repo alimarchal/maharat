@@ -392,22 +392,24 @@ export default function ViewOrder({ auth }) {
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
-                                                <button
-                                                    className="w-4 h-4"
-                                                    onClick={() =>
-                                                        handleGeneratePDF(
-                                                            order.id
-                                                        )
-                                                    }
-                                                    title="Download PDF"
-                                                >
-                                                    <img
-                                                        src="/images/pdf-file.png"
-                                                        alt="PDF"
-                                                        className="w-full h-full"
-                                                    />
-                                                </button>
+                                            <td className="px-3 py-4 text-center">
+                                                <div className="flex flex-col items-center justify-center h-full">
+                                                    <button
+                                                        className="w-4 h-4"
+                                                        onClick={() =>
+                                                            handleGeneratePDF(
+                                                                order.id
+                                                            )
+                                                        }
+                                                        title="Download PDF"
+                                                    >
+                                                        <img
+                                                            src="/images/pdf-file.png"
+                                                            alt="PDF"
+                                                            className="w-full h-full"
+                                                        />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))

@@ -23,7 +23,7 @@ const PaymentOrderTable = () => {
         setLoading(true);
         try {
             const response = await fetch(
-                `/api/v1/payment-orders?include=user,purchaseOrder,purchaseOrder.supplier,purchaseOrder.quotation,logs&page=${currentPage}`
+                `/api/v1/payment-orders?include=user,purchaseOrder,purchaseOrder.supplier,purchaseOrder.quotation,logs&page=${currentPage}&sort=payment_order_number`
             );
             const res = await response.json();
             if (response.ok) {
@@ -243,9 +243,9 @@ const PaymentOrderTable = () => {
                                     )}
                                 </td>
                                 <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
-                                    <Link className="text-[#9B9DA2] hover:text-gray-500">
+                                    {/* <Link className="text-[#9B9DA2] hover:text-gray-500">
                                         <FontAwesomeIcon icon={faEye} />
-                                    </Link>
+                                    </Link> */}
                                     <button
                                         className="w-4 h-4"
                                         onClick={() =>

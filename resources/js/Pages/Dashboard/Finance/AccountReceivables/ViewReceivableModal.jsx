@@ -180,6 +180,10 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                 badgeClass += " bg-purple-100 text-purple-800";
                 icon = faCircleXmark;
                 break;
+            case "cancelled":
+                badgeClass += " bg-red-100 text-red-800";
+                icon = faCircleXmark;
+                break;
             default:
                 badgeClass += " bg-gray-300 text-gray-800";
                 break;

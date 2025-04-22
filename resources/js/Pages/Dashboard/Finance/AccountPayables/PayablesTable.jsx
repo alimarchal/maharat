@@ -16,13 +16,13 @@ const PayablesTable = () => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedPayableId, setSelectedPayableId] = useState(null);
 
-    const filters = ["All", "Pending", "Paid", "Partially Paid", "Overdue"];
+    const filters = ["All", "Pending", "Partially Paid", "Overdue"];
 
     const fetchPayables = async () => {
         setLoading(true);
 
         try {
-            let url = `/api/v1/payment-orders?include=user&page=${currentPage}`;
+            let url = `/api/v1/payment-orders?include=user&page=${currentPage}&sort=payment_order_number`;
 
             if (selectedFilter !== "All") {
                 const status = selectedFilter.toLowerCase().replace(" ", "_");
@@ -31,7 +31,12 @@ const PayablesTable = () => {
             const response = await axios.get(url);
 
             if (response.data && response.data.data) {
-                const parsedPayables = response.data.data.map((payable) => ({
+                // Filter out records with "paid" status
+                const filteredPayables = response.data.data.filter(
+                    (payable) => payable.status?.toLowerCase() !== "paid"
+                );
+                
+                const parsedPayables = filteredPayables.map((payable) => ({
                     ...payable,
                     total_amount: parseFloat(payable.total_amount || 0),
                     paid_amount: parseFloat(payable.paid_amount || 0),
