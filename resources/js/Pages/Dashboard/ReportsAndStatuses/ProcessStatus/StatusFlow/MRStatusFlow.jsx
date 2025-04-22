@@ -213,7 +213,8 @@ const MRStatusFlow = () => {
                                                                         .requester
                                                                         ?.designation
                                                                         ?.designation ||
-                                                                        "Requester"}
+                                                                        card.requester?.designation ||
+                                                                        ""}
                                                                 </span>
                                                                 <span
                                                                     className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:bg-green-600 transition-colors duration-200"
@@ -293,7 +294,8 @@ const MRStatusFlow = () => {
                                                                         .assigned_user
                                                                         ?.designation
                                                                         ?.designation ||
-                                                                        "Manager"}
+                                                                        card.assigned_user?.designation ||
+                                                                        ""}
                                                                 </span>
                                                                 <span
                                                                     className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:bg-green-600 transition-colors duration-200"

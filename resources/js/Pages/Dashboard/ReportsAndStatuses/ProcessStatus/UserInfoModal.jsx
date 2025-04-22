@@ -56,8 +56,7 @@ const UserInfoModal = ({ isOpen, onClose, user, type }) => {
                             <p
                                 className={`text-${getColorByType()}-600 font-medium`}
                             >
-                                {user.designation?.designation ||
-                                    "Unknown Position"}
+                                {user.designation?.designation || user.designation || ""}
                             </p>
                         </div>
                     </div>
