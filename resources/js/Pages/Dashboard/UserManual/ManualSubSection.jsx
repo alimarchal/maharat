@@ -1,18 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, usePage } from "@inertiajs/react";
+import CreateUserGuide from "./CreateUserGuide";
 
 export default function UserManualSubSections() {
     const { props } = usePage();
     const section = props.section;
-
-    // Titles for main sections
-    const sectionTitles = {
-        procurement: "Procurement Center Manual",
-        finance: "Finance Center Manual",
-        warehouse: "Warehouse Manual",
-        budget: "Budget Center Manual",
-        configuration: "Configuration Center Manual",
-    };
+    const [isCreateGuideOpen, setIsCreateGuideOpen] = useState(false);
 
     // Define subcards for each main section
     const subManualSections = {
@@ -20,26 +13,27 @@ export default function UserManualSubSections() {
             {
                 id: "rfqs",
                 title: "RFQs",
-                description: "How to add and create RFQ’s?",
-                imageUrl: "/images/manuals/rfq.png",
+                description: "How to add and create RFQ's?",
+                imageUrl: "/images/manuals/procurement.png",
             },
             {
                 id: "quotations",
                 title: "Quotations",
                 description: "How to create and add quotations?",
-                imageUrl: "/images/manuals/quotation.png",
+                imageUrl: "/images/manuals/procurement.png",
             },
             {
                 id: "purchase-order",
                 title: "Purchase Orders",
                 description: "How to view and create purchase order?",
-                imageUrl: "/images/manuals/purchase-order.png",
+                imageUrl: "/images/manuals/procurement.png",
             },
+            ,
             {
                 id: "external-invoices",
                 title: "External Invoices",
                 description: "How to create external invoices?",
-                imageUrl: "/images/manuals/external-invoices.png",
+                imageUrl: "/images/manuals/procurement.png",
             },
         ],
         finance: [
@@ -47,31 +41,25 @@ export default function UserManualSubSections() {
                 id: "maharat-invoices",
                 title: "Maharat Invoices",
                 description: "How to create Maharat Invoices?",
-                imageUrl: "/images/manuals/external-invoices.png",
+                imageUrl: "/images/manuals/finance.png",
             },
             {
                 id: "accounts",
                 title: "Accounts",
                 description: "How to manage Accounts?",
-                imageUrl: "/images/manuals/quotation.png",
+                imageUrl: "/images/manuals/finance.png",
             },
             {
                 id: "payment-order",
                 title: "Payment Order",
                 description: "How to create Payment Orders?",
-                imageUrl: "/images/manuals/purchase-order.png",
+                imageUrl: "/images/manuals/finance.png",
             },
             {
                 id: "account-receivables",
                 title: "Account Receivables",
                 description: "How to manage account receivables?",
-                imageUrl: "/images/manuals/rfq.png",
-            },
-            {
-                id: "account-payables",
-                title: "Account Payables",
-                description: "How to manage account payables?",
-                imageUrl: "/images/manuals/quotation.png",
+                imageUrl: "/images/manuals/finance.png",
             },
         ],
         warehouse: [
@@ -85,19 +73,19 @@ export default function UserManualSubSections() {
                 id: "issue-material",
                 title: "Issue Material",
                 description: "How we issue a Material to User?",
-                imageUrl: "/images/manuals/Request.png",
+                imageUrl: "/images/manuals/warehouse.png",
             },
             {
                 id: "grns",
                 title: "GRNs",
                 description: "How to create Goods receiving notes?",
-                imageUrl: "/images/manuals/rfq.png",
+                imageUrl: "/images/manuals/warehouse.png",
             },
             {
                 id: "inventory",
                 title: "Inventory Tracking",
                 description: "How to manage inventory in warehouses?",
-                imageUrl: "/images/manuals/quotation.png",
+                imageUrl: "/images/manuals/warehouse.png",
             },
         ],
         budget: [
@@ -105,31 +93,19 @@ export default function UserManualSubSections() {
                 id: "cost-centers",
                 title: "Cost Center",
                 description: "How to create a new Cost Center",
-                imageUrl: "/images/manuals/rfq.png",
+                imageUrl: "/images/manuals/budget.png",
             },
             {
-                id: "income-statement",
-                title: "Income Statement",
-                description: "How to manage income statement",
-                imageUrl: "/images/manuals/external-invoices.png",
-            },
-            {
-                id: "balance-sheet",
-                title: "Balance Sheet",
-                description: "How to manage balance sheet",
-                imageUrl: "/images/manuals/quotation.png",
-            },
-            {
-                id: "create-budget",
-                title: "Create Budget",
+                id: "budget",
+                title: "Budget",
                 description: "How to Create a Budget?",
                 imageUrl: "/images/manuals/budget.png",
             },
             {
                 id: "request-budget",
                 title: "Request a Budget",
-                description: "How to Create Request a Budget?",
-                imageUrl: "/images/manuals/purchase-order.png",
+                description: "How to Create Rquest a Budget?",
+                imageUrl: "/images/manuals/budget.png",
             },
         ],
         configuration: [
@@ -137,31 +113,36 @@ export default function UserManualSubSections() {
                 id: "chart",
                 title: "Organizational Chart",
                 description: "How to manage Organizational Chart?",
-                imageUrl: "/images/manuals/Reports.png",
+                imageUrl: "/images/manuals/configuration.png",
             },
             {
                 id: "process-flow",
                 title: "Process Flow",
                 description: "How to manage Process flow?",
-                imageUrl: "/images/manuals/rfq.png",
+                imageUrl: "/images/manuals/configuration.png",
             },
         ],
     };
 
     const subSections = subManualSections[section] || [];
 
-    const SubManualSectionCard = ({ card }) => (
-        <Link href={`/user-manual/${section}/${card.id}`}>
+    const SubManualSectionCard = ({ section }) => (
+        <Link
+            href={`/user-manual/${props.section}/${section.id}`}
+            className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
+        >
             <div className="flex items-start justify-between">
                 <div>
-                    <h3 className="text-2xl font-bold mb-2">{card.title}</h3>
-                    <p className="font-medium text-base">{card.description}</p>
+                    <h3 className="text-xl font-medium text-gray-800 mb-2">
+                        {section.title}
+                    </h3>
+                    <p className="text-gray-600">{section.description}</p>
                 </div>
-                {card.imageUrl && (
-                    <div className="w-16 h-16 flex-shrink-0 ml-4">
+                {section.imageUrl && (
+                    <div className="w-16 h-16 flex-shrink-0">
                         <img
-                            src={card.imageUrl}
-                            alt={card.title}
+                            src={section.imageUrl}
+                            alt={section.title}
                             className="w-full h-full object-contain"
                             onError={(e) => {
                                 e.target.onerror = null;
@@ -174,22 +155,61 @@ export default function UserManualSubSections() {
         </Link>
     );
 
+    const groupSectionsIntoRows = (sections, itemsPerRow = 3) => {
+        const rows = [];
+        for (let i = 0; i < sections.length; i += itemsPerRow) {
+            rows.push(sections.slice(i, i + itemsPerRow));
+        }
+        return rows;
+    };
+
+    const sectionRows = groupSectionsIntoRows(subSections);
+
+    // Format the section title by capitalizing each word and replacing hyphens with spaces
+    const formatSectionTitle = (sectionId) => {
+        return sectionId
+            .split("-")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ");
+    };
+
     return (
         <div className="w-full">
-            <h2 className="text-3xl font-bold text-[#2C323C] mb-8">
-                {sectionTitles[section]}
-            </h2>
+            <div className="flex justify-between items-center mb-8">
+                <h2 className="text-3xl font-bold text-[#2C323C]">
+                    {formatSectionTitle(section)} User Manual
+                </h2>
+                <button
+                    type="button"
+                    onClick={() => setIsCreateGuideOpen(true)}
+                    className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                >
+                    Create a User Guide
+                </button>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
-                {subSections.map((card, index) => (
+            <div className="space-y-6">
+                {sectionRows.map((row, rowIndex) => (
                     <div
-                        key={index}
-                        className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
+                        key={rowIndex}
+                        className="grid grid-cols-1 md:grid-cols-3 gap-6"
                     >
-                        <SubManualSectionCard card={card} />
+                        {row.map((section, sectionIndex) => (
+                            <SubManualSectionCard
+                                key={sectionIndex}
+                                section={section}
+                            />
+                        ))}
                     </div>
                 ))}
             </div>
+
+            {/* Create User Guide Modal */}
+            <CreateUserGuide 
+                isOpen={isCreateGuideOpen} 
+                onClose={() => setIsCreateGuideOpen(false)} 
+                sectionId={section}
+            />
         </div>
     );
 }

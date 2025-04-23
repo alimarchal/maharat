@@ -71,7 +71,23 @@ class UserManualController extends Controller
 
     public function show(UserManual $userManual): UserManualResource
     {
-        $userManual->load(['steps.details', 'steps.screenshots', 'steps.actions', 'creator', 'updater']);
+        // Check for include parameters to load relationships
+        $includes = request()->query('include');
+        if ($includes) {
+            $relations = explode(',', $includes);
+            $userManual->load($relations);
+        } else {
+            // Default relationships to load
+            $userManual->load(['steps.details', 'steps.screenshots', 'steps.actions', 'creator', 'updater', 'card']);
+        }
+
+        Log::info('Showing user manual', [
+            'id' => $userManual->id,
+            'title' => $userManual->title,
+            'card_id' => $userManual->card_id,
+            'video_path' => $userManual->video_path,
+            'relationships_loaded' => array_keys($userManual->getRelations())
+        ]);
 
         return new UserManualResource($userManual);
     }
