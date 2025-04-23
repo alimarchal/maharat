@@ -4,13 +4,14 @@ import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import { router, usePage } from "@inertiajs/react";
 import SelectFloating from "../../../../Components/SelectFloating";
+import InputFloating from "../../../../Components/InputFloating";
 
 const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
     const userId = usePage().props.auth.user.id;
     console.log("Selected order in modal:", selectedOrder);
 
     const [formData, setFormData] = useState({
-        issue_date: new Date().toISOString().substr(0, 10),
+        issue_date: "",
         due_date: "",
         payment_type: "",
         total_amount: 0,
@@ -22,21 +23,6 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
     const [tempDocument, setTempDocument] = useState(null);
-
-    useEffect(() => {
-        // Update total amount when selected order changes, but only if it's a new record
-        if (selectedOrder?.amount && formData.total_amount === 0) {
-            let amount = selectedOrder.amount;
-            // Ensure amount is stored as a number
-            if (typeof amount === 'string') {
-                amount = parseFloat(amount);
-            }
-            setFormData(prev => ({
-                ...prev,
-                total_amount: amount
-            }));
-        }
-    }, [selectedOrder]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -326,64 +312,26 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 items-start gap-6">
                         {/* Issue Date */}
                         <div className="w-full">
-                            <div className="relative w-full">
-                                <select
-                                    className="absolute opacity-0 pointer-events-none"
-                                    tabIndex="-1"
-                                    aria-hidden="true"
-                                >
-                                    <option value="">placeholder</option>
-                                </select>
-                                <input
-                                    type="date"
-                                    name="issue_date"
-                                    value={formData.issue_date}
-                                    onChange={handleChange}
-                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
-                                />
-                                <label
-                                    className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
-                                        ${"-top-2 left-2 text-base text-[#009FDC] px-1"}`}
-                                >
-                                    Issue Date
-                                </label>
-                                {errors.issue_date && (
-                                    <p className="text-red-500 text-sm mt-1">
-                                        {errors.issue_date}
-                                    </p>
-                                )}
-                            </div>
+                            <InputFloating
+                                label="Select Issue Date"
+                                name="issue_date"
+                                type="date"
+                                value={formData.issue_date}
+                                onChange={handleChange}
+                                error={errors.issue_date}
+                            />
                         </div>
 
                         {/* Due Date */}
                         <div className="w-full">
-                            <div className="relative w-full">
-                                <select
-                                    className="absolute opacity-0 pointer-events-none"
-                                    tabIndex="-1"
-                                    aria-hidden="true"
-                                >
-                                    <option value="">placeholder</option>
-                                </select>
-                                <input
-                                    type="date"
-                                    name="due_date"
-                                    value={formData.due_date}
-                                    onChange={handleChange}
-                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
-                                />
-                                <label
-                                    className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
-                                        ${"-top-2 left-2 text-base text-[#009FDC] px-1"}`}
-                                >
-                                    Due Date
-                                </label>
-                                {errors.due_date && (
-                                    <p className="text-red-500 text-sm mt-1">
-                                        {errors.due_date}
-                                    </p>
-                                )}
-                            </div>
+                            <InputFloating
+                                label="Select Due Date"
+                                name="due_date"
+                                type="date"
+                                value={formData.due_date}
+                                onChange={handleChange}
+                                error={errors.due_date}
+                            />
                         </div>
 
                         {/* Payment Type */}

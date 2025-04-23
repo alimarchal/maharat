@@ -190,7 +190,7 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
                 supplierStartY + 8
             );
             doc.text(
-                purchaseOrder.supplier?.contact_number || "N/A",
+                purchaseOrder.supplier?.phone || "N/A",
                 margin + 35,
                 supplierStartY + 18
             );
@@ -246,14 +246,15 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
             );
 
             // Order Terms section
-            const termsStartY = supplierStartY + supplierBoxHeight + 10;
+            const termsStartY = supplierStartY + supplierBoxHeight + 5;
             const termsBoxHeight = 30;
 
+            // Left terms box
             doc.setFillColor(240, 240, 240);
             doc.roundedRect(
                 margin,
                 termsStartY,
-                contentWidth,
+                leftBoxWidth,
                 termsBoxHeight,
                 3,
                 3,
@@ -288,36 +289,48 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
                 margin + 40,
                 termsStartY + 28
             );
+            
+            // Right terms box
+            doc.setFillColor(240, 240, 240);
+            doc.roundedRect(
+                rightBoxX,
+                termsStartY,
+                rightBoxWidth,
+                termsBoxHeight,
+                3,
+                3,
+                "F"
+            );
 
             doc.setFont("helvetica", "bold");
-            doc.text("RFQ #:", contentWidth / 2 + margin, termsStartY + 8);
+            doc.text("RFQ #:", rightBoxX + 5, termsStartY + 8);
             doc.text(
                 "Expected Delivery:",
-                contentWidth / 2 + margin,
+                rightBoxX + 5,
                 termsStartY + 18
             );
             doc.text(
                 "Payment Terms:",
-                contentWidth / 2 + margin,
+                rightBoxX + 5,
                 termsStartY + 28
             );
 
             doc.setFont("helvetica", "normal");
             doc.text(
                 purchaseOrder.quotation?.rfq?.rfq_number || "N/A",
-                contentWidth / 2 + margin + 40,
+                rightBoxX + 40,
                 termsStartY + 8
             );
             doc.text(
                 formatDateForDisplay(
                     purchaseOrder.quotation?.rfq?.expected_delivery_date
                 ),
-                contentWidth / 2 + margin + 40,
+                rightBoxX + 40,
                 termsStartY + 18
             );
             doc.text(
                 purchaseOrder.supplier?.payment_terms || "Standard 30 days",
-                contentWidth / 2 + margin + 40,
+                rightBoxX + 40,
                 termsStartY + 28
             );
 
@@ -466,7 +479,7 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
                             pageHeight - margin
                         );
                         doc.text(
-                            `Page ${data.pageNumber} of ${data.pageCount || 1}`,
+                            `Page ${data.pageNumber} of ${data.pageCount || doc.getNumberOfPages()}`,
                             pageWidth / 2,
                             pageHeight - margin,
                             { align: "center" }
@@ -479,17 +492,24 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
                         );
                     },
                     showFoot: "everyPage",
+                    willDrawCell: (data) => {
+                        // Add constraints to cell height to prevent very tall cells
+                        if (data.row.height > 20) {
+                            data.row.height = 20;
+                        }
+                    }
                 });
             } catch (tableError) {
                 console.error("Error generating table:", tableError);
             }
 
-            // Add total amount after table
-            const tableResult = doc.lastAutoTable || {
+            // Get the table result and handle potential page breaks
+            let tableResult = doc.lastAutoTable || {
                 finalY: tableStartY + 30,
             };
-            const finalY = tableResult.finalY;
+            let finalY = tableResult.finalY;
 
+            // Add total amount after table
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
             doc.text("Total Amount:", pageWidth - margin - 60, finalY + 10);
@@ -506,6 +526,16 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
                 { align: "right" }
             );
 
+            // Calculate space needed for remaining sections
+            const spaceNeeded = 120; // Approximate space needed for terms, notes and signatures
+            const remainingSpace = pageHeight - (finalY + 15);
+
+            // If not enough space, add a new page
+            if (remainingSpace < spaceNeeded) {
+                doc.addPage();
+                finalY = margin;
+            }
+
             // Add Terms and Conditions section
             const termsY = finalY + 20;
 
@@ -519,15 +549,18 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
 
             doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
-            doc.text(
-                purchaseOrder.quotation?.terms_and_conditions ||
-                    "Standard terms and conditions apply to this purchase order.",
-                margin,
-                termsY + 20
-            );
+            
+            // Handle terms and conditions text wrapping
+            const termsText = purchaseOrder.quotation?.terms_and_conditions ||
+                "Standard terms and conditions apply to this purchase order.";
+            const termsLines = doc.splitTextToSize(termsText, pageWidth - 2 * margin);
+            doc.text(termsLines, margin, termsY + 20);
+
+            // Calculate next Y position after terms text
+            const termsEndY = termsY + 20 + (termsLines.length * 5);
 
             // Add Notes section
-            const notesY = termsY + 30;
+            const notesY = termsEndY + 10;
 
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
@@ -535,15 +568,26 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
 
             doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
-            doc.text(
-                purchaseOrder.quotation?.notes ||
-                    "Please acknowledge receipt of this purchase order.",
-                margin,
-                notesY + 10
-            );
+            
+            // Handle notes text wrapping
+            const notesText = purchaseOrder.quotation?.notes ||
+                "Please acknowledge receipt of this purchase order.";
+            const notesLines = doc.splitTextToSize(notesText, pageWidth - 2 * margin);
+            doc.text(notesLines, margin, notesY + 10);
 
-            // Define signature section
-            const signatureY = notesY + 30;
+            // Calculate next Y position after notes text
+            const notesEndY = notesY + 10 + (notesLines.length * 5);
+
+            // Check if we need to add another page for signatures
+            const signatureSpaceNeeded = 50;
+            if (pageHeight - notesEndY < signatureSpaceNeeded) {
+                doc.addPage();
+                // Define signature section at top of new page
+                var signatureY = margin;
+            } else {
+                // Define signature section
+                var signatureY = notesEndY + 20;
+            }
 
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
@@ -581,6 +625,9 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
             const year = today.getFullYear();
             const formattedDate = `${day}/${month}/${year}`;
 
+            const totalPages = doc.getNumberOfPages();
+            const currentPage = totalPages;
+
             doc.setFontSize(8);
             doc.setFont("helvetica", "normal");
             doc.text(
@@ -589,7 +636,7 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
                 pageHeight - margin
             );
             doc.text(
-                `Page ${doc.getNumberOfPages()} of ${doc.getNumberOfPages()}`,
+                `Page ${currentPage} of ${totalPages}`,
                 pageWidth / 2,
                 pageHeight - margin,
                 {

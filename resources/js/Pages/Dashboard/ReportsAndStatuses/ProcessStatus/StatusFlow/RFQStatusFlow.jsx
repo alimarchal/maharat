@@ -8,6 +8,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { usePage } from "@inertiajs/react";
 import axios from "axios";
+import UserInfoModal from "../UserInfoModal";
 
 const RFQStatusFlow = () => {
     const { id } = usePage().props;
@@ -15,6 +16,9 @@ const RFQStatusFlow = () => {
     const [statuses, setStatuses] = useState([]);
     const [cardData, setCardData] = useState([]);
     const [currentStep, setCurrentStep] = useState(0);
+    const [showModal, setShowModal] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [modalType, setModalType] = useState("");
 
     useEffect(() => {
         if (id) {
@@ -49,6 +53,17 @@ const RFQStatusFlow = () => {
         } catch (error) {
             console.error("Error fetching status:", error);
         }
+    };
+
+    const openModal = (user, type) => {
+        setSelectedUser(user);
+        setModalType(type);
+        setShowModal(true);
+    };
+
+    const closeModal = () => {
+        setShowModal(false);
+        setSelectedUser(null);
     };
 
     return (
@@ -194,9 +209,21 @@ const RFQStatusFlow = () => {
 
                                                             <div className="flex justify-between items-center gap-4">
                                                                 <span className="text-sm font-medium">
-                                                                    User
+                                                                    {card
+                                                                        .requester
+                                                                        ?.designation
+                                                                        ?.designation ||
+                                                                        card.requester?.designation ||
+                                                                        ""}
                                                                 </span>
-                                                                <span className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full">
+                                                                <span className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:bg-green-600 transition-colors duration-200"
+                                                                    onClick={() =>
+                                                                        openModal(
+                                                                            card.requester,
+                                                                            "requester"
+                                                                        )
+                                                                    }
+                                                                >
                                                                     <FontAwesomeIcon
                                                                         icon={
                                                                             faInfoCircle
@@ -209,7 +236,7 @@ const RFQStatusFlow = () => {
                                                             <div className="h-px bg-gray-300 w-full my-4"></div>
 
                                                             <div className="flex items-start">
-                                                                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                                                                <div className="w-8 h-8 bg-blue-200 text-blue-600 rounded-full flex items-center justify-center">
                                                                     <span className="text-sm">
                                                                         {
                                                                             card
@@ -262,10 +289,21 @@ const RFQStatusFlow = () => {
 
                                                             <div className="flex justify-between items-center gap-4">
                                                                 <span className="text-sm font-medium">
-                                                                    Direct
-                                                                    Manager
+                                                                    {card
+                                                                        .assigned_to_user
+                                                                        ?.designation
+                                                                        ?.designation ||
+                                                                        card.assigned_to_user?.designation ||
+                                                                        ""}
                                                                 </span>
-                                                                <span className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full">
+                                                                <span className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:bg-green-600 transition-colors duration-200"
+                                                                    onClick={() =>
+                                                                        openModal(
+                                                                            card.assigned_to_user,
+                                                                            "assigned"
+                                                                        )
+                                                                    }
+                                                                >
                                                                     <FontAwesomeIcon
                                                                         icon={
                                                                             faInfoCircle
@@ -278,7 +316,7 @@ const RFQStatusFlow = () => {
                                                             <div className="h-px bg-gray-300 w-full my-4"></div>
 
                                                             <div className="flex items-start">
-                                                                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                                                                <div className="w-8 h-8 bg-purple-200 text-purple-600 rounded-full flex items-center justify-center">
                                                                     <span className="text-sm">
                                                                         {
                                                                             card
@@ -331,6 +369,14 @@ const RFQStatusFlow = () => {
                     </div>
                 )}
             </div>
+
+            {/* Modal Component */}
+            <UserInfoModal
+                isOpen={showModal}
+                onClose={closeModal}
+                user={selectedUser}
+                type={modalType}
+            />
         </div>
     );
 };
