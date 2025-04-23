@@ -1,265 +1,276 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { usePage } from "@inertiajs/react";
 import { Play } from "lucide-react";
+import axios from "axios";
 
 export default function GuideDetail() {
     const { props } = usePage();
-    const guideId = props.section || "create-request"; // Default to create-request if no section is provided
+    const guideId = props.section;
+    const subsectionId = props.subsection;
 
-    // Define tasks for different guides
-    const guideContent = {
-        "create-request": {
-            title: "How to create a material request for warehouses",
-            tasks: [
+    const [guide, setGuide] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [isFromApi, setIsFromApi] = useState(false);
+
+    // Determine which ID to use for filtering
+    const searchId = subsectionId || guideId;
+
+    useEffect(() => {
+        const fetchGuideData = async () => {
+            try {
+                setLoading(true);
+                const response = await axios.get(
+                    `/api/v1/user-manuals?filter[title]=${searchId}`
+                );
+                if (
+                    response.data &&
+                    response.data.data &&
+                    response.data.data.length > 0
+                ) {
+                    setGuide(response.data.data[0]);
+                    setIsFromApi(true);
+                } else {
+                    // Only use fallback for certain IDs
+                    const fallbackGuide = getFallbackGuide(searchId);
+                    if (fallbackGuide) {
+                        setGuide(fallbackGuide);
+                        setIsFromApi(false);
+                    } else {
+                        // If no fallback exists for this ID, set error
+                        setError("Guide not found");
+                        setGuide(null);
+                    }
+                }
+                setLoading(false);
+            } catch (err) {
+                console.error("Error fetching guide data:", err);
+                setError("Failed to load guide content");
+
+                // Only use fallback for certain IDs
+                const fallbackGuide = getFallbackGuide(searchId);
+                if (fallbackGuide) {
+                    setGuide(fallbackGuide);
+                    setIsFromApi(false);
+                } else {
+                    setGuide(null);
+                }
+                setLoading(false);
+            }
+        };
+
+        fetchGuideData();
+    }, [searchId]);
+
+    // Get appropriate fallback content only for specified guides
+    const getFallbackGuide = (id) => {
+        // Only return fallback data for "task" and login-related guides
+        if (id === "task-center" || id === "login-details") {
+            return fallbackGuideContent[id];
+        }
+        return null;
+    };
+
+    // Fallback content in case API fails or no content is found
+    const fallbackGuideContent = {
+        "task-center": {
+            title: "How to Create and Manage Tasks",
+            video_path: null,
+            video_url: "https://example.com/videos/task-tutorial.mp4",
+            steps: [
                 {
-                    number: 1,
-                    title: "To create a material request in the Material system, follow these steps:",
-                    content: `"1. Login"
-                              "2. Open the Material Procurement and Inventory Management System"
-                              "3. Enter your credentials (e.g., Zadeem Portal) and login."`,
-                    imageUrl: "/images/manuals/request.png",
-                    hyperLink: "/user-manual/request",
+                    id: 1,
+                    step_number: 1,
+                    title: "Access the Task Management System",
+                    description:
+                        "1. Login to your account\n2. Navigate to the Task Management dashboard\n3. Click on 'Task Center' to view all tasks",
+                    image_url: "/images/banner.png",
+                    hyperLink: "/user-manual/task-management",
                 },
                 {
-                    number: 2,
-                    title: "Navigate to Tasks",
-                    content:
-                        "1. On the dashboard, click on Task Center to view assigned tasks.",
-                    imageUrl: "/images/manuals/request.png",
-                    hyperLink: "/user-manual/request",
+                    id: 2,
+                    step_number: 2,
+                    title: "Creating a New Task",
+                    description:
+                        "1. Click on the '+ New Task' button in the top right corner\n2. Fill in the required task details including title, description, and priority\n3. Assign the task to a team member if needed",
+                    image_url: "/images/dashboard.png",
+                    hyperLink: "/user-manual/task-creation",
                 },
                 {
-                    number: 3,
-                    title: "Locate the Material Request",
-                    content: `"1. In the My Tasks section, find the new material request."
-                              "2. Click on the eye icon under Actions to review the request details."`,
-                    imageUrl: "/images/manuals/request.png",
-                    hyperLink: "/user-manual/request",
+                    id: 3,
+                    step_number: 3,
+                    title: "Setting Task Deadlines",
+                    description:
+                        "1. In the task creation form, locate the 'Deadline' field\n2. Click on the calendar icon to open the date picker\n3. Select the appropriate deadline date and time\n4. Optionally, set reminder notifications",
+                    image_url: "/images/review-task.png",
+                    hyperLink: "/user-manual/task-deadlines",
                 },
                 {
-                    number: 4,
-                    title: "Review the Request Details",
-                    content: `"1. Examine all provided information, including urgency, description, and requested items."`,
-                    imageUrl: "/images/manuals/request.png",
-                    hyperLink: "/user-manual/request",
+                    id: 4,
+                    step_number: 4,
+                    title: "Tracking Task Progress",
+                    description:
+                        "1. Go to 'My Tasks' or 'All Tasks' section\n2. Use filters to sort tasks by status, priority, or assignee\n3. Click on any task to view detailed progress and update history",
+                    image_url: "/images/BoxPic.jpeg",
+                    hyperLink: "/user-manual/task-tracking",
                 },
                 {
-                    number: 5,
-                    title: "Approve, Reject or Refer",
-                    content: `"1. Fill the required fields."
-                              "2. Select value from dropdown"`,
-                    imageUrl: "/images/manuals/request.png",
-                    hyperLink: "/user-manual/request",
+                    id: 5,
+                    step_number: 5,
+                    title: "Completing Tasks",
+                    description:
+                        "1. Open the task you want to mark as complete\n2. Update the status to 'Completed'\n3. Add any final notes or attachments if necessary\n4. Submit the update to notify all stakeholders",
+                    image_url: "/images/dashboard.png",
+                    hyperLink: "/user-manual/task-completion",
                 },
-                {
-                    number: 6,
-                    title: "Confirm Action",
-                    content: `"1. Click on the respective button to finalize your decision."`,
-                    imageUrl: "/images/manuals/request.png",
-                    hyperLink: "/user-manual/request",
-                },
-                { video: "video link" },
             ],
         },
-        "track-request": {
-            title: "How to track material request status",
-            tasks: [
+        "login-details": {
+            title: "Login Details",
+            video_url: "https://example.com/videos/login-tutorial.mp4",
+            steps: [
                 {
-                    number: 1,
-                    title: "Access the Request Tracking",
-                    content: `"1. Login to the system"
-                              "2. Navigate to Request section"
-                              "3. Select 'My Requests' from the dropdown."`,
-                    imageUrl: "/images/manuals/request.png",
-                    hyperLink: "/user-manual/request",
+                    id: 1,
+                    step_number: 1,
+                    title: "Open the Maharat System",
+                    description:
+                        "1. Launch your preferred web browser\n2. Navigate to the Maharat system URL",
+                    image_url: "/images/manuals/login-details.png",
                 },
                 {
-                    number: 2,
-                    title: "Filter and Search",
-                    content: `"1. Use the search bar to find specific requests"
-                              "2. Apply filters to narrow down results"`,
-                    imageUrl: "/images/manuals/request.png",
-                    hyperLink: "/user-manual/request",
+                    id: 2,
+                    step_number: 2,
+                    title: "Enter Your Credentials",
+                    description:
+                        "1. Enter your username in the username field\n2. Enter your password in the password field\n3. Click the 'Login' button",
+                    image_url: "/images/banner.png",
                 },
                 {
-                    number: 3,
-                    title: "View Request Details",
-                    content: `"1. Click on any request to view its detailed status"
-                              "2. Check the timeline for updates on your request"`,
-                    imageUrl: "/images/manuals/request.png",
-                    hyperLink: "/user-manual/request",
+                    id: 3,
+                    step_number: 3,
+                    title: "Navigate the Dashboard",
+                    description:
+                        "1. Once logged in, you'll see the main dashboard\n2. Explore the various menu options available to you based on your role",
+                    image_url: "/images/manuals/login-details.png",
                 },
-                { video: "video link" },
-            ],
-        },
-        "edit-profile": {
-            title: "How to edit your user profile",
-            tasks: [
-                {
-                    number: 1,
-                    title: "Access Profile Settings",
-                    content: `"1. Click on your profile icon in the top-right corner"
-                              "2. Select 'Profile Settings' from the dropdown menu"`,
-                    imageUrl: "/images/manuals/user-profile.png",
-                    hyperLink: "/user-manual/user-profile",
-                },
-                {
-                    number: 2,
-                    title: "Edit Profile Information",
-                    content: `"1. Update your personal information in the form"
-                              "2. Change profile picture if needed"`,
-                    imageUrl: "/images/manuals/user-profile.png",
-                    hyperLink: "/user-manual/user-profile",
-                },
-                {
-                    number: 3,
-                    title: "Save Changes",
-                    content: `"1. Review all changes before submitting"
-                              "2. Click the 'Save Changes' button to update your profile"`,
-                    imageUrl: "/images/manuals/user-profile.png",
-                    hyperLink: "/user-manual/user-profile",
-                },
-                { video: "video link" },
-            ],
-        },
-        // Add more guide content for other subcards as needed
-        "change-password": {
-            title: "How to change your password",
-            tasks: [
-                {
-                    number: 1,
-                    title: "Access Account Settings",
-                    content: `"1. Click on your profile icon"
-                              "2. Select 'Account Settings'"`,
-                    imageUrl: "/images/manuals/user-profile.png",
-                    hyperLink: "/user-manual/user-profile",
-                },
-                {
-                    number: 2,
-                    title: "Navigate to Security",
-                    content: `"1. Go to the 'Security' tab"
-                              "2. Find the 'Change Password' section"`,
-                    imageUrl: "/images/manuals/user-profile.png",
-                    hyperLink: "/user-manual/user-profile",
-                },
-                {
-                    number: 3,
-                    title: "Update Password",
-                    content: `"1. Enter your current password"
-                              "2. Enter your new password"
-                              "3. Confirm your new password"`,
-                    imageUrl: "/images/manuals/user-profile.png",
-                    hyperLink: "/user-manual/user-profile",
-                },
-                {
-                    number: 4,
-                    title: "Save Changes",
-                    content: `"1. Click 'Update Password' button"
-                              "2. Confirm the change if prompted"`,
-                    imageUrl: "/images/manuals/user-profile.png",
-                    hyperLink: "/user-manual/user-profile",
-                },
-                { video: "video link" },
             ],
         },
     };
-
-    // Get the current guide content or use a default if not found
-    const currentGuide =
-        guideContent[guideId] || guideContent["create-request"];
-    const tasks = currentGuide.tasks || [];
 
     const formatContent = (content) => {
         if (!content) return null;
-        const lines = content.match(/"(.*?)"/g);
-        return lines?.map((line, idx) => (
+
+        // Process the content by splitting on newlines
+        return content.split("\n").map((line, idx) => (
             <p key={idx} className="text-lg font-medium mb-2">
-                {line.replace(/"/g, "").trim()}
+                {line.trim()}
             </p>
         ));
     };
+
+    if (loading) {
+        return (
+            <div className="w-full flex justify-center items-center h-64">
+                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
+    // Show the "Guide Not Found" message only when guide is null and there was an error
+    if (error || !guide) {
+        return (
+            <div className="w-full flex justify-center items-center h-64">
+                <div className="text-center">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                        Guide Coming Soon
+                    </h2>
+                    <p className="text-gray-600">
+                        We're currently preparing this guide to better assist
+                        you. Please check back shortly for updates.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full">
             <div className="flex justify-center items-center mb-10">
                 <h1 className="text-3xl font-bold text-gray-800 text-center">
-                    {currentGuide.title}
+                    {guide.title}
                 </h1>
             </div>
 
             <div className="relative">
-                <div className="absolute left-6 top-10 bottom-20 w-0.5 bg-[#93D3EC]"></div>
+                {guide.steps && guide.steps.length > 0 && (
+                    <div className="absolute left-6 top-10 bottom-20 w-0.5 bg-[#93D3EC]"></div>
+                )}
 
-                <div className="space-y-12"></div>
-                {tasks.map((step, index) => {
-                    // Render video step separately (no stepper)
-                    if (step.video) {
-                        return (
-                            <div
-                                key={index}
-                                className="flex flex-col items-center justify-center p-6 border border-[#009FDC] rounded-2xl my-12 mx-auto max-w-4xl"
-                            >
-                                <div className="h-64 flex items-center justify-center mb-4">
-                                    <div className="bg-[#009FDC] rounded-full p-4 cursor-pointer hover:bg-blue-600 transition duration-200">
-                                        <Play
-                                            size={32}
-                                            className="text-white"
-                                        />
+                <div className="space-y-12">
+                    {guide.steps &&
+                        guide.steps.map((step, index) => (
+                            <div key={step.id || index} className="flex">
+                                <div className="relative z-0">
+                                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#93D3EC] text-lg font-medium">
+                                        {step.step_number}
                                     </div>
                                 </div>
-                                <a
-                                    href={step.video}
-                                    className="text-[#009FDC] text-sm mt-2 flex items-center hover:underline"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    Open in new window
-                                </a>
-                            </div>
-                        );
-                    }
+                                <div className="ml-4 flex-1">
+                                    <h3 className="text-xl font-bold mb-2 text-gray-800">
+                                        {step.title}
+                                    </h3>
+                                    <div className="mb-4">
+                                        {formatContent(step.description)}
+                                    </div>
 
-                    // Render regular steps with stepper
-                    return (
-                        <div key={index} className="flex">
-                            <div className="relative z-10">
-                                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#93D3EC] text-lg font-medium">
-                                    {step.number}
-                                </div>
-                            </div>
-                            <div className="ml-4 flex-1">
-                                <h3 className="text-xl font-bold mb-2 text-gray-800">
-                                    {step.title}
-                                </h3>
-                                <div className="mb-4">
-                                    {formatContent(step.content)}
-                                </div>
-
-                                {step.imageUrl && (
-                                    <div className="p-2">
-                                        <div className="h-48 border border-[#009FDC] rounded-2xl flex items-center justify-center mb-2 shadow-lg">
-                                            <img
-                                                src="/api/placeholder/600/300"
-                                                alt={`Step ${step.number} illustration`}
-                                                className="w-full h-full object-cover rounded-2xl"
-                                            />
-                                        </div>
-                                        {step.hyperLink && (
-                                            <div className="flex justify-center">
-                                                <a
-                                                    href={step.hyperLink}
-                                                    className="text-[#009FDC] text-2xl font-bold flex items-center hover:underline"
-                                                >
-                                                    View detailed instructions
-                                                </a>
+                                    {(step.image_url || step.image_path) && (
+                                        <div className="p-2">
+                                            <div className="h-48 border border-[#009FDC] rounded-2xl flex items-center justify-center mb-2 shadow-lg">
+                                                <img
+                                                    src={
+                                                        step.image_url ||
+                                                        step.image_path
+                                                    }
+                                                    alt={`Step ${step.step_number} illustration`}
+                                                    className="w-full h-full object-cover rounded-2xl"
+                                                />
                                             </div>
-                                        )}
-                                    </div>
-                                )}
+                                            {step.hyperLink && (
+                                                <div className="flex justify-center">
+                                                    <a
+                                                        href={step.hyperLink}
+                                                        className="text-[#009FDC] text-2xl font-bold flex items-center hover:underline"
+                                                    >
+                                                        View detailed
+                                                        instructions
+                                                    </a>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                </div>
+
+                {/* Video Section (if available) */}
+                {(guide.video_url || guide.video_path) && (
+                    <div className="flex flex-col items-center justify-center p-6 border border-[#009FDC] rounded-2xl my-12 mx-auto max-w-4xl">
+                        <div className="h-64 flex items-center justify-center mb-4">
+                            <div className="bg-[#009FDC] rounded-full p-4 cursor-pointer hover:bg-blue-600 transition duration-200">
+                                <Play size={32} className="text-white" />
                             </div>
                         </div>
-                    );
-                })}
+                        <a
+                            href={guide.video_url || guide.video_path}
+                            className="text-[#009FDC] text-sm mt-2 flex items-center hover:underline"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            Open video tutorial in new window
+                        </a>
+                    </div>
+                )}
             </div>
         </div>
     );
