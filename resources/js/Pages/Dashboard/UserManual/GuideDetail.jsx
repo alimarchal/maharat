@@ -4,7 +4,7 @@ import { Play } from "lucide-react";
 
 export default function GuideDetail() {
     const { props } = usePage();
-    const guideId = props.section || "create-request"; // Default to create-request if no section is provided
+    const guideId = props.section;
 
     // Define tasks for different guides
     const guideContent = {

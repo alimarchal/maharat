@@ -81,7 +81,7 @@ export default function UserManual() {
         processDesignationData(designationName);
     };
 
-    const manualSections = [
+    const CardsData = [
         {
             id: "login-details",
             title: "Login Details",
@@ -168,28 +168,27 @@ export default function UserManual() {
         },
     ];
 
-    const ManualSectionCard = ({ section }) => {
-        const href = section.hasSubsections
-            ? `/user-manual/${section.id}`
-            : `/user-manual/${section.id}`;
+    const ManualSectionCard = ({ card }) => {
+        const href = card.hasSubsections
+            ? `/user-manual/${card.id}`
+            : `/user-manual/${card.id}`;
 
         return (
-            <Link
-                href={href}
-                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
-            >
-                <div className="flex items-start justify-between">
+            <Link href={href}>
+                <div className="w-full flex items-start justify-between">
                     <div>
-                        <h3 className="text-xl font-medium text-gray-800 mb-2">
-                            {section.title}
+                        <h3 className="text-2xl font-bold mb-2">
+                            {card.title}
                         </h3>
-                        <p className="text-gray-600">{section.description}</p>
+                        <p className="font-medium text-base">
+                            {card.description}
+                        </p>
                     </div>
-                    {section.imageUrl && (
+                    {card.imageUrl && (
                         <div className="w-16 h-16 flex-shrink-0">
                             <img
-                                src={section.imageUrl}
-                                alt={section.title}
+                                src={card.imageUrl}
+                                alt={card.title}
                                 className="w-full h-full object-contain"
                                 onError={(e) => {
                                     e.target.onerror = null;
@@ -203,16 +202,6 @@ export default function UserManual() {
         );
     };
 
-    const groupSectionsIntoRows = (sections, itemsPerRow = 3) => {
-        const rows = [];
-        for (let i = 0; i < sections.length; i += itemsPerRow) {
-            rows.push(sections.slice(i, i + itemsPerRow));
-        }
-        return rows;
-    };
-
-    const sectionRows = groupSectionsIntoRows(manualSections);
-
     return (
         <div className="w-full">
             <div className="flex justify-between items-center gap-4 mb-8">
@@ -221,7 +210,7 @@ export default function UserManual() {
                 </h2>
                 <button
                     type="button"
-                    className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                    className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-sm md:text-xl font-medium"
                 >
                     Create a User Guide
                 </button>
@@ -232,18 +221,13 @@ export default function UserManual() {
                     <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                 </div>
             ) : (
-                <div className="space-y-6">
-                    {sectionRows.map((row, rowIndex) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
+                    {CardsData.map((cards, rowIndex) => (
                         <div
                             key={rowIndex}
-                            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+                            className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
                         >
-                            {row.map((section, sectionIndex) => (
-                                <ManualSectionCard
-                                    key={sectionIndex}
-                                    section={section}
-                                />
-                            ))}
+                            <ManualSectionCard card={cards} />
                         </div>
                     ))}
                 </div>
