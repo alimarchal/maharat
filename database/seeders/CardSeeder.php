@@ -62,73 +62,73 @@ class CardSeeder extends Seeder
         // These are the cards from the UserManual.jsx file
         return [
             [
-                'name' => 'Login Details Card',
+                'name' => 'Login Details',
                 'description' => 'How to Login Company Details?',
                 'section_id' => 'login-details',
                 'order' => 0
             ],
             [
-                'name' => 'Notification Settings Card',
+                'name' => 'Notification Settings',
                 'description' => 'How to manage notifications?',
                 'section_id' => 'notification-settings',
                 'order' => 1
             ],
             [
-                'name' => 'User Profile Settings Card',
+                'name' => 'User Profile Settings',
                 'description' => 'How to edit user profile in settings?',
                 'section_id' => 'user-profile',
                 'order' => 2
             ],
             [
-                'name' => 'Maharat Info Settings Card',
+                'name' => 'Maharat Info Settings',
                 'description' => 'How to set Company profile?',
                 'section_id' => 'company-info',
                 'order' => 3
             ],
             [
-                'name' => 'Request Card',
+                'name' => 'Request',
                 'description' => 'How to create Request for Material?',
                 'section_id' => 'request',
                 'order' => 4
             ],
             [
-                'name' => 'Task Center Card',
+                'name' => 'Task Center',
                 'description' => 'How to check my task?',
                 'section_id' => 'task-center',
                 'order' => 5
             ],
             [
-                'name' => 'Procurement Center Card',
+                'name' => 'Procurement Center',
                 'description' => 'How to generate RFQ\'s for Quotation?',
                 'section_id' => 'procurement',
                 'order' => 6
             ],
             [
-                'name' => 'Finance Center Card',
+                'name' => 'Finance Center',
                 'description' => 'How to manage Finance?',
                 'section_id' => 'finance',
                 'order' => 7
             ],
             [
-                'name' => 'Warehouse Card',
+                'name' => 'Warehouse',
                 'description' => 'How to create & manage warehouse?',
                 'section_id' => 'warehouse',
                 'order' => 8
             ],
             [
-                'name' => 'Budget & Accounts Card',
+                'name' => 'Budget & Accounts',
                 'description' => 'How to create and add budget?',
                 'section_id' => 'budget',
                 'order' => 9
             ],
             [
-                'name' => 'Reports & Statuses Card',
+                'name' => 'Reports & Statuses',
                 'description' => 'How to manage reports?',
                 'section_id' => 'reports',
                 'order' => 10
             ],
             [
-                'name' => 'Configuration Center Card',
+                'name' => 'Configuration Center',
                 'description' => 'How to manage configuration center?',
                 'section_id' => 'configuration',
                 'order' => 11
@@ -145,28 +145,28 @@ class CardSeeder extends Seeder
         return [
             // Procurement subsections
             [
-                'name' => 'RFQs Card',
+                'name' => 'RFQs',
                 'description' => 'How to add and create RFQ\'s?',
                 'section_id' => 'procurement',
                 'subsection_id' => 'rfqs',
                 'order' => 0
             ],
             [
-                'name' => 'Quotations Card',
+                'name' => 'Quotations',
                 'description' => 'How to create and add quotations?',
                 'section_id' => 'procurement',
                 'subsection_id' => 'quotations',
                 'order' => 1
             ],
             [
-                'name' => 'Purchase Orders Card',
+                'name' => 'Purchase Orders',
                 'description' => 'How to view and create purchase order?',
                 'section_id' => 'procurement',
                 'subsection_id' => 'purchase-order',
                 'order' => 2
             ],
             [
-                'name' => 'External Invoices Card',
+                'name' => 'External Invoices',
                 'description' => 'How to create external invoices?',
                 'section_id' => 'procurement',
                 'subsection_id' => 'external-invoices',
@@ -175,28 +175,28 @@ class CardSeeder extends Seeder
             
             // Finance subsections
             [
-                'name' => 'Maharat Invoices Card',
+                'name' => 'Maharat Invoices',
                 'description' => 'How to create Maharat Invoices?',
                 'section_id' => 'finance',
                 'subsection_id' => 'maharat-invoices',
                 'order' => 0
             ],
             [
-                'name' => 'Accounts Card',
+                'name' => 'Accounts',
                 'description' => 'How to manage Accounts?',
                 'section_id' => 'finance',
                 'subsection_id' => 'accounts',
                 'order' => 1
             ],
             [
-                'name' => 'Payment Order Card',
+                'name' => 'Payment Order',
                 'description' => 'How to create Payment Orders?',
                 'section_id' => 'finance',
                 'subsection_id' => 'payment-order',
                 'order' => 2
             ],
             [
-                'name' => 'Account Receivables Card',
+                'name' => 'Account Receivables',
                 'description' => 'How to manage account receivables?',
                 'section_id' => 'finance',
                 'subsection_id' => 'account-receivables',
@@ -205,28 +205,28 @@ class CardSeeder extends Seeder
             
             // Warehouse subsections
             [
-                'name' => 'Create Warehouse Card',
+                'name' => 'Create Warehouse',
                 'description' => 'How to create a new warehouse?',
                 'section_id' => 'warehouse',
                 'subsection_id' => 'create-warehouse',
                 'order' => 0
             ],
             [
-                'name' => 'Issue Material Card',
+                'name' => 'Issue Material',
                 'description' => 'How we issue a Material to User?',
                 'section_id' => 'warehouse',
                 'subsection_id' => 'issue-material',
                 'order' => 1
             ],
             [
-                'name' => 'GRNs Card',
+                'name' => 'GRNs',
                 'description' => 'How to create Goods receiving notes?',
                 'section_id' => 'warehouse',
                 'subsection_id' => 'grns',
                 'order' => 2
             ],
             [
-                'name' => 'Inventory Tracking Card',
+                'name' => 'Inventory Tracking',
                 'description' => 'How to manage inventory in warehouses?',
                 'section_id' => 'warehouse',
                 'subsection_id' => 'inventory',
@@ -235,21 +235,21 @@ class CardSeeder extends Seeder
             
             // Budget subsections
             [
-                'name' => 'Cost Center Card',
+                'name' => 'Cost Center',
                 'description' => 'How to create a new Cost Center',
                 'section_id' => 'budget',
                 'subsection_id' => 'cost-centers',
                 'order' => 0
             ],
             [
-                'name' => 'Budget Card',
+                'name' => 'Budget',
                 'description' => 'How to Create a Budget?',
                 'section_id' => 'budget',
                 'subsection_id' => 'budget',
                 'order' => 1
             ],
             [
-                'name' => 'Request Budget Card',
+                'name' => 'Request Budget',
                 'description' => 'How to Create Request a Budget?',
                 'section_id' => 'budget',
                 'subsection_id' => 'request-budget',
@@ -258,14 +258,14 @@ class CardSeeder extends Seeder
             
             // Configuration subsections
             [
-                'name' => 'Organizational Chart Card',
+                'name' => 'Organizational Chart',
                 'description' => 'How to manage Organizational Chart?',
                 'section_id' => 'configuration',
                 'subsection_id' => 'chart',
                 'order' => 0
             ],
             [
-                'name' => 'Process Flow Card',
+                'name' => 'Process Flow',
                 'description' => 'How to manage Process flow?',
                 'section_id' => 'configuration',
                 'subsection_id' => 'process-flow',
