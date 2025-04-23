@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, usePage } from "@inertiajs/react";
+import CreateUserGuide from "./CreateUserGuide";
 
 export default function UserManualSubSections() {
     const { props } = usePage();
     const section = props.section;
+    const [isCreateGuideOpen, setIsCreateGuideOpen] = useState(false);
 
     // Define subcards for each main section
     const subManualSections = {
@@ -11,7 +13,7 @@ export default function UserManualSubSections() {
             {
                 id: "rfqs",
                 title: "RFQs",
-                description: "How to add and create RFQ’s?",
+                description: "How to add and create RFQ's?",
                 imageUrl: "/images/manuals/procurement.png",
             },
             {
@@ -173,9 +175,18 @@ export default function UserManualSubSections() {
 
     return (
         <div className="w-full">
-            <h2 className="text-3xl font-bold text-[#2C323C] mb-8">
-                {formatSectionTitle(section)} User Manual
-            </h2>
+            <div className="flex justify-between items-center mb-8">
+                <h2 className="text-3xl font-bold text-[#2C323C]">
+                    {formatSectionTitle(section)} User Manual
+                </h2>
+                <button
+                    type="button"
+                    onClick={() => setIsCreateGuideOpen(true)}
+                    className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                >
+                    Create a User Guide
+                </button>
+            </div>
 
             <div className="space-y-6">
                 {sectionRows.map((row, rowIndex) => (
@@ -192,6 +203,13 @@ export default function UserManualSubSections() {
                     </div>
                 ))}
             </div>
+
+            {/* Create User Guide Modal */}
+            <CreateUserGuide 
+                isOpen={isCreateGuideOpen} 
+                onClose={() => setIsCreateGuideOpen(false)} 
+                sectionId={section}
+            />
         </div>
     );
 }

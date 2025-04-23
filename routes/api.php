@@ -86,6 +86,10 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware(['auth:sanctum']);
 Route::post('/check-email', [AuthController::class, 'checkEmail']);
 
+// Cards endpoint for user manual guides - accessible without auth
+Route::get('/v1/cards', [App\Http\Controllers\Api\V1\CardController::class, 'index']);
+Route::post('/v1/cards/refresh', [App\Http\Controllers\Api\V1\CardController::class, 'refresh']);
+
 // API V1 routes
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
@@ -438,5 +442,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
         Route::delete('steps/{step}', [ManualStepController::class, 'destroy']); // DELETE /api/v1/user-manuals/{userManualId}/steps/{stepId}
         Route::post('steps/reorder', [ManualStepController::class, 'reorder']); // POST /api/v1/user-manuals/{userManualId}/steps/reorder
     });
+
+    // Screenshots for manual steps
+    Route::post('steps/{step}/screenshots', [App\Http\Controllers\Api\V1\StepScreenshotController::class, 'store']);
+    Route::put('steps/{step}/screenshots/{screenshot}', [App\Http\Controllers\Api\V1\StepScreenshotController::class, 'update']);
+    Route::delete('steps/{step}/screenshots/{screenshot}', [App\Http\Controllers\Api\V1\StepScreenshotController::class, 'destroy']);
 
 });

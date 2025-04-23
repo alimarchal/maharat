@@ -339,6 +339,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/user-manual', function () {
         return Inertia::render('Dashboard', ['page' => 'UserManual/UserManual']);
     })->name('user-manual.index');
+    
+    // Simple Guide Design Demo
+    Route::get('/user-manual/simple-guide', function () {
+        return Inertia::render('Dashboard', ['page' => 'UserManual/SimpleGuideDetail']);
+    })->name('user-manual.simple-guide');
+
+    // Guide details by ID - This specific route needs to come BEFORE general routes
+    Route::get('/user-manual/guide/{id}', function ($id) {
+        // Ensure the ID is numeric for API calls
+        $numericId = is_numeric($id) ? (int)$id : $id;
+        
+        return Inertia::render('Dashboard', [
+            'page' => 'UserManual/GuideDetail',
+            'id' => $numericId
+        ]);
+    })->name('user-manual.guide');
 
     // For sections (both with and without subsections)
     Route::get('/user-manual/{sectionId}', function ($sectionId) {

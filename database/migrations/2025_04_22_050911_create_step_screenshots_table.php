@@ -17,10 +17,14 @@ return new class extends Migration
             $table->id();
             $table->foreignId('manual_step_id')->constrained()->onDelete('cascade');
             $table->string('screenshot_path');
+            $table->string('screenshot_url')->nullable();
             $table->string('alt_text')->nullable();
             $table->string('caption')->nullable();
             $table->string('type')->default('primary'); // primary, secondary, etc.
             $table->integer('order')->default(0);
+            $table->string('file_name')->nullable();
+            $table->string('mime_type')->nullable();
+            $table->bigInteger('size')->nullable();
             $table->timestamps();
         });
     }

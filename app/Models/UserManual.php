@@ -14,8 +14,9 @@ class UserManual extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'title', 'slug', 'video_url', 'video_type',
-        'is_active', 'created_by', 'updated_by'
+        'title', 'slug', 'video_path', 'video_type',
+        'is_active', 'created_by', 'updated_by',
+        'card_id'
     ];
 
     protected $casts = [
@@ -38,5 +39,10 @@ class UserManual extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function card(): BelongsTo
+    {
+        return $this->belongsTo(Card::class);
     }
 }

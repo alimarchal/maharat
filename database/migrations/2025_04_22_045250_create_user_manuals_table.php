@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('video_path')->nullable(); // Changed from video_url to video_path
             $table->string('video_type')->nullable(); // mp4, webm, etc.
             $table->boolean('is_active')->default(true);
+            $table->foreignId('card_id')->nullable()->constrained()->onDelete('set null');
             $table->userTracking();
             $table->timestamps();
             $table->softDeletes();

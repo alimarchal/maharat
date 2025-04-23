@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, usePage } from "@inertiajs/react";
 import axios from "axios";
+import CreateUserGuide from "./CreateUserGuide";
 
 export default function UserManual() {
     const { auth } = usePage().props;
@@ -9,9 +10,14 @@ export default function UserManual() {
     const [userDesignation, setUserDesignation] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isManagingDirector, setIsManagingDirector] = useState(false);
+    const [isCreateGuideOpen, setIsCreateGuideOpen] = useState(false);
+    const [cards, setCards] = useState([]);
+    const [parentCards, setParentCards] = useState([]);
+    const [guidesMap, setGuidesMap] = useState({});
 
     useEffect(() => {
         fetchUserDesignation();
+        fetchCards();
     }, [user]);
 
     const fetchUserDesignation = async () => {
@@ -30,6 +36,83 @@ export default function UserManual() {
         } catch (error) {
             console.error("Error fetching designation:", error);
             fallbackToAuthUser();
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const fetchCards = async () => {
+        try {
+            setIsLoading(true);
+            const [cardsResponse, guidesResponse] = await Promise.all([
+                axios.get('/api/v1/cards'),
+                axios.get('/api/v1/user-manuals')
+            ]);
+            
+            console.log("Cards data:", cardsResponse.data);
+            console.log("Guides data:", guidesResponse.data);
+            
+            if (cardsResponse.data && cardsResponse.data.data) {
+                const allCards = cardsResponse.data.data;
+                
+                // Separate parent cards from subsection cards
+                const parentCardsArray = allCards.filter(card => !card.subsection_id);
+                const subsectionCards = allCards.filter(card => card.subsection_id);
+                
+                // Group subsection cards by their parent IDs
+                const subsectionsByParent = {};
+                subsectionCards.forEach(card => {
+                    if (!subsectionsByParent[card.section_id]) {
+                        subsectionsByParent[card.section_id] = [];
+                    }
+                    subsectionsByParent[card.section_id].push(card);
+                });
+                
+                // Sort each group of subsections by order
+                Object.keys(subsectionsByParent).forEach(sectionId => {
+                    subsectionsByParent[sectionId].sort((a, b) => {
+                        // If order exists, sort by order; otherwise, fall back to id
+                        if (a.order !== undefined && b.order !== undefined) {
+                            return a.order - b.order;
+                        }
+                        return a.id - b.id;
+                    });
+                });
+                
+                // Add subsections to parent cards and sort parent cards by order
+                const parentsWithSubsections = parentCardsArray
+                    .map(parent => ({
+                        ...parent,
+                        subsections: subsectionsByParent[parent.section_id] || []
+                    }))
+                    .sort((a, b) => {
+                        // If order exists, sort by order; otherwise, fall back to id
+                        if (a.order !== undefined && b.order !== undefined) {
+                            return a.order - b.order;
+                        }
+                        return a.id - b.id;
+                    });
+                
+                setParentCards(parentsWithSubsections);
+                setCards(allCards);
+            }
+            
+            // Group guides by card_id
+            const guidesData = guidesResponse.data.data || [];
+            const guidesGrouped = {};
+            
+            guidesData.forEach(guide => {
+                if (guide.card_id) {
+                    if (!guidesGrouped[guide.card_id]) {
+                        guidesGrouped[guide.card_id] = [];
+                    }
+                    guidesGrouped[guide.card_id].push(guide);
+                }
+            });
+            
+            setGuidesMap(guidesGrouped);
+        } catch (error) {
+            console.error("Error fetching cards and guides:", error);
         } finally {
             setIsLoading(false);
         }
@@ -59,7 +142,6 @@ export default function UserManual() {
         }
         setUserDesignation(designationName);
         setIsManagingDirector(designationName === "Managing Director");
-        setIsLoading(false);
     };
 
     const fallbackToAuthUser = () => {
@@ -81,137 +163,79 @@ export default function UserManual() {
         processDesignationData(designationName);
     };
 
-    const manualSections = [
-        {
-            id: "login-details",
-            title: "Login Details",
-            description: "How to Login Company Details?",
-            imageUrl: "/images/manuals/login-details.png",
-            hasSubsections: false,
-        },
-        {
-            id: "notification-settings",
-            title: "Notification Settings",
-            description: "How to manage notifications?",
-            imageUrl: "/images/manuals/notification-settings.png",
-            hasSubsections: false,
-        },
-        {
-            id: "user-profile",
-            title: "User Profile Settings",
-            description: "How to edit user profile in settings?",
-            imageUrl: "/images/manuals/user-profile.png",
-            hasSubsections: false,
-        },
-        {
-            id: "company-info",
-            title: "Maharat Info Settings",
-            description: "How to set Company profile?",
-            imageUrl: "/images/manuals/company-info.png",
-            hasSubsections: false,
-        },
-        {
-            id: "request",
-            title: "Request",
-            description: "How to create Request for Material?",
-            imageUrl: "/images/manuals/request.png",
-            hasSubsections: false,
-        },
-        {
-            id: "task-center",
-            title: "Task Center",
-            description: "How to check my task?",
-            imageUrl: "/images/manuals/task-center.png",
-            hasSubsections: false,
-        },
-        {
-            id: "procurement",
-            title: "Procurement Center",
-            description: "How to generate RFQ's for Quotation?",
-            imageUrl: "/images/manuals/procurement.png",
-            hasSubsections: true,
-        },
-        {
-            id: "finance",
-            title: "Finance Center",
-            description: "How to manage Finance?",
-            imageUrl: "/images/manuals/finance.png",
-            hasSubsections: true,
-        },
-        {
-            id: "warehouse",
-            title: "Warehouse",
-            description: "How to create & manage warehouse?",
-            imageUrl: "/images/manuals/warehouse.png",
-            hasSubsections: true,
-        },
-        {
-            id: "budget",
-            title: "Budget & Accounts",
-            description: "How to create and add budget?",
-            imageUrl: "/images/manuals/budget.png",
-            hasSubsections: true,
-        },
-        {
-            id: "reports",
-            title: "Reports & Statues",
-            description: "How to manage reports?",
-            imageUrl: "/images/manuals/reports.png",
-            hasSubsections: false,
-        },
-        {
-            id: "configuration",
-            title: "Configuration Center",
-            description: "How to manage configuration center?",
-            imageUrl: "/images/manuals/configuration.png",
-            hasSubsections: true,
-        },
+    // Map card IDs to our hardcoded section IDs for backward compatibility
+    const cardToSectionMapping = {
+        1: "login-details",
+        2: "notification-settings",
+        9: "warehouse",
+        11: "reports"
+        // Add more mappings as needed
+    };
+    
+    // Define which sections have subsections
+    const sectionsWithSubsections = [
+        "procurement", "finance", "warehouse", "budget", "configuration"
     ];
 
-    const ManualSectionCard = ({ section }) => {
-        const href = section.hasSubsections
-            ? `/user-manual/${section.id}`
-            : `/user-manual/${section.id}`;
-
-        return (
-            <Link
-                href={href}
-                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
-            >
-                <div className="flex items-start justify-between">
+    // Display cards with associated guides
+    const CardSection = ({ card }) => {
+        const guides = guidesMap[card.id] || [];
+        const sectionId = cardToSectionMapping[card.id] || card.section_id || `card-${card.id}`;
+        const hasSubsections = card.subsections && card.subsections.length > 0;
+        const isParentSection = sectionsWithSubsections.includes(sectionId);
+        
+        // Determine the correct link based on whether this card has subsections
+        // Only use the guide ID link if it's a numeric ID (database entry)
+        const cardLink = isParentSection || hasSubsections 
+            ? `/user-manual/${sectionId}` 
+            : (guides.length > 0 && !isNaN(parseInt(guides[0].id)) ? `/user-manual/guide/${guides[0].id}` : null);
+        
+        const CardContent = () => (
+            <>
+                <div className="flex items-start justify-between mb-4">
                     <div>
                         <h3 className="text-xl font-medium text-gray-800 mb-2">
-                            {section.title}
+                            {card.name}
                         </h3>
-                        <p className="text-gray-600">{section.description}</p>
+                        <p className="text-gray-600">{card.description || `Guide for ${card.name}`}</p>
                     </div>
-                    {section.imageUrl && (
-                        <div className="w-16 h-16 flex-shrink-0">
-                            <img
-                                src={section.imageUrl}
-                                alt={section.title}
-                                className="w-full h-full object-contain"
-                                onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = "/images/placeholder.png";
-                                }}
-                            />
-                        </div>
-                    )}
+                    <div className="w-16 h-16 flex-shrink-0">
+                        <img
+                            src={`/images/manuals/${sectionId}.png`}
+                            alt={card.name}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "/images/placeholder.png";
+                            }}
+                        />
+                    </div>
                 </div>
-            </Link>
+            </>
+        );
+        
+        return (
+            <div className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg">
+                {cardLink ? (
+                    <Link href={cardLink} className="block h-full">
+                        <CardContent />
+                    </Link>
+                ) : (
+                    <CardContent />
+                )}
+            </div>
         );
     };
 
-    const groupSectionsIntoRows = (sections, itemsPerRow = 3) => {
+    const groupCardsIntoRows = (cards, itemsPerRow = 3) => {
         const rows = [];
-        for (let i = 0; i < sections.length; i += itemsPerRow) {
-            rows.push(sections.slice(i, i + itemsPerRow));
+        for (let i = 0; i < cards.length; i += itemsPerRow) {
+            rows.push(cards.slice(i, i + itemsPerRow));
         }
         return rows;
     };
 
-    const sectionRows = groupSectionsIntoRows(manualSections);
+    const cardRows = groupCardsIntoRows(parentCards);
 
     return (
         <div className="w-full">
@@ -221,6 +245,7 @@ export default function UserManual() {
                 </h2>
                 <button
                     type="button"
+                    onClick={() => setIsCreateGuideOpen(true)}
                     className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                 >
                     Create a User Guide
@@ -233,21 +258,28 @@ export default function UserManual() {
                 </div>
             ) : (
                 <div className="space-y-6">
-                    {sectionRows.map((row, rowIndex) => (
+                    {cardRows.map((row, rowIndex) => (
                         <div
                             key={rowIndex}
                             className="grid grid-cols-1 md:grid-cols-3 gap-6"
                         >
-                            {row.map((section, sectionIndex) => (
-                                <ManualSectionCard
-                                    key={sectionIndex}
-                                    section={section}
-                                />
+                            {row.map((card) => (
+                                <CardSection key={card.id} card={card} />
                             ))}
                         </div>
                     ))}
                 </div>
             )}
+
+            {/* Create User Guide Modal */}
+            <CreateUserGuide 
+                isOpen={isCreateGuideOpen} 
+                onClose={() => {
+                    setIsCreateGuideOpen(false);
+                    // Refresh the guides when the modal is closed
+                    fetchCards();
+                }} 
+            />
         </div>
     );
 }

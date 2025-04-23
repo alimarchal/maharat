@@ -86,5 +86,7 @@ class DatabaseSeeder extends Seeder
             MahratInvoiceApprovalTransactionSeeder::class,
             FaqSeeder::class,
         ]);
+
+        $this->call(CardSeeder::class);
     }
 }
