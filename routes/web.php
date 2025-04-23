@@ -335,13 +335,40 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     
+    // user manual routes
     Route::get('/user-manual', function () {
         return Inertia::render('Dashboard', ['page' => 'UserManual/UserManual']);
-    })->name('user.manual');
-    
-    Route::get('/user-manual/{section}', function ($section) {
-        return Inertia::render('Dashboard', ['page' => 'UserManual/GuideDetail', 'section' => $section]);
-    })->name('user.manual.detail');
+    })->name('user-manual.index');
+
+    // For sections (both with and without subsections)
+    Route::get('/user-manual/{sectionId}', function ($sectionId) {
+        // Define which sections have subsections
+        $sectionsWithSubsections = [
+            'procurement', 'finance', 'warehouse', 'budget', 'configuration'
+        ];
+        if (in_array($sectionId, $sectionsWithSubsections)) {
+            // If section has subsections, show ManualSubSection
+            return Inertia::render('Dashboard', [
+                'page' => 'UserManual/ManualSubSection',
+                'section' => $sectionId
+            ]);
+        } else {
+            // If section doesn't have subsections, show GuideDetail
+            return Inertia::render('Dashboard', [
+                'page' => 'UserManual/GuideDetail',
+                'section' => $sectionId
+            ]);
+        }
+    })->name('user-manual.section');
+
+    // For subsection details
+    Route::get('/user-manual/{sectionId}/{subsectionId}', function ($sectionId, $subsectionId) {
+        return Inertia::render('Dashboard', [
+            'page' => 'UserManual/GuideDetail',
+            'section' => $sectionId,
+            'subsection' => $subsectionId
+        ]);
+    })->name('user-manual.subsection');
 
     // FAQ routes
     Route::get('/faqs', function () {

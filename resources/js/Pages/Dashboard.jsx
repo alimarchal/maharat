@@ -66,6 +66,7 @@ import ViewFAQ from "./FAQs/ViewFAQ";
 import FAQAccordion from "./FAQs/FAQ";
 import UserManual from "./Dashboard/UserManual/UserManual";
 import GuideDetail from "./Dashboard/UserManual/GuideDetail";
+import UserManualSubSections from "./Dashboard/UserManual/ManualSubSection";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -181,6 +182,7 @@ export default function Dashboard({ auth, page }) {
         if (page === "FAQs/FAQ") return <FAQAccordion />;
         if (page === "FAQs/ViewFAQ") return <ViewFAQ />;
         if (page === "UserManual/UserManual") return <UserManual />;
+        if (page === "UserManual/ManualSubSection") return <UserManualSubSections />;
         if (page === "UserManual/GuideDetail") return <GuideDetail />;
 
         return <MainDashboard roles={auth.user.roles} />;

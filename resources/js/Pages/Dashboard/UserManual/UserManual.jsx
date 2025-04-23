@@ -87,103 +87,121 @@ export default function UserManual() {
             title: "Login Details",
             description: "How to Login Company Details?",
             imageUrl: "/images/manuals/login-details.png",
+            hasSubsections: false,
         },
         {
             id: "notification-settings",
             title: "Notification Settings",
             description: "How to manage notifications?",
             imageUrl: "/images/manuals/notification-settings.png",
+            hasSubsections: false,
         },
         {
             id: "user-profile",
             title: "User Profile Settings",
             description: "How to edit user profile in settings?",
             imageUrl: "/images/manuals/user-profile.png",
+            hasSubsections: false,
         },
         {
             id: "company-info",
             title: "Maharat Info Settings",
             description: "How to set Company profile?",
             imageUrl: "/images/manuals/company-info.png",
+            hasSubsections: false,
         },
         {
             id: "request",
             title: "Request",
             description: "How to create Request for Material?",
             imageUrl: "/images/manuals/request.png",
+            hasSubsections: false,
         },
         {
             id: "task-center",
             title: "Task Center",
             description: "How to check my task?",
             imageUrl: "/images/manuals/task-center.png",
+            hasSubsections: false,
         },
         {
             id: "procurement",
             title: "Procurement Center",
             description: "How to generate RFQ's for Quotation?",
             imageUrl: "/images/manuals/procurement.png",
+            hasSubsections: true,
         },
         {
             id: "finance",
             title: "Finance Center",
             description: "How to manage Finance?",
             imageUrl: "/images/manuals/finance.png",
+            hasSubsections: true,
         },
         {
             id: "warehouse",
             title: "Warehouse",
             description: "How to create & manage warehouse?",
             imageUrl: "/images/manuals/warehouse.png",
+            hasSubsections: true,
         },
         {
             id: "budget",
             title: "Budget & Accounts",
             description: "How to create and add budget?",
             imageUrl: "/images/manuals/budget.png",
+            hasSubsections: true,
         },
         {
             id: "reports",
             title: "Reports & Statues",
             description: "How to manage reports?",
             imageUrl: "/images/manuals/reports.png",
+            hasSubsections: false,
         },
         {
             id: "configuration",
             title: "Configuration Center",
             description: "How to manage configuration center?",
             imageUrl: "/images/manuals/configuration.png",
+            hasSubsections: true,
         },
     ];
 
-    const ManualSectionCard = ({ section }) => (
-        <Link
-            href={`/user-manual/${section.id}`}
-            className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
-        >
-            <div className="flex items-start justify-between">
-                <div>
-                    <h3 className="text-xl font-medium text-gray-800 mb-2">
-                        {section.title}
-                    </h3>
-                    <p className="text-gray-600">{section.description}</p>
-                </div>
-                {section.imageUrl && (
-                    <div className="w-16 h-16 flex-shrink-0">
-                        <img
-                            src={section.imageUrl}
-                            alt={section.title}
-                            className="w-full h-full object-contain"
-                            onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = "/images/placeholder.png";
-                            }}
-                        />
+    const ManualSectionCard = ({ section }) => {
+        const href = section.hasSubsections
+            ? `/user-manual/${section.id}`
+            : `/user-manual/${section.id}`;
+
+        return (
+            <Link
+                href={href}
+                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
+            >
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h3 className="text-xl font-medium text-gray-800 mb-2">
+                            {section.title}
+                        </h3>
+                        <p className="text-gray-600">{section.description}</p>
                     </div>
-                )}
-            </div>
-        </Link>
-    );
+                    {section.imageUrl && (
+                        <div className="w-16 h-16 flex-shrink-0">
+                            <img
+                                src={section.imageUrl}
+                                alt={section.title}
+                                className="w-full h-full object-contain"
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = "/images/placeholder.png";
+                                }}
+                            />
+                        </div>
+                    )}
+                </div>
+            </Link>
+        );
+    };
 
     const groupSectionsIntoRows = (sections, itemsPerRow = 3) => {
         const rows = [];
@@ -197,9 +215,17 @@ export default function UserManual() {
 
     return (
         <div className="w-full">
-            <h2 className="text-3xl font-bold text-[#2C323C] mb-8">
-                User Manual
-            </h2>
+            <div className="flex justify-between items-center gap-4 mb-8">
+                <h2 className="text-3xl font-bold text-[#2C323C]">
+                    User Manual
+                </h2>
+                <button
+                    type="button"
+                    className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                >
+                    Create a User Guide
+                </button>
+            </div>
 
             {isLoading ? (
                 <div className="flex justify-center items-center">
