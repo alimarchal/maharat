@@ -18,6 +18,18 @@ export default function UserManual() {
     useEffect(() => {
         fetchUserDesignation();
         fetchCards();
+        
+        // Check URL parameters for opening the Create Guide modal
+        const url = new URL(window.location.href);
+        const openCreateGuide = url.searchParams.get('openCreateGuide');
+        const sectionId = url.searchParams.get('sectionId');
+        const subsectionId = url.searchParams.get('subsectionId');
+        
+        if (openCreateGuide === 'true') {
+            console.log("Opening Create Guide modal from URL parameters");
+            console.log(`Section ID: ${sectionId}, Subsection ID: ${subsectionId}`);
+            setIsCreateGuideOpen(true);
+        }
     }, [user]);
 
     const fetchUserDesignation = async () => {
@@ -180,15 +192,22 @@ export default function UserManual() {
     // Display cards with associated guides
     const CardSection = ({ card }) => {
         const guides = guidesMap[card.id] || [];
-        const sectionId = cardToSectionMapping[card.id] || card.section_id || `card-${card.id}`;
+        const sectionId = card.section_id || `card-${card.id}`;
         const hasSubsections = card.subsections && card.subsections.length > 0;
-        const isParentSection = sectionsWithSubsections.includes(sectionId);
         
         // Determine the correct link based on whether this card has subsections
-        // Only use the guide ID link if it's a numeric ID (database entry)
-        const cardLink = isParentSection || hasSubsections 
-            ? `/user-manual/${sectionId}` 
-            : (guides.length > 0 && !isNaN(parseInt(guides[0].id)) ? `/user-manual/guide/${guides[0].id}` : null);
+        let cardLink;
+        
+        if (hasSubsections) {
+            // If card has subsections, link to the subsection page
+            cardLink = `/user-manual/${sectionId}`;
+        } else if (guides.length > 0 && !isNaN(parseInt(guides[0].id))) {
+            // If card has guides, link directly to the first guide
+            cardLink = `/user-manual/guide/${guides[0].id}`;
+        } else {
+            // If card has no guides, link to an empty guide detail page that will show "under construction"
+            cardLink = `/user-manual/${sectionId}`;
+        }
         
         const CardContent = () => (
             <>
@@ -278,7 +297,18 @@ export default function UserManual() {
                     setIsCreateGuideOpen(false);
                     // Refresh the guides when the modal is closed
                     fetchCards();
+                    
+                    // Remove URL parameters if they exist
+                    const url = new URL(window.location.href);
+                    if (url.searchParams.has('openCreateGuide')) {
+                        url.searchParams.delete('openCreateGuide');
+                        url.searchParams.delete('sectionId');
+                        url.searchParams.delete('subsectionId');
+                        window.history.replaceState({}, '', url.toString());
+                    }
                 }} 
+                sectionId={new URL(window.location.href).searchParams.get('sectionId') || undefined}
+                subsectionId={new URL(window.location.href).searchParams.get('subsectionId') || undefined}
             />
         </div>
     );
