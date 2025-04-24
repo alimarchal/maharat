@@ -67,9 +67,6 @@ export default function UserManualSubSections() {
         const subsectionId = section.subsection_id || section.id;
         const guides = guidesMap[cardId] || [];
 
-        const imageUrl =
-            section.imageUrl || `/images/manuals/${props.section}.png`;
-
         let linkUrl =
             guides.length > 0
                 ? `/user-manual/guide/${guides[0].id}`
@@ -87,7 +84,7 @@ export default function UserManualSubSections() {
                     </div>
                     <div className="w-16 h-16 flex-shrink-0">
                         <img
-                            src={imageUrl}
+                            src={`/images/manuals/${section.subsection_id}.png`}
                             alt={title}
                             className="w-full h-full object-contain"
                         />
