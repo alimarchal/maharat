@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('account_name')->nullable();
             $table->boolean('is_active')->default(true);
             $table->text('description')->nullable();
+            $table->string('balancesheet_pdf')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

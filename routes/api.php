@@ -448,4 +448,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::put('steps/{step}/screenshots/{screenshot}', [App\Http\Controllers\Api\V1\StepScreenshotController::class, 'update']);
     Route::delete('steps/{step}/screenshots/{screenshot}', [App\Http\Controllers\Api\V1\StepScreenshotController::class, 'destroy']);
 
+    // Balance Sheet PDF Routes
+    Route::post('/balance-sheet/generate-pdf', [App\Http\Controllers\API\BalanceSheetPDFController::class, 'generatePDF']);
+    Route::post('/balance-sheet/save-pdf', [App\Http\Controllers\API\BalanceSheetPDFController::class, 'savePDF']);
+    Route::get('/balance-sheet/saved-pdfs/{year}', [App\Http\Controllers\API\BalanceSheetPDFController::class, 'getSavedPDFs']);
+
 });

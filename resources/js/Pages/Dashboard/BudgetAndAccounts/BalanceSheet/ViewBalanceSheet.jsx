@@ -5,6 +5,8 @@ import { faFilePdf } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import SelectFloating from "@/Components/SelectFloating";
 import axios from "axios";
+import { toast } from "react-hot-toast";
+import ViewSavedPDFs from "./ViewSavedPDFs";
 
 const BalanceSheetReport = () => {
     const [formData, setFormData] = useState({
@@ -23,7 +25,7 @@ const BalanceSheetReport = () => {
         totalEquity: 0,
         balance: 0
     });
-
+    
     const [openSections, setOpenSections] = useState({
         currentAssets: true,
         nonCurrentAssets: false,
@@ -248,13 +250,54 @@ const BalanceSheetReport = () => {
             </div>
 
             <div className="flex flex-wrap justify-end items-center my-8">
-                <Link className="flex items-center bg-[#009FDC] text-white px-6 py-3 rounded-full hover:bg-[#0077B6] transition duration-200">
+                <button 
+                    onClick={() => {
+                        // Show loading UI
+                        toast.loading("Generating PDF...");
+                        // Generate PDF directly
+                        axios.post("/api/v1/balance-sheet/generate-pdf", {
+                            balanceSheetData,
+                            summary,
+                            year: formData.year
+                        })
+                        .then(response => {
+                            if (response.data && response.data.pdf_url) {
+                                // Dismiss loading toast
+                                toast.dismiss();
+                                toast.success("PDF generated successfully");
+                                // Open PDF in new tab
+                                window.open(response.data.pdf_url, '_blank');
+                                
+                                // Also save the PDF to the system
+                                return axios.post("/api/v1/balance-sheet/save-pdf", {
+                                    pdf_url: response.data.pdf_url,
+                                    year: formData.year
+                                });
+                            }
+                        })
+                        .then(saveResponse => {
+                            if (saveResponse && saveResponse.data && saveResponse.data.success) {
+                                toast.success("PDF saved to system");
+                            }
+                        })
+                        .catch(error => {
+                            toast.dismiss();
+                            toast.error("Failed to generate PDF");
+                            console.error("Error generating PDF:", error);
+                        });
+                    }}
+                    className="flex items-center bg-[#009FDC] text-white px-6 py-3 rounded-full hover:bg-[#0077B6] transition duration-200"
+                >
                     <FontAwesomeIcon
                         icon={faFilePdf}
                         className="mr-2 text-lg"
                     />
                     Generate PDF
-                </Link>
+                </button>
+            </div>
+            
+            <div className="mt-8">
+                <ViewSavedPDFs year={formData.year} />
             </div>
         </div>
     );

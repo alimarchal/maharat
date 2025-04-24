@@ -81,28 +81,28 @@ const Step = ({
                 </div>
                 {step.details &&
                     step.details.map((detail, detailIndex) => (
-                        <div key={detailIndex} className="flex mb-2">
-                            <input
-                                type="text"
-                                value={detail.content || ""}
+                    <div key={detailIndex} className="flex mb-2">
+                        <input
+                            type="text"
+                            value={detail.content || ""}
                                 onChange={(e) =>
                                     updateDetail(index, detailIndex, {
                                         ...detail,
                                         content: e.target.value,
                                     })
                                 }
-                                className="flex-grow border border-gray-300 rounded-md shadow-sm p-2 mr-2"
-                                placeholder="Detail Content"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => removeDetail(index, detailIndex)}
-                                className="text-red-500 hover:text-red-700"
-                            >
-                                <FontAwesomeIcon icon={faTrash} />
-                            </button>
-                        </div>
-                    ))}
+                            className="flex-grow border border-gray-300 rounded-md shadow-sm p-2 mr-2"
+                            placeholder="Detail Content"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => removeDetail(index, detailIndex)}
+                            className="text-red-500 hover:text-red-700"
+                        >
+                            <FontAwesomeIcon icon={faTrash} />
+                        </button>
+                    </div>
+                ))}
             </div>
 
             {/* Step Screenshots */}
@@ -124,108 +124,66 @@ const Step = ({
                             key={screenshotIndex}
                             className="grid grid-cols-1 gap-2 mb-2 p-2 border border-gray-200 rounded"
                         >
-                            <div>
+                        <div>
                                 <label className="block text-sm font-medium text-gray-700">
                                     Screenshot
                                 </label>
-                                {screenshot.screenshot_url && (
-                                    <div className="mb-2 border rounded p-2 bg-gray-50">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-sm text-gray-700 flex items-center">
-                                                <FontAwesomeIcon
-                                                    icon={faImage}
-                                                    className="text-[#009FDC] mr-2"
-                                                />
-                                                {screenshot.file_name ||
-                                                    "Screenshot"}
-                                            </span>
-                                        </div>
-                                        <div
-                                            className="relative overflow-hidden"
-                                            style={{ maxHeight: "150px" }}
-                                        >
-                                            <img
-                                                src={screenshot.screenshot_url}
-                                                alt={
-                                                    screenshot.alt_text ||
-                                                    "Preview"
-                                                }
-                                                className="w-full h-auto object-contain border rounded"
-                                                onError={(e) => {
-                                                    console.error(
-                                                        "Failed to load image preview"
-                                                    );
-                                                    e.target.style.display =
-                                                        "none";
-                                                    e.target.nextSibling.style.display =
-                                                        "block";
-                                                }}
-                                            />
-                                            <div className="hidden p-2 text-xs text-center text-gray-500">
-                                                Image preview not available
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                                <input
-                                    type="file"
-                                    onChange={(e) => {
-                                        const file = e.target.files[0];
-                                        const fileName = file ? file.name : "";
-                                        updateScreenshot(
-                                            index,
-                                            screenshotIndex,
-                                            {
-                                                ...screenshot,
-                                                file: file,
-                                                file_name: fileName,
-                                                // Set default alt text based on file name
-                                                alt_text:
-                                                    fileName.split(".")[0] ||
-                                                    `Step ${
-                                                        index + 1
-                                                    } Screenshot ${
-                                                        screenshotIndex + 1
-                                                    }`,
-                                            }
-                                        );
-                                    }}
-                                    className="mt-1 block w-full text-sm file:mr-4 file:py-2 file:px-4
+                                <div className="flex items-center">
+                            <input
+                                type="file"
+                                onChange={(e) => {
+                                    const file = e.target.files[0];
+                                            updateScreenshot(
+                                                index,
+                                                screenshotIndex,
+                                                "file",
+                                                file
+                                            );
+                                        }}
+                                        className="mt-1 w-auto text-sm file:mr-4 file:py-2 file:px-4
                                 file:rounded-full file:border-0 file:text-sm file:font-semibold
                                 file:bg-[#009FDC] file:text-white hover:file:bg-[#007BB5]"
-                                />
-                            </div>
-                            <div>
-                                <input
-                                    type="text"
-                                    value={screenshot.caption || ""}
+                            />
+                                    {(screenshot.file_name || screenshot.file) ? (
+                                        <span className="ml-2 text-sm font-medium text-[#009FDC] flex-grow">
+                                            {screenshot.file_name || (screenshot.file ? screenshot.file.name : "")}
+                                        </span>
+                                    ) : (
+                                        <span className="ml-2 text-sm text-gray-500 flex-grow">
+                                            No file chosen
+                                        </span>
+                                    )}
+                        </div>
+                        </div>
+                        <div>
+                            <input
+                                type="text"
+                                value={screenshot.caption || ""}
                                     onChange={(e) =>
                                         updateScreenshot(
                                             index,
                                             screenshotIndex,
-                                            {
-                                                ...screenshot,
-                                                caption: e.target.value,
-                                            }
+                                            "caption",
+                                            e.target.value
                                         )
                                     }
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                    placeholder="Caption"
-                                />
-                            </div>
-                            <div className="flex justify-end">
-                                <button
-                                    type="button"
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                                placeholder="Caption"
+                            />
+                        </div>
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
                                     onClick={() =>
                                         removeScreenshot(index, screenshotIndex)
                                     }
-                                    className="text-red-500 hover:text-red-700"
-                                >
-                                    <FontAwesomeIcon icon={faTrash} /> Remove
-                                </button>
-                            </div>
+                                className="text-red-500 hover:text-red-700"
+                            >
+                                <FontAwesomeIcon icon={faTrash} /> Remove
+                            </button>
                         </div>
-                    ))}
+                    </div>
+                ))}
             </div>
 
             {/* Action (limited to one per step) */}
@@ -233,14 +191,14 @@ const Step = ({
                 <div className="flex justify-between items-center mb-2">
                     <h4 className="text-md font-medium">Action Button</h4>
                     {(!step.actions || step.actions.length === 0) && (
-                        <button
-                            type="button"
-                            onClick={() => addAction(index)}
-                            className="text-[#009FDC] hover:text-blue-700 text-sm"
-                        >
+                    <button
+                        type="button"
+                        onClick={() => addAction(index)}
+                        className="text-[#009FDC] hover:text-blue-700 text-sm"
+                    >
                             <FontAwesomeIcon icon={faPlus} className="mr-1" />{" "}
                             Add Action
-                        </button>
+                    </button>
                     )}
                 </div>
                 {step.actions &&
@@ -249,13 +207,13 @@ const Step = ({
                             key={actionIndex}
                             className="grid grid-cols-1 gap-2 mb-2 p-2 border border-gray-200 rounded"
                         >
-                            <div>
+                        <div>
                                 <label className="block text-sm text-gray-700">
                                     Label
                                 </label>
-                                <input
-                                    type="text"
-                                    value={action.label || ""}
+                            <input
+                                type="text"
+                                value={action.label || ""}
                                     onChange={(e) =>
                                         updateAction(index, actionIndex, {
                                             ...action,
@@ -265,40 +223,40 @@ const Step = ({
                                             style: "primary",
                                         })
                                     }
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                    placeholder="Action Label"
-                                />
-                            </div>
-                            <div>
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                                placeholder="Action Label"
+                            />
+                        </div>
+                        <div>
                                 <label className="block text-sm text-gray-700">
                                     URL or Action
                                 </label>
-                                <input
-                                    type="text"
-                                    value={action.url_or_action || ""}
+                            <input
+                                type="text"
+                                value={action.url_or_action || ""}
                                     onChange={(e) =>
                                         updateAction(index, actionIndex, {
                                             ...action,
                                             url_or_action: e.target.value,
                                         })
                                     }
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                    placeholder="e.g., https://example.com or #login"
-                                />
-                            </div>
-                            <div className="flex justify-end">
-                                <button
-                                    type="button"
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                                placeholder="e.g., https://example.com or #login"
+                            />
+                        </div>
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
                                     onClick={() =>
                                         removeAction(index, actionIndex)
                                     }
-                                    className="text-red-500 hover:text-red-700"
-                                >
-                                    <FontAwesomeIcon icon={faTrash} /> Remove
-                                </button>
-                            </div>
+                                className="text-red-500 hover:text-red-700"
+                            >
+                                <FontAwesomeIcon icon={faTrash} /> Remove
+                            </button>
                         </div>
-                    ))}
+                    </div>
+                ))}
             </div>
         </div>
     );
@@ -325,7 +283,7 @@ export default function CreateUserGuide({
             actions: [],
         },
     ]);
-
+    
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingGuide, setIsLoadingGuide] = useState(false);
@@ -336,7 +294,7 @@ export default function CreateUserGuide({
     const [childCards, setChildCards] = useState([]);
     const [selectedParentCard, setSelectedParentCard] = useState("");
     const [isLoadingCards, setIsLoadingCards] = useState(false);
-
+    
     const { data, setData, post, processing } = useForm({
         title: "",
         video_path: "",
@@ -482,7 +440,7 @@ export default function CreateUserGuide({
             const response = await axios.get(`/api/v1/user-manuals/${guideId}`);
             if (response.data && response.data.data) {
                 const guide = response.data.data;
-
+                
                 // Set form data
                 setData({
                     title: guide.title,
@@ -496,40 +454,46 @@ export default function CreateUserGuide({
                 if (guide.video_path) {
                     setShowVideoField(true);
                 }
-
+                
                 // Set steps data
                 if (guide.steps && guide.steps.length > 0) {
                     setSteps(
                         guide.steps.map((step) => ({
-                            id: step.id,
-                            step_number: step.step_number,
-                            title: step.title,
+                        id: step.id,
+                        step_number: step.step_number,
+                        title: step.title,
                             description:
                                 step.description ||
                                 `Step ${step.step_number} - ${
                                     step.title || "Details"
                                 }`,
-                            action_type: step.action_type,
-                            order: step.order,
-                            is_active: step.is_active,
-                            details: step.details || [],
+                        action_type: step.action_type,
+                        order: step.order,
+                        is_active: step.is_active,
+                        details: step.details || [],
                             screenshots: (step.screenshots || []).map(
                                 (screenshot) => {
-                                    // Extract filename from path if available
-                                    let fileName = "Existing image";
-                                    if (screenshot.screenshot_path) {
-                                        // Get the file name from the path
-                                        const pathParts =
-                                            screenshot.screenshot_path.split(
-                                                "/"
-                                            );
-                                        fileName =
-                                            pathParts[pathParts.length - 1];
+                                    // Get proper file name from original_name if available
+                                    let fileName = null;
+                                    
+                                    if (screenshot.original_name) {
+                                        // Use the original file name if available
+                                        fileName = screenshot.original_name;
+                                    } else if (screenshot.alt_text && screenshot.alt_text.trim() !== "") {
+                                        // Use alt text if it seems like a file name
+                                        fileName = screenshot.alt_text;
+                                    } else if (screenshot.screenshot_path) {
+                                        // Extract from path as last resort
+                                        const pathParts = screenshot.screenshot_path.split("/");
+                                        fileName = pathParts[pathParts.length - 1];
                                     }
 
                                     return {
                                         ...screenshot,
                                         file_name: fileName,
+                                        screenshot_url: screenshot.screenshot_path 
+                                            ? `/storage/${screenshot.screenshot_path}`
+                                            : screenshot.screenshot_url,
                                     };
                                 }
                             ),
@@ -588,7 +552,7 @@ export default function CreateUserGuide({
         if (!newSteps[stepIndex].details) {
             newSteps[stepIndex].details = [];
         }
-
+        
         newSteps[stepIndex].details.push({
             content: "",
             order: newSteps[stepIndex].details.length + 1,
@@ -610,7 +574,7 @@ export default function CreateUserGuide({
         // Update order
         newSteps[stepIndex].details = newSteps[stepIndex].details.map(
             (detail, i) => ({
-                ...detail,
+            ...detail,
                 order: i + 1,
             })
         );
@@ -623,7 +587,7 @@ export default function CreateUserGuide({
         if (!newSteps[stepIndex].screenshots) {
             newSteps[stepIndex].screenshots = [];
         }
-
+        
         newSteps[stepIndex].screenshots.push({
             file: null,
             file_name: "",
@@ -635,13 +599,20 @@ export default function CreateUserGuide({
         setSteps(newSteps);
     };
 
-    const updateScreenshot = (
-        stepIndex,
-        screenshotIndex,
-        updatedScreenshot
-    ) => {
+    const updateScreenshot = (stepIndex, screenshotIndex, field, value) => {
         const newSteps = [...steps];
-        newSteps[stepIndex].screenshots[screenshotIndex] = updatedScreenshot;
+        if (field === "file") {
+            if (value) {
+                newSteps[stepIndex].screenshots[screenshotIndex] = {
+                    ...newSteps[stepIndex].screenshots[screenshotIndex],
+                    file: value,
+                    file_name: value.name,
+                    is_edited: true,
+                };
+            }
+        } else {
+            newSteps[stepIndex].screenshots[screenshotIndex][field] = value;
+        }
         setSteps(newSteps);
     };
 
@@ -653,7 +624,7 @@ export default function CreateUserGuide({
         // Update order
         newSteps[stepIndex].screenshots = newSteps[stepIndex].screenshots.map(
             (screenshot, i) => ({
-                ...screenshot,
+            ...screenshot,
                 order: i + 1,
             })
         );
@@ -666,7 +637,7 @@ export default function CreateUserGuide({
         if (!newSteps[stepIndex].actions) {
             newSteps[stepIndex].actions = [];
         }
-
+        
         newSteps[stepIndex].actions.push({
             action_type: "",
             label: "",
@@ -691,7 +662,7 @@ export default function CreateUserGuide({
         // Update order
         newSteps[stepIndex].actions = newSteps[stepIndex].actions.map(
             (action, i) => ({
-                ...action,
+            ...action,
                 order: i + 1,
             })
         );
@@ -823,14 +794,14 @@ export default function CreateUserGuide({
                     });
                     throw error;
                 }
-
+                
                 // Check for screenshot uploads
                 const hasScreenshots = steps.some(
                     (step) =>
                         step.screenshots &&
                         step.screenshots.some((screenshot) => screenshot.file)
                 );
-
+                
                 if (hasScreenshots) {
                     // Handle file uploads for each step
                     try {
@@ -877,7 +848,7 @@ export default function CreateUserGuide({
                         step.screenshots &&
                         step.screenshots.some((screenshot) => screenshot.file)
                 );
-
+                
                 if (hasScreenshots) {
                     try {
                         // Handle file uploads for each step
@@ -938,7 +909,7 @@ export default function CreateUserGuide({
             for (let i = 0; i < steps.length; i++) {
                 const step = steps[i];
                 const stepNumber = parseInt(step.step_number);
-
+                
                 // Find matching step in API response
                 const matchingStep = stepData.find(
                     (s) => parseInt(s.step_number) === stepNumber
@@ -949,7 +920,7 @@ export default function CreateUserGuide({
                     step.screenshots.length > 0
                 ) {
                     const stepId = matchingStep.id;
-
+                    
                     for (const screenshot of step.screenshots) {
                         if (screenshot.file) {
                             try {
@@ -957,7 +928,7 @@ export default function CreateUserGuide({
                                 formData.append("screenshot", screenshot.file);
                                 formData.append(
                                     "alt_text",
-                                    screenshot.alt_text || ""
+                                    screenshot.alt_text || screenshot.file.name || ""
                                 );
                                 formData.append(
                                     "caption",
@@ -968,12 +939,13 @@ export default function CreateUserGuide({
                                     screenshot.type || "image"
                                 );
                                 formData.append("order", screenshot.order || 1);
+                                formData.append("original_name", screenshot.file.name || "");
 
                                 // Use the correct API endpoint
                                 const uploadUrl = `/api/v1/steps/${stepId}/screenshots`;
                                 const response = await axios.post(
                                     uploadUrl,
-                                    formData,
+                                    formData, 
                                     {
                                         headers: {
                                             "Content-Type":
@@ -1012,7 +984,7 @@ export default function CreateUserGuide({
     const retrySubmit = async () => {
         setErrors({});
         setIsSubmitting(true);
-
+        
         try {
             await handleSubmit(new Event("submit"));
             // If we reach here, the submission was successful
@@ -1071,7 +1043,7 @@ export default function CreateUserGuide({
                         <span className="block sm:inline">
                             {errors.general}
                         </span>
-                        <button
+                        <button 
                             onClick={retrySubmit}
                             className="ml-4 bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-sm"
                         >
@@ -1099,7 +1071,7 @@ export default function CreateUserGuide({
                                 </p>
                             )}
                         </div>
-                    </div>
+                        </div>
                     <div
                         className={`grid gap-4 ${
                             data.parent_card_id &&
@@ -1121,7 +1093,7 @@ export default function CreateUserGuide({
                                 onChange={(e) => {
                                     const parentId = e.target.value;
                                     setData({
-                                        ...data,
+                                        ...data, 
                                         parent_card_id: parentId,
                                     });
                                     setSelectedParentCard(parentId);
@@ -1201,8 +1173,8 @@ export default function CreateUserGuide({
                             <div>
                                 <InputFloating
                                     label="YouTube Video URL"
-                                    type="text"
-                                    value={data.video_path}
+                                        type="text"
+                                        value={data.video_path}
                                     onChange={(e) => {
                                         setData({
                                             ...data,
@@ -1216,7 +1188,7 @@ export default function CreateUserGuide({
                                         {errors.video_path}
                                     </p>
                                 )}
-                            </div>
+                                </div>
                         )}
                     </div>
 
@@ -1279,4 +1251,4 @@ export default function CreateUserGuide({
             </div>
         </div>
     );
-}
+} 
