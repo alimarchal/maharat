@@ -2,13 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "@inertiajs/react";
 import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faPlus, faTrash, faImage } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "react-hot-toast";
 
 // Step component for adding multiple steps
 const Step = ({ step, index, updateStep, removeStep, addDetail, updateDetail, removeDetail, addScreenshot, updateScreenshot, removeScreenshot, addAction, updateAction, removeAction }) => {
-    const actionTypes = ["navigate", "click", "input", "select", "submit", "wait"];
-
     return (
         <div className="bg-white p-4 rounded-lg shadow-md mb-4">
             <div className="flex justify-between items-center mb-4">
@@ -28,37 +26,16 @@ const Step = ({ step, index, updateStep, removeStep, addDetail, updateDetail, re
                     <input
                         type="text"
                         value={step.title || ""}
-                        onChange={(e) => updateStep(index, { ...step, title: e.target.value })}
+                        onChange={(e) => updateStep(index, { 
+                            ...step, 
+                            title: e.target.value,
+                            // Set default values for hidden fields
+                            action_type: step.action_type || "click",
+                            description: step.description || `Step ${index + 1} details`
+                        })}
                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                         placeholder="Step Title"
                     />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea
-                        value={step.description || ""}
-                        onChange={(e) => updateStep(index, { ...step, description: e.target.value })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                        placeholder="Step Description"
-                        rows="2"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Action Type</label>
-                    <select
-                        value={step.action_type || ""}
-                        onChange={(e) => updateStep(index, { ...step, action_type: e.target.value })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                    >
-                        <option value="">Select Action Type</option>
-                        {actionTypes.map((type) => (
-                            <option key={type} value={type}>
-                                {type.charAt(0).toUpperCase() + type.slice(1)}
-                            </option>
-                        ))}
-                    </select>
                 </div>
             </div>
 
@@ -109,38 +86,48 @@ const Step = ({ step, index, updateStep, removeStep, addDetail, updateDetail, re
                 {step.screenshots && step.screenshots.map((screenshot, screenshotIndex) => (
                     <div key={screenshotIndex} className="grid grid-cols-1 gap-2 mb-2 p-2 border border-gray-200 rounded">
                         <div>
-                            <label className="block text-sm text-gray-700">Screenshot</label>
+                            <label className="block text-sm font-medium text-gray-700">Screenshot</label>
                             {screenshot.screenshot_url && (
-                                <div className="mb-2">
-                                    <img 
-                                        src={screenshot.screenshot_url} 
-                                        alt={screenshot.alt_text || "Preview"} 
-                                        className="w-32 h-32 object-cover border rounded"
-                                    />
+                                <div className="mb-2 border rounded p-2 bg-gray-50">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-sm text-gray-700 flex items-center">
+                                            <FontAwesomeIcon icon={faImage} className="text-[#009FDC] mr-2" />
+                                            {screenshot.file_name || "Screenshot"}
+                                        </span>
+                                    </div>
+                                    <div className="relative overflow-hidden" style={{ maxHeight: '150px' }}>
+                                        <img 
+                                            src={screenshot.screenshot_url} 
+                                            alt={screenshot.alt_text || "Preview"} 
+                                            className="w-full h-auto object-contain border rounded"
+                                            onError={(e) => {
+                                                console.error("Failed to load image preview");
+                                                e.target.style.display = 'none';
+                                                e.target.nextSibling.style.display = 'block';
+                                            }}
+                                        />
+                                        <div className="hidden p-2 text-xs text-center text-gray-500">
+                                            Image preview not available
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                             <input
                                 type="file"
                                 onChange={(e) => {
                                     const file = e.target.files[0];
+                                    const fileName = file ? file.name : "";
                                     updateScreenshot(index, screenshotIndex, { 
                                         ...screenshot, 
                                         file: file,
-                                        file_name: file ? file.name : ""
+                                        file_name: fileName,
+                                        // Set default alt text based on file name
+                                        alt_text: fileName.split('.')[0] || `Step ${index + 1} Screenshot ${screenshotIndex + 1}`
                                     });
                                 }}
                                 className="mt-1 block w-full text-sm file:mr-4 file:py-2 file:px-4
                                 file:rounded-full file:border-0 file:text-sm file:font-semibold
                                 file:bg-[#009FDC] file:text-white hover:file:bg-[#007BB5]"
-                            />
-                        </div>
-                        <div>
-                            <input
-                                type="text"
-                                value={screenshot.alt_text || ""}
-                                onChange={(e) => updateScreenshot(index, screenshotIndex, { ...screenshot, alt_text: e.target.value })}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                placeholder="Alt Text"
                             />
                         </div>
                         <div>
@@ -165,41 +152,34 @@ const Step = ({ step, index, updateStep, removeStep, addDetail, updateDetail, re
                 ))}
             </div>
 
-            {/* Step Actions */}
+            {/* Action (limited to one per step) */}
             <div>
                 <div className="flex justify-between items-center mb-2">
-                    <h4 className="text-md font-medium">Actions</h4>
-                    <button
-                        type="button"
-                        onClick={() => addAction(index)}
-                        className="text-[#009FDC] hover:text-blue-700 text-sm"
-                    >
-                        <FontAwesomeIcon icon={faPlus} className="mr-1" /> Add Action
-                    </button>
+                    <h4 className="text-md font-medium">Action Button</h4>
+                    {(!step.actions || step.actions.length === 0) && (
+                        <button
+                            type="button"
+                            onClick={() => addAction(index)}
+                            className="text-[#009FDC] hover:text-blue-700 text-sm"
+                        >
+                            <FontAwesomeIcon icon={faPlus} className="mr-1" /> Add Action
+                        </button>
+                    )}
                 </div>
                 {step.actions && step.actions.map((action, actionIndex) => (
                     <div key={actionIndex} className="grid grid-cols-1 gap-2 mb-2 p-2 border border-gray-200 rounded">
-                        <div>
-                            <label className="block text-sm text-gray-700">Action Type</label>
-                            <select
-                                value={action.action_type || ""}
-                                onChange={(e) => updateAction(index, actionIndex, { ...action, action_type: e.target.value })}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                            >
-                                <option value="">Select Action Type</option>
-                                {actionTypes.map((type) => (
-                                    <option key={type} value={type}>
-                                        {type.charAt(0).toUpperCase() + type.slice(1)}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
                         <div>
                             <label className="block text-sm text-gray-700">Label</label>
                             <input
                                 type="text"
                                 value={action.label || ""}
-                                onChange={(e) => updateAction(index, actionIndex, { ...action, label: e.target.value })}
+                                onChange={(e) => updateAction(index, actionIndex, { 
+                                    ...action, 
+                                    label: e.target.value,
+                                    // Set default values for hidden fields
+                                    action_type: "click",
+                                    style: "primary"
+                                })}
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                                 placeholder="Action Label"
                             />
@@ -213,26 +193,6 @@ const Step = ({ step, index, updateStep, removeStep, addDetail, updateDetail, re
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                                 placeholder="e.g., https://example.com or #login"
                             />
-                            <p className="text-xs text-gray-500 mt-1">
-                                External URL (https://...), internal path (/dashboard), or action reference (#login)
-                            </p>
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-700">Style</label>
-                            <select
-                                value={action.style || "default"}
-                                onChange={(e) => updateAction(index, actionIndex, { ...action, style: e.target.value })}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                            >
-                                <option value="default">Default (Blue Outline)</option>
-                                <option value="primary">Primary (Solid Blue)</option>
-                                <option value="secondary">Secondary (Gray)</option>
-                                <option value="danger">Danger (Red)</option>
-                                <option value="success">Success (Green)</option>
-                            </select>
-                            <p className="text-xs text-gray-500 mt-1">
-                                Controls the button's appearance
-                            </p>
                         </div>
                         <div className="flex justify-end">
                             <button
@@ -251,6 +211,13 @@ const Step = ({ step, index, updateStep, removeStep, addDetail, updateDetail, re
 };
 
 export default function CreateUserGuide({ isOpen, onClose, sectionId, subsectionId, editMode = false, guideId = null }) {
+    // For debugging
+    useEffect(() => {
+        console.log("CreateUserGuide - isOpen prop:", isOpen);
+        console.log("CreateUserGuide - sectionId:", sectionId);
+        console.log("CreateUserGuide - subsectionId:", subsectionId);
+    }, [isOpen, sectionId, subsectionId]);
+    
     const [steps, setSteps] = useState([
         {
             step_number: 1,
@@ -270,6 +237,9 @@ export default function CreateUserGuide({ isOpen, onClose, sectionId, subsection
     const [showVideoField, setShowVideoField] = useState(false);
     const [errors, setErrors] = useState({});
     const [cards, setCards] = useState([]);
+    const [parentCards, setParentCards] = useState([]);
+    const [childCards, setChildCards] = useState([]);
+    const [selectedParentCard, setSelectedParentCard] = useState("");
     const [isLoadingCards, setIsLoadingCards] = useState(false);
     
     const { data, setData, post, processing } = useForm({
@@ -279,7 +249,8 @@ export default function CreateUserGuide({ isOpen, onClose, sectionId, subsection
         video_type: "",
         is_active: true,
         card_id: "",
-        card_name: ""
+        card_name: "",
+        parent_card_id: ""
     });
 
     // Load guide data if in edit mode
@@ -296,23 +267,117 @@ export default function CreateUserGuide({ isOpen, onClose, sectionId, subsection
         }
     }, [isOpen]);
 
+    // When parent card changes, update available child cards
+    useEffect(() => {
+        if (data.parent_card_id) {
+            const selectedId = parseInt(data.parent_card_id);
+            const childrenOfSelected = childCards.filter(card => 
+                card.parent_id === selectedId
+            );
+            
+            // If no children available, use the parent card ID
+            if (childrenOfSelected.length === 0) {
+                setData("card_id", data.parent_card_id);
+            } else if (editMode && data.card_id) {
+                // If in edit mode and card_id exists, check if it's valid within the new parent context
+                const isValidChildCard = childrenOfSelected.some(card => card.id.toString() === data.card_id.toString());
+                if (!isValidChildCard) {
+                    // If not valid, reset to empty to force selection from new children
+                    setData("card_id", "");
+                }
+            } else {
+                // Reset selected card when parent changes
+                setData("card_id", "");
+            }
+        }
+    }, [data.parent_card_id]);
+
+    // Add a useEffect to properly handle card relationships in edit mode
+    useEffect(() => {
+        // Only run this effect in edit mode when we have card data loaded and cards available
+        if (editMode && cards.length > 0 && data.card_id) {
+            console.log("Edit mode card setup - card_id:", data.card_id);
+            
+            const currentCardId = parseInt(data.card_id);
+            // Find selected card in our cards list
+            const selectedCard = cards.find(c => parseInt(c.id) === currentCardId);
+            
+            console.log("Edit mode - found card:", selectedCard);
+            
+            if (selectedCard) {
+                if (selectedCard.parent_id) {
+                    // It's a child card, set parent_card_id
+                    const parentId = selectedCard.parent_id.toString();
+                    console.log(`Edit mode - setting parent card to: ${parentId} for child card: ${currentCardId}`);
+                    setData(prevData => ({
+                        ...prevData,
+                        parent_card_id: parentId
+                    }));
+                    setSelectedParentCard(parentId);
+                } else {
+                    // It's a parent card, set parent_card_id to same as card_id
+                    console.log(`Edit mode - card ${currentCardId} is a parent card`);
+                    setData(prevData => ({
+                        ...prevData,
+                        parent_card_id: currentCardId.toString()
+                    }));
+                    setSelectedParentCard(currentCardId.toString());
+                }
+            }
+        }
+    }, [editMode, cards, data.card_id]);
+
     const fetchCards = async () => {
         try {
             setIsLoadingCards(true);
             const response = await axios.get('/api/v1/cards');
             if (response.data && response.data.data) {
-                setCards(response.data.data);
+                let availableCards = response.data.data;
+                
+                // Filter cards based on section and subsection if provided
+                if (sectionId && subsectionId) {
+                    // If we have both section and subsection, filter for the specific subsection card
+                    availableCards = availableCards.filter(card => 
+                        card.section_id === sectionId && card.subsection_id === subsectionId
+                    );
+                } else if (sectionId) {
+                    // If we only have sectionId, filter for cards in that section
+                    availableCards = availableCards.filter(card => 
+                        card.section_id === sectionId
+                    );
+                }
+                
+                // Store all cards
+                setCards(availableCards);
+                
+                // Separate parent and child cards
+                const parents = availableCards.filter(card => 
+                    !card.parent_id || card.parent_id === 0 || card.parent_id === null
+                );
+                const children = availableCards.filter(card => 
+                    card.parent_id && card.parent_id !== 0 && card.parent_id !== null
+                );
+                
+                setParentCards(parents);
+                setChildCards(children);
+                
+                console.log("Parent cards:", parents);
+                console.log("Child cards:", children);
             }
         } catch (error) {
             console.error("Error loading cards:", error);
             // Provide a fallback with basic cards if the API fails
-            setCards([
+            const fallbackCards = [
                 { id: 0, name: "General Guide (No Specific Card)" },
                 { id: 1, name: "Login Details Card" },
                 { id: 2, name: "Notification Settings Card" },
                 { id: 9, name: "Warehouse Card" },
                 { id: 11, name: "Reports & Statues Card" }
-            ]);
+            ];
+            
+            setCards(fallbackCards);
+            setParentCards(fallbackCards);
+            setChildCards([]);
         } finally {
             setIsLoadingCards(false);
         }
@@ -346,12 +411,25 @@ export default function CreateUserGuide({ isOpen, onClose, sectionId, subsection
                         id: step.id,
                         step_number: step.step_number,
                         title: step.title,
-                        description: step.description,
+                        description: step.description || "",
                         action_type: step.action_type,
                         order: step.order,
                         is_active: step.is_active,
                         details: step.details || [],
-                        screenshots: step.screenshots || [],
+                        screenshots: (step.screenshots || []).map(screenshot => {
+                            // Extract filename from path if available
+                            let fileName = "Existing image";
+                            if (screenshot.screenshot_path) {
+                                // Get the file name from the path
+                                const pathParts = screenshot.screenshot_path.split('/');
+                                fileName = pathParts[pathParts.length - 1];
+                            }
+                            
+                            return {
+                                ...screenshot,
+                                file_name: fileName
+                            };
+                        }),
                         actions: step.actions || []
                     })));
                 }
@@ -531,7 +609,7 @@ export default function CreateUserGuide({ isOpen, onClose, sectionId, subsection
             const formattedSteps = steps.map(step => ({
                 step_number: step.step_number,
                 title: step.title,
-                description: step.description,
+                description: step.description || `Step ${step.step_number} - ${step.title || 'Details'}`,
                 action_type: step.action_type,
                 order: step.order,
                 is_active: step.is_active,
@@ -557,6 +635,17 @@ export default function CreateUserGuide({ isOpen, onClose, sectionId, subsection
             // Remove card_name if it exists, as it's not needed anymore
             if (fullPayload.card_name !== undefined) {
                 delete fullPayload.card_name;
+            }
+            
+            // Handle parent/child card relationship
+            if (!fullPayload.card_id && fullPayload.parent_card_id) {
+                // If no child card is selected but parent is, use parent as card_id
+                fullPayload.card_id = fullPayload.parent_card_id;
+            }
+            
+            // Remove parent_card_id from payload as backend doesn't need it
+            if (fullPayload.parent_card_id !== undefined) {
+                delete fullPayload.parent_card_id;
             }
 
             // Ensure required fields are properly formatted
@@ -651,8 +740,10 @@ export default function CreateUserGuide({ isOpen, onClose, sectionId, subsection
                 video_path: "",
                 video_type: "",
                 is_active: true,
-                card_id: ""
+                card_id: "",
+                parent_card_id: ""
             });
+            setSelectedParentCard("");
             setSteps([
                 {
                     step_number: 1,
@@ -768,7 +859,12 @@ export default function CreateUserGuide({ isOpen, onClose, sectionId, subsection
     };
 
     // If modal is not open, don't render anything
-    if (!isOpen) return null;
+    if (!isOpen) {
+        console.log("CreateUserGuide not rendering - isOpen is false");
+        return null;
+    } else {
+        console.log("CreateUserGuide rendering - isOpen is true");
+    }
 
     // Show loading while fetching guide data in edit mode
     if (editMode && isLoadingGuide) {
@@ -814,12 +910,26 @@ export default function CreateUserGuide({ isOpen, onClose, sectionId, subsection
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Basic Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                         <div className="relative w-full">
                             <input
                                 type="text"
                                 value={data.title}
-                                onChange={(e) => setData("title", e.target.value)}
+                                onChange={(e) => {
+                                    const title = e.target.value;
+                                    // Generate slug in the background but don't show it
+                                    const slug = title
+                                        .toLowerCase()
+                                        .replace(/[^\w\s-]/g, '')
+                                        .replace(/[\s_-]+/g, '-')
+                                        .replace(/^-+|-+$/g, '');
+                                    
+                                    setData({
+                                        ...data,
+                                        title: title,
+                                        slug: slug
+                                    });
+                                }}
                                 className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
                                 placeholder=" "
                                 required
@@ -835,38 +945,24 @@ export default function CreateUserGuide({ isOpen, onClose, sectionId, subsection
                             {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
                         </div>
 
-                        <div className="relative w-full">
-                            <input
-                                type="text"
-                                value={data.slug}
-                                onChange={(e) => setData("slug", e.target.value)}
-                                className="peer border border-gray-300 p-5 rounded-2xl w-full bg-gray-50 appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC] cursor-not-allowed"
-                                readOnly
-                            />
-                            <label
-                                className="absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
-                                    -top-2 left-2 text-base text-[#009FDC] px-1"
-                            >
-                                Slug (auto-generated)
-                            </label>
-                        </div>
-
                         {/* Card Selection */}
-                        <div className="relative w-full md:col-span-2">
+                        <div className="relative w-full">
                             <select
-                                value={data.card_id}
+                                value={data.parent_card_id}
                                 onChange={(e) => {
+                                    const parentId = e.target.value;
                                     setData({
                                         ...data, 
-                                        card_id: e.target.value
+                                        parent_card_id: parentId
                                     });
+                                    setSelectedParentCard(parentId);
                                 }}
                                 className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
                                 placeholder=" "
                                 required
                             >
-                                <option value="">Select a Card (Required)</option>
-                                {cards.map(card => (
+                                <option value="">Select a Parent Card (Required)</option>
+                                {parentCards.map(card => (
                                     <option key={card.id} value={card.id}>
                                         {card.name}
                                     </option>
@@ -876,15 +972,47 @@ export default function CreateUserGuide({ isOpen, onClose, sectionId, subsection
                                 className="absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
                                     -top-2 left-2 text-base text-[#009FDC] px-1"
                             >
-                                Associated Card
+                                Main Card
                             </label>
-                            <p className="text-sm text-gray-500 mt-1">
-                                Select the card this guide is specifically for (e.g., Login, Warehouse, etc.)
-                            </p>
-                            {errors.card_id && <p className="text-red-500 text-sm mt-1">{errors.card_id}</p>}
+                            {errors.parent_card_id && <p className="text-red-500 text-sm mt-1">{errors.parent_card_id}</p>}
                         </div>
 
-                        <div className="col-span-1 md:col-span-2 flex items-center">
+                        {/* Child Card Selection - Only show if parent card is selected and children exist */}
+                        {data.parent_card_id && childCards.filter(card => card.parent_id === parseInt(data.parent_card_id)).length > 0 && (
+                            <div className="relative w-full mt-2">
+                                <select
+                                    value={data.card_id}
+                                    onChange={(e) => {
+                                        setData({
+                                            ...data, 
+                                            card_id: e.target.value
+                                        });
+                                    }}
+                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
+                                    placeholder=" "
+                                    required
+                                >
+                                    <option value="">Select a Specific Card</option>
+                                    {childCards
+                                        .filter(card => card.parent_id === parseInt(data.parent_card_id))
+                                        .map(card => (
+                                            <option key={card.id} value={card.id}>
+                                                {card.name}
+                                            </option>
+                                        ))
+                                    }
+                                </select>
+                                <label
+                                    className="absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
+                                        -top-2 left-2 text-base text-[#009FDC] px-1"
+                                >
+                                    Sub Card
+                                </label>
+                                {errors.card_id && <p className="text-red-500 text-sm mt-1">{errors.card_id}</p>}
+                            </div>
+                        )}
+
+                        <div className="flex items-center">
                             <input
                                 type="checkbox"
                                 id="hasVideo"
@@ -898,44 +1026,31 @@ export default function CreateUserGuide({ isOpen, onClose, sectionId, subsection
                         </div>
 
                         {showVideoField && (
-                            <>
-                                <div className="relative w-full">
-                                    <input
-                                        type="text"
-                                        value={data.video_path}
-                                        onChange={(e) => setData("video_path", e.target.value)}
-                                        className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
-                                        placeholder=" "
-                                    />
-                                    <label
-                                        className="absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
-                                            peer-placeholder-shown:top-5 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
-                                            peer-focus:-top-2 peer-focus:left-2 peer-focus:text-base peer-focus:text-[#009FDC] peer-focus:px-1
-                                            -top-2 left-2 text-base text-[#009FDC] px-1"
-                                    >
-                                        Video URL
-                                    </label>
-                                    {errors.video_path && <p className="text-red-500 text-sm mt-1">{errors.video_path}</p>}
-                                </div>
-                                <div className="relative w-full">
-                                    <select
-                                        value={data.video_type}
-                                        onChange={(e) => setData("video_type", e.target.value)}
-                                        className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
-                                    >
-                                        <option value="">Select Type</option>
-                                        <option value="youtube">YouTube</option>
-                                        <option value="vimeo">Vimeo</option>
-                                        <option value="other">Other</option>
-                                    </select>
-                                    <label
-                                        className="absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
-                                            -top-2 left-2 text-base text-[#009FDC] px-1"
-                                    >
-                                        Video Type
-                                    </label>
-                                </div>
-                            </>
+                            <div className="relative w-full">
+                                <input
+                                    type="text"
+                                    value={data.video_path}
+                                    onChange={(e) => {
+                                        setData({
+                                            ...data, 
+                                            video_path: e.target.value,
+                                            // Always set YouTube as default type
+                                            video_type: "youtube"
+                                        });
+                                    }}
+                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
+                                    placeholder=" "
+                                />
+                                <label
+                                    className="absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
+                                        peer-placeholder-shown:top-5 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
+                                        peer-focus:-top-2 peer-focus:left-2 peer-focus:text-base peer-focus:text-[#009FDC] peer-focus:px-1
+                                        -top-2 left-2 text-base text-[#009FDC] px-1"
+                                >
+                                    YouTube Video URL
+                                </label>
+                                {errors.video_path && <p className="text-red-500 text-sm mt-1">{errors.video_path}</p>}
+                            </div>
                         )}
                     </div>
 

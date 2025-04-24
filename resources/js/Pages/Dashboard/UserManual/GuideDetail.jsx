@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { usePage, Link } from "@inertiajs/react";
-import { Play, Edit, Trash, AlertCircle } from "lucide-react";
+import { Play, Edit, Trash, AlertCircle, Construction } from "lucide-react";
 import axios from "axios";
 import CreateUserGuide from "./CreateUserGuide";
 
@@ -10,6 +10,8 @@ export default function GuideDetail() {
     
     // Get ID from props, ensuring we handle numeric IDs properly
     const guideId = props.id || props.section || "create-request";
+    const sectionId = props.section;
+    const subsectionId = props.subsection;
     
     const [guide, setGuide] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -19,6 +21,12 @@ export default function GuideDetail() {
     const [error, setError] = useState(null);
     const [debugInfo, setDebugInfo] = useState(null);
     const [imageErrors, setImageErrors] = useState({});
+    const [isUnderConstruction, setIsUnderConstruction] = useState(false);
+
+    // Monitor isEditModalOpen state changes
+    useEffect(() => {
+        console.log("isEditModalOpen state changed to:", isEditModalOpen);
+    }, [isEditModalOpen]);
 
     // For debugging, log the props
     useEffect(() => {
@@ -33,7 +41,13 @@ export default function GuideDetail() {
             fetchGuideData();
         } else {
             // For non-numeric IDs (hardcoded sections), just set loading to false
+            // and check if we have hardcoded content
             setLoading(false);
+            
+            // If we don't have hardcoded content for this ID, mark as under construction
+            if (!guideContent[guideId]) {
+                setIsUnderConstruction(true);
+            }
         }
     }, [guideId]);
 
@@ -82,6 +96,7 @@ export default function GuideDetail() {
             } else {
                 console.warn("No guide data in response:", response.data);
                 setError("No guide data found for this ID. API returned empty response.");
+                setIsUnderConstruction(true);
                 
                 // Only use hardcoded content as a fallback for specific IDs
                 if (guideContent[guideId]) {
@@ -101,6 +116,7 @@ export default function GuideDetail() {
         } catch (error) {
             console.error("Error fetching guide:", error);
             setError(`Failed to load guide data: ${error.response?.data?.message || error.message}`);
+            setIsUnderConstruction(true);
             setDebugInfo({
                 error: true,
                 message: error.message,
@@ -465,6 +481,65 @@ export default function GuideDetail() {
         }));
     };
 
+    // Add rendering for the under construction page
+    const renderUnderConstruction = () => {
+        // Get section/subsection name for display
+        let pageName = "";
+        if (subsectionId) {
+            pageName = formatSectionName(subsectionId);
+        } else if (sectionId) {
+            pageName = formatSectionName(sectionId);
+        } else {
+            pageName = "This page";
+        }
+        
+        // Instead of toggling a modal, navigate to User Manual page with a special query param
+        const handleCreateGuide = () => {
+            console.log("Create Guide button clicked - redirecting to user manual");
+            window.location.href = `/user-manual?openCreateGuide=true&sectionId=${sectionId || ""}&subsectionId=${subsectionId || ""}`;
+        };
+        
+        return (
+            <>
+                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                    <div className="p-8 max-w-2xl mx-auto my-4">
+                        <div className="flex items-center justify-center mb-6">
+                            {/* Using a suitable icon for construction */}
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-800 mb-4">Page Under Construction</h2>
+                        <p className="text-gray-600 mb-6">
+                            {pageName} is currently under construction. Our team is working on creating comprehensive documentation for this section.
+                        </p>
+                        <div className="mt-8">
+                            <button
+                                onClick={handleCreateGuide}
+                                className="bg-[#009FDC] hover:bg-blue-600 text-white px-4 py-2 rounded-md font-medium transition-colors"
+                            >
+                                Create This Guide
+                            </button>
+                            <Link
+                                href="/user-manual"
+                                className="ml-4 bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md font-medium transition-colors"
+                            >
+                                Return to Manual Home
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </>
+        );
+    };
+    
+    const formatSectionName = (id) => {
+        return id
+            .split("-")
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ");
+    };
+
     // Handle loading state
     if (loading) {
         return (
@@ -511,302 +586,311 @@ export default function GuideDetail() {
 
     // Handle case where no guide is found (neither from API nor hardcoded)
     if (!currentGuide) {
-        return (
-            <div className="w-full flex flex-col items-center justify-center h-64">
-                <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4 max-w-2xl" role="alert">
-                    <strong className="font-bold">Not Found: </strong>
-                    <span className="block sm:inline">The requested guide could not be found.</span>
-                </div>
-                <Link 
-                    href="/user-manual" 
-                    className="mt-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
-                >
-                    Back to User Manual
-                </Link>
-            </div>
-        );
+        return renderUnderConstruction();
     }
 
     return (
-        <div className="w-full">
-            {/* Title Section - Simplified like SimpleGuideDetail */}
-            <div className="flex justify-center items-center mb-10">
-                <h1 className="text-3xl font-bold text-gray-800 text-center">
-                    {currentGuide.title}
-                </h1>
-            </div>
-            
-            {/* Edit/Delete Buttons for authenticated users with permissions */}
-            {guide && canEdit() && (
-                <div className="flex justify-end mb-4">
-                    <div className="flex space-x-2">
-                        <button
-                            onClick={() => setIsEditModalOpen(true)}
-                            className="bg-[#009FDC] text-white p-2 rounded-full hover:bg-blue-600 transition duration-150"
-                            title="Edit Guide"
-                        >
-                            <Edit size={20} />
-                        </button>
-                        <button
-                            onClick={() => setShowConfirmDelete(true)}
-                            className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition duration-150"
-                            title="Delete Guide"
-                        >
-                            <Trash size={20} />
-                        </button>
+        <>
+            <div className="max-w-full mx-auto py-4">
+                {loading ? (
+                    <div className="flex justify-center my-12">
+                        <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                     </div>
-                </div>
-            )}
-
-            {/* Timeline Section */}
-            <div className="relative">
-                <div className="absolute left-6 top-10 bottom-20 w-0.5 bg-[#93D3EC]"></div>
-
-                <div className="space-y-12">
-                {tasks.map((step, index) => {
-                    // Render video step separately (no stepper)
-                    if (step.video) {
-                        return (
-                            <div
-                                key={index}
-                                className="flex flex-col items-center justify-center p-6 border border-[#009FDC] rounded-2xl my-12 mx-auto max-w-4xl"
-                            >
-                                <div className="h-64 flex items-center justify-center mb-4">
-                                    <div className="bg-[#009FDC] rounded-full p-4 cursor-pointer hover:bg-blue-600 transition duration-200">
-                                        <Play
-                                            size={32}
-                                            className="text-white"
-                                        />
-                                    </div>
-                                </div>
-                                <a
-                                    href={step.video}
-                                    className="text-[#009FDC] text-sm mt-2 flex items-center hover:underline"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    Open in new window
-                                </a>
-                            </div>
-                        );
-                    }
-
-                    // Format step content differently for API vs hardcoded data
-                    const stepContent = guide ? 
-                        (step.details && step.details.map((detail, idx) => (
-                            <p key={idx} className="text-lg font-medium mb-2">
-                                {detail.content}
-                            </p>
-                        ))) : 
-                        formatContent(step.content);
-
-                    // Render regular steps with stepper
-                    return (
-                        <div key={index} className="flex">
-                            <div className="relative z-10">
-                                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#93D3EC] text-lg font-medium">
-                                    {step.step_number || step.number}
+                ) : isUnderConstruction ? (
+                    renderUnderConstruction()
+                ) : (
+                    <div className="w-full">
+                        {/* Title Section - Simplified like SimpleGuideDetail */}
+                        <div className="flex justify-center items-center mb-10">
+                            <h1 className="text-3xl font-bold text-gray-800 text-center">
+                                {currentGuide.title}
+                            </h1>
+                        </div>
+                        
+                        {/* Edit/Delete Buttons for authenticated users with permissions */}
+                        {guide && canEdit() && (
+                            <div className="flex justify-end mb-4">
+                                <div className="flex space-x-2">
+                                    <button
+                                        onClick={() => setIsEditModalOpen(true)}
+                                        className="bg-[#009FDC] text-white p-2 rounded-full hover:bg-blue-600 transition duration-150"
+                                        title="Edit Guide"
+                                    >
+                                        <Edit size={20} />
+                                    </button>
+                                    <button
+                                        onClick={() => setShowConfirmDelete(true)}
+                                        className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition duration-150"
+                                        title="Delete Guide"
+                                    >
+                                        <Trash size={20} />
+                                    </button>
                                 </div>
                             </div>
-                            <div className="ml-4 flex-1">
-                                <h3 className="text-xl font-bold mb-2 text-gray-800">
-                                    {step.title}
-                                </h3>
-                                <div className="mb-4">
-                                    {guide && step.description && (
-                                        <p className="text-lg font-medium mb-2">{step.description}</p>
-                                    )}
-                                    {stepContent}
-                                </div>
+                        )}
 
-                                {/* Screenshots Section - Clean UI without debug info */}
-                                {guide && step.screenshots && step.screenshots.length > 0 ? (
-                                    <div className="p-2">
-                                        <div className="grid grid-cols-1 gap-4">
-                                            {step.screenshots.map((screenshot, screenshotIdx) => {
-                                                const imageUrl = getImageUrl(screenshot);
-                                                
-                                                return (
-                                                    <div key={screenshotIdx} className="border border-[#009FDC] rounded-lg overflow-hidden shadow-md w-full">
-                                                        {imageUrl && !imageErrors[screenshot.id] ? (
-                                                            <div className="flex justify-center">
-                                                                <img
-                                                                    src={imageUrl}
-                                                                    alt={screenshot.alt_text || `Screenshot ${screenshotIdx + 1}`}
-                                                                    className="w-full h-auto max-h-[600px] object-contain"
-                                                                    onLoad={() => console.log(`DEBUG: Successfully loaded image: ${imageUrl}`)}
-                                                                    onError={(e) => {
-                                                                        console.error(`DEBUG: Image load error for: ${imageUrl}`);
-                                                                        e.target.onerror = null;
-                                                                        e.target.src = "/images/placeholder.png";
-                                                                        handleImageError(screenshot.id, imageUrl);
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="bg-gray-100 flex flex-col items-center justify-center p-4 text-gray-500 h-48 w-full">
-                                                                <p className="text-center">Screenshot not available</p>
-                                                            </div>
-                                                        )}
-                                                        {screenshot.caption && (
-                                                            <div className="p-2 bg-gray-50 text-center w-full">
-                                                                <p className="text-sm text-gray-700 text-center">
-                                                                    {screenshot.caption}
-                                                                </p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                ) : !guide && step.imageUrl ? (
-                                    <div className="p-2">
-                                        <div className="border border-[#009FDC] rounded-2xl flex items-center justify-center mb-2 shadow-lg w-full">
-                                            <img
-                                                src="/api/placeholder/600/300"
-                                                alt={`Step ${step.number} illustration`}
-                                                className="w-full h-auto object-contain rounded-2xl"
-                                                onError={(e) => {
-                                                    console.warn("Failed to load placeholder image");
-                                                    e.target.onerror = null;
-                                                    e.target.style.display = 'none';
-                                                }}
-                                            />
-                                        </div>
-                                        {step.hyperLink && (
-                                            <div className="flex justify-center">
-                                                <a
-                                                    href={step.hyperLink}
-                                                    className="text-[#009FDC] text-2xl font-bold flex items-center hover:underline text-center"
-                                                >
-                                                    View detailed instructions
-                                                </a>
+                        {/* Timeline Section */}
+                        <div className="relative">
+                            <div className="absolute left-6 top-10 bottom-20 w-0.5 bg-[#93D3EC]"></div>
+
+                            <div className="space-y-12">
+                            {tasks.map((step, index) => {
+                                // Render video step separately (no stepper)
+                                if (step.video) {
+                                    return (
+                                        <div
+                                            key={index}
+                                            className="flex flex-col items-center justify-center p-6 border border-[#009FDC] rounded-2xl my-12 mx-auto max-w-4xl"
+                                        >
+                                            <div className="h-64 flex items-center justify-center mb-4">
+                                                <div className="bg-[#009FDC] rounded-full p-4 cursor-pointer hover:bg-blue-600 transition duration-200">
+                                                    <Play
+                                                        size={32}
+                                                        className="text-white"
+                                                    />
+                                                </div>
                                             </div>
-                                        )}
-                                    </div>
-                                ) : null}
-                                
-                                {/* Actions Section */}
-                                {guide && step.actions && step.actions.length > 0 && (
-                                    <div className="mt-4 flex justify-center">
-                                        <div className="flex flex-wrap justify-center">
-                                            {step.actions.map((action, actionIdx) => (
-                                                <a
-                                                    key={actionIdx}
-                                                    href={action.url_or_action || "#"}
-                                                    className="text-base font-bold m-2 px-6 py-3 border rounded-lg transition-colors text-[#009FDC] border-[#009FDC] hover:bg-[#009FDC] hover:text-white text-center"
-                                                >
-                                                    {action.label || "Action"}
-                                                </a>
-                                            ))}
+                                            <a
+                                                href={step.video}
+                                                className="text-[#009FDC] text-sm mt-2 flex items-center hover:underline"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                Open in new window
+                                            </a>
                                         </div>
+                                    );
+                                }
+
+                                // Format step content differently for API vs hardcoded data
+                                const stepContent = guide ? 
+                                    (step.details && step.details.map((detail, idx) => (
+                                        <p key={idx} className="text-lg font-medium mb-2">
+                                            {detail.content}
+                                        </p>
+                                    ))) : 
+                                    formatContent(step.content);
+
+                                // Render regular steps with stepper
+                                return (
+                                    <div key={index} className="flex">
+                                        <div className="relative z-10">
+                                            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#93D3EC] text-lg font-medium">
+                                                {step.step_number || step.number}
+                                            </div>
+                                        </div>
+                                        <div className="ml-4 flex-1">
+                                            <h3 className="text-xl font-bold mb-2 text-gray-800">
+                                                {step.title}
+                                            </h3>
+                                            <div className="mb-4">
+                                                {guide && step.description && (
+                                                    <p className="text-lg font-medium mb-2">{step.description}</p>
+                                                )}
+                                                {stepContent}
+                                            </div>
+
+                                            {/* Screenshots Section - Clean UI without debug info */}
+                                            {guide && step.screenshots && step.screenshots.length > 0 ? (
+                                                <div className="p-2">
+                                                    <div className="grid grid-cols-1 gap-4">
+                                                        {step.screenshots.map((screenshot, screenshotIdx) => {
+                                                            const imageUrl = getImageUrl(screenshot);
+                                                            
+                                                            return (
+                                                                <div key={screenshotIdx} className="border border-[#009FDC] rounded-lg overflow-hidden shadow-md w-full">
+                                                                    {imageUrl && !imageErrors[screenshot.id] ? (
+                                                                        <div className="flex justify-center">
+                                                                            <img
+                                                                                src={imageUrl}
+                                                                                alt={screenshot.alt_text || `Screenshot ${screenshotIdx + 1}`}
+                                                                                className="w-full h-auto max-h-[600px] object-contain"
+                                                                                onLoad={() => console.log(`DEBUG: Successfully loaded image: ${imageUrl}`)}
+                                                                                onError={(e) => {
+                                                                                    console.error(`DEBUG: Image load error for: ${imageUrl}`);
+                                                                                    e.target.onerror = null;
+                                                                                    e.target.src = "/images/placeholder.png";
+                                                                                    handleImageError(screenshot.id, imageUrl);
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="bg-gray-100 flex flex-col items-center justify-center p-4 text-gray-500 h-48 w-full">
+                                                                            <p className="text-center">Screenshot not available</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {screenshot.caption && (
+                                                                        <div className="p-2 bg-gray-50 text-center w-full">
+                                                                            <p className="text-sm text-gray-700 text-center">
+                                                                                {screenshot.caption}
+                                                                            </p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ) : !guide && step.imageUrl ? (
+                                                <div className="p-2">
+                                                    <div className="border border-[#009FDC] rounded-2xl flex items-center justify-center mb-2 shadow-lg w-full">
+                                                        <img
+                                                            src="/api/placeholder/600/300"
+                                                            alt={`Step ${step.number} illustration`}
+                                                            className="w-full h-auto object-contain rounded-2xl"
+                                                            onError={(e) => {
+                                                                console.warn("Failed to load placeholder image");
+                                                                e.target.onerror = null;
+                                                                e.target.style.display = 'none';
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    {step.hyperLink && (
+                                                        <div className="flex justify-center">
+                                                            <a
+                                                                href={step.hyperLink}
+                                                                className="text-[#009FDC] text-2xl font-bold flex items-center hover:underline text-center"
+                                                            >
+                                                                View detailed instructions
+                                                            </a>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : null}
+                                            
+                                            {/* Actions Section */}
+                                            {guide && step.actions && step.actions.length > 0 && (
+                                                <div className="mt-4 flex justify-center">
+                                                    <div className="flex flex-wrap justify-center">
+                                                        {step.actions.map((action, actionIdx) => (
+                                                            <a
+                                                                key={actionIdx}
+                                                                href={action.url_or_action || "#"}
+                                                                className="text-base font-bold m-2 px-6 py-3 border rounded-lg transition-colors text-[#009FDC] border-[#009FDC] hover:bg-[#009FDC] hover:text-white text-center"
+                                                            >
+                                                                {action.label || "Action"}
+                                                            </a>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            </div>
+                        </div>
+
+                        {/* Display a message if there are no steps */}
+                        {tasks.length === 0 && (
+                            <div className="flex justify-center items-center h-40 bg-gray-50 rounded-lg border border-gray-200 mt-8">
+                                <p className="text-gray-500 text-lg text-center">No steps available for this guide.</p>
+                            </div>
+                        )}
+                        
+                        {/* Video Section */}
+                        {guide && guide.video_path && (
+                            <div className="flex flex-col items-center justify-center p-6 border border-[#009FDC] rounded-2xl my-12 mx-auto max-w-3xl bg-blue-50">
+                                <h3 className="text-xl font-bold mb-4 text-center w-full">Video Tutorial</h3>
+                                
+                                <div className="w-full flex items-center justify-center mb-2">
+                                    {guide.video_type === 'youtube' ? (
+                                        <div className="aspect-video w-full">
+                                            <div className="relative">
+                                                <iframe 
+                                                    width="100%" 
+                                                    height="100%" 
+                                                    src={getFormattedVideoUrl(guide.video_path, guide.video_type)}
+                                                    frameBorder="0" 
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                                    allowFullScreen
+                                                    className="rounded-xl shadow-lg min-h-[315px]"
+                                                    onLoad={() => console.log("Video iframe loaded successfully")}
+                                                    onError={(e) => {
+                                                        console.error("Error loading video iframe:", e);
+                                                    }}
+                                                ></iframe>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div 
+                                            onClick={() => {
+                                                if (guide.video_path) {
+                                                    console.log("Opening video in new tab:", guide.video_path);
+                                                    window.open(guide.video_path, '_blank');
+                                                }
+                                            }}
+                                            className="bg-[#009FDC] rounded-full p-6 cursor-pointer hover:bg-blue-600 transition duration-200"
+                                        >
+                                            <Play size={48} className="text-white" />
+                                        </div>
+                                    )}
+                                </div>
+                                {guide.video_path && (
+                                    <div className="flex justify-center w-full">
+                                        <a
+                                            href={guide.video_path}
+                                            className="text-[#009FDC] text-sm flex items-center hover:underline mt-1 text-center"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={() => console.log("Opening video link:", guide.video_path)}
+                                        >
+                                            Open video in new window
+                                        </a>
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    );
-                })}
-                </div>
-            </div>
-
-            {/* Display a message if there are no steps */}
-            {tasks.length === 0 && (
-                <div className="flex justify-center items-center h-40 bg-gray-50 rounded-lg border border-gray-200 mt-8">
-                    <p className="text-gray-500 text-lg text-center">No steps available for this guide.</p>
-                </div>
-            )}
-            
-            {/* Video Section */}
-            {guide && guide.video_path && (
-                <div className="flex flex-col items-center justify-center p-6 border border-[#009FDC] rounded-2xl my-12 mx-auto max-w-3xl bg-blue-50">
-                    <h3 className="text-xl font-bold mb-4 text-center w-full">Video Tutorial</h3>
-                    
-                    <div className="w-full flex items-center justify-center mb-2">
-                        {guide.video_type === 'youtube' ? (
-                            <div className="aspect-video w-full">
-                                <div className="relative">
-                                    <iframe 
-                                        width="100%" 
-                                        height="100%" 
-                                        src={getFormattedVideoUrl(guide.video_path, guide.video_type)}
-                                        frameBorder="0" 
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                        allowFullScreen
-                                        className="rounded-xl shadow-lg min-h-[315px]"
-                                        onLoad={() => console.log("Video iframe loaded successfully")}
-                                        onError={(e) => {
-                                            console.error("Error loading video iframe:", e);
-                                        }}
-                                    ></iframe>
-                                </div>
-                            </div>
-                        ) : (
-                            <div 
-                                onClick={() => {
-                                    if (guide.video_path) {
-                                        console.log("Opening video in new tab:", guide.video_path);
-                                        window.open(guide.video_path, '_blank');
-                                    }
-                                }}
-                                className="bg-[#009FDC] rounded-full p-6 cursor-pointer hover:bg-blue-600 transition duration-200"
-                            >
-                                <Play size={48} className="text-white" />
-                            </div>
                         )}
                     </div>
-                    {guide.video_path && (
-                        <div className="flex justify-center w-full">
-                            <a
-                                href={guide.video_path}
-                                className="text-[#009FDC] text-sm flex items-center hover:underline mt-1 text-center"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={() => console.log("Opening video link:", guide.video_path)}
-                            >
-                                Open video in new window
-                            </a>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Delete Confirmation Modal */}
-            {showConfirmDelete && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-                        <h3 className="text-lg font-semibold mb-4">Confirm Deletion</h3>
-                        <p className="mb-6">Are you sure you want to delete this user guide? This action cannot be undone.</p>
-                        <div className="flex justify-end space-x-3">
-                            <button 
-                                onClick={() => setShowConfirmDelete(false)}
-                                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                onClick={handleDelete}
-                                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-                            >
-                                Delete
-                            </button>
+                )}
+                
+                {/* Delete Confirmation Modal */}
+                {showConfirmDelete && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+                            <h3 className="text-lg font-semibold mb-4">Confirm Deletion</h3>
+                            <p className="mb-6">Are you sure you want to delete this user guide? This action cannot be undone.</p>
+                            <div className="flex justify-end space-x-3">
+                                <button 
+                                    onClick={() => setShowConfirmDelete(false)}
+                                    className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={handleDelete}
+                                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                                >
+                                    Delete
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-
-            {/* Edit Modal */}
-            {guide && (
-                <CreateUserGuide 
-                    isOpen={isEditModalOpen} 
-                    onClose={() => {
-                        setIsEditModalOpen(false);
-                        fetchGuideData(); // Refresh data after closing
-                    }}
-                    editMode={true}
-                    guideId={guide.id}
-                />
-            )}
-        </div>
+                )}
+            </div>
+            
+            {/* Always include the CreateUserGuide modal at the root level for better reliability */}
+            <CreateUserGuide 
+                isOpen={isEditModalOpen} 
+                onClose={() => {
+                    console.log("CreateUserGuide onClose triggered");
+                    setIsEditModalOpen(false);
+                    console.log("isEditModalOpen set to false");
+                    
+                    // Refresh or reload
+                    if (!isNaN(parseInt(guideId))) {
+                        console.log("Refreshing guide data for ID:", guideId);
+                        fetchGuideData();
+                    } else {
+                        console.log("Reloading page");
+                        window.location.reload();
+                    }
+                }} 
+                editMode={guide && guide.id ? true : false}
+                guideId={guide && guide.id ? guide.id : null}
+                sectionId={sectionId}
+                subsectionId={subsectionId}
+            />
+        </>
     );
 }
