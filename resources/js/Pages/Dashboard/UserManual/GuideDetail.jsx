@@ -7,12 +7,12 @@ import CreateUserGuide from "./CreateUserGuide";
 export default function GuideDetail() {
     const { props } = usePage();
     const { auth } = usePage().props;
-
+    
     // Get ID from props, ensuring we handle numeric IDs properly
     const guideId = props.id || props.section || "create-request";
     const sectionId = props.section;
     const subsectionId = props.subsection;
-
+    
     const [guide, setGuide] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -41,9 +41,9 @@ export default function GuideDetail() {
             const response = await axios.get(
                 `/api/v1/user-manuals/${numericId}?include=card,steps,steps.details,steps.screenshots,steps.actions&_=${Date.now()}`
             );
-
+            
             if (response.data && response.data.data) {
-
+                
                 setGuide(response.data.data);
                 setDebugInfo({
                     id: response.data.data.id,
@@ -55,7 +55,7 @@ export default function GuideDetail() {
                         ) || false,
                     apiUrl: response.config?.url,
                 });
-
+                
                 // If guide has a card, fetch card data
                 if (response.data.data.card_id) {
                     if (!response.data.data.card) {
@@ -70,10 +70,10 @@ export default function GuideDetail() {
                     "No guide data found for this ID. API returned empty response."
                 );
                 setIsUnderConstruction(true);
-
-                setDebugInfo({
+                
+                    setDebugInfo({
                     message: "No content available for this ID",
-                    id: guideId,
+                        id: guideId,
                     apiUrl: response.config?.url,
                 });
             }
@@ -96,7 +96,7 @@ export default function GuideDetail() {
             setLoading(false);
         }
     };
-
+    
     const fetchCardData = async (cardId) => {
         try {
             console.log("Fetching card data for ID:", cardId);
@@ -112,7 +112,7 @@ export default function GuideDetail() {
 
     const handleDelete = async () => {
         if (!guide || !guide.id) return;
-
+        
         try {
             await axios.delete(`/api/v1/user-manuals/${guide.id}`);
             // Redirect to user manual home page after deletion
@@ -126,12 +126,12 @@ export default function GuideDetail() {
     // Function to check if user has permission to edit
     const canEdit = () => {
         if (!auth || !auth.user) return false;
-
+        
         // Check if user is the creator of the guide
         if (guide && guide.creator && guide.creator.id === auth.user.id) {
             return true;
         }
-
+        
         // Check if user has admin permissions
         if (
             auth.user.permissions &&
@@ -140,14 +140,14 @@ export default function GuideDetail() {
         ) {
             return true;
         }
-
+        
         return false;
     };
 
     // Sort steps by their order or step_number
     const sortedSteps = () => {
         if (!guide || !guide.steps) return [];
-
+        
         return [...guide.steps].sort((a, b) => {
             // First try to sort by order
             if (a.order !== undefined && b.order !== undefined) {
@@ -168,7 +168,7 @@ export default function GuideDetail() {
             return null;
         }
         let formattedUrl = videoPath;
-
+        
         if (videoType === "youtube") {
             // Handle different YouTube URL formats
             if (videoPath.includes("embed")) {
@@ -187,7 +187,7 @@ export default function GuideDetail() {
                 console.warn(`Unrecognized YouTube URL format: ${videoPath}`);
             }
         }
-
+        
         return formattedUrl;
     };
 
@@ -201,24 +201,24 @@ export default function GuideDetail() {
                 console.log(`DEBUG: Path is already a full URL: ${path}`);
                 return path;
             }
-
+            
             // Use the direct path format
             const directUrl = `/storage/${path}`;
             return directUrl;
         }
-
+        
         // Fallback to screenshot_url if screenshot_path doesn't exist
         if (screenshot.screenshot_url) {
             return screenshot.screenshot_url;
         }
-
+        
         console.warn("DEBUG: No screenshot path or URL found");
         return "/images/placeholder.png";
     };
 
     // Enhanced screenshot error handling with more debugging
     const handleImageError = (screenshotId, url) => {
-
+        
         // Track which images have errored
         setImageErrors((prev) => ({
             ...prev,
@@ -319,14 +319,14 @@ export default function GuideDetail() {
                     </div>
                 )}
                 <div className="mt-4">
-                    <button
-                        onClick={fetchGuideData}
+                    <button 
+                        onClick={fetchGuideData} 
                         className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                     >
                         Try Again
                     </button>
-                    <Link
-                        href="/user-manual"
+                    <Link 
+                        href="/user-manual" 
                         className="ml-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
                     >
                         Back to User Manual
@@ -351,70 +351,70 @@ export default function GuideDetail() {
                 ) : isUnderConstruction ? (
                     renderUnderConstruction()
                 ) : (
-                    <div className="w-full">
+        <div className="w-full">
                         {/* Title Section */}
-                        <div className="flex justify-center items-center mb-10">
-                            <h1 className="text-3xl font-bold text-gray-800 text-center">
+            <div className="flex justify-center items-center mb-10">
+                <h1 className="text-3xl font-bold text-gray-800 text-center">
                                 {guide.title}
-                            </h1>
-                        </div>
-
-                        {/* Edit/Delete Buttons for authenticated users with permissions */}
-                        {guide && canEdit() && (
-                            <div className="flex justify-end mb-4">
-                                <div className="flex space-x-2">
-                                    <button
-                                        onClick={() => setIsEditModalOpen(true)}
-                                        className="bg-[#009FDC] text-white p-2 rounded-full hover:bg-blue-600 transition duration-150"
-                                        title="Edit Guide"
-                                    >
-                                        <Edit size={20} />
-                                    </button>
-                                    <button
+                </h1>
+            </div>
+            
+            {/* Edit/Delete Buttons for authenticated users with permissions */}
+            {guide && canEdit() && (
+                <div className="flex justify-end mb-4">
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={() => setIsEditModalOpen(true)}
+                            className="bg-[#009FDC] text-white p-2 rounded-full hover:bg-blue-600 transition duration-150"
+                            title="Edit Guide"
+                        >
+                            <Edit size={20} />
+                        </button>
+                        <button
                                         onClick={() =>
                                             setShowConfirmDelete(true)
                                         }
-                                        className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition duration-150"
-                                        title="Delete Guide"
-                                    >
-                                        <Trash size={20} />
-                                    </button>
+                            className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition duration-150"
+                            title="Delete Guide"
+                        >
+                            <Trash size={20} />
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Timeline Section */}
+            <div className="relative">
+                <div className="absolute left-6 top-10 bottom-20 w-0.5 bg-[#93D3EC]"></div>
+
+                <div className="space-y-12">
+                {tasks.map((step, index) => {
+                    // Render video step separately (no stepper)
+                    if (step.video) {
+                        return (
+                            <div
+                                key={index}
+                                className="flex flex-col items-center justify-center p-6 border border-[#009FDC] rounded-2xl my-12 mx-auto max-w-4xl"
+                            >
+                                <div className="h-64 flex items-center justify-center mb-4">
+                                    <div className="bg-[#009FDC] rounded-full p-4 cursor-pointer hover:bg-blue-600 transition duration-200">
+                                        <Play
+                                            size={32}
+                                            className="text-white"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-
-                        {/* Timeline Section */}
-                        <div className="relative">
-                            <div className="absolute left-6 top-10 bottom-20 w-0.5 bg-[#93D3EC]"></div>
-
-                            <div className="space-y-12">
-                                {tasks.map((step, index) => {
-                                    // Render video step separately (no stepper)
-                                    if (step.video) {
-                                        return (
-                                            <div
-                                                key={index}
-                                                className="flex flex-col items-center justify-center p-6 border border-[#009FDC] rounded-2xl my-12 mx-auto max-w-4xl"
-                                            >
-                                                <div className="h-64 flex items-center justify-center mb-4">
-                                                    <div className="bg-[#009FDC] rounded-full p-4 cursor-pointer hover:bg-blue-600 transition duration-200">
-                                                        <Play
-                                                            size={32}
-                                                            className="text-white"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <a
-                                                    href={step.video}
-                                                    className="text-[#009FDC] text-sm mt-2 flex items-center hover:underline"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                >
+                                <a
+                                    href={step.video}
+                                    className="text-[#009FDC] text-sm mt-2 flex items-center hover:underline"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
                                                     Open in New Window
-                                                </a>
-                                            </div>
-                                        );
-                                    }
+                                </a>
+                            </div>
+                        );
+                    }
 
                                     // Updated stepContent to use ul/li structure for better readability
                                     const stepContent =
@@ -427,40 +427,40 @@ export default function GuideDetail() {
                                                             key={idx}
                                                             className="text-lg font-medium"
                                                         >
-                                                            {detail.content}
+                                {detail.content}
                                                         </li>
                                                     )
                                                 )}
                                             </ul>
                                         ) : null;
 
-                                    // Render regular steps with stepper
-                                    return (
-                                        <div key={index} className="flex">
-                                            <div className="relative z-10">
-                                                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#93D3EC] text-lg font-medium">
+                    // Render regular steps with stepper
+                    return (
+                        <div key={index} className="flex">
+                            <div className="relative z-10">
+                                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#93D3EC] text-lg font-medium">
                                                     {step.step_number}
-                                                </div>
-                                            </div>
-                                            <div className="ml-4 flex-1">
-                                                <h3 className="text-xl font-bold mb-2 text-gray-800">
-                                                    {step.title}
-                                                </h3>
-                                                <div className="mb-4">
+                                </div>
+                            </div>
+                            <div className="ml-4 flex-1">
+                                <h3 className="text-xl font-bold mb-2 text-gray-800">
+                                    {step.title}
+                                </h3>
+                                <div className="mb-4">
                                                     {step.description && (
                                                         <p className="text-lg font-medium mb-2">
                                                             {step.description}
                                                         </p>
-                                                    )}
-                                                    {stepContent}
-                                                </div>
+                                    )}
+                                    {stepContent}
+                                </div>
 
                                                 {/* Screenshots Section */}
                                                 {step.screenshots &&
                                                     step.screenshots.length >
                                                         0 && (
-                                                        <div className="p-2">
-                                                            <div className="grid grid-cols-1 gap-4">
+                                    <div className="p-2">
+                                        <div className="grid grid-cols-1 gap-4">
                                                                 {step.screenshots.map(
                                                                     (
                                                                         screenshot,
@@ -470,8 +470,8 @@ export default function GuideDetail() {
                                                                             getImageUrl(
                                                                                 screenshot
                                                                             );
-
-                                                                        return (
+                                                
+                                                return (
                                                                             <div
                                                                                 key={
                                                                                     screenshotIdx
@@ -483,8 +483,8 @@ export default function GuideDetail() {
                                                                                     screenshot
                                                                                         .id
                                                                                 ] ? (
-                                                                                    <div className="flex justify-center">
-                                                                                        <img
+                                                            <div className="flex justify-center">
+                                                                <img
                                                                                             src={
                                                                                                 imageUrl
                                                                                             }
@@ -507,38 +507,38 @@ export default function GuideDetail() {
                                                                                                     screenshot.id,
                                                                                                     imageUrl
                                                                                                 );
-                                                                                            }}
-                                                                                        />
-                                                                                    </div>
-                                                                                ) : (
-                                                                                    <div className="bg-gray-100 flex flex-col items-center justify-center p-4 text-gray-500 h-48 w-full">
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="bg-gray-100 flex flex-col items-center justify-center p-4 text-gray-500 h-48 w-full">
                                                                                         <p className="text-center">
                                                                                             Screenshot not available
                                                                                         </p>
-                                                                                    </div>
-                                                                                )}
-                                                                                {screenshot.caption && (
-                                                                                    <div className="p-2 bg-gray-50 text-center w-full">
-                                                                                        <p className="text-sm text-gray-700 text-center">
+                                                            </div>
+                                                        )}
+                                                        {screenshot.caption && (
+                                                            <div className="p-2 bg-gray-50 text-center w-full">
+                                                                <p className="text-sm text-gray-700 text-center">
                                                                                             {
                                                                                                 screenshot.caption
                                                                                             }
-                                                                                        </p>
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        );
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
                                                                     }
                                                                 )}
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                {/* Actions Section */}
+                                        </div>
+                                            </div>
+                                        )}
+                                
+                                {/* Actions Section */}
                                                 {step.actions &&
                                                     step.actions.length > 0 && (
-                                                        <div className="mt-4 flex justify-center">
-                                                            <div className="flex flex-wrap justify-center">
+                                    <div className="mt-4 flex justify-center">
+                                        <div className="flex flex-wrap justify-center">
                                                                 {step.actions.map(
                                                                     (
                                                                         action,
@@ -552,97 +552,97 @@ export default function GuideDetail() {
                                                                                 action.url_or_action ||
                                                                                 "#"
                                                                             }
-                                                                            className="text-base font-bold m-2 px-6 py-3 border rounded-lg transition-colors text-[#009FDC] border-[#009FDC] hover:bg-[#009FDC] hover:text-white text-center"
-                                                                        >
+                                                    className="text-base font-bold m-2 px-6 py-3 border rounded-lg transition-colors text-[#009FDC] border-[#009FDC] hover:bg-[#009FDC] hover:text-white text-center"
+                                                >
                                                                             {action.label ||
                                                                                 "Action"}
-                                                                        </a>
+                                                </a>
                                                                     )
                                                                 )}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                            </div>
                                         </div>
-                                    );
-                                })}
+                                    </div>
+                                )}
                             </div>
                         </div>
+                    );
+                })}
+                </div>
+            </div>
 
-                        {/* Display a message if there are no steps */}
-                        {tasks.length === 0 && (
-                            <div className="flex justify-center items-center h-40 bg-gray-50 rounded-lg border border-gray-200 mt-8">
+            {/* Display a message if there are no steps */}
+            {tasks.length === 0 && (
+                <div className="flex justify-center items-center h-40 bg-gray-50 rounded-lg border border-gray-200 mt-8">
                                 <p className="text-gray-500 text-lg text-center">
                                     No steps available for this guide.
                                 </p>
-                            </div>
-                        )}
-
-                        {/* Video Section */}
+                </div>
+            )}
+            
+            {/* Video Section */}
                         {guide.video_path && (
-                            <div className="flex flex-col items-center justify-center p-6 border border-[#009FDC] rounded-2xl my-12 mx-auto max-w-3xl bg-blue-50">
-                                <h3 className="text-xl font-bold mb-4 text-center w-full">
+                            <div className="flex flex-col items-center justify-center p-3 pb-1 border border-[#009FDC] rounded-2xl my-12 mx-auto max-w-3xl bg-blue-50">
+                                <h3 className="text-xl font-bold mb-2 text-center w-full">
                                     Video Tutorial
                                 </h3>
 
-                                <div className="w-full flex items-center justify-center mb-2">
+                                <div className="w-full flex items-center justify-center">
                                     {guide.video_type === "youtube" ? (
-                                        <div className="aspect-video w-full">
-                                            <div className="relative">
-                                                <iframe
-                                                    width="100%"
-                                                    height="100%"
+                            <div className="aspect-video w-full">
+                                <div className="relative">
+                                    <iframe 
+                                        width="100%" 
+                                        height="100%" 
                                                     src={getFormattedVideoUrl(
                                                         guide.video_path,
                                                         guide.video_type
                                                     )}
-                                                    frameBorder="0"
-                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                    allowFullScreen
-                                                    className="rounded-xl shadow-lg min-h-[315px]"
-                                                ></iframe>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div
-                                            onClick={() => {
-                                                if (guide.video_path) {
+                                        frameBorder="0" 
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                        allowFullScreen
+                                                    className="rounded-xl shadow-lg min-h-[400px]"
+                                    ></iframe>
+                                </div>
+                            </div>
+                        ) : (
+                            <div 
+                                onClick={() => {
+                                    if (guide.video_path) {
                                                     window.open(
                                                         guide.video_path,
                                                         "_blank"
                                                     );
-                                                }
-                                            }}
-                                            className="bg-[#009FDC] rounded-full p-6 cursor-pointer hover:bg-blue-600 transition duration-200"
-                                        >
+                                    }
+                                }}
+                                className="bg-[#009FDC] rounded-full p-6 cursor-pointer hover:bg-blue-600 transition duration-200"
+                            >
                                             <Play
                                                 size={48}
                                                 className="text-white"
                                             />
-                                        </div>
-                                    )}
-                                </div>
-                                {guide.video_path && (
-                                    <div className="flex justify-center w-full">
-                                        <a
-                                            href={guide.video_path}
-                                            className="text-[#009FDC] text-sm flex items-center hover:underline mt-1 text-center"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            Open Video in New Window
-                                        </a>
-                                    </div>
-                                )}
                             </div>
                         )}
                     </div>
-                )}
+                    {guide.video_path && (
+                                    <div className="flex justify-center w-full -mt-1">
+                            <a
+                                href={guide.video_path}
+                                            className="text-[#009FDC] text-sm flex items-center hover:underline text-center"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                            Open Video in New Window
+                            </a>
+                                    </div>
+                                )}
+                        </div>
+                    )}
+                </div>
+            )}
 
-                {/* Delete Confirmation Modal */}
-                {showConfirmDelete && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            {/* Delete Confirmation Modal */}
+            {showConfirmDelete && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-lg w-96">
                             <h3 className="text-lg font-semibold mb-4">
                                 Confirm Deletion
                             </h3>
@@ -650,30 +650,30 @@ export default function GuideDetail() {
                                 Are you sure you want to delete this user guide?
                                 This action cannot be undone.
                             </p>
-                            <div className="flex justify-end space-x-3">
-                                <button
-                                    onClick={() => setShowConfirmDelete(false)}
-                                    className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleDelete}
-                                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-                                >
-                                    Delete
-                                </button>
-                            </div>
+                        <div className="flex justify-end space-x-3">
+                            <button 
+                                onClick={() => setShowConfirmDelete(false)}
+                                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleDelete}
+                                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                            >
+                                Delete
+                            </button>
                         </div>
                     </div>
-                )}
+                </div>
+            )}
             </div>
 
             {/* CreateUserGuide modal */}
-            <CreateUserGuide
-                isOpen={isEditModalOpen}
-                onClose={() => {
-                    setIsEditModalOpen(false);
+                <CreateUserGuide 
+                    isOpen={isEditModalOpen} 
+                    onClose={() => {
+                        setIsEditModalOpen(false);
 
                     // Refresh or reload
                     if (!isNaN(parseInt(guideId))) {

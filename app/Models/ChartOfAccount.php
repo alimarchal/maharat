@@ -12,35 +12,44 @@ class ChartOfAccount extends Model
 {
     use HasFactory, SoftDeletes;
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
         'parent_id',
         'account_code_id',
         'account_name',
         'is_active',
         'description',
+        'balancesheet_pdf',
     ];
 
     protected $casts = [
         'is_active' => 'boolean'
     ];
 
-    public function accountCode(): BelongsTo
-    {
-        return $this->belongsTo(AccountCode::class);
-    }
-
     /**
-     * Get the parent account that owns the account.
+     * Get the parent account.
      */
-    public function parent(): BelongsTo
+    public function parent()
     {
         return $this->belongsTo(ChartOfAccount::class, 'parent_id');
     }
 
     /**
-     * Get the child accounts for the account.
+     * Get the account code.
      */
-    public function children(): HasMany
+    public function accountCode()
+    {
+        return $this->belongsTo(AccountCode::class, 'account_code_id');
+    }
+
+    /**
+     * Get the children accounts.
+     */
+    public function children()
     {
         return $this->hasMany(ChartOfAccount::class, 'parent_id');
     }
