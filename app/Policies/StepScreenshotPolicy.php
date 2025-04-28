@@ -37,7 +37,7 @@ class StepScreenshotPolicy
      */
     public function update(User $user, StepScreenshot $stepScreenshot): bool
     {
-        return false;
+        return true;
     }
 
     /**

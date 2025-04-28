@@ -7,6 +7,7 @@ import {
     faPlus,
     faTrash,
     faImage,
+    faArrowsAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "react-hot-toast";
 import InputFloating from "@/Components/InputFloating";
@@ -28,6 +29,7 @@ const Step = ({
     updateAction,
     removeAction,
     errors,
+    editMode,
 }) => {
     return (
         <div className="bg-white p-4 rounded-lg shadow-md mb-4">
@@ -118,47 +120,84 @@ const Step = ({
                         Screenshot
                     </button>
                 </div>
-                {step.screenshots &&
-                    step.screenshots.map((screenshot, screenshotIndex) => (
+                <div className="space-y-2">
+                    {step.screenshots && step.screenshots.map((screenshot, screenshotIndex) => (
                         <div
                             key={screenshotIndex}
-                            className="grid grid-cols-1 gap-2 mb-2 p-2 border border-gray-200 rounded"
+                            className="relative group p-4 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-200 cursor-move"
+                            draggable
+                            onDragStart={(e) => {
+                                e.dataTransfer.setData('text/plain', screenshotIndex);
+                                e.currentTarget.classList.add('opacity-50');
+                            }}
+                            onDragEnd={(e) => {
+                                e.currentTarget.classList.remove('opacity-50');
+                            }}
+                            onDragOver={(e) => {
+                                e.preventDefault();
+                                e.currentTarget.classList.add('border-blue-500');
+                            }}
+                            onDragLeave={(e) => {
+                                e.currentTarget.classList.remove('border-blue-500');
+                            }}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                e.currentTarget.classList.remove('border-blue-500');
+                                const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                                if (fromIndex !== screenshotIndex) {
+                                    reorderScreenshots(index, fromIndex, screenshotIndex);
+                                }
+                            }}
                         >
-                        <div>
-                                <label className="block text-sm font-medium text-gray-700">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center space-x-2">
+                                    <span className="text-sm font-medium text-gray-700">Order: {screenshot.order}</span>
+                                    <div className="text-gray-400">
+                                        <FontAwesomeIcon icon={faArrowsAlt} />
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => removeScreenshot(index, screenshotIndex)}
+                                    className="text-red-500 hover:text-red-700"
+                                >
+                                    <FontAwesomeIcon icon={faTrash} /> Remove
+                                </button>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Screenshot
                                 </label>
                                 <div className="flex items-center">
-                            <input
-                                type="file"
-                                onChange={(e) => {
-                                    const file = e.target.files[0];
-                                            updateScreenshot(
-                                                index,
-                                                screenshotIndex,
-                                                "file",
-                                                file
-                                            );
-                                        }}
-                                        className="mt-1 w-auto text-sm file:mr-4 file:py-2 file:px-4
-                                file:rounded-full file:border-0 file:text-sm file:font-semibold
-                                file:bg-[#009FDC] file:text-white hover:file:bg-[#007BB5]"
-                            />
-                                    {(screenshot.file_name || screenshot.file) ? (
-                                        <span className="ml-2 text-sm font-medium text-[#009FDC] flex-grow">
-                                            {screenshot.file_name || (screenshot.file ? screenshot.file.name : "")}
-                                        </span>
+                                    {screenshot.file_name || screenshot.file || screenshot.screenshot_path ? (
+                                        <div className="flex items-center w-full">
+                                            <span className="text-sm font-medium text-[#009FDC] flex-grow">
+                                                {screenshot.file_name || (screenshot.file ? screenshot.file.name : screenshot.screenshot_path)}
+                                            </span>
+                                        </div>
                                     ) : (
-                                        <span className="ml-2 text-sm text-gray-500 flex-grow">
-                                            No file chosen
-                                        </span>
+                                        <input
+                                            type="file"
+                                            onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                updateScreenshot(
+                                                    index,
+                                                    screenshotIndex,
+                                                    "file",
+                                                    file
+                                                );
+                                            }}
+                                            className="mt-1 w-auto text-sm file:mr-4 file:py-2 file:px-4
+                                            file:rounded-full file:border-0 file:text-sm file:font-semibold
+                                            file:bg-[#009FDC] file:text-white hover:file:bg-[#007BB5]"
+                                        />
                                     )}
-                        </div>
-                        </div>
-                        <div>
-                            <input
-                                type="text"
-                                value={screenshot.caption || ""}
+                                </div>
+                            </div>
+                            <div className="mt-2">
+                                <input
+                                    type="text"
+                                    value={screenshot.caption || ""}
                                     onChange={(e) =>
                                         updateScreenshot(
                                             index,
@@ -167,23 +206,13 @@ const Step = ({
                                             e.target.value
                                         )
                                     }
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                placeholder="Caption"
-                            />
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                                    placeholder="Caption"
+                                />
+                            </div>
                         </div>
-                        <div className="flex justify-end">
-                            <button
-                                type="button"
-                                    onClick={() =>
-                                        removeScreenshot(index, screenshotIndex)
-                                    }
-                                className="text-red-500 hover:text-red-700"
-                            >
-                                <FontAwesomeIcon icon={faTrash} /> Remove
-                            </button>
-                        </div>
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
 
             {/* Action (limited to one per step) */}
@@ -594,21 +623,133 @@ export default function CreateUserGuide({
         setSteps(newSteps);
     };
 
-    const updateScreenshot = (stepIndex, screenshotIndex, field, value) => {
+    const updateScreenshot = async (stepIndex, screenshotIndex, field, value) => {
         const newSteps = [...steps];
+        const screenshot = newSteps[stepIndex].screenshots[screenshotIndex];
+        
         if (field === "file") {
             if (value) {
-                newSteps[stepIndex].screenshots[screenshotIndex] = {
-                    ...newSteps[stepIndex].screenshots[screenshotIndex],
-                    file: value,
-                    file_name: value.name,
-                    is_edited: true,
-                };
+                try {
+                    const formData = new FormData();
+                    formData.append("screenshot", value);
+                    if (screenshot.caption) {
+                        formData.append("caption", screenshot.caption);
+                    }
+                    if (screenshot.alt_text) {
+                        formData.append("alt_text", screenshot.alt_text);
+                    }
+                    
+                    // If it's an existing screenshot, update it
+                    if (screenshot.id) {
+                        await axios.put(
+                            `/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`,
+                            formData,
+                            {
+                                headers: {
+                                    "Content-Type": "multipart/form-data",
+                                },
+                            }
+                        );
+                    } else {
+                        // If it's a new screenshot, create it
+                        const response = await axios.post(
+                            `/api/v1/steps/${screenshot.manual_step_id}/screenshots`,
+                            formData,
+                            {
+                                headers: {
+                                    "Content-Type": "multipart/form-data",
+                                },
+                            }
+                        );
+                        // Update the screenshot with the ID from the response
+                        newSteps[stepIndex].screenshots[screenshotIndex] = {
+                            ...response.data.data,
+                            file: value,
+                            file_name: value.name,
+                        };
+                    }
+                    
+                    // Update local state
+                    newSteps[stepIndex].screenshots[screenshotIndex] = {
+                        ...screenshot,
+                        file: value,
+                        file_name: value.name,
+                        is_edited: true,
+                    };
+                } catch (error) {
+                    console.error('Error updating screenshot:', error);
+                    toast.error('Failed to update screenshot');
+                    return;
+                }
             }
         } else {
+            // For caption and other fields, update both local state and server if it's an existing screenshot
             newSteps[stepIndex].screenshots[screenshotIndex][field] = value;
+            
+            if (screenshot.id) {
+                try {
+                    const formData = new FormData();
+                    formData.append(field, value);
+                    
+                    await axios.put(
+                        `/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`,
+                        formData,
+                        {
+                            headers: {
+                                "Content-Type": "multipart/form-data",
+                            },
+                        }
+                    );
+                } catch (error) {
+                    console.error('Error updating screenshot:', error);
+                    toast.error('Failed to update screenshot');
+                    return;
+                }
+            }
         }
+        
         setSteps(newSteps);
+    };
+
+    const reorderScreenshots = async (stepIndex, fromIndex, toIndex) => {
+        if (fromIndex === toIndex) return; // Don't reorder if dropped in same position
+        
+        const newSteps = [...steps];
+        const screenshots = [...newSteps[stepIndex].screenshots];
+        
+        // Remove the item from its current position
+        const [movedScreenshot] = screenshots.splice(fromIndex, 1);
+        
+        // Insert it at the new position
+        screenshots.splice(toIndex, 0, movedScreenshot);
+        
+        // Update order numbers
+        screenshots.forEach((screenshot, index) => {
+            screenshot.order = index + 1;
+        });
+        
+        newSteps[stepIndex].screenshots = screenshots;
+        setSteps(newSteps);
+        
+        // Update order on server for existing screenshots
+        try {
+            const existingScreenshots = screenshots.filter(s => s.id);
+            if (existingScreenshots.length > 0) {
+                await axios.put(
+                    `/api/v1/steps/${screenshots[0].manual_step_id}/screenshots/reorder`,
+                    {
+                        screenshots: existingScreenshots.map(s => ({
+                            id: s.id,
+                            order: s.order
+                        }))
+                    }
+                );
+                toast.success('Screenshots reordered successfully');
+            }
+        } catch (error) {
+            console.error('Error reordering screenshots:', error);
+            toast.error('Failed to reorder screenshots');
+        }
     };
 
     const removeScreenshot = async (stepIndex, screenshotIndex) => {
@@ -617,18 +758,18 @@ export default function CreateUserGuide({
             
             // If the screenshot has an ID (existing screenshot), delete it from the server
             if (screenshot.id) {
-                // Get the step ID from the screenshot data
-                const stepId = screenshot.manual_step_id;
-                if (!stepId) {
-                    throw new Error('Step ID not found for screenshot');
-                }
-                
-                await axios.delete(`/api/v1/steps/${stepId}/screenshots/${screenshot.id}`);
+                await axios.delete(`/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`);
             }
             
             // Remove the screenshot from the UI
             const newSteps = [...steps];
             newSteps[stepIndex].screenshots = newSteps[stepIndex].screenshots.filter((_, index) => index !== screenshotIndex);
+            
+            // Update order numbers
+            newSteps[stepIndex].screenshots.forEach((screenshot, index) => {
+                screenshot.order = index + 1;
+            });
+            
             setSteps(newSteps);
             
             toast.success('Screenshot deleted successfully');
@@ -1224,6 +1365,7 @@ export default function CreateUserGuide({
                                 addAction={addAction}
                                 updateAction={updateAction}
                                 removeAction={removeAction}
+                                editMode={editMode}
                             />
                         ))}
                     </div>

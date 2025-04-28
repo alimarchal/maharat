@@ -112,7 +112,7 @@ class StepScreenshotController extends Controller
             }
 
             // Only update if the screenshot belongs to this step
-            if ($screenshot->step_id !== $step->id) {
+            if ($screenshot->manual_step_id !== $step->id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Screenshot does not belong to this step'
@@ -204,6 +204,50 @@ class StepScreenshotController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete screenshot',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Reorder screenshots for a step.
+     */
+    public function reorder(Request $request, ManualStep $step): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'screenshots' => 'required|array',
+                'screenshots.*.id' => 'required|exists:step_screenshots,id',
+                'screenshots.*.order' => 'required|integer|min:1'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            foreach ($request->screenshots as $screenshotData) {
+                $screenshot = StepScreenshot::find($screenshotData['id']);
+                
+                // Only update if the screenshot belongs to this step
+                if ($screenshot && $screenshot->manual_step_id === $step->id) {
+                    $screenshot->update(['order' => $screenshotData['order']]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Screenshots reordered successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error reordering screenshots: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to reorder screenshots',
                 'error' => $e->getMessage()
             ], 500);
         }
