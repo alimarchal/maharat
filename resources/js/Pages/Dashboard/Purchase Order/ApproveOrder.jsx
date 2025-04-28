@@ -162,10 +162,12 @@ const ApproveOrder = ({
         }
 
         try {
+            const currentYear = new Date().getFullYear();
             const budgetResponse = await axios.get(
                 `/api/v1/request-budgets?filter[sub_cost_center]=${quotationDetails?.rfq?.sub_cost_center_id}&include=fiscalPeriod,department,costCenter,subCostCenter`
             );
             const requestDetails = budgetResponse.data?.data?.[0];
+
             // Check if requestDetails has data
             if (!requestDetails) {
                 setErrors({
@@ -174,8 +176,20 @@ const ApproveOrder = ({
                 setIsSaving(false);
                 return;
             }
-            const availableAmount = requestDetails.balance_amount;
+
+            // Extract year from fiscal_year field
+            const requestFiscalYear =
+                requestDetails?.fiscal_period?.fiscal_year?.slice(0, 4);
+            if (requestFiscalYear != currentYear) {
+                setErrors({
+                    submit: "We have no Request Budget for current fiscal year",
+                });
+                setIsSaving(false);
+                return;
+            }
+
             // Check if the form amount exceeds the available amount
+            const availableAmount = requestDetails.balance_amount;
             if (formData.amount > availableAmount) {
                 setErrors({
                     submit: "Insufficient Amount in the sub cost center for this Purchase Order.",
@@ -228,54 +242,52 @@ const ApproveOrder = ({
                         requestDetails.requested_amount - formData.amount,
                 };
                 // Update the budget request with the new reserved and balance amounts
-                const response = await axios.put(
+                await axios.put(
                     `/api/v1/request-budgets/${requestDetails?.id}`,
                     updatedBudgetData
                 );
-                console.log("Res:", response);
 
-                // const processResponse = await axios.get(
-                //     "/api/v1/processes?include=steps,creator,updater&filter[title]=Purchase Order Approval"
-                // );
+                const processResponse = await axios.get(
+                    "/api/v1/processes?include=steps,creator,updater&filter[title]=Purchase Order Approval"
+                );
+                if (processResponse.data?.data?.[0]?.steps?.[0]) {
+                    const process = processResponse.data.data[0];
+                    const processStep = process.steps[0];
 
-                // if (processResponse.data?.data?.[0]?.steps?.[0]) {
-                //     const process = processResponse.data.data[0];
-                //     const processStep = process.steps[0];
+                    // Only proceed if we have valid process step data
+                    if (processStep?.id && processStep?.order) {
+                        const processResponseViaUser = await axios.get(
+                            `/api/v1/process-steps/${processStep.order}/user/${user_id}`
+                        );
+                        const assignUser = processResponseViaUser?.data;
 
-                //     // Only proceed if we have valid process step data
-                //     if (processStep?.id && processStep?.order) {
-                //         const processResponseViaUser = await axios.get(
-                //             `/api/v1/process-steps/${processStep.order}/user/${user_id}`
-                //         );
-                //         const assignUser = processResponseViaUser?.data;
+                        if (assignUser?.user?.user?.id) {
+                            const POTransactionPayload = {
+                                purchase_order_id: newPOId,
+                                requester_id: user_id,
+                                assigned_to: assignUser.user.user.id,
+                                order: processStep.order,
+                                description: processStep.description,
+                                status: "Pending",
+                            };
+                            await axios.post(
+                                "/api/v1/po-approval-transactions",
+                                POTransactionPayload
+                            );
 
-                //         if (assignUser?.user?.user?.id) {
-                //             const POTransactionPayload = {
-                //                 purchase_order_id: newPOId,
-                //                 requester_id: user_id,
-                //                 assigned_to: assignUser.user.user.id,
-                //                 order: processStep.order,
-                //                 description: processStep.description,
-                //                 status: "Pending",
-                //             };
-                //             await axios.post(
-                //                 "/api/v1/po-approval-transactions",
-                //                 POTransactionPayload
-                //             );
-
-                //             const taskPayload = {
-                //                 process_step_id: processStep.id,
-                //                 process_id: processStep.process_id,
-                //                 assigned_at: new Date().toISOString(),
-                //                 urgency: "Normal",
-                //                 assigned_to_user_id: assignUser.user.user.id,
-                //                 assigned_from_user_id: user_id,
-                //                 purchase_order_id: newPOId,
-                //             };
-                //             await axios.post("/api/v1/tasks", taskPayload);
-                //         }
-                //     }
-                // }
+                            const taskPayload = {
+                                process_step_id: processStep.id,
+                                process_id: processStep.process_id,
+                                assigned_at: new Date().toISOString(),
+                                urgency: "Normal",
+                                assigned_to_user_id: assignUser.user.user.id,
+                                assigned_from_user_id: user_id,
+                                purchase_order_id: newPOId,
+                            };
+                            await axios.post("/api/v1/tasks", taskPayload);
+                        }
+                    }
+                }
             }
 
             onSave();

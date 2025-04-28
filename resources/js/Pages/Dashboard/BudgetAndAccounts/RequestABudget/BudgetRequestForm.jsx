@@ -114,7 +114,6 @@ const BudgetRequestForm = () => {
                 "/api/v1/request-budgets",
                 formDataWithBalance
             );
-            console.log("Budget Request:", response);
             const budgetRequestId = response.data.data?.id;
             if (budgetRequestId) {
                 const processResponse = await axios.get(
