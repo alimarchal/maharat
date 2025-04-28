@@ -24,6 +24,9 @@ return new class extends Migration
             $table->decimal('previous_year_budget_amount', 15, 2)->nullable();
             $table->decimal('requested_amount', 15, 2)->nullable();
             $table->decimal('approved_amount', 15, 2)->nullable();
+            $table->decimal('reserved', 15, 2)->nullable();
+            $table->decimal('consumed', 15, 2)->nullable();
+            $table->decimal('balance', 15, 2)->nullable();
             $table->enum('urgency', ['High', 'Medium', 'Low'])->default(NULL)->nullable();
             $table->string('attachment_path')->nullable();
             $table->text('reason_for_increase')->nullable();
