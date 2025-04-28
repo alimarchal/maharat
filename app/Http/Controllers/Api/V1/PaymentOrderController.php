@@ -20,13 +20,6 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentOrderController extends Controller
 {
-
-    protected $budgetService;
-
-    public function __construct(PaymentOrderBudgetService $budgetService)
-    {
-        $this->budgetService = $budgetService;
-    }
     /**
      * Generate a unique payment order number with format PO-XXXXX
      */
@@ -113,16 +106,6 @@ class PaymentOrderController extends Controller
 
             $paymentOrder = PaymentOrder::create($data);
 
-            // Consume budget if payment is for a purchase order
-            if (isset($data['purchase_order_id'])) {
-                if (!$this->budgetService->consumeBudget($paymentOrder, $data['amount'])) {
-                    DB::rollBack();
-                    return response()->json([
-                        'message' => 'Failed to consume budget, insufficient reserved amount',
-                    ], Response::HTTP_BAD_REQUEST);
-                }
-            }
-
             DB::commit();
 
             // Load the relationships for the response
@@ -146,58 +129,6 @@ class PaymentOrderController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
-
-    /*
-    public function store(StorePaymentOrderRequest $request): JsonResponse
-    {
-        try {
-            DB::beginTransaction();
-
-            $data = $request->validated();
-
-            // Set the authenticated user if user_id is not provided
-            if (!isset($data['user_id'])) {
-                $data['user_id'] = auth()->id();
-            }
-
-            // Generate unique payment order number
-            $data['payment_order_number'] = $this->generatePaymentOrderNumber();
-
-            // Handle file upload if provided
-            if ($request->hasFile('attachment')) {
-                $file = $request->file('attachment');
-                $filename = 'payment_order_' . time() . '.' . $file->getClientOriginalExtension();
-                $path = $file->storeAs('payment-orders', $filename, 'public');
-                $data['attachment'] = $path;
-            }
-
-            $paymentOrder = PaymentOrder::create($data);
-
-            DB::commit();
-
-            // Load the relationships for the response
-            $paymentOrder->load([
-                'user',
-                'purchaseOrder',
-                'purchaseOrder.supplier',
-                'purchaseOrder.quotation'
-            ]);
-
-            return response()->json([
-                'message' => 'Payment order created successfully',
-                'data' => new PaymentOrderResource($paymentOrder)
-            ], Response::HTTP_CREATED);
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'message' => 'Failed to create payment order',
-                'error' => $e->getMessage()
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    */
 
     public function show(string $id): JsonResponse
     {
