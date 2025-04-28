@@ -103,10 +103,16 @@ const BudgetRequestForm = () => {
         e.preventDefault();
         if (!validateForm()) return;
 
+        // Set the remaining_balance to the value of requested_amount
+        const formDataWithBalance = {
+            ...formData,
+            balance_amount: formData.requested_amount,
+        };
+
         try {
             const response = await axios.post(
                 "/api/v1/request-budgets",
-                formData
+                formDataWithBalance
             );
             console.log("Budget Request:", response);
             const budgetRequestId = response.data.data?.id;
