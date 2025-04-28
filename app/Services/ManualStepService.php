@@ -114,6 +114,7 @@ class ManualStepService
     {
         // Process details
         if (isset($data['details'])) {
+            $step->details()->delete();
             foreach ($data['details'] as $index => $detail) {
                 $step->details()->create([
                     'content' => $detail,
@@ -124,22 +125,29 @@ class ManualStepService
 
         // Process screenshots
         if (isset($data['screenshots'])) {
-            foreach ($data['screenshots'] as $index => $screenshot) {
-                if ($screenshot instanceof \Illuminate\Http\UploadedFile) {
-                    $path = $screenshot->store('user-manuals/screenshots', 'public');
+            // Always delete existing screenshots when processing screenshots
+            $this->deleteExistingScreenshots($step);
+            
+            // Only create new screenshots if they exist
+            if (!empty($data['screenshots'])) {
+                foreach ($data['screenshots'] as $index => $screenshot) {
+                    if ($screenshot instanceof \Illuminate\Http\UploadedFile) {
+                        $path = $screenshot->store('user-manuals/screenshots', 'public');
 
-                    $step->screenshots()->create([
-                        'screenshot_path' => $path,
-                        'alt_text' => $data['screenshot_alts'][$index] ?? null,
-                        'caption' => $data['screenshot_captions'][$index] ?? null,
-                        'order' => $index + 1,
-                    ]);
+                        $step->screenshots()->create([
+                            'screenshot_path' => $path,
+                            'alt_text' => $data['screenshot_alts'][$index] ?? null,
+                            'caption' => $data['screenshot_captions'][$index] ?? null,
+                            'order' => $index + 1,
+                        ]);
+                    }
                 }
             }
         }
 
         // Process actions
         if (isset($data['actions'])) {
+            $step->actions()->delete();
             foreach ($data['actions'] as $index => $action) {
                 $step->actions()->create([
                     'action_type' => $action['type'],

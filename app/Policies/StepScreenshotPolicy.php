@@ -37,7 +37,7 @@ class StepScreenshotPolicy
      */
     public function update(User $user, StepScreenshot $stepScreenshot): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -45,7 +45,7 @@ class StepScreenshotPolicy
      */
     public function delete(User $user, StepScreenshot $stepScreenshot): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -53,7 +53,7 @@ class StepScreenshotPolicy
      */
     public function restore(User $user, StepScreenshot $stepScreenshot): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -61,6 +61,6 @@ class StepScreenshotPolicy
      */
     public function forceDelete(User $user, StepScreenshot $stepScreenshot): bool
     {
-        return false;
+        return true;
     }
 }

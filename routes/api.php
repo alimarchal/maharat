@@ -430,7 +430,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('user-manuals', [UserManualController::class, 'index']); // GET /api/v1/user-manuals
     Route::post('user-manuals', [UserManualController::class, 'store']); // POST /api/v1/user-manuals
     Route::get('user-manuals/{userManual}', [UserManualController::class, 'show']); // GET /api/v1/user-manuals/{id}
-    Route::put('user-manuals/{userManual}', [UserManualController::class, 'update']); // PUT /api/v1/user-manuals/{id}
+    Route::post('user-manuals/{userManual}/update', [UserManualController::class, 'update']); // POST /api/v1/user-manuals/{id}/update
     Route::delete('user-manuals/{userManual}', [UserManualController::class, 'destroy']); // DELETE /api/v1/user-manuals/{id}
 
     // Manual Step Routes
@@ -447,6 +447,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('steps/{step}/screenshots', [App\Http\Controllers\Api\V1\StepScreenshotController::class, 'store']);
     Route::put('steps/{step}/screenshots/{screenshot}', [App\Http\Controllers\Api\V1\StepScreenshotController::class, 'update']);
     Route::delete('steps/{step}/screenshots/{screenshot}', [App\Http\Controllers\Api\V1\StepScreenshotController::class, 'destroy']);
+    Route::put('steps/{step}/screenshots/reorder', [App\Http\Controllers\Api\V1\StepScreenshotController::class, 'reorder']);
 
     // Balance Sheet PDF Routes
     Route::post('/balance-sheet/generate-pdf', [App\Http\Controllers\API\BalanceSheetPDFController::class, 'generatePDF']);

@@ -7,6 +7,7 @@ import {
     faPlus,
     faTrash,
     faImage,
+    faArrowsAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "react-hot-toast";
 import InputFloating from "@/Components/InputFloating";
@@ -28,6 +29,7 @@ const Step = ({
     updateAction,
     removeAction,
     errors,
+    editMode,
 }) => {
     return (
         <div className="bg-white p-4 rounded-lg shadow-md mb-4">
@@ -118,47 +120,84 @@ const Step = ({
                         Screenshot
                     </button>
                 </div>
-                {step.screenshots &&
-                    step.screenshots.map((screenshot, screenshotIndex) => (
+                <div className="space-y-2">
+                    {step.screenshots && step.screenshots.map((screenshot, screenshotIndex) => (
                         <div
                             key={screenshotIndex}
-                            className="grid grid-cols-1 gap-2 mb-2 p-2 border border-gray-200 rounded"
+                            className="relative group p-4 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-200 cursor-move"
+                            draggable
+                            onDragStart={(e) => {
+                                e.dataTransfer.setData('text/plain', screenshotIndex);
+                                e.currentTarget.classList.add('opacity-50');
+                            }}
+                            onDragEnd={(e) => {
+                                e.currentTarget.classList.remove('opacity-50');
+                            }}
+                            onDragOver={(e) => {
+                                e.preventDefault();
+                                e.currentTarget.classList.add('border-blue-500');
+                            }}
+                            onDragLeave={(e) => {
+                                e.currentTarget.classList.remove('border-blue-500');
+                            }}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                e.currentTarget.classList.remove('border-blue-500');
+                                const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                                if (fromIndex !== screenshotIndex) {
+                                    reorderScreenshots(index, fromIndex, screenshotIndex);
+                                }
+                            }}
                         >
-                        <div>
-                                <label className="block text-sm font-medium text-gray-700">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center space-x-2">
+                                    <span className="text-sm font-medium text-gray-700">Order: {screenshot.order}</span>
+                                    <div className="text-gray-400">
+                                        <FontAwesomeIcon icon={faArrowsAlt} />
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => removeScreenshot(index, screenshotIndex)}
+                                    className="text-red-500 hover:text-red-700"
+                                >
+                                    <FontAwesomeIcon icon={faTrash} /> Remove
+                                </button>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Screenshot
                                 </label>
                                 <div className="flex items-center">
-                            <input
-                                type="file"
-                                onChange={(e) => {
-                                    const file = e.target.files[0];
-                                            updateScreenshot(
-                                                index,
-                                                screenshotIndex,
-                                                "file",
-                                                file
-                                            );
-                                        }}
-                                        className="mt-1 w-auto text-sm file:mr-4 file:py-2 file:px-4
-                                file:rounded-full file:border-0 file:text-sm file:font-semibold
-                                file:bg-[#009FDC] file:text-white hover:file:bg-[#007BB5]"
-                            />
-                                    {(screenshot.file_name || screenshot.file) ? (
-                                        <span className="ml-2 text-sm font-medium text-[#009FDC] flex-grow">
-                                            {screenshot.file_name || (screenshot.file ? screenshot.file.name : "")}
-                                        </span>
+                                    {screenshot.file_name || screenshot.file || screenshot.screenshot_path ? (
+                                        <div className="flex items-center w-full">
+                                            <span className="text-sm font-medium text-[#009FDC] flex-grow">
+                                                {screenshot.file_name || (screenshot.file ? screenshot.file.name : screenshot.screenshot_path)}
+                                            </span>
+                                        </div>
                                     ) : (
-                                        <span className="ml-2 text-sm text-gray-500 flex-grow">
-                                            No file chosen
-                                        </span>
+                                        <input
+                                            type="file"
+                                            onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                updateScreenshot(
+                                                    index,
+                                                    screenshotIndex,
+                                                    "file",
+                                                    file
+                                                );
+                                            }}
+                                            className="mt-1 w-auto text-sm file:mr-4 file:py-2 file:px-4
+                                            file:rounded-full file:border-0 file:text-sm file:font-semibold
+                                            file:bg-[#009FDC] file:text-white hover:file:bg-[#007BB5]"
+                                        />
                                     )}
-                        </div>
-                        </div>
-                        <div>
-                            <input
-                                type="text"
-                                value={screenshot.caption || ""}
+                                </div>
+                            </div>
+                            <div className="mt-2">
+                                <input
+                                    type="text"
+                                    value={screenshot.caption || ""}
                                     onChange={(e) =>
                                         updateScreenshot(
                                             index,
@@ -167,23 +206,13 @@ const Step = ({
                                             e.target.value
                                         )
                                     }
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                placeholder="Caption"
-                            />
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                                    placeholder="Caption"
+                                />
+                            </div>
                         </div>
-                        <div className="flex justify-end">
-                            <button
-                                type="button"
-                                    onClick={() =>
-                                        removeScreenshot(index, screenshotIndex)
-                                    }
-                                className="text-red-500 hover:text-red-700"
-                            >
-                                <FontAwesomeIcon icon={faTrash} /> Remove
-                            </button>
-                        </div>
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
 
             {/* Action (limited to one per step) */}
@@ -459,44 +488,39 @@ export default function CreateUserGuide({
                 if (guide.steps && guide.steps.length > 0) {
                     setSteps(
                         guide.steps.map((step) => ({
-                        id: step.id,
-                        step_number: step.step_number,
-                        title: step.title,
-                            description:
-                                step.description ||
-                                `Step ${step.step_number} - ${
-                                    step.title || "Details"
-                                }`,
-                        action_type: step.action_type,
-                        order: step.order,
-                        is_active: step.is_active,
-                        details: step.details || [],
-                            screenshots: (step.screenshots || []).map(
-                                (screenshot) => {
-                                    // Get proper file name from original_name if available
-                                    let fileName = null;
-                                    
-                                    if (screenshot.original_name) {
-                                        // Use the original file name if available
-                                        fileName = screenshot.original_name;
-                                    } else if (screenshot.alt_text && screenshot.alt_text.trim() !== "") {
-                                        // Use alt text if it seems like a file name
-                                        fileName = screenshot.alt_text;
-                                    } else if (screenshot.screenshot_path) {
-                                        // Extract from path as last resort
-                                        const pathParts = screenshot.screenshot_path.split("/");
-                                        fileName = pathParts[pathParts.length - 1];
-                                    }
-
-                                    return {
-                                        ...screenshot,
-                                        file_name: fileName,
-                                        screenshot_url: screenshot.screenshot_path 
-                                            ? `/storage/${screenshot.screenshot_path}`
-                                            : screenshot.screenshot_url,
-                                    };
+                            id: step.id,
+                            step_number: step.step_number,
+                            title: step.title,
+                            description: step.description || `Step ${step.step_number} - ${step.title || "Details"}`,
+                            action_type: step.action_type,
+                            order: step.order,
+                            is_active: step.is_active,
+                            details: step.details || [],
+                            screenshots: (step.screenshots || []).map((screenshot) => {
+                                // Get proper file name from original_name if available
+                                let fileName = null;
+                                
+                                if (screenshot.original_name) {
+                                    // Use the original file name if available
+                                    fileName = screenshot.original_name;
+                                } else if (screenshot.alt_text && screenshot.alt_text.trim() !== "") {
+                                    // Use alt text if it seems like a file name
+                                    fileName = screenshot.alt_text;
+                                } else if (screenshot.screenshot_path) {
+                                    // Extract from path as last resort
+                                    const pathParts = screenshot.screenshot_path.split("/");
+                                    fileName = pathParts[pathParts.length - 1];
                                 }
-                            ),
+
+                                return {
+                                    ...screenshot,
+                                    file_name: fileName,
+                                    screenshot_url: screenshot.screenshot_path 
+                                        ? `/storage/${screenshot.screenshot_path}`
+                                        : screenshot.screenshot_url,
+                                    manual_step_id: step.id // Add the step ID to the screenshot
+                                };
+                            }),
                             actions: step.actions || [],
                         }))
                     );
@@ -599,36 +623,160 @@ export default function CreateUserGuide({
         setSteps(newSteps);
     };
 
-    const updateScreenshot = (stepIndex, screenshotIndex, field, value) => {
+    const updateScreenshot = async (stepIndex, screenshotIndex, field, value) => {
         const newSteps = [...steps];
+        const screenshot = newSteps[stepIndex].screenshots[screenshotIndex];
+        
         if (field === "file") {
             if (value) {
-                newSteps[stepIndex].screenshots[screenshotIndex] = {
-                    ...newSteps[stepIndex].screenshots[screenshotIndex],
-                    file: value,
-                    file_name: value.name,
-                    is_edited: true,
-                };
+                try {
+                    const formData = new FormData();
+                    formData.append("screenshot", value);
+                    if (screenshot.caption) {
+                        formData.append("caption", screenshot.caption);
+                    }
+                    if (screenshot.alt_text) {
+                        formData.append("alt_text", screenshot.alt_text);
+                    }
+                    
+                    // If it's an existing screenshot, update it
+                    if (screenshot.id) {
+                        await axios.put(
+                            `/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`,
+                            formData,
+                            {
+                                headers: {
+                                    "Content-Type": "multipart/form-data",
+                                },
+                            }
+                        );
+                    } else {
+                        // If it's a new screenshot, create it
+                        const response = await axios.post(
+                            `/api/v1/steps/${screenshot.manual_step_id}/screenshots`,
+                            formData,
+                            {
+                                headers: {
+                                    "Content-Type": "multipart/form-data",
+                                },
+                            }
+                        );
+                        // Update the screenshot with the ID from the response
+                        newSteps[stepIndex].screenshots[screenshotIndex] = {
+                            ...response.data.data,
+                            file: value,
+                            file_name: value.name,
+                        };
+                    }
+                    
+                    // Update local state
+                    newSteps[stepIndex].screenshots[screenshotIndex] = {
+                        ...screenshot,
+                        file: value,
+                        file_name: value.name,
+                        is_edited: true,
+                    };
+                } catch (error) {
+                    console.error('Error updating screenshot:', error);
+                    toast.error('Failed to update screenshot');
+                    return;
+                }
             }
         } else {
+            // For caption and other fields, update both local state and server if it's an existing screenshot
             newSteps[stepIndex].screenshots[screenshotIndex][field] = value;
+            
+            if (screenshot.id) {
+                try {
+                    const formData = new FormData();
+                    formData.append(field, value);
+                    
+                    await axios.put(
+                        `/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`,
+                        formData,
+                        {
+                            headers: {
+                                "Content-Type": "multipart/form-data",
+                            },
+                        }
+                    );
+                } catch (error) {
+                    console.error('Error updating screenshot:', error);
+                    toast.error('Failed to update screenshot');
+                    return;
+                }
+            }
         }
+        
         setSteps(newSteps);
     };
 
-    const removeScreenshot = (stepIndex, screenshotIndex) => {
+    const reorderScreenshots = async (stepIndex, fromIndex, toIndex) => {
+        if (fromIndex === toIndex) return; // Don't reorder if dropped in same position
+        
         const newSteps = [...steps];
-        newSteps[stepIndex].screenshots = newSteps[
-            stepIndex
-        ].screenshots.filter((_, i) => i !== screenshotIndex);
-        // Update order
-        newSteps[stepIndex].screenshots = newSteps[stepIndex].screenshots.map(
-            (screenshot, i) => ({
-            ...screenshot,
-                order: i + 1,
-            })
-        );
+        const screenshots = [...newSteps[stepIndex].screenshots];
+        
+        // Remove the item from its current position
+        const [movedScreenshot] = screenshots.splice(fromIndex, 1);
+        
+        // Insert it at the new position
+        screenshots.splice(toIndex, 0, movedScreenshot);
+        
+        // Update order numbers
+        screenshots.forEach((screenshot, index) => {
+            screenshot.order = index + 1;
+        });
+        
+        newSteps[stepIndex].screenshots = screenshots;
         setSteps(newSteps);
+        
+        // Update order on server for existing screenshots
+        try {
+            const existingScreenshots = screenshots.filter(s => s.id);
+            if (existingScreenshots.length > 0) {
+                await axios.put(
+                    `/api/v1/steps/${screenshots[0].manual_step_id}/screenshots/reorder`,
+                    {
+                        screenshots: existingScreenshots.map(s => ({
+                            id: s.id,
+                            order: s.order
+                        }))
+                    }
+                );
+                toast.success('Screenshots reordered successfully');
+            }
+        } catch (error) {
+            console.error('Error reordering screenshots:', error);
+            toast.error('Failed to reorder screenshots');
+        }
+    };
+
+    const removeScreenshot = async (stepIndex, screenshotIndex) => {
+        try {
+            const screenshot = steps[stepIndex].screenshots[screenshotIndex];
+            
+            // If the screenshot has an ID (existing screenshot), delete it from the server
+            if (screenshot.id) {
+                await axios.delete(`/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`);
+            }
+            
+            // Remove the screenshot from the UI
+            const newSteps = [...steps];
+            newSteps[stepIndex].screenshots = newSteps[stepIndex].screenshots.filter((_, index) => index !== screenshotIndex);
+            
+            // Update order numbers
+            newSteps[stepIndex].screenshots.forEach((screenshot, index) => {
+                screenshot.order = index + 1;
+            });
+            
+            setSteps(newSteps);
+            
+            toast.success('Screenshot deleted successfully');
+        } catch (error) {
+            console.error('Error deleting screenshot:', error);
+            toast.error('Failed to delete screenshot');
+        }
     };
 
     // Action methods
@@ -697,10 +845,12 @@ export default function CreateUserGuide({
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
+        console.log('Starting form submission...');
 
         // Validate form
         const validationErrors = validateForm();
         if (Object.keys(validationErrors).length > 0) {
+            console.log('Validation errors:', validationErrors);
             setErrors(validationErrors);
             setIsLoading(false);
             return;
@@ -708,117 +858,138 @@ export default function CreateUserGuide({
         setErrors({});
         try {
             let userManualId;
-            setData;
-            const formattedSteps = steps.map((step) => ({
-                step_number: step.step_number,
-                title: step.title,
-                description:
-                    step.description ||
-                    `Step ${step.step_number} - ${step.title || "Details"}`,
-                action_type: step.action_type,
-                order: step.order,
-                is_active: step.is_active,
-                // Convert details objects to strings if they exist
-                details: (step.details || []).map((detail) =>
-                    typeof detail === "object" ? detail.content || "" : detail
-                ),
-                // Add type field to actions
-                actions: (step.actions || []).map((action) => ({
-                    action_type: action.action_type,
-                    type: action.action_type || "click", // Default to "click" if not set
-                    label: action.label,
-                    url_or_action: action.url_or_action || "",
-                    style: action.style || "default", // Provide a default style if not set
-                    order: action.order,
-                })),
-            }));
+            console.log('Preparing data for submission...');
+            console.log('Current form data:', data);
+            console.log('Current steps:', steps);
 
-            // Include steps data in the main payload
-            const fullPayload = {
-                ...data,
-                steps: formattedSteps,
-            };
+            const formattedSteps = steps.map((step) => {
+                // Filter out screenshots that are marked for deletion
+                const validScreenshots = (step.screenshots || []).filter(screenshot => 
+                    screenshot && !screenshot.isDeleted
+                );
 
-            // Remove card_name if it exists, as it's not needed anymore
-            if (fullPayload.card_name !== undefined) {
-                delete fullPayload.card_name;
-            }
+                return {
+                    step_number: step.step_number,
+                    title: step.title,
+                    description: step.description || `Step ${step.step_number} - ${step.title || "Details"}`,
+                    action_type: step.action_type,
+                    order: step.order,
+                    is_active: Boolean(step.is_active),
+                    details: (step.details || []).map((detail) => 
+                        typeof detail === "object" ? detail.content || "" : detail
+                    ),
+                    actions: (step.actions || []).map((action) => ({
+                        action_type: action.action_type || "click",
+                        label: action.label,
+                        url_or_action: action.url_or_action || "",
+                        style: action.style || "default",
+                        order: action.order,
+                    })),
+                    screenshots: validScreenshots.map(screenshot => screenshot.file || null),
+                    screenshot_alts: validScreenshots.map(screenshot => screenshot.alt_text || ""),
+                    screenshot_captions: validScreenshots.map(screenshot => screenshot.caption || ""),
+                };
+            });
 
-            // Handle parent/child card relationship
-            if (!fullPayload.card_id && fullPayload.parent_card_id) {
-                // If no child card is selected but parent is, use parent as card_id
-                fullPayload.card_id = fullPayload.parent_card_id;
-            }
+            console.log('Formatted steps:', formattedSteps);
 
-            // Remove parent_card_id from payload as backend doesn't need it
-            if (fullPayload.parent_card_id !== undefined) {
-                delete fullPayload.parent_card_id;
-            }
+            const formData = new FormData();
+            
+            // Add basic fields
+            formData.append('title', data.title);
+            formData.append('video_path', data.video_path);
+            formData.append('video_type', data.video_type);
+            formData.append('is_active', data.is_active ? '1' : '0');
+            formData.append('card_id', data.card_id);
 
-            // Ensure required fields are properly formatted
-            // Convert card_id to number if it's a string
-            if (
-                fullPayload.card_id &&
-                typeof fullPayload.card_id === "string"
-            ) {
-                fullPayload.card_id = parseInt(fullPayload.card_id, 10);
-            }
+            // Add steps data
+            formattedSteps.forEach((step, index) => {
+                formData.append(`steps[${index}][step_number]`, step.step_number);
+                formData.append(`steps[${index}][title]`, step.title);
+                formData.append(`steps[${index}][description]`, step.description);
+                formData.append(`steps[${index}][action_type]`, step.action_type);
+                formData.append(`steps[${index}][order]`, step.order);
+                formData.append(`steps[${index}][is_active]`, step.is_active ? '1' : '0');
 
-            // Ensure video_path is properly formatted if it's a URL
-            if (
-                fullPayload.video_path &&
-                !fullPayload.video_path.startsWith("storage/")
-            ) {
-                // If it's an external URL (contains http or https), leave it as is
-                if (
-                    !fullPayload.video_path.includes("http://") &&
-                    !fullPayload.video_path.includes("https://")
-                ) {
-                    // Otherwise, ensure it has the correct format for storage
-                    fullPayload.video_path = fullPayload.video_path.trim();
-                }
-            }
+                // Add details
+                step.details.forEach((detail, detailIndex) => {
+                    formData.append(`steps[${index}][details][${detailIndex}]`, detail);
+                });
+
+                // Add actions
+                step.actions.forEach((action, actionIndex) => {
+                    formData.append(`steps[${index}][actions][${actionIndex}][action_type]`, action.action_type);
+                    formData.append(`steps[${index}][actions][${actionIndex}][label]`, action.label);
+                    formData.append(`steps[${index}][actions][${actionIndex}][url_or_action]`, action.url_or_action);
+                    formData.append(`steps[${index}][actions][${actionIndex}][style]`, action.style);
+                    formData.append(`steps[${index}][actions][${actionIndex}][order]`, action.order);
+                });
+
+                // Add screenshots
+                step.screenshots.forEach((screenshot, screenshotIndex) => {
+                    if (screenshot) {
+                        formData.append(`steps[${index}][screenshots][${screenshotIndex}]`, screenshot);
+                        formData.append(`steps[${index}][screenshot_alts][${screenshotIndex}]`, step.screenshot_alts[screenshotIndex] || '');
+                        formData.append(`steps[${index}][screenshot_captions][${screenshotIndex}]`, step.screenshot_captions[screenshotIndex] || '');
+                    }
+                });
+            });
 
             if (editMode && guideId) {
+                console.log('Updating existing guide with ID:', guideId);
                 try {
-                    const manualResponse = await axios.put(
-                        `/api/v1/user-manuals/${guideId}`,
-                        fullPayload
+                    const manualResponse = await axios.post(
+                        `/api/v1/user-manuals/${guideId}/update`,
+                        formData,
+                        {
+                            headers: {
+                                'Content-Type': 'multipart/form-data',
+                            },
+                        }
                     );
+                    console.log('Update response:', manualResponse.data);
                     userManualId = guideId;
+                    
+                    // Show success message
+                    toast.success("Guide updated successfully!");
+                    
+                    // Reset form and close modal
+                    setData({
+                        title: "",
+                        video_path: "",
+                        video_type: "",
+                        is_active: true,
+                        card_id: "",
+                        parent_card_id: "",
+                    });
+                    setSelectedParentCard("");
+                    setSteps([
+                        {
+                            step_number: 1,
+                            title: "",
+                            description: "",
+                            action_type: "",
+                            order: 1,
+                            is_active: true,
+                            details: [],
+                            screenshots: [],
+                            actions: [],
+                        },
+                    ]);
+                    setShowVideoField(false);
+                    onClose();
                 } catch (error) {
+                    console.error('Error updating guide:', error.response?.data || error);
                     setErrors({
-                        general:
-                            error.response?.data?.message ||
-                            "Failed to update the user guide. Please try again.",
+                        general: error.response?.data?.message || "Failed to update the user guide. Please try again.",
                     });
                     throw error;
-                }
-                
-                // Check for screenshot uploads
-                const hasScreenshots = steps.some(
-                    (step) =>
-                        step.screenshots &&
-                        step.screenshots.some((screenshot) => screenshot.file)
-                );
-                
-                if (hasScreenshots) {
-                    // Handle file uploads for each step
-                    try {
-                        await handleStepFileUploads(steps, userManualId);
-                    } catch (error) {
-                        setErrors({
-                            general:
-                                "Guide was updated but failed to upload screenshots. Please try again.",
-                        });
-                        throw error;
-                    }
                 }
             } else {
                 try {
                     const manualResponse = await axios.post(
                         "/api/v1/user-manuals",
-                        fullPayload
+                        formData
                     );
                     // Safely extract the ID from the response, checking various possible structures
                     if (
@@ -862,33 +1033,8 @@ export default function CreateUserGuide({
                     }
                 }
             }
-
-            // Reset form and close modal
-            setData({
-                title: "",
-                video_path: "",
-                video_type: "",
-                is_active: true,
-                card_id: "",
-                parent_card_id: "",
-            });
-            setSelectedParentCard("");
-            setSteps([
-                {
-                    step_number: 1,
-                    title: "",
-                    description: "",
-                    action_type: "",
-                    order: 1,
-                    is_active: true,
-                    details: [],
-                    screenshots: [],
-                    actions: [],
-                },
-            ]);
-            setShowVideoField(false);
-            onClose();
         } catch (error) {
+            console.error('Error in handleSubmit:', error);
             if (!errors.general) {
                 setErrors({
                     general: "An unexpected error occurred. Please try again.",
@@ -899,36 +1045,37 @@ export default function CreateUserGuide({
         }
     };
 
-    // Helper function to handle file uploads for steps
     const handleStepFileUploads = async (steps, userManualId) => {
+        console.log('Starting step file uploads...');
         try {
             const stepsResponse = await axios.get(
                 `/api/v1/user-manuals/${userManualId}/steps`
             );
+            console.log('Fetched steps:', stepsResponse.data);
             const stepData = stepsResponse.data.data || [];
+            
             for (let i = 0; i < steps.length; i++) {
                 const step = steps[i];
                 const stepNumber = parseInt(step.step_number);
+                console.log(`Processing step ${stepNumber}...`);
                 
-                // Find matching step in API response
                 const matchingStep = stepData.find(
                     (s) => parseInt(s.step_number) === stepNumber
                 );
-                if (
-                    matchingStep &&
-                    step.screenshots &&
-                    step.screenshots.length > 0
-                ) {
+                
+                if (matchingStep && step.screenshots && step.screenshots.length > 0) {
                     const stepId = matchingStep.id;
+                    console.log(`Found matching step with ID ${stepId}`);
                     
                     for (const screenshot of step.screenshots) {
-                        if (screenshot.file) {
+                        if (screenshot) {
+                            console.log('Uploading screenshot:', screenshot);
                             try {
                                 const formData = new FormData();
-                                formData.append("screenshot", screenshot.file);
+                                formData.append("screenshot", screenshot);
                                 formData.append(
                                     "alt_text",
-                                    screenshot.alt_text || screenshot.file.name || ""
+                                    screenshot.alt_text || ""
                                 );
                                 formData.append(
                                     "caption",
@@ -939,30 +1086,24 @@ export default function CreateUserGuide({
                                     screenshot.type || "image"
                                 );
                                 formData.append("order", screenshot.order || 1);
-                                formData.append("original_name", screenshot.file.name || "");
+                                formData.append("original_name", screenshot.file_name || "");
 
-                                // Use the correct API endpoint
                                 const uploadUrl = `/api/v1/steps/${stepId}/screenshots`;
+                                console.log('Uploading to:', uploadUrl);
+                                
                                 const response = await axios.post(
                                     uploadUrl,
                                     formData, 
                                     {
                                         headers: {
-                                            "Content-Type":
-                                                "multipart/form-data",
+                                            "Content-Type": "multipart/form-data",
                                         },
                                     }
                                 );
+                                console.log('Screenshot upload response:', response.data);
                             } catch (uploadError) {
-                                // Add more detailed error logging
-                                if (uploadError.response) {
-                                    console.error(
-                                        "Server response:",
-                                        uploadError.response.status,
-                                        uploadError.response.data
-                                    );
-                                }
-                                throw uploadError; // Re-throw to handle in the main function
+                                console.error('Error uploading screenshot:', uploadError.response?.data || uploadError);
+                                throw uploadError;
                             }
                         }
                     }
@@ -973,11 +1114,8 @@ export default function CreateUserGuide({
                 }
             }
         } catch (error) {
-            console.error(
-                "Error handling file uploads:",
-                error.response?.data || error.message
-            );
-            throw error; // Re-throw to be caught by the parent function
+            console.error('Error in handleStepFileUploads:', error.response?.data || error);
+            throw error;
         }
     };
 
@@ -1227,6 +1365,7 @@ export default function CreateUserGuide({
                                 addAction={addAction}
                                 updateAction={updateAction}
                                 removeAction={removeAction}
+                                editMode={editMode}
                             />
                         ))}
                     </div>

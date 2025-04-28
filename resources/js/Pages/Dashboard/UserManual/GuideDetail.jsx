@@ -447,11 +447,6 @@ export default function GuideDetail() {
                                     {step.title}
                                 </h3>
                                 <div className="mb-4">
-                                                    {step.description && (
-                                                        <p className="text-lg font-medium mb-2">
-                                                            {step.description}
-                                                        </p>
-                                    )}
                                     {stepContent}
                                 </div>
 
@@ -537,7 +532,7 @@ export default function GuideDetail() {
                                 {/* Actions Section */}
                                                 {step.actions &&
                                                     step.actions.length > 0 && (
-                                    <div className="mt-4 flex justify-center">
+                                    <div className="mt-4 flex justify-center ml-[-5%]">
                                         <div className="flex flex-wrap justify-center">
                                                                 {step.actions.map(
                                                                     (
