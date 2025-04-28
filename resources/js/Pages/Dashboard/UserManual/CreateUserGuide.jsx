@@ -459,44 +459,39 @@ export default function CreateUserGuide({
                 if (guide.steps && guide.steps.length > 0) {
                     setSteps(
                         guide.steps.map((step) => ({
-                        id: step.id,
-                        step_number: step.step_number,
-                        title: step.title,
-                            description:
-                                step.description ||
-                                `Step ${step.step_number} - ${
-                                    step.title || "Details"
-                                }`,
-                        action_type: step.action_type,
-                        order: step.order,
-                        is_active: step.is_active,
-                        details: step.details || [],
-                            screenshots: (step.screenshots || []).map(
-                                (screenshot) => {
-                                    // Get proper file name from original_name if available
-                                    let fileName = null;
-                                    
-                                    if (screenshot.original_name) {
-                                        // Use the original file name if available
-                                        fileName = screenshot.original_name;
-                                    } else if (screenshot.alt_text && screenshot.alt_text.trim() !== "") {
-                                        // Use alt text if it seems like a file name
-                                        fileName = screenshot.alt_text;
-                                    } else if (screenshot.screenshot_path) {
-                                        // Extract from path as last resort
-                                        const pathParts = screenshot.screenshot_path.split("/");
-                                        fileName = pathParts[pathParts.length - 1];
-                                    }
-
-                                    return {
-                                        ...screenshot,
-                                        file_name: fileName,
-                                        screenshot_url: screenshot.screenshot_path 
-                                            ? `/storage/${screenshot.screenshot_path}`
-                                            : screenshot.screenshot_url,
-                                    };
+                            id: step.id,
+                            step_number: step.step_number,
+                            title: step.title,
+                            description: step.description || `Step ${step.step_number} - ${step.title || "Details"}`,
+                            action_type: step.action_type,
+                            order: step.order,
+                            is_active: step.is_active,
+                            details: step.details || [],
+                            screenshots: (step.screenshots || []).map((screenshot) => {
+                                // Get proper file name from original_name if available
+                                let fileName = null;
+                                
+                                if (screenshot.original_name) {
+                                    // Use the original file name if available
+                                    fileName = screenshot.original_name;
+                                } else if (screenshot.alt_text && screenshot.alt_text.trim() !== "") {
+                                    // Use alt text if it seems like a file name
+                                    fileName = screenshot.alt_text;
+                                } else if (screenshot.screenshot_path) {
+                                    // Extract from path as last resort
+                                    const pathParts = screenshot.screenshot_path.split("/");
+                                    fileName = pathParts[pathParts.length - 1];
                                 }
-                            ),
+
+                                return {
+                                    ...screenshot,
+                                    file_name: fileName,
+                                    screenshot_url: screenshot.screenshot_path 
+                                        ? `/storage/${screenshot.screenshot_path}`
+                                        : screenshot.screenshot_url,
+                                    manual_step_id: step.id // Add the step ID to the screenshot
+                                };
+                            }),
                             actions: step.actions || [],
                         }))
                     );
@@ -616,19 +611,31 @@ export default function CreateUserGuide({
         setSteps(newSteps);
     };
 
-    const removeScreenshot = (stepIndex, screenshotIndex) => {
-        const newSteps = [...steps];
-        newSteps[stepIndex].screenshots = newSteps[
-            stepIndex
-        ].screenshots.filter((_, i) => i !== screenshotIndex);
-        // Update order
-        newSteps[stepIndex].screenshots = newSteps[stepIndex].screenshots.map(
-            (screenshot, i) => ({
-            ...screenshot,
-                order: i + 1,
-            })
-        );
-        setSteps(newSteps);
+    const removeScreenshot = async (stepIndex, screenshotIndex) => {
+        try {
+            const screenshot = steps[stepIndex].screenshots[screenshotIndex];
+            
+            // If the screenshot has an ID (existing screenshot), delete it from the server
+            if (screenshot.id) {
+                // Get the step ID from the screenshot data
+                const stepId = screenshot.manual_step_id;
+                if (!stepId) {
+                    throw new Error('Step ID not found for screenshot');
+                }
+                
+                await axios.delete(`/api/v1/steps/${stepId}/screenshots/${screenshot.id}`);
+            }
+            
+            // Remove the screenshot from the UI
+            const newSteps = [...steps];
+            newSteps[stepIndex].screenshots = newSteps[stepIndex].screenshots.filter((_, index) => index !== screenshotIndex);
+            setSteps(newSteps);
+            
+            toast.success('Screenshot deleted successfully');
+        } catch (error) {
+            console.error('Error deleting screenshot:', error);
+            toast.error('Failed to delete screenshot');
+        }
     };
 
     // Action methods
@@ -714,110 +721,82 @@ export default function CreateUserGuide({
             console.log('Current form data:', data);
             console.log('Current steps:', steps);
 
-            const formattedSteps = steps.map((step) => ({
-                step_number: step.step_number,
-                title: step.title,
-                description: step.description || `Step ${step.step_number} - ${step.title || "Details"}`,
-                action_type: step.action_type,
-                order: step.order,
-                is_active: Boolean(step.is_active),
-                details: (step.details || []).map((detail) => 
-                    typeof detail === "object" ? detail.content || "" : detail
-                ),
-                actions: (step.actions || []).map((action) => ({
-                    action_type: action.action_type || "click",
-                    label: action.label,
-                    url_or_action: action.url_or_action || "",
-                    style: action.style || "default",
-                    order: action.order,
-                })),
-                screenshots: (step.screenshots || []).map((screenshot) => screenshot.file || null),
-                screenshot_alts: (step.screenshots || []).map((screenshot) => screenshot.alt_text || ""),
-                screenshot_captions: (step.screenshots || []).map((screenshot) => screenshot.caption || ""),
-            }));
+            const formattedSteps = steps.map((step) => {
+                // Filter out screenshots that are marked for deletion
+                const validScreenshots = (step.screenshots || []).filter(screenshot => 
+                    screenshot && !screenshot.isDeleted
+                );
+
+                return {
+                    step_number: step.step_number,
+                    title: step.title,
+                    description: step.description || `Step ${step.step_number} - ${step.title || "Details"}`,
+                    action_type: step.action_type,
+                    order: step.order,
+                    is_active: Boolean(step.is_active),
+                    details: (step.details || []).map((detail) => 
+                        typeof detail === "object" ? detail.content || "" : detail
+                    ),
+                    actions: (step.actions || []).map((action) => ({
+                        action_type: action.action_type || "click",
+                        label: action.label,
+                        url_or_action: action.url_or_action || "",
+                        style: action.style || "default",
+                        order: action.order,
+                    })),
+                    screenshots: validScreenshots.map(screenshot => screenshot.file || null),
+                    screenshot_alts: validScreenshots.map(screenshot => screenshot.alt_text || ""),
+                    screenshot_captions: validScreenshots.map(screenshot => screenshot.caption || ""),
+                };
+            });
 
             console.log('Formatted steps:', formattedSteps);
 
-            const fullPayload = {
-                ...data,
-                is_active: Boolean(data.is_active),
-                steps: formattedSteps,
-            };
+            const formData = new FormData();
+            
+            // Add basic fields
+            formData.append('title', data.title);
+            formData.append('video_path', data.video_path);
+            formData.append('video_type', data.video_type);
+            formData.append('is_active', data.is_active ? '1' : '0');
+            formData.append('card_id', data.card_id);
 
-            // Remove card_name if it exists
-            if (fullPayload.card_name !== undefined) {
-                delete fullPayload.card_name;
-            }
+            // Add steps data
+            formattedSteps.forEach((step, index) => {
+                formData.append(`steps[${index}][step_number]`, step.step_number);
+                formData.append(`steps[${index}][title]`, step.title);
+                formData.append(`steps[${index}][description]`, step.description);
+                formData.append(`steps[${index}][action_type]`, step.action_type);
+                formData.append(`steps[${index}][order]`, step.order);
+                formData.append(`steps[${index}][is_active]`, step.is_active ? '1' : '0');
 
-            // Handle parent/child card relationship
-            if (!fullPayload.card_id && fullPayload.parent_card_id) {
-                fullPayload.card_id = fullPayload.parent_card_id;
-            }
+                // Add details
+                step.details.forEach((detail, detailIndex) => {
+                    formData.append(`steps[${index}][details][${detailIndex}]`, detail);
+                });
 
-            // Remove parent_card_id from payload
-            if (fullPayload.parent_card_id !== undefined) {
-                delete fullPayload.parent_card_id;
-            }
+                // Add actions
+                step.actions.forEach((action, actionIndex) => {
+                    formData.append(`steps[${index}][actions][${actionIndex}][action_type]`, action.action_type);
+                    formData.append(`steps[${index}][actions][${actionIndex}][label]`, action.label);
+                    formData.append(`steps[${index}][actions][${actionIndex}][url_or_action]`, action.url_or_action);
+                    formData.append(`steps[${index}][actions][${actionIndex}][style]`, action.style);
+                    formData.append(`steps[${index}][actions][${actionIndex}][order]`, action.order);
+                });
 
-            // Format card_id
-            if (fullPayload.card_id && typeof fullPayload.card_id === "string") {
-                fullPayload.card_id = parseInt(fullPayload.card_id, 10);
-            }
-
-            // Format video_path
-            if (fullPayload.video_path && !fullPayload.video_path.startsWith("storage/")) {
-                if (!fullPayload.video_path.includes("http://") && !fullPayload.video_path.includes("https://")) {
-                    fullPayload.video_path = fullPayload.video_path.trim();
-                }
-            }
-
-            console.log('Final payload to be sent:', fullPayload);
+                // Add screenshots
+                step.screenshots.forEach((screenshot, screenshotIndex) => {
+                    if (screenshot) {
+                        formData.append(`steps[${index}][screenshots][${screenshotIndex}]`, screenshot);
+                        formData.append(`steps[${index}][screenshot_alts][${screenshotIndex}]`, step.screenshot_alts[screenshotIndex] || '');
+                        formData.append(`steps[${index}][screenshot_captions][${screenshotIndex}]`, step.screenshot_captions[screenshotIndex] || '');
+                    }
+                });
+            });
 
             if (editMode && guideId) {
                 console.log('Updating existing guide with ID:', guideId);
                 try {
-                    const formData = new FormData();
-                    
-                    // Add basic fields
-                    formData.append('title', data.title);
-                    formData.append('video_path', data.video_path);
-                    formData.append('video_type', data.video_type);
-                    formData.append('is_active', data.is_active ? '1' : '0');
-                    formData.append('card_id', data.card_id);
-
-                    // Add steps data
-                    formattedSteps.forEach((step, index) => {
-                        formData.append(`steps[${index}][step_number]`, step.step_number);
-                        formData.append(`steps[${index}][title]`, step.title);
-                        formData.append(`steps[${index}][description]`, step.description);
-                        formData.append(`steps[${index}][action_type]`, step.action_type);
-                        formData.append(`steps[${index}][order]`, step.order);
-                        formData.append(`steps[${index}][is_active]`, step.is_active ? '1' : '0');
-
-                        // Add details
-                        step.details.forEach((detail, detailIndex) => {
-                            formData.append(`steps[${index}][details][${detailIndex}]`, detail);
-                        });
-
-                        // Add actions
-                        step.actions.forEach((action, actionIndex) => {
-                            formData.append(`steps[${index}][actions][${actionIndex}][action_type]`, action.action_type);
-                            formData.append(`steps[${index}][actions][${actionIndex}][label]`, action.label);
-                            formData.append(`steps[${index}][actions][${actionIndex}][url_or_action]`, action.url_or_action);
-                            formData.append(`steps[${index}][actions][${actionIndex}][style]`, action.style);
-                            formData.append(`steps[${index}][actions][${actionIndex}][order]`, action.order);
-                        });
-
-                        // Add screenshots
-                        step.screenshots.forEach((screenshot, screenshotIndex) => {
-                            if (screenshot) {
-                                formData.append(`steps[${index}][screenshots][${screenshotIndex}]`, screenshot);
-                                formData.append(`steps[${index}][screenshot_alts][${screenshotIndex}]`, step.screenshot_alts[screenshotIndex] || '');
-                                formData.append(`steps[${index}][screenshot_captions][${screenshotIndex}]`, step.screenshot_captions[screenshotIndex] || '');
-                            }
-                        });
-                    });
-
                     const manualResponse = await axios.post(
                         `/api/v1/user-manuals/${guideId}/update`,
                         formData,
@@ -869,7 +848,7 @@ export default function CreateUserGuide({
                 try {
                     const manualResponse = await axios.post(
                         "/api/v1/user-manuals",
-                        fullPayload
+                        formData
                     );
                     // Safely extract the ID from the response, checking various possible structures
                     if (

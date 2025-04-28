@@ -125,21 +125,22 @@ class ManualStepService
 
         // Process screenshots
         if (isset($data['screenshots'])) {
-            // Delete existing screenshots if we're updating them
-            if (!empty($data['screenshots'])) {
-                $this->deleteExistingScreenshots($step);
-            }
+            // Always delete existing screenshots when processing screenshots
+            $this->deleteExistingScreenshots($step);
             
-            foreach ($data['screenshots'] as $index => $screenshot) {
-                if ($screenshot instanceof \Illuminate\Http\UploadedFile) {
-                    $path = $screenshot->store('user-manuals/screenshots', 'public');
+            // Only create new screenshots if they exist
+            if (!empty($data['screenshots'])) {
+                foreach ($data['screenshots'] as $index => $screenshot) {
+                    if ($screenshot instanceof \Illuminate\Http\UploadedFile) {
+                        $path = $screenshot->store('user-manuals/screenshots', 'public');
 
-                    $step->screenshots()->create([
-                        'screenshot_path' => $path,
-                        'alt_text' => $data['screenshot_alts'][$index] ?? null,
-                        'caption' => $data['screenshot_captions'][$index] ?? null,
-                        'order' => $index + 1,
-                    ]);
+                        $step->screenshots()->create([
+                            'screenshot_path' => $path,
+                            'alt_text' => $data['screenshot_alts'][$index] ?? null,
+                            'caption' => $data['screenshot_captions'][$index] ?? null,
+                            'order' => $index + 1,
+                        ]);
+                    }
                 }
             }
         }

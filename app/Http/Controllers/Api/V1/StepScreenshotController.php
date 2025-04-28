@@ -179,7 +179,7 @@ class StepScreenshotController extends Controller
     {
         try {
             // Only delete if the screenshot belongs to this step
-            if ($screenshot->step_id !== $step->id) {
+            if ($screenshot->manual_step_id !== $step->id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Screenshot does not belong to this step'
