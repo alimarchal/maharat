@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\V1;
 
+use App\Http\Resources\RequestBudgetResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -42,6 +43,8 @@ class PurchaseOrderResource extends JsonResource
             'quotation' => new QuotationResource($this->whenLoaded('quotation')),
             'supplier' => new SupplierResource($this->whenLoaded('supplier')),
             'created_by' => new UserResource($this->whenLoaded('user')),
+            'requestBudget' => new RequestBudgetResource($this->whenLoaded('requestBudget')),
+
         ];
     }
 }

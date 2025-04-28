@@ -36,6 +36,12 @@ class PurchaseOrder extends Model
         'amount' => 'decimal:2'
     ];
 
+
+    public function requestBudget(): BelongsTo
+    {
+        return $this->belongsTo(RequestBudget::class);
+    }
+
     /**
      * Get the quotation that owns the purchase order.
      */

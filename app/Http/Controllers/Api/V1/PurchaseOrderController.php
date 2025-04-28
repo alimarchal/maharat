@@ -15,9 +15,17 @@ use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
+use App\Services\PurchaseOrderBudgetService;
+use App\Models\RequestBudget;
 
 class PurchaseOrderController extends Controller
 {
+    protected $budgetService;
+
+    public function __construct(PurchaseOrderBudgetService $budgetService)
+    {
+        $this->budgetService = $budgetService;
+    }
     /**
      * Display a listing of the resource.
      */
@@ -97,10 +105,74 @@ class PurchaseOrderController extends Controller
         }
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(StorePurchaseOrderRequest $request): JsonResponse
+    {
+        try {
+            DB::beginTransaction();
+
+            // Get validated data except the attachment
+            $validatedData = $request->safe()->except(['attachment']);
+
+            // Check if we have enough budget if request_budget_id is provided
+            if (isset($validatedData['request_budget_id'])) {
+                $budget = RequestBudget::findOrFail($validatedData['request_budget_id']);
+                $amount = $validatedData['amount'];
+
+                // Check and reserve budget
+                if (!$this->budgetService->checkAndReserveBudget($budget, $amount)) {
+                    return response()->json([
+                        'message' => 'Insufficient budget balance',
+                        'available_balance' => $budget->balance_amount
+                    ], Response::HTTP_BAD_REQUEST);
+                }
+            }
+
+            // Add the authenticated user's ID as creator
+            $validatedData['user_id'] = auth()->id();
+
+            // Generate unique purchase order number
+            $validatedData['purchase_order_no'] = $this->generatePurchaseOrderNumber();
+
+            // Create purchase order
+            $purchaseOrder = PurchaseOrder::create($validatedData);
+
+            // Handle file upload if provided
+            if ($request->hasFile('attachment')) {
+                $path = $request->file('attachment')->store('purchase-orders','public');
+                $purchaseOrder->attachment = $path;
+                $purchaseOrder->original_name = $request->file('attachment')->getClientOriginalName();
+                $purchaseOrder->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Purchase order created successfully',
+                'data' => new PurchaseOrderResource(
+                    $purchaseOrder->load([
+                        'quotation',
+                        'supplier',
+                        'user',
+                        'department',
+                        'costCenter',
+                        'subCostCenter',
+                        'warehouse',
+                        'requestBudget'
+                    ])
+                )
+            ], Response::HTTP_CREATED);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Failed to create purchase order: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            return response()->json([
+                'message' => 'Failed to create purchase order',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /* public function store(StorePurchaseOrderRequest $request): JsonResponse
     {
         try {
             DB::beginTransaction();
@@ -151,10 +223,12 @@ class PurchaseOrderController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+    **/
 
     /**
      * Display the specified resource.
      */
+
     public function show(string $id)
     {
         try {
@@ -235,9 +309,35 @@ class PurchaseOrderController extends Controller
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+
+    public function destroy(PurchaseOrder $purchaseOrder): JsonResponse
+    {
+        try {
+            DB::beginTransaction();
+
+            // Release reserved budget if applicable
+            if ($purchaseOrder->request_budget_id) {
+                $this->budgetService->releaseReservedBudget($purchaseOrder);
+            }
+
+            $purchaseOrder->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Purchase order deleted successfully'
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to delete purchase order',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /*
+
     public function destroy(PurchaseOrder $purchaseOrder): JsonResponse
     {
         try {
@@ -258,6 +358,7 @@ class PurchaseOrderController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+     */
 
     /**
      * Generate a unique purchase order number
@@ -288,46 +389,46 @@ class PurchaseOrderController extends Controller
     {
         try {
             $purchaseOrder = PurchaseOrder::findOrFail($id);
-            
+
             if (!$request->hasFile('purchase_order_document')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No document provided'
                 ], Response::HTTP_BAD_REQUEST);
             }
-            
+
             $file = $request->file('purchase_order_document');
             $filename = 'po_' . $purchaseOrder->purchase_order_no . '_' . time() . '.' . $file->getClientOriginalExtension();
-            
+
             // Store the document
             $path = $file->storeAs('purchase-orders/documents', $filename, 'public');
-            
+
             // Update the purchase order with the generated document
             $purchaseOrder->generated_document = $path;
-            
+
             // If update_attachment flag is set, also update the attachment column
             if ($request->boolean('update_attachment')) {
                 // Remove old attachment if exists
                 if ($purchaseOrder->attachment && Storage::disk('public')->exists($purchaseOrder->attachment)) {
                     Storage::disk('public')->delete($purchaseOrder->attachment);
                 }
-                
+
                 $purchaseOrder->attachment = $path;
                 $purchaseOrder->original_name = $file->getClientOriginalName();
             }
-            
+
             $purchaseOrder->save();
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Document uploaded successfully',
                 'document_url' => Storage::disk('public')->url($path)
             ], Response::HTTP_OK);
-            
+
         } catch (\Exception $e) {
             \Log::error('Failed to upload document: ' . $e->getMessage());
             \Log::error($e->getTraceAsString());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to upload document',

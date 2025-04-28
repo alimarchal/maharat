@@ -15,6 +15,7 @@ class PurchaseOrderParameters
         'supplier_id',
         'user_id',
         'purchase_order_date',
+        'request_budget_id',
         'status',
         'created_at'
     ];
@@ -40,6 +41,7 @@ class PurchaseOrderParameters
         'costCenter',
         'subCostCenter',
         'warehouse',
+        'requestBudget',
         'requestForQuotation.warehouse',
         'requestForQuotation.items.product.category',
         'requestForQuotation.items.product.unit',

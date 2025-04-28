@@ -35,7 +35,9 @@ class StorePurchaseOrderRequest extends FormRequest
             'amount' => 'required|numeric|min:0',
             'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'original_name' => 'nullable|string',
-            'status' => 'required|in:Approved,Draft,Rejected'
+            'status' => 'required|in:Approved,Draft,Rejected',
+            'request_budget_id' => ['required', 'exists:request_budgets,id'],
+
         ];
     }
 }
