@@ -13,7 +13,7 @@ class ManualStepPolicy
      */
     public function viewAny(User $user): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -21,7 +21,7 @@ class ManualStepPolicy
      */
     public function view(User $user, ManualStep $manualStep): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -29,7 +29,7 @@ class ManualStepPolicy
      */
     public function create(User $user): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -37,7 +37,7 @@ class ManualStepPolicy
      */
     public function update(User $user, ManualStep $manualStep): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -45,7 +45,7 @@ class ManualStepPolicy
      */
     public function delete(User $user, ManualStep $manualStep): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -53,7 +53,7 @@ class ManualStepPolicy
      */
     public function restore(User $user, ManualStep $manualStep): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -61,6 +61,6 @@ class ManualStepPolicy
      */
     public function forceDelete(User $user, ManualStep $manualStep): bool
     {
-        return false;
+        return true;
     }
 }

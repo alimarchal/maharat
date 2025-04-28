@@ -430,7 +430,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('user-manuals', [UserManualController::class, 'index']); // GET /api/v1/user-manuals
     Route::post('user-manuals', [UserManualController::class, 'store']); // POST /api/v1/user-manuals
     Route::get('user-manuals/{userManual}', [UserManualController::class, 'show']); // GET /api/v1/user-manuals/{id}
-    Route::put('user-manuals/{userManual}', [UserManualController::class, 'update']); // PUT /api/v1/user-manuals/{id}
+    Route::post('user-manuals/{userManual}/update', [UserManualController::class, 'update']); // POST /api/v1/user-manuals/{id}/update
     Route::delete('user-manuals/{userManual}', [UserManualController::class, 'destroy']); // DELETE /api/v1/user-manuals/{id}
 
     // Manual Step Routes

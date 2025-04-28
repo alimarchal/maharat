@@ -95,13 +95,23 @@ class UserManualController extends Controller
     public function update(UserManualUpdateRequest $request, UserManual $userManual): JsonResponse
     {
         try {
+            Log::info('Updating user manual', [
+                'manual_id' => $userManual->id,
+                'request_data' => $request->all()
+            ]);
+
             $manual = $this->service->updateManual($userManual, $request->validated());
 
-            return response()->json(new UserManualResource($manual));
+            return response()->json([
+                'success' => true,
+                'message' => 'User manual updated successfully',
+                'data' => new UserManualResource($manual)
+            ]);
         } catch (\Exception $e) {
             Log::error('Error updating user manual: ' . $e->getMessage());
 
             return response()->json([
+                'success' => false,
                 'message' => 'Failed to update user manual',
                 'error' => $e->getMessage()
             ], 500);

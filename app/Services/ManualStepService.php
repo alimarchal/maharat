@@ -114,6 +114,7 @@ class ManualStepService
     {
         // Process details
         if (isset($data['details'])) {
+            $step->details()->delete();
             foreach ($data['details'] as $index => $detail) {
                 $step->details()->create([
                     'content' => $detail,
@@ -124,6 +125,11 @@ class ManualStepService
 
         // Process screenshots
         if (isset($data['screenshots'])) {
+            // Delete existing screenshots if we're updating them
+            if (!empty($data['screenshots'])) {
+                $this->deleteExistingScreenshots($step);
+            }
+            
             foreach ($data['screenshots'] as $index => $screenshot) {
                 if ($screenshot instanceof \Illuminate\Http\UploadedFile) {
                     $path = $screenshot->store('user-manuals/screenshots', 'public');
@@ -140,6 +146,7 @@ class ManualStepService
 
         // Process actions
         if (isset($data['actions'])) {
+            $step->actions()->delete();
             foreach ($data['actions'] as $index => $action) {
                 $step->actions()->create([
                     'action_type' => $action['type'],

@@ -697,10 +697,12 @@ export default function CreateUserGuide({
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
+        console.log('Starting form submission...');
 
         // Validate form
         const validationErrors = validateForm();
         if (Object.keys(validationErrors).length > 0) {
+            console.log('Validation errors:', validationErrors);
             setErrors(validationErrors);
             setIsLoading(false);
             return;
@@ -708,111 +710,160 @@ export default function CreateUserGuide({
         setErrors({});
         try {
             let userManualId;
-            setData;
+            console.log('Preparing data for submission...');
+            console.log('Current form data:', data);
+            console.log('Current steps:', steps);
+
             const formattedSteps = steps.map((step) => ({
                 step_number: step.step_number,
                 title: step.title,
-                description:
-                    step.description ||
-                    `Step ${step.step_number} - ${step.title || "Details"}`,
+                description: step.description || `Step ${step.step_number} - ${step.title || "Details"}`,
                 action_type: step.action_type,
                 order: step.order,
-                is_active: step.is_active,
-                // Convert details objects to strings if they exist
-                details: (step.details || []).map((detail) =>
+                is_active: Boolean(step.is_active),
+                details: (step.details || []).map((detail) => 
                     typeof detail === "object" ? detail.content || "" : detail
                 ),
-                // Add type field to actions
                 actions: (step.actions || []).map((action) => ({
-                    action_type: action.action_type,
-                    type: action.action_type || "click", // Default to "click" if not set
+                    action_type: action.action_type || "click",
                     label: action.label,
                     url_or_action: action.url_or_action || "",
-                    style: action.style || "default", // Provide a default style if not set
+                    style: action.style || "default",
                     order: action.order,
                 })),
+                screenshots: (step.screenshots || []).map((screenshot) => screenshot.file || null),
+                screenshot_alts: (step.screenshots || []).map((screenshot) => screenshot.alt_text || ""),
+                screenshot_captions: (step.screenshots || []).map((screenshot) => screenshot.caption || ""),
             }));
 
-            // Include steps data in the main payload
+            console.log('Formatted steps:', formattedSteps);
+
             const fullPayload = {
                 ...data,
+                is_active: Boolean(data.is_active),
                 steps: formattedSteps,
             };
 
-            // Remove card_name if it exists, as it's not needed anymore
+            // Remove card_name if it exists
             if (fullPayload.card_name !== undefined) {
                 delete fullPayload.card_name;
             }
 
             // Handle parent/child card relationship
             if (!fullPayload.card_id && fullPayload.parent_card_id) {
-                // If no child card is selected but parent is, use parent as card_id
                 fullPayload.card_id = fullPayload.parent_card_id;
             }
 
-            // Remove parent_card_id from payload as backend doesn't need it
+            // Remove parent_card_id from payload
             if (fullPayload.parent_card_id !== undefined) {
                 delete fullPayload.parent_card_id;
             }
 
-            // Ensure required fields are properly formatted
-            // Convert card_id to number if it's a string
-            if (
-                fullPayload.card_id &&
-                typeof fullPayload.card_id === "string"
-            ) {
+            // Format card_id
+            if (fullPayload.card_id && typeof fullPayload.card_id === "string") {
                 fullPayload.card_id = parseInt(fullPayload.card_id, 10);
             }
 
-            // Ensure video_path is properly formatted if it's a URL
-            if (
-                fullPayload.video_path &&
-                !fullPayload.video_path.startsWith("storage/")
-            ) {
-                // If it's an external URL (contains http or https), leave it as is
-                if (
-                    !fullPayload.video_path.includes("http://") &&
-                    !fullPayload.video_path.includes("https://")
-                ) {
-                    // Otherwise, ensure it has the correct format for storage
+            // Format video_path
+            if (fullPayload.video_path && !fullPayload.video_path.startsWith("storage/")) {
+                if (!fullPayload.video_path.includes("http://") && !fullPayload.video_path.includes("https://")) {
                     fullPayload.video_path = fullPayload.video_path.trim();
                 }
             }
 
+            console.log('Final payload to be sent:', fullPayload);
+
             if (editMode && guideId) {
+                console.log('Updating existing guide with ID:', guideId);
                 try {
-                    const manualResponse = await axios.put(
-                        `/api/v1/user-manuals/${guideId}`,
-                        fullPayload
+                    const formData = new FormData();
+                    
+                    // Add basic fields
+                    formData.append('title', data.title);
+                    formData.append('video_path', data.video_path);
+                    formData.append('video_type', data.video_type);
+                    formData.append('is_active', data.is_active ? '1' : '0');
+                    formData.append('card_id', data.card_id);
+
+                    // Add steps data
+                    formattedSteps.forEach((step, index) => {
+                        formData.append(`steps[${index}][step_number]`, step.step_number);
+                        formData.append(`steps[${index}][title]`, step.title);
+                        formData.append(`steps[${index}][description]`, step.description);
+                        formData.append(`steps[${index}][action_type]`, step.action_type);
+                        formData.append(`steps[${index}][order]`, step.order);
+                        formData.append(`steps[${index}][is_active]`, step.is_active ? '1' : '0');
+
+                        // Add details
+                        step.details.forEach((detail, detailIndex) => {
+                            formData.append(`steps[${index}][details][${detailIndex}]`, detail);
+                        });
+
+                        // Add actions
+                        step.actions.forEach((action, actionIndex) => {
+                            formData.append(`steps[${index}][actions][${actionIndex}][action_type]`, action.action_type);
+                            formData.append(`steps[${index}][actions][${actionIndex}][label]`, action.label);
+                            formData.append(`steps[${index}][actions][${actionIndex}][url_or_action]`, action.url_or_action);
+                            formData.append(`steps[${index}][actions][${actionIndex}][style]`, action.style);
+                            formData.append(`steps[${index}][actions][${actionIndex}][order]`, action.order);
+                        });
+
+                        // Add screenshots
+                        step.screenshots.forEach((screenshot, screenshotIndex) => {
+                            if (screenshot) {
+                                formData.append(`steps[${index}][screenshots][${screenshotIndex}]`, screenshot);
+                                formData.append(`steps[${index}][screenshot_alts][${screenshotIndex}]`, step.screenshot_alts[screenshotIndex] || '');
+                                formData.append(`steps[${index}][screenshot_captions][${screenshotIndex}]`, step.screenshot_captions[screenshotIndex] || '');
+                            }
+                        });
+                    });
+
+                    const manualResponse = await axios.post(
+                        `/api/v1/user-manuals/${guideId}/update`,
+                        formData,
+                        {
+                            headers: {
+                                'Content-Type': 'multipart/form-data',
+                            },
+                        }
                     );
+                    console.log('Update response:', manualResponse.data);
                     userManualId = guideId;
+                    
+                    // Show success message
+                    toast.success("Guide updated successfully!");
+                    
+                    // Reset form and close modal
+                    setData({
+                        title: "",
+                        video_path: "",
+                        video_type: "",
+                        is_active: true,
+                        card_id: "",
+                        parent_card_id: "",
+                    });
+                    setSelectedParentCard("");
+                    setSteps([
+                        {
+                            step_number: 1,
+                            title: "",
+                            description: "",
+                            action_type: "",
+                            order: 1,
+                            is_active: true,
+                            details: [],
+                            screenshots: [],
+                            actions: [],
+                        },
+                    ]);
+                    setShowVideoField(false);
+                    onClose();
                 } catch (error) {
+                    console.error('Error updating guide:', error.response?.data || error);
                     setErrors({
-                        general:
-                            error.response?.data?.message ||
-                            "Failed to update the user guide. Please try again.",
+                        general: error.response?.data?.message || "Failed to update the user guide. Please try again.",
                     });
                     throw error;
-                }
-                
-                // Check for screenshot uploads
-                const hasScreenshots = steps.some(
-                    (step) =>
-                        step.screenshots &&
-                        step.screenshots.some((screenshot) => screenshot.file)
-                );
-                
-                if (hasScreenshots) {
-                    // Handle file uploads for each step
-                    try {
-                        await handleStepFileUploads(steps, userManualId);
-                    } catch (error) {
-                        setErrors({
-                            general:
-                                "Guide was updated but failed to upload screenshots. Please try again.",
-                        });
-                        throw error;
-                    }
                 }
             } else {
                 try {
@@ -862,33 +913,8 @@ export default function CreateUserGuide({
                     }
                 }
             }
-
-            // Reset form and close modal
-            setData({
-                title: "",
-                video_path: "",
-                video_type: "",
-                is_active: true,
-                card_id: "",
-                parent_card_id: "",
-            });
-            setSelectedParentCard("");
-            setSteps([
-                {
-                    step_number: 1,
-                    title: "",
-                    description: "",
-                    action_type: "",
-                    order: 1,
-                    is_active: true,
-                    details: [],
-                    screenshots: [],
-                    actions: [],
-                },
-            ]);
-            setShowVideoField(false);
-            onClose();
         } catch (error) {
+            console.error('Error in handleSubmit:', error);
             if (!errors.general) {
                 setErrors({
                     general: "An unexpected error occurred. Please try again.",
@@ -899,36 +925,37 @@ export default function CreateUserGuide({
         }
     };
 
-    // Helper function to handle file uploads for steps
     const handleStepFileUploads = async (steps, userManualId) => {
+        console.log('Starting step file uploads...');
         try {
             const stepsResponse = await axios.get(
                 `/api/v1/user-manuals/${userManualId}/steps`
             );
+            console.log('Fetched steps:', stepsResponse.data);
             const stepData = stepsResponse.data.data || [];
+            
             for (let i = 0; i < steps.length; i++) {
                 const step = steps[i];
                 const stepNumber = parseInt(step.step_number);
+                console.log(`Processing step ${stepNumber}...`);
                 
-                // Find matching step in API response
                 const matchingStep = stepData.find(
                     (s) => parseInt(s.step_number) === stepNumber
                 );
-                if (
-                    matchingStep &&
-                    step.screenshots &&
-                    step.screenshots.length > 0
-                ) {
+                
+                if (matchingStep && step.screenshots && step.screenshots.length > 0) {
                     const stepId = matchingStep.id;
+                    console.log(`Found matching step with ID ${stepId}`);
                     
                     for (const screenshot of step.screenshots) {
-                        if (screenshot.file) {
+                        if (screenshot) {
+                            console.log('Uploading screenshot:', screenshot);
                             try {
                                 const formData = new FormData();
-                                formData.append("screenshot", screenshot.file);
+                                formData.append("screenshot", screenshot);
                                 formData.append(
                                     "alt_text",
-                                    screenshot.alt_text || screenshot.file.name || ""
+                                    screenshot.alt_text || ""
                                 );
                                 formData.append(
                                     "caption",
@@ -939,30 +966,24 @@ export default function CreateUserGuide({
                                     screenshot.type || "image"
                                 );
                                 formData.append("order", screenshot.order || 1);
-                                formData.append("original_name", screenshot.file.name || "");
+                                formData.append("original_name", screenshot.file_name || "");
 
-                                // Use the correct API endpoint
                                 const uploadUrl = `/api/v1/steps/${stepId}/screenshots`;
+                                console.log('Uploading to:', uploadUrl);
+                                
                                 const response = await axios.post(
                                     uploadUrl,
                                     formData, 
                                     {
                                         headers: {
-                                            "Content-Type":
-                                                "multipart/form-data",
+                                            "Content-Type": "multipart/form-data",
                                         },
                                     }
                                 );
+                                console.log('Screenshot upload response:', response.data);
                             } catch (uploadError) {
-                                // Add more detailed error logging
-                                if (uploadError.response) {
-                                    console.error(
-                                        "Server response:",
-                                        uploadError.response.status,
-                                        uploadError.response.data
-                                    );
-                                }
-                                throw uploadError; // Re-throw to handle in the main function
+                                console.error('Error uploading screenshot:', uploadError.response?.data || uploadError);
+                                throw uploadError;
                             }
                         }
                     }
@@ -973,11 +994,8 @@ export default function CreateUserGuide({
                 }
             }
         } catch (error) {
-            console.error(
-                "Error handling file uploads:",
-                error.response?.data || error.message
-            );
-            throw error; // Re-throw to be caught by the parent function
+            console.error('Error in handleStepFileUploads:', error.response?.data || error);
+            throw error;
         }
     };
 
