@@ -171,7 +171,7 @@ const ApproveOrder = ({
             // Check if requestDetails has data
             if (!requestDetails) {
                 setErrors({
-                    submit: "No budget request found for the sub cost center.",
+                    submit: "No budget request found for this Sub cost center.",
                 });
                 setIsSaving(false);
                 return;
@@ -182,17 +182,18 @@ const ApproveOrder = ({
                 requestDetails?.fiscal_period?.fiscal_year?.slice(0, 4);
             if (requestFiscalYear != currentYear) {
                 setErrors({
-                    submit: "We have no Request Budget for current fiscal year",
+                    submit: "No budget request found for current fiscal year",
                 });
                 setIsSaving(false);
                 return;
             }
 
             // Check if the form amount exceeds the available amount
-            const availableAmount = requestDetails.balance_amount;
-            if (formData.amount > availableAmount) {
+            const availableAmount = Number(requestDetails.balance_amount);
+            const enteredAmount = Number(formData.amount);
+            if (enteredAmount > availableAmount) {
                 setErrors({
-                    submit: "Insufficient Amount in the sub cost center for this Purchase Order.",
+                    submit: "Insufficient Amount in this sub cost center for this Purchase Order.",
                 });
                 setIsSaving(false);
                 return;
