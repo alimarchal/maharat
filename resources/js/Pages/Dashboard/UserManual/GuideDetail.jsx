@@ -43,8 +43,16 @@ export default function GuideDetail() {
             );
             
             if (response.data && response.data.data) {
+                // Sort steps by order
+                const sortedSteps = response.data.data.steps.map(step => ({
+                    ...step,
+                    screenshots: step.screenshots?.sort((a, b) => a.order - b.order)
+                })).sort((a, b) => a.order - b.order);
                 
-                setGuide(response.data.data);
+                setGuide({
+                    ...response.data.data,
+                    steps: sortedSteps
+                });
                 setDebugInfo({
                     id: response.data.data.id,
                     title: response.data.data.title,
@@ -71,9 +79,9 @@ export default function GuideDetail() {
                 );
                 setIsUnderConstruction(true);
                 
-                    setDebugInfo({
+                setDebugInfo({
                     message: "No content available for this ID",
-                        id: guideId,
+                    id: guideId,
                     apiUrl: response.config?.url,
                 });
             }
@@ -456,11 +464,9 @@ export default function GuideDetail() {
                                                         0 && (
                                     <div className="p-2">
                                         <div className="grid grid-cols-1 gap-4">
-                                                                {step.screenshots.map(
-                                                                    (
-                                                                        screenshot,
-                                                                        screenshotIdx
-                                                                    ) => {
+                                                                {step.screenshots
+                                                                    .sort((a, b) => a.order - b.order)
+                                                                    .map((screenshot, screenshotIdx) => {
                                                                         const imageUrl =
                                                                             getImageUrl(
                                                                                 screenshot

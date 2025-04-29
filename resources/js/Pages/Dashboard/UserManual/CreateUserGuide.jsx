@@ -8,10 +8,12 @@ import {
     faTrash,
     faImage,
     faArrowsAlt,
+    faGripVertical,
 } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "react-hot-toast";
 import InputFloating from "@/Components/InputFloating";
 import SelectFloating from "@/Components/SelectFloating";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 // Step component for adding multiple steps
 const Step = ({
@@ -30,6 +32,7 @@ const Step = ({
     removeAction,
     errors,
     editMode,
+    reorderScreenshots,
 }) => {
     return (
         <div className="bg-white p-4 rounded-lg shadow-md mb-4">
@@ -120,99 +123,104 @@ const Step = ({
                         Screenshot
                     </button>
                 </div>
-                <div className="space-y-2">
-                    {step.screenshots && step.screenshots.map((screenshot, screenshotIndex) => (
-                        <div
-                            key={screenshotIndex}
-                            className="relative group p-4 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-200 cursor-move"
-                            draggable
-                            onDragStart={(e) => {
-                                e.dataTransfer.setData('text/plain', screenshotIndex);
-                                e.currentTarget.classList.add('opacity-50');
-                            }}
-                            onDragEnd={(e) => {
-                                e.currentTarget.classList.remove('opacity-50');
-                            }}
-                            onDragOver={(e) => {
-                                e.preventDefault();
-                                e.currentTarget.classList.add('border-blue-500');
-                            }}
-                            onDragLeave={(e) => {
-                                e.currentTarget.classList.remove('border-blue-500');
-                            }}
-                            onDrop={(e) => {
-                                e.preventDefault();
-                                e.currentTarget.classList.remove('border-blue-500');
-                                const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                                if (fromIndex !== screenshotIndex) {
-                                    reorderScreenshots(index, fromIndex, screenshotIndex);
-                                }
-                            }}
-                        >
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center space-x-2">
-                                    <span className="text-sm font-medium text-gray-700">Order: {screenshot.order}</span>
-                                    <div className="text-gray-400">
-                                        <FontAwesomeIcon icon={faArrowsAlt} />
-                                    </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => removeScreenshot(index, screenshotIndex)}
-                                    className="text-red-500 hover:text-red-700"
-                                >
-                                    <FontAwesomeIcon icon={faTrash} /> Remove
-                                </button>
+                <DragDropContext onDragEnd={(result) => {
+                    if (!result.destination) return;
+                    const fromIndex = result.source.index;
+                    const toIndex = result.destination.index;
+                    reorderScreenshots(index, fromIndex, toIndex);
+                }}>
+                    <Droppable droppableId={`screenshots-${index}`}>
+                        {(provided) => (
+                            <div
+                                {...provided.droppableProps}
+                                ref={provided.innerRef}
+                                className="space-y-2"
+                            >
+                                {step.screenshots && step.screenshots
+                                    .sort((a, b) => a.order - b.order)
+                                    .map((screenshot, screenshotIndex) => (
+                                        <Draggable
+                                            key={screenshotIndex}
+                                            draggableId={`screenshot-${index}-${screenshotIndex}`}
+                                            index={screenshotIndex}
+                                        >
+                                            {(provided) => (
+                                                <div
+                                                    ref={provided.innerRef}
+                                                    {...provided.draggableProps}
+                                                    {...provided.dragHandleProps}
+                                                    className="relative group p-4 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-200"
+                                                >
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className="text-sm font-medium text-gray-700">Order: {screenshot.order}</span>
+                                                            <div className="text-gray-400">
+                                                                <FontAwesomeIcon icon={faGripVertical} />
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeScreenshot(index, screenshotIndex)}
+                                                            className="text-red-500 hover:text-red-700"
+                                                        >
+                                                            <FontAwesomeIcon icon={faTrash} /> Remove
+                                                        </button>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                            Screenshot
+                                                        </label>
+                                                        <div className="flex items-center">
+                                                            {screenshot.file_name || screenshot.file || screenshot.screenshot_path ? (
+                                                                <div className="flex items-center w-full">
+                                                                    <span className="text-sm font-medium text-[#009FDC] flex-grow">
+                                                                        {screenshot.file_name}
+                                                                    </span>
+                                                                </div>
+                                                            ) : (
+                                                                <input
+                                                                    type="file"
+                                                                    onChange={(e) => {
+                                                                        const file = e.target.files[0];
+                                                                        updateScreenshot(
+                                                                            index,
+                                                                            screenshotIndex,
+                                                                            "file",
+                                                                            file
+                                                                        );
+                                                                    }}
+                                                                    className="mt-1 w-auto text-sm file:mr-4 file:py-2 file:px-4
+                                                                    file:rounded-full file:border-0 file:text-sm file:font-semibold
+                                                                    file:bg-[#009FDC] file:text-white hover:file:bg-[#007BB5]"
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-2">
+                                                        <input
+                                                            type="text"
+                                                            value={screenshot.caption || ""}
+                                                            onChange={(e) =>
+                                                                updateScreenshot(
+                                                                    index,
+                                                                    screenshotIndex,
+                                                                    "caption",
+                                                                    e.target.value
+                                                                )
+                                                            }
+                                                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                                                            placeholder="Caption"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </Draggable>
+                                    ))}
+                                {provided.placeholder}
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Screenshot
-                                </label>
-                                <div className="flex items-center">
-                                    {screenshot.file_name || screenshot.file || screenshot.screenshot_path ? (
-                                        <div className="flex items-center w-full">
-                                            <span className="text-sm font-medium text-[#009FDC] flex-grow">
-                                                {screenshot.file_name || (screenshot.file ? screenshot.file.name : screenshot.screenshot_path)}
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <input
-                                            type="file"
-                                            onChange={(e) => {
-                                                const file = e.target.files[0];
-                                                updateScreenshot(
-                                                    index,
-                                                    screenshotIndex,
-                                                    "file",
-                                                    file
-                                                );
-                                            }}
-                                            className="mt-1 w-auto text-sm file:mr-4 file:py-2 file:px-4
-                                            file:rounded-full file:border-0 file:text-sm file:font-semibold
-                                            file:bg-[#009FDC] file:text-white hover:file:bg-[#007BB5]"
-                                        />
-                                    )}
-                                </div>
-                            </div>
-                            <div className="mt-2">
-                                <input
-                                    type="text"
-                                    value={screenshot.caption || ""}
-                                    onChange={(e) =>
-                                        updateScreenshot(
-                                            index,
-                                            screenshotIndex,
-                                            "caption",
-                                            e.target.value
-                                        )
-                                    }
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                    placeholder="Caption"
-                                />
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                        )}
+                    </Droppable>
+                </DragDropContext>
             </div>
 
             {/* Action (limited to one per step) */}
@@ -497,28 +505,13 @@ export default function CreateUserGuide({
                             is_active: step.is_active,
                             details: step.details || [],
                             screenshots: (step.screenshots || []).map((screenshot) => {
-                                // Get proper file name from original_name if available
-                                let fileName = null;
-                                
-                                if (screenshot.original_name) {
-                                    // Use the original file name if available
-                                    fileName = screenshot.original_name;
-                                } else if (screenshot.alt_text && screenshot.alt_text.trim() !== "") {
-                                    // Use alt text if it seems like a file name
-                                    fileName = screenshot.alt_text;
-                                } else if (screenshot.screenshot_path) {
-                                    // Extract from path as last resort
-                                    const pathParts = screenshot.screenshot_path.split("/");
-                                    fileName = pathParts[pathParts.length - 1];
-                                }
-
                                 return {
                                     ...screenshot,
-                                    file_name: fileName,
+                                    file_name: screenshot.file_name,
                                     screenshot_url: screenshot.screenshot_path 
                                         ? `/storage/${screenshot.screenshot_path}`
                                         : screenshot.screenshot_url,
-                                    manual_step_id: step.id // Add the step ID to the screenshot
+                                    manual_step_id: step.id
                                 };
                             }),
                             actions: step.actions || [],
@@ -638,9 +631,20 @@ export default function CreateUserGuide({
                     if (screenshot.alt_text) {
                         formData.append("alt_text", screenshot.alt_text);
                     }
+                    formData.append("order", screenshot.order || screenshotIndex + 1);
+                    formData.append("file_name", value.name);
                     
-                    // If it's an existing screenshot, update it
-                    if (screenshot.id) {
+                    // For new screenshots (no ID yet), just update the local state
+                    if (!screenshot.id) {
+                        newSteps[stepIndex].screenshots[screenshotIndex] = {
+                            ...screenshot,
+                            file: value,
+                            file_name: value.name,
+                            is_edited: true,
+                            order: screenshotIndex + 1
+                        };
+                    } else {
+                        // For existing screenshots, update both local state and server
                         await axios.put(
                             `/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`,
                             formData,
@@ -650,32 +654,15 @@ export default function CreateUserGuide({
                                 },
                             }
                         );
-                    } else {
-                        // If it's a new screenshot, create it
-                        const response = await axios.post(
-                            `/api/v1/steps/${screenshot.manual_step_id}/screenshots`,
-                            formData,
-                            {
-                                headers: {
-                                    "Content-Type": "multipart/form-data",
-                                },
-                            }
-                        );
-                        // Update the screenshot with the ID from the response
+                        
                         newSteps[stepIndex].screenshots[screenshotIndex] = {
-                            ...response.data.data,
+                            ...screenshot,
                             file: value,
                             file_name: value.name,
+                            is_edited: true,
+                            order: screenshotIndex + 1
                         };
                     }
-                    
-                    // Update local state
-                    newSteps[stepIndex].screenshots[screenshotIndex] = {
-                        ...screenshot,
-                        file: value,
-                        file_name: value.name,
-                        is_edited: true,
-                    };
                 } catch (error) {
                     console.error('Error updating screenshot:', error);
                     toast.error('Failed to update screenshot');
@@ -690,14 +677,16 @@ export default function CreateUserGuide({
                 try {
                     const formData = new FormData();
                     formData.append(field, value);
+                    formData.append("order", screenshot.order || screenshotIndex + 1);
                     
                     await axios.put(
                         `/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`,
-                        formData,
+                        { [field]: value, order: screenshot.order || screenshotIndex + 1 },
                         {
                             headers: {
-                                "Content-Type": "multipart/form-data",
-                            },
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            }
                         }
                     );
                 } catch (error) {
@@ -735,13 +724,19 @@ export default function CreateUserGuide({
         try {
             const existingScreenshots = screenshots.filter(s => s.id);
             if (existingScreenshots.length > 0) {
-                await axios.put(
+                await axios.post(
                     `/api/v1/steps/${screenshots[0].manual_step_id}/screenshots/reorder`,
                     {
                         screenshots: existingScreenshots.map(s => ({
                             id: s.id,
                             order: s.order
                         }))
+                    },
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
                     }
                 );
                 toast.success('Screenshots reordered successfully');
@@ -863,11 +858,6 @@ export default function CreateUserGuide({
             console.log('Current steps:', steps);
 
             const formattedSteps = steps.map((step) => {
-                // Filter out screenshots that are marked for deletion
-                const validScreenshots = (step.screenshots || []).filter(screenshot => 
-                    screenshot && !screenshot.isDeleted
-                );
-
                 return {
                     step_number: step.step_number,
                     title: step.title,
@@ -885,9 +875,6 @@ export default function CreateUserGuide({
                         style: action.style || "default",
                         order: action.order,
                     })),
-                    screenshots: validScreenshots.map(screenshot => screenshot.file || null),
-                    screenshot_alts: validScreenshots.map(screenshot => screenshot.alt_text || ""),
-                    screenshot_captions: validScreenshots.map(screenshot => screenshot.caption || ""),
                 };
             });
 
@@ -902,7 +889,7 @@ export default function CreateUserGuide({
             formData.append('is_active', data.is_active ? '1' : '0');
             formData.append('card_id', data.card_id);
 
-            // Add steps data
+            // Add steps data without screenshots
             formattedSteps.forEach((step, index) => {
                 formData.append(`steps[${index}][step_number]`, step.step_number);
                 formData.append(`steps[${index}][title]`, step.title);
@@ -923,15 +910,6 @@ export default function CreateUserGuide({
                     formData.append(`steps[${index}][actions][${actionIndex}][url_or_action]`, action.url_or_action);
                     formData.append(`steps[${index}][actions][${actionIndex}][style]`, action.style);
                     formData.append(`steps[${index}][actions][${actionIndex}][order]`, action.order);
-                });
-
-                // Add screenshots
-                step.screenshots.forEach((screenshot, screenshotIndex) => {
-                    if (screenshot) {
-                        formData.append(`steps[${index}][screenshots][${screenshotIndex}]`, screenshot);
-                        formData.append(`steps[${index}][screenshot_alts][${screenshotIndex}]`, step.screenshot_alts[screenshotIndex] || '');
-                        formData.append(`steps[${index}][screenshot_captions][${screenshotIndex}]`, step.screenshot_captions[screenshotIndex] || '');
-                    }
                 });
             });
 
@@ -954,29 +932,7 @@ export default function CreateUserGuide({
                     toast.success("Guide updated successfully!");
                     
                     // Reset form and close modal
-                    setData({
-                        title: "",
-                        video_path: "",
-                        video_type: "",
-                        is_active: true,
-                        card_id: "",
-                        parent_card_id: "",
-                    });
-                    setSelectedParentCard("");
-                    setSteps([
-                        {
-                            step_number: 1,
-                            title: "",
-                            description: "",
-                            action_type: "",
-                            order: 1,
-                            is_active: true,
-                            details: [],
-                            screenshots: [],
-                            actions: [],
-                        },
-                    ]);
-                    setShowVideoField(false);
+                    resetForm();
                     onClose();
                 } catch (error) {
                     console.error('Error updating guide:', error.response?.data || error);
@@ -1005,6 +961,13 @@ export default function CreateUserGuide({
                             "Could not get user manual ID from response"
                         );
                     }
+
+                    // Show success message
+                    toast.success("Guide created successfully!");
+                    
+                    // Reset form and close modal
+                    resetForm();
+                    onClose();
                 } catch (error) {
                     setErrors({
                         general:
@@ -1013,24 +976,26 @@ export default function CreateUserGuide({
                     });
                     throw error;
                 }
-                // Check for screenshot uploads
-                const hasScreenshots = steps.some(
-                    (step) =>
-                        step.screenshots &&
-                        step.screenshots.some((screenshot) => screenshot.file)
-                );
-                
-                if (hasScreenshots) {
-                    try {
-                        // Handle file uploads for each step
-                        await handleStepFileUploads(steps, userManualId);
-                    } catch (error) {
-                        setErrors({
-                            general:
-                                "Guide was created but failed to upload screenshots. Please try again.",
-                        });
-                        throw error;
-                    }
+            }
+
+            // Handle screenshot uploads separately
+            const hasScreenshots = steps.some(
+                (step) =>
+                    step.screenshots &&
+                    step.screenshots.some((screenshot) => screenshot.file)
+            );
+            
+            if (hasScreenshots) {
+                try {
+                    // Handle file uploads for each step
+                    await handleStepFileUploads(steps, userManualId);
+                    toast.success("Screenshots uploaded successfully!");
+                } catch (error) {
+                    setErrors({
+                        general:
+                            "Guide was created but failed to upload screenshots. Please try again.",
+                    });
+                    throw error;
                 }
             }
         } catch (error) {
@@ -1068,11 +1033,12 @@ export default function CreateUserGuide({
                     console.log(`Found matching step with ID ${stepId}`);
                     
                     for (const screenshot of step.screenshots) {
-                        if (screenshot) {
+                        if (screenshot && screenshot.file) {
                             console.log('Uploading screenshot:', screenshot);
                             try {
                                 const formData = new FormData();
-                                formData.append("screenshot", screenshot);
+                                // Make sure to append the file directly, not as an object
+                                formData.append("screenshot", screenshot.file);
                                 formData.append(
                                     "alt_text",
                                     screenshot.alt_text || ""
@@ -1136,6 +1102,34 @@ export default function CreateUserGuide({
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    // Add this new function to reset the form
+    const resetForm = () => {
+        setData({
+            title: "",
+            video_path: "",
+            video_type: "",
+            is_active: true,
+            card_id: "",
+            parent_card_id: "",
+        });
+        setSelectedParentCard("");
+        setSteps([
+            {
+                step_number: 1,
+                title: "",
+                description: "",
+                action_type: "",
+                order: 1,
+                is_active: true,
+                details: [],
+                screenshots: [],
+                actions: [],
+            },
+        ]);
+        setShowVideoField(false);
+        setErrors({});
     };
 
     // If modal is not open, don't render anything
@@ -1366,6 +1360,7 @@ export default function CreateUserGuide({
                                 updateAction={updateAction}
                                 removeAction={removeAction}
                                 editMode={editMode}
+                                reorderScreenshots={reorderScreenshots}
                             />
                         ))}
                     </div>

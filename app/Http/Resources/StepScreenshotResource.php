@@ -17,6 +17,7 @@ class StepScreenshotResource extends JsonResource
             'caption' => $this->caption,
             'type' => $this->type,
             'order' => $this->order,
+            'file_name' => $this->file_name,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
