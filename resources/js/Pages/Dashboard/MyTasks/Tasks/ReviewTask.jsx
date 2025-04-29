@@ -84,10 +84,7 @@ const ReviewTask = () => {
                     key: "material_request_id",
                     url: "/api/v1/material-request-transactions",
                 },
-                {
-                    key: "rfq_id",
-                    url: "/api/v1/rfq-approval-transactions",
-                },
+                { key: "rfq_id", url: "/api/v1/rfq-approval-transactions" },
                 {
                     key: "purchase_order_id",
                     url: "/api/v1/po-approval-transactions",
@@ -114,6 +111,29 @@ const ReviewTask = () => {
                 const id = taskData[key];
                 if (id && id !== "") {
                     const payload = { ...commonPayload, [key]: id };
+                    
+                    // Update Request Budget data, if Approving
+                    if (
+                        key === "request_budgets_id" &&
+                        formData.action === "Approve"
+                    ) {
+                        const budgetRes = await axios.get(
+                            `/api/v1/request-budgets/${
+                                id || payload?.request_budgets_id
+                            }`
+                        );
+                        const budgetData = budgetRes?.data?.data;
+                        if (budgetData) {
+                            const updatedPayload = {
+                                approved_amount: budgetData.requested_amount,
+                                balance_amount: budgetData.requested_amount,
+                            };
+                            await axios.put(
+                                `/api/v1/request-budgets/${id}`,
+                                updatedPayload
+                            );
+                        }
+                    }
                     await axios.post(url, payload);
                 }
             }

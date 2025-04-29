@@ -14,26 +14,113 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
         issue_date: "",
         due_date: "",
         payment_type: "",
-        total_amount: 0,
+        total_amount: selectedOrder?.amount,
         paid_amount: 0,
         status: "Draft",
-        attachment: null
+        attachment: null,
     });
-    
+
+    // Calculate balance based on total and paid amounts
+    const balance =
+        parseFloat(formData.total_amount || 0) -
+        parseFloat(formData.paid_amount || 0);
+
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
     const [tempDocument, setTempDocument] = useState(null);
+    const [formSubmitted, setFormSubmitted] = useState(false);
+
+    // Validate the entire form
+    const validateForm = () => {
+        let newErrors = {};
+        if (!formData.issue_date)
+            newErrors.issue_date = "Issue date is required";
+        if (!formData.due_date) newErrors.due_date = "Due date is required";
+        if (!formData.payment_type)
+            newErrors.payment_type = "Payment type is required";
+        if (!formData.total_amount || parseFloat(formData.total_amount) <= 0)
+            newErrors.total_amount = "Total amount must be greater than 0";
+        if (!formData.status) newErrors.status = "Status is required";
+
+        // Validate paid amount
+        const paidAmount = parseFloat(formData.paid_amount);
+        const totalAmount = parseFloat(formData.total_amount);
+
+        if (formData.paid_amount === "") {
+            newErrors.paid_amount = "Paid amount is required";
+        } else if (isNaN(paidAmount)) {
+            newErrors.paid_amount = "Paid amount must be a valid number";
+        } else if (paidAmount < 0) {
+            newErrors.paid_amount = "Paid amount cannot be negative";
+        } else if (paidAmount > totalAmount) {
+            newErrors.paid_amount = "Paid amount cannot exceed total amount";
+        }
+
+        if (!selectedOrder?.id)
+            newErrors.purchase_order_id = "Purchase order is required";
+
+        return newErrors;
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
 
-        // When total_amount changes, reset paid_amount validation errors
-        if (name === 'total_amount' || name === 'paid_amount') {
-            setErrors(prev => ({
-                ...prev,
-                paid_amount: undefined
-            }));
+        // Handle numerical inputs specifically
+        if (name === "paid_amount" || name === "total_amount") {
+            // Allow empty string for initial input
+            const newValue = value === "" ? "" : value;
+            setFormData({ ...formData, [name]: newValue });
+        } else {
+            setFormData({ ...formData, [name]: value });
+        }
+
+        // Clear the error for this field when it changes
+        if (errors[name]) {
+            setErrors((prev) => {
+                const newErrors = { ...prev };
+                delete newErrors[name];
+                return newErrors;
+            });
+        }
+
+        // If form was previously submitted, validate again on change
+        if (formSubmitted) {
+            if (name === "paid_amount" || name === "total_amount") {
+                validatePaidAmount(
+                    name === "paid_amount" ? value : formData.paid_amount,
+                    name === "total_amount" ? value : formData.total_amount
+                );
+            }
+        }
+    };
+
+    // Function to validate paid amount in real-time
+    const validatePaidAmount = (paidAmt, totalAmt) => {
+        const paid = parseFloat(paidAmt) || 0;
+        const total = parseFloat(totalAmt) || 0;
+
+        let paidAmountError = null;
+
+        if (paidAmt === "") {
+            paidAmountError = "Paid amount is required";
+        } else if (isNaN(paid)) {
+            paidAmountError = "Paid amount must be a valid number";
+        } else if (paid < 0) {
+            paidAmountError = "Paid amount cannot be negative";
+        } else if (paid > total) {
+            paidAmountError = "Paid amount cannot exceed total amount";
+        }
+
+        if (paidAmountError) {
+            setErrors((prev) => ({ ...prev, paid_amount: paidAmountError }));
+            return false;
+        } else {
+            setErrors((prev) => {
+                const newErrors = { ...prev };
+                delete newErrors.paid_amount;
+                return newErrors;
+            });
+            return true;
         }
     };
 
@@ -42,31 +129,35 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
         if (file) {
             setTempDocument(file);
             console.log("File selected:", file.name, file.type, file.size);
+
+            // Clear any attachment errors
+            if (errors.attachment) {
+                setErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.attachment;
+                    return newErrors;
+                });
+            }
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setFormSubmitted(true);
 
-        let newErrors = {};
-        if (!formData.issue_date) newErrors.issue_date = "Issue date is required";
-        if (!formData.due_date) newErrors.due_date = "Due date is required";
-        if (!formData.payment_type) newErrors.payment_type = "Payment type is required";
-        if (!formData.total_amount || formData.total_amount <= 0) newErrors.total_amount = "Total amount must be greater than 0";
-        if (!formData.status) newErrors.status = "Status is required";
-        if (parseFloat(formData.paid_amount) > parseFloat(formData.total_amount)) 
-            newErrors.paid_amount = "Paid amount cannot exceed total amount";
-        if (!selectedOrder?.id) newErrors.purchase_order_id = "Purchase order is required";
-
+        const newErrors = validateForm();
         setErrors(newErrors);
-        
+
+        // Only proceed if there are no validation errors
         if (Object.keys(newErrors).length === 0) {
             try {
                 setLoading(true);
-
-                // Format dates for the API
-                const issueDate = formData.issue_date ? new Date(formData.issue_date).toISOString().split('T')[0] : null;
-                const dueDate = formData.due_date ? new Date(formData.due_date).toISOString().split('T')[0] : null;
+                const issueDate = formData.issue_date
+                    ? new Date(formData.issue_date).toISOString().split("T")[0]
+                    : null;
+                const dueDate = formData.due_date
+                    ? new Date(formData.due_date).toISOString().split("T")[0]
+                    : null;
 
                 // First, create a basic payload without the file
                 const payloadData = {
@@ -77,16 +168,28 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                     payment_type: formData.payment_type,
                     total_amount: parseFloat(formData.total_amount).toFixed(2),
                     paid_amount: parseFloat(formData.paid_amount).toFixed(2),
-                    status: formData.status
+                    status: formData.status,
                 };
 
                 // If we have an existing attachment from selectedOrder, use that
                 if (selectedOrder?.attachment) {
-                    console.log("Using existing attachment path:", selectedOrder.attachment);
                     payloadData.attachment = selectedOrder.attachment;
                 }
 
-                console.log("Submitting payment order with payload:", payloadData);
+                const currentYear = new Date().getFullYear();
+                const budgetResponse = await axios.get(
+                    `/api/v1/request-budgets?filter[sub_cost_center]=${selectedOrder?.rfq?.sub_cost_center_id}&include=fiscalPeriod,department,costCenter,subCostCenter`
+                );
+                const requestDetails = budgetResponse.data?.data?.[0];
+
+                // Check if requestDetails has data
+                if (!requestDetails) {
+                    setErrors({
+                        submit: "No budget request found for this Sub cost center.",
+                    });
+                    setIsSaving(false);
+                    return;
+                }
 
                 // Send request with JSON payload (not FormData)
                 const response = await axios.post(
@@ -94,19 +197,19 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                     payloadData,
                     {
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json'
-                        }
+                            "Content-Type": "application/json",
+                            Accept: "application/json",
+                        },
                     }
                 );
 
-                console.log("Payment order response:", response.data);
-
                 // If we have a new file to upload and the payment order was created successfully
                 if (tempDocument && response.data?.data?.id) {
-                    console.log("Now uploading document for payment order:", response.data.data.id);
                     const documentFormData = new FormData();
-                    documentFormData.append('payment_order_document', tempDocument);
+                    documentFormData.append(
+                        "payment_order_document",
+                        tempDocument
+                    );
 
                     try {
                         // Use the upload document endpoint for file uploads
@@ -115,12 +218,11 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                             documentFormData,
                             {
                                 headers: {
-                                    'Content-Type': 'multipart/form-data',
-                                    'Accept': 'application/json'
-                                }
+                                    "Content-Type": "multipart/form-data",
+                                    Accept: "application/json",
+                                },
                             }
                         );
-                        console.log("Document upload response:", uploadResponse.data);
                     } catch (uploadError) {
                         console.error("Error uploading document:", uploadError);
                     }
@@ -128,9 +230,9 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
 
                 // Check if we have a valid response with an ID
                 if (!response.data?.data?.id) {
-                    throw new Error('Invalid response from server');
+                    throw new Error("Invalid response from server");
                 }
-                
+
                 const paymentOrderResponse = response.data.data.id;
 
                 // Create payment order logs
@@ -156,6 +258,16 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                 await axios.post(
                     "/api/v1/payment-order-logs",
                     paymentLogsPayload
+                );
+
+                // Proceed with updating the budget request once Payment order is created
+                const updatedBudgetData = {
+                    consumed_amount: formData.paid_amount,
+                };
+                // Update the budget request with the new consumed amount
+                await axios.put(
+                    `/api/v1/request-budgets/${requestDetails?.id}`,
+                    updatedBudgetData
                 );
 
                 // Create approval workflow
@@ -231,39 +343,6 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
             } catch (error) {
                 setLoading(false);
                 console.error("Error creating payment order:", error);
-                
-                if (error.response) {
-                    console.log("Error response:", error.response);
-                    console.log("Error status:", error.response.status);
-                    console.log("Error headers:", error.response.headers);
-                    console.log("Full error response data:", JSON.stringify(error.response.data));
-                    
-                    if (error.response.data && error.response.data.errors) {
-                        console.log("Validation errors:", error.response.data.errors);
-                        // Log each error in detail
-                        Object.entries(error.response.data.errors).forEach(([field, messages]) => {
-                            console.log(`Field '${field}' errors:`, messages);
-                            
-                            // Special handling for attachment errors
-                            if (field === 'attachment' || field === 'uploaded_document') {
-                                console.log("Attachment field error detected. Current value:", tempDocument ? 'New file selected' : (selectedOrder?.attachment || 'None'));
-                            }
-                        });
-                        setErrors(error.response.data.errors);
-                    } else if (error.response.data && error.response.data.message) {
-                        console.log("Error message:", error.response.data.message);
-                        setErrors({ general: error.response.data.message });
-                    } else {
-                        console.log("Unexpected error format:", error.response.data);
-                        setErrors({ general: `Server error: ${error.response.status}` });
-                    }
-                } else if (error.request) {
-                    console.log("Error request:", error.request);
-                    setErrors({ general: "No response received from server. Check your network." });
-                } else {
-                    console.log("Error message:", error.message);
-                    setErrors({ general: `Error: ${error.message}` });
-                }
             }
         }
     };
@@ -288,11 +367,22 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
     // Update status when relevant fields change
     useEffect(() => {
         const suggestedStatus = calculateSuggestedStatus();
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            status: suggestedStatus
+            status: suggestedStatus,
         }));
     }, [formData.due_date, formData.total_amount, formData.paid_amount]);
+
+    // Set initial issue date to today when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            const today = new Date().toISOString().split("T")[0];
+            setFormData((prev) => ({
+                ...prev,
+                issue_date: today,
+            }));
+        }
+    }, [isOpen]);
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -344,9 +434,13 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                 options={[
                                     { id: "Cash", label: "Cash" },
                                     { id: "Card", label: "Card" },
-                                    { id: "Bank Transfer", label: "Bank Transfer" },
+                                    {
+                                        id: "Bank Transfer",
+                                        label: "Bank Transfer",
+                                    },
                                     { id: "Cheque", label: "Cheque" },
                                 ]}
+                                error={errors.payment_type}
                             />
                             {errors.payment_type && (
                                 <p className="text-red-500 text-sm mt-1">
@@ -366,10 +460,14 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                     { id: "Draft", label: "Draft" },
                                     { id: "Pending", label: "Pending" },
                                     { id: "Paid", label: "Paid" },
-                                    { id: "Partially Paid", label: "Partially Paid" },
+                                    {
+                                        id: "Partially Paid",
+                                        label: "Partially Paid",
+                                    },
                                     { id: "Overdue", label: "Overdue" },
                                     { id: "Cancelled", label: "Cancelled" },
                                 ]}
+                                error={errors.status}
                             />
                             {errors.status && (
                                 <p className="text-red-500 text-sm mt-1">
@@ -383,12 +481,12 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                             <div className="relative w-full">
                                 <input
                                     type="number"
-                                    step="0.01"
                                     min="0"
                                     name="total_amount"
                                     value={formData.total_amount}
                                     onChange={handleChange}
-                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
+                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-gray-100 appearance-none focus:outline-none"
+                                    readOnly
                                 />
                                 <label
                                     className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
@@ -409,16 +507,24 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                             <div className="relative w-full">
                                 <input
                                     type="number"
-                                    step="0.01"
                                     min="0"
+                                    max={formData.total_amount}
                                     name="paid_amount"
                                     value={formData.paid_amount}
                                     onChange={handleChange}
-                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
+                                    className={`peer border p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC] ${
+                                        errors.paid_amount
+                                            ? "border-red-500"
+                                            : "border-gray-300"
+                                    }`}
                                 />
                                 <label
-                                    className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
-                                        ${"-top-2 left-2 text-base text-[#009FDC] px-1"}`}
+                                    className={`absolute left-3 px-1 bg-white text-base transition-all
+                                        ${"-top-2 left-2 text-base px-1"} ${
+                                        errors.paid_amount
+                                            ? "text-red-500"
+                                            : "text-[#009FDC]"
+                                    }`}
                                 >
                                     Paid Amount
                                 </label>
@@ -429,35 +535,50 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                 )}
                             </div>
                         </div>
-                    </div>
 
-                    {/* Attachment */}
-                    <div className="flex justify-center mt-6 mb-4">
-                        <div className="w-1/2 text-center">
-                            <div className="space-y-2 text-center">
-                                <label className="block text-sm font-medium text-gray-700 text-center">
-                                    Attachment (Optional)
+                        {/* Balance Amount */}
+                        <div className="w-full">
+                            <div className="relative w-full">
+                                <input
+                                    type="number"
+                                    name="balance"
+                                    value={balance.toFixed(2)}
+                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-gray-100 appearance-none focus:outline-none"
+                                    readOnly
+                                />
+                                <label
+                                    className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
+                                        ${"-top-2 left-2 text-base text-[#009FDC] px-1"}`}
+                                >
+                                    Balance
                                 </label>
-                                <div className="flex flex-col items-center justify-center">
-                                    <input
-                                        type="file"
-                                        name="attachment"
-                                        onChange={handleFileChange}
-                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                        className="w-full max-w-xs text-sm text-gray-500 text-center pl-16
+                            </div>
+                        </div>
+
+                        {/* Attachment */}
+                        <div className="flex flex-col items-center">
+                            <input
+                                type="file"
+                                name="attachment"
+                                onChange={handleFileChange}
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                className="w-full text-sm text-gray-500 text-center
                                             file:mr-4 file:py-2 file:px-4
                                             file:rounded-full file:border-0
                                             file:text-sm file:font-semibold
                                             file:bg-[#009FDC] file:text-white
                                             hover:file:bg-[#007BB5]"
-                                    />
-                                    {tempDocument && (
-                                        <div className="mt-2 text-sm text-green-600">
-                                            Selected file: {tempDocument.name}
-                                        </div>
-                                    )}
+                            />
+                            {tempDocument && (
+                                <div className="mt-2 text-sm text-green-600">
+                                    Selected file: {tempDocument.name}
                                 </div>
-                            </div>
+                            )}
+                            {errors.attachment && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.attachment}
+                                </p>
+                            )}
                         </div>
                     </div>
 
@@ -477,7 +598,8 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
 
                     <div className="my-4 flex justify-center">
                         <button
-                            className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-1/2 mx-auto"
+                            type="submit"
+                            className="w-full px-8 py-3 text-xl font-medium bg-[#009FDC] text-white cursor-pointer rounded-full transition duration-300 hover:bg-[#007BB5] disabled:bg-gray-400 disabled:cursor-not-allowed"
                             disabled={loading}
                         >
                             {loading ? "Submitting..." : "Submit"}
