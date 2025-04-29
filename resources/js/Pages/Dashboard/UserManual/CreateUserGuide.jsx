@@ -681,11 +681,12 @@ export default function CreateUserGuide({
                     
                     await axios.put(
                         `/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`,
-                        formData,
+                        { [field]: value, order: screenshot.order || screenshotIndex + 1 },
                         {
                             headers: {
-                                "Content-Type": "multipart/form-data",
-                            },
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            }
                         }
                     );
                 } catch (error) {
