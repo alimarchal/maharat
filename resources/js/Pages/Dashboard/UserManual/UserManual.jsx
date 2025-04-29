@@ -168,6 +168,7 @@ export default function UserManual() {
                                 {card.description}
                             </p>
                         </div>
+                        
                         <div className="w-16 h-16 flex-shrink-0">
                             <img
                                 src={`/images/manuals/${sectionId}.png`}
