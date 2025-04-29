@@ -293,7 +293,8 @@ class ProcessStepController extends Controller
         $process_step_info = [
             'id' => $processStep->id,
             'order' => $processStep->order,
-            'designation_id' => $processStep->designation_id
+            'designation_id' => $processStep->designation_id,
+            'parent_id' => $user->parent_id,
         ];
 
         // Trace up the hierarchy to find a matching approver
