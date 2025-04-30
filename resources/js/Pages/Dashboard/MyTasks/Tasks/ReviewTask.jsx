@@ -70,15 +70,6 @@ const ReviewTask = () => {
             );
             const taskDescription = response.data.data;
 
-            const commonPayload = {
-                requester_id: logged_user,
-                assigned_to: taskDescription.task?.assigned_to_user_id,
-                order: String(taskData?.order_no),
-                description: taskDescription.description,
-                status: taskDescription.action,
-                referred_to: taskDescription?.user_id || null,
-            };
-
             const transactions = [
                 {
                     key: "material_request_id",
@@ -107,11 +98,30 @@ const ReviewTask = () => {
                 },
             ];
 
+            // for (const { key, url } of transactions) {
+            //     const response = await axios.get(url);
+            //     console.log("response:", response);
+            //     const transResponse = response?.data?.data;
+            //     if (transResponse.length > 0) {
+            //         console.log("T:", transResponse);
+
+            //     }
+            // }
+
+            const commonPayload = {
+                requester_id: logged_user,
+                assigned_to: taskDescription.task?.assigned_to_user_id,
+                order: String(taskData?.order_no),
+                description: taskDescription.description,
+                status: taskDescription.action,
+                referred_to: taskDescription?.user_id || null,
+            };
+
             for (const { key, url } of transactions) {
                 const id = taskData[key];
                 if (id && id !== "") {
                     const payload = { ...commonPayload, [key]: id };
-                    
+
                     // Update Request Budget data, if Approving
                     if (
                         key === "request_budgets_id" &&
@@ -137,6 +147,24 @@ const ReviewTask = () => {
                     await axios.post(url, payload);
                 }
             }
+
+            // if (taskDescription?.action && taskDescription?.task_id) {
+            //     const statusMap = {
+            //         Approve: "Approved",
+            //         Refer: "Referred",
+            //         Reject: "Rejected",
+            //     };
+
+            //     const status = statusMap[taskDescription.action];
+
+            //     if (status) {
+            //         const taskPayload = { status };
+            //         await axios.put(
+            //             `/api/v1/tasks/${taskDescription.task_id}`,
+            //             taskPayload
+            //         );
+            //     }
+            // }
 
             router.visit("/tasks");
         } catch (error) {
