@@ -250,6 +250,8 @@ class ProcessStepController extends Controller
     }
 
 
+
+    /*
     public function getApproverIdViaDesignation(ProcessStep $processStep, User $user = null)
     {
         // If $user is null, get the default user (e.g., the authenticated user)
@@ -268,10 +270,10 @@ class ProcessStepController extends Controller
         // Check if process step has approver_id already set
         if (!empty($processStep->approver_id)) {
             return response()->json([
-                'success' => false,
+                'success' => true,
                 'message' => 'Your process step contains an approver id.',
                 'data' => $processStep,
-            ], Response::HTTP_NOT_FOUND);
+            ], Response::HTTP_OK);
         }
 
         // Check if process step has designation_id set
@@ -331,6 +333,106 @@ class ProcessStepController extends Controller
             'message' => 'No user with the required designation found in the hierarchy.',
             'designation_required' => $designation_name,
             'process_step' => $process_step_info
+        ], Response::HTTP_OK);
+    }
+   */
+
+
+    /**
+     * Get the approver ID based on the process step and user's designation hierarchy
+     *
+     * @param ProcessStep $processStep
+     * @param User|null $user The user for whom to find an approver (defaults to authenticated user)
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getApproverIdViaDesignation(ProcessStep $processStep, User $user = null)
+    {
+        // If $user is null, get the default user (e.g., the authenticated user)
+        if ($user === null) {
+            $user = auth()->user();
+
+            if ($user === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No user provided and no authenticated user found.'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+        }
+
+        // Check if process step has approver_id already set
+        if (!empty($processStep->approver_id)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Your process step contains an approver id.',
+                'data' => [
+                    'approver_id' => $processStep->approver_id,
+                    'process_step' => $processStep
+                ]
+            ], Response::HTTP_OK);
+        }
+
+        // Check if process step has designation_id set
+        if (empty($processStep->designation_id) || $processStep->designation_id == 14) {
+            $parentUser = User::find($user->parent_id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Approver is a direct manager.',
+                'data' => [
+                    'approver_id' => $user->parent_id,
+                    'approver' => $parentUser
+                ]
+            ], Response::HTTP_OK);
+        }
+
+        // Get designation details
+        $required_designation_id = $processStep->designation_id;
+        $designation = Designation::find($required_designation_id);
+        $designation_name = $designation ? $designation->designation : 'Unknown';
+
+        // Prepare process step info to include in all responses
+        $process_step_info = [
+            'id' => $processStep->id,
+            'order' => $processStep->order,
+            'designation_id' => $processStep->designation_id
+        ];
+
+        // Trace up the hierarchy to find a matching approver
+        $currentUser = $user;
+
+        while ($currentUser) {
+            // Check if current user has the required designation
+            if ($currentUser->designation_id == $required_designation_id) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Matching User / Approver found in hierarchy.',
+                    'data' => [
+                        'approver_id' => $currentUser->id,
+                        'approver' => $currentUser,
+                        'designation' => $designation_name,
+                        'process_step' => $process_step_info
+                    ]
+                ], Response::HTTP_OK);
+            }
+
+            // Move to parent if available
+            if ($currentUser->parent_id) {
+                $currentUser = User::find($currentUser->parent_id);
+            } else {
+                // Reached the top of hierarchy without finding a match
+                break;
+            }
+        }
+
+        // No matching approver found
+        return response()->json([
+            'success' => true,
+            'message' => 'No user with the required designation found in the hierarchy.',
+            'data' => [
+                'approver_id' => $user->parent_id,
+                'designation_required' => $designation_name,
+                'process_step' => $process_step_info
+            ]
         ], Response::HTTP_OK);
     }
 }
