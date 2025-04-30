@@ -264,6 +264,7 @@ class ProcessStepController extends Controller
             }
         }
 
+
         // Check if process step has approver_id already set
         if (!empty($processStep->approver_id)) {
             return response()->json([
@@ -301,8 +302,6 @@ class ProcessStepController extends Controller
         $currentUser = $user;
 
         while ($currentUser) {
-            // Debug: Log current user being checked
-            // \Log::info("Checking user {$currentUser->id} with designation_id {$currentUser->designation_id} against required {$required_designation_id}");
 
             // Check if current user has the required designation
             if ($currentUser->designation_id == $required_designation_id) {
@@ -328,10 +327,10 @@ class ProcessStepController extends Controller
 
         // No matching approver found
         return response()->json([
-            'success' => false,
+            'success' => true,
             'message' => 'No user with the required designation found in the hierarchy.',
             'designation_required' => $designation_name,
             'process_step' => $process_step_info
-        ], Response::HTTP_NOT_FOUND);
+        ], Response::HTTP_OK);
     }
 }
