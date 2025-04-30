@@ -108,4 +108,9 @@ class Task extends Model
     {
         return $this->belongsTo(RequestBudget::class, 'request_budgets_id');
     }
+
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
 }
