@@ -296,14 +296,14 @@ const MakeRequest = () => {
             const processStep = process.steps[0];
 
             const processResponseViaUser = await axios.get(
-                `/api/v1/process-steps/${processStep?.order}/user/${user_id}`
+                `/api/v1/process-steps/${processStep?.id}/user/${user_id}`
             );
-            const assignUser = processResponseViaUser?.data;
+            const assignUser = processResponseViaUser?.data?.data;
 
             const transactionPayload = {
                 material_request_id: materialRequestId,
                 requester_id: user_id,
-                assigned_to: assignUser.user?.user?.id,
+                assigned_to: assignUser?.approver_id,
                 order: String(processStep.order),
                 description: processStep.description,
                 status: "Pending",
@@ -318,7 +318,7 @@ const MakeRequest = () => {
                 process_id: processStep.process_id,
                 assigned_at: new Date().toISOString(),
                 urgency: "Normal",
-                assigned_to_user_id: assignUser.user?.user?.id,
+                assigned_to_user_id: assignUser?.approver_id,
                 assigned_from_user_id: user_id,
                 read_status: null,
                 material_request_id: materialRequestId,

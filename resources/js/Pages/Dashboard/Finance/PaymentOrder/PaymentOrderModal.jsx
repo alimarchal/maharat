@@ -288,23 +288,18 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                             const processStep = process.steps[0];
 
                             // Only proceed if we have a valid process step
-                            if (processStep && processStep.order) {
+                            if (processStep) {
                                 const processResponseViaUser = await axios.get(
-                                    `/api/v1/process-steps/${processStep.order}/user/${userId}`
+                                    `/api/v1/process-steps/${processStep.id}/user/${userId}`
                                 );
-
-                                // Check if we have valid user assignment data
-                                if (
-                                    processResponseViaUser?.data?.user?.user?.id
-                                ) {
-                                    const assignUser =
-                                        processResponseViaUser.data;
-
+                                const assignUser =
+                                    processResponseViaUser?.data?.data;
+                                if (assignUser) {
                                     // Create approval transaction
                                     const PaymentOrderApprovalPayload = {
                                         payment_order_id: paymentOrderResponse,
                                         requester_id: userId,
-                                        assigned_to: assignUser.user.user.id,
+                                        assigned_to: assignUser?.approver_id,
                                         order: processStep.order,
                                         description: processStep.description,
                                         status: "Pending",
@@ -321,7 +316,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                         assigned_at: new Date().toISOString(),
                                         urgency: "Normal",
                                         assigned_to_user_id:
-                                            assignUser.user.user.id,
+                                            assignUser?.approver_id,
                                         assigned_from_user_id: userId,
                                         payment_order_id: paymentOrderResponse,
                                     };
