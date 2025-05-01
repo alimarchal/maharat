@@ -98,43 +98,76 @@ const ReviewTask = () => {
                 },
             ];
 
-            const commonPayload = {
-                requester_id: logged_user,
-                assigned_to: taskDescription.task?.assigned_to_user_id,
-                order: String(taskData?.order_no),
-                description: taskDescription.description,
-                status: taskDescription.action,
-                referred_to: taskDescription?.user_id || null,
-            };
-
             for (const { key, url } of transactions) {
                 const id = taskData[key];
-                if (id && id !== "") {
-                    const payload = { ...commonPayload, [key]: id };
+                // Proceed only if ID is valid
+                if (!id) continue;
 
-                    // Update Request Budget data, if Approving
-                    if (
-                        key === "request_budgets_id" &&
-                        formData.action === "Approve"
-                    ) {
-                        const budgetRes = await axios.get(
-                            `/api/v1/request-budgets/${
-                                id || payload?.request_budgets_id
-                            }`
-                        );
-                        const budgetData = budgetRes?.data?.data;
-                        if (budgetData) {
-                            const updatedPayload = {
-                                approved_amount: budgetData.requested_amount,
-                                balance_amount: budgetData.requested_amount,
-                            };
-                            await axios.put(
-                                `/api/v1/request-budgets/${id}`,
-                                updatedPayload
-                            );
-                        }
-                    }
+                let processTitle = null;
+                if (key === "material_request_id") {
+                    processTitle = "Material Request";
+                } else if (key === "rfq_id") {
+                    processTitle = "RFQ Approval";
+                } else if (key === "purchase_order_id") {
+                    processTitle = "Purchase Order Approval";
+                } else if (key === "payment_order_id") {
+                    processTitle = "Payment Order Approval";
+                } else if (key === "invoice_id") {
+                    processTitle = "Maharat Invoice Approval";
+                } else if (key === "request_budgets_id") {
+                    processTitle = "Budget Request Approval";
+                } else if (key === "budget_id") {
+                    processTitle = "Total Budget Approval";
+                }
+                let processStep;
+                if (processTitle) {
+                    const processResponse = await axios.get(
+                        `/api/v1/processes?include=steps,creator,updater&filter[title]=${encodeURIComponent(
+                            processTitle
+                        )}`
+                    );
+                    const process = processResponse?.data?.data?.[0];
+                    processStep = process?.steps?.[1];
+
+                    if (!processStep?.id) continue;
+
+                    const processResponseViaUser = await axios.get(
+                        `/api/v1/process-steps/${processStep.id}/user/${logged_user}`
+                    );
+                    const assignUser = processResponseViaUser?.data?.data;
+
+                    const commonPayload = {
+                        requester_id: logged_user,
+                        assigned_to: assignUser?.approver_id,
+                        order: String(processStep.order),
+                        description: taskDescription.description,
+                        status: taskDescription.action,
+                        referred_to: taskDescription?.user_id || null,
+                    };
+
+                    const payload = { ...commonPayload, [key]: id };
                     await axios.post(url, payload);
+                }
+
+                // Handle request_budgets_id approval logic
+                if (
+                    key === "request_budgets_id" &&
+                    formData.action === "Approve"
+                ) {
+                    const budgetRes = await axios.get(
+                        `/api/v1/request-budgets/${id}`
+                    );
+                    const budgetData = budgetRes?.data?.data;
+                    if (budgetData) {
+                        const updatedPayload = {
+                            approved_amount: budgetData.requested_amount,
+                            balance_amount: budgetData.requested_amount,
+                        };
+                        await axios.put(
+                            `/api/v1/request-budgets/${id}`,
+                            updatedPayload
+                        );
+                    }
                 }
             }
 

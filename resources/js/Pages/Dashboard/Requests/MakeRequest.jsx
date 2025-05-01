@@ -43,6 +43,7 @@ const MakeRequest = () => {
     const [filteredProducts, setFilteredProducts] = useState({});
     const [filteredSubCostCenters, setFilteredSubCostCenters] = useState({});
     const [loading, setLoading] = useState(false);
+    const [processError, setProcessError] = useState("");
 
     useEffect(() => {
         const fetchData = async () => {
@@ -269,6 +270,7 @@ const MakeRequest = () => {
         e.preventDefault();
         if (!validateForm()) return;
         setLoading(true);
+        setProcessError(""); // Clear any previous process errors
 
         try {
             const url = requestId
@@ -279,31 +281,54 @@ const MakeRequest = () => {
             const materialRequest = await axios[method](url, formData);
             const materialRequestId = materialRequest.data.data.id;
 
+            // Fetch the Material Request process
             const processResponse = await axios.get(
                 "/api/v1/processes?include=steps,creator,updater&filter[title]=Material Request"
             );
             const processList = processResponse.data.data;
 
+            // Check if process exists
             if (!processList?.length) {
-                console.error("No processes found.");
+                setProcessError(
+                    "No Material Request process found. Please create a process first."
+                );
+                setLoading(false);
                 return;
             }
+
             const process = processList[0];
+
+            // Check if process has steps
             if (!process?.steps?.length) {
-                console.error("No process steps found.");
+                setProcessError(
+                    "No process steps found for Material Request. Please create process steps first."
+                );
+                setLoading(false);
                 return;
             }
+
             const processStep = process.steps[0];
 
+            // Get approver for the user
             const processResponseViaUser = await axios.get(
                 `/api/v1/process-steps/${processStep?.id}/user/${user_id}`
             );
             const assignUser = processResponseViaUser?.data?.data;
 
+            // Check if approver exists
+            if (!assignUser?.approver_id) {
+                setProcessError(
+                    "No approver found for your user. Please set up approver relationships first."
+                );
+                setLoading(false);
+                return;
+            }
+
+            // Create transaction
             const transactionPayload = {
                 material_request_id: materialRequestId,
                 requester_id: user_id,
-                assigned_to: assignUser?.approver_id,
+                assigned_to: assignUser.approver_id,
                 order: String(processStep.order),
                 description: processStep.description,
                 status: "Pending",
@@ -313,21 +338,26 @@ const MakeRequest = () => {
                 transactionPayload
             );
 
+            // Create task
             const taskPayload = {
                 process_step_id: processStep.id,
                 process_id: processStep.process_id,
                 assigned_at: new Date().toISOString(),
                 urgency: "Normal",
-                assigned_to_user_id: assignUser?.approver_id,
+                assigned_to_user_id: assignUser.approver_id,
                 assigned_from_user_id: user_id,
                 read_status: null,
                 material_request_id: materialRequestId,
             };
             await axios.post("/api/v1/tasks", taskPayload);
 
+            // Navigate to my-requests page
             router.visit("/my-requests");
         } catch (error) {
             console.error("Error submitting request:", error);
+            setProcessError(
+                "An error occurred while processing your request. Please try again."
+            );
         } finally {
             setLoading(false);
         }
@@ -354,6 +384,13 @@ const MakeRequest = () => {
             <p className="text-[#7D8086] text-xl mb-6">
                 Employee requests for materials from the Maharat warehouse.
             </p>
+
+            {processError && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+                    <p className="font-bold">Error</p>
+                    <p>{processError}</p>
+                </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="flex items-center w-full gap-4">
