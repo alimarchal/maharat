@@ -31,6 +31,7 @@ class Task extends Model
         'invoice_id',
         'read_status',
         'tasks',
+        'read_status',
         'status',
     ];
 
