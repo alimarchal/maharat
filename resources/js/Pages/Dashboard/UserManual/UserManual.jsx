@@ -176,7 +176,12 @@ export default function UserManual() {
                 router.visit(`/user-manual/${card.section_id}`);
             } else {
                 // If not a parent, navigate to guide detail
-                router.visit(`/user-manual/${card.section_id}/${card.subsection_id || card.id}`);
+                const guide = guides?.[0];
+                if (guide) {
+                    router.visit(`/user-manual/guide/${guide.id}`);
+                } else {
+                    router.visit(`/user-manual/${card.section_id}/${card.subsection_id || card.id}`);
+                }
             }
         };
 
