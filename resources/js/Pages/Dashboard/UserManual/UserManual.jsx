@@ -210,7 +210,7 @@ export default function UserManual() {
 
             await axios.post(
                 "/api/v1/cards/reorder",
-                { items: reorderedItems },
+                { cards: reorderedItems },
                 {
                     headers: {
                         Accept: "application/json",
