@@ -905,18 +905,16 @@ export default function AddQuotationForm({ auth }) {
                 const processResponse = await axios.get(
                     "/api/v1/processes?include=steps,creator,updater&filter[title]=RFQ Approval"
                 );
-                console.log("Process:", processResponse);
                 if (processResponse.data?.data?.[0]?.steps?.[0]) {
                     const process = processResponse.data.data[0];
                     const processStep = process.steps[0];
-                    console.log("Process Step:", processStep);
+
                     // Only proceed if we have valid process step data
                     if (processStep?.id) {
                         const processResponseViaUser = await axios.get(
                             `/api/v1/process-steps/${processStep.id}/user/${user_id}`
                         );
                         const assignUser = processResponseViaUser?.data?.data;
-                        console.log("Assign User:", assignUser);
                         if (assignUser) {
                             const RFQTransactionPayload = {
                                 rfq_id: newRfqId,

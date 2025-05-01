@@ -98,16 +98,6 @@ const ReviewTask = () => {
                 },
             ];
 
-            // for (const { key, url } of transactions) {
-            //     const response = await axios.get(url);
-            //     console.log("response:", response);
-            //     const transResponse = response?.data?.data;
-            //     if (transResponse.length > 0) {
-            //         console.log("T:", transResponse);
-
-            //     }
-            // }
-
             const commonPayload = {
                 requester_id: logged_user,
                 assigned_to: taskDescription.task?.assigned_to_user_id,
@@ -148,24 +138,24 @@ const ReviewTask = () => {
                 }
             }
 
-            // if (taskDescription?.action && taskDescription?.task_id) {
-            //     const statusMap = {
-            //         Approve: "Approved",
-            //         Refer: "Referred",
-            //         Reject: "Rejected",
-            //     };
+            // Update current task status
+            if (taskDescription?.action && taskDescription?.task_id) {
+                const statusMap = {
+                    Approve: "Approved",
+                    Refer: "Referred",
+                    Reject: "Rejected",
+                };
 
-            //     const status = statusMap[taskDescription.action];
+                const status = statusMap[taskDescription.action];
 
-            //     if (status) {
-            //         const taskPayload = { status };
-            //         await axios.put(
-            //             `/api/v1/tasks/${taskDescription.task_id}`,
-            //             taskPayload
-            //         );
-            //     }
-            // }
-
+                if (status) {
+                    const taskPayload = { status };
+                    await axios.put(
+                        `/api/v1/tasks/${taskDescription.task?.id}`,
+                        taskPayload
+                    );
+                }
+            }
             router.visit("/tasks");
         } catch (error) {
             console.error("Error submitting task:", error);
@@ -225,7 +215,7 @@ const ReviewTask = () => {
                             </h3>
                             <div className="text-[#2C323C] text-base font-medium">
                                 <p>
-                                    Name
+                                    Name:
                                     <span className="ms-4 text-gray-600 font-normal">
                                         {taskData.assigned_from_user?.name}
                                     </span>
@@ -259,7 +249,7 @@ const ReviewTask = () => {
                             </h3>
                             <div className="text-[#2C323C] text-base font-medium">
                                 <p>
-                                    Name
+                                    Name:
                                     <span className="ms-4 text-gray-600 font-normal">
                                         {taskData.assigned_to_user?.name}
                                     </span>
