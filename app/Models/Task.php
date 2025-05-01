@@ -30,7 +30,8 @@ class Task extends Model
         'request_budgets_id',
         'invoice_id',
         'read_status',
-        'tasks'
+        'tasks',
+        'status',
     ];
 
     protected $casts = [
