@@ -331,7 +331,8 @@ export default function CreateUserGuide({
     const [childCards, setChildCards] = useState([]);
     const [selectedParentCard, setSelectedParentCard] = useState("");
     const [isLoadingCards, setIsLoadingCards] = useState(false);
-    
+    const [cardHierarchy, setCardHierarchy] = useState([]);
+
     const { data, setData, post, processing } = useForm({
         title: "",
         video_path: "",
@@ -353,6 +354,13 @@ export default function CreateUserGuide({
     useEffect(() => {
         if (isOpen) {
             fetchCards();
+        }
+    }, [isOpen]);
+
+    // Add this useEffect to fetch card hierarchy
+    useEffect(() => {
+        if (isOpen) {
+            fetchCardHierarchy();
         }
     }, [isOpen]);
 
@@ -538,6 +546,15 @@ export default function CreateUserGuide({
             setErrors({ general: "Failed to load guide data" });
         } finally {
             setIsLoadingGuide(false);
+        }
+    };
+
+    const fetchCardHierarchy = async () => {
+        try {
+            const response = await axios.get('/api/v1/cards/hierarchy');
+            setCardHierarchy(response.data.data || []);
+        } catch (error) {
+            console.error('Error fetching card hierarchy:', error);
         }
     };
 
@@ -837,7 +854,34 @@ export default function CreateUserGuide({
         setSteps(newSteps);
     };
 
-    // Validation function
+    // Modify the card selection logic
+    const handleParentCardChange = (parentId) => {
+        setData('parent_card_id', parentId);
+        setSelectedParentCard(parentId);
+        
+        // Find the selected parent card in the hierarchy
+        const selectedCard = findCardInHierarchy(cardHierarchy, parentId);
+        
+        // Update available child cards
+        if (selectedCard && selectedCard.children) {
+            setChildCards(selectedCard.children);
+        } else {
+            setChildCards([]);
+        }
+    };
+
+    const findCardInHierarchy = (cards, id) => {
+        for (const card of cards) {
+            if (card.id === id) return card;
+            if (card.children) {
+                const found = findCardInHierarchy(card.children, id);
+                if (found) return found;
+            }
+        }
+        return null;
+    };
+
+    // Modify the validation function
     const validateForm = () => {
         const newErrors = {};
         if (!data.title.trim()) {
@@ -846,19 +890,24 @@ export default function CreateUserGuide({
         if (!data.parent_card_id) {
             newErrors.parent_card_id = "Main card selection is required";
         }
-        if (
-            data.parent_card_id &&
-            childCards.some(
-                (card) => card.parent_id === parseInt(data.parent_card_id)
-            ) &&
-            !data.card_id
-        ) {
+        
+        // Check for sub-card requirement based on hierarchy
+        const selectedParent = findCardInHierarchy(cardHierarchy, data.parent_card_id);
+        if (selectedParent && selectedParent.children && selectedParent.children.length > 0 && !data.card_id) {
             newErrors.card_id = "Sub card selection is required";
         }
-        if (showVideoField && !data.video_path.trim()) {
-            newErrors.video_path =
-                "Video URL is required when adding a video tutorial";
+        
+        // Check for sub-sub-card requirement
+        if (data.card_id) {
+            const selectedSubCard = findCardInHierarchy(cardHierarchy, data.card_id);
+            if (selectedSubCard && selectedSubCard.children && selectedSubCard.children.length > 0) {
+                // If there are sub-sub-cards available, require selection
+                if (!data.sub_sub_card_id) {
+                    newErrors.sub_sub_card_id = "Sub-sub card selection is required";
+                }
+            }
         }
+
         return newErrors;
     };
 
@@ -1265,14 +1314,7 @@ export default function CreateUserGuide({
                                 label="Main Card"
                                 name="main_card"
                                 value={data.parent_card_id}
-                                onChange={(e) => {
-                                    const parentId = e.target.value;
-                                    setData({
-                                        ...data, 
-                                        parent_card_id: parentId,
-                                    });
-                                    setSelectedParentCard(parentId);
-                                }}
+                                onChange={(e) => handleParentCardChange(e.target.value)}
                                 options={parentCards.map((p) => ({
                                     id: p.id,
                                     label: p.name,
@@ -1286,43 +1328,34 @@ export default function CreateUserGuide({
                         </div>
 
                         {/* Sub Card Selection (conditionally shown) */}
-                        {data.parent_card_id &&
-                            childCards.some(
-                                (card) =>
-                                    card.parent_id ===
-                                    parseInt(data.parent_card_id)
-                            ) && (
-                                <div>
-                                    <SelectFloating
-                                        label="Sub Card"
-                                        name="sub_card"
-                                        value={data.card_id}
-                                        onChange={(e) =>
-                                            setData({
-                                                ...data,
-                                                card_id: e.target.value,
-                                            })
+                        {data.parent_card_id && childCards.length > 0 && (
+                            <div>
+                                <SelectFloating
+                                    label="Sub Card"
+                                    name="sub_card"
+                                    value={data.card_id}
+                                    onChange={(e) => {
+                                        setData('card_id', e.target.value);
+                                        // Check if selected sub-card has children
+                                        const selectedSubCard = findCardInHierarchy(cardHierarchy, e.target.value);
+                                        if (selectedSubCard && selectedSubCard.children) {
+                                            setChildCards(selectedSubCard.children);
+                                        } else {
+                                            setChildCards([]);
                                         }
-                                        options={childCards
-                                            .filter(
-                                                (card) =>
-                                                    card.parent_id ===
-                                                    parseInt(
-                                                        data.parent_card_id
-                                                    )
-                                            )
-                                            .map((card) => ({
-                                                id: card.id,
-                                                label: card.name,
-                                            }))}
-                                    />
-                                    {errors.card_id && (
-                                        <p className="text-red-500 text-sm mt-1">
-                                            {errors.card_id}
-                                        </p>
-                                    )}
-                                </div>
-                            )}
+                                    }}
+                                    options={childCards.map((card) => ({
+                                        id: card.id,
+                                        label: card.name,
+                                    }))}
+                                />
+                                {errors.card_id && (
+                                    <p className="text-red-500 text-sm mt-1">
+                                        {errors.card_id}
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">

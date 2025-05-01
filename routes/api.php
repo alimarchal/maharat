@@ -80,6 +80,7 @@ use App\Http\Controllers\Api\V1\RfqCategoryController;
 use App\Http\Controllers\Api\V1\IncomeStatementController;
 use App\Http\Controllers\Api\V1\BalanceSheetController;
 use App\Http\Controllers\Api\V1\FaqApprovalController;
+use App\Http\Controllers\Api\V1\CardController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -453,5 +454,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/balance-sheet/generate-pdf', [App\Http\Controllers\API\BalanceSheetPDFController::class, 'generatePDF']);
     Route::post('/balance-sheet/save-pdf', [App\Http\Controllers\API\BalanceSheetPDFController::class, 'savePDF']);
     Route::get('/balance-sheet/saved-pdfs/{year}', [App\Http\Controllers\API\BalanceSheetPDFController::class, 'getSavedPDFs']);
+
+    // Card routes
+    Route::apiResource('cards', CardController::class);
+    Route::post('/cards/{card}', [CardController::class, 'update']);
 
 });

@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class CardController extends Controller
 {
@@ -17,25 +19,36 @@ class CardController extends Controller
      */
     public function index()
     {
-        // Check if we already have cards in the database
-        $cardCount = Card::count();
-        
-        // If no cards exist, let's seed them
-        if ($cardCount === 0) {
-            $seeder = new CardSeeder();
-            $seeder->run();
+        try {
+            // Get all cards with their children
+            $cards = Card::with(['children' => function($query) {
+                $query->orderBy('order');
+            }])
+            ->orderBy('order')
+            ->get();
+
+            // Categorize cards based on hierarchy and convert to arrays
+            $mainCards = $cards->whereNull('parent_id')->values()->all();
+            $subCards = $cards->whereNotNull('parent_id')->values()->all();
+
+            // Log the data for debugging
+            \Log::info('Main Cards:', $mainCards);
+            \Log::info('Sub Cards:', $subCards);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'main_cards' => $mainCards,
+                    'sub_cards' => $subCards
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to fetch cards: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch cards'
+            ], 500);
         }
-        
-        // Get all cards ordered by section and subsection
-        $cards = Card::orderBy('section_id')
-                    ->orderBy('subsection_id')
-                    ->orderBy('order')
-                    ->get();
-        
-        return response()->json([
-            'success' => true,
-            'data' => $cards
-        ]);
     }
 
     /**
@@ -43,23 +56,57 @@ class CardController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'section_id' => 'nullable|string|max:255',
-            'subsection_id' => 'nullable|string|max:255',
-            'parent_id' => 'nullable|exists:cards,id',
-            'order' => 'nullable|integer',
-            'is_active' => 'nullable|boolean'
-        ]);
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'required|string',
+                'parent_id' => 'nullable|exists:cards,id',
+                'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'section_id' => 'required|string',
+            ]);
 
-        $card = Card::create($validated);
+            $card = new Card();
+            $card->name = $validated['name'];
+            $card->description = $validated['description'];
+            
+            // Format subsection_id from name (lowercase, replace spaces with hyphens)
+            $subsectionId = strtolower(str_replace(' ', '-', $validated['name']));
+            
+            // Handle parent_id and section_id
+            if (isset($validated['parent_id'])) {
+                $parentCard = Card::find($validated['parent_id']);
+                if ($parentCard) {
+                    $card->parent_id = $parentCard->id;
+                    $card->section_id = $parentCard->section_id;
+                    $card->subsection_id = $subsectionId;
+                }
+            } else {
+                $card->section_id = $validated['section_id'];
+            }
+            
+            $card->is_active = true;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Card created successfully',
-            'data' => $card
-        ], 201);
+            if ($request->hasFile('icon')) {
+                $icon = $request->file('icon');
+                $path = $icon->store('card-icons', 'public');
+                $card->icon_path = $path;
+            }
+
+            $card->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Card created successfully',
+                'data' => $card
+            ], 201);
+        } catch (\Exception $e) {
+            \Log::error('Card creation failed: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create card: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -78,23 +125,50 @@ class CardController extends Controller
      */
     public function update(Request $request, Card $card)
     {
-        $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'description' => 'nullable|string',
-            'section_id' => 'nullable|string|max:255',
-            'subsection_id' => 'nullable|string|max:255',
-            'parent_id' => 'nullable|exists:cards,id',
-            'order' => 'nullable|integer',
-            'is_active' => 'nullable|boolean'
-        ]);
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'required|string',
+                'section_id' => 'required|string',
+                'parent_id' => 'nullable|integer|exists:cards,id',
+                'subsection_id' => 'nullable|string',
+                'order' => 'required|integer',
+                'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+            ]);
 
-        $card->update($validated);
+            // Update card data
+            $card->name = $validated['name'];
+            $card->description = $validated['description'];
+            $card->section_id = $validated['section_id'];
+            $card->parent_id = $validated['parent_id'] ?? null;
+            $card->subsection_id = $validated['subsection_id'] ?? null;
+            $card->order = $validated['order'];
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Card updated successfully',
-            'data' => $card
-        ]);
+            // Handle icon upload
+            if ($request->hasFile('icon')) {
+                // Delete old icon if exists
+                if ($card->icon_path) {
+                    Storage::delete($card->icon_path);
+                }
+                
+                $path = $request->file('icon')->store('card-icons', 'public');
+                $card->icon_path = $path;
+            }
+
+            $card->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Card updated successfully',
+                'data' => $card
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update card',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -102,12 +176,23 @@ class CardController extends Controller
      */
     public function destroy(Card $card)
     {
-        $card->delete();
+        try {
+            // Delete icon if exists
+            if ($card->icon_path) {
+                Storage::delete('public/' . $card->icon_path);
+            }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Card deleted successfully'
-        ], 200);
+            $card->delete();
+
+            return response()->json([
+                'message' => 'Card deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Card deletion failed: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to delete card'
+            ], 500);
+        }
     }
     
     /**
@@ -130,5 +215,96 @@ class CardController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Get card hierarchy
+     */
+    public function getHierarchy()
+    {
+        $cards = Card::with(['children' => function($query) {
+            $query->orderBy('order');
+        }])
+        ->whereNull('parent_id')
+        ->orderBy('order')
+        ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $cards
+        ]);
+    }
+
+    /**
+     * Create a new card with hierarchy support
+     */
+    public function createWithHierarchy(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'parent_id' => 'nullable|exists:cards,id',
+            'icon_path' => 'nullable|string',
+            'color_scheme' => 'nullable|string',
+            'metadata' => 'nullable|json',
+            'order' => 'nullable|integer',
+            'is_active' => 'nullable|boolean'
+        ]);
+
+        // Handle file upload if icon is provided
+        if ($request->hasFile('icon')) {
+            $path = $request->file('icon')->store('card-icons', 'public');
+            $validated['icon_path'] = $path;
+        }
+
+        $card = Card::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Card created successfully',
+            'data' => $card
+        ], 201);
+    }
+
+    /**
+     * Update card hierarchy
+     */
+    public function updateHierarchy(Request $request)
+    {
+        $validated = $request->validate([
+            'hierarchy' => 'required|array',
+            'hierarchy.*.id' => 'required|exists:cards,id',
+            'hierarchy.*.parent_id' => 'nullable|exists:cards,id',
+            'hierarchy.*.order' => 'required|integer'
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            foreach ($validated['hierarchy'] as $item) {
+                Card::where('id', $item['id'])->update([
+                    'parent_id' => $item['parent_id'],
+                    'order' => $item['order']
+                ]);
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Card hierarchy updated successfully'
+        ]);
+    }
+
+    /**
+     * Get card with all its children recursively
+     */
+    public function getCardWithChildren($id)
+    {
+        $card = Card::with(['children' => function($query) {
+            $query->orderBy('order');
+        }])->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'data' => $card
+        ]);
     }
 }

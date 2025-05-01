@@ -44,7 +44,7 @@ class Card extends Model
      */
     public function children(): HasMany
     {
-        return $this->hasMany(Card::class, 'parent_id');
+        return $this->hasMany(Card::class, 'parent_id')->orderBy('order');
     }
 
     /**

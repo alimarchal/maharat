@@ -20,6 +20,8 @@ return new class extends Migration
             $table->foreignId('parent_id')->nullable()->references('id')->on('cards')->onDelete('set null');
             $table->integer('order')->default(0);
             $table->boolean('is_active')->default(true);
+            $table->string('icon_path')->nullable()->comment('Full path to the card icon image');
+            $table->json('metadata')->nullable();
             $table->timestamps();
             $table->softDeletes();
             $table->foreignId('created_by')->nullable()->constrained('users');
