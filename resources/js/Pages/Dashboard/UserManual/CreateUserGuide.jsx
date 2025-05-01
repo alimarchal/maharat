@@ -492,10 +492,11 @@ export default function CreateUserGuide({
                     setShowVideoField(true);
                 }
                 
-                // Set steps data
+                // Set steps data - ensure we only set the steps that exist in the database
                 if (guide.steps && guide.steps.length > 0) {
+                    const validSteps = guide.steps.filter(step => step.id); // Only include steps with valid IDs
                     setSteps(
-                        guide.steps.map((step) => ({
+                        validSteps.map((step) => ({
                             id: step.id,
                             step_number: step.step_number,
                             title: step.title,
@@ -517,6 +518,19 @@ export default function CreateUserGuide({
                             actions: step.actions || [],
                         }))
                     );
+                } else {
+                    // If no steps exist, initialize with a single empty step
+                    setSteps([{
+                        step_number: 1,
+                        title: "",
+                        description: "",
+                        action_type: "",
+                        order: 1,
+                        is_active: true,
+                        details: [],
+                        screenshots: [],
+                        actions: [],
+                    }]);
                 }
             }
         } catch (error) {
@@ -551,15 +565,26 @@ export default function CreateUserGuide({
     };
 
     const removeStep = (index) => {
-        if (steps.length > 1) {
+        console.log('Attempting to remove step at index:', index);
+        console.log('Current steps before removal:', steps);
+        
+        // Always allow removing a step as long as it's a valid index
+        if (index >= 0 && index < steps.length) {
             const newSteps = steps.filter((_, i) => i !== index);
+            console.log('New steps after filtering:', newSteps);
+            
             // Update step numbers and order
             const reorderedSteps = newSteps.map((step, i) => ({
                 ...step,
                 step_number: i + 1,
                 order: i + 1,
             }));
+            console.log('Reordered steps:', reorderedSteps);
+            
             setSteps(reorderedSteps);
+            console.log('Steps state updated');
+        } else {
+            console.log('Invalid index for step removal:', index);
         }
     };
 
@@ -916,6 +941,24 @@ export default function CreateUserGuide({
             if (editMode && guideId) {
                 console.log('Updating existing guide with ID:', guideId);
                 try {
+                    // First, get all existing steps
+                    const existingStepsResponse = await axios.get(`/api/v1/user-manuals/${guideId}/steps`);
+                    const existingSteps = existingStepsResponse.data.data || [];
+                    
+                    // Find steps that need to be deleted
+                    const existingStepNumbers = existingSteps.map(step => step.step_number);
+                    const newStepNumbers = formattedSteps.map(step => step.step_number);
+                    const stepsToDelete = existingStepNumbers.filter(num => !newStepNumbers.includes(num));
+                    
+                    // Delete steps that are no longer present
+                    for (const stepNumber of stepsToDelete) {
+                        const stepToDelete = existingSteps.find(s => s.step_number === stepNumber);
+                        if (stepToDelete) {
+                            await axios.delete(`/api/v1/user-manuals/${guideId}/steps/${stepToDelete.id}`);
+                        }
+                    }
+
+                    // Update the manual
                     const manualResponse = await axios.post(
                         `/api/v1/user-manuals/${guideId}/update`,
                         formData,
