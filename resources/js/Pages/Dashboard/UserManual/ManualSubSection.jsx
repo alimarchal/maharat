@@ -21,12 +21,38 @@ export default function UserManualSubSections() {
     const [selectedParentCard, setSelectedParentCard] = useState(null);
     const [currentCardLevel, setCurrentCardLevel] = useState(0);
     const [showCardForm, setShowCardForm] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
         fetchSubSections();
+        fetchUserData();
         // Check if user is managing director
         setIsManagingDirector(props.auth?.user?.designation === "Managing Director");
     }, [section]);
+
+    const fetchUserData = async () => {
+        try {
+            const response = await axios.get("/api/v1/user/current", {
+                headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                },
+            });
+
+            if (response.data && response.data.data) {
+                const userData = response.data.data;
+                setIsAdmin(userData.roles && userData.roles.includes("Admin"));
+            } else {
+                console.error("Invalid user data format:", response.data);
+                setIsAdmin(false);
+            }
+        } catch (error) {
+            if (error.response) {
+                console.error("Response data:", error.response.data);
+            }
+            setIsAdmin(false);
+        }
+    };
 
     const fetchSubSections = async () => {
         try {
@@ -97,34 +123,33 @@ export default function UserManualSubSections() {
     };
 
     const handleDragEnd = async (result) => {
-        if (!result.destination) return;
+        if (!result.destination || !isAdmin) return;
 
         const items = Array.from(subSections);
         const [reorderedItem] = items.splice(result.source.index, 1);
         items.splice(result.destination.index, 0, reorderedItem);
 
-        // Update order numbers
-        const updatedCards = items.map((card, index) => ({
-            ...card,
-            order: index + 1
-        }));
-
-        setSubSections(updatedCards);
+        setSubSections(items);
 
         try {
-            await axios.post('/api/v1/cards/reorder', {
-                cards: updatedCards.map(card => ({
-                    id: card.id,
-                    order: card.order,
-                    parent_id: card.parent_id
-                }))
-            });
-            toast.success('Cards reordered successfully');
+            const reorderedItems = items.map((item, index) => ({
+                id: item.id,
+                order: index,
+            }));
+
+            await axios.post(
+                "/api/v1/cards/reorder",
+                { items: reorderedItems },
+                {
+                    headers: {
+                        Accept: "application/json",
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
         } catch (error) {
-            console.error('Error reordering cards:', error);
-            toast.error('Failed to reorder cards');
-            // Refresh cards to restore original order
-            fetchSubSections();
+            console.error("Error reordering sub-cards:", error);
+            fetchSubSections(); // Revert to original order if error occurs
         }
     };
 
@@ -158,7 +183,7 @@ export default function UserManualSubSections() {
                 <div className="text-red-500 text-center">{error}</div>
             ) : (
                 <DragDropContext onDragEnd={handleDragEnd}>
-                    <Droppable droppableId="subSections">
+                    <Droppable droppableId="sub-sections">
                         {(provided) => (
                             <div
                                 {...provided.droppableProps}
@@ -170,6 +195,7 @@ export default function UserManualSubSections() {
                                         key={sectionCard.id}
                                         draggableId={sectionCard.id.toString()}
                                         index={index}
+                                        isDragDisabled={!isAdmin}
                                     >
                                         {(provided) => (
                                             <div
@@ -197,43 +223,45 @@ export default function UserManualSubSections() {
                                                     <div className="flex items-center space-x-2">
                                                         <div className="w-16 h-16 flex-shrink-0">
                                                             <img
-                                                                src={sectionCard.icon_path ? `/storage/${sectionCard.icon_path}` : `/images/manuals/${sectionCard.subsection_id || sectionCard.id}.png`}
+                                                                src={sectionCard.icon_path ? `/storage/${sectionCard.icon_path}` : `/images/manuals/${sectionCard.section_id}.png`}
                                                                 alt={sectionCard.name}
                                                                 className="w-full h-full object-contain"
                                                                 onError={(e) => {
-                                                                    e.target.src = '/images/manuals/default.png';
+                                                                    e.target.src = '/images/default-manual.png';
                                                                 }}
                                                             />
                                                         </div>
-                                                        <div className="flex flex-col items-center space-y-2">
-                                                            <div {...provided.dragHandleProps} className="cursor-move p-2 hover:bg-[#009FDC]/10 rounded-full transition-colors duration-200">
-                                                                <FontAwesomeIcon icon={faGripVertical} className="text-[#009FDC] hover:text-[#007BB5] transition-colors duration-200" />
+                                                        {isAdmin && (
+                                                            <div className="flex flex-col items-center space-y-2">
+                                                                <div {...provided.dragHandleProps} className="cursor-move p-2 hover:bg-[#009FDC]/10 rounded-full transition-colors duration-200">
+                                                                    <FontAwesomeIcon icon={faGripVertical} className="text-[#009FDC] hover:text-[#007BB5] transition-colors duration-200" />
+                                                                </div>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        setSelectedCard(null);
+                                                                        setSelectedParentCard(sectionCard);
+                                                                        setCurrentCardLevel(2);
+                                                                        setShowCardForm(true);
+                                                                    }}
+                                                                    className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
+                                                                >
+                                                                    <FontAwesomeIcon icon={faPlus} className="text-lg" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        setSelectedCard(sectionCard);
+                                                                        setSelectedParentCard(null);
+                                                                        setCurrentCardLevel(1);
+                                                                        setShowCardForm(true);
+                                                                    }}
+                                                                    className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
+                                                                >
+                                                                    <FontAwesomeIcon icon={faEdit} className="text-lg" />
+                                                                </button>
                                                             </div>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.preventDefault();
-                                                                    setSelectedCard(null);
-                                                                    setSelectedParentCard(sectionCard);
-                                                                    setCurrentCardLevel(2);
-                                                                    setShowCardForm(true);
-                                                                }}
-                                                                className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
-                                                            >
-                                                                <FontAwesomeIcon icon={faPlus} className="text-lg" />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.preventDefault();
-                                                                    setSelectedCard(sectionCard);
-                                                                    setSelectedParentCard(null);
-                                                                    setCurrentCardLevel(1);
-                                                                    setShowCardForm(true);
-                                                                }}
-                                                                className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
-                                                            >
-                                                                <FontAwesomeIcon icon={faEdit} className="text-lg" />
-                                                            </button>
-                                                        </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
