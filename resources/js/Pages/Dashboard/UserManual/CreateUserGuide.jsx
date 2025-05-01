@@ -428,43 +428,69 @@ export default function CreateUserGuide({
         }
     }, [data.child_card_id, childCards]);
 
-    const fetchCards = async () => {
+    // Add function to refresh card data
+    const refreshCardData = async () => {
         try {
             setIsLoadingCards(true);
             const response = await axios.get("/api/v1/cards");
-            console.log('API Response:', response.data);
-            
             if (response.data && response.data.data) {
                 const { main_cards, sub_cards } = response.data.data;
-                console.log('Main Cards:', main_cards);
-                console.log('Sub Cards:', sub_cards);
-
+                
                 // Store all cards
                 setCards([...main_cards, ...sub_cards]);
-
-                // Set parent and child cards directly from the API response
                 setParentCards(main_cards);
                 setChildCards(sub_cards);
+
+                // If we have a selected parent card, update its sub-cards
+                if (data.parent_card_id) {
+                    const selectedId = parseInt(data.parent_card_id);
+                    const childrenOfSelected = sub_cards.filter(
+                        (card) => card.parent_id === selectedId
+                    );
+                    setChildCards(childrenOfSelected);
+
+                    // If we have a selected child card, update its sub-sub-cards
+                    if (data.child_card_id) {
+                        const childId = parseInt(data.child_card_id);
+                        const subChildrenOfSelected = sub_cards.filter(
+                            (card) => card.parent_id === childId
+                        );
+                        setSubChildCards(subChildrenOfSelected);
+                    }
+                }
             }
         } catch (error) {
-            console.error("Error fetching cards:", error);
-            // Fallback to default cards if API fails
-            const fallbackCards = [
-                { id: 0, name: "General Guide (No Specific Card)" },
-                { id: 1, name: "Login Details Card" },
-                { id: 2, name: "Notification Settings Card" },
-                { id: 9, name: "Warehouse Card" },
-                { id: 11, name: "Reports & Statues Card" },
-            ];
-
-            setCards(fallbackCards);
-            setParentCards(fallbackCards);
-            setChildCards([]);
-            setSubChildCards([]);
+            console.error("Error refreshing cards:", error);
         } finally {
             setIsLoadingCards(false);
         }
     };
+
+    // Update fetchCards to use refreshCardData
+    const fetchCards = async () => {
+        await refreshCardData();
+    };
+
+    // Add effect to refresh card data when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            refreshCardData();
+        }
+    }, [isOpen]);
+
+    // Add effect to refresh card data when parent card changes
+    useEffect(() => {
+        if (data.parent_card_id) {
+            refreshCardData();
+        }
+    }, [data.parent_card_id]);
+
+    // Add effect to refresh card data when child card changes
+    useEffect(() => {
+        if (data.child_card_id) {
+            refreshCardData();
+        }
+    }, [data.child_card_id]);
 
     const fetchGuideData = async () => {
         try {

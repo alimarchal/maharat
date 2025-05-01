@@ -456,6 +456,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('/balance-sheet/saved-pdfs/{year}', [App\Http\Controllers\API\BalanceSheetPDFController::class, 'getSavedPDFs']);
 
     // Card routes
+    Route::post('/cards/reorder', [CardController::class, 'reorder']);
     Route::apiResource('cards', CardController::class);
     Route::post('/cards/{card}', [CardController::class, 'update']);
 

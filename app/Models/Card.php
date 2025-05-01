@@ -48,6 +48,14 @@ class Card extends Model
     }
 
     /**
+     * Get all descendants (recursive children)
+     */
+    public function descendants(): HasMany
+    {
+        return $this->children()->with('descendants');
+    }
+
+    /**
      * Get the user manuals associated with this card
      */
     public function userManuals(): HasMany

@@ -4,8 +4,9 @@ import axios from "axios";
 import CreateUserGuide from "./CreateUserGuide";
 import { toast } from "react-hot-toast";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTimes, faEdit, faFile, faChevronUp, faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTimes, faEdit, faFile, faChevronUp, faChevronDown, faGripVertical } from "@fortawesome/free-solid-svg-icons";
 import CardForm from "./CardForm";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 // Fallback input component if InputFloating is not available
 const InputFloating = ({ label, type, value, onChange }) => (
@@ -166,90 +167,36 @@ export default function UserManual() {
         processDesignationData(designationName);
     };
 
-    const CardSection = ({ card, guides, onAddSubCard, onEditCard }) => {
-        // Check if this card is a parent by looking at all sub-cards
-        const isParent = subCards.some(subCard => subCard.parent_id === card.id);
+    const handleDragEnd = async (result) => {
+        if (!result.destination) return;
 
-        const handleCardClick = () => {
-            if (isParent) {
-                // If card is a parent, navigate to sub-section
-                router.visit(`/user-manual/${card.section_id}`);
-            } else {
-                // If not a parent, navigate to guide detail
-                const guide = guides?.[0];
-                if (guide) {
-                    router.visit(`/user-manual/guide/${guide.id}`);
-                } else {
-                    router.visit(`/user-manual/${card.section_id}/${card.subsection_id || card.id}`);
-                }
-            }
-        };
+        const items = Array.from(parentCards);
+        const [reorderedItem] = items.splice(result.source.index, 1);
+        items.splice(result.destination.index, 0, reorderedItem);
 
-        // Get the correct image path
-        const getImagePath = () => {
-            if (card.icon_path) {
-                return `/storage/${card.icon_path}`;
-            }
-            
-            // Then try the section_id based path
-            if (card.section_id) {
-                return `/images/manuals/${card.section_id}.png`;
-            }
-            
-            // Finally fallback to default
-            return '/images/default-manual.png';
-        };
+        // Update order numbers
+        const updatedCards = items.map((card, index) => ({
+            ...card,
+            order: index + 1
+        }));
 
-        return (
-            <div className="bg-white rounded-xl shadow-md p-6 transition-transform cursor-pointer hover:translate-y-[-5px] hover:shadow-lg">
-                <div className="flex items-start justify-between mb-4">
-                    <div className="flex-grow" onClick={handleCardClick}>
-                        <div>
-                            <h3 className="text-2xl font-bold mb-2">
-                                {card.name}
-                            </h3>
-                            <p className="text-base font-medium">
-                                {card.description}
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                        <div className="w-16 h-16 flex-shrink-0">
-                            <img
-                                src={getImagePath()}
-                                alt={card.name}
-                                className="w-full h-full object-contain"
-                                onError={(e) => {
-                                    // If image fails to load, show the default icon
-                                    e.target.src = '/images/default-manual.png';
-                                }}
-                            />
-                        </div>
-                        <div className="flex flex-col items-center space-y-2">
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    onAddSubCard();
-                                }}
-                                className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
-                            >
-                                <FontAwesomeIcon icon={faPlus} className="text-lg" />
-                            </button>
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    onEditCard();
-                                }}
-                                className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
-                            >
-                                <FontAwesomeIcon icon={faEdit} className="text-lg" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
+        setParentCards(updatedCards);
+
+        try {
+            await axios.post('/api/v1/cards/reorder', {
+                cards: updatedCards.map(card => ({
+                    id: card.id,
+                    order: card.order,
+                    parent_id: card.parent_id
+                }))
+            });
+            toast.success('Cards reordered successfully');
+        } catch (error) {
+            console.error('Error reordering cards:', error);
+            toast.error('Failed to reorder cards');
+            // Refresh cards to restore original order
+            fetchCards();
+        }
     };
 
     return (
@@ -272,27 +219,103 @@ export default function UserManual() {
                     <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {parentCards.map((card) => (
-                        <CardSection
-                            key={card.id}
-                            card={card}
-                            guides={guidesMap[card.id] || []}
-                            onAddSubCard={() => {
-                                setSelectedCard(null);
-                                setSelectedParentCard(card);
-                                setCurrentCardLevel(1);
-                                setShowCardForm(true);
-                            }}
-                            onEditCard={() => {
-                                setSelectedCard(card);
-                                setSelectedParentCard(null);
-                                setCurrentCardLevel(0);
-                                setShowCardForm(true);
-                            }}
-                        />
-                    ))}
-                </div>
+                <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable droppableId="cards">
+                        {(provided) => (
+                            <div
+                                {...provided.droppableProps}
+                                ref={provided.innerRef}
+                                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                            >
+                                {parentCards.map((card, index) => (
+                                    <Draggable
+                                        key={card.id}
+                                        draggableId={card.id.toString()}
+                                        index={index}
+                                    >
+                                        {(provided) => (
+                                            <div
+                                                ref={provided.innerRef}
+                                                {...provided.draggableProps}
+                                                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
+                                            >
+                                                <div className="flex items-start justify-between mb-4">
+                                                    <div 
+                                                        className="flex-grow cursor-pointer"
+                                                        onClick={() => {
+                                                            if (subCards.some(subCard => subCard.parent_id === card.id)) {
+                                                                router.visit(`/user-manual/${card.section_id}`);
+                                                            } else {
+                                                                const guide = guidesMap[card.id]?.[0];
+                                                                if (guide) {
+                                                                    router.visit(`/user-manual/guide/${guide.id}`);
+                                                                } else {
+                                                                    router.visit(`/user-manual/${card.section_id}/${card.subsection_id || card.id}`);
+                                                                }
+                                                            }
+                                                        }}
+                                                    >
+                                                        <div>
+                                                            <h3 className="text-2xl font-bold mb-2">
+                                                                {card.name}
+                                                            </h3>
+                                                            <p className="text-base font-medium">
+                                                                {card.description}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className="w-16 h-16 flex-shrink-0">
+                                                            <img
+                                                                src={card.icon_path ? `/storage/${card.icon_path}` : `/images/manuals/${card.section_id}.png`}
+                                                                alt={card.name}
+                                                                className="w-full h-full object-contain"
+                                                                onError={(e) => {
+                                                                    e.target.src = '/images/default-manual.png';
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div className="flex flex-col items-center space-y-2">
+                                                            <div {...provided.dragHandleProps} className="cursor-move p-2 hover:bg-[#009FDC]/10 rounded-full transition-colors duration-200">
+                                                                <FontAwesomeIcon icon={faGripVertical} className="text-[#009FDC] hover:text-[#007BB5] transition-colors duration-200" />
+                                                            </div>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    setSelectedCard(null);
+                                                                    setSelectedParentCard(card);
+                                                                    setCurrentCardLevel(1);
+                                                                    setShowCardForm(true);
+                                                                }}
+                                                                className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
+                                                            >
+                                                                <FontAwesomeIcon icon={faPlus} className="text-lg" />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    setSelectedCard(card);
+                                                                    setSelectedParentCard(null);
+                                                                    setCurrentCardLevel(0);
+                                                                    setShowCardForm(true);
+                                                                }}
+                                                                className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
+                                                            >
+                                                                <FontAwesomeIcon icon={faEdit} className="text-lg" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </Draggable>
+                                ))}
+                                {provided.placeholder}
+                            </div>
+                        )}
+                    </Droppable>
+                </DragDropContext>
             )}
 
             {showCardForm && (

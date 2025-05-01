@@ -20,20 +20,16 @@ class CardController extends Controller
     public function index()
     {
         try {
-            // Get all cards with their children
-            $cards = Card::with(['children' => function($query) {
+            // Get all cards with their recursive descendants
+            $cards = Card::with(['descendants' => function($query) {
                 $query->orderBy('order');
             }])
             ->orderBy('order')
             ->get();
 
-            // Categorize cards based on hierarchy and convert to arrays
+            // Separate main cards and sub-cards
             $mainCards = $cards->whereNull('parent_id')->values()->all();
             $subCards = $cards->whereNotNull('parent_id')->values()->all();
-
-            // Log the data for debugging
-            \Log::info('Main Cards:', $mainCards);
-            \Log::info('Sub Cards:', $subCards);
 
             return response()->json([
                 'success' => true,
@@ -49,6 +45,26 @@ class CardController extends Controller
                 'message' => 'Failed to fetch cards'
             ], 500);
         }
+    }
+
+    /**
+     * Recursively build the sub-cards hierarchy
+     */
+    private function buildSubCards($descendants)
+    {
+        return $descendants->map(function($card) {
+            return [
+                'id' => $card->id,
+                'name' => $card->name,
+                'description' => $card->description,
+                'section_id' => $card->section_id,
+                'subsection_id' => $card->subsection_id,
+                'parent_id' => $card->parent_id,
+                'order' => $card->order,
+                'is_active' => $card->is_active,
+                'subCards' => $this->buildSubCards($card->descendants)
+            ];
+        })->all();
     }
 
     /**
@@ -306,5 +322,40 @@ class CardController extends Controller
             'success' => true,
             'data' => $card
         ]);
+    }
+
+    /**
+     * Update the order of cards
+     */
+    public function reorder(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'cards' => 'required|array',
+                'cards.*.id' => 'required|exists:cards,id',
+                'cards.*.order' => 'required|integer',
+                'cards.*.parent_id' => 'nullable|exists:cards,id'
+            ]);
+
+            DB::transaction(function () use ($validated) {
+                foreach ($validated['cards'] as $cardData) {
+                    Card::where('id', $cardData['id'])->update([
+                        'order' => $cardData['order'],
+                        'parent_id' => $cardData['parent_id'] ?? null
+                    ]);
+                }
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cards reordered successfully'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to reorder cards: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to reorder cards: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
