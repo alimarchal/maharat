@@ -39,6 +39,13 @@ const TasksTable = () => {
         fetchTasks();
     }, [currentPage]);
 
+    const statusColors = {
+        Pending: "text-yellow-500",
+        Approved: "text-green-500",
+        Rejected: "text-red-500",
+        Referred: "text-blue-500",
+    };
+
     return (
         <div className="w-full overflow-hidden">
             <div className="flex justify-between items-center mb-8">
@@ -141,7 +148,15 @@ const TasksTable = () => {
                                         </div>
                                     </td>
                                     <td className="py-3 px-4">{req.urgency}</td>
-                                    <td className="py-3 px-4">{req.status}</td>
+                                    <td
+                                        className={`py-3 px-4 ${
+                                            statusColors[req.status] ||
+                                            "text-gray-500"
+                                        }`}
+                                    >
+                                        {req.status}
+                                    </td>
+
                                     <td className="py-3 px-4">
                                         {req.assigned_from_user?.name}
                                     </td>
@@ -149,12 +164,16 @@ const TasksTable = () => {
                                         <button className="text-[#9B9DA2] hover:text-gray-500">
                                             <FontAwesomeIcon icon={faEye} />
                                         </button>
-                                        <Link
-                                            href={`/tasks/${req.id}/new`}
-                                            className="flex items-center justify-center w-6 h-6 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200"
-                                        >
-                                            <FontAwesomeIcon icon={faPlus} />
-                                        </Link>
+                                        {req.status !== "Approved" && (
+                                            <Link
+                                                href={`/tasks/${req.id}/new`}
+                                                className="flex items-center justify-center w-6 h-6 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200"
+                                            >
+                                                <FontAwesomeIcon
+                                                    icon={faPlus}
+                                                />
+                                            </Link>
+                                        )}
                                     </td>
                                 </tr>
                             ))
