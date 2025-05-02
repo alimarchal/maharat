@@ -427,12 +427,12 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('budget-usages/fiscal-period/{fiscalPeriodId}/statistics', [BudgetUsageController::class, 'fiscalPeriodStatistics']);
 
 
-    // User Manual Routes
-    Route::get('user-manuals', [UserManualController::class, 'index']); // GET /api/v1/user-manuals
-    Route::post('user-manuals', [UserManualController::class, 'store']); // POST /api/v1/user-manuals
-    Route::get('user-manuals/{userManual}', [UserManualController::class, 'show']); // GET /api/v1/user-manuals/{id}
-    Route::post('user-manuals/{userManual}/update', [UserManualController::class, 'update']); // POST /api/v1/user-manuals/{id}/update
-    Route::delete('user-manuals/{userManual}', [UserManualController::class, 'destroy']); // DELETE /api/v1/user-manuals/{id}
+    // User Manuals Routes
+    Route::get('/user-manuals/check', [UserManualController::class, 'checkManualExists']);
+    Route::get('/user-manuals/{id}/steps', [UserManualController::class, 'getSteps']);
+    Route::post('/user-manuals/{userManual}/update', [UserManualController::class, 'update']);
+    Route::delete('/user-manuals/{id}', [UserManualController::class, 'destroy']);
+    Route::apiResource('user-manuals', UserManualController::class);
 
     // Manual Step Routes
     Route::prefix('user-manuals/{userManual}')->group(function () {
@@ -459,5 +459,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/cards/reorder', [CardController::class, 'reorder']);
     Route::apiResource('cards', CardController::class);
     Route::post('/cards/{card}', [CardController::class, 'update']);
+    Route::get('/cards/{card}/children', [CardController::class, 'checkForChildren']);
 
 });

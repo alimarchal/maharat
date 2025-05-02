@@ -16,6 +16,11 @@ class StepScreenshot extends Model
         'file_name', 'mime_type', 'size'
     ];
 
+    protected $casts = [
+        'order' => 'integer',
+        'size' => 'integer'
+    ];
+
     public function step()
     {
         return $this->belongsTo(ManualStep::class, 'manual_step_id');

@@ -125,20 +125,42 @@ class ManualStepService
 
         // Process screenshots
         if (isset($data['screenshots'])) {
-            // Always delete existing screenshots when processing screenshots
-            $this->deleteExistingScreenshots($step);
+            // Get existing screenshots
+            $existingScreenshots = $step->screenshots()->get();
             
-            // Only create new screenshots if they exist
-            if (!empty($data['screenshots'])) {
-                foreach ($data['screenshots'] as $index => $screenshot) {
-                    if ($screenshot instanceof \Illuminate\Http\UploadedFile) {
-                        $path = $screenshot->store('user-manuals/screenshots', 'public');
+            // Process each screenshot
+            foreach ($data['screenshots'] as $index => $screenshot) {
+                if ($screenshot instanceof \Illuminate\Http\UploadedFile) {
+                    // Delete existing screenshot at this position if it exists
+                    $existingScreenshot = $existingScreenshots->where('order', $index + 1)->first();
+                    if ($existingScreenshot) {
+                        Storage::disk('public')->delete($existingScreenshot->screenshot_path);
+                        $existingScreenshot->delete();
+                    }
 
-                        $step->screenshots()->create([
-                            'screenshot_path' => $path,
-                            'alt_text' => $data['screenshot_alts'][$index] ?? null,
-                            'caption' => $data['screenshot_captions'][$index] ?? null,
-                            'order' => $index + 1,
+                    // Upload and create new screenshot
+                    $path = $screenshot->store('user-manuals/screenshots', 'public');
+
+                    $step->screenshots()->create([
+                        'screenshot_path' => $path,
+                        'screenshot_url' => Storage::url($path),
+                        'alt_text' => $data['screenshot_alts'][$index] ?? null,
+                        'caption' => $data['screenshot_captions'][$index] ?? null,
+                        'type' => $data['screenshot_types'][$index] ?? 'image',
+                        'order' => $index + 1,
+                        'file_name' => $screenshot->getClientOriginalName(),
+                        'mime_type' => $screenshot->getMimeType(),
+                        'size' => $screenshot->getSize()
+                    ]);
+                } else if (is_array($screenshot) && isset($screenshot['id'])) {
+                    // Update existing screenshot metadata
+                    $existingScreenshot = $existingScreenshots->where('id', $screenshot['id'])->first();
+                    if ($existingScreenshot) {
+                        $existingScreenshot->update([
+                            'alt_text' => $data['screenshot_alts'][$index] ?? $existingScreenshot->alt_text,
+                            'caption' => $data['screenshot_captions'][$index] ?? $existingScreenshot->caption,
+                            'type' => $data['screenshot_types'][$index] ?? $existingScreenshot->type,
+                            'order' => $index + 1
                         ]);
                     }
                 }

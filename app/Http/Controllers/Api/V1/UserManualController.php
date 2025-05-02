@@ -133,4 +133,84 @@ class UserManualController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get cards that don't have manuals
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function checkManualExists()
+    {
+        try {
+            // Get all card IDs that have manuals
+            $cardsWithManuals = UserManual::pluck('card_id')->toArray();
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'cards_with_manuals' => $cardsWithManuals
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error checking manual existence: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error checking manual existence',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get steps for a specific user manual
+     *
+     * @param UserManual $userManual
+     * @return JsonResponse
+     */
+    public function getSteps(UserManual $userManual): JsonResponse
+    {
+        try {
+            Log::info('Getting steps for manual', [
+                'manual_id' => $userManual->id,
+                'title' => $userManual->title
+            ]);
+
+            $steps = $userManual->steps()
+                ->with([
+                    'details',
+                    'screenshots' => function($query) {
+                        $query->orderBy('order');
+                    },
+                    'actions' => function($query) {
+                        $query->orderBy('order');
+                    }
+                ])
+                ->orderBy('step_number')
+                ->get();
+
+            Log::info('Retrieved steps', [
+                'manual_id' => $userManual->id,
+                'step_count' => $steps->count(),
+                'steps' => $steps->toArray()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $steps
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error getting manual steps: ' . $e->getMessage(), [
+                'manual_id' => $userManual->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get manual steps',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

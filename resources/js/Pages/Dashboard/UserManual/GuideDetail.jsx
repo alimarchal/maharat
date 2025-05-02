@@ -8,10 +8,11 @@ export default function GuideDetail() {
     const { props } = usePage();
     const { auth } = usePage().props;
     
-    // Get ID from props, ensuring we handle numeric IDs properly
+    // Get IDs from props or route data
     const guideId = props.id || props.section || "create-request";
-    const sectionId = props.section;
-    const subsectionId = props.subsection;
+    const sectionId = props.sectionId || props.section;
+    const subsectionId = props.subsectionId || props.subsection;
+    const cardId = props.cardId;
     
     const [guide, setGuide] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -27,12 +28,17 @@ export default function GuideDetail() {
         // Only fetch from API if we have a numeric ID
         if (guideId && !isNaN(parseInt(guideId))) {
             fetchGuideData();
+        } else if (cardId) {
+            // If we have a card ID but no guide ID, fetch the card data
+            fetchCardData(cardId);
+            setLoading(false);
+            setIsUnderConstruction(true);
         } else {
-            // For non-numeric IDs, just set loading to false
+            // For non-numeric IDs and no card ID, just set loading to false
             setLoading(false);
             setIsUnderConstruction(true);
         }
-    }, [guideId]);
+    }, [guideId, cardId]);
 
     const fetchGuideData = async () => {
         try {
@@ -289,7 +295,7 @@ export default function GuideDetail() {
     };
 
     const formatSectionName = (id) => {
-        return id
+        return String(id)
             .split("-")
             .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
             .join(" ");

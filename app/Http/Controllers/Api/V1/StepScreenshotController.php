@@ -62,7 +62,7 @@ class StepScreenshotController extends Controller
                 'size' => $file->getSize()
             ]);
 
-            $step->screenshots()->save($screenshot);
+            $screenshot->save();
 
             return response()->json([
                 'success' => true,
@@ -137,30 +137,20 @@ class StepScreenshotController extends Controller
                 $screenshot->size = $file->getSize();
             }
 
-            // Update other fields
-            if ($request->has('alt_text')) {
-                $screenshot->alt_text = $request->alt_text;
-            }
-            
-            if ($request->has('caption')) {
-                $screenshot->caption = $request->caption;
-            }
-            
-            if ($request->has('type')) {
-                $screenshot->type = $request->type;
-            }
-            
-            if ($request->has('order')) {
-                $screenshot->order = $request->order;
-            }
+            // Update caption and other fields
+            $screenshot->alt_text = $request->alt_text ?? $screenshot->alt_text;
+            $screenshot->caption = $request->caption ?? $screenshot->caption;
+            $screenshot->type = $request->type ?? $screenshot->type;
+            $screenshot->order = $request->order ?? $screenshot->order;
 
+            // Save all changes
             $screenshot->save();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Screenshot updated successfully',
                 'data' => $screenshot
-            ]);
+            ], 200);
         } catch (\Exception $e) {
             Log::error('Error updating screenshot: ' . $e->getMessage());
             

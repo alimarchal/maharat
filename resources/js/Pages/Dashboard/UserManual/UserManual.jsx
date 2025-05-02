@@ -268,14 +268,48 @@ export default function UserManual() {
                                                 <div className="flex items-start justify-between mb-4">
                                                     <div 
                                                         className="flex-grow cursor-pointer"
-                                                        onClick={() => {
-                                                            if (subCards.some(subCard => subCard.parent_id === card.id)) {
-                                                                router.visit(`/user-manual/${card.section_id}`);
-                                                            } else {
+                                                        onClick={async () => {
+                                                            console.log('UserManual - Card clicked:', {
+                                                                cardId: card.id,
+                                                                cardName: card.name,
+                                                                sectionId: card.section_id,
+                                                                subsectionId: card.subsection_id
+                                                            });
+                                                            
+                                                            try {
+                                                                const response = await axios.get(`/api/v1/cards/${card.id}/children`);
+                                                                console.log('UserManual - Children check response:', {
+                                                                    cardId: card.id,
+                                                                    hasChildren: response.data.data.has_children,
+                                                                    children: response.data.data.children
+                                                                });
+                                                                
+                                                                if (response.data.data.has_children) {
+                                                                    console.log('UserManual - Routing to ManualSubSection');
+                                                                    router.visit(`/user-manual/${card.section_id}`);
+                                                                } else {
+                                                                    const guide = guidesMap[card.id]?.[0];
+                                                                    console.log('UserManual - No children, checking for guide:', {
+                                                                        hasGuide: !!guide,
+                                                                        guideId: guide?.id
+                                                                    });
+                                                                    
+                                                                    if (guide) {
+                                                                        console.log('UserManual - Routing to GuideDetail');
+                                                                        router.visit(`/user-manual/guide/${guide.id}`);
+                                                                    } else {
+                                                                        console.log('UserManual - No guide, routing to ManualSubSection');
+                                                                        router.visit(`/user-manual/${card.section_id}/${card.subsection_id || card.id}`);
+                                                                    }
+                                                                }
+                                                            } catch (error) {
+                                                                console.error('UserManual - Error checking for children:', error);
                                                                 const guide = guidesMap[card.id]?.[0];
                                                                 if (guide) {
+                                                                    console.log('UserManual - Error fallback: Routing to GuideDetail');
                                                                     router.visit(`/user-manual/guide/${guide.id}`);
                                                                 } else {
+                                                                    console.log('UserManual - Error fallback: Routing to ManualSubSection');
                                                                     router.visit(`/user-manual/${card.section_id}/${card.subsection_id || card.id}`);
                                                                 }
                                                             }

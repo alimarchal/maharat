@@ -125,8 +125,9 @@ class UserManualService
                         // Process step components
                         $this->processStepComponents($existingStep, $stepData);
                     } else {
-                        // Create new step
-                        $step = $manual->steps()->create([
+                        // Create new step with explicit user_manual_id
+                        $step = new ManualStep([
+                            'user_manual_id' => $manual->id,
                             'step_number' => $stepNumber,
                             'title' => $stepData['title'],
                             'description' => $stepData['description'],
@@ -134,6 +135,9 @@ class UserManualService
                             'order' => $stepNumber,
                             'is_active' => true,
                         ]);
+                        
+                        // Save the step first
+                        $step->save();
                         
                         // Process step components
                         $this->processStepComponents($step, $stepData);
@@ -162,7 +166,9 @@ class UserManualService
         foreach ($steps as $index => $stepData) {
             Log::info('Processing step', ['index' => $index, 'data' => $stepData]);
             
-            $step = $manual->steps()->create([
+            // Create new step with explicit user_manual_id
+            $step = new ManualStep([
+                'user_manual_id' => $manual->id,
                 'step_number' => $index + 1,
                 'title' => $stepData['title'],
                 'description' => $stepData['description'],
@@ -170,6 +176,9 @@ class UserManualService
                 'order' => $index + 1,
                 'is_active' => true,
             ]);
+            
+            // Save the step first
+            $step->save();
 
             Log::info('Step created', ['step_id' => $step->id]);
 
@@ -259,26 +268,48 @@ class UserManualService
         if (isset($stepData['screenshots'])) {
             Log::info('Processing step screenshots', ['screenshot_count' => count($stepData['screenshots'])]);
             
-            // Always delete existing screenshots when processing screenshots
-            $this->deleteExistingScreenshots($step);
+            // Get existing screenshots
+            $existingScreenshots = $step->screenshots()->get();
             
-            // Only create new screenshots if they exist
-            if (!empty($stepData['screenshots'])) {
-                foreach ($stepData['screenshots'] as $screenshotIndex => $screenshot) {
-                    if ($screenshot instanceof \Illuminate\Http\UploadedFile) {
-                        $path = $screenshot->store('user-manuals/screenshots', 'public');
+            // Process each screenshot
+            foreach ($stepData['screenshots'] as $screenshotIndex => $screenshot) {
+                if ($screenshot instanceof \Illuminate\Http\UploadedFile) {
+                    // Delete existing screenshot at this position if it exists
+                    $existingScreenshot = $existingScreenshots->where('order', $screenshotIndex + 1)->first();
+                    if ($existingScreenshot) {
+                        Storage::disk('public')->delete($existingScreenshot->screenshot_path);
+                        $existingScreenshot->delete();
+                    }
 
-                        $step->screenshots()->create([
-                            'screenshot_path' => $path,
+                    // Upload and create new screenshot
+                    $path = $screenshot->store('user-manuals/screenshots', 'public');
+
+                    $step->screenshots()->create([
+                        'screenshot_path' => $path,
+                        'screenshot_url' => Storage::url($path),
+                        'alt_text' => $stepData['screenshot_alts'][$screenshotIndex] ?? null,
+                        'caption' => $stepData['screenshot_captions'][$screenshotIndex] ?? null,
+                        'type' => $stepData['screenshot_types'][$screenshotIndex] ?? 'image',
+                        'order' => $screenshotIndex + 1,
+                        'file_name' => $screenshot->getClientOriginalName(),
+                        'mime_type' => $screenshot->getMimeType(),
+                        'size' => $screenshot->getSize()
+                    ]);
+                    
+                    Log::info('Screenshot uploaded', [
+                        'step_id' => $step->id, 
+                        'path' => $path, 
+                        'order' => $screenshotIndex + 1
+                    ]);
+                } else if (is_string($screenshot) && !empty($screenshot)) {
+                    // This is an existing screenshot path, just update its metadata
+                    $existingScreenshot = $existingScreenshots->where('order', $screenshotIndex + 1)->first();
+                    if ($existingScreenshot) {
+                        $existingScreenshot->update([
                             'alt_text' => $stepData['screenshot_alts'][$screenshotIndex] ?? null,
                             'caption' => $stepData['screenshot_captions'][$screenshotIndex] ?? null,
+                            'type' => $stepData['screenshot_types'][$screenshotIndex] ?? 'image',
                             'order' => $screenshotIndex + 1,
-                        ]);
-                        
-                        Log::info('Screenshot uploaded', [
-                            'step_id' => $step->id, 
-                            'path' => $path, 
-                            'order' => $screenshotIndex + 1
                         ]);
                     }
                 }
