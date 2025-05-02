@@ -359,13 +359,19 @@ export default function CreateUserGuide({
         }
     }, [isOpen]);
 
-    // When parent card changes, update available child cards
+    // Add effect to handle parent card selection
     useEffect(() => {
-        if (data.parent_card_id) {
+        if (data.parent_card_id && !editMode) {
             const selectedId = parseInt(data.parent_card_id);
-            const childrenOfSelected = childCards.filter(
+            // Get all cards that have the selected parent card as their parent
+            const childrenOfSelected = cards.filter(
                 (card) => card.parent_id === selectedId
             );
+            console.log('Sub cards found:', childrenOfSelected);
+            setChildCards(childrenOfSelected);
+            
+            // Check if a manual already exists for this card
+            checkExistingManual(selectedId);
 
             // If no children available, use the parent card ID
             if (childrenOfSelected.length === 0) {
@@ -384,49 +390,64 @@ export default function CreateUserGuide({
                 setData("card_id", "");
             }
         }
-    }, [data.parent_card_id]);
-
-    // Add a useEffect to properly handle card relationships in edit mode
-    useEffect(() => {
-        // Only run this effect in edit mode when we have card data loaded and cards available
-        if (editMode && cards.length > 0 && data.card_id) {
-            const currentCardId = parseInt(data.card_id);
-            // Find selected card in our cards list
-            const selectedCard = cards.find(
-                (c) => parseInt(c.id) === currentCardId
-            );
-            if (selectedCard) {
-                if (selectedCard.parent_id) {
-                    // It's a child card, set parent_card_id
-                    const parentId = selectedCard.parent_id.toString();
-                    setData((prevData) => ({
-                        ...prevData,
-                        parent_card_id: parentId,
-                    }));
-                    setSelectedParentCard(parentId);
-                } else {
-                    setData((prevData) => ({
-                        ...prevData,
-                        parent_card_id: currentCardId.toString(),
-                    }));
-                    setSelectedParentCard(currentCardId.toString());
-                }
-            }
-        }
-    }, [editMode, cards, data.card_id]);
+    }, [data.parent_card_id, cards, editMode]);
 
     // Add effect to handle child card selection
     useEffect(() => {
-        if (data.child_card_id) {
+        if (data.child_card_id && !editMode) {
             const selectedId = parseInt(data.child_card_id);
-            const subChildrenOfSelected = childCards.filter(
+            // Get all cards that have the selected child card as their parent
+            const subChildrenOfSelected = cards.filter(
                 (card) => card.parent_id === selectedId
             );
+            console.log('Sub-sub cards found:', subChildrenOfSelected);
             setSubChildCards(subChildrenOfSelected);
-        } else {
-            setSubChildCards([]);
+            
+            // Check if a manual already exists for this card
+            checkExistingManual(selectedId);
+            
+            // If no sub-sub-cards available, use the child card ID
+            if (subChildrenOfSelected.length === 0) {
+                setData("card_id", data.child_card_id);
+                } else {
+                setData("card_id", "");
+            }
         }
-    }, [data.child_card_id, childCards]);
+    }, [data.child_card_id, cards, editMode]);
+
+    // Add function to check for existing manual
+    const checkExistingManual = async () => {
+        try {
+            const response = await axios.get('/api/v1/user-manuals/check');
+            if (response.data.success) {
+                const cardsWithManuals = response.data.data.cards_with_manuals;
+                
+                // Filter out cards that already have manuals
+                setParentCards(prevCards => 
+                    prevCards.filter(card => !cardsWithManuals.includes(card.id))
+                );
+                setChildCards(prevCards => 
+                    prevCards.filter(card => !cardsWithManuals.includes(card.id))
+                );
+                setSubChildCards(prevCards => 
+                    prevCards.filter(card => !cardsWithManuals.includes(card.id))
+                );
+            }
+        } catch (error) {
+            console.error('Error checking existing manuals:', error);
+            // Don't show error to user if the endpoint is not found (404)
+            if (error.response?.status !== 404) {
+                toast.error('Error checking for existing manuals. Please try again.');
+            }
+        }
+    };
+
+    // Add effect to check for existing manuals when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            checkExistingManual();
+        }
+    }, [isOpen]);
 
     // Add function to refresh card data
     const refreshCardData = async () => {
@@ -495,21 +516,103 @@ export default function CreateUserGuide({
     const fetchGuideData = async () => {
         try {
             setIsLoadingGuide(true);
+            console.log('Fetching guide data for ID:', guideId);
             const response = await axios.get(`/api/v1/user-manuals/${guideId}`);
+            console.log('Guide data response:', response.data);
+            
             if (response.data && response.data.data) {
                 const guide = response.data.data;
                 
-                // Set form data
+                // In edit mode, fetch and set the card hierarchy
+                if (editMode) {
+                    console.log('Edit mode: Fetching card hierarchy');
+                    // Fetch all cards to build the hierarchy
+                    const cardsResponse = await axios.get("/api/v1/cards");
+                    console.log('Cards response:', cardsResponse.data);
+                    
+                    if (cardsResponse.data && cardsResponse.data.data) {
+                        const { main_cards, sub_cards } = cardsResponse.data.data;
+                        const allCards = [...main_cards, ...sub_cards];
+                        
+                        // Find the current card
+                        const currentCard = allCards.find(card => card.id === parseInt(guide.card_id));
+                        console.log('Current card:', currentCard);
+                        
+                        if (currentCard) {
+                            // Find the parent card
+                            const parentCard = allCards.find(card => card.id === currentCard.parent_id);
+                            console.log('Parent card:', parentCard);
+                            
+                            if (parentCard) {
+                                // Find the grandparent card (main card)
+                                const grandParentCard = allCards.find(card => card.id === parentCard.parent_id);
+                                console.log('Grandparent card:', grandParentCard);
+                                
+                                // Set the card lists for display
+                                if (grandParentCard) {
+                                    setParentCards([grandParentCard]);
+                                    setSelectedParentCard(grandParentCard.id.toString());
+                                    
+                                    setChildCards([parentCard]);
+                                    setSelectedChildCard(parentCard.id.toString());
+                                    
+                                    setSubChildCards([currentCard]);
+                                    
+                                    // Set the form data with the correct hierarchy
                 setData({
                     title: guide.title,
                     video_path: guide.video_path || "",
                     video_type: guide.video_type || "",
                     is_active: guide.is_active,
-                    card_id: guide.card_id || "",
-                    card_name: guide.card_name || "",
-                    parent_card_id: guide.parent_card_id || "",
-                    child_card_id: guide.child_card_id || "",
-                });
+                                        card_id: currentCard.id.toString(),
+                                        child_card_id: parentCard.id.toString(),
+                                        parent_card_id: grandParentCard.id.toString(),
+                                    });
+                                } else {
+                                    // If no grandparent, this is a sub-card
+                                    setParentCards([parentCard]);
+                                    setSelectedParentCard(parentCard.id.toString());
+                                    
+                                    setChildCards([currentCard]);
+                                    setSelectedChildCard(currentCard.id.toString());
+                                    
+                                    // Set the form data
+                                    setData({
+                                        title: guide.title,
+                                        video_path: guide.video_path || "",
+                                        video_type: guide.video_type || "",
+                                        is_active: guide.is_active,
+                                        card_id: currentCard.id.toString(),
+                                        child_card_id: currentCard.id.toString(),
+                                        parent_card_id: parentCard.id.toString(),
+                                    });
+                                }
+                            } else {
+                                // If no parent, this is a main card
+                                setParentCards([currentCard]);
+                                setSelectedParentCard(currentCard.id.toString());
+                                
+                                // Set the form data
+                                setData({
+                                    title: guide.title,
+                                    video_path: guide.video_path || "",
+                                    video_type: guide.video_type || "",
+                                    is_active: guide.is_active,
+                                    card_id: currentCard.id.toString(),
+                                    parent_card_id: currentCard.id.toString(),
+                                });
+                            }
+                        }
+                    }
+                } else {
+                    // Set basic form data for create mode
+                    setData({
+                        title: guide.title,
+                        video_path: guide.video_path || "",
+                        video_type: guide.video_type || "",
+                        is_active: guide.is_active,
+                    });
+                }
 
                 if (guide.video_path) {
                     setShowVideoField(true);
@@ -648,14 +751,12 @@ export default function CreateUserGuide({
                 try {
                     const formData = new FormData();
                     formData.append("screenshot", value);
-                    if (screenshot.caption) {
-                        formData.append("caption", screenshot.caption);
-                    }
-                    if (screenshot.alt_text) {
-                        formData.append("alt_text", screenshot.alt_text);
-                    }
+                    formData.append("caption", screenshot.caption || "");
+                    formData.append("alt_text", screenshot.alt_text || "");
                     formData.append("order", screenshot.order || screenshotIndex + 1);
                     formData.append("file_name", value.name);
+                    formData.append("mime_type", value.type);
+                    formData.append("size", value.size);
                     
                     // For new screenshots (no ID yet), just update the local state
                     if (!screenshot.id) {
@@ -663,12 +764,14 @@ export default function CreateUserGuide({
                             ...screenshot,
                             file: value,
                             file_name: value.name,
+                            mime_type: value.type,
+                            size: value.size,
                             is_edited: true,
                             order: screenshotIndex + 1
                         };
                     } else {
                         // For existing screenshots, update both local state and server
-                        await axios.put(
+                        const response = await axios.put(
                             `/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`,
                             formData,
                             {
@@ -682,6 +785,10 @@ export default function CreateUserGuide({
                             ...screenshot,
                             file: value,
                             file_name: value.name,
+                            mime_type: value.type,
+                            size: value.size,
+                            screenshot_url: response.data.data.screenshot_url,
+                            caption: response.data.data.caption,
                             is_edited: true,
                             order: screenshotIndex + 1
                         };
@@ -702,16 +809,29 @@ export default function CreateUserGuide({
                     formData.append(field, value);
                     formData.append("order", screenshot.order || screenshotIndex + 1);
                     
-                    await axios.put(
+                    // Always include the caption in the request
+                    if (field === 'caption') {
+                        formData.append("caption", value);
+                    }
+                    
+                    const response = await axios.put(
                         `/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`,
-                        { [field]: value, order: screenshot.order || screenshotIndex + 1 },
+                        formData,
                         {
                             headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json'
+                                'Content-Type': 'multipart/form-data',
                             }
                         }
                     );
+                    
+                    // Update local state with server response
+                    newSteps[stepIndex].screenshots[screenshotIndex] = {
+                        ...screenshot,
+                        [field]: value,
+                        screenshot_url: response.data.data.screenshot_url,
+                        caption: response.data.data.caption,
+                        order: screenshot.order || screenshotIndex + 1
+                    };
                 } catch (error) {
                     console.error('Error updating screenshot:', error);
                     toast.error('Failed to update screenshot');
@@ -841,21 +961,17 @@ export default function CreateUserGuide({
         if (!data.title.trim()) {
             newErrors.title = "Guide title is required";
         }
-        if (!data.parent_card_id) {
+        if (!editMode && !data.parent_card_id) {
             newErrors.parent_card_id = "Main card selection is required";
         }
-        if (
-            data.parent_card_id &&
-            childCards.some(
-                (card) => card.parent_id === parseInt(data.parent_card_id)
-            ) &&
-            !data.card_id
-        ) {
-            newErrors.card_id = "Sub card selection is required";
+        if (!editMode && data.parent_card_id && childCards.some(card => card.parent_id === parseInt(data.parent_card_id)) && !data.child_card_id) {
+            newErrors.child_card_id = "Sub card selection is required";
+        }
+        if (!editMode && data.child_card_id && subChildCards.length > 0 && !data.card_id) {
+            newErrors.card_id = "Sub-sub card selection is required";
         }
         if (showVideoField && !data.video_path.trim()) {
-            newErrors.video_path =
-                "Video URL is required when adding a video tutorial";
+            newErrors.video_path = "Video URL is required when adding a video tutorial";
         }
         return newErrors;
     };
@@ -891,6 +1007,14 @@ export default function CreateUserGuide({
                     details: (step.details || []).map((detail) => 
                         typeof detail === "object" ? detail.content || "" : detail
                     ),
+                    screenshots: (step.screenshots || []).map((screenshot) => ({
+                        file: screenshot.file || null,
+                        file_name: screenshot.file_name || (screenshot.file ? screenshot.file.name : ""),
+                        alt_text: screenshot.alt_text || "",
+                        caption: screenshot.caption || "",
+                        type: screenshot.type || "image",
+                        order: screenshot.order || 1
+                    })),
                     actions: (step.actions || []).map((action) => ({
                         action_type: action.action_type || "click",
                         label: action.label,
@@ -910,11 +1034,20 @@ export default function CreateUserGuide({
             formData.append('video_path', data.video_path);
             formData.append('video_type', data.video_type);
             formData.append('is_active', data.is_active ? '1' : '0');
-            formData.append('card_id', data.card_id);
+            
+            // Set card_id based on the hierarchy
+            if (data.card_id) {
+                formData.append('card_id', data.card_id);
+            } else if (data.child_card_id) {
+                formData.append('card_id', data.child_card_id);
+            } else if (data.parent_card_id) {
+                formData.append('card_id', data.parent_card_id);
+            }
+            
             formData.append('parent_card_id', data.parent_card_id);
             formData.append('child_card_id', data.child_card_id);
 
-            // Add steps data without screenshots
+            // Add steps data
             formattedSteps.forEach((step, index) => {
                 formData.append(`steps[${index}][step_number]`, step.step_number);
                 formData.append(`steps[${index}][title]`, step.title);
@@ -926,6 +1059,24 @@ export default function CreateUserGuide({
                 // Add details
                 step.details.forEach((detail, detailIndex) => {
                     formData.append(`steps[${index}][details][${detailIndex}]`, detail);
+                });
+
+                // Add screenshots
+                step.screenshots.forEach((screenshot, screenshotIndex) => {
+                    if (screenshot.file) {
+                        formData.append(`steps[${index}][screenshots][${screenshotIndex}]`, screenshot.file);
+                        formData.append(`steps[${index}][screenshot_alts][${screenshotIndex}]`, screenshot.alt_text);
+                        formData.append(`steps[${index}][screenshot_captions][${screenshotIndex}]`, screenshot.caption);
+                        formData.append(`steps[${index}][screenshot_types][${screenshotIndex}]`, screenshot.type);
+                        formData.append(`steps[${index}][screenshot_orders][${screenshotIndex}]`, screenshot.order);
+                    } else if (screenshot.id) {
+                        // For existing screenshots, include their metadata
+                        formData.append(`steps[${index}][screenshot_ids][${screenshotIndex}]`, screenshot.id);
+                        formData.append(`steps[${index}][screenshot_alts][${screenshotIndex}]`, screenshot.alt_text);
+                        formData.append(`steps[${index}][screenshot_captions][${screenshotIndex}]`, screenshot.caption);
+                        formData.append(`steps[${index}][screenshot_types][${screenshotIndex}]`, screenshot.type);
+                        formData.append(`steps[${index}][screenshot_orders][${screenshotIndex}]`, screenshot.order);
+                    }
                 });
 
                 // Add actions
@@ -970,21 +1121,19 @@ export default function CreateUserGuide({
                 try {
                     const manualResponse = await axios.post(
                         "/api/v1/user-manuals",
-                        formData
+                        formData,
+                        {
+                            headers: {
+                                'Content-Type': 'multipart/form-data',
+                            },
+                        }
                     );
-                    // Safely extract the ID from the response, checking various possible structures
-                    if (
-                        manualResponse.data &&
-                        manualResponse.data.data &&
-                        manualResponse.data.data.id
-                    ) {
+                    if (manualResponse.data && manualResponse.data.data && manualResponse.data.data.id) {
                         userManualId = manualResponse.data.data.id;
                     } else if (manualResponse.data && manualResponse.data.id) {
                         userManualId = manualResponse.data.id;
                     } else {
-                        throw new Error(
-                            "Could not get user manual ID from response"
-                        );
+                        throw new Error("Could not get user manual ID from response");
                     }
 
                     // Show success message
@@ -995,9 +1144,7 @@ export default function CreateUserGuide({
                     onClose();
                 } catch (error) {
                     setErrors({
-                        general:
-                            error.response?.data?.message ||
-                            "Failed to create the user guide. Please try again.",
+                        general: error.response?.data?.message || "Failed to create the user guide. Please try again.",
                     });
                     throw error;
                 }
@@ -1017,8 +1164,7 @@ export default function CreateUserGuide({
                     toast.success("Screenshots uploaded successfully!");
                 } catch (error) {
                     setErrors({
-                        general:
-                            "Guide was created but failed to upload screenshots. Please try again.",
+                        general: "Guide was created but failed to upload screenshots. Please try again.",
                     });
                     throw error;
                 }
@@ -1243,6 +1389,7 @@ export default function CreateUserGuide({
                                         name="main_card"
                                         value={data.parent_card_id}
                                         onChange={(e) => {
+                                            if (!editMode) {
                                             const parentId = e.target.value;
                                             setData({
                                                 ...data, 
@@ -1252,11 +1399,14 @@ export default function CreateUserGuide({
                                             });
                                             setSelectedParentCard(parentId);
                                             setSelectedChildCard("");
+                                            }
                                         }}
                                         options={parentCards.map((p) => ({
                                             id: p.id,
                                             label: p.name,
                                         }))}
+                                        disabled={editMode}
+                                        className={editMode ? "opacity-50 cursor-not-allowed" : ""}
                                     />
                                     {errors.parent_card_id && (
                                         <p className="text-red-500 text-sm mt-1">
@@ -1267,14 +1417,15 @@ export default function CreateUserGuide({
                             )}
                         </div>
 
-                        {/* Child Card Selection - Only show if main card has sub-cards */}
-                        {data.parent_card_id && childCards.some(card => card.parent_id === parseInt(data.parent_card_id)) && (
+                        {/* Child Card Selection - Always show if parent card is selected */}
+                        {data.parent_card_id && (
                             <div className="flex-1 min-w-[200px]">
                                 <SelectFloating
                                     label="Sub Card"
                                     name="sub_card"
                                     value={data.child_card_id}
                                     onChange={(e) => {
+                                        if (!editMode) {
                                         const childId = e.target.value;
                                         setData({
                                             ...data,
@@ -1282,6 +1433,7 @@ export default function CreateUserGuide({
                                             card_id: "",
                                         });
                                         setSelectedChildCard(childId);
+                                        }
                                     }}
                                     options={childCards
                                         .filter(card => card.parent_id === parseInt(data.parent_card_id))
@@ -1289,6 +1441,8 @@ export default function CreateUserGuide({
                                             id: card.id,
                                             label: card.name,
                                         }))}
+                                    disabled={editMode}
+                                    className={editMode ? "opacity-50 cursor-not-allowed" : ""}
                                 />
                                 {errors.child_card_id && (
                                     <p className="text-red-500 text-sm mt-1">
@@ -1298,18 +1452,24 @@ export default function CreateUserGuide({
                             </div>
                         )}
 
-                        {/* Sub-Child Card Selection - Only show if sub-card has sub-sub-cards */}
-                        {data.child_card_id && subChildCards.length > 0 && (
+                        {/* Sub-Child Card Selection - Always show if child card is selected */}
+                        {data.child_card_id && (
                             <div className="flex-1 min-w-[200px]">
                                 <SelectFloating
                                     label="Sub-Sub Card"
                                     name="sub_sub_card"
                                     value={data.card_id}
-                                    onChange={(e) => setData({ ...data, card_id: e.target.value })}
+                                    onChange={(e) => {
+                                        if (!editMode) {
+                                            setData({ ...data, card_id: e.target.value });
+                                        }
+                                    }}
                                     options={subChildCards.map(card => ({
                                         id: card.id,
                                         label: card.name,
                                     }))}
+                                    disabled={editMode}
+                                    className={editMode ? "opacity-50 cursor-not-allowed" : ""}
                                 />
                                 {errors.card_id && (
                                     <p className="text-red-500 text-sm mt-1">

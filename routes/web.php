@@ -475,6 +475,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ]);
         }
 
+        // Check if this card has a guide
+        $guide = \App\Models\UserManual::where('card_id', $card->id)->first();
+        
+        if ($guide) {
+            \Log::info('Card has guide, rendering GuideDetail', [
+                'card' => $card->toArray(),
+                'guide' => $guide->toArray(),
+                'url' => request()->url()
+            ]);
+            return Inertia::render('Dashboard', [
+                'page' => 'UserManual/GuideDetail',
+                'id' => $guide->id,
+                'sectionId' => $sectionId,
+                'subsectionId' => $subsectionName,
+                'cardId' => $card->id,
+                'card' => $card->toArray()
+            ]);
+        }
+
         if ($card->children()->exists()) {
             \Log::info('Card has children, rendering ManualSubSubSection', [
                 'card' => $card->toArray(),
@@ -487,14 +506,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'card' => $card->toArray()
             ]);
         } else {
-            \Log::info('Card has no children, rendering GuideDetail', [
+            \Log::info('Card has no children and no guide, rendering GuideDetail with under construction', [
                 'card' => $card->toArray(),
                 'url' => request()->url()
             ]);
             return Inertia::render('Dashboard', [
                 'page' => 'UserManual/GuideDetail',
-                'section' => $sectionId,
-                'subsection' => $subsectionName,
+                'sectionId' => $sectionId,
+                'subsectionId' => $subsectionName,
+                'cardId' => $card->id,
                 'card' => $card->toArray()
             ]);
         }

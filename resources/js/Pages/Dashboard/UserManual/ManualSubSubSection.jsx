@@ -152,13 +152,13 @@ export default function ManualSubSubSection() {
                     setSubSubSections([]);
                 }
             } else {
-                const sortedSubSubSections = subSubSectionCards.sort((a, b) => {
-                    if (a.order !== undefined && b.order !== undefined) {
-                        return a.order - b.order;
-                    }
-                    return a.id - b.id;
-                });
-                setSubSubSections(sortedSubSubSections);
+            const sortedSubSubSections = subSubSectionCards.sort((a, b) => {
+                if (a.order !== undefined && b.order !== undefined) {
+                    return a.order - b.order;
+                }
+                return a.id - b.id;
+            });
+            setSubSubSections(sortedSubSubSections);
             }
 
             const guidesData = guidesResponse.data?.data || [];
@@ -227,10 +227,14 @@ export default function ManualSubSubSection() {
                     if (guide) {
                         console.log('ManualSubSubSection - Routing to GuideDetail');
                         router.visit(`/user-manual/guide/${guide.id}`, {
+                            preserveState: true,
+                            preserveScroll: true,
                             data: {
+                                id: guide.id,
                                 sectionId: section.section_id,
                                 subsectionId: section.subsection_id,
-                                cardId: cardId
+                                cardId: cardId,
+                                card: section
                             }
                         });
                     } else {

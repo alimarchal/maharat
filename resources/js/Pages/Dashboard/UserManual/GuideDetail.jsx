@@ -28,12 +28,17 @@ export default function GuideDetail() {
         // Only fetch from API if we have a numeric ID
         if (guideId && !isNaN(parseInt(guideId))) {
             fetchGuideData();
+        } else if (cardId) {
+            // If we have a card ID but no guide ID, fetch the card data
+            fetchCardData(cardId);
+            setLoading(false);
+            setIsUnderConstruction(true);
         } else {
-            // For non-numeric IDs, just set loading to false
+            // For non-numeric IDs and no card ID, just set loading to false
             setLoading(false);
             setIsUnderConstruction(true);
         }
-    }, [guideId]);
+    }, [guideId, cardId]);
 
     const fetchGuideData = async () => {
         try {
@@ -290,69 +295,10 @@ export default function GuideDetail() {
     };
 
     const formatSectionName = (id) => {
-        return id
+        return String(id)
             .split("-")
             .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
             .join(" ");
-    };
-
-    const renderBreadcrumb = () => {
-        if (!card) return null;
-
-        const breadcrumbs = [
-            { name: 'Dashboard', path: '/dashboard' },
-            { name: 'User Manual', path: '/user-manual' }
-        ];
-
-        // Add section if available
-        if (sectionId) {
-            breadcrumbs.push({
-                name: formatSectionName(sectionId),
-                path: `/user-manual/${sectionId}`
-            });
-        }
-
-        // Add subsection if available
-        if (subsectionId) {
-            breadcrumbs.push({
-                name: formatSectionName(subsectionId),
-                path: `/user-manual/${sectionId}/${subsectionId}`
-            });
-        }
-
-        // Add parent card if available
-        if (card.parent_id) {
-            breadcrumbs.push({
-                name: formatSectionName(card.parent_id),
-                path: `/user-manual/${sectionId}/${subsectionId}/${card.parent_id}`
-            });
-        }
-
-        // Add current guide
-        breadcrumbs.push({
-            name: card.name || card.title,
-            path: null
-        });
-
-        return (
-            <div className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
-                {breadcrumbs.map((crumb, index) => (
-                    <React.Fragment key={index}>
-                        {index > 0 && <span className="mx-2">/</span>}
-                        {crumb.path ? (
-                            <Link
-                                href={crumb.path}
-                                className="hover:text-[#009FDC]"
-                            >
-                                {crumb.name}
-                            </Link>
-                        ) : (
-                            <span className="text-gray-800">{crumb.name}</span>
-                        )}
-                    </React.Fragment>
-                ))}
-            </div>
-        );
     };
 
     // Handle loading state
@@ -412,7 +358,6 @@ export default function GuideDetail() {
     return (
         <>
             <div className="max-w-full mx-auto py-4">
-                {renderBreadcrumb()}
                 {loading ? (
                     <div className="flex justify-center my-12">
                         <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
