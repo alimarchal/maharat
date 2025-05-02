@@ -3,10 +3,7 @@ import { Head } from "@inertiajs/react";
 import { router, Link, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import axios from "axios";
-import {
-    DocumentTextIcon,
-    DocumentArrowDownIcon,
-} from "@heroicons/react/24/outline";
+import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faArrowLeftLong,
@@ -1508,13 +1505,19 @@ export default function AddQuotationForm({ auth }) {
                         </button>
                     </div>
 
-                    <div className="mt-8 flex justify-end space-x-4">
+                    <div className="my-4 flex justify-end">
                         <button
                             type="submit"
-                            className="inline-flex items-center px-4 py-2 border border-green-600 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50"
+                            className="bg-[#009FDC] text-white text-lg font-medium px-8 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50 w-full sm:w-auto"
+                            disabled={loading}
                         >
-                            <DocumentTextIcon className="h-5 w-5 mr-2" />
-                            {isEditing ? "Update RFQ" : "Save RFQ"}
+                            {loading
+                                ? isEditing
+                                    ? "Updating..."
+                                    : "Creating..."
+                                : isEditing
+                                ? "Update RFQ"
+                                : "Create RFQ"}
                         </button>
                     </div>
                 </form>
