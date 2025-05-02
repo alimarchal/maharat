@@ -44,7 +44,15 @@ class Card extends Model
      */
     public function children(): HasMany
     {
-        return $this->hasMany(Card::class, 'parent_id');
+        return $this->hasMany(Card::class, 'parent_id')->orderBy('order');
+    }
+
+    /**
+     * Get all descendants (recursive children)
+     */
+    public function descendants(): HasMany
+    {
+        return $this->children()->with('descendants');
     }
 
     /**

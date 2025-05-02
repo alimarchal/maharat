@@ -1,7 +1,29 @@
 import React, { useState, useEffect } from "react";
-import { Link, usePage } from "@inertiajs/react";
+import { Link, usePage, router } from "@inertiajs/react";
 import axios from "axios";
 import CreateUserGuide from "./CreateUserGuide";
+import { toast } from "react-hot-toast";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlus, faTimes, faEdit, faFile, faChevronUp, faChevronDown, faGripVertical } from "@fortawesome/free-solid-svg-icons";
+import CardForm from "./CardForm";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+
+// Fallback input component if InputFloating is not available
+const InputFloating = ({ label, type, value, onChange }) => (
+    <div className="relative">
+        <input
+            type={type}
+            value={value}
+            onChange={onChange}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#009FDC] focus:border-[#009FDC]"
+            placeholder=" "
+            required
+        />
+        <label className="absolute left-3 -top-2 bg-white px-1 text-sm text-gray-500">
+            {label}
+        </label>
+    </div>
+);
 
 export default function UserManual() {
     const { auth } = usePage().props;
@@ -13,10 +35,18 @@ export default function UserManual() {
     const [isCreateGuideOpen, setIsCreateGuideOpen] = useState(false);
     const [parentCards, setParentCards] = useState([]);
     const [guidesMap, setGuidesMap] = useState({});
+    const [subCardsMap, setSubCardsMap] = useState({});
+    const [showCardForm, setShowCardForm] = useState(false);
+    const [selectedCard, setSelectedCard] = useState(null);
+    const [selectedParentCard, setSelectedParentCard] = useState(null);
+    const [currentCardLevel, setCurrentCardLevel] = useState(0);
+    const [subCards, setSubCards] = useState([]);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
         fetchUserDesignation();
         fetchCards();
+        fetchUserData();
 
         const url = new URL(window.location.href);
         const openCreateGuide = url.searchParams.get("openCreateGuide");
@@ -27,6 +57,30 @@ export default function UserManual() {
             setIsCreateGuideOpen(true);
         }
     }, [user]);
+
+    const fetchUserData = async () => {
+        try {
+            const response = await axios.get("/api/v1/user/current", {
+                headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                },
+            });
+
+            if (response.data && response.data.data) {
+                const userData = response.data.data;
+                setIsAdmin(userData.roles && userData.roles.includes("Admin"));
+            } else {
+                console.error("Invalid user data format:", response.data);
+                setIsAdmin(false);
+            }
+        } catch (error) {
+            if (error.response) {
+                console.error("Response data:", error.response.data);
+            }
+            setIsAdmin(false);
+        }
+    };
 
     const fetchUserDesignation = async () => {
         if (!user?.designation_id) {
@@ -56,42 +110,35 @@ export default function UserManual() {
                 axios.get("/api/v1/user-manuals"),
             ]);
 
-            const allCards = cardsRes.data.data || [];
+            // Convert main_cards to array if it's a collection
+            const mainCards = Array.isArray(cardsRes.data.data.main_cards) 
+                ? cardsRes.data.data.main_cards 
+                : Object.values(cardsRes.data.data.main_cards || {});
 
-            const parentCardsArray = allCards.filter((c) => !c.subsection_id);
-            const subsectionCards = allCards.filter((c) => c.subsection_id);
+            const subCards = cardsRes.data.data.sub_cards || [];
+            const guidesData = guidesRes.data?.data || [];
 
-            const subsectionsByParent = {};
-            subsectionCards.forEach((c) => {
-                if (!subsectionsByParent[c.section_id]) {
-                    subsectionsByParent[c.section_id] = [];
+            // Create a map of sub-cards by parent_id
+            const subCardsByParent = {};
+            subCards.forEach(subCard => {
+                if (!subCardsByParent[subCard.parent_id]) {
+                    subCardsByParent[subCard.parent_id] = [];
                 }
-                subsectionsByParent[c.section_id].push(c);
+                subCardsByParent[subCard.parent_id].push(subCard);
+            });
+            setSubCardsMap(subCardsByParent);
+
+            const sortedMainCards = mainCards.sort((a, b) => {
+                if (a.order !== undefined && b.order !== undefined) {
+                    return a.order - b.order;
+                }
+                return a.id - b.id;
             });
 
-            Object.keys(subsectionsByParent).forEach((sectionId) => {
-                subsectionsByParent[sectionId].sort((a, b) =>
-                    a.order !== undefined && b.order !== undefined
-                        ? a.order - b.order
-                        : a.id - b.id
-                );
-            });
-
-            const sortedParentCards = parentCardsArray
-                .map((p) => ({
-                    ...p,
-                    subsections: subsectionsByParent[p.section_id] || [],
-                }))
-                .sort((a, b) =>
-                    a.order !== undefined && b.order !== undefined
-                        ? a.order - b.order
-                        : a.id - b.id
-                );
-
-            setParentCards(sortedParentCards);
+            setParentCards(sortedMainCards);
 
             const guidesGrouped = {};
-            (guidesRes.data.data || []).forEach((guide) => {
+            guidesData.forEach((guide) => {
                 if (guide.card_id) {
                     if (!guidesGrouped[guide.card_id]) {
                         guidesGrouped[guide.card_id] = [];
@@ -101,6 +148,7 @@ export default function UserManual() {
             });
 
             setGuidesMap(guidesGrouped);
+            setSubCards(subCards);
         } catch (error) {
             console.error("Error fetching cards/guides", error);
         } finally {
@@ -145,41 +193,35 @@ export default function UserManual() {
         processDesignationData(designationName);
     };
 
-    const CardSection = ({ card }) => {
-        const guides = guidesMap[card.id] || [];
-        const sectionId = card.section_id || `card-${card.id}`;
-        const hasSubsections = card.subsections && card.subsections.length > 0;
+    const handleDragEnd = async (result) => {
+        if (!result.destination || !isAdmin) return;
 
-        let cardLink = hasSubsections
-            ? `/user-manual/${sectionId}`
-            : guides.length > 0
-            ? `/user-manual/guide/${guides[0].id}`
-            : `/user-manual/${sectionId}`;
+        const items = Array.from(parentCards);
+        const [reorderedItem] = items.splice(result.source.index, 1);
+        items.splice(result.destination.index, 0, reorderedItem);
 
-        return (
-            <div className="bg-white rounded-xl shadow-md p-6 transition-transform cursor-pointer hover:translate-y-[-5px] hover:shadow-lg">
-                <Link href={cardLink} className="block h-full">
-                    <div className="flex items-start justify-between mb-4">
-                        <div>
-                            <h3 className="text-2xl font-bold mb-2">
-                                {card.name}
-                            </h3>
-                            <p className="text-base font-medium">
-                                {card.description}
-                            </p>
-                        </div>
-                        
-                        <div className="w-16 h-16 flex-shrink-0">
-                            <img
-                                src={`/images/manuals/${sectionId}.png`}
-                                alt={card.name}
-                                className="w-full h-full object-contain"
-                            />
-                        </div>
-                    </div>
-                </Link>
-            </div>
-        );
+        setParentCards(items);
+
+        try {
+            const reorderedItems = items.map((item, index) => ({
+                id: item.id,
+                order: index,
+            }));
+
+            await axios.post(
+                "/api/v1/cards/reorder",
+                { cards: reorderedItems },
+                {
+                    headers: {
+                        Accept: "application/json",
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+        } catch (error) {
+            console.error("Error reordering cards:", error);
+            fetchCards(); // Revert to original order if error occurs
+        }
     };
 
     return (
@@ -202,11 +244,121 @@ export default function UserManual() {
                     <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {parentCards.map((card) => (
-                        <CardSection card={card} />
-                    ))}
-                </div>
+                <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable droppableId="cards">
+                        {(provided) => (
+                            <div
+                                {...provided.droppableProps}
+                                ref={provided.innerRef}
+                                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                            >
+                                {parentCards.map((card, index) => (
+                                    <Draggable
+                                        key={card.id}
+                                        draggableId={card.id.toString()}
+                                        index={index}
+                                        isDragDisabled={!isAdmin}
+                                    >
+                                        {(provided) => (
+                                            <div
+                                                ref={provided.innerRef}
+                                                {...provided.draggableProps}
+                                                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
+                                            >
+                                                <div className="flex items-start justify-between mb-4">
+                                                    <div 
+                                                        className="flex-grow cursor-pointer"
+                                                        onClick={() => {
+                                                            if (subCards.some(subCard => subCard.parent_id === card.id)) {
+                                                                router.visit(`/user-manual/${card.section_id}`);
+                                                            } else {
+                                                                const guide = guidesMap[card.id]?.[0];
+                                                                if (guide) {
+                                                                    router.visit(`/user-manual/guide/${guide.id}`);
+                                                                } else {
+                                                                    router.visit(`/user-manual/${card.section_id}/${card.subsection_id || card.id}`);
+                                                                }
+                                                            }
+                                                        }}
+                                                    >
+                                                        <div>
+                                                            <h3 className="text-2xl font-bold mb-2">
+                                                                {card.name}
+                                                            </h3>
+                                                            <p className="text-base font-medium">
+                                                                {card.description}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className="w-16 h-16 flex-shrink-0">
+                                                            <img
+                                                                src={card.icon_path ? `/storage/${card.icon_path}` : `/images/manuals/${card.section_id}.png`}
+                                                                alt={card.name}
+                                                                className="w-full h-full object-contain"
+                                                                onError={(e) => {
+                                                                    e.target.src = '/images/default-manual.png';
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        {isAdmin && (
+                                                            <div className="flex flex-col items-center space-y-2">
+                                                                <div {...provided.dragHandleProps} className="cursor-move p-2 hover:bg-[#009FDC]/10 rounded-full transition-colors duration-200">
+                                                                    <FontAwesomeIcon icon={faGripVertical} className="text-[#009FDC] hover:text-[#007BB5] transition-colors duration-200" />
+                                                                </div>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        setSelectedCard(null);
+                                                                        setSelectedParentCard(card);
+                                                                        setCurrentCardLevel(1);
+                                                                        setShowCardForm(true);
+                                                                    }}
+                                                                    className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
+                                                                >
+                                                                    <FontAwesomeIcon icon={faPlus} className="text-lg" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        setSelectedCard(card);
+                                                                        setSelectedParentCard(null);
+                                                                        setCurrentCardLevel(0);
+                                                                        setShowCardForm(true);
+                                                                    }}
+                                                                    className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
+                                                                >
+                                                                    <FontAwesomeIcon icon={faEdit} className="text-lg" />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </Draggable>
+                                ))}
+                                {provided.placeholder}
+                            </div>
+                        )}
+                    </Droppable>
+                </DragDropContext>
+            )}
+
+            {showCardForm && (
+                <CardForm
+                    isOpen={showCardForm}
+                    onClose={() => {
+                        setShowCardForm(false);
+                        setSelectedCard(null);
+                        setSelectedParentCard(null);
+                        fetchCards();
+                    }}
+                    card={selectedCard}
+                    parentCard={selectedParentCard}
+                    level={currentCardLevel}
+                />
             )}
 
             {/* Create User Guide Modal */}
@@ -215,25 +367,9 @@ export default function UserManual() {
                 onClose={() => {
                     setIsCreateGuideOpen(false);
                     fetchCards();
-
-                    const url = new URL(window.location.href);
-                    if (url.searchParams.has("openCreateGuide")) {
-                        url.searchParams.delete("openCreateGuide");
-                        url.searchParams.delete("sectionId");
-                        url.searchParams.delete("subsectionId");
-                        window.history.replaceState({}, "", url.toString());
-                    }
                 }}
-                sectionId={
-                    new URL(window.location.href).searchParams.get(
-                        "sectionId"
-                    ) || undefined
-                }
-                subsectionId={
-                    new URL(window.location.href).searchParams.get(
-                        "subsectionId"
-                    ) || undefined
-                }
+                sectionId={new URL(window.location.href).searchParams.get("sectionId") || undefined}
+                subsectionId={new URL(window.location.href).searchParams.get("subsectionId") || undefined}
             />
         </div>
     );

@@ -329,7 +329,9 @@ export default function CreateUserGuide({
     const [cards, setCards] = useState([]);
     const [parentCards, setParentCards] = useState([]);
     const [childCards, setChildCards] = useState([]);
+    const [subChildCards, setSubChildCards] = useState([]);
     const [selectedParentCard, setSelectedParentCard] = useState("");
+    const [selectedChildCard, setSelectedChildCard] = useState("");
     const [isLoadingCards, setIsLoadingCards] = useState(false);
     
     const { data, setData, post, processing } = useForm({
@@ -340,6 +342,7 @@ export default function CreateUserGuide({
         card_id: "",
         card_name: "",
         parent_card_id: "",
+        child_card_id: "",
     });
 
     // Load guide data if in edit mode
@@ -412,64 +415,82 @@ export default function CreateUserGuide({
         }
     }, [editMode, cards, data.card_id]);
 
-    const fetchCards = async () => {
+    // Add effect to handle child card selection
+    useEffect(() => {
+        if (data.child_card_id) {
+            const selectedId = parseInt(data.child_card_id);
+            const subChildrenOfSelected = childCards.filter(
+                (card) => card.parent_id === selectedId
+            );
+            setSubChildCards(subChildrenOfSelected);
+        } else {
+            setSubChildCards([]);
+        }
+    }, [data.child_card_id, childCards]);
+
+    // Add function to refresh card data
+    const refreshCardData = async () => {
         try {
             setIsLoadingCards(true);
             const response = await axios.get("/api/v1/cards");
             if (response.data && response.data.data) {
-                let availableCards = response.data.data;
-
-                // Filter cards based on section and subsection if provided
-                if (sectionId && subsectionId) {
-                    // If we have both section and subsection, filter for the specific subsection card
-                    availableCards = availableCards.filter(
-                        (card) =>
-                            card.section_id === sectionId &&
-                            card.subsection_id === subsectionId
-                    );
-                } else if (sectionId) {
-                    // If we only have sectionId, filter for cards in that section
-                    availableCards = availableCards.filter(
-                        (card) => card.section_id === sectionId
-                    );
-                }
-
+                const { main_cards, sub_cards } = response.data.data;
+                
                 // Store all cards
-                setCards(availableCards);
+                setCards([...main_cards, ...sub_cards]);
+                setParentCards(main_cards);
+                setChildCards(sub_cards);
 
-                // Separate parent and child cards
-                const parents = availableCards.filter(
-                    (card) =>
-                        !card.parent_id ||
-                        card.parent_id === 0 ||
-                        card.parent_id === null
-                );
-                const children = availableCards.filter(
-                    (card) =>
-                        card.parent_id &&
-                        card.parent_id !== 0 &&
-                        card.parent_id !== null
-                );
+                // If we have a selected parent card, update its sub-cards
+                if (data.parent_card_id) {
+                    const selectedId = parseInt(data.parent_card_id);
+                    const childrenOfSelected = sub_cards.filter(
+                        (card) => card.parent_id === selectedId
+                    );
+                    setChildCards(childrenOfSelected);
 
-                setParentCards(parents);
-                setChildCards(children);
+                    // If we have a selected child card, update its sub-sub-cards
+                    if (data.child_card_id) {
+                        const childId = parseInt(data.child_card_id);
+                        const subChildrenOfSelected = sub_cards.filter(
+                            (card) => card.parent_id === childId
+                        );
+                        setSubChildCards(subChildrenOfSelected);
+                    }
+                }
             }
         } catch (error) {
-            const fallbackCards = [
-                { id: 0, name: "General Guide (No Specific Card)" },
-                { id: 1, name: "Login Details Card" },
-                { id: 2, name: "Notification Settings Card" },
-                { id: 9, name: "Warehouse Card" },
-                { id: 11, name: "Reports & Statues Card" },
-            ];
-
-            setCards(fallbackCards);
-            setParentCards(fallbackCards);
-            setChildCards([]);
+            console.error("Error refreshing cards:", error);
         } finally {
             setIsLoadingCards(false);
         }
     };
+
+    // Update fetchCards to use refreshCardData
+    const fetchCards = async () => {
+        await refreshCardData();
+    };
+
+    // Add effect to refresh card data when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            refreshCardData();
+        }
+    }, [isOpen]);
+
+    // Add effect to refresh card data when parent card changes
+    useEffect(() => {
+        if (data.parent_card_id) {
+            refreshCardData();
+        }
+    }, [data.parent_card_id]);
+
+    // Add effect to refresh card data when child card changes
+    useEffect(() => {
+        if (data.child_card_id) {
+            refreshCardData();
+        }
+    }, [data.child_card_id]);
 
     const fetchGuideData = async () => {
         try {
@@ -486,6 +507,8 @@ export default function CreateUserGuide({
                     is_active: guide.is_active,
                     card_id: guide.card_id || "",
                     card_name: guide.card_name || "",
+                    parent_card_id: guide.parent_card_id || "",
+                    child_card_id: guide.child_card_id || "",
                 });
 
                 if (guide.video_path) {
@@ -888,6 +911,8 @@ export default function CreateUserGuide({
             formData.append('video_type', data.video_type);
             formData.append('is_active', data.is_active ? '1' : '0');
             formData.append('card_id', data.card_id);
+            formData.append('parent_card_id', data.parent_card_id);
+            formData.append('child_card_id', data.child_card_id);
 
             // Add steps data without screenshots
             formattedSteps.forEach((step, index) => {
@@ -1113,8 +1138,10 @@ export default function CreateUserGuide({
             is_active: true,
             card_id: "",
             parent_card_id: "",
+            child_card_id: "",
         });
         setSelectedParentCard("");
+        setSelectedChildCard("");
         setSteps([
             {
                 step_number: 1,
@@ -1203,83 +1230,94 @@ export default function CreateUserGuide({
                                 </p>
                             )}
                         </div>
-                        </div>
-                    <div
-                        className={`grid gap-4 ${
-                            data.parent_card_id &&
-                            childCards.some(
-                                (card) =>
-                                    card.parent_id ===
-                                    parseInt(data.parent_card_id)
-                            )
-                                ? "grid-cols-1 md:grid-cols-2"
-                                : "grid-cols-1 md:grid-cols-1"
-                        }`}
-                    >
+                    </div>
+                    <div className="flex flex-wrap gap-4">
                         {/* Main Card Selection */}
-                        <div>
-                            <SelectFloating
-                                label="Main Card"
-                                name="main_card"
-                                value={data.parent_card_id}
-                                onChange={(e) => {
-                                    const parentId = e.target.value;
-                                    setData({
-                                        ...data, 
-                                        parent_card_id: parentId,
-                                    });
-                                    setSelectedParentCard(parentId);
-                                }}
-                                options={parentCards.map((p) => ({
-                                    id: p.id,
-                                    label: p.name,
-                                }))}
-                            />
-                            {errors.parent_card_id && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.parent_card_id}
-                                </p>
+                        <div className="flex-1 min-w-[200px]">
+                            {isLoadingCards ? (
+                                <div className="text-gray-500">Loading cards...</div>
+                            ) : (
+                                <>
+                                    <SelectFloating
+                                        label="Main Card"
+                                        name="main_card"
+                                        value={data.parent_card_id}
+                                        onChange={(e) => {
+                                            const parentId = e.target.value;
+                                            setData({
+                                                ...data, 
+                                                parent_card_id: parentId,
+                                                child_card_id: "",
+                                                card_id: "",
+                                            });
+                                            setSelectedParentCard(parentId);
+                                            setSelectedChildCard("");
+                                        }}
+                                        options={parentCards.map((p) => ({
+                                            id: p.id,
+                                            label: p.name,
+                                        }))}
+                                    />
+                                    {errors.parent_card_id && (
+                                        <p className="text-red-500 text-sm mt-1">
+                                            {errors.parent_card_id}
+                                        </p>
+                                    )}
+                                </>
                             )}
                         </div>
 
-                        {/* Sub Card Selection (conditionally shown) */}
-                        {data.parent_card_id &&
-                            childCards.some(
-                                (card) =>
-                                    card.parent_id ===
-                                    parseInt(data.parent_card_id)
-                            ) && (
-                                <div>
-                                    <SelectFloating
-                                        label="Sub Card"
-                                        name="sub_card"
-                                        value={data.card_id}
-                                        onChange={(e) =>
-                                            setData({
-                                                ...data,
-                                                card_id: e.target.value,
-                                            })
-                                        }
-                                        options={childCards
-                                            .filter(
-                                                (card) =>
-                                                    card.parent_id ===
-                                                    parseInt(
-                                                        data.parent_card_id
-                                                    )
-                                            )
-                                            .map((card) => ({
-                                                id: card.id,
-                                                label: card.name,
-                                            }))}
-                                    />
-                                    {errors.card_id && (
-                                        <p className="text-red-500 text-sm mt-1">
-                                            {errors.card_id}
-                                        </p>
-                                    )}
-                                </div>
-                            )}
+                        {/* Child Card Selection - Only show if main card has sub-cards */}
+                        {data.parent_card_id && childCards.some(card => card.parent_id === parseInt(data.parent_card_id)) && (
+                            <div className="flex-1 min-w-[200px]">
+                                <SelectFloating
+                                    label="Sub Card"
+                                    name="sub_card"
+                                    value={data.child_card_id}
+                                    onChange={(e) => {
+                                        const childId = e.target.value;
+                                        setData({
+                                            ...data,
+                                            child_card_id: childId,
+                                            card_id: "",
+                                        });
+                                        setSelectedChildCard(childId);
+                                    }}
+                                    options={childCards
+                                        .filter(card => card.parent_id === parseInt(data.parent_card_id))
+                                        .map(card => ({
+                                            id: card.id,
+                                            label: card.name,
+                                        }))}
+                                />
+                                {errors.child_card_id && (
+                                    <p className="text-red-500 text-sm mt-1">
+                                        {errors.child_card_id}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Sub-Child Card Selection - Only show if sub-card has sub-sub-cards */}
+                        {data.child_card_id && subChildCards.length > 0 && (
+                            <div className="flex-1 min-w-[200px]">
+                                <SelectFloating
+                                    label="Sub-Sub Card"
+                                    name="sub_sub_card"
+                                    value={data.card_id}
+                                    onChange={(e) => setData({ ...data, card_id: e.target.value })}
+                                    options={subChildCards.map(card => ({
+                                        id: card.id,
+                                        label: card.name,
+                                    }))}
+                                />
+                                {errors.card_id && (
+                                    <p className="text-red-500 text-sm mt-1">
+                                        {errors.card_id}
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
