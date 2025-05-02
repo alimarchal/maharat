@@ -8,7 +8,6 @@ import InputFloating from "../../../../Components/InputFloating";
 
 const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
     const userId = usePage().props.auth.user.id;
-    console.log("Selected order in modal:", selectedOrder);
 
     const [formData, setFormData] = useState({
         issue_date: "",
@@ -128,7 +127,6 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
         const file = e.target.files[0];
         if (file) {
             setTempDocument(file);
-            console.log("File selected:", file.name, file.type, file.size);
 
             // Clear any attachment errors
             if (errors.attachment) {
@@ -159,7 +157,36 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                     ? new Date(formData.due_date).toISOString().split("T")[0]
                     : null;
 
-                // First, create a basic payload without the file
+                const processResponse = await axios.get(
+                    "/api/v1/processes?include=steps,creator,updater&filter[title]=Payment Order Approval"
+                );
+
+                const process = processResponse.data?.data?.[0];
+                const processSteps = process?.steps || [];
+
+                // Check if process and steps exist
+                if (!process || processSteps.length === 0) {
+                    setErrors({
+                        submit: "No Process or steps found for Payment Order Approval",
+                    });
+                    setIsSubmitting(false);
+                    return;
+                }
+                const processStep = processSteps[0];
+
+                const processResponseViaUser = await axios.get(
+                    `/api/v1/process-steps/${processStep.id}/user/${userId}`
+                );
+                const assignUser = processResponseViaUser?.data?.data;
+                if (!assignUser) {
+                    setErrors({
+                        submit: "No assignee found for this process step and user",
+                    });
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                // Create a basic payload without the file
                 const payloadData = {
                     user_id: userId,
                     purchase_order_id: selectedOrder?.id,
@@ -176,7 +203,6 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                     payloadData.attachment = selectedOrder.attachment;
                 }
 
-                const currentYear = new Date().getFullYear();
                 const budgetResponse = await axios.get(
                     `/api/v1/request-budgets?filter[sub_cost_center]=${selectedOrder?.rfq?.sub_cost_center_id}&include=fiscalPeriod,department,costCenter,subCostCenter`
                 );
@@ -187,7 +213,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                     setErrors({
                         submit: "No budget request found for this Sub cost center.",
                     });
-                    setIsSaving(false);
+                    setLoading(false);
                     return;
                 }
 
@@ -213,7 +239,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
 
                     try {
                         // Use the upload document endpoint for file uploads
-                        const uploadResponse = await axios.post(
+                        await axios.post(
                             `/api/v1/payment-orders/${response.data.data.id}/upload-document`,
                             documentFormData,
                             {
@@ -270,67 +296,31 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                     updatedBudgetData
                 );
 
-                // Create approval workflow
-                try {
-                    const processResponse = await axios.get(
-                        "/api/v1/processes?include=steps,creator,updater&filter[title]=Payment Order Approval"
-                    );
+                // Create approval transaction
+                const PaymentOrderApprovalPayload = {
+                    payment_order_id: paymentOrderResponse,
+                    requester_id: userId,
+                    assigned_to: assignUser?.approver_id,
+                    order: processStep.order,
+                    description: processStep.description,
+                    status: "Pending",
+                };
+                await axios.post(
+                    "/api/v1/payment-order-approval-trans",
+                    PaymentOrderApprovalPayload
+                );
 
-                    // Check if we have valid process data
-                    if (
-                        processResponse.data.data &&
-                        processResponse.data.data.length > 0
-                    ) {
-                        const process = processResponse.data.data[0];
-
-                        // Check if process has steps
-                        if (process.steps && process.steps.length > 0) {
-                            const processStep = process.steps[0];
-
-                            // Only proceed if we have a valid process step
-                            if (processStep) {
-                                const processResponseViaUser = await axios.get(
-                                    `/api/v1/process-steps/${processStep.id}/user/${userId}`
-                                );
-                                const assignUser =
-                                    processResponseViaUser?.data?.data;
-                                if (assignUser) {
-                                    // Create approval transaction
-                                    const PaymentOrderApprovalPayload = {
-                                        payment_order_id: paymentOrderResponse,
-                                        requester_id: userId,
-                                        assigned_to: assignUser?.approver_id,
-                                        order: processStep.order,
-                                        description: processStep.description,
-                                        status: "Pending",
-                                    };
-                                    await axios.post(
-                                        "/api/v1/payment-order-approval-trans",
-                                        PaymentOrderApprovalPayload
-                                    );
-
-                                    // Create task
-                                    const taskPayload = {
-                                        process_step_id: processStep.id,
-                                        process_id: processStep.process_id,
-                                        assigned_at: new Date().toISOString(),
-                                        urgency: "Normal",
-                                        assigned_to_user_id:
-                                            assignUser?.approver_id,
-                                        assigned_from_user_id: userId,
-                                        payment_order_id: paymentOrderResponse,
-                                    };
-                                    await axios.post(
-                                        "/api/v1/tasks",
-                                        taskPayload
-                                    );
-                                }
-                            }
-                        }
-                    }
-                } catch (approvalError) {
-                    console.error("Approval process error:", approvalError);
-                }
+                // Create task
+                const taskPayload = {
+                    process_step_id: processStep.id,
+                    process_id: processStep.process_id,
+                    assigned_at: new Date().toISOString(),
+                    urgency: "Normal",
+                    assigned_to_user_id: assignUser?.approver_id,
+                    assigned_from_user_id: userId,
+                    payment_order_id: paymentOrderResponse,
+                };
+                await axios.post("/api/v1/tasks", taskPayload);
 
                 setLoading(false);
                 onClose();
@@ -338,6 +328,10 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
             } catch (error) {
                 setLoading(false);
                 console.error("Error creating payment order:", error);
+                setErrors({
+                    general:
+                        "An error occurred while creating the payment order.",
+                });
             }
         }
     };
@@ -375,9 +369,10 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
             setFormData((prev) => ({
                 ...prev,
                 issue_date: today,
+                total_amount: selectedOrder?.amount || 0,
             }));
         }
-    }, [isOpen]);
+    }, [isOpen, selectedOrder]);
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -577,14 +572,19 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                         </div>
                     </div>
 
-                    {/* General Error Message */}
+                    {/* Error Messages */}
                     {errors.general && (
                         <div className="text-red-500 text-sm mt-2 text-center">
                             {errors.general}
                         </div>
                     )}
 
-                    {/* Purchase Order ID Error */}
+                    {errors.submit && (
+                        <div className="text-red-500 text-sm mt-2 text-center">
+                            {errors.submit}
+                        </div>
+                    )}
+
                     {errors.purchase_order_id && (
                         <div className="text-red-500 text-sm mt-2 text-center">
                             {errors.purchase_order_id}

@@ -51,6 +51,7 @@ export default function AddQuotationForm({ auth }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [products, setProducts] = useState([]);
+    const [companies, setCompanies] = useState([]);
 
     // Add state for modal
     const [isItemModalOpen, setIsItemModalOpen] = useState(false);
@@ -111,6 +112,21 @@ export default function AddQuotationForm({ auth }) {
                 const productsResponse = await axios.get("/api/v1/products");
                 const productsData = productsResponse.data?.data || [];
                 setProducts(productsData);
+
+                const companiesResponse = await axios.get("/api/v1/companies");
+                const companiesData = companiesResponse.data?.data?.[0];
+                setCompanies(companiesData);
+
+                // Set company data and update form with company values
+                if (companiesData) {
+                    setFormData((prev) => ({
+                        ...prev,
+                        organization_name: companiesData.name || "",
+                        organization_email: companiesData.email || "",
+                        city: companiesData.city || "",
+                        contact_no: companiesData.contact_number || "",
+                    }));
+                }
 
                 const costCentersResponse = await axios.get(
                     "/api/v1/cost-centers"
@@ -648,24 +664,6 @@ export default function AddQuotationForm({ auth }) {
 
         const newItems = formData.items.filter((item) => item.id !== itemId);
         setFormData({ ...formData, items: newItems });
-    };
-
-    const handleFileChange = (index, e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setAttachments((prev) => ({
-                ...prev,
-                [index]: file,
-            }));
-
-            const updatedItems = [...formData.items];
-            updatedItems[index].attachment = {
-                name: file.name,
-                original_filename: file.name,
-                file: file,
-            };
-            setFormData({ ...formData, items: updatedItems });
-        }
     };
 
     // Improve handleFileClick function to handle temporary file objects

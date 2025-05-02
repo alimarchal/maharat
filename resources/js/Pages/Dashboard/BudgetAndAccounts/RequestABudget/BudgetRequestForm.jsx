@@ -8,6 +8,7 @@ import { router, usePage } from "@inertiajs/react";
 
 const BudgetRequestForm = () => {
     const user_id = usePage().props.auth.user.id;
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [formData, setFormData] = useState({
         fiscal_period_id: "",
@@ -44,6 +45,11 @@ const BudgetRequestForm = () => {
             setFiscalYears(yearRes.data.data);
         } catch (error) {
             console.error("Error fetching data", error);
+            setErrors((prev) => ({
+                ...prev,
+                fetchError:
+                    "Failed to load necessary data. Please refresh and try again.",
+            }));
         }
     };
 
@@ -54,7 +60,8 @@ const BudgetRequestForm = () => {
             [name]: value,
             ...(name === "cost_center_id" ? { sub_cost_center: "" } : {}),
         }));
-        setErrors((prev) => ({ ...prev, [name]: "" }));
+        // Clear the specific error when field is changed
+        setErrors((prev) => ({ ...prev, [name]: undefined }));
 
         if (name === "cost_center_id") {
             filterSubCostCenters(value);
@@ -74,10 +81,14 @@ const BudgetRequestForm = () => {
 
     const handleFileChange = (e) => {
         setFormData((prev) => ({ ...prev, attachment: e.target.files[0] }));
+        // Clear attachment error if it exists
+        setErrors((prev) => ({ ...prev, attachment: undefined }));
     };
 
     const validateForm = () => {
         let newErrors = {};
+
+        // Validate required fields
         if (!formData.fiscal_period_id)
             newErrors.fiscal_period_id = "Year is required";
         if (!formData.department_id)
@@ -101,62 +112,97 @@ const BudgetRequestForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!validateForm()) return;
+        setIsSubmitting(true);
+
+        if (!validateForm()) {
+            setIsSubmitting(false);
+            return;
+        }
 
         try {
+            const processResponse = await axios.get(
+                "/api/v1/processes?include=steps,creator,updater&filter[title]=Budget Request Approval"
+            );
+            const process = processResponse.data?.data?.[0];
+            const processSteps = process?.steps || [];
+
+            // Check if process and steps exist
+            if (!process || processSteps.length === 0) {
+                setErrors({
+                    submit: "No Process or steps found for Budget Request Approval",
+                });
+                setIsSubmitting(false);
+                return;
+            }
+            const processStep = processSteps[0];
+
+            const processResponseViaUser = await axios.get(
+                `/api/v1/process-steps/${processStep.id}/user/${user_id}`
+            );
+            const assignUser = processResponseViaUser?.data?.data;
+            if (!assignUser) {
+                setErrors({
+                    submit: "No assignee found for this process step and user",
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Create budget request
             const response = await axios.post(
                 "/api/v1/request-budgets",
                 formData
             );
+
             const budgetRequestId = response.data.data?.id;
-            if (budgetRequestId) {
-                const processResponse = await axios.get(
-                    "/api/v1/processes?include=steps,creator,updater&filter[title]=Budget Request Approval"
-                );
-
-                if (processResponse.data?.data?.[0]?.steps?.[0]) {
-                    const process = processResponse.data.data[0];
-                    const processStep = process.steps[0];
-
-                    // Only proceed if we have valid process step data
-                    if (processStep?.id) {
-                        const processResponseViaUser = await axios.get(
-                            `/api/v1/process-steps/${processStep.id}/user/${user_id}`
-                        );
-                        const assignUser = processResponseViaUser?.data?.data;
-
-                        if (assignUser) {
-                            const RequestBudgetTransactionPayload = {
-                                request_budgets_id: budgetRequestId,
-                                requester_id: user_id,
-                                assigned_to: assignUser?.approver_id,
-                                order: processStep.order,
-                                description: processStep.description,
-                                status: "Pending",
-                            };
-                            await axios.post(
-                                "/api/v1/budget-request-approval-trans",
-                                RequestBudgetTransactionPayload
-                            );
-
-                            const taskPayload = {
-                                process_step_id: processStep.id,
-                                process_id: processStep.process_id,
-                                assigned_at: new Date().toISOString(),
-                                urgency: "Normal",
-                                assigned_to_user_id: assignUser?.approver_id,
-                                assigned_from_user_id: user_id,
-                                request_budgets_id: budgetRequestId,
-                            };
-                            await axios.post("/api/v1/tasks", taskPayload);
-                        }
-                    }
-                }
+            if (!budgetRequestId) {
+                setErrors({
+                    submit: "Failed to create budget request. No ID was returned.",
+                });
+                setIsSubmitting(false);
+                return;
             }
+
+            // Create budget request transaction
+            const RequestBudgetTransactionPayload = {
+                request_budgets_id: budgetRequestId,
+                requester_id: user_id,
+                assigned_to: assignUser.approver_id,
+                order: processStep.order,
+                description: processStep.description,
+                status: "Pending",
+            };
+
+            await axios.post(
+                "/api/v1/budget-request-approval-trans",
+                RequestBudgetTransactionPayload
+            );
+
+            // create task
+            const taskPayload = {
+                process_step_id: processStep.id,
+                process_id: processStep.process_id,
+                assigned_at: new Date().toISOString(),
+                urgency: "Normal",
+                assigned_to_user_id: assignUser.approver_id,
+                assigned_from_user_id: user_id,
+                request_budgets_id: budgetRequestId,
+            };
+
+            await axios.post("/api/v1/tasks", taskPayload);
             router.visit("/request-budgets");
         } catch (error) {
             console.error("Error saving Request a budget:", error);
+            setIsSubmitting(false);
+        } finally {
+            setIsSubmitting(false);
         }
+    };
+
+    // Helper to render error message consistently
+    const ErrorMessage = ({ error }) => {
+        if (!error) return null;
+        return <p className="text-red-500 text-sm mt-1">{error}</p>;
     };
 
     return (
@@ -183,13 +229,23 @@ const BudgetRequestForm = () => {
                             }`,
                         }))}
                     />
-                    {errors.fiscal_period_id && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.fiscal_period_id}
-                        </p>
-                    )}
+                    <ErrorMessage error={errors.fiscal_period_id} />
                 </div>
             </div>
+
+            {/* Show any fetch errors at the top */}
+            {errors.fetchError && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4 mb-2">
+                    <p>{errors.fetchError}</p>
+                </div>
+            )}
+
+            {/* Show any submission errors */}
+            {errors.submit && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4 mb-2">
+                    <p>{errors.submit}</p>
+                </div>
+            )}
 
             <div className="flex items-center gap-4 w-full my-6">
                 <p className="text-[#6E66AC] text-lg md:text-2xl">
@@ -217,11 +273,7 @@ const BudgetRequestForm = () => {
                                 label: dept.name,
                             }))}
                         />
-                        {errors.department_id && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.department_id}
-                            </p>
-                        )}
+                        <ErrorMessage error={errors.department_id} />
                     </div>
                     <div>
                         <SelectFloating
@@ -234,11 +286,7 @@ const BudgetRequestForm = () => {
                                 label: cost.name,
                             }))}
                         />
-                        {errors.cost_center_id && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.cost_center_id}
-                            </p>
-                        )}
+                        <ErrorMessage error={errors.cost_center_id} />
                     </div>
                     <div>
                         <SelectFloating
@@ -250,12 +298,9 @@ const BudgetRequestForm = () => {
                                 id: sub.id,
                                 label: sub.name,
                             }))}
+                            disabled={!formData.cost_center_id}
                         />
-                        {errors.sub_cost_center && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.sub_cost_center}
-                            </p>
-                        )}
+                        <ErrorMessage error={errors.sub_cost_center} />
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -265,12 +310,12 @@ const BudgetRequestForm = () => {
                             name="previous_year_budget_amount"
                             value={formData.previous_year_budget_amount}
                             onChange={handleChange}
+                            type="number"
+                            min="0"
                         />
-                        {errors.previous_year_budget_amount && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.previous_year_budget_amount}
-                            </p>
-                        )}
+                        <ErrorMessage
+                            error={errors.previous_year_budget_amount}
+                        />
                     </div>
                     <div>
                         <InputFloating
@@ -278,12 +323,10 @@ const BudgetRequestForm = () => {
                             name="requested_amount"
                             value={formData.requested_amount}
                             onChange={handleChange}
+                            type="number"
+                            min="0"
                         />
-                        {errors.requested_amount && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.requested_amount}
-                            </p>
-                        )}
+                        <ErrorMessage error={errors.requested_amount} />
                     </div>
                     <div>
                         <SelectFloating
@@ -292,16 +335,12 @@ const BudgetRequestForm = () => {
                             value={formData.urgency}
                             onChange={handleChange}
                             options={[
-                                { value: "High", label: "High" },
-                                { value: "Medium", label: "Medium" },
-                                { value: "Low", label: "Low" },
+                                { id: "High", label: "High" },
+                                { id: "Medium", label: "Medium" },
+                                { id: "Low", label: "Low" },
                             ]}
                         />
-                        {errors.urgency && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.urgency}
-                            </p>
-                        )}
+                        <ErrorMessage error={errors.urgency} />
                     </div>
                     <div>
                         <label className="border p-5 rounded-2xl bg-white w-full flex items-center justify-center cursor-pointer relative">
@@ -346,18 +385,19 @@ const BudgetRequestForm = () => {
                             Reasons for increase
                         </label>
                     </div>
-                    {errors.reason_for_increase && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {errors.reason_for_increase}
-                        </p>
-                    )}
+                    <ErrorMessage error={errors.reason_for_increase} />
                 </div>
                 <div className="flex justify-end">
                     <button
                         type="submit"
-                        className="bg-[#009FDC] text-white text-lg font-medium px-6 py-3 rounded-full hover:bg-[#007CB8]"
+                        className={`text-white text-lg font-medium px-6 py-3 rounded-full ${
+                            isSubmitting
+                                ? "bg-gray-400 cursor-not-allowed"
+                                : "bg-[#009FDC] hover:bg-[#007CB8]"
+                        }`}
+                        disabled={isSubmitting}
                     >
-                        Save
+                        {isSubmitting ? "Saving..." : "Save"}
                     </button>
                 </div>
             </form>

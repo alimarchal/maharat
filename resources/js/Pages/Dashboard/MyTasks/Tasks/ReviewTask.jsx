@@ -74,82 +74,102 @@ const ReviewTask = () => {
                 {
                     key: "material_request_id",
                     url: "/api/v1/material-request-transactions",
+                    processTitle: "Material Request",
                 },
-                { key: "rfq_id", url: "/api/v1/rfq-approval-transactions" },
+                {
+                    key: "rfq_id",
+                    url: "/api/v1/rfq-approval-transactions",
+                    processTitle: "RFQ Approval",
+                },
                 {
                     key: "purchase_order_id",
                     url: "/api/v1/po-approval-transactions",
+                    processTitle: "Purchase Order Approval",
                 },
                 {
                     key: "payment_order_id",
                     url: "/api/v1/payment-order-approval-trans",
+                    processTitle: "Payment Order Approval",
                 },
                 {
                     key: "invoice_id",
                     url: "/api/v1/mahrat-invoice-approval-trans",
+                    processTitle: "Maharat Invoice Approval",
                 },
                 {
                     key: "request_budgets_id",
                     url: "/api/v1/budget-request-approval-trans",
+                    processTitle: "Budget Request Approval",
                 },
                 {
                     key: "budget_id",
                     url: "/api/v1/budget-approval-transactions",
+                    processTitle: "Total Budget Approval",
                 },
             ];
 
-            for (const { key, url } of transactions) {
+            for (const transaction of transactions) {
+                const { key, url, processTitle } = transaction;
                 const id = taskData[key];
+
                 // Proceed only if ID is valid
                 if (!id) continue;
 
-                let processTitle = null;
-                if (key === "material_request_id") {
-                    processTitle = "Material Request";
-                } else if (key === "rfq_id") {
-                    processTitle = "RFQ Approval";
-                } else if (key === "purchase_order_id") {
-                    processTitle = "Purchase Order Approval";
-                } else if (key === "payment_order_id") {
-                    processTitle = "Payment Order Approval";
-                } else if (key === "invoice_id") {
-                    processTitle = "Maharat Invoice Approval";
-                } else if (key === "request_budgets_id") {
-                    processTitle = "Budget Request Approval";
-                } else if (key === "budget_id") {
-                    processTitle = "Total Budget Approval";
-                }
-                let processStep;
-                if (processTitle) {
-                    const processResponse = await axios.get(
-                        `/api/v1/processes?include=steps,creator,updater&filter[title]=${encodeURIComponent(
-                            processTitle
-                        )}`
-                    );
-                    const process = processResponse?.data?.data?.[0];
-                    processStep = process?.steps?.[1];
+                const processResponse = await axios.get(
+                    `/api/v1/processes?include=steps,creator,updater&filter[title]=${encodeURIComponent(
+                        processTitle
+                    )}`
+                );
+                const process = processResponse?.data?.data?.[0];
+                if (!process || !process.steps?.length) continue;
 
-                    if (!processStep?.id) continue;
+                // Get existing transactions for this item
+                const transactionResponse = await axios.get(
+                    `${url}?filter[${key}]=${id}`
+                );
+                const existingTransactions =
+                    transactionResponse?.data?.data || [];
+                const completedOrders = existingTransactions.map((t) =>
+                    Number(t.order)
+                );
 
-                    const processResponseViaUser = await axios.get(
-                        `/api/v1/process-steps/${processStep.id}/user/${logged_user}`
-                    );
-                    const assignUser = processResponseViaUser?.data?.data;
+                // Find next unprocessed step
+                const nextStep = process.steps.find(
+                    (step) => !completedOrders.includes(step.order)
+                );
+                if (!nextStep || !nextStep.id) continue; // All steps done
 
-                    const commonPayload = {
-                        requester_id: logged_user,
-                        assigned_to: assignUser?.approver_id,
-                        order: String(processStep.order),
-                        description: taskDescription.description,
-                        status: taskDescription.action,
-                        referred_to: taskDescription?.user_id || null,
-                    };
+                // Get approver for the next step
+                const stepUserResponse = await axios.get(
+                    `/api/v1/process-steps/${nextStep.id}/user/${logged_user}`
+                );
+                const assignUser = stepUserResponse?.data?.data;
 
-                    const payload = { ...commonPayload, [key]: id };
-                    await axios.post(url, payload);
-                }
+                const commonPayload = {
+                    requester_id: logged_user,
+                    assigned_to: assignUser?.approver_id,
+                    order: String(nextStep.order),
+                    description: nextStep.description,
+                    status: taskDescription.action,
+                    referred_to: taskDescription?.user_id || null,
+                };
+                const payload = { ...commonPayload, [key]: id };
+                await axios.post(url, payload);
 
-                // Handle request_budgets_id approval logic
+                const taskPayload = {
+                    process_step_id: nextStep.id,
+                    process_id: nextStep.process_id,
+                    assigned_at: new Date().toISOString(),
+                    urgency: "Normal",
+                    assigned_to_user_id: assignUser.approver_id || null,
+                    assigned_from_user_id: logged_user,
+                    read_status: null,
+                    order_no: String(nextStep.order),
+                    [key]: id,
+                };
+                await axios.post("/api/v1/tasks", taskPayload);
+
+                // Special logic: if it's a Budget Request and action is Approve
                 if (
                     key === "request_budgets_id" &&
                     formData.action === "Approve"
@@ -171,7 +191,7 @@ const ReviewTask = () => {
                 }
             }
 
-            // Update current task status
+            // Update task status if applicable
             if (taskDescription?.action && taskDescription?.task_id) {
                 const statusMap = {
                     Approve: "Approved",
@@ -189,6 +209,7 @@ const ReviewTask = () => {
                     );
                 }
             }
+
             router.visit("/tasks");
         } catch (error) {
             console.error("Error submitting task:", error);
