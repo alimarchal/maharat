@@ -459,5 +459,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/cards/reorder', [CardController::class, 'reorder']);
     Route::apiResource('cards', CardController::class);
     Route::post('/cards/{card}', [CardController::class, 'update']);
+    Route::get('/cards/{card}/children', [CardController::class, 'checkForChildren']);
 
 });

@@ -78,19 +78,21 @@ export default function UserManualSubSections() {
                 return;
             }
 
-            // Check if this card is a parent by looking at all sub-cards
-            const isParent = subCards.some(subCard => subCard.parent_id === parentCard.id);
-
-            if (!isParent) {
-                // If not a parent, redirect to guide detail
-                router.visit(`/user-manual/${parentCard.section_id}/${parentCard.subsection_id || parentCard.id}`);
-                return;
-            }
+            console.log('ManualSubSection - Parent card found:', {
+                parentId: parentCard.id,
+                sectionId: parentCard.section_id
+            });
 
             // Get sub-cards for this parent
             const subsectionCards = subCards.filter(
                 (card) => card.parent_id === parentCard.id
             );
+
+            console.log('ManualSubSection - Filtered sub-cards:', {
+                parentId: parentCard.id,
+                subCardsCount: subsectionCards.length,
+                subCards: subsectionCards
+            });
 
             const sortedSubsections = subsectionCards.sort((a, b) => {
                 if (a.order !== undefined && b.order !== undefined) {
@@ -160,6 +162,146 @@ export default function UserManualSubSections() {
             .join(" ");
     };
 
+    const SubManualSectionCard = ({ sectionCard, provided }) => {
+        const cardId = sectionCard.id;
+        const title = sectionCard.name;
+        const description = sectionCard.description;
+        const guides = guidesMap[cardId] || [];
+
+        const handleClick = async () => {
+            console.log('ManualSubSection - Starting card click handler:', {
+                cardId: cardId,
+                cardName: title,
+                sectionId: sectionCard.section_id,
+                subsectionId: sectionCard.subsection_id,
+                currentUrl: window.location.pathname
+            });
+            
+            try {
+                console.log('ManualSubSection - Checking for children at:', `/api/v1/cards/${cardId}/children`);
+                const response = await axios.get(`/api/v1/cards/${cardId}/children`);
+                console.log('ManualSubSection - Children check response:', {
+                    cardId: cardId,
+                    hasChildren: response.data.data.has_children,
+                    children: response.data.data.children,
+                    responseData: response.data
+                });
+                
+                if (response.data.data.has_children) {
+                    const targetUrl = `/user-manual/${sectionCard.section_id}/${title.toLowerCase().replace(/\s+/g, '-')}`;
+                    console.log('ManualSubSection - Card has children, routing to:', {
+                        targetUrl: targetUrl,
+                        currentUrl: window.location.pathname,
+                        sectionId: sectionCard.section_id,
+                        cardName: title
+                    });
+                    router.visit(targetUrl, {
+                        preserveState: true,
+                        preserveScroll: true,
+                        onSuccess: () => {
+                            console.log('ManualSubSection - Navigation successful');
+                        },
+                        onError: (error) => {
+                            console.error('ManualSubSection - Navigation error:', error);
+                        }
+                    });
+                } else {
+                    const guide = guides[0];
+                    console.log('ManualSubSection - No children, checking for guide:', {
+                        hasGuide: !!guide,
+                        guideId: guide?.id
+                    });
+                    
+                    if (guide) {
+                        console.log('ManualSubSection - Routing to GuideDetail');
+                        router.visit(`/user-manual/guide/${guide.id}`);
+                    } else {
+                        console.log('ManualSubSection - No guide, staying on current level');
+                        router.visit(`/user-manual/${sectionCard.section_id}/${title.toLowerCase().replace(/\s+/g, '-')}`);
+                    }
+                }
+            } catch (error) {
+                console.error('ManualSubSection - Error checking for children:', error);
+                const guide = guides[0];
+                if (guide) {
+                    console.log('ManualSubSection - Error fallback: Routing to GuideDetail');
+                    router.visit(`/user-manual/guide/${guide.id}`);
+                } else {
+                    console.log('ManualSubSection - Error fallback: Staying on current level');
+                    router.visit(`/user-manual/${sectionCard.section_id}/${title.toLowerCase().replace(/\s+/g, '-')}`);
+                }
+            }
+        };
+
+        return (
+            <div
+                ref={provided.innerRef}
+                {...provided.draggableProps}
+                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
+            >
+                <div className="flex items-start justify-between mb-4">
+                    <div 
+                        className="flex-grow cursor-pointer"
+                        onClick={handleClick}
+                    >
+                        <div>
+                            <h3 className="text-2xl font-bold mb-2">
+                                {title}
+                            </h3>
+                            <p className="text-base font-medium">
+                                {description}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                        <div className="w-16 h-16 flex-shrink-0">
+                            <img
+                                src={sectionCard.icon_path ? `/storage/${sectionCard.icon_path}` : `/images/manuals/${sectionCard.section_id}.png`}
+                                alt={title}
+                                className="w-full h-full object-contain"
+                                onError={(e) => {
+                                    e.target.src = '/images/default-manual.png';
+                                }}
+                            />
+                        </div>
+                        {isAdmin && (
+                            <div className="flex flex-col items-center space-y-2">
+                                <div {...provided.dragHandleProps} className="cursor-move p-2 hover:bg-[#009FDC]/10 rounded-full transition-colors duration-200">
+                                    <FontAwesomeIcon icon={faGripVertical} className="text-[#009FDC] hover:text-[#007BB5] transition-colors duration-200" />
+                                </div>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setSelectedCard(null);
+                                        setSelectedParentCard(sectionCard);
+                                        setCurrentCardLevel(2);
+                                        setShowCardForm(true);
+                                    }}
+                                    className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
+                                >
+                                    <FontAwesomeIcon icon={faPlus} className="text-lg" />
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setSelectedCard(sectionCard);
+                                        setSelectedParentCard(null);
+                                        setCurrentCardLevel(1);
+                                        setShowCardForm(true);
+                                    }}
+                                    className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
+                                >
+                                    <FontAwesomeIcon icon={faEdit} className="text-lg" />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="w-full">
             <div className="flex justify-between items-center mb-8">
@@ -198,73 +340,11 @@ export default function UserManualSubSections() {
                                         isDragDisabled={!isAdmin}
                                     >
                                         {(provided) => (
-                                            <div
-                                                ref={provided.innerRef}
-                                                {...provided.draggableProps}
-                                                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
-                                            >
-                                                <div className="flex items-start justify-between mb-4">
-                                                    <div 
-                                                        className="flex-grow cursor-pointer"
-                                                        onClick={() => {
-                                                            router.visit(`/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id || sectionCard.id}`);
-                                                        }}
-                                                    >
-                                                        <div>
-                                                            <h3 className="text-2xl font-bold mb-2">
-                                                                {sectionCard.name}
-                                                            </h3>
-                                                            <p className="text-base font-medium">
-                                                                {sectionCard.description}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <div className="flex items-center space-x-2">
-                                                        <div className="w-16 h-16 flex-shrink-0">
-                                                            <img
-                                                                src={sectionCard.icon_path ? `/storage/${sectionCard.icon_path}` : `/images/manuals/${sectionCard.section_id}.png`}
-                                                                alt={sectionCard.name}
-                                                                className="w-full h-full object-contain"
-                                                                onError={(e) => {
-                                                                    e.target.src = '/images/default-manual.png';
-                                                                }}
-                                                            />
-                                                        </div>
-                                                        {isAdmin && (
-                                                            <div className="flex flex-col items-center space-y-2">
-                                                                <div {...provided.dragHandleProps} className="cursor-move p-2 hover:bg-[#009FDC]/10 rounded-full transition-colors duration-200">
-                                                                    <FontAwesomeIcon icon={faGripVertical} className="text-[#009FDC] hover:text-[#007BB5] transition-colors duration-200" />
-                                                                </div>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.preventDefault();
-                                                                        setSelectedCard(null);
-                                                                        setSelectedParentCard(sectionCard);
-                                                                        setCurrentCardLevel(2);
-                                                                        setShowCardForm(true);
-                                                                    }}
-                                                                    className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
-                                                                >
-                                                                    <FontAwesomeIcon icon={faPlus} className="text-lg" />
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.preventDefault();
-                                                                        setSelectedCard(sectionCard);
-                                                                        setSelectedParentCard(null);
-                                                                        setCurrentCardLevel(1);
-                                                                        setShowCardForm(true);
-                                                                    }}
-                                                                    className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
-                                                                >
-                                                                    <FontAwesomeIcon icon={faEdit} className="text-lg" />
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <SubManualSectionCard
+                                                key={sectionCard.id}
+                                                sectionCard={sectionCard}
+                                                provided={provided}
+                                            />
                                         )}
                                     </Draggable>
                                 ))}

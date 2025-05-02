@@ -340,11 +340,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'UserManual/UserManual']);
     })->name('user-manual.index');
 
-    // Guide details by ID - This specific route needs to come BEFORE general routes
+    // Guide details by ID
     Route::get('/user-manual/guide/{id}', function ($id) {
-        // Ensure the ID is numeric for API calls
         $numericId = is_numeric($id) ? (int)$id : $id;
-        
         return Inertia::render('Dashboard', [
             'page' => 'UserManual/GuideDetail',
             'id' => $numericId
@@ -353,18 +351,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // For sections (both with and without subsections)
     Route::get('/user-manual/{sectionId}', function ($sectionId) {
-        // Define which sections have subsections
-        $sectionsWithSubsections = [
-            'procurement', 'finance', 'warehouse', 'budget', 'configuration'
-        ];
-        if (in_array($sectionId, $sectionsWithSubsections)) {
-            // If section has subsections, show ManualSubSection
+        $card = \App\Models\Card::where('section_id', $sectionId)->first();
+        
+        if ($card && $card->children()->exists()) {
             return Inertia::render('Dashboard', [
                 'page' => 'UserManual/ManualSubSection',
                 'section' => $sectionId
             ]);
         } else {
-            // If section doesn't have subsections, show GuideDetail
             return Inertia::render('Dashboard', [
                 'page' => 'UserManual/GuideDetail',
                 'section' => $sectionId
@@ -374,11 +368,136 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // For subsection details
     Route::get('/user-manual/{sectionId}/{subsectionId}', function ($sectionId, $subsectionId) {
-        return Inertia::render('Dashboard', [
-            'page' => 'UserManual/GuideDetail',
-            'section' => $sectionId,
-            'subsection' => $subsectionId
+        \Log::info('ManualSubSection route hit', [
+            'sectionId' => $sectionId,
+            'subsectionId' => $subsectionId,
+            'url' => request()->url()
         ]);
+
+        // First try to find the card by id
+        $card = \App\Models\Card::where('id', $subsectionId)->first();
+        
+        // If not found, try to find by subsection_id
+        if (!$card) {
+            $card = \App\Models\Card::where('subsection_id', $subsectionId)->first();
+        }
+
+        // If still not found, try to find by section_id and id
+        if (!$card) {
+            $card = \App\Models\Card::where('section_id', $sectionId)
+                ->where('id', $subsectionId)
+                ->first();
+        }
+
+        \Log::info('Card found', [
+            'card' => $card ? $card->toArray() : null,
+            'hasChildren' => $card ? $card->children()->exists() : false,
+            'url' => request()->url()
+        ]);
+
+        if (!$card) {
+            \Log::info('No card found, rendering ManualSubSection', [
+                'sectionId' => $sectionId,
+                'subsectionId' => $subsectionId,
+                'url' => request()->url()
+            ]);
+            return Inertia::render('Dashboard', [
+                'page' => 'UserManual/ManualSubSection',
+                'section' => $sectionId,
+                'subsection' => $subsectionId
+            ]);
+        }
+
+        if ($card->children()->exists()) {
+            \Log::info('Card has children, rendering ManualSubSubSection', [
+                'card' => $card->toArray(),
+                'url' => request()->url()
+            ]);
+            return Inertia::render('Dashboard', [
+                'page' => 'UserManual/ManualSubSubSection',
+                'section' => $sectionId,
+                'subsection' => $subsectionId,
+                'card' => $card->toArray()
+            ]);
+        } else {
+            \Log::info('Card has no children, rendering GuideDetail', [
+                'card' => $card->toArray(),
+                'url' => request()->url()
+            ]);
+            return Inertia::render('Dashboard', [
+                'page' => 'UserManual/GuideDetail',
+                'section' => $sectionId,
+                'subsection' => $subsectionId,
+                'card' => $card->toArray()
+            ]);
+        }
+    })->name('user-manual.subsection');
+
+    // For sub-sub-section details
+    Route::get('/user-manual/{sectionId}/{subsectionName}', function ($sectionId, $subsectionName) {
+        \Log::info('ManualSubSubSection route hit', [
+            'sectionId' => $sectionId,
+            'subsectionName' => $subsectionName,
+            'url' => request()->url()
+        ]);
+
+        // First try to find the card by name
+        $card = \App\Models\Card::where('name', str_replace('-', ' ', $subsectionName))->first();
+        
+        // If not found, try to find by id
+        if (!$card) {
+            $card = \App\Models\Card::where('id', $subsectionName)->first();
+        }
+
+        // If still not found, try to find by section_id and name
+        if (!$card) {
+            $card = \App\Models\Card::where('section_id', $sectionId)
+                ->where('name', str_replace('-', ' ', $subsectionName))
+                ->first();
+        }
+
+        \Log::info('Card found', [
+            'card' => $card ? $card->toArray() : null,
+            'hasChildren' => $card ? $card->children()->exists() : false,
+            'url' => request()->url()
+        ]);
+
+        if (!$card) {
+            \Log::info('No card found, rendering ManualSubSection', [
+                'sectionId' => $sectionId,
+                'subsectionName' => $subsectionName,
+                'url' => request()->url()
+            ]);
+            return Inertia::render('Dashboard', [
+                'page' => 'UserManual/ManualSubSection',
+                'section' => $sectionId,
+                'subsection' => $subsectionName
+            ]);
+        }
+
+        if ($card->children()->exists()) {
+            \Log::info('Card has children, rendering ManualSubSubSection', [
+                'card' => $card->toArray(),
+                'url' => request()->url()
+            ]);
+            return Inertia::render('Dashboard', [
+                'page' => 'UserManual/ManualSubSubSection',
+                'section' => $sectionId,
+                'subsection' => $subsectionName,
+                'card' => $card->toArray()
+            ]);
+        } else {
+            \Log::info('Card has no children, rendering GuideDetail', [
+                'card' => $card->toArray(),
+                'url' => request()->url()
+            ]);
+            return Inertia::render('Dashboard', [
+                'page' => 'UserManual/GuideDetail',
+                'section' => $sectionId,
+                'subsection' => $subsectionName,
+                'card' => $card->toArray()
+            ]);
+        }
     })->name('user-manual.subsection');
 
     // FAQ routes

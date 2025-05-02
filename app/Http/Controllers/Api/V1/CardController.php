@@ -325,6 +325,31 @@ class CardController extends Controller
     }
 
     /**
+     * Check if a card has any children
+     */
+    public function checkForChildren($id)
+    {
+        try {
+            $card = Card::findOrFail($id);
+            $hasChildren = $card->children()->exists();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'has_children' => $hasChildren,
+                    'children' => $hasChildren ? $card->children()->orderBy('order')->get() : []
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to check for children',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Update the order of cards
      */
     public function reorder(Request $request)
