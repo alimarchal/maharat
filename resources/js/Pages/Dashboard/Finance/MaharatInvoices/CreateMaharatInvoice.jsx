@@ -64,6 +64,7 @@ export default function CreateMaharatInvoice() {
         vat_no: "",
         cr_no: "",
     });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         setItemErrors(formData.items.map(() => ({})));
@@ -120,6 +121,10 @@ export default function CreateMaharatInvoice() {
             }
         } catch (error) {
             console.error("Error fetching company details:", error);
+            setErrors((prev) => ({
+                ...prev,
+                company: "Failed to load company details",
+            }));
         }
     };
 
@@ -129,6 +134,10 @@ export default function CreateMaharatInvoice() {
             setCompanies(response.data.data);
         } catch (error) {
             console.error("Error fetching companies:", error);
+            setErrors((prev) => ({
+                ...prev,
+                companies: "Failed to load companies",
+            }));
         }
     };
 
@@ -245,6 +254,10 @@ export default function CreateMaharatInvoice() {
             );
         } catch (error) {
             setPaymentMethods(["Cash", "Credit"]);
+            setErrors((prev) => ({
+                ...prev,
+                paymentMethods: "Failed to load payment methods",
+            }));
         }
     };
 
@@ -254,6 +267,10 @@ export default function CreateMaharatInvoice() {
             setUsers(response.data.data);
         } catch (error) {
             console.error("Error fetching users:", error);
+            setErrors((prev) => ({
+                ...prev,
+                users: "Failed to load users",
+            }));
         }
     };
 
@@ -263,6 +280,10 @@ export default function CreateMaharatInvoice() {
             setClients(response.data.data);
         } catch (error) {
             console.error("Error fetching clients:", error);
+            setErrors((prev) => ({
+                ...prev,
+                clients: "Failed to load clients",
+            }));
         }
     };
 
@@ -288,6 +309,10 @@ export default function CreateMaharatInvoice() {
                     clientDetails = clientResponse.data.data;
                 } catch (error) {
                     console.error("Error fetching client details:", error);
+                    setErrors((prev) => ({
+                        ...prev,
+                        clientDetails: "Failed to load client details",
+                    }));
                 }
             }
 
@@ -365,17 +390,6 @@ export default function CreateMaharatInvoice() {
             [field]: true,
         }));
         validateField(field);
-    };
-
-    const handleItemBlur = (index, field) => {
-        const newItemTouched = [...itemTouched];
-        if (!newItemTouched[index]) {
-            newItemTouched[index] = {};
-        }
-        newItemTouched[index][field] = true;
-        setItemTouched(newItemTouched);
-
-        validateItemField(index, field);
     };
 
     const handleInputChange = (e) => {
@@ -482,51 +496,6 @@ export default function CreateMaharatInvoice() {
         }));
     };
 
-    const validateItemField = (index, field) => {
-        if (index >= itemErrors.length) return;
-
-        const newItemErrors = [...itemErrors];
-        if (!newItemErrors[index]) {
-            newItemErrors[index] = {};
-        }
-
-        const item = formData.items[index];
-
-        switch (field) {
-            case "item_id":
-                if (!item.item_id) {
-                    newItemErrors[index].item_id = "Item name is required";
-                } else {
-                    delete newItemErrors[index].item_id;
-                }
-                break;
-            case "quantity":
-                if (!item.quantity) {
-                    newItemErrors[index].quantity = "Quantity is required";
-                } else if (parseFloat(item.quantity) <= 0) {
-                    newItemErrors[index].quantity =
-                        "Quantity must be greater than 0";
-                } else {
-                    delete newItemErrors[index].quantity;
-                }
-                break;
-            case "unit_price":
-                if (!item.unit_price) {
-                    newItemErrors[index].unit_price = "Unit price is required";
-                } else if (parseFloat(item.unit_price) < 0) {
-                    newItemErrors[index].unit_price =
-                        "Unit price cannot be negative";
-                } else {
-                    delete newItemErrors[index].unit_price;
-                }
-                break;
-            default:
-                break;
-        }
-
-        setItemErrors(newItemErrors);
-    };
-
     const validateField = (field) => {
         const newErrors = { ...errors };
 
@@ -603,8 +572,37 @@ export default function CreateMaharatInvoice() {
         e.preventDefault();
         if (!validateForm()) return;
 
+        setIsSubmitting(true);
+
         try {
-            // Ensure items have proper structure for the API
+            const processResponse = await axios.get(
+                "/api/v1/processes?include=steps,creator,updater&filter[title]=Maharat Invoice Approval"
+            );
+            const process = processResponse.data?.data?.[0];
+            const processSteps = process?.steps || [];
+
+            // Check if process and steps exist
+            if (!process || processSteps.length === 0) {
+                setErrors({
+                    submit: "No Process or steps found for Maharat Invoice Approval",
+                });
+                setIsSubmitting(false);
+                return;
+            }
+            const processStep = processSteps[0];
+
+            const processResponseViaUser = await axios.get(
+                `/api/v1/process-steps/${processStep.id}/user/${user_id}`
+            );
+            const assignUser = processResponseViaUser?.data?.data;
+            if (!assignUser) {
+                setErrors({
+                    submit: "No assignee found for this process step and user",
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
             const formattedItems = formData.items.map((item) => {
                 const itemTaxAmount =
                     (Number(item.subtotal) * Number(formData.vat_rate)) / 100;
@@ -640,8 +638,6 @@ export default function CreateMaharatInvoice() {
                 items: formattedItems,
             };
 
-            console.log("Sending invoice payload:", invoicePayload);
-
             let response;
             let newInvoiceId;
 
@@ -652,16 +648,8 @@ export default function CreateMaharatInvoice() {
                 );
                 newInvoiceId = invoiceId;
             } else {
-                // For new invoices, we must first create the invoice, then add items separately
-                // since the store endpoint doesn't handle items directly
                 const invoiceDataOnly = { ...invoicePayload };
-                delete invoiceDataOnly.items; // Remove items for initial creation
-
-                // Log the payload to verify representative_id is included
-                console.log("Creating invoice with data:", {
-                    ...invoiceDataOnly,
-                    representative_id: invoiceDataOnly.representative_id, // Explicitly logging representative_id
-                });
+                delete invoiceDataOnly.items;
 
                 response = await axios.post(
                     "/api/v1/invoices",
@@ -674,109 +662,45 @@ export default function CreateMaharatInvoice() {
                     await saveInvoiceItems(newInvoiceId, formattedItems);
                 }
             }
-            // Handle process approval workflow
-            try {
-                const processResponse = await axios.get(
-                    "/api/v1/processes?include=steps,creator,updater&filter[title]=Maharat Invoice Approval"
-                );
-                const processList = processResponse.data.data;
 
-                // Check if process and first step exist
-                if (processList && processList.length > 0) {
-                    const process = processList[0];
+            // Create transaction record
+            const transactionPayload = {
+                invoice_id: newInvoiceId,
+                requester_id: user_id,
+                assigned_to: assignUser?.approver_id,
+                order: String(processStep.order),
+                description: processStep.description,
+                status: "Pending",
+            };
 
-                    if (process.steps && process.steps.length > 0) {
-                        const processStep = process.steps[0];
+            await axios.post(
+                "/api/v1/mahrat-invoice-approval-trans",
+                transactionPayload
+            );
 
-                        // Make sure we have a valid processStep with an order before proceeding
-                        if (processStep?.id) {
-                            try {
-                                const processResponseViaUser = await axios.get(
-                                    `/api/v1/process-steps/${processStep.id}/user/${user_id}`
-                                );
-                                const assignUser =
-                                    processResponseViaUser?.data?.data;
+            // Create task
+            const taskPayload = {
+                process_step_id: processStep.id,
+                process_id: processStep.process_id,
+                assigned_at: new Date().toISOString(),
+                urgency: "Normal",
+                assigned_to_user_id: assignUser?.approver_id,
+                assigned_from_user_id: user_id,
+                read_status: null,
+                invoice_id: newInvoiceId,
+            };
 
-                                if (assignUser) {
-                                    // Create transaction record
-                                    const transactionPayload = {
-                                        invoice_id: newInvoiceId,
-                                        requester_id: user_id,
-                                        assigned_to: assignUser?.approver_id,
-                                        order: String(processStep.order),
-                                        description: processStep.description,
-                                        status: "Pending",
-                                    };
-
-                                    await axios.post(
-                                        "/api/v1/mahrat-invoice-approval-trans",
-                                        transactionPayload
-                                    );
-
-                                    // Create task
-                                    const taskPayload = {
-                                        process_step_id: processStep.id,
-                                        process_id: processStep.process_id,
-                                        assigned_at: new Date().toISOString(),
-                                        urgency: "Normal",
-                                        assigned_to_user_id:
-                                            assignUser?.approver_id,
-                                        assigned_from_user_id: user_id,
-                                        read_status: null,
-                                        invoice_id: newInvoiceId,
-                                    };
-
-                                    await axios.post(
-                                        "/api/v1/tasks",
-                                        taskPayload
-                                    );
-                                } else {
-                                    console.warn(
-                                        "No valid user assignment found for this process step"
-                                    );
-                                }
-                            } catch (processUserError) {
-                                console.error(
-                                    "Error getting user for process step:",
-                                    processUserError
-                                );
-                                // Continue with invoice creation even if approval workflow fails
-                            }
-                        }
-                    } else {
-                        console.warn("No steps found for the process");
-                    }
-                } else {
-                    console.warn(
-                        "No approval process found with the specified title"
-                    );
-                }
-            } catch (processError) {
-                console.error(
-                    "Error setting up approval process:",
-                    processError
-                );
-                // Continue with invoice creation even if approval workflow fails
-            }
+            await axios.post("/api/v1/tasks", taskPayload);
 
             // Navigate to invoices page regardless of approval process success
             router.visit("/maharat-invoices");
         } catch (error) {
-            console.error(
-                "Error submitting form:",
-                error.response?.data || error
-            );
-
-            // Check specifically for items-related errors
-            if (error.response?.data?.errors?.items) {
-                console.error("Items error:", error.response.data.errors.items);
-            }
-
             setErrors(
                 error.response?.data?.errors || {
                     general: "An error occurred while saving the invoice",
                 }
             );
+            setIsSubmitting(false);
         }
     };
 
@@ -878,6 +802,10 @@ export default function CreateMaharatInvoice() {
             }));
         } catch (error) {
             console.error("Error fetching client details:", error);
+            setErrors((prev) => ({
+                ...prev,
+                clientDetails: "Failed to load client details",
+            }));
         }
     };
 
@@ -895,6 +823,7 @@ export default function CreateMaharatInvoice() {
         toTLV(4, parseFloat(formData.total).toFixed(2)),
         toTLV(5, parseFloat(formData.vat_amount).toFixed(2)),
     ];
+
     const qrCodeText = btoa(
         String.fromCharCode(
             ...new Uint8Array(
@@ -905,6 +834,15 @@ export default function CreateMaharatInvoice() {
 
     return (
         <div className="flex flex-col bg-white rounded-2xl shadow-lg p-6 max-w-7xl mx-auto">
+            {/* Display general errors at the top of the form */}
+            {(errors.general || errors.submit || errors.fetch) && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    {errors.general && <p>{errors.general}</p>}
+                    {errors.submit && <p>{errors.submit}</p>}
+                    {errors.fetch && <p>{errors.fetch}</p>}
+                </div>
+            )}
+
             <div className="w-full flex justify-center">
                 <img
                     src="/images/MCTC Logo.png"
@@ -912,6 +850,7 @@ export default function CreateMaharatInvoice() {
                     className="w-48 h-20"
                 />
             </div>
+
             <header className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-2">
                 <div className="w-full flex flex-col justify-end text-center md:text-left md:items-start">
                     <h1 className="text-3xl font-bold uppercase mb-2 truncate">
@@ -1383,10 +1322,22 @@ export default function CreateMaharatInvoice() {
                     </div>
                     <div className="mt-8 flex justify-end">
                         <button
+                            type="submit"
                             onClick={handleSubmit}
-                            className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto"
+                            className={`text-white text-lg font-medium px-6 py-3 rounded-full ${
+                                isSubmitting
+                                    ? "bg-gray-400 cursor-not-allowed"
+                                    : "bg-[#009FDC] hover:bg-[#007CB8]"
+                            }`}
+                            disabled={isSubmitting}
                         >
-                            {isEditMode ? "Update Invoice" : "Create Invoice"}
+                            {isSubmitting
+                                ? isEditMode
+                                    ? "Updating..."
+                                    : "Creating..."
+                                : isEditMode
+                                ? "Update Invoice"
+                                : "Create Invoice"}
                         </button>
                     </div>
                 </div>

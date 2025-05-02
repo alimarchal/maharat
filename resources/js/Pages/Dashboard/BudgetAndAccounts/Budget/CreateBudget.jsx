@@ -27,12 +27,14 @@ const CreateBudget = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [filteredSubCostCenters, setFilteredSubCostCenters] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         fetchDropdownData();
     }, []);
 
     const fetchDropdownData = async () => {
+        setIsLoading(true);
         try {
             const [deptResponse, costCenterResponse, fiscalPeriodResponse] =
                 await Promise.all([
@@ -40,12 +42,18 @@ const CreateBudget = () => {
                     axios.get("/api/v1/cost-centers"),
                     axios.get("/api/v1/fiscal-periods"),
                 ]);
-            setDepartments(deptResponse.data.data);
-            setCostCenters(costCenterResponse.data.data);
-            setSubCostCenters(costCenterResponse.data.data);
-            setFiscalPeriod(fiscalPeriodResponse.data.data);
+            setDepartments(deptResponse.data.data || []);
+            setCostCenters(costCenterResponse.data.data || []);
+            setSubCostCenters(costCenterResponse.data.data || []);
+            setFiscalPeriod(fiscalPeriodResponse.data.data || []);
         } catch (error) {
             console.error("Error fetching dropdown data:", error);
+            setErrors((prev) => ({
+                ...prev,
+                fetchError: "Failed to load form data. Please try again.",
+            }));
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -100,63 +108,95 @@ const CreateBudget = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validate()) return;
+
         setIsSubmitting(true);
 
         try {
+            const processResponse = await axios.get(
+                "/api/v1/processes?include=steps,creator,updater&filter[title]=Total Budget Approval"
+            );
+
+            const process = processResponse.data?.data?.[0];
+            const processSteps = process?.steps || [];
+
+            // Check if process and steps exist
+            if (!process || processSteps.length === 0) {
+                setErrors({
+                    submit: "No Process or steps found for Total Budget Approval",
+                });
+                setIsSubmitting(false);
+                return;
+            }
+            const processStep = processSteps[0];
+
+            const processResponseViaUser = await axios.get(
+                `/api/v1/process-steps/${processStep.id}/user/${user_id}`
+            );
+            const assignUser = processResponseViaUser?.data?.data;
+            if (!assignUser) {
+                setErrors({
+                    submit: "No assignee found for this process step and user",
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
             const response = await axios.post("/api/v1/budgets", formData);
-            console.log("Budget:", response);
             const budgetId = response.data.data?.id;
+
             if (budgetId) {
-                const processResponse = await axios.get(
-                    "/api/v1/processes?include=steps,creator,updater&filter[title]=Total Budget Approval"
+                const budgetTransactionPayload = {
+                    budget_id: budgetId,
+                    requester_id: user_id,
+                    assigned_to: assignUser?.approver_id,
+                    order: processStep.order,
+                    description: processStep.description,
+                    status: "Pending",
+                };
+                await axios.post(
+                    "/api/v1/budget-approval-transactions",
+                    budgetTransactionPayload
                 );
 
-                if (processResponse.data?.data?.[0]?.steps?.[0]) {
-                    const process = processResponse.data.data[0];
-                    const processStep = process.steps[0];
-
-                    // Only proceed if we have valid process step data
-                    if (processStep?.id) {
-                        const processResponseViaUser = await axios.get(
-                            `/api/v1/process-steps/${processStep.id}/user/${user_id}`
-                        );
-                        const assignUser = processResponseViaUser?.data?.data;
-
-                        if (assignUser) {
-                            const BudgetTransactionPayload = {
-                                budget_id: budgetId,
-                                requester_id: user_id,
-                                assigned_to: assignUser?.approver_id,
-                                order: processStep.order,
-                                description: processStep.description,
-                                status: "Pending",
-                            };
-                            await axios.post(
-                                "/api/v1/budget-approval-transactions",
-                                BudgetTransactionPayload
-                            );
-
-                            const taskPayload = {
-                                process_step_id: processStep.id,
-                                process_id: processStep.process_id,
-                                assigned_at: new Date().toISOString(),
-                                urgency: "Normal",
-                                assigned_to_user_id: assignUser?.approver_id,
-                                assigned_from_user_id: user_id,
-                                budget_id: budgetId,
-                            };
-                            await axios.post("/api/v1/tasks", taskPayload);
-                        }
-                    }
-                }
+                const taskPayload = {
+                    process_step_id: processStep.id,
+                    process_id: processStep.process_id,
+                    assigned_at: new Date().toISOString(),
+                    urgency: "Normal",
+                    assigned_to_user_id: assignUser?.approver_id,
+                    assigned_from_user_id: user_id,
+                    budget_id: budgetId,
+                };
+                await axios.post("/api/v1/tasks", taskPayload);
             }
             router.visit("/budget");
         } catch (error) {
             console.error("Error saving budget:", error);
+
+            // Handle validation errors from the server
+            if (error.response?.data?.errors) {
+                setErrors(error.response.data.errors);
+            }
         } finally {
             setIsSubmitting(false);
         }
     };
+
+    const renderErrorMessage = (fieldName) => {
+        return (
+            errors[fieldName] && (
+                <p className="text-red-500 text-sm mt-1">{errors[fieldName]}</p>
+            )
+        );
+    };
+
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-full">
+                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full mx-auto">
@@ -172,10 +212,25 @@ const CreateBudget = () => {
                 <button
                     onClick={() => setIsModalOpen(true)}
                     className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                    type="button"
                 >
                     Create a Fiscal Period
                 </button>
             </div>
+            
+            {/* Show any fetch errors at the top */}
+            {errors.fetchError && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4 mb-2">
+                    <p>{errors.fetchError}</p>
+                </div>
+            )}
+
+            {/* Show any submission errors */}
+            {errors.submit && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4 mb-2">
+                    <p>{errors.submit}</p>
+                </div>
+            )}
 
             <form onSubmit={handleSubmit} className="mt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -192,11 +247,7 @@ const CreateBudget = () => {
                                 }`,
                             }))}
                         />
-                        {errors.fiscal_period_id && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.fiscal_period_id}
-                            </p>
-                        )}
+                        {renderErrorMessage("fiscal_period_id")}
                     </div>
                     <div>
                         <SelectFloating
@@ -209,11 +260,7 @@ const CreateBudget = () => {
                                 label: dept.name,
                             }))}
                         />
-                        {errors.department_id && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.department_id}
-                            </p>
-                        )}
+                        {renderErrorMessage("department_id")}
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
@@ -228,11 +275,7 @@ const CreateBudget = () => {
                                 label: cost.name,
                             }))}
                         />
-                        {errors.cost_center_id && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.cost_center_id}
-                            </p>
-                        )}
+                        {renderErrorMessage("cost_center_id")}
                     </div>
                     <div>
                         <SelectFloating
@@ -244,12 +287,9 @@ const CreateBudget = () => {
                                 id: sub.id,
                                 label: sub.name,
                             }))}
+                            disabled={!formData.cost_center_id}
                         />
-                        {errors.sub_cost_center_id && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.sub_cost_center_id}
-                            </p>
-                        )}
+                        {renderErrorMessage("sub_cost_center_id")}
                     </div>
                     <div>
                         <SelectFloating
@@ -263,11 +303,7 @@ const CreateBudget = () => {
                                 { value: "Closed", label: "Closed" },
                             ]}
                         />
-                        {errors.status && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.status}
-                            </p>
-                        )}
+                        {renderErrorMessage("status")}
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
@@ -278,12 +314,9 @@ const CreateBudget = () => {
                             type="number"
                             value={formData.total_revenue_planned}
                             onChange={handleChange}
+                            min="0"
                         />
-                        {errors.total_revenue_planned && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.total_revenue_planned}
-                            </p>
-                        )}
+                        {renderErrorMessage("total_revenue_planned")}
                     </div>
                     <div>
                         <InputFloating
@@ -292,12 +325,9 @@ const CreateBudget = () => {
                             type="number"
                             value={formData.total_expense_planned}
                             onChange={handleChange}
+                            min="0"
                         />
-                        {errors.total_expense_planned && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.total_expense_planned}
-                            </p>
-                        )}
+                        {renderErrorMessage("total_expense_planned")}
                     </div>
                 </div>
                 <div className="grid grid-cols-1 gap-6 my-6">
@@ -308,18 +338,14 @@ const CreateBudget = () => {
                             value={formData.description}
                             onChange={handleChange}
                         />
-                        {errors.description && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.description}
-                            </p>
-                        )}
+                        {renderErrorMessage("description")}
                     </div>
                 </div>
 
                 <div className="flex justify-end my-8">
                     <button
                         type="submit"
-                        className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5]"
+                        className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] disabled:bg-gray-400 disabled:cursor-not-allowed"
                         disabled={isSubmitting}
                     >
                         {isSubmitting ? "Creating..." : "Create new Budget"}

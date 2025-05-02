@@ -33,6 +33,7 @@ const ApproveOrder = ({
     const [isSaving, setIsSaving] = useState(false);
     const [tempDocument, setTempDocument] = useState(null);
     const [quotationDetails, setQuotationDetails] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     const generatePONumber = () => {
         const date = new Date();
@@ -44,6 +45,7 @@ const ApproveOrder = ({
     };
 
     const fetchQuotationDetails = async () => {
+        setIsLoading(true);
         try {
             const response = await axios.get(
                 `/api/v1/quotations/${quotationId}`
@@ -58,7 +60,13 @@ const ApproveOrder = ({
                         ...prev,
                         rfq_id: rfqId,
                     }));
+                } else {
+                    setErrors((prev) => ({
+                        ...prev,
+                        rfq_id: "No RFQ associated with this quotation.",
+                    }));
                 }
+
                 if (quotation.supplier_id) {
                     setFormData((prev) => ({
                         ...prev,
@@ -68,10 +76,17 @@ const ApproveOrder = ({
             }
         } catch (error) {
             console.error("Error fetching quotation details:", error);
+            setErrors((prev) => ({
+                ...prev,
+                submit: "Failed to load quotation details. Please try again.",
+            }));
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const fetchPurchaseOrderDetails = async () => {
+        setIsLoading(true);
         try {
             const response = await axios.get(
                 `/api/v1/purchase-orders/${purchaseOrder?.id}`
@@ -89,19 +104,25 @@ const ApproveOrder = ({
                     quotation_id: quotationId,
                     rfq_id: orderData.rfq_id || "",
                 });
+
                 if (!orderData.rfq_id) {
                     fetchQuotationDetails();
                 }
             }
         } catch (error) {
             console.error("Error fetching purchase order details:", error);
+            setErrors((prev) => ({
+                ...prev,
+                submit: "Failed to load purchase order details. Please try again.",
+            }));
+        } finally {
+            setIsLoading(false);
         }
     };
 
     useEffect(() => {
         if (isOpen && quotationId) {
             fetchCompanies();
-            fetchQuotationDetails();
 
             if (isEdit && purchaseOrder) {
                 fetchPurchaseOrderDetails();
@@ -112,6 +133,7 @@ const ApproveOrder = ({
                     purchase_order_no: poNumber,
                     quotation_id: quotationId,
                 }));
+                fetchQuotationDetails();
             }
         }
     }, [isOpen, isEdit, quotationId]);
@@ -122,6 +144,10 @@ const ApproveOrder = ({
             setCompanies(response.data.data || []);
         } catch (error) {
             console.error("Error fetching suppliers:", error);
+            setErrors((prev) => ({
+                ...prev,
+                supplier_id: "Failed to load suppliers. Please try again.",
+            }));
         }
     };
 
@@ -131,6 +157,15 @@ const ApproveOrder = ({
             ...prev,
             [name]: value,
         }));
+
+        // Clear error for this field when user makes changes
+        if (errors[name]) {
+            setErrors((prev) => {
+                const newErrors = { ...prev };
+                delete newErrors[name];
+                return newErrors;
+            });
+        }
     };
 
     const handleFileChange = (e) => {
@@ -145,6 +180,7 @@ const ApproveOrder = ({
         setIsSaving(true);
         setErrors({});
 
+        // Validation
         const validationErrors = {};
         if (!formData.supplier_id)
             validationErrors.supplier_id = "Supplier is required";
@@ -162,13 +198,41 @@ const ApproveOrder = ({
         }
 
         try {
-            const currentYear = new Date().getFullYear();
+            // Check for process and process steps first
+            const processResponse = await axios.get(
+                "/api/v1/processes?include=steps,creator,updater&filter[title]=Purchase Order Approval"
+            );
+            const process = processResponse.data?.data?.[0];
+            const processSteps = process?.steps || [];
+
+            // Check if process and steps exist
+            if (!process || processSteps.length === 0) {
+                setErrors({
+                    submit: "No approval process or steps found for Purchase Order Approval",
+                });
+                setIsSaving(false);
+                return;
+            }
+            const processStep = processSteps[0];
+
+            const processResponseViaUser = await axios.get(
+                `/api/v1/process-steps/${processStep.id}/user/${user_id}`
+            );
+            const assignUser = processResponseViaUser?.data?.data;
+
+            if (!assignUser) {
+                setErrors({
+                    submit: "No assignee found for this process step and user",
+                });
+                setIsSaving(false);
+                return;
+            }
+
+            // Check budget availability
             const budgetResponse = await axios.get(
                 `/api/v1/request-budgets?filter[sub_cost_center]=${quotationDetails?.rfq?.sub_cost_center_id}&include=fiscalPeriod,department,costCenter,subCostCenter`
             );
             const requestDetails = budgetResponse.data?.data?.[0];
-
-            // Check if requestDetails has data
             if (!requestDetails) {
                 setErrors({
                     submit: "No budget request found for this Sub cost center.",
@@ -178,6 +242,7 @@ const ApproveOrder = ({
             }
 
             // Extract year from fiscal_year field
+            const currentYear = new Date().getFullYear();
             const requestFiscalYear =
                 requestDetails?.fiscal_period?.fiscal_year?.slice(0, 4);
             if (requestFiscalYear != currentYear) {
@@ -198,6 +263,8 @@ const ApproveOrder = ({
                 setIsSaving(false);
                 return;
             }
+
+            // Prepare form data
             const formDataToSend = new FormData();
             const dataToSubmit = {
                 ...formData,
@@ -222,6 +289,8 @@ const ApproveOrder = ({
             if (tempDocument) {
                 formDataToSend.append("attachment", tempDocument);
             }
+
+            // Create/update purchase order
             let response;
             if (isEdit && purchaseOrder) {
                 response = await axios.put(
@@ -235,64 +304,52 @@ const ApproveOrder = ({
                 );
             }
             const newPOId = response.data.data?.id;
+            
             if (newPOId) {
-                // Proceed with updating the budget request once Purchase Order is created
+                // Update budget request
                 const updatedBudgetData = {
                     reserved_amount: formData.amount,
                     balance_amount:
                         requestDetails.requested_amount - formData.amount,
                 };
-                // Update the budget request with the new reserved and balance amounts
+
                 await axios.put(
                     `/api/v1/request-budgets/${requestDetails?.id}`,
                     updatedBudgetData
                 );
 
-                const processResponse = await axios.get(
-                    "/api/v1/processes?include=steps,creator,updater&filter[title]=Purchase Order Approval"
+                // Create approval transaction
+                const POTransactionPayload = {
+                    purchase_order_id: newPOId,
+                    requester_id: user_id,
+                    assigned_to: assignUser?.approver_id,
+                    order: processStep.order,
+                    description: processStep.description,
+                    status: "Pending",
+                };
+
+                await axios.post(
+                    "/api/v1/po-approval-transactions",
+                    POTransactionPayload
                 );
-                if (processResponse.data?.data?.[0]?.steps?.[0]) {
-                    const process = processResponse.data.data[0];
-                    const processStep = process.steps[0];
 
-                    // Only proceed if we have valid process step data
-                    if (processStep?.id) {
-                        const processResponseViaUser = await axios.get(
-                            `/api/v1/process-steps/${processStep.id}/user/${user_id}`
-                        );
-                        const assignUser = processResponseViaUser?.data?.data;
+                // Create task
+                const taskPayload = {
+                    process_step_id: processStep.id,
+                    process_id: processStep.process_id,
+                    assigned_at: new Date().toISOString(),
+                    urgency: "Normal",
+                    assigned_to_user_id: assignUser?.approver_id,
+                    assigned_from_user_id: user_id,
+                    purchase_order_id: newPOId,
+                };
 
-                        if (assignUser) {
-                            const POTransactionPayload = {
-                                purchase_order_id: newPOId,
-                                requester_id: user_id,
-                                assigned_to: assignUser?.approver_id,
-                                order: processStep.order,
-                                description: processStep.description,
-                                status: "Pending",
-                            };
-                            await axios.post(
-                                "/api/v1/po-approval-transactions",
-                                POTransactionPayload
-                            );
+                await axios.post("/api/v1/tasks", taskPayload);
 
-                            const taskPayload = {
-                                process_step_id: processStep.id,
-                                process_id: processStep.process_id,
-                                assigned_at: new Date().toISOString(),
-                                urgency: "Normal",
-                                assigned_to_user_id: assignUser?.approver_id,
-                                assigned_from_user_id: user_id,
-                                purchase_order_id: newPOId,
-                            };
-                            await axios.post("/api/v1/tasks", taskPayload);
-                        }
-                    }
-                }
+                // Successfully completed workflow
+                onSave();
+                onClose();
             }
-
-            onSave();
-            onClose();
         } catch (error) {
             setErrors({
                 submit:
@@ -323,24 +380,35 @@ const ApproveOrder = ({
                         <FontAwesomeIcon icon={faTimes} />
                     </button>
                 </div>
-                {errors.rfq_id && (
+
+                {/* Loading indicator */}
+                {isLoading && (
+                    <div className="flex justify-center my-4">
+                        <div
+                            className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative"
+                            role="alert"
+                        >
+                            <span className="block sm:inline">
+                                Loading data, please wait...
+                            </span>
+                        </div>
+                    </div>
+                )}
+
+                {/* Error messages */}
+                {(errors.rfq_id || errors.submit) && (
                     <div
                         className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
                         role="alert"
                     >
-                        <span className="block sm:inline">{errors.rfq_id}</span>
+                        <span className="block sm:inline">
+                            {errors.rfq_id || errors.submit}
+                        </span>
                     </div>
                 )}
-                {errors.submit && (
-                    <div
-                        className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
-                        role="alert"
-                    >
-                        <span className="block sm:inline">{errors.submit}</span>
-                    </div>
-                )}
+
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <SelectFloating
                                 label="Supplier"
@@ -387,7 +455,7 @@ const ApproveOrder = ({
                     </div>
 
                     <div className="flex justify-center mt-2">
-                        <div className="w-1/2 text-center">
+                        <div className="w-full md:w-1/2 text-center">
                             <div className="space-y-2 text-center">
                                 <label className="block text-sm font-medium text-gray-700 text-center">
                                     Attachment (Optional)
@@ -412,10 +480,12 @@ const ApproveOrder = ({
                         <button
                             type="submit"
                             className="w-full px-6 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5]"
-                            disabled={isSaving}
+                            disabled={isSaving || isLoading}
                         >
                             {isSaving
                                 ? "Saving..."
+                                : isLoading
+                                ? "Loading..."
                                 : isEdit
                                 ? "Update"
                                 : "Create"}
