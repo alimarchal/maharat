@@ -8,10 +8,11 @@ export default function GuideDetail() {
     const { props } = usePage();
     const { auth } = usePage().props;
     
-    // Get ID from props, ensuring we handle numeric IDs properly
+    // Get IDs from props or route data
     const guideId = props.id || props.section || "create-request";
-    const sectionId = props.section;
-    const subsectionId = props.subsection;
+    const sectionId = props.sectionId || props.section;
+    const subsectionId = props.subsectionId || props.subsection;
+    const cardId = props.cardId;
     
     const [guide, setGuide] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -295,6 +296,65 @@ export default function GuideDetail() {
             .join(" ");
     };
 
+    const renderBreadcrumb = () => {
+        if (!card) return null;
+
+        const breadcrumbs = [
+            { name: 'Dashboard', path: '/dashboard' },
+            { name: 'User Manual', path: '/user-manual' }
+        ];
+
+        // Add section if available
+        if (sectionId) {
+            breadcrumbs.push({
+                name: formatSectionName(sectionId),
+                path: `/user-manual/${sectionId}`
+            });
+        }
+
+        // Add subsection if available
+        if (subsectionId) {
+            breadcrumbs.push({
+                name: formatSectionName(subsectionId),
+                path: `/user-manual/${sectionId}/${subsectionId}`
+            });
+        }
+
+        // Add parent card if available
+        if (card.parent_id) {
+            breadcrumbs.push({
+                name: formatSectionName(card.parent_id),
+                path: `/user-manual/${sectionId}/${subsectionId}/${card.parent_id}`
+            });
+        }
+
+        // Add current guide
+        breadcrumbs.push({
+            name: card.name || card.title,
+            path: null
+        });
+
+        return (
+            <div className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
+                {breadcrumbs.map((crumb, index) => (
+                    <React.Fragment key={index}>
+                        {index > 0 && <span className="mx-2">/</span>}
+                        {crumb.path ? (
+                            <Link
+                                href={crumb.path}
+                                className="hover:text-[#009FDC]"
+                            >
+                                {crumb.name}
+                            </Link>
+                        ) : (
+                            <span className="text-gray-800">{crumb.name}</span>
+                        )}
+                    </React.Fragment>
+                ))}
+            </div>
+        );
+    };
+
     // Handle loading state
     if (loading) {
         return (
@@ -352,6 +412,7 @@ export default function GuideDetail() {
     return (
         <>
             <div className="max-w-full mx-auto py-4">
+                {renderBreadcrumb()}
                 {loading ? (
                     <div className="flex justify-center my-12">
                         <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>

@@ -188,6 +188,16 @@ export default function ManualSubSubSection() {
         const description = section.description;
         const guides = guidesMap[cardId] || [];
 
+        const getImageUrl = () => {
+            if (section.icon_path) {
+                return `/storage/${section.icon_path}`;
+            }
+            if (section.image_path) {
+                return `/storage/${section.image_path}`;
+            }
+            return `/images/manuals/${section.id}.png`;
+        };
+
         const handleClick = async () => {
             console.log('ManualSubSubSection - Card clicked:', {
                 cardId: cardId,
@@ -206,7 +216,7 @@ export default function ManualSubSubSection() {
                 
                 if (response.data.data.has_children) {
                     console.log('ManualSubSubSection - Routing to next level');
-                    router.visit(`/user-manual/${section.section_id}/${section.subsection_id || section.id}`);
+                    router.visit(`/user-manual/${section.section_id}/${section.subsection_id}/${cardId}`);
                 } else {
                     const guide = guides[0];
                     console.log('ManualSubSubSection - No children, checking for guide:', {
@@ -216,10 +226,16 @@ export default function ManualSubSubSection() {
                     
                     if (guide) {
                         console.log('ManualSubSubSection - Routing to GuideDetail');
-                        router.visit(`/user-manual/guide/${guide.id}`);
+                        router.visit(`/user-manual/guide/${guide.id}`, {
+                            data: {
+                                sectionId: section.section_id,
+                                subsectionId: section.subsection_id,
+                                cardId: cardId
+                            }
+                        });
                     } else {
                         console.log('ManualSubSubSection - No guide, staying on current level');
-                        router.visit(`/user-manual/${section.section_id}/${section.subsection_id || section.id}`);
+                        router.visit(`/user-manual/${section.section_id}/${section.subsection_id}`);
                     }
                 }
             } catch (error) {
@@ -227,10 +243,16 @@ export default function ManualSubSubSection() {
                 const guide = guides[0];
                 if (guide) {
                     console.log('ManualSubSubSection - Error fallback: Routing to GuideDetail');
-                    router.visit(`/user-manual/guide/${guide.id}`);
+                    router.visit(`/user-manual/guide/${guide.id}`, {
+                        data: {
+                            sectionId: section.section_id,
+                            subsectionId: section.subsection_id,
+                            cardId: cardId
+                        }
+                    });
                 } else {
                     console.log('ManualSubSubSection - Error fallback: Staying on current level');
-                    router.visit(`/user-manual/${section.section_id}/${section.subsection_id || section.id}`);
+                    router.visit(`/user-manual/${section.section_id}/${section.subsection_id}`);
                 }
             }
         };
@@ -247,11 +269,12 @@ export default function ManualSubSubSection() {
                     </div>
                     <div className="w-16 h-16 flex-shrink-0">
                         <img
-                            src={section.icon_path ? `/storage/${section.icon_path}` : `/images/manuals/${section.id}.png`}
+                            src={getImageUrl()}
                             alt={title}
                             className="w-full h-full object-contain"
                             onError={(e) => {
                                 e.target.src = '/images/default-manual.png';
+                                e.target.onerror = null; // Prevent infinite loop
                             }}
                         />
                     </div>
@@ -271,7 +294,7 @@ export default function ManualSubSubSection() {
         <div className="w-full">
             <div className="flex justify-between items-center mb-8">
                 <h2 className="text-3xl font-bold text-[#2C323C]">
-                    {formatSectionTitle(section)} - {formatSectionTitle(subsection)}
+                    {formatSectionTitle(subsection)}
                 </h2>
                 <button
                     type="button"
