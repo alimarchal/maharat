@@ -315,13 +315,11 @@ export default function ManualSubSubSection() {
             <div
                 ref={provided.innerRef}
                 {...provided.draggableProps}
-                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
+                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg cursor-pointer"
+                onClick={handleClick}
             >
                 <div className="flex items-start justify-between mb-4">
-                    <div 
-                        className="flex-grow cursor-pointer"
-                        onClick={handleClick}
-                    >
+                    <div className="flex-grow">
                         <div>
                             <h3 className="text-2xl font-bold mb-2">
                                 {title}
@@ -348,27 +346,14 @@ export default function ManualSubSubSection() {
                                 <div {...provided.dragHandleProps} className="cursor-move p-2 hover:bg-[#009FDC]/10 rounded-full transition-colors duration-200">
                                     <FontAwesomeIcon icon={faGripVertical} className="text-[#009FDC] hover:text-[#007BB5] transition-colors duration-200" />
                                 </div>
-                                {/* Commented out plus icon as it's not needed
                                 <button
                                     onClick={(e) => {
                                         e.preventDefault();
-                                        setSelectedCard(null);
-                                        setSelectedParentCard(sectionCard);
-                                        setCurrentCardLevel(3);
-                                        setShowCardForm(true);
-                                    }}
-                                    className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
-                                >
-                                    <FontAwesomeIcon icon={faPlus} className="text-lg" />
-                                </button>
-                                */}
-                                <button
-                                    onClick={(e) => {
-                                        e.preventDefault();
+                                        e.stopPropagation();
                                         setSelectedCard({
                                             ...sectionCard,
-                                            parent_id: sectionCard.parent_id, // Ensure parent_id is preserved
-                                            subsection_id: sectionCard.subsection_id // Ensure subsection_id is preserved
+                                            parent_id: sectionCard.parent_id,
+                                            subsection_id: sectionCard.subsection_id
                                         });
                                         setSelectedParentCard(null);
                                         setCurrentCardLevel(2);
