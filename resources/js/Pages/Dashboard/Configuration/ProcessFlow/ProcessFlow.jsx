@@ -8,6 +8,7 @@ import {
 import SelectFloating from "@/Components/SelectFloating";
 import { Link } from "@inertiajs/react";
 import axios from "axios";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 const ProcessFlow = () => {
     const [rows, setRows] = useState([]);
@@ -48,10 +49,16 @@ const ProcessFlow = () => {
                 );
                 const processSteps = response.data.data;
 
+                console.log('Fetched process steps:', processSteps);
+
                 if (processSteps.length > 0) {
+                    // Sort steps by order before setting them
+                    const sortedSteps = [...processSteps].sort((a, b) => a.order - b.order);
+                    console.log('Sorted process steps:', sortedSteps);
+
                     setRows(
-                        processSteps.map((step, index) => ({
-                            id: index + 1,
+                        sortedSteps.map((step) => ({
+                            id: step.order, // Use the actual order from the database
                             approver_id: step.approver_id || "",
                             designation_id: step.designation_id || "",
                             taskDescription: step.description || "",
@@ -157,6 +164,93 @@ const ProcessFlow = () => {
         }
     };
 
+    const onDragEnd = async (result) => {
+        if (!result.destination) return;
+
+        console.log('Drag ended:', {
+            source: result.source,
+            destination: result.destination,
+            draggableId: result.draggableId
+        });
+
+        const items = Array.from(rows);
+        const [reorderedItem] = items.splice(result.source.index, 1);
+        items.splice(result.destination.index, 0, reorderedItem);
+
+        // Update the order numbers
+        const updatedItems = items.map((item, index) => ({
+            ...item,
+            id: index + 1 // This will be the new order
+        }));
+
+        console.log('Updated items after drag:', updatedItems);
+
+        // Only make API call if we have step_ids (existing steps)
+        const stepsWithIds = updatedItems.filter(item => item.step_id);
+        if (stepsWithIds.length > 0) {
+            try {
+                console.log('Sending reorder request with data:', {
+                    process_id: selectedProcess.id,
+                    steps: stepsWithIds.map((item, index) => ({
+                        id: item.step_id,
+                        order: index + 1
+                    }))
+                });
+
+                const response = await axios.post('/api/v1/process-steps/reorder', {
+                    process_id: selectedProcess.id,
+                    steps: stepsWithIds.map((item, index) => ({
+                        id: item.step_id,
+                        order: index + 1
+                    }))
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                console.log('Reorder API response:', response.data);
+
+                // Only update the state if the API call was successful
+                if (response.data.message === 'Process steps reordered successfully') {
+                    // Update the local state with the new order
+                    setRows(updatedItems);
+                    
+                    // Fetch fresh data from the server to ensure we have the latest order
+                    const freshResponse = await axios.get(
+                        `/api/v1/process-steps?filter[process_id]=${selectedProcess.id}`
+                    );
+                    const freshSteps = freshResponse.data.data;
+                    
+                    if (freshSteps.length > 0) {
+                        const sortedSteps = [...freshSteps].sort((a, b) => a.order - b.order);
+                        setRows(
+                            sortedSteps.map((step) => ({
+                                id: step.order, // Use the actual order from the database
+                                approver_id: step.approver_id || "",
+                                designation_id: step.designation_id || "",
+                                taskDescription: step.description || "",
+                                step_id: step.id,
+                            }))
+                        );
+                    }
+                }
+            } catch (error) {
+                console.error('Error reordering steps:', {
+                    message: error.message,
+                    response: error.response?.data,
+                    status: error.response?.status
+                });
+                // Revert to original order if API call fails
+                handleProcessChange({ target: { value: selectedProcess.id } });
+            }
+        } else {
+            // If no step_ids, just update the local state
+            setRows(updatedItems);
+        }
+    };
+
     const handleSubmit = async () => {
         if (!selectedProcess) {
             alert("Please select a process type before submitting.");
@@ -174,13 +268,16 @@ const ProcessFlow = () => {
         }
 
         try {
+            console.log('Starting save process with rows:', rows);
+
             const createPromises = [];
             const updatePromises = [];
 
+            // Use the current order of rows as displayed in the UI
             rows.forEach((row, index) => {
                 const payload = {
                     process_id: selectedProcess.id,
-                    order: index + 1,
+                    order: row.id, // Use the current row.id which reflects the UI order
                     description: row.taskDescription,
                 };
 
@@ -190,21 +287,46 @@ const ProcessFlow = () => {
                     payload.designation_id = row.designation_id;
                 }
 
+                console.log(`Preparing ${row.step_id ? 'update' : 'create'} payload for row ${index}:`, payload);
+
                 if (row.step_id) {
                     updatePromises.push(
                         axios.put(
                             `/api/v1/process-steps/${row.step_id}`,
                             payload
-                        )
+                        ).then(response => {
+                            console.log(`Update response for step ${row.step_id}:`, response.data);
+                            return response;
+                        }).catch(error => {
+                            console.error(`Error updating step ${row.step_id}:`, {
+                                message: error.message,
+                                response: error.response?.data,
+                                status: error.response?.status
+                            });
+                            throw error;
+                        })
                     );
                 } else {
                     createPromises.push(
                         axios.post("/api/v1/process-steps", payload)
+                        .then(response => {
+                            console.log('Create response:', response.data);
+                            return response;
+                        }).catch(error => {
+                            console.error('Error creating step:', {
+                                message: error.message,
+                                response: error.response?.data,
+                                status: error.response?.status
+                            });
+                            throw error;
+                        })
                     );
                 }
             });
 
-            await Promise.all([...createPromises, ...updatePromises]);
+            console.log('Waiting for all promises to resolve...');
+            const results = await Promise.all([...createPromises, ...updatePromises]);
+            console.log('All promises resolved:', results);
 
             if (createPromises.length && updatePromises.length) {
                 alert(
@@ -215,8 +337,16 @@ const ProcessFlow = () => {
             } else if (updatePromises.length) {
                 alert("Process flow updated successfully!");
             }
-            handleProcessChange({ target: { value: selectedProcess.id } });
+
+            // Refresh the data after successful save
+            await handleProcessChange({ target: { value: selectedProcess.id } });
+
         } catch (error) {
+            console.error('Error in handleSubmit:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status
+            });
             alert("Failed to update process flow. Please try again.");
         }
     };
@@ -275,121 +405,138 @@ const ProcessFlow = () => {
                 <>
                     {selectedProcess ? (
                         <div className="w-full overflow-x-auto">
-                            <table className="w-full border-collapse">
-                                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
-                                    <tr>
-                                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
-                                            Order
-                                        </th>
-                                        <th className="py-3 px-4">Approver</th>
-                                        <th className="py-3 px-4">
-                                            Task Description
-                                        </th>
-                                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {rows.map((row, index) => (
-                                        <tr key={index} className="border-b">
-                                            <td className="py-3 px-4">
-                                                {row.id}
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <SelectFloating
-                                                    label="Approver"
-                                                    name="approver"
-                                                    value={
-                                                        row.approver_id !==
-                                                            "" &&
-                                                        row.approver_id !== null
-                                                            ? `user-${row.approver_id}`
-                                                            : row.designation_id !==
-                                                                  "" &&
-                                                              row.designation_id !==
-                                                                  null
-                                                            ? `designation-${row.designation_id}`
-                                                            : ""
-                                                    }
-                                                    onChange={(e) =>
-                                                        handleApproverChange(
-                                                            index,
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    options={[
-                                                        {
-                                                            id: "",
-                                                            label: "Select an approver",
-                                                        },
-                                                        ...users.map(
-                                                            (user) => ({
-                                                                id: `user-${user.id}`,
-                                                                label: user.name,
-                                                            })
-                                                        ),
-                                                        ...designations.map(
-                                                            (des) => ({
-                                                                id: `designation-${des.id}`,
-                                                                label: des.designation,
-                                                            })
-                                                        ),
-                                                    ]}
-                                                />
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <input
-                                                    type="text"
-                                                    className="border border-gray-300 rounded-xl px-4 py-5 w-full"
-                                                    value={row.taskDescription}
-                                                    onChange={(e) =>
-                                                        handleTaskDescriptionChange(
-                                                            index,
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    placeholder="Enter task description"
-                                                />
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <div className="flex justify-center items-center space-x-3">
-                                                    {index ===
-                                                        rows.length - 1 && (
-                                                        <button
-                                                            type="button"
-                                                            className="text-lg text-[#9B9DA2] hover:text-blue-600"
-                                                            onClick={addRow}
-                                                            title="Add row"
-                                                        >
-                                                            <FaPlus />
-                                                        </button>
-                                                    )}
-                                                    {index !== 0 && (
-                                                        <button
-                                                            type="button"
-                                                            className="text-lg text-[#9B9DA2] hover:text-red-500"
-                                                            onClick={() =>
-                                                                removeRow(index)
-                                                            }
-                                                            title="Remove row"
-                                                        >
-                                                            <FaTrash />
-                                                        </button>
-                                                    )}
-                                                    <button
-                                                        type="button"
-                                                        className="text-xl text-[#009FDC] hover:text-blue-600 cursor-move"
-                                                        title="Drag to reorder"
+                            <DragDropContext onDragEnd={onDragEnd}>
+                                <Droppable droppableId="process-steps">
+                                    {(provided) => (
+                                        <table className="w-full border-collapse" {...provided.droppableProps} ref={provided.innerRef}>
+                                            <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                                                <tr>
+                                                    <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
+                                                        Order
+                                                    </th>
+                                                    <th className="py-3 px-4">Approver</th>
+                                                    <th className="py-3 px-4">
+                                                        Task Description
+                                                    </th>
+                                                    <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
+                                                        Actions
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {rows.map((row, index) => (
+                                                    <Draggable
+                                                        key={row.id.toString()}
+                                                        draggableId={row.id.toString()}
+                                                        index={index}
                                                     >
-                                                        <FaGripVertical />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                                        {(provided, snapshot) => (
+                                                            <tr
+                                                                ref={provided.innerRef}
+                                                                {...provided.draggableProps}
+                                                                className={`border-b ${snapshot.isDragging ? 'bg-gray-50' : ''}`}
+                                                            >
+                                                                <td className="py-3 px-4">
+                                                                    {row.id}
+                                                                </td>
+                                                                <td className="py-3 px-4">
+                                                                    <SelectFloating
+                                                                        label="Approver"
+                                                                        name="approver"
+                                                                        value={
+                                                                            row.approver_id !== "" &&
+                                                                            row.approver_id !== null
+                                                                                ? `user-${row.approver_id}`
+                                                                                : row.designation_id !== "" &&
+                                                                                  row.designation_id !== null
+                                                                                ? `designation-${row.designation_id}`
+                                                                                : ""
+                                                                        }
+                                                                        onChange={(e) =>
+                                                                            handleApproverChange(
+                                                                                index,
+                                                                                e.target.value
+                                                                            )
+                                                                        }
+                                                                        options={[
+                                                                            {
+                                                                                id: "",
+                                                                                label: "Select an approver",
+                                                                            },
+                                                                            ...users.map(
+                                                                                (user) => ({
+                                                                                    id: `user-${user.id}`,
+                                                                                    label: user.name,
+                                                                                })
+                                                                            ),
+                                                                            ...designations.map(
+                                                                                (des) => ({
+                                                                                    id: `designation-${des.id}`,
+                                                                                    label: des.designation,
+                                                                                })
+                                                                            ),
+                                                                        ]}
+                                                                    />
+                                                                </td>
+                                                                <td className="py-3 px-4">
+                                                                    <input
+                                                                        type="text"
+                                                                        className="border border-gray-300 rounded-xl px-4 py-5 w-full"
+                                                                        value={row.taskDescription}
+                                                                        onChange={(e) =>
+                                                                            handleTaskDescriptionChange(
+                                                                                index,
+                                                                                e.target.value
+                                                                            )
+                                                                        }
+                                                                        placeholder="Enter task description"
+                                                                    />
+                                                                </td>
+                                                                <td className="py-3 px-4">
+                                                                    <div className="flex justify-center items-center space-x-3">
+                                                                        {index === rows.length - 1 && (
+                                                                            <button
+                                                                                type="button"
+                                                                                className="text-lg text-[#9B9DA2] hover:text-blue-600"
+                                                                                onClick={addRow}
+                                                                                title="Add row"
+                                                                            >
+                                                                                <FaPlus />
+                                                                            </button>
+                                                                        )}
+                                                                        {index !== 0 && (
+                                                                            <button
+                                                                                type="button"
+                                                                                className="text-lg text-[#9B9DA2] hover:text-red-500"
+                                                                                onClick={() =>
+                                                                                    removeRow(index)
+                                                                                }
+                                                                                title="Remove row"
+                                                                            >
+                                                                                <FaTrash />
+                                                                            </button>
+                                                                        )}
+                                                                        <div {...provided.dragHandleProps}>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="text-xl text-[#009FDC] hover:text-blue-600 cursor-move"
+                                                                                title="Drag to reorder"
+                                                                            >
+                                                                                <FaGripVertical />
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </Draggable>
+                                                ))}
+                                                {provided.placeholder}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </Droppable>
+                            </DragDropContext>
 
                             <div className="flex justify-end mt-6">
                                 <button

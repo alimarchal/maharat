@@ -7,6 +7,7 @@ use App\Http\Requests\V1\ProcessStep\StoreProcessStepRequest;
 use App\Http\Requests\V1\ProcessStep\UpdateProcessStepRequest;
 use App\Http\Resources\V1\ProcessStepResource;
 use App\Http\Resources\V1\ProcessStepCollection;
+use App\Http\Resources\V1\ProcessResource;
 use App\Models\Designation;
 use App\Models\Process;
 use App\Models\ProcessStep;
