@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
-import InputFloating from "../../../Components/InputFloating";
-import SelectFloating from "../../../Components/SelectFloating";
+import InputFloating from "../../../../Components/InputFloating";
+import SelectFloating from "../../../../Components/SelectFloating";
 import { usePage } from "@inertiajs/react";
 
 const ApproveOrder = ({

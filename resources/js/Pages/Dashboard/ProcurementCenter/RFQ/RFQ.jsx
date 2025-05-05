@@ -75,7 +75,7 @@ const RFQsTable = () => {
 
     const handleEdit = (rfqId) => {
         if (rfqId) {
-            router.visit(`/quotations/create?rfqId=${rfqId}`);
+            router.visit(`/rfqs/create-rfq?rfqId=${rfqId}`);
         } else {
             console.error("No ID found for RFQ log");
         }
@@ -134,14 +134,14 @@ const RFQsTable = () => {
     };
 
     return (
-        <div className="min-h-screen p-6">
+        <div className="w-full">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-[32px] font-bold text-[#2C323C]">
                     Request for Quotation Log
                 </h2>
                 <div className="flex justify-start gap-2">
                     <Link
-                        href="/quotations/create"
+                        href="/rfqs/create-rfq"
                         className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                     >
                         Make New RFQ

@@ -17,7 +17,6 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
                 );
                 if (response.data?.data) {
                     const data = response.data.data;
-                    console.log("Fetched Purchase Order data:", data);
                     setPurchaseOrder(data);
                 }
             } catch (error) {

@@ -45,12 +45,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard/Warehouse/Warehouse');
     })->name('warehouse.index');
 
-    Route::get('/rfq', [RfqController::class, 'index'])->name('rfq.index');
-    Route::get('/rfq/create', [RfqController::class, 'create'])->name('rfq.create');
-    Route::post('/rfq', [RfqController::class, 'store'])->name('rfq.store');
-    Route::get('/rfq/{quotation}', [RfqController::class, 'show'])->name('rfq.show');
-    Route::get('/rfq/{quotation}/pdf', [RfqController::class, 'generatePDF'])->name('rfq.pdf');
-
     Route::get('/statuses', [StatusController::class, 'index'])->name('statuses.index');
     Route::get('/status', function () {
         return Inertia::render('Dashboard', ['page' => 'Status/StatusIndex']);
@@ -104,27 +98,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'WarehouseManagement/CreateWarehouse', 'warehouseId' => $id]);
     })->name('warehouse.edit');
 
-    Route::get('/quotations', function () { return Inertia::render('Dashboard/Quotations/Quotation'); })->name('dashboard.quotations.index');
+    Route::get('/rfqs', function () { return Inertia::render('Dashboard', ['page' => 'ProcurementCenter/RFQ/RFQ']); })->name('rfq.index');
+    Route::get('/rfqs/create-rfq', function () { return Inertia::render('Dashboard', ['page' => 'ProcurementCenter/RFQ/AddQuotationForm']); })->name('rfq.create');
 
-    Route::get('/quotations/create', function (Request $request) {
-        return Inertia::render('Dashboard/RFQ/AddQuotationForm', [
-            'rfqId' => $request->query('rfqId')
-        ]);
-    })->name('quotations.create');   
+    Route::prefix('quotations')->name('quotations.')->group(function () {
+        Route::get('/', function () {
+            return Inertia::render('Dashboard', ['page' => 'ProcurementCenter/Quotations/Quotations']);
+        })->name('index');
+        Route::get('/create-quotation', function () {
+            return Inertia::render('Dashboard', [
+                'page' => 'ProcurementCenter/Quotations/NewQuotation']);
+        })->name('create');
+        Route::get('/create-quotation/add-quotation-to-rfq', function () {
+            return Inertia::render('Dashboard', [
+                'page' => 'ProcurementCenter/Quotations/QuotationRFQ']);
+        })->name('add-to-rfq');
+    });
 
-    Route::get('/rfq', function () { return Inertia::render('Dashboard', ['page' => 'RFQ/RFQ']); })->name('rfq.index');
+    Route::get('/purchase-orders', function () { return Inertia::render('Dashboard', ['page' => 'ProcurementCenter/PurchaseOrder/ViewOrder']); })->name('view-order');
+    Route::get('/purchase-orders/create-order', function () { return Inertia::render('Dashboard', ['page' => 'ProcurementCenter/PurchaseOrder/CreateOrder']); })->name('create-order');
 
-    Route::get('/quotation', function () { return Inertia::render('Dashboard/Quotations/Quotations'); })->name('Quotation');
-
-    Route::get('/new-quotation', function () { return Inertia::render('Dashboard/Quotations/NewQuotation'); })->name('new-quotation');
-
-    Route::get('/quotation-to-rfq', function () { return Inertia::render('Dashboard/Quotations/QuotationRFQ'); })->name('quotation-to-rfq');
-
-    Route::get('/view-order', function () { return Inertia::render('Dashboard/Purchase Order/ViewOrder'); })->name('view-order');
-
-    Route::get('/approve-order', function () { return Inertia::render('Dashboard/Purchase Order/ApproveOrder'); })->name('approve-order');
-
-    Route::get('/create-order', function () { return Inertia::render('Dashboard/Purchase Order/CreateOrder'); })->name('create-order');
+    Route::get('/external-invoices', function () { return Inertia::render('Dashboard', ['page' => 'ProcurementCenter/Invoices/Invoices']); })->name('invoices');
 
     Route::get('/goods-receiving-notes', function () {
         return Inertia::render('Dashboard', ['page' => 'Warehouse/GRN/GRNTable']);
@@ -132,8 +126,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/goods-receiving-notes/create', function () {
         return Inertia::render('Dashboard', ['page' => 'Warehouse/GRN/CreateGRNTable']);
     })->name('grns.create');
-
-    Route::get('/external-invoices', function () { return Inertia::render('Dashboard/Invoices/Invoices'); })->name('invoices');
 
     Route::get('/chart', function () {
         return Inertia::render('Dashboard', ['page' => 'Configuration/OrganizationalChart/Chart']);

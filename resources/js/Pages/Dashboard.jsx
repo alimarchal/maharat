@@ -68,7 +68,14 @@ import UserManual from "./Dashboard/UserManual/UserManual";
 import GuideDetail from "./Dashboard/UserManual/GuideDetail";
 import UserManualSubSections from "./Dashboard/UserManual/ManualSubSection";
 import ManualSubSubSection from "./Dashboard/UserManual/ManualSubSubSection";
-import RFQsTable from "./Dashboard/RFQ/RFQ";
+import RFQsTable from "./Dashboard/ProcurementCenter/RFQ/RFQ";
+import InvoicesTable from "./Dashboard/ProcurementCenter/Invoices/Invoices";
+import PurchaseOrdersTable from "./Dashboard/ProcurementCenter/PurchaseOrder/ViewOrder";
+import CreatePurchaseOrder from "./Dashboard/ProcurementCenter/PurchaseOrder/CreateOrder";
+import Quotations from "./Dashboard/ProcurementCenter/Quotations/Quotations";
+import NewQuotation from "./Dashboard/ProcurementCenter/Quotations/NewQuotation";
+import QuotationRFQ from "./Dashboard/ProcurementCenter/Quotations/QuotationRFQ";
+import AddQuotationForm from "./Dashboard/ProcurementCenter/RFQ/AddQuotationForm";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -187,8 +194,15 @@ export default function Dashboard({ auth, page }) {
         if (page === "UserManual/GuideDetail") return <GuideDetail />;
         if (page === "UserManual/ManualSubSection") return <UserManualSubSections />;
         if (page === "UserManual/ManualSubSubSection") return <ManualSubSubSection />;
-        if (page === "RFQ/RFQ") return <RFQsTable />;
-
+        if (page === "ProcurementCenter/RFQ/RFQ") return <RFQsTable />;
+        if (page === "ProcurementCenter/RFQ/AddQuotationForm") return <AddQuotationForm />;
+        if (page === "ProcurementCenter/Quotations/Quotations") return <Quotations />;
+        if (page === "ProcurementCenter/Quotations/NewQuotation") return <NewQuotation />;
+        if (page === "ProcurementCenter/Quotations/QuotationRFQ") return <QuotationRFQ />;
+        if (page === "ProcurementCenter/PurchaseOrder/ViewOrder") return <PurchaseOrdersTable />;
+        if (page === "ProcurementCenter/PurchaseOrder/CreateOrder") return <CreatePurchaseOrder />;
+        if (page === "ProcurementCenter/Invoices/Invoices") return <InvoicesTable />;
+        
         return <MainDashboard roles={auth.user.roles} />;
     };
 

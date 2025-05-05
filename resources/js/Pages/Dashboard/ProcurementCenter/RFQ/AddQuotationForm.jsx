@@ -1,19 +1,12 @@
 import { useState, useEffect } from "react";
-import { Head } from "@inertiajs/react";
-import { router, Link, usePage } from "@inertiajs/react";
-import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
 import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-    faArrowLeftLong,
-    faChevronRight,
-    faTrash,
-    faEdit,
-} from "@fortawesome/free-solid-svg-icons";
+import { faTrash, faEdit } from "@fortawesome/free-solid-svg-icons";
 import ItemModal from "./ItemModal";
 
-export default function AddQuotationForm({ auth }) {
+export default function AddQuotationForm() {
     const { rfqId } = usePage().props;
     const user_id = usePage().props.auth.user.id;
 
@@ -1047,533 +1040,469 @@ export default function AddQuotationForm({ auth }) {
 
     if (loading) {
         return (
-            <AuthenticatedLayout user={auth.user}>
-                <Head title={isEditing ? "Edit RFQ" : "Create RFQ"} />
-                <div className="min-h-screen p-6">
-                    <div className="flex justify-center items-center h-screen">
-                        <div className="text-center">
-                            <h2 className="text-xl font-semibold mb-4">
-                                Loading...
-                            </h2>
-                            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                        </div>
+            <div className="w-full p-6">
+                <div className="flex justify-center items-center h-screen">
+                    <div className="text-center">
+                        <h2 className="text-xl font-semibold mb-4">
+                            Loading...
+                        </h2>
+                        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
                     </div>
                 </div>
-            </AuthenticatedLayout>
+            </div>
         );
     }
 
     if (error) {
         return (
-            <AuthenticatedLayout user={auth.user}>
-                <Head title="Error Loading RFQ" />
-                <div className="min-h-screen p-6">
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-                        <h2 className="text-xl font-bold mb-2">Error</h2>
-                        <p>{error}</p>
-                        <div className="mt-4">
-                            <button
-                                onClick={() => router.visit("/rfq")}
-                                className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-                            >
-                                Return to RFQ List
-                            </button>
-                        </div>
+            <div className="w-full p-6">
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                    <h2 className="text-xl font-bold mb-2">Error</h2>
+                    <p>{error}</p>
+                    <div className="mt-4">
+                        <button
+                            onClick={() => router.visit("/rfq")}
+                            className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                        >
+                            Return to RFQ List
+                        </button>
                     </div>
                 </div>
-            </AuthenticatedLayout>
+            </div>
         );
     }
 
     return (
-        <AuthenticatedLayout user={auth.user}>
-            <Head title={isEditing ? "Edit RFQ" : "Create RFQ"} />
-            <div className="min-h-screen p-6">
-                <div className="flex justify-between items-center mb-4">
-                    <button
-                        onClick={() => router.visit("/rfq")}
-                        className="flex items-center text-black text-2xl font-medium hover:text-gray-800 p-2"
-                    >
-                        <FontAwesomeIcon
-                            icon={faArrowLeftLong}
-                            className="mr-2 text-2xl"
+        <div className="w-full">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h2 className="text-xl font-semibold">
+                        {isEditing
+                            ? "Edit Request for Quotation"
+                            : "Request for a Quotation"}
+                    </h2>
+                    <p className="text-gray-500 text-sm">
+                        Share Requirements and Receive Tailored Estimates
+                    </p>
+                </div>
+                <img
+                    src="/images/MCTC Logo.png"
+                    alt="Maharat Logo"
+                    className="h-12"
+                />
+            </div>
+
+            {/* Error display */}
+            {errors.submit && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                    {errors.submit}
+                </div>
+            )}
+
+            {errors.items && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                    {errors.items}
+                </div>
+            )}
+
+            {errors.general && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                    {errors.general}
+                </div>
+            )}
+
+            <form onSubmit={handleSaveAndSubmit}>
+                <div className="bg-blue-50 rounded-lg px-12 py-6 grid grid-cols-2 gap-6 shadow-md text-lg">
+                    {/* Left Column */}
+                    <div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-center">
+                        <span className="font-medium text-gray-600">
+                            Organization Name:
+                        </span>
+                        <input
+                            type="text"
+                            value={formData.organization_name}
+                            onChange={(e) =>
+                                handleFormInputChange(
+                                    "organization_name",
+                                    e.target.value
+                                )
+                            }
+                            className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            required
                         />
-                        Back
+
+                        <span className="font-medium text-gray-600">
+                            Organization Email:
+                        </span>
+                        <input
+                            type="email"
+                            value={formData.organization_email}
+                            onChange={(e) =>
+                                handleFormInputChange(
+                                    "organization_email",
+                                    e.target.value
+                                )
+                            }
+                            className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            required
+                        />
+
+                        <span className="font-medium text-gray-600">City:</span>
+                        <input
+                            type="text"
+                            value={formData.city}
+                            onChange={(e) =>
+                                handleFormInputChange("city", e.target.value)
+                            }
+                            className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            required
+                        />
+
+                        <span className="font-medium text-gray-600">
+                            Category:
+                        </span>
+                        <div className="relative">
+                            <select
+                                value={formData.category_id || ""}
+                                onChange={(e) =>
+                                    handleFormInputChange(
+                                        "category_id",
+                                        e.target.value
+                                    )
+                                }
+                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                                required
+                            >
+                                <option value="">Select Category</option>
+                                {categories.map((category) => (
+                                    <option
+                                        key={category.id}
+                                        value={String(category.id)}
+                                        className="text-[#009FDC] bg-blue-50"
+                                    >
+                                        {category.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <span className="font-medium text-gray-600">
+                            Warehouse:
+                        </span>
+                        <div className="relative">
+                            <select
+                                value={formData.warehouse_id || ""}
+                                onChange={(e) =>
+                                    handleFormInputChange(
+                                        "warehouse_id",
+                                        e.target.value
+                                    )
+                                }
+                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                                required
+                            >
+                                <option value="">Select Warehouse</option>
+                                {warehouses.map((warehouse) => (
+                                    <option
+                                        key={warehouse.id}
+                                        value={warehouse.id.toString()}
+                                        className="text-[#009FDC] bg-blue-50"
+                                    >
+                                        {warehouse.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <span className="font-medium text-gray-600">
+                            Cost Center:
+                        </span>
+                        <div className="relative">
+                            <select
+                                value={formData.cost_center_id || ""}
+                                onChange={handleCostCenterChange}
+                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                                required
+                            >
+                                <option value="">Select Cost Center</option>
+                                {costCenters.map((center) => (
+                                    <option
+                                        key={center.id}
+                                        value={center.id.toString()}
+                                        className="text-[#009FDC] bg-blue-50"
+                                    >
+                                        {center.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Right Column */}
+                    <div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-center">
+                        <span className="font-medium text-gray-600">
+                            Issue Date:
+                        </span>
+                        <input
+                            type="date"
+                            value={formData.issue_date}
+                            onChange={(e) =>
+                                handleFormInputChange(
+                                    "issue_date",
+                                    e.target.value
+                                )
+                            }
+                            className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            required
+                        />
+
+                        <span className="font-medium text-gray-600">
+                            Closing Date:
+                        </span>
+                        <input
+                            type="date"
+                            value={formData.closing_date}
+                            onChange={(e) =>
+                                handleFormInputChange(
+                                    "closing_date",
+                                    e.target.value
+                                )
+                            }
+                            className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            required
+                        />
+
+                        <span className="font-medium text-gray-600">
+                            RFQ #:
+                        </span>
+                        <input
+                            type="text"
+                            value={formData.rfq_id}
+                            onChange={(e) =>
+                                handleFormInputChange("rfq_id", e.target.value)
+                            }
+                            className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            readOnly={!isEditing}
+                            placeholder={
+                                isEditing ? "" : "Auto-generated by system"
+                            }
+                            required={isEditing}
+                        />
+
+                        <span className="font-medium text-gray-600">
+                            Payment Type:
+                        </span>
+                        <div className="relative">
+                            <select
+                                value={formData.payment_type || ""}
+                                onChange={(e) =>
+                                    handleFormInputChange(
+                                        "payment_type",
+                                        e.target.value
+                                    )
+                                }
+                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                                required
+                            >
+                                <option value="">Select Payment Type</option>
+                                {paymentTypes.map((type) => (
+                                    <option
+                                        key={type.id}
+                                        value={type.id.toString()}
+                                        className="text-[#009FDC] bg-blue-50"
+                                    >
+                                        {type.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <span className="font-medium text-gray-600">
+                            Contact No:
+                        </span>
+                        <input
+                            type="text"
+                            value={formData.contact_no}
+                            onChange={(e) =>
+                                handleFormInputChange(
+                                    "contact_no",
+                                    e.target.value
+                                )
+                            }
+                            className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            required
+                        />
+
+                        <span className="font-medium text-gray-600">
+                            Sub Cost Center:
+                        </span>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={
+                                    costCenterNames[
+                                        formData.sub_cost_center_id
+                                    ] || ""
+                                }
+                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                                readOnly
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Table for Items with no border/outline in cells */}
+                <div className="overflow-x-auto">
+                    <table className="min-w-full table-auto mt-4 border-collapse">
+                        <thead>
+                            <tr>
+                                <th className="px-2 py-2 text-center w-[5%] bg-[#C7E7DE] rounded-tl-2xl rounded-bl-2xl">
+                                    #
+                                </th>
+                                <th className="px-2 py-2 text-center w-[13%] bg-[#C7E7DE]">
+                                    Products
+                                </th>
+                                <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">
+                                    Description
+                                </th>
+                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
+                                    Unit
+                                </th>
+                                <th className="px-2 py-2 text-center w-[8%] bg-[#C7E7DE]">
+                                    Quantity
+                                </th>
+                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
+                                    Brand
+                                </th>
+                                <th className="px-2 py-2 text-center w-[14%] bg-[#C7E7DE]">
+                                    Expected Delivery Date
+                                </th>
+                                <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
+                                    Attachment
+                                </th>
+                                <th className="px-2 py-2 text-center w-[6%] bg-[#C7E7DE] rounded-tr-2xl rounded-br-2xl">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {sortedItems.length > 0 ? (
+                                sortedItems.map((item, index) => (
+                                    <tr key={item.id || index}>
+                                        <td className="px-4 py-2 text-center">
+                                            {index + 1}
+                                        </td>
+                                        <td className="px-4 py-2 text-center">
+                                            {item.item_name}
+                                        </td>
+                                        <td className="px-4 py-2 text-center">
+                                            {item.description}
+                                        </td>
+                                        <td className="px-4 py-2 text-center">
+                                            {getUnitName(item.unit_id)}
+                                        </td>
+                                        <td className="px-4 py-2 text-center">
+                                            {item.quantity}
+                                        </td>
+                                        <td className="px-4 py-2 text-center">
+                                            {brandNames[
+                                                String(item.brand_id)
+                                            ] || item.brand_id}
+                                        </td>
+                                        <td className="px-4 py-2 text-center">
+                                            {formatDate(
+                                                item.expected_delivery_date
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-2 text-center">
+                                            {item.attachment ? (
+                                                <FileDisplay
+                                                    file={item.attachment}
+                                                    onFileClick={() =>
+                                                        handleFileClick(
+                                                            item.attachment
+                                                        )
+                                                    }
+                                                />
+                                            ) : (
+                                                <span className="text-gray-500 text-sm">
+                                                    No Attachment
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-2 text-center">
+                                            <div className="flex space-x-2 justify-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        handleEditItem(item.id)
+                                                    }
+                                                    className="text-blue-500 hover:text-blue-700"
+                                                >
+                                                    <FontAwesomeIcon
+                                                        icon={faEdit}
+                                                    />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        handleRemoveItem(
+                                                            item.id
+                                                        )
+                                                    }
+                                                    className="text-red-500 hover:text-red-700"
+                                                >
+                                                    <FontAwesomeIcon
+                                                        icon={faTrash}
+                                                    />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td
+                                        colSpan="9"
+                                        className="px-4 py-6 text-center text-gray-500"
+                                    >
+                                        No items added yet. Use the "Add Item"
+                                        button below to add items to this RFQ.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Add Item Button - centered at bottom */}
+                <div className="mt-4 flex justify-center">
+                    <button
+                        type="button"
+                        onClick={addItem}
+                        className="bg-[#009FDC] text-white px-5 py-2 rounded-full flex items-center text-base font-medium"
+                    >
+                        Add Item
                     </button>
                 </div>
 
-                {/* Breadcrumbs */}
-                <div className="flex items-center justify-between mb-6 space-x-4">
-                    <div className="flex items-center text-[#7D8086] text-lg font-medium space-x-2">
-                        <Link
-                            href="/dashboard"
-                            className="hover:text-[#009FDC] text-xl"
-                        >
-                            Dashboard
-                        </Link>
-                        <FontAwesomeIcon
-                            icon={faChevronRight}
-                            className="text-xl text-[#9B9DA2]"
-                        />
-                        <Link
-                            href="/rfq"
-                            className="hover:text-[#009FDC] text-xl"
-                        >
-                            RFQs
-                        </Link>
-                        <FontAwesomeIcon
-                            icon={faChevronRight}
-                            className="text-xl text-[#9B9DA2]"
-                        />
-                        <span className="text-[#009FDC] text-xl">
-                            {isEditing ? "Edit RFQ" : "New RFQ Request"}
-                        </span>
-                    </div>
+                <div className="my-4 flex justify-end">
+                    <button
+                        type="submit"
+                        className="bg-[#009FDC] text-white text-lg font-medium px-8 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50 w-full sm:w-auto"
+                        disabled={isSaving}
+                    >
+                        {isSaving
+                            ? isEditing
+                                ? "Updating..."
+                                : "Creating..."
+                            : isEditing
+                            ? "Update RFQ"
+                            : "Create RFQ"}
+                    </button>
                 </div>
-
-                {/* Header */}
-                <div className="flex justify-between items-center mb-6">
-                    <div>
-                        <h2 className="text-xl font-semibold">
-                            {isEditing
-                                ? "Edit Request for Quotation"
-                                : "Request for a Quotation"}
-                        </h2>
-                        <p className="text-gray-500 text-sm">
-                            Share Requirements and Receive Tailored Estimates
-                        </p>
-                    </div>
-                    <img
-                        src="/images/MCTC Logo.png"
-                        alt="Maharat Logo"
-                        className="h-12"
-                    />
-                </div>
-
-                {/* Error display */}
-                {errors.submit && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-                        {errors.submit}
-                    </div>
-                )}
-
-                {errors.items && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-                        {errors.items}
-                    </div>
-                )}
-
-                {errors.general && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-                        {errors.general}
-                    </div>
-                )}
-
-                <form onSubmit={handleSaveAndSubmit}>
-                    <div className="bg-blue-50 rounded-lg p-6 grid grid-cols-2 gap-6 shadow-md text-lg">
-                        {/* Left Column */}
-                        <div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-center">
-                            <span className="font-medium text-gray-600">
-                                Organization Name:
-                            </span>
-                            <input
-                                type="text"
-                                value={formData.organization_name}
-                                onChange={(e) =>
-                                    handleFormInputChange(
-                                        "organization_name",
-                                        e.target.value
-                                    )
-                                }
-                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                required
-                            />
-
-                            <span className="font-medium text-gray-600">
-                                Organization Email:
-                            </span>
-                            <input
-                                type="email"
-                                value={formData.organization_email}
-                                onChange={(e) =>
-                                    handleFormInputChange(
-                                        "organization_email",
-                                        e.target.value
-                                    )
-                                }
-                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                required
-                            />
-
-                            <span className="font-medium text-gray-600">
-                                City:
-                            </span>
-                            <input
-                                type="text"
-                                value={formData.city}
-                                onChange={(e) =>
-                                    handleFormInputChange(
-                                        "city",
-                                        e.target.value
-                                    )
-                                }
-                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                required
-                            />
-
-                            <span className="font-medium text-gray-600">
-                                Category:
-                            </span>
-                            <div className="relative">
-                                <select
-                                    value={formData.category_id || ""}
-                                    onChange={(e) =>
-                                        handleFormInputChange(
-                                            "category_id",
-                                            e.target.value
-                                        )
-                                    }
-                                    className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                    required
-                                >
-                                    <option value="">Select Category</option>
-                                    {categories.map((category) => (
-                                        <option
-                                            key={category.id}
-                                            value={String(category.id)}
-                                            className="text-[#009FDC] bg-blue-50"
-                                        >
-                                            {category.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <span className="font-medium text-gray-600">
-                                Warehouse:
-                            </span>
-                            <div className="relative">
-                                <select
-                                    value={formData.warehouse_id || ""}
-                                    onChange={(e) =>
-                                        handleFormInputChange(
-                                            "warehouse_id",
-                                            e.target.value
-                                        )
-                                    }
-                                    className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                    required
-                                >
-                                    <option value="">Select Warehouse</option>
-                                    {warehouses.map((warehouse) => (
-                                        <option
-                                            key={warehouse.id}
-                                            value={warehouse.id.toString()}
-                                            className="text-[#009FDC] bg-blue-50"
-                                        >
-                                            {warehouse.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <span className="font-medium text-gray-600">
-                                Cost Center:
-                            </span>
-                            <div className="relative">
-                                <select
-                                    value={formData.cost_center_id || ""}
-                                    onChange={handleCostCenterChange}
-                                    className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                    required
-                                >
-                                    <option value="">Select Cost Center</option>
-                                    {costCenters.map((center) => (
-                                        <option
-                                            key={center.id}
-                                            value={center.id.toString()}
-                                            className="text-[#009FDC] bg-blue-50"
-                                        >
-                                            {center.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Right Column */}
-                        <div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-center">
-                            <span className="font-medium text-gray-600">
-                                Issue Date:
-                            </span>
-                            <input
-                                type="date"
-                                value={formData.issue_date}
-                                onChange={(e) =>
-                                    handleFormInputChange(
-                                        "issue_date",
-                                        e.target.value
-                                    )
-                                }
-                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                required
-                            />
-
-                            <span className="font-medium text-gray-600">
-                                Closing Date:
-                            </span>
-                            <input
-                                type="date"
-                                value={formData.closing_date}
-                                onChange={(e) =>
-                                    handleFormInputChange(
-                                        "closing_date",
-                                        e.target.value
-                                    )
-                                }
-                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                required
-                            />
-
-                            <span className="font-medium text-gray-600">
-                                RFQ #:
-                            </span>
-                            <input
-                                type="text"
-                                value={formData.rfq_id}
-                                onChange={(e) =>
-                                    handleFormInputChange(
-                                        "rfq_id",
-                                        e.target.value
-                                    )
-                                }
-                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                readOnly={!isEditing}
-                                placeholder={
-                                    isEditing ? "" : "Auto-generated by system"
-                                }
-                                required={isEditing}
-                            />
-
-                            <span className="font-medium text-gray-600">
-                                Payment Type:
-                            </span>
-                            <div className="relative">
-                                <select
-                                    value={formData.payment_type || ""}
-                                    onChange={(e) =>
-                                        handleFormInputChange(
-                                            "payment_type",
-                                            e.target.value
-                                        )
-                                    }
-                                    className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                    required
-                                >
-                                    <option value="">
-                                        Select Payment Type
-                                    </option>
-                                    {paymentTypes.map((type) => (
-                                        <option
-                                            key={type.id}
-                                            value={type.id.toString()}
-                                            className="text-[#009FDC] bg-blue-50"
-                                        >
-                                            {type.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <span className="font-medium text-gray-600">
-                                Contact No:
-                            </span>
-                            <input
-                                type="text"
-                                value={formData.contact_no}
-                                onChange={(e) =>
-                                    handleFormInputChange(
-                                        "contact_no",
-                                        e.target.value
-                                    )
-                                }
-                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                required
-                            />
-
-                            <span className="font-medium text-gray-600">
-                                Sub Cost Center:
-                            </span>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={
-                                        costCenterNames[
-                                            formData.sub_cost_center_id
-                                        ] || ""
-                                    }
-                                    className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                    readOnly
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Table for Items with no border/outline in cells */}
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full table-auto mt-4 border-collapse">
-                            <thead>
-                                <tr>
-                                    <th className="px-2 py-2 text-center w-[5%] bg-[#C7E7DE] rounded-tl-2xl rounded-bl-2xl">
-                                        #
-                                    </th>
-                                    <th className="px-2 py-2 text-center w-[13%] bg-[#C7E7DE]">
-                                        Products
-                                    </th>
-                                    <th className="px-2 py-2 text-center w-[12%] bg-[#C7E7DE]">
-                                        Description
-                                    </th>
-                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
-                                        Unit
-                                    </th>
-                                    <th className="px-2 py-2 text-center w-[8%] bg-[#C7E7DE]">
-                                        Quantity
-                                    </th>
-                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
-                                        Brand
-                                    </th>
-                                    <th className="px-2 py-2 text-center w-[14%] bg-[#C7E7DE]">
-                                        Expected Delivery Date
-                                    </th>
-                                    <th className="px-2 py-2 text-center w-[10%] bg-[#C7E7DE]">
-                                        Attachment
-                                    </th>
-                                    <th className="px-2 py-2 text-center w-[6%] bg-[#C7E7DE] rounded-tr-2xl rounded-br-2xl">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sortedItems.length > 0 ? (
-                                    sortedItems.map((item, index) => (
-                                        <tr key={item.id || index}>
-                                            <td className="px-4 py-2 text-center">
-                                                {index + 1}
-                                            </td>
-                                            <td className="px-4 py-2 text-center">
-                                                {item.item_name}
-                                            </td>
-                                            <td className="px-4 py-2 text-center">
-                                                {item.description}
-                                            </td>
-                                            <td className="px-4 py-2 text-center">
-                                                {getUnitName(item.unit_id)}
-                                            </td>
-                                            <td className="px-4 py-2 text-center">
-                                                {item.quantity}
-                                            </td>
-                                            <td className="px-4 py-2 text-center">
-                                                {brandNames[
-                                                    String(item.brand_id)
-                                                ] || item.brand_id}
-                                            </td>
-                                            <td className="px-4 py-2 text-center">
-                                                {formatDate(
-                                                    item.expected_delivery_date
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-2 text-center">
-                                                {item.attachment ? (
-                                                    <FileDisplay
-                                                        file={item.attachment}
-                                                        onFileClick={() =>
-                                                            handleFileClick(
-                                                                item.attachment
-                                                            )
-                                                        }
-                                                    />
-                                                ) : (
-                                                    <span className="text-gray-500 text-sm">
-                                                        No Attachment
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-2 text-center">
-                                                <div className="flex space-x-2 justify-center">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            handleEditItem(
-                                                                item.id
-                                                            )
-                                                        }
-                                                        className="text-blue-500 hover:text-blue-700"
-                                                    >
-                                                        <FontAwesomeIcon
-                                                            icon={faEdit}
-                                                        />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            handleRemoveItem(
-                                                                item.id
-                                                            )
-                                                        }
-                                                        className="text-red-500 hover:text-red-700"
-                                                    >
-                                                        <FontAwesomeIcon
-                                                            icon={faTrash}
-                                                        />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td
-                                            colSpan="9"
-                                            className="px-4 py-6 text-center text-gray-500"
-                                        >
-                                            No items added yet. Use the "Add
-                                            Item" button below to add items to
-                                            this RFQ.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Add Item Button - centered at bottom */}
-                    <div className="mt-4 flex justify-center">
-                        <button
-                            type="button"
-                            onClick={addItem}
-                            className="bg-[#009FDC] text-white px-5 py-2 rounded-full flex items-center text-base font-medium"
-                        >
-                            Add Item
-                        </button>
-                    </div>
-
-                    <div className="my-4 flex justify-end">
-                        <button
-                            type="submit"
-                            className="bg-[#009FDC] text-white text-lg font-medium px-8 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50 w-full sm:w-auto"
-                            disabled={isSaving}
-                        >
-                            {isSaving
-                                ? isEditing
-                                    ? "Updating..."
-                                    : "Creating..."
-                                : isEditing
-                                ? "Update RFQ"
-                                : "Create RFQ"}
-                        </button>
-                    </div>
-                </form>
-            </div>
+            </form>
 
             {/* Add the ItemModal component */}
             <ItemModal
@@ -1587,6 +1516,6 @@ export default function AddQuotationForm({ auth }) {
                 brands={brands}
                 rfqId={formData.id || formData.rfq_id}
             />
-        </AuthenticatedLayout>
+        </div>
     );
 }

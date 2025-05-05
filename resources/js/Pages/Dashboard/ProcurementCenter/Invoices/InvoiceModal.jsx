@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
-import InputFloating from "../../../Components/InputFloating";
-import SelectFloating from "../../../Components/SelectFloating";
+import InputFloating from "../../../../Components/InputFloating";
+import SelectFloating from "../../../../Components/SelectFloating";
 
 const InvoiceModal = ({
     isOpen,
@@ -90,21 +90,15 @@ const InvoiceModal = ({
 
     const fetchAvailablePurchaseOrders = async () => {
         try {
-            console.log('Fetching purchase orders...');
             // First try to get all purchase orders and use the client-side filtering approach
             const allPOsResponse = await axios.get('/api/v1/purchase-orders');
             const allInvoicesResponse = await axios.get('/api/v1/external-invoices');
-            
-            console.log('All purchase orders:', allPOsResponse.data);
-            console.log('All external invoices:', allInvoicesResponse.data);
             
             if (allPOsResponse.data.data && allInvoicesResponse.data.data) {
                 // Get IDs of purchase orders that already have invoices
                 const usedPOIds = allInvoicesResponse.data.data
                     .filter(invoice => invoice.purchase_order_id)
                     .map(invoice => invoice.purchase_order_id);
-                
-                console.log('Used purchase order IDs:', usedPOIds);
                 
                 // Filter out purchase orders that already have invoices
                 const availablePOs = allPOsResponse.data.data
@@ -113,15 +107,12 @@ const InvoiceModal = ({
                         id: po.id,
                         label: po.purchase_order_no || `PO-${po.id}`
                     }));
-                
-                console.log('Available purchase orders:', availablePOs);
                 setPurchaseOrders(availablePOs);
                 return;
             }
             
             // If the client-side approach failed, try the server endpoint
             const response = await axios.get('/api/v1/purchase-orders/available');
-            console.log('Purchase orders API response:', response.data);
 
             if (response.data.success) {
                 // Map the raw SQL results to dropdown format
@@ -129,7 +120,6 @@ const InvoiceModal = ({
                     id: po.id,
                     label: po.purchase_order_no || `PO-${po.id}`
                 }));
-                console.log('Processed purchase orders for dropdown:', purchaseOrdersData);
                 setPurchaseOrders(purchaseOrdersData);
             } else {
                 console.error('API returned success: false');
@@ -347,7 +337,7 @@ const InvoiceModal = ({
                     </div>
 
                     {isEdit && (
-                        <div className="w-full flex justify-center mt-6">
+                        <div className="w-full flex justify-start mt-6">
                             <div className="w-1/2">
                                 <SelectFloating
                                     label="Status"
