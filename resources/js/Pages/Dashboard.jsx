@@ -68,6 +68,7 @@ import UserManual from "./Dashboard/UserManual/UserManual";
 import GuideDetail from "./Dashboard/UserManual/GuideDetail";
 import UserManualSubSections from "./Dashboard/UserManual/ManualSubSection";
 import ManualSubSubSection from "./Dashboard/UserManual/ManualSubSubSection";
+import RFQsTable from "./Dashboard/RFQ/RFQ";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -186,6 +187,7 @@ export default function Dashboard({ auth, page }) {
         if (page === "UserManual/GuideDetail") return <GuideDetail />;
         if (page === "UserManual/ManualSubSection") return <UserManualSubSections />;
         if (page === "UserManual/ManualSubSubSection") return <ManualSubSubSection />;
+        if (page === "RFQ/RFQ") return <RFQsTable />;
 
         return <MainDashboard roles={auth.user.roles} />;
     };

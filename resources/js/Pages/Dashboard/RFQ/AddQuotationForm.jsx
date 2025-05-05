@@ -52,6 +52,8 @@ export default function AddQuotationForm({ auth }) {
     const [error, setError] = useState(null);
     const [products, setProducts] = useState([]);
     const [companies, setCompanies] = useState([]);
+    const [errors, setErrors] = useState({});
+    const [isSaving, setIsSaving] = useState(false);
 
     // Add state for modal
     const [isItemModalOpen, setIsItemModalOpen] = useState(false);
@@ -295,17 +297,20 @@ export default function AddQuotationForm({ auth }) {
                             }
                         })
                         .catch((error) => {
-                            console.error(
-                                "Error fetching new RFQ number:",
-                                error
-                            );
+                            setErrors({
+                                general:
+                                    "Failed to generate RFQ number. Please try again.",
+                            });
                         })
                         .finally(() => {
                             setLoading(false);
                         });
                 }
             } catch (error) {
-                setError("Failed to load data");
+                setErrors({
+                    general:
+                        "Failed to load initial data. Please refresh the page.",
+                });
             } finally {
                 setLoading(false);
             }
@@ -566,9 +571,10 @@ export default function AddQuotationForm({ auth }) {
                 }
                 setLoading(false);
             } catch (error) {
-                setError(
-                    "Failed to load reference data. Some options may be unavailable."
-                );
+                setErrors({
+                    general:
+                        "Failed to load reference data. Some options may be unavailable.",
+                });
 
                 setUnits([]);
                 setBrands([]);
@@ -660,10 +666,16 @@ export default function AddQuotationForm({ auth }) {
 
     // Update the handleRemoveItem function to use item ID
     const handleRemoveItem = (itemId) => {
-        if (formData.items.length <= 1) return;
+        if (formData.items.length <= 1) {
+            setErrors({
+                items: "At least one item is required",
+            });
+            return;
+        }
 
         const newItems = formData.items.filter((item) => item.id !== itemId);
         setFormData({ ...formData, items: newItems });
+        setErrors((prev) => ({ ...prev, items: undefined }));
     };
 
     // Improve handleFileClick function to handle temporary file objects
@@ -719,12 +731,47 @@ export default function AddQuotationForm({ auth }) {
             ...prev,
             [field]: value,
         }));
+        // Clear error for this field if it exists
+        if (errors[field]) {
+            setErrors((prev) => ({ ...prev, [field]: undefined }));
+        }
     };
 
     const handleSaveAndSubmit = async (e) => {
         e.preventDefault();
+        setIsSaving(true);
+        setErrors({});
 
         try {
+            const processResponse = await axios.get(
+                "/api/v1/processes?include=steps,creator,updater&filter[title]=RFQ Approval"
+            );
+            const process = processResponse.data?.data?.[0];
+            const processSteps = process?.steps || [];
+
+            // Check if process and steps exist
+            if (!process || processSteps.length === 0) {
+                setErrors({
+                    submit: "No approval process or steps found for RFQ Approval",
+                });
+                setIsSaving(false);
+                return;
+            }
+            const processStep = processSteps[0];
+
+            const processResponseViaUser = await axios.get(
+                `/api/v1/process-steps/${processStep.id}/user/${user_id}`
+            );
+            const assignUser = processResponseViaUser?.data?.data;
+
+            if (!assignUser || !assignUser.approver_id) {
+                setErrors({
+                    submit: "No approver assigned for this process step",
+                });
+                setIsSaving(false);
+                return;
+            }
+
             const rfqData = {
                 organization_name: formData.organization_name || "",
                 organization_email: formData.organization_email || "",
@@ -836,9 +883,11 @@ export default function AddQuotationForm({ auth }) {
                                 updateError.response.data
                             );
                         }
-                        alert(
-                            "RFQ was saved, but there was an error updating some items. Please try again."
-                        );
+                        setErrors({
+                            items: "RFQ was saved, but there was an error updating some items. Please try again.",
+                        });
+                        setIsSaving(false);
+                        return;
                     }
                 }
 
@@ -887,65 +936,51 @@ export default function AddQuotationForm({ auth }) {
                             }
                         );
                     } catch (createError) {
-                        alert(
-                            "RFQ was saved, but there was an error saving new items: " +
+                        setErrors({
+                            items:
+                                "RFQ was saved, but there was an error saving new items: " +
                                 (createError.response?.data?.message ||
-                                    "Unknown error")
-                        );
+                                    "Unknown error"),
+                        });
+                        setIsSaving(false);
+                        return;
                     }
                 }
             }
 
-            if (newRfqId) {
-                const processResponse = await axios.get(
-                    "/api/v1/processes?include=steps,creator,updater&filter[title]=RFQ Approval"
-                );
-                if (processResponse.data?.data?.[0]?.steps?.[0]) {
-                    const process = processResponse.data.data[0];
-                    const processStep = process.steps[0];
+            const RFQTransactionPayload = {
+                rfq_id: newRfqId,
+                requester_id: user_id,
+                assigned_to: assignUser?.approver_id,
+                order: processStep.order,
+                description: processStep.description,
+                status: "Pending",
+            };
+            await axios.post(
+                "/api/v1/rfq-approval-transactions",
+                RFQTransactionPayload
+            );
 
-                    // Only proceed if we have valid process step data
-                    if (processStep?.id) {
-                        const processResponseViaUser = await axios.get(
-                            `/api/v1/process-steps/${processStep.id}/user/${user_id}`
-                        );
-                        const assignUser = processResponseViaUser?.data?.data;
-                        if (assignUser) {
-                            const RFQTransactionPayload = {
-                                rfq_id: newRfqId,
-                                requester_id: user_id,
-                                assigned_to: assignUser?.approver_id,
-                                order: processStep.order,
-                                description: processStep.description,
-                                status: "Pending",
-                            };
-                            await axios.post(
-                                "/api/v1/rfq-approval-transactions",
-                                RFQTransactionPayload
-                            );
+            const taskPayload = {
+                process_step_id: processStep.id,
+                process_id: processStep.process_id,
+                assigned_at: new Date().toISOString(),
+                urgency: "Normal",
+                assigned_to_user_id: assignUser?.approver_id,
+                assigned_from_user_id: user_id,
+                rfq_id: newRfqId,
+            };
+            await axios.post("/api/v1/tasks", taskPayload);
 
-                            const taskPayload = {
-                                process_step_id: processStep.id,
-                                process_id: processStep.process_id,
-                                assigned_at: new Date().toISOString(),
-                                urgency: "Normal",
-                                assigned_to_user_id: assignUser?.approver_id,
-                                assigned_from_user_id: user_id,
-                                rfq_id: newRfqId,
-                            };
-                            await axios.post("/api/v1/tasks", taskPayload);
-                        }
-                    }
-                }
-            }
-
-            alert("RFQ and items saved successfully!");
             router.visit(route("rfq.index"));
         } catch (error) {
-            alert(
-                error.response?.data?.message ||
-                    "Save failed. Please check your data and try again."
-            );
+            setErrors({
+                submit:
+                    error.response?.data?.message ||
+                    "Save failed. Please check your data and try again.",
+            });
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -1114,6 +1149,25 @@ export default function AddQuotationForm({ auth }) {
                         className="h-12"
                     />
                 </div>
+
+                {/* Error display */}
+                {errors.submit && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                        {errors.submit}
+                    </div>
+                )}
+
+                {errors.items && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                        {errors.items}
+                    </div>
+                )}
+
+                {errors.general && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                        {errors.general}
+                    </div>
+                )}
 
                 <form onSubmit={handleSaveAndSubmit}>
                     <div className="bg-blue-50 rounded-lg p-6 grid grid-cols-2 gap-6 shadow-md text-lg">
@@ -1507,9 +1561,9 @@ export default function AddQuotationForm({ auth }) {
                         <button
                             type="submit"
                             className="bg-[#009FDC] text-white text-lg font-medium px-8 py-3 rounded-lg hover:bg-[#007CB8] disabled:opacity-50 w-full sm:w-auto"
-                            disabled={loading}
+                            disabled={isSaving}
                         >
-                            {loading
+                            {isSaving
                                 ? isEditing
                                     ? "Updating..."
                                     : "Creating..."

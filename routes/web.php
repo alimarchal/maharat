@@ -112,9 +112,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ]);
     })->name('quotations.create');   
 
-    Route::get('/rfq', function () {
-        return Inertia::render('Dashboard/RFQ/RFQ');
-    })->name('rfq.index');
+    Route::get('/rfq', function () { return Inertia::render('Dashboard', ['page' => 'RFQ/RFQ']); })->name('rfq.index');
 
     Route::get('/quotation', function () { return Inertia::render('Dashboard/Quotations/Quotations'); })->name('Quotation');
 
