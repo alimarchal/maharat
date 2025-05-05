@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Link, usePage, router } from "@inertiajs/react";
 import CreateUserGuide from "./CreateUserGuide";
+import CardForm from "./CardForm";
 import axios from "axios";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlus, faEdit, faFile, faChevronUp, faChevronDown, faGripVertical } from "@fortawesome/free-solid-svg-icons";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 export default function ManualSubSubSection() {
     const { props } = usePage();
@@ -20,6 +24,11 @@ export default function ManualSubSubSection() {
     const [subSubSections, setSubSubSections] = useState([]);
     const [guidesMap, setGuidesMap] = useState({});
     const [error, setError] = useState(null);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [showCardForm, setShowCardForm] = useState(false);
+    const [selectedCard, setSelectedCard] = useState(null);
+    const [selectedParentCard, setSelectedParentCard] = useState(null);
+    const [currentCardLevel, setCurrentCardLevel] = useState(2);
 
     useEffect(() => {
         console.log('ManualSubSubSection - useEffect triggered:', {
@@ -28,7 +37,32 @@ export default function ManualSubSubSection() {
             currentUrl: window.location.pathname
         });
         fetchSubSubSections();
+        fetchUserData();
     }, [section, subsection]);
+
+    const fetchUserData = async () => {
+        try {
+            const response = await axios.get("/api/v1/user/current", {
+                headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                },
+            });
+
+            if (response.data && response.data.data) {
+                const userData = response.data.data;
+                setIsAdmin(userData.roles && userData.roles.includes("Admin"));
+            } else {
+                console.error("Invalid user data format:", response.data);
+                setIsAdmin(false);
+            }
+        } catch (error) {
+            if (error.response) {
+                console.error("Response data:", error.response.data);
+            }
+            setIsAdmin(false);
+        }
+    };
 
     const fetchSubSubSections = async () => {
         try {
@@ -182,28 +216,52 @@ export default function ManualSubSubSection() {
         }
     };
 
-    const SubSubManualSectionCard = ({ section }) => {
-        const cardId = section.id;
-        const title = section.name || section.title;
-        const description = section.description;
+    const handleDragEnd = async (result) => {
+        if (!result.destination || !isAdmin) return;
+
+        const items = Array.from(subSubSections);
+        const [reorderedItem] = items.splice(result.source.index, 1);
+        items.splice(result.destination.index, 0, reorderedItem);
+
+        setSubSubSections(items);
+
+        try {
+            const reorderedItems = items.map((item, index) => ({
+                id: item.id,
+                order: index,
+            }));
+
+            await axios.post(
+                "/api/v1/cards/reorder",
+                { cards: reorderedItems },
+                {
+                    headers: {
+                        Accept: "application/json",
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+        } catch (error) {
+            console.error("Error reordering cards:", error);
+            fetchSubSubSections(); // Revert to original order if error occurs
+        }
+    };
+
+    const SubSubManualSectionCard = ({ sectionCard, provided }) => {
+        const cardId = sectionCard.id;
+        const title = sectionCard.name || sectionCard.title;
+        const description = sectionCard.description;
         const guides = guidesMap[cardId] || [];
 
-        const getImageUrl = () => {
-            if (section.icon_path) {
-                return `/storage/${section.icon_path}`;
-            }
-            if (section.image_path) {
-                return `/storage/${section.image_path}`;
-            }
-            return `/images/manuals/${section.id}.png`;
-        };
-
         const handleClick = async () => {
+            if (isAdmin) return; // Prevent navigation if in admin mode
+            
             console.log('ManualSubSubSection - Card clicked:', {
                 cardId: cardId,
                 cardName: title,
-                sectionId: section.section_id,
-                subsectionId: section.subsection_id
+                sectionId: sectionCard.section_id,
+                subsectionId: sectionCard.subsection_id,
+                parentId: sectionCard.parent_id
             });
             
             try {
@@ -216,7 +274,7 @@ export default function ManualSubSubSection() {
                 
                 if (response.data.data.has_children) {
                     console.log('ManualSubSubSection - Routing to next level');
-                    router.visit(`/user-manual/${section.section_id}/${section.subsection_id}/${cardId}`);
+                    router.visit(`/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id}/${cardId}`);
                 } else {
                     const guide = guides[0];
                     console.log('ManualSubSubSection - No children, checking for guide:', {
@@ -226,20 +284,10 @@ export default function ManualSubSubSection() {
                     
                     if (guide) {
                         console.log('ManualSubSubSection - Routing to GuideDetail');
-                        router.visit(`/user-manual/guide/${guide.id}`, {
-                            preserveState: true,
-                            preserveScroll: true,
-                            data: {
-                                id: guide.id,
-                                sectionId: section.section_id,
-                                subsectionId: section.subsection_id,
-                                cardId: cardId,
-                                card: section
-                            }
-                        });
+                        router.visit(`/user-manual/guide/${guide.id}`);
                     } else {
                         console.log('ManualSubSubSection - No guide, staying on current level');
-                        router.visit(`/user-manual/${section.section_id}/${section.subsection_id}`);
+                        router.visit(`/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id}`);
                     }
                 }
             } catch (error) {
@@ -247,40 +295,83 @@ export default function ManualSubSubSection() {
                 const guide = guides[0];
                 if (guide) {
                     console.log('ManualSubSubSection - Error fallback: Routing to GuideDetail');
-                    router.visit(`/user-manual/guide/${guide.id}`, {
-                        data: {
-                            sectionId: section.section_id,
-                            subsectionId: section.subsection_id,
-                            cardId: cardId
-                        }
-                    });
+                    router.visit(`/user-manual/guide/${guide.id}`);
                 } else {
                     console.log('ManualSubSubSection - Error fallback: Staying on current level');
-                    router.visit(`/user-manual/${section.section_id}/${section.subsection_id}`);
+                    router.visit(`/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id}`);
                 }
             }
         };
 
         return (
             <div
-                onClick={handleClick}
-                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg cursor-pointer"
+                ref={provided.innerRef}
+                {...provided.draggableProps}
+                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
             >
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h3 className="text-2xl font-bold mb-2">{title}</h3>
-                        <p className="text-base font-medium">{description}</p>
+                <div className="flex items-start justify-between mb-4">
+                    <div 
+                        className="flex-grow cursor-pointer"
+                        onClick={handleClick}
+                    >
+                        <div>
+                            <h3 className="text-2xl font-bold mb-2">
+                                {title}
+                            </h3>
+                            <p className="text-base font-medium">
+                                {description}
+                            </p>
+                        </div>
                     </div>
-                    <div className="w-16 h-16 flex-shrink-0">
-                        <img
-                            src={getImageUrl()}
-                            alt={title}
-                            className="w-full h-full object-contain"
-                            onError={(e) => {
-                                e.target.src = '/images/default-manual.png';
-                                e.target.onerror = null; // Prevent infinite loop
-                            }}
-                        />
+                    
+                    <div className="flex items-center space-x-2">
+                        <div className="w-16 h-16 flex-shrink-0">
+                            <img
+                                src={sectionCard.icon_path ? `/storage/${sectionCard.icon_path}` : `/images/manuals/${sectionCard.section_id}.png`}
+                                alt={title}
+                                className="w-full h-full object-contain"
+                                onError={(e) => {
+                                    e.target.src = '/images/default-manual.png';
+                                }}
+                            />
+                        </div>
+                        {isAdmin && (
+                            <div className="flex flex-col items-center space-y-2">
+                                <div {...provided.dragHandleProps} className="cursor-move p-2 hover:bg-[#009FDC]/10 rounded-full transition-colors duration-200">
+                                    <FontAwesomeIcon icon={faGripVertical} className="text-[#009FDC] hover:text-[#007BB5] transition-colors duration-200" />
+                                </div>
+                                {/* Commented out plus icon as it's not needed
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setSelectedCard(null);
+                                        setSelectedParentCard(sectionCard);
+                                        setCurrentCardLevel(3);
+                                        setShowCardForm(true);
+                                    }}
+                                    className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
+                                >
+                                    <FontAwesomeIcon icon={faPlus} className="text-lg" />
+                                </button>
+                                */}
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setSelectedCard({
+                                            ...sectionCard,
+                                            parent_id: sectionCard.parent_id, // Ensure parent_id is preserved
+                                            subsection_id: sectionCard.subsection_id // Ensure subsection_id is preserved
+                                        });
+                                        setSelectedParentCard(null);
+                                        setCurrentCardLevel(2);
+                                        setShowCardForm(true);
+                                    }}
+                                    className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
+                                >
+                                    <FontAwesomeIcon icon={faEdit} className="text-lg" />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -316,14 +407,35 @@ export default function ManualSubSubSection() {
             ) : error ? (
                 <div className="text-red-500 text-center">{error}</div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {subSubSections.map((sectionCard) => (
-                        <SubSubManualSectionCard
-                            key={sectionCard.id}
-                            section={sectionCard}
-                        />
-                    ))}
-                </div>
+                <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable droppableId="sub-sub-sections">
+                        {(provided) => (
+                            <div
+                                {...provided.droppableProps}
+                                ref={provided.innerRef}
+                                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                            >
+                                {subSubSections.map((sectionCard, index) => (
+                                    <Draggable
+                                        key={sectionCard.id}
+                                        draggableId={sectionCard.id.toString()}
+                                        index={index}
+                                        isDragDisabled={!isAdmin}
+                                    >
+                                        {(provided) => (
+                                            <SubSubManualSectionCard
+                                                key={sectionCard.id}
+                                                sectionCard={sectionCard}
+                                                provided={provided}
+                                            />
+                                        )}
+                                    </Draggable>
+                                ))}
+                                {provided.placeholder}
+                            </div>
+                        )}
+                    </Droppable>
+                </DragDropContext>
             )}
 
             {/* Create User Guide Modal */}
@@ -335,6 +447,20 @@ export default function ManualSubSubSection() {
                 }}
                 sectionId={section}
                 subsectionId={subsection}
+            />
+
+            {/* Card Form Modal */}
+            <CardForm
+                isOpen={showCardForm}
+                onClose={() => {
+                    setShowCardForm(false);
+                    setSelectedCard(null);
+                    setSelectedParentCard(null);
+                    fetchSubSubSections();
+                }}
+                card={selectedCard}
+                parentCard={selectedParentCard}
+                level={currentCardLevel}
             />
         </div>
     );
