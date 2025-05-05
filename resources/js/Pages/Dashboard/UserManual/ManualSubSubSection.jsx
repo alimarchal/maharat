@@ -229,7 +229,12 @@ export default function ManualSubSubSection() {
             const reorderedItems = items.map((item, index) => ({
                 id: item.id,
                 order: index,
+                parent_id: item.parent_id
             }));
+
+            console.log('ManualSubSubSection - Sending reorder request:', {
+                items: reorderedItems
+            });
 
             await axios.post(
                 "/api/v1/cards/reorder",
@@ -241,6 +246,9 @@ export default function ManualSubSubSection() {
                     },
                 }
             );
+
+            // Refresh data after successful reorder
+            fetchSubSubSections();
         } catch (error) {
             console.error("Error reordering cards:", error);
             fetchSubSubSections(); // Revert to original order if error occurs
