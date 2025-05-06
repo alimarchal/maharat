@@ -203,7 +203,7 @@ export default function Dashboard({ auth, page }) {
         if (page === "ProcurementCenter/PurchaseOrder/CreateOrder") return <CreatePurchaseOrder />;
         if (page === "ProcurementCenter/Invoices/Invoices") return <InvoicesTable />;
         
-        return <MainDashboard roles={auth.user.roles} />;
+        return <MainDashboard roles={auth.user.roles} permissions={auth.user.permissions} />;
     };
 
     const currentPath = window.location.pathname;
