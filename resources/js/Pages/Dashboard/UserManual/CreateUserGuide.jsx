@@ -283,14 +283,14 @@ const Step = ({
     );
 };
 
-export default function CreateUserGuide({
+const CreateUserGuide = ({
     isOpen,
     onClose,
     sectionId,
     subsectionId,
     editMode = false,
     guideId = null,
-}) {
+}) => {
     const [steps, setSteps] = useState([
         {
             step_number: 1,
@@ -1525,4 +1525,6 @@ export default function CreateUserGuide({
             </div>
         </div>
     );
-} 
+};
+
+export default CreateUserGuide; 
