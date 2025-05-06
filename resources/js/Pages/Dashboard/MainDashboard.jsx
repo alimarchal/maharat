@@ -514,8 +514,7 @@ export default function MainDashboard({ roles, permissions }) {
                                 : null
                         }
                         onClick={
-                            hasPermission("view_warehouse") &&
-                            warehouseDropdownItems.length === 0
+                            hasPermission("manage_warehouse")
                                 ? () => router.visit("/warehouse-management")
                                 : null
                         }
