@@ -196,22 +196,6 @@ const Step = ({
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <div className="mt-2">
-                                                        <input
-                                                            type="text"
-                                                            value={screenshot.caption || ""}
-                                                            onChange={(e) =>
-                                                                updateScreenshot(
-                                                                    index,
-                                                                    screenshotIndex,
-                                                                    "caption",
-                                                                    e.target.value
-                                                                )
-                                                            }
-                                                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                                            placeholder="Caption"
-                                                        />
-                                                    </div>
                                                 </div>
                                             )}
                                         </Draggable>
@@ -355,9 +339,48 @@ export default function CreateUserGuide({
     // Load available cards when modal opens
     useEffect(() => {
         if (isOpen) {
-            fetchCards();
+            refreshCardData();
         }
     }, [isOpen]);
+
+    // Add function to refresh card data
+    const refreshCardData = async () => {
+        try {
+            setIsLoadingCards(true);
+            const response = await axios.get("/api/v1/cards");
+            if (response.data && response.data.data) {
+                const { main_cards, sub_cards } = response.data.data;
+                
+                // Store all cards
+                const allCards = [...main_cards, ...sub_cards];
+                setCards(allCards);
+                setParentCards(main_cards);
+                
+                // If we have a selected parent card, update its sub-cards
+                if (data.parent_card_id) {
+                    const selectedId = parseInt(data.parent_card_id);
+                    const childrenOfSelected = allCards.filter(
+                        (card) => card.parent_id === selectedId
+                    );
+                    setChildCards(childrenOfSelected);
+
+                    // If we have a selected child card, update its sub-sub-cards
+                    if (data.child_card_id) {
+                        const childId = parseInt(data.child_card_id);
+                        const subChildrenOfSelected = allCards.filter(
+                            (card) => card.parent_id === childId
+                        );
+                        setSubChildCards(subChildrenOfSelected);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Error refreshing cards:", error);
+            toast.error("Failed to load cards. Please try again.");
+        } finally {
+            setIsLoadingCards(false);
+        }
+    };
 
     // Add effect to handle parent card selection
     useEffect(() => {
@@ -370,9 +393,6 @@ export default function CreateUserGuide({
             console.log('Sub cards found:', childrenOfSelected);
             setChildCards(childrenOfSelected);
             
-            // Check if a manual already exists for this card
-            checkExistingManual(selectedId);
-
             // If no children available, use the parent card ID
             if (childrenOfSelected.length === 0) {
                 setData("card_id", data.parent_card_id);
@@ -403,17 +423,21 @@ export default function CreateUserGuide({
             console.log('Sub-sub cards found:', subChildrenOfSelected);
             setSubChildCards(subChildrenOfSelected);
             
-            // Check if a manual already exists for this card
-            checkExistingManual(selectedId);
-            
             // If no sub-sub-cards available, use the child card ID
             if (subChildrenOfSelected.length === 0) {
                 setData("card_id", data.child_card_id);
-                } else {
+            } else {
                 setData("card_id", "");
             }
         }
     }, [data.child_card_id, cards, editMode]);
+
+    // Add effect to check for existing manuals when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            checkExistingManual();
+        }
+    }, [isOpen]);
 
     // Add function to check for existing manual
     const checkExistingManual = async () => {
@@ -441,77 +465,6 @@ export default function CreateUserGuide({
             }
         }
     };
-
-    // Add effect to check for existing manuals when modal opens
-    useEffect(() => {
-        if (isOpen) {
-            checkExistingManual();
-        }
-    }, [isOpen]);
-
-    // Add function to refresh card data
-    const refreshCardData = async () => {
-        try {
-            setIsLoadingCards(true);
-            const response = await axios.get("/api/v1/cards");
-            if (response.data && response.data.data) {
-                const { main_cards, sub_cards } = response.data.data;
-                
-                // Store all cards
-                setCards([...main_cards, ...sub_cards]);
-                setParentCards(main_cards);
-                setChildCards(sub_cards);
-
-                // If we have a selected parent card, update its sub-cards
-                if (data.parent_card_id) {
-                    const selectedId = parseInt(data.parent_card_id);
-                    const childrenOfSelected = sub_cards.filter(
-                        (card) => card.parent_id === selectedId
-                    );
-                    setChildCards(childrenOfSelected);
-
-                    // If we have a selected child card, update its sub-sub-cards
-                    if (data.child_card_id) {
-                        const childId = parseInt(data.child_card_id);
-                        const subChildrenOfSelected = sub_cards.filter(
-                            (card) => card.parent_id === childId
-                        );
-                        setSubChildCards(subChildrenOfSelected);
-                    }
-                }
-            }
-        } catch (error) {
-            console.error("Error refreshing cards:", error);
-        } finally {
-            setIsLoadingCards(false);
-        }
-    };
-
-    // Update fetchCards to use refreshCardData
-    const fetchCards = async () => {
-        await refreshCardData();
-    };
-
-    // Add effect to refresh card data when modal opens
-    useEffect(() => {
-        if (isOpen) {
-            refreshCardData();
-        }
-    }, [isOpen]);
-
-    // Add effect to refresh card data when parent card changes
-    useEffect(() => {
-        if (data.parent_card_id) {
-            refreshCardData();
-        }
-    }, [data.parent_card_id]);
-
-    // Add effect to refresh card data when child card changes
-    useEffect(() => {
-        if (data.child_card_id) {
-            refreshCardData();
-        }
-    }, [data.child_card_id]);
 
     const fetchGuideData = async () => {
         try {
@@ -735,7 +688,6 @@ export default function CreateUserGuide({
             file: null,
             file_name: "",
             alt_text: "",
-            caption: "",
             type: "image",
             order: newSteps[stepIndex].screenshots.length + 1,
         });
@@ -751,7 +703,6 @@ export default function CreateUserGuide({
                 try {
                     const formData = new FormData();
                     formData.append("screenshot", value);
-                    formData.append("caption", screenshot.caption || "");
                     formData.append("alt_text", screenshot.alt_text || "");
                     formData.append("order", screenshot.order || screenshotIndex + 1);
                     formData.append("file_name", value.name);
@@ -788,7 +739,6 @@ export default function CreateUserGuide({
                             mime_type: value.type,
                             size: value.size,
                             screenshot_url: response.data.data.screenshot_url,
-                            caption: response.data.data.caption,
                             is_edited: true,
                             order: screenshotIndex + 1
                         };
@@ -800,7 +750,7 @@ export default function CreateUserGuide({
                 }
             }
         } else {
-            // For caption and other fields, update both local state and server if it's an existing screenshot
+            // For other fields, update both local state and server if it's an existing screenshot
             newSteps[stepIndex].screenshots[screenshotIndex][field] = value;
             
             if (screenshot.id) {
@@ -808,11 +758,6 @@ export default function CreateUserGuide({
                     const formData = new FormData();
                     formData.append(field, value);
                     formData.append("order", screenshot.order || screenshotIndex + 1);
-                    
-                    // Always include the caption in the request
-                    if (field === 'caption') {
-                        formData.append("caption", value);
-                    }
                     
                     const response = await axios.put(
                         `/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`,
@@ -829,7 +774,6 @@ export default function CreateUserGuide({
                         ...screenshot,
                         [field]: value,
                         screenshot_url: response.data.data.screenshot_url,
-                        caption: response.data.data.caption,
                         order: screenshot.order || screenshotIndex + 1
                     };
                 } catch (error) {
@@ -1405,7 +1349,7 @@ export default function CreateUserGuide({
                                             id: p.id,
                                             label: p.name,
                                         }))}
-                                        disabled={editMode}
+                                        disabled={editMode || isLoadingCards}
                                         className={editMode ? "opacity-50 cursor-not-allowed" : ""}
                                     />
                                     {errors.parent_card_id && (
@@ -1417,8 +1361,8 @@ export default function CreateUserGuide({
                             )}
                         </div>
 
-                        {/* Child Card Selection - Always show if parent card is selected */}
-                        {data.parent_card_id && (
+                        {/* Child Card Selection - Show if parent card is selected AND has children */}
+                        {!isLoadingCards && data.parent_card_id && childCards.length > 0 && (
                             <div className="flex-1 min-w-[200px]">
                                 <SelectFloating
                                     label="Sub Card"
@@ -1435,13 +1379,11 @@ export default function CreateUserGuide({
                                         setSelectedChildCard(childId);
                                         }
                                     }}
-                                    options={childCards
-                                        .filter(card => card.parent_id === parseInt(data.parent_card_id))
-                                        .map(card => ({
-                                            id: card.id,
-                                            label: card.name,
-                                        }))}
-                                    disabled={editMode}
+                                    options={childCards.map(card => ({
+                                        id: card.id,
+                                        label: card.name,
+                                    }))}
+                                    disabled={editMode || isLoadingCards}
                                     className={editMode ? "opacity-50 cursor-not-allowed" : ""}
                                 />
                                 {errors.child_card_id && (
@@ -1452,8 +1394,8 @@ export default function CreateUserGuide({
                             </div>
                         )}
 
-                        {/* Sub-Child Card Selection - Always show if child card is selected */}
-                        {data.child_card_id && (
+                        {/* Sub-Child Card Selection - Show if child card is selected AND has children */}
+                        {!isLoadingCards && data.child_card_id && subChildCards.length > 0 && (
                             <div className="flex-1 min-w-[200px]">
                                 <SelectFloating
                                     label="Sub-Sub Card"
@@ -1468,7 +1410,7 @@ export default function CreateUserGuide({
                                         id: card.id,
                                         label: card.name,
                                     }))}
-                                    disabled={editMode}
+                                    disabled={editMode || isLoadingCards}
                                     className={editMode ? "opacity-50 cursor-not-allowed" : ""}
                                 />
                                 {errors.card_id && (
