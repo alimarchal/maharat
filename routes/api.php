@@ -461,4 +461,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/cards/{card}', [CardController::class, 'update']);
     Route::get('/cards/{card}/children', [CardController::class, 'checkForChildren']);
 
+    // Process steps routes
+    Route::post('/process-steps/reorder', [App\Http\Controllers\Api\V1\ProcessStepController::class, 'reorder']);
+
 });

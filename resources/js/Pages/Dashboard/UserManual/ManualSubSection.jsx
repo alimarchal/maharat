@@ -237,13 +237,11 @@ export default function UserManualSubSections() {
             <div
                 ref={provided.innerRef}
                 {...provided.draggableProps}
-                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
+                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg cursor-pointer"
+                onClick={handleClick}
             >
                 <div className="flex items-start justify-between mb-4">
-                    <div 
-                        className="flex-grow cursor-pointer"
-                        onClick={handleClick}
-                    >
+                    <div className="flex-grow">
                         <div>
                             <h3 className="text-2xl font-bold mb-2">
                                 {title}
@@ -273,6 +271,7 @@ export default function UserManualSubSections() {
                                 <button
                                     onClick={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         setSelectedCard(null);
                                         setSelectedParentCard(sectionCard);
                                         setCurrentCardLevel(2);
@@ -285,6 +284,7 @@ export default function UserManualSubSections() {
                                 <button
                                     onClick={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         setSelectedCard(sectionCard);
                                         setSelectedParentCard(null);
                                         setCurrentCardLevel(1);

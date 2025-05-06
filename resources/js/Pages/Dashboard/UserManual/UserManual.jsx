@@ -263,58 +263,56 @@ export default function UserManual() {
                                             <div
                                                 ref={provided.innerRef}
                                                 {...provided.draggableProps}
-                                                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg"
-                                            >
-                                                <div className="flex items-start justify-between mb-4">
-                                                    <div 
-                                                        className="flex-grow cursor-pointer"
-                                                        onClick={async () => {
-                                                            console.log('UserManual - Card clicked:', {
-                                                                cardId: card.id,
-                                                                cardName: card.name,
-                                                                sectionId: card.section_id,
-                                                                subsectionId: card.subsection_id
+                                                className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg cursor-pointer"
+                                                onClick={async () => {
+                                                    console.log('UserManual - Card clicked:', {
+                                                        cardId: card.id,
+                                                        cardName: card.name,
+                                                        sectionId: card.section_id,
+                                                        subsectionId: card.subsection_id
+                                                    });
+                                                    
+                                                    try {
+                                                        const response = await axios.get(`/api/v1/cards/${card.id}/children`);
+                                                        console.log('UserManual - Children check response:', {
+                                                            cardId: card.id,
+                                                            hasChildren: response.data.data.has_children,
+                                                            children: response.data.data.children
+                                                        });
+                                                        
+                                                        if (response.data.data.has_children) {
+                                                            console.log('UserManual - Routing to ManualSubSection');
+                                                            router.visit(`/user-manual/${card.section_id}`);
+                                                        } else {
+                                                            const guide = guidesMap[card.id]?.[0];
+                                                            console.log('UserManual - No children, checking for guide:', {
+                                                                hasGuide: !!guide,
+                                                                guideId: guide?.id
                                                             });
                                                             
-                                                            try {
-                                                                const response = await axios.get(`/api/v1/cards/${card.id}/children`);
-                                                                console.log('UserManual - Children check response:', {
-                                                                    cardId: card.id,
-                                                                    hasChildren: response.data.data.has_children,
-                                                                    children: response.data.data.children
-                                                                });
-                                                                
-                                                                if (response.data.data.has_children) {
-                                                                    console.log('UserManual - Routing to ManualSubSection');
-                                                                    router.visit(`/user-manual/${card.section_id}`);
-                                                                } else {
-                                                                    const guide = guidesMap[card.id]?.[0];
-                                                                    console.log('UserManual - No children, checking for guide:', {
-                                                                        hasGuide: !!guide,
-                                                                        guideId: guide?.id
-                                                                    });
-                                                                    
-                                                                    if (guide) {
-                                                                        console.log('UserManual - Routing to GuideDetail');
-                                                                        router.visit(`/user-manual/guide/${guide.id}`);
-                                                                    } else {
-                                                                        console.log('UserManual - No guide, routing to ManualSubSection');
-                                                                        router.visit(`/user-manual/${card.section_id}/${card.subsection_id || card.id}`);
-                                                                    }
-                                                                }
-                                                            } catch (error) {
-                                                                console.error('UserManual - Error checking for children:', error);
-                                                                const guide = guidesMap[card.id]?.[0];
-                                                                if (guide) {
-                                                                    console.log('UserManual - Error fallback: Routing to GuideDetail');
-                                                                    router.visit(`/user-manual/guide/${guide.id}`);
-                                                                } else {
-                                                                    console.log('UserManual - Error fallback: Routing to ManualSubSection');
-                                                                    router.visit(`/user-manual/${card.section_id}/${card.subsection_id || card.id}`);
-                                                                }
+                                                            if (guide) {
+                                                                console.log('UserManual - Routing to GuideDetail');
+                                                                router.visit(`/user-manual/guide/${guide.id}`);
+                                                            } else {
+                                                                console.log('UserManual - No guide, routing to ManualSubSection');
+                                                                router.visit(`/user-manual/${card.section_id}/${card.subsection_id || card.id}`);
                                                             }
-                                                        }}
-                                                    >
+                                                        }
+                                                    } catch (error) {
+                                                        console.error('UserManual - Error checking for children:', error);
+                                                        const guide = guidesMap[card.id]?.[0];
+                                                        if (guide) {
+                                                            console.log('UserManual - Error fallback: Routing to GuideDetail');
+                                                            router.visit(`/user-manual/guide/${guide.id}`);
+                                                        } else {
+                                                            console.log('UserManual - Error fallback: Routing to ManualSubSection');
+                                                            router.visit(`/user-manual/${card.section_id}/${card.subsection_id || card.id}`);
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                <div className="flex items-start justify-between mb-4">
+                                                    <div className="flex-grow">
                                                         <div>
                                                             <h3 className="text-2xl font-bold mb-2">
                                                                 {card.name}
@@ -344,6 +342,7 @@ export default function UserManual() {
                                                                 <button
                                                                     onClick={(e) => {
                                                                         e.preventDefault();
+                                                                        e.stopPropagation();
                                                                         setSelectedCard(null);
                                                                         setSelectedParentCard(card);
                                                                         setCurrentCardLevel(1);
@@ -356,6 +355,7 @@ export default function UserManual() {
                                                                 <button
                                                                     onClick={(e) => {
                                                                         e.preventDefault();
+                                                                        e.stopPropagation();
                                                                         setSelectedCard(card);
                                                                         setSelectedParentCard(null);
                                                                         setCurrentCardLevel(0);
