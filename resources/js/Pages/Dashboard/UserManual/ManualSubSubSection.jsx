@@ -318,31 +318,13 @@ export default function ManualSubSubSection() {
                 className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg cursor-pointer"
                 onClick={handleClick}
             >
-                <div className="flex items-start justify-between mb-4">
-                    <div className="flex-grow">
-                        <div>
-                            <h3 className="text-2xl font-bold mb-2">
-                                {title}
-                            </h3>
-                            <p className="text-base font-medium">
-                                {description}
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                        <div className="w-16 h-16 flex-shrink-0">
-                            <img
-                                src={sectionCard.icon_path ? `/storage/${sectionCard.icon_path}` : `/images/manuals/${sectionCard.section_id}.png`}
-                                alt={title}
-                                className="w-full h-full object-contain"
-                                onError={(e) => {
-                                    e.target.src = '/images/default-manual.png';
-                                }}
-                            />
-                        </div>
+                <div className="flex flex-col">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-2xl font-bold">
+                            {title}
+                        </h3>
                         {isAdmin && (
-                            <div className="flex flex-col items-center space-y-2">
+                            <div className="flex items-center space-x-2">
                                 <div {...provided.dragHandleProps} className="cursor-move p-2 hover:bg-[#009FDC]/10 rounded-full transition-colors duration-200">
                                     <FontAwesomeIcon icon={faGripVertical} className="text-[#009FDC] hover:text-[#007BB5] transition-colors duration-200" />
                                 </div>
@@ -365,6 +347,21 @@ export default function ManualSubSubSection() {
                                 </button>
                             </div>
                         )}
+                    </div>
+                    <div className="flex items-center">
+                        <p className="text-base font-medium flex-grow">
+                            {description}
+                        </p>
+                        <div className="w-16 h-16 flex-shrink-0 ml-1">
+                            <img
+                                src={sectionCard.icon_path ? `/storage/${sectionCard.icon_path}` : `/images/manuals/${sectionCard.section_id}.png`}
+                                alt={title}
+                                className="w-full h-full object-contain"
+                                onError={(e) => {
+                                    e.target.src = '/images/default-manual.png';
+                                }}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
