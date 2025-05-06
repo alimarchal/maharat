@@ -13,7 +13,6 @@ import {
     faFileCirclePlus,
     faFileSignature,
     faListCheck,
-    faUsers,
     faBell,
     faDiagramProject,
     faUserPen,
@@ -26,9 +25,6 @@ import {
     faCalculator,
     faChartLine,
     faMoneyBillWave,
-    faSignal,
-    faTasks,
-    faSync,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { router } from "@inertiajs/react";
@@ -177,7 +173,7 @@ const DashboardCard = ({
                             className={`text-2xl ${iconColor}`}
                         />
                     </div>
-                    {dropdownItems && (
+                    {dropdownItems && dropdownItems.length > 0 && (
                         <button
                             ref={buttonRef}
                             onClick={(e) => {
@@ -208,7 +204,7 @@ const DashboardCard = ({
                     <p className="text-base text-[#9B9DA2] mt-1">{subtitle}</p>
                 </div>
             </div>
-            {dropdownItems && (
+            {dropdownItems && dropdownItems.length > 0 && (
                 <div
                     ref={dropdownRef}
                     className={`absolute ${
@@ -234,172 +230,204 @@ const DashboardCard = ({
     );
 };
 
-export default function MainDashboard({ roles }) {
-    const isAdmin = roles && roles.includes("Admin");
-    const isUser = roles && roles.includes("User");
-    const isProcurementManager = roles && roles.includes("Procurement Manager");
-    const isWarehouseManager = roles && roles.includes("Warehouse Manager");
+export default function MainDashboard({ roles, permissions }) {
+    const hasPermission = (permission) => {
+        return permissions && permissions.includes(permission);
+    };
 
-    // const tasksDropdownItems = [
-    //     {
-    //         text: "My Tasks",
-    //         icon: faTasks,
-    //         onClick: () => router.visit("/tasks"),
-    //     },
-    //     {
-    //         text: "Approve a Budget",
-    //         icon: faMoneyBillWave,
-    //         onClick: () => router.visit("/approve-budget"),
-    //     },
-    // ];
+    // Filter dropdown items based on user permissions
+    const filterDropdownItems = (items, requiredPermissions) => {
+        return items.filter((item) => {
+            // If no required permissions specified for this item, show it
+            if (!item.requiredPermission) return true;
+            // Otherwise, check if user has the required permission
+            return hasPermission(item.requiredPermission);
+        });
+    };
 
-    const purchaseDropdownItems = [
+    // Procurement Center dropdown items with permission requirements
+    const basePurchaseDropdownItems = [
         {
             text: "RFQs",
             icon: faFileCirclePlus,
             onClick: () => router.visit("/rfqs"),
+            requiredPermission: "view_rfqs",
         },
         {
             text: "Quotations",
             icon: faFileInvoice,
             onClick: () => router.visit("/quotations"),
+            requiredPermission: "view_quotations",
         },
         {
             text: "Purchase Orders",
             icon: faFileSignature,
             onClick: () => router.visit("/purchase-orders"),
+            requiredPermission: "view_purchase_orders",
         },
         {
             text: "External Invoices",
             icon: faFileAlt,
             onClick: () => router.visit("/external-invoices"),
+            requiredPermission: "view_invoices",
         },
     ];
 
-    const financeDropdownItems = [
+    // Finance Center dropdown items with permission requirements
+    const baseFinanceDropdownItems = [
         {
             text: "Maharat Invoices",
             icon: faFileInvoice,
             onClick: () => router.visit("/maharat-invoices"),
+            requiredPermission: "view_maharat_invoices",
         },
         {
             text: "Accounts",
             icon: faBook,
             onClick: () => router.visit("/accounts"),
+            requiredPermission: "view_finance",
         },
         {
             text: "Payment Orders",
             icon: faMoneyCheckDollar,
             onClick: () => router.visit("/payment-orders"),
+            requiredPermission: "view_payment_orders",
         },
         {
             text: "Account Receivables",
             icon: faFileInvoiceDollar,
             onClick: () => router.visit("/account-receivables"),
+            requiredPermission: "view_finance",
         },
         {
             text: "Account Payables",
             icon: faFileInvoice,
             onClick: () => router.visit("/account-payables"),
+            requiredPermission: "view_finance",
         },
     ];
 
-    const warehouseDropdownItems = [
+    // Warehouse dropdown items with permission requirements
+    const baseWarehouseDropdownItems = [
         {
             text: "User Material Requests",
             icon: faFileAlt,
             onClick: () => router.visit("/material-requests"),
+            requiredPermission: "view_material_requests",
         },
         {
             text: "Categories",
             icon: faListCheck,
             onClick: () => router.visit("/category"),
+            requiredPermission: "view_warehouse",
         },
         {
             text: "Items",
             icon: faClipboardList,
             onClick: () => router.visit("/items"),
+            requiredPermission: "view_warehouse",
         },
         {
             text: "Goods Receiving Notes",
             icon: faFileInvoice,
             onClick: () => router.visit("/goods-receiving-notes"),
+            requiredPermission: "view_goods_receiving_notes",
         },
         {
             text: "Inventory Tracking",
             icon: faChartBar,
             onClick: () => router.visit("/inventory-tracking"),
+            requiredPermission: "view_warehouse",
         },
     ];
 
-    const budgetDropdownItems = [
+    // Budget dropdown items with permission requirements
+    const baseBudgetDropdownItems = [
         {
             text: "Cost Centers",
             icon: faCoins,
             onClick: () => router.visit("/cost-centers"),
+            requiredPermission: "view_budget",
         },
         {
             text: "Income Statement",
             icon: faChartLine,
             onClick: () => router.visit("/income-statement"),
+            requiredPermission: "view_finance",
         },
         {
             text: "Balance Sheet",
             icon: faBalanceScale,
             onClick: () => router.visit("/balance-sheet"),
+            requiredPermission: "view_finance",
         },
         {
             text: "Budget",
             icon: faMoneyBillWave,
             onClick: () => router.visit("/budget"),
+            requiredPermission: "view_budget",
         },
         {
             text: "Request a Budget",
             icon: faFileSignature,
             onClick: () => router.visit("/request-budgets"),
+            requiredPermission: "view_budget",
         },
     ];
 
-    // const reportsDropdownItems = [
-    //     {
-    //         text: "Reports",
-    //         icon: faFileAlt,
-    //         onClick: () => router.visit("/reports"),
-    //     },
-    //     {
-    //         text: "Purchase Document Status",
-    //         icon: faSignal,
-    //         onClick: () => router.visit("/purchase-doc-status"),
-    //     },
-    //     {
-    //         text: "Statuses",
-    //         icon: faSync,
-    //         onClick: () => router.visit("/statuses"),
-    //     },
-    // ];
-
-    const configDropdownItems = [
+    // Configuration dropdown items with permission requirements
+    const baseConfigDropdownItems = [
         {
             text: "Organizational Chart",
             icon: faChartBar,
             onClick: () => router.visit("/chart"),
+            requiredPermission: "view_org_chart",
         },
         {
             text: "Process Flow",
             icon: faDiagramProject,
             onClick: () => router.visit("/process-flow"),
+            requiredPermission: "view_process_flow",
         },
         {
             text: "Notification Settings",
             icon: faBell,
             onClick: () => router.visit("/notification-settings"),
+            requiredPermission: "manage_settings",
         },
         {
             text: "Roles & Permission",
             icon: faUserPen,
             onClick: () => router.visit("/roles-permissions"),
+            requiredPermission: "view_permission_settings",
         },
     ];
+
+    // Filter dropdown items based on permissions
+    const purchaseDropdownItems = filterDropdownItems(
+        basePurchaseDropdownItems
+    );
+    const financeDropdownItems = filterDropdownItems(baseFinanceDropdownItems);
+    const warehouseDropdownItems = filterDropdownItems(
+        baseWarehouseDropdownItems
+    );
+    const budgetDropdownItems = filterDropdownItems(baseBudgetDropdownItems);
+    const configDropdownItems = filterDropdownItems(baseConfigDropdownItems);
+
+    // Determine which cards to show based on permissions
+    const showRequestsCard = hasPermission("view_requests");
+    const showTasksCard = hasPermission("view_tasks");
+    const showProcurementCard =
+        purchaseDropdownItems.length > 0 || hasPermission("view_procurement");
+    const showFinanceCard =
+        financeDropdownItems.length > 0 || hasPermission("view_finance");
+    const showWarehouseCard =
+        warehouseDropdownItems.length > 0 || hasPermission("view_warehouse");
+    const showBudgetCard =
+        budgetDropdownItems.length > 0 || hasPermission("view_budget");
+    const showStatusesCard = hasPermission("view_reports");
+    const showConfigCard =
+        configDropdownItems.length > 0 || hasPermission("view_configuration");
 
     return (
         <>
@@ -417,79 +445,121 @@ export default function MainDashboard({ roles }) {
                 </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 my-6">
-                <DashboardCard
-                    icon={faClipboardList}
-                    title="Requests"
-                    subtitle="My Requests & History"
-                    bgColor="bg-[#C4E4F0]"
-                    iconColor="text-[#005372]"
-                    onClick={() => router.visit("/my-requests")}
-                />
-                <DashboardCard
-                    icon={faListCheck}
-                    title="Task Center"
-                    subtitle="My Tasks & History"
-                    bgColor="bg-[#F7EBBA]"
-                    iconColor="text-[#665200]"
-                    // dropdownItems={tasksDropdownItems}
-                    onClick={() => router.visit("/tasks")}
-                />
-                <DashboardCard
-                    icon={faShoppingCart}
-                    title="Procurement Center"
-                    subtitle="Procurement System"
-                    bgColor="bg-[#BFBCD8]"
-                    iconColor="text-[#393559]"
-                    dropdownItems={purchaseDropdownItems}
-                />
-                <DashboardCard
-                    icon={faBoxes}
-                    title="Finance Center"
-                    subtitle="Financials"
-                    bgColor="bg-[#C4E4F0]"
-                    iconColor="text-[#005372]"
-                    dropdownItems={financeDropdownItems}
-                />
-            </div>
-
-            {isAdmin && (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 my-6">
+                {showRequestsCard && (
+                    <DashboardCard
+                        icon={faClipboardList}
+                        title="Requests"
+                        subtitle="My Requests & History"
+                        bgColor="bg-[#C4E4F0]"
+                        iconColor="text-[#005372]"
+                        onClick={
+                            hasPermission("view_requests")
+                                ? () => router.visit("/my-requests")
+                                : null
+                        }
+                    />
+                )}
+                {showTasksCard && (
+                    <DashboardCard
+                        icon={faListCheck}
+                        title="Task Center"
+                        subtitle="My Tasks & History"
+                        bgColor="bg-[#F7EBBA]"
+                        iconColor="text-[#665200]"
+                        onClick={
+                            hasPermission("view_tasks")
+                                ? () => router.visit("/tasks")
+                                : null
+                        }
+                    />
+                )}
+                {showProcurementCard && (
+                    <DashboardCard
+                        icon={faShoppingCart}
+                        title="Procurement Center"
+                        subtitle="Procurement System"
+                        bgColor="bg-[#BFBCD8]"
+                        iconColor="text-[#393559]"
+                        dropdownItems={
+                            purchaseDropdownItems.length > 0
+                                ? purchaseDropdownItems
+                                : null
+                        }
+                    />
+                )}
+                {showFinanceCard && (
+                    <DashboardCard
+                        icon={faBoxes}
+                        title="Finance Center"
+                        subtitle="Financials"
+                        bgColor="bg-[#C4E4F0]"
+                        iconColor="text-[#005372]"
+                        dropdownItems={
+                            financeDropdownItems.length > 0
+                                ? financeDropdownItems
+                                : null
+                        }
+                    />
+                )}
+                {showWarehouseCard && (
                     <DashboardCard
                         icon={faWarehouse}
                         title="Warehouse"
                         subtitle="Stock Management"
                         bgColor="bg-[#F7EBBA]"
                         iconColor="text-[#665200]"
-                        dropdownItems={warehouseDropdownItems}
-                        onClick={() => router.visit("/warehouse-management")}
+                        dropdownItems={
+                            warehouseDropdownItems.length > 0
+                                ? warehouseDropdownItems
+                                : null
+                        }
+                        onClick={
+                            hasPermission("view_warehouse") &&
+                            warehouseDropdownItems.length === 0
+                                ? () => router.visit("/warehouse-management")
+                                : null
+                        }
                     />
+                )}
+                {showBudgetCard && (
                     <DashboardCard
                         icon={faCalculator}
                         title="Budget & Accounts"
                         subtitle="Planning & Accounting"
                         bgColor="bg-[#F7CCCC]"
                         iconColor="text-[#661E1E]"
-                        dropdownItems={budgetDropdownItems}
+                        dropdownItems={
+                            budgetDropdownItems.length > 0
+                                ? budgetDropdownItems
+                                : null
+                        }
                     />
+                )}
+                {showStatusesCard && (
                     <DashboardCard
                         icon={faClipboardList}
                         title="Statuses"
                         subtitle="All Statuses"
                         bgColor="bg-[#B9BBBD]"
                         iconColor="text-[#2C323C]"
-                        // dropdownItems={reportsDropdownItems}
                         onClick={() => router.visit("/statuses")}
                     />
+                )}
+                {showConfigCard && (
                     <DashboardCard
                         icon={faCogs}
                         title="Configuration Center"
                         subtitle="Process Flow"
                         bgColor="bg-[#DEEEE9]"
                         iconColor="text-[#074D38]"
-                        dropdownItems={configDropdownItems}
+                        dropdownItems={
+                            configDropdownItems.length > 0
+                                ? configDropdownItems
+                                : null
+                        }
                     />
-                </div>
-            )}
+                )}
+            </div>
         </>
     );
 }
