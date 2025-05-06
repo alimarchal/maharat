@@ -257,17 +257,17 @@ export default function MainDashboard({ roles }) {
         {
             text: "RFQs",
             icon: faFileCirclePlus,
-            onClick: () => router.visit("/rfq"),
+            onClick: () => router.visit("/rfqs"),
         },
         {
             text: "Quotations",
             icon: faFileInvoice,
-            onClick: () => router.visit("/quotation"),
+            onClick: () => router.visit("/quotations"),
         },
         {
             text: "Purchase Orders",
             icon: faFileSignature,
-            onClick: () => router.visit("/view-order"),
+            onClick: () => router.visit("/purchase-orders"),
         },
         {
             text: "External Invoices",
