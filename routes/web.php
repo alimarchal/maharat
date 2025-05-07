@@ -424,26 +424,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('user-manual.subsection');
 
     // For sub-sub-section details
-    Route::get('/user-manual/{sectionId}/{subsectionName}', function ($sectionId, $subsectionName) {
+    Route::get('/user-manual/{sectionId}/{subsectionId}/{cardId}', function ($sectionId, $subsectionId, $cardId) {
         \Log::info('ManualSubSubSection route hit', [
             'sectionId' => $sectionId,
-            'subsectionName' => $subsectionName,
+            'subsectionId' => $subsectionId,
+            'cardId' => $cardId,
             'url' => request()->url()
         ]);
 
-        // First try to find the card by name
-        $card = \App\Models\Card::where('name', str_replace('-', ' ', $subsectionName))->first();
+        // First try to find the card by id
+        $card = \App\Models\Card::where('id', $cardId)->first();
         
-        // If not found, try to find by id
+        // If not found, try to find by name
         if (!$card) {
-            $card = \App\Models\Card::where('id', $subsectionName)->first();
-        }
-
-        // If still not found, try to find by section_id and name
-        if (!$card) {
-            $card = \App\Models\Card::where('section_id', $sectionId)
-                ->where('name', str_replace('-', ' ', $subsectionName))
-                ->first();
+            $card = \App\Models\Card::where('name', str_replace('-', ' ', $cardId))->first();
         }
 
         \Log::info('Card found', [
@@ -453,15 +447,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ]);
 
         if (!$card) {
-            \Log::info('No card found, rendering ManualSubSection', [
+            \Log::info('No card found, rendering ManualSubSubSection', [
                 'sectionId' => $sectionId,
-                'subsectionName' => $subsectionName,
+                'subsectionId' => $subsectionId,
+                'cardId' => $cardId,
                 'url' => request()->url()
             ]);
             return Inertia::render('Dashboard', [
-                'page' => 'UserManual/ManualSubSection',
+                'page' => 'UserManual/ManualSubSubSection',
                 'section' => $sectionId,
-                'subsection' => $subsectionName
+                'subsection' => $subsectionId,
+                'cardId' => $cardId
             ]);
         }
 
@@ -478,7 +474,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'page' => 'UserManual/GuideDetail',
                 'id' => $guide->id,
                 'sectionId' => $sectionId,
-                'subsectionId' => $subsectionName,
+                'subsectionId' => $subsectionId,
                 'cardId' => $card->id,
                 'card' => $card->toArray()
             ]);
@@ -492,23 +488,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return Inertia::render('Dashboard', [
                 'page' => 'UserManual/ManualSubSubSection',
                 'section' => $sectionId,
-                'subsection' => $subsectionName,
-                'card' => $card->toArray()
-            ]);
-        } else {
-            \Log::info('Card has no children and no guide, rendering GuideDetail with under construction', [
-                'card' => $card->toArray(),
-                'url' => request()->url()
-            ]);
-            return Inertia::render('Dashboard', [
-                'page' => 'UserManual/GuideDetail',
-                'sectionId' => $sectionId,
-                'subsectionId' => $subsectionName,
+                'subsection' => $subsectionId,
                 'cardId' => $card->id,
                 'card' => $card->toArray()
             ]);
         }
-    })->name('user-manual.subsection');
+
+        \Log::info('Card has no children and no guide, rendering GuideDetail with under construction', [
+            'card' => $card->toArray(),
+            'url' => request()->url()
+        ]);
+        return Inertia::render('Dashboard', [
+            'page' => 'UserManual/GuideDetail',
+            'sectionId' => $sectionId,
+            'subsectionId' => $subsectionId,
+            'cardId' => $card->id,
+            'card' => $card->toArray()
+        ]);
+    })->name('user-manual.subsubsection');
 
     // FAQ routes
     Route::get('/faqs', function () {

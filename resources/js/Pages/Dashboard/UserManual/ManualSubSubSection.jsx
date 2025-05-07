@@ -186,13 +186,13 @@ export default function ManualSubSubSection() {
                     setSubSubSections([]);
                 }
             } else {
-            const sortedSubSubSections = subSubSectionCards.sort((a, b) => {
-                if (a.order !== undefined && b.order !== undefined) {
-                    return a.order - b.order;
-                }
-                return a.id - b.id;
-            });
-            setSubSubSections(sortedSubSubSections);
+                const sortedSubSubSections = subSubSectionCards.sort((a, b) => {
+                    if (a.order !== undefined && b.order !== undefined) {
+                        return a.order - b.order;
+                    }
+                    return a.id - b.id;
+                });
+                setSubSubSections(sortedSubSubSections);
             }
 
             const guidesData = guidesResponse.data?.data || [];
@@ -204,6 +204,12 @@ export default function ManualSubSubSection() {
                     }
                     grouped[guide.card_id].push(guide);
                 }
+            });
+
+            console.log('ManualSubSubSection - Guides mapped:', {
+                guidesData,
+                grouped,
+                currentUrl: window.location.pathname
             });
 
             setGuidesMap(grouped);
@@ -255,68 +261,89 @@ export default function ManualSubSubSection() {
         }
     };
 
+    const handleClick = async (card) => {
+        console.log('ManualSubSubSection - Card clicked:', {
+            card,
+            section,
+            subsection,
+            currentUrl: window.location.pathname
+        });
+
+        try {
+            // Check if the card has children
+            const response = await axios.get(`/api/v1/cards/${card.id}/children`);
+            console.log('ManualSubSubSection - Children check response:', {
+                cardId: card.id,
+                response: response.data,
+                currentUrl: window.location.pathname
+            });
+
+            if (response.data.data.has_children) {
+                console.log('ManualSubSubSection - Card has children, routing to sub-sub-section:', {
+                    cardId: card.id,
+                    currentUrl: window.location.pathname
+                });
+                router.get(`/user-manual/${section}/${subsection}/${card.id}`, {}, {
+                    preserveState: true,
+                    preserveScroll: true
+                });
+            } else {
+                // Check if the card has a guide
+                const guide = guidesMap[card.id]?.[0];
+                if (guide) {
+                    console.log('ManualSubSubSection - Card has guide, routing to guide:', {
+                        guideId: guide.id,
+                        currentUrl: window.location.pathname
+                    });
+                    router.get(`/user-manual/guide/${guide.id}`, {}, {
+                        preserveState: true,
+                        preserveScroll: true
+                    });
+                } else {
+                    console.log('ManualSubSubSection - Card has no children and no guide, routing to section:', {
+                        cardId: card.id,
+                        currentUrl: window.location.pathname
+                    });
+                    router.get(`/user-manual/${section}/${subsection}/${card.id}`, {}, {
+                        preserveState: true,
+                        preserveScroll: true
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('ManualSubSubSection - Error checking for children:', {
+                error,
+                cardId: card.id,
+                currentUrl: window.location.pathname
+            });
+            // If there's an error, try to route to the guide or section
+            const guide = guidesMap[card.id]?.[0];
+            if (guide) {
+                router.get(`/user-manual/guide/${guide.id}`, {}, {
+                    preserveState: true,
+                    preserveScroll: true
+                });
+            } else {
+                router.get(`/user-manual/${section}/${subsection}/${card.id}`, {}, {
+                    preserveState: true,
+                    preserveScroll: true
+                });
+            }
+        }
+    };
+
     const SubSubManualSectionCard = ({ sectionCard, provided }) => {
         const cardId = sectionCard.id;
         const title = sectionCard.name || sectionCard.title;
         const description = sectionCard.description;
         const guides = guidesMap[cardId] || [];
 
-        const handleClick = async () => {
-            if (isAdmin) return; // Prevent navigation if in admin mode
-            
-            console.log('ManualSubSubSection - Card clicked:', {
-                cardId: cardId,
-                cardName: title,
-                sectionId: sectionCard.section_id,
-                subsectionId: sectionCard.subsection_id,
-                parentId: sectionCard.parent_id
-            });
-            
-            try {
-                const response = await axios.get(`/api/v1/cards/${cardId}/children`);
-                console.log('ManualSubSubSection - Children check response:', {
-                    cardId: cardId,
-                    hasChildren: response.data.data.has_children,
-                    children: response.data.data.children
-                });
-                
-                if (response.data.data.has_children) {
-                    console.log('ManualSubSubSection - Routing to next level');
-                    router.visit(`/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id}/${cardId}`);
-                } else {
-                    const guide = guides[0];
-                    console.log('ManualSubSubSection - No children, checking for guide:', {
-                        hasGuide: !!guide,
-                        guideId: guide?.id
-                    });
-                    
-                    if (guide) {
-                        console.log('ManualSubSubSection - Routing to GuideDetail');
-                        router.visit(`/user-manual/guide/${guide.id}`);
-                    } else {
-                        console.log('ManualSubSubSection - No guide, staying on current level');
-                        router.visit(`/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id}`);
-                    }
-                }
-            } catch (error) {
-                console.error('ManualSubSubSection - Error checking for children:', error);
-                const guide = guides[0];
-                if (guide) {
-                    console.log('ManualSubSubSection - Error fallback: Routing to GuideDetail');
-                    router.visit(`/user-manual/guide/${guide.id}`);
-                } else {
-                    console.log('ManualSubSubSection - Error fallback: Staying on current level');
-                    router.visit(`/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id}`);
-                }
-            }
-        };
-
         return (
             <div
                 ref={provided.innerRef}
                 {...provided.draggableProps}
                 className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg cursor-pointer"
-                onClick={handleClick}
+                onClick={() => handleClick(sectionCard)}
             >
                 <div className="flex flex-col">
                     <div className="flex items-center justify-between mb-4">

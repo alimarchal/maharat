@@ -188,22 +188,21 @@ export default function UserManualSubSections() {
                 });
                 
                 if (response.data.data.has_children) {
-                    const targetUrl = `/user-manual/${sectionCard.section_id}/${title.toLowerCase().replace(/\s+/g, '-')}`;
+                    // For any card with children, use section_id and subsection_id directly
+                    const targetUrl = `/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id}`;
                     console.log('ManualSubSection - Card has children, routing to:', {
                         targetUrl: targetUrl,
                         currentUrl: window.location.pathname,
                         sectionId: sectionCard.section_id,
+                        subsectionId: sectionCard.subsection_id,
                         cardName: title
                     });
-                    router.visit(targetUrl, {
+                    router.get(targetUrl, {
+                        cardId: cardId
+                    }, {
                         preserveState: true,
                         preserveScroll: true,
-                        onSuccess: () => {
-                            console.log('ManualSubSection - Navigation successful');
-                        },
-                        onError: (error) => {
-                            console.error('ManualSubSection - Navigation error:', error);
-                        }
+                        replace: true
                     });
                 } else {
                     const guide = guides[0];
@@ -216,8 +215,16 @@ export default function UserManualSubSections() {
                         console.log('ManualSubSection - Routing to GuideDetail');
                         router.visit(`/user-manual/guide/${guide.id}`);
                     } else {
-                        console.log('ManualSubSection - No guide, staying on current level');
-                        router.visit(`/user-manual/${sectionCard.section_id}/${title.toLowerCase().replace(/\s+/g, '-')}`);
+                        // For any card without children and no guide, use section_id and subsection_id directly
+                        const targetUrl = `/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id}`;
+                        console.log('ManualSubSection - No guide, routing to card URL with cardId');
+                        router.get(targetUrl, {
+                            cardId: cardId
+                        }, {
+                            preserveState: true,
+                            preserveScroll: true,
+                            replace: true
+                        });
                     }
                 }
             } catch (error) {
@@ -227,8 +234,16 @@ export default function UserManualSubSections() {
                     console.log('ManualSubSection - Error fallback: Routing to GuideDetail');
                     router.visit(`/user-manual/guide/${guide.id}`);
                 } else {
-                    console.log('ManualSubSection - Error fallback: Staying on current level');
-                    router.visit(`/user-manual/${sectionCard.section_id}/${title.toLowerCase().replace(/\s+/g, '-')}`);
+                    // For any card without children and no guide, use section_id and subsection_id directly
+                    const targetUrl = `/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id}`;
+                    console.log('ManualSubSection - Error fallback: Routing to card URL with cardId');
+                    router.get(targetUrl, {
+                        cardId: cardId
+                    }, {
+                        preserveState: true,
+                        preserveScroll: true,
+                        replace: true
+                    });
                 }
             }
         };

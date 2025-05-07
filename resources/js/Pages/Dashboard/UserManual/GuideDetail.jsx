@@ -3,6 +3,7 @@ import { usePage, Link } from "@inertiajs/react";
 import { Play, Edit, Trash, AlertCircle, Construction } from "lucide-react";
 import axios from "axios";
 import CreateUserGuide from "./CreateUserGuide";
+import { toast } from "react-hot-toast";
 
 export default function GuideDetail() {
     const { props } = usePage();
@@ -128,12 +129,40 @@ export default function GuideDetail() {
         if (!guide || !guide.id) return;
         
         try {
-            await axios.delete(`/api/v1/user-manuals/${guide.id}`);
-            // Redirect to user manual home page after deletion
-            window.location.href = "/user-manual";
+            console.log('Attempting to delete guide with ID:', guide.id);
+            const response = await axios.delete(`/api/v1/user-manuals/${guide.id}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                params: {
+                    force: true // Add force parameter for hard delete
+                }
+            });
+            
+            console.log('Delete response:', response);
+            
+            // Check if the response indicates success
+            if (response.status === 200 || response.status === 204) {
+                toast.success("Guide deleted successfully!");
+                // Add a small delay before redirecting
+                setTimeout(() => {
+                    window.location.href = "/user-manual";
+                }, 1000);
+            } else {
+                console.error('Unexpected response status:', response.status);
+                setError("Failed to delete guide. Unexpected response from server.");
+            }
         } catch (error) {
             console.error("Error deleting guide:", error);
-            setError("Failed to delete guide. Please try again.");
+            console.error("Error response:", error.response);
+            setError(
+                error.response?.data?.message || 
+                error.response?.data?.error || 
+                "Failed to delete guide. Please try again."
+            );
+            // Close the confirmation modal on error
+            setShowConfirmDelete(false);
         }
     };
 

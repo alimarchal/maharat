@@ -121,7 +121,12 @@ class UserManualController extends Controller
     public function destroy(UserManual $userManual): JsonResponse
     {
         try {
-            $userManual->delete();
+            // Check if force delete is requested
+            if (request()->query('force')) {
+                $userManual->forceDelete();
+            } else {
+                $userManual->delete();
+            }
 
             return response()->json(null, 204);
         } catch (\Exception $e) {

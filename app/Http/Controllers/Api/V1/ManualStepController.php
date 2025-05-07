@@ -91,7 +91,12 @@ class ManualStepController extends Controller
                 abort(404);
             }
 
-            $this->service->deleteStep($step);
+            // Check if force delete is requested
+            if (request()->query('force')) {
+                $step->forceDelete();
+            } else {
+                $step->delete();
+            }
 
             return response()->json(null, 204);
         } catch (\Exception $e) {

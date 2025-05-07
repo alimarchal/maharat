@@ -56,12 +56,18 @@ export default function CardForm({
             
             formData.append("section_id", sectionId);
             
-            // If we're creating a sub-card, set the parent_id
+            // If we're creating a sub-card, set the parent_id and subsection_id
             if (parentCard) {
                 formData.append("parent_id", parentCard.id);
+                // For sub-cards, use the parent's section_id and create a subsection_id from the name
+                formData.append("subsection_id", formDataState.name.toLowerCase().replace(/\s+/g, '-'));
             } else if (card?.parent_id) {
-                // If we're editing a sub-card, maintain its parent_id
+                // If we're editing a sub-card, maintain its parent_id and subsection_id
                 formData.append("parent_id", card.parent_id);
+                formData.append("subsection_id", card.subsection_id);
+            } else {
+                // For main cards, use the name as section_id
+                formData.append("section_id", formDataState.name.toLowerCase().replace(/\s+/g, '-'));
             }
 
             // Always include order - use existing order or default to 0
