@@ -347,14 +347,23 @@ const CreateUserGuide = ({
     const refreshCardData = async () => {
         try {
             setIsLoadingCards(true);
-            const response = await axios.get("/api/v1/cards");
-            if (response.data && response.data.data) {
-                const { main_cards, sub_cards } = response.data.data;
+            // First get all cards
+            const cardsResponse = await axios.get("/api/v1/cards");
+            // Then get cards that already have manuals
+            const manualsResponse = await axios.get("/api/v1/user-manuals/check");
+            
+            if (cardsResponse.data && cardsResponse.data.data) {
+                const { main_cards, sub_cards } = cardsResponse.data.data;
+                const cardsWithManuals = manualsResponse.data?.data?.cards_with_manuals || [];
                 
-                // Store all cards
-                const allCards = [...main_cards, ...sub_cards];
+                // Filter out cards that already have manuals
+                const filteredMainCards = main_cards.filter(card => !cardsWithManuals.includes(card.id));
+                const filteredSubCards = sub_cards.filter(card => !cardsWithManuals.includes(card.id));
+                
+                // Store all filtered cards
+                const allCards = [...filteredMainCards, ...filteredSubCards];
                 setCards(allCards);
-                setParentCards(main_cards);
+                setParentCards(filteredMainCards);
                 
                 // If we have a selected parent card, update its sub-cards
                 if (data.parent_card_id) {
@@ -629,16 +638,45 @@ const CreateUserGuide = ({
         setSteps(newSteps);
     };
 
-    const removeStep = (index) => {
+    const removeStep = async (index) => {
         if (steps.length > 1) {
-            const newSteps = steps.filter((_, i) => i !== index);
-            // Update step numbers and order
-            const reorderedSteps = newSteps.map((step, i) => ({
-                ...step,
-                step_number: i + 1,
-                order: i + 1,
-            }));
-            setSteps(reorderedSteps);
+            try {
+                const step = steps[index];
+                
+                // If in edit mode and the step has an ID, delete it from the server with force parameter
+                if (editMode && step.id) {
+                    await axios.delete(`/api/v1/user-manuals/${guideId}/steps/${step.id}`, {
+                        params: { force: true }
+                    });
+                }
+                
+                // Remove the step from the UI
+                const newSteps = steps.filter((_, i) => i !== index);
+                
+                // Update step numbers and order
+                const reorderedSteps = newSteps.map((step, i) => ({
+                    ...step,
+                    step_number: i + 1,
+                    order: i + 1,
+                }));
+                
+                setSteps(reorderedSteps);
+                
+                // If in edit mode, update the order of remaining steps on the server
+                if (editMode) {
+                    await axios.post(`/api/v1/user-manuals/${guideId}/steps/reorder`, {
+                        items: reorderedSteps.map((step, index) => ({
+                            id: step.id,
+                            step_number: index + 1
+                        }))
+                    });
+                }
+                
+                toast.success('Step deleted successfully');
+            } catch (error) {
+                console.error('Error deleting step:', error);
+                toast.error('Failed to delete step');
+            }
         }
     };
 

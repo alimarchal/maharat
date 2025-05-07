@@ -294,8 +294,16 @@ export default function UserManual() {
                                                                 console.log('UserManual - Routing to GuideDetail');
                                                                 router.visit(`/user-manual/guide/${guide.id}`);
                                                             } else {
-                                                                console.log('UserManual - No guide, routing to ManualSubSection');
-                                                                router.visit(`/user-manual/${card.section_id}/${card.subsection_id || card.id}`);
+                                                                // For any card without children and no guide, use section_id directly
+                                                                const targetUrl = `/user-manual/${card.section_id}`;
+                                                                console.log('UserManual - No guide, routing to card URL with cardId');
+                                                                router.get(targetUrl, {
+                                                                    cardId: card.id
+                                                                }, {
+                                                                    preserveState: true,
+                                                                    preserveScroll: true,
+                                                                    replace: true
+                                                                });
                                                             }
                                                         }
                                                     } catch (error) {
@@ -305,8 +313,16 @@ export default function UserManual() {
                                                             console.log('UserManual - Error fallback: Routing to GuideDetail');
                                                             router.visit(`/user-manual/guide/${guide.id}`);
                                                         } else {
-                                                            console.log('UserManual - Error fallback: Routing to ManualSubSection');
-                                                            router.visit(`/user-manual/${card.section_id}/${card.subsection_id || card.id}`);
+                                                            // For any card without children and no guide, use section_id directly
+                                                            const targetUrl = `/user-manual/${card.section_id}`;
+                                                            console.log('UserManual - Error fallback: Routing to card URL with cardId');
+                                                            router.get(targetUrl, {
+                                                                cardId: card.id
+                                                            }, {
+                                                                preserveState: true,
+                                                                preserveScroll: true,
+                                                                replace: true
+                                                            });
                                                         }
                                                     }
                                                 }}
