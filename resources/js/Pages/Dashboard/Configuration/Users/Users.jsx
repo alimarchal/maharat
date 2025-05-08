@@ -145,10 +145,21 @@ useEffect(() => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        
+        // Handle phone and extension number length limits
+        if (name === 'mobile' || name === 'landline') {
+            // Only allow digits and limit to 10 characters
+            const numericValue = value.replace(/\D/g, '').slice(0, 10);
+            setFormData(prev => ({
+                ...prev,
+                [name]: numericValue
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value
+            }));
+        }
 
         // Clear the error for the field being updated
         setErrors((prevErrors) => ({
@@ -193,6 +204,14 @@ useEffect(() => {
         const landlineRegex = /^011\d{7}$/;
         if (formData.landline && !landlineRegex.test(formData.landline)) {
             newErrors.landline = "Landline must start with '011' followed by 7 digits (e.g., 0111234567).";
+        }
+
+        // Length validation for phone numbers
+        if (formData.mobile && formData.mobile.length !== 10) {
+            newErrors.mobile = "Mobile number must be exactly 10 digits.";
+        }
+        if (formData.landline && formData.landline.length !== 10) {
+            newErrors.landline = "Landline number must be exactly 10 digits.";
         }
 
         setErrors(newErrors);
@@ -247,9 +266,38 @@ useEffect(() => {
                 formDataToSend.append('profile_photo_path', photo);
             }
 
-            // Send designation_id as role_id for both create and update
-            if (formData.designation_id) {
-                formDataToSend.append('role_id', formData.designation_id);
+            // Add default password for new users
+            if (!isEditing) {
+                formDataToSend.append('password', 'password');
+            }
+
+            // Get the role ID from the API
+            const rolesResponse = await axios.get('/api/v1/roles');
+            const roles = rolesResponse.data.data;
+            
+            // Find the role based on hierarchy level
+            let role;
+            switch (formData.hierarchy_level) {
+                case 0:
+                    role = roles.find(r => r.name === 'Admin');
+                    break;
+                case 1:
+                    role = roles.find(r => r.name === 'Director');
+                    break;
+                case 2:
+                    role = roles.find(r => r.name === 'Manager');
+                    break;
+                case 3:
+                    role = roles.find(r => r.name === 'Supervisor');
+                    break;
+                default:
+                    role = roles.find(r => r.name === 'User');
+            }
+            
+            if (role) {
+                formDataToSend.append('role_id', role.id);
+            } else {
+                throw new Error(`Role not found for hierarchy level ${formData.hierarchy_level}`);
             }
     
             // Debug logging - view exactly what's being sent
@@ -260,67 +308,30 @@ useEffect(() => {
             console.log("FORM DATA BEING SENT:", formObject);
     
             let response;
-    
-            if (id) {
-                // For update operations
-                const apiUrl = `/api/v1/users/${id}`;
-                console.log("Making PATCH request to:", apiUrl);
-                
-                // Add a _method field to properly handle PATCH with FormData
-                formDataToSend.append("_method", "PATCH");
-                
-                // Use POST with _method=PATCH for better compatibility
-                response = await axios.post(apiUrl, formDataToSend, {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                        "Accept": "application/json"
-                    }
-                });
-                
-                // Fetch updated user data for verification
-                const refreshResponse = await axios.get(apiUrl);
-                console.log("🔄 Fresh user data after update:", refreshResponse.data);
+            if (isEditing) {
+                response = await axios.put(`/api/v1/users/${id}`, formDataToSend);
             } else {
-                // For create operations - we add only what's needed for a new user
-                const apiUrl = "/api/v1/users";  // No ID in URL for creation
-                console.log("Making POST request to:", apiUrl);
-                
-                // Add required fields for new user creation
-                // We need a password for new users
-                formDataToSend.append("password", "Password123"); // Default password
-                
-                // Use a simple POST for creation
-                response = await axios.post(apiUrl, formDataToSend, {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                        "Accept": "application/json"
-                    }
-                });
-                
-                console.log("New user created:", response.data);
+                response = await axios.post('/api/v1/users', formDataToSend);
             }
     
-            console.log("Response Status:", response.status);
-            console.log("Response Data:", response.data);
+            console.log("Server Response:", response.data);
     
+            // Show success message
             alert(isEditing ? "User updated successfully!" : "User added successfully!");
-            router.visit("/chart");
+    
+            // Redirect based on whether we're editing or creating
+            if (isEditing) {
+                router.visit('/users');
+            } else {
+                router.visit('/chart');
+            }
+    
         } catch (error) {
             console.error("Error saving user:", error);
-    
-            if (error.response && error.response.data) {
-                console.error("Server Response Error:", error.response.data);
-    
-                if (error.response.data.errors) {
-                    const errorMessages = Object.values(error.response.data.errors)
-                        .flat()
-                        .join('\n');
-                    alert(`Validation errors:\n${errorMessages}`);
-                } else if (error.response.data.message) {
-                    alert(`Error: ${error.response.data.message}`);
-                } else if (error.response.data.error) {
-                    alert(`Error: ${error.response.data.error}`);
-                }
+            console.error("Server Response Error:", error.response?.data);
+            
+            if (error.response?.data?.errors) {
+                setErrors(error.response.data.errors);
             } else {
                 alert("An error occurred while saving the user. Please try again.");
             }
