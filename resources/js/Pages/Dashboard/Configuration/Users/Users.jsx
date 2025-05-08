@@ -203,7 +203,7 @@ useEffect(() => {
         // Landline (extension) validation (must start with '011' followed by 7 digits)
         const landlineRegex = /^011\d{7}$/;
         if (formData.landline && !landlineRegex.test(formData.landline)) {
-            newErrors.landline = "Landline must start with '011' followed by 7 digits (e.g., 0111234567).";
+            newErrors.landline = "Landline number must start with '011' followed by 7 digits (e.g., 0111234567).";
         }
 
         // Length validation for phone numbers
@@ -309,9 +309,21 @@ useEffect(() => {
     
             let response;
             if (isEditing) {
-                response = await axios.put(`/api/v1/users/${id}`, formDataToSend);
+                // For editing, use POST with _method=PATCH
+                formDataToSend.append('_method', 'PATCH');
+                response = await axios.post(`/api/v1/users/${id}`, formDataToSend, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        'Accept': 'application/json'
+                    }
+                });
             } else {
-                response = await axios.post('/api/v1/users', formDataToSend);
+                response = await axios.post('/api/v1/users', formDataToSend, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        'Accept': 'application/json'
+                    }
+                });
             }
     
             console.log("Server Response:", response.data);
@@ -319,12 +331,8 @@ useEffect(() => {
             // Show success message
             alert(isEditing ? "User updated successfully!" : "User added successfully!");
     
-            // Redirect based on whether we're editing or creating
-            if (isEditing) {
-                router.visit('/users');
-            } else {
-                router.visit('/chart');
-            }
+            // Always redirect to organizational chart
+            router.visit('/chart');
     
         } catch (error) {
             console.error("Error saving user:", error);
