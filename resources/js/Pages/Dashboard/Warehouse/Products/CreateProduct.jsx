@@ -22,13 +22,19 @@ const CreateProduct = () => {
 
     useEffect(() => {
         axios
-            .get("/api/v1/product-categories")
-            .then((response) => {
-                setCategories(response.data.data);
+            .get("/api/v1/product-categories", {
+                params: {
+                    per_page: 1000,
+                    sort: 'name'
+                }
             })
-            .catch((error) =>
-                console.error("Error fetching categories:", error)
-            );
+            .then((response) => {
+                console.log('Categories response:', response.data);
+                setCategories(response.data.data || []);
+            })
+            .catch((error) => {
+                console.error("Error fetching categories:", error.response || error);
+            });
 
         axios
             .get("/api/v1/units")
