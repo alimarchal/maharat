@@ -157,11 +157,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/quotation-documents', [QuotationDocumentController::class, 'store']);
     Route::put('/quotation-documents/{id}', [QuotationDocumentController::class, 'update']);
 
-    Route::get('/inventories', [InventoryController::class, 'index']);
-    Route::post('/inventories', [InventoryController::class, 'store']);
-    Route::put('/inventories/{id}', [InventoryController::class, 'update'])->where('id', '[0-9]+');
-    Route::post('/inventories/{id}', [InventoryController::class, 'update'])->where('id', '[0-9]+');
-    Route::delete('/inventories/{id}', [InventoryController::class, 'destroy']);
+    // Inventory Management
+    Route::get('inventories/low-stock', [InventoryController::class, 'getLowStockItems']);
+    Route::apiResource('inventories', InventoryController::class);
     Route::post('/inventories/{id}/upload-excel', [InventoryController::class, 'uploadExcel']);
     Route::post('/inventories/{id}/upload-pdf', [InventoryController::class, 'uploadPDF']);
 
@@ -226,15 +224,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // GRN Receive Goods routes
     Route::apiResource('grn-receive-goods', GrnReceiveGoodController::class);
     Route::apiResource('external-delivery-notes', ExternalDeliveryNoteController::class);
-
-
-    // Start Inventory
-    // Inventory Management
-    Route::get('inventories/low-stock', [InventoryController::class, 'getLowStockItems']);
-    Route::apiResource('inventories', InventoryController::class);
-
-    // Inventory Transactions
-    Route::apiResource('inventory-transactions', InventoryTransactionController::class)->only(['index', 'show']);
 
     // Stock operations by product
     Route::post('inventories/product/{product}/stock-in', [InventoryController::class, 'adjustInventoryByProduct'])->name('inventories.stock-in');
