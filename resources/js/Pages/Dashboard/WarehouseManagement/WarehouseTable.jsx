@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import axios from "axios";
 
 const WarehouseTable = () => {
     const [warehouses, setWarehouses] = useState([]);
@@ -17,16 +18,11 @@ const WarehouseTable = () => {
     const fetchWarehouses = async () => {
         setLoading(true);
         try {
-            const response = await fetch(
+            const response = await axios.get(
                 `/api/v1/warehouses?include=manager&page=${currentPage}`
             );
-            const data = await response.json();
-            if (response.ok) {
-                setWarehouses(data.data || []);
-                setLastPage(data.meta?.last_page || 1);
-            } else {
-                setError(data.message || "Failed to fetch warehouses.");
-            }
+            setWarehouses(response.data.data || []);
+            setLastPage(response.data.meta?.last_page || 1);
         } catch (err) {
             setError("Error loading warehouses.");
         } finally {
@@ -37,21 +33,13 @@ const WarehouseTable = () => {
     const handleDelete = async (id) => {
         if (!confirm("Are you sure you want to delete this Warehouse?")) return;
         try {
-            const response = await fetch(`/api/v1/warehouses/${id}`, {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-            });
-
-            if (response.ok) {
-                setWarehouses((prev) =>
-                    prev.filter((warehouse) => warehouse.id !== id)
-                );
-            } else {
-                const data = await response.json();
-                alert(data.message || "Failed to delete warehouse.");
-            }
+            await axios.delete(`/api/v1/warehouses/${id}`);
+            setWarehouses((prev) =>
+                prev.filter((warehouse) => warehouse.id !== id)
+            );
         } catch (err) {
-            alert("An error occurred while deleting the warehouse.");
+            const errorMessage = err.response?.data?.message || "An error occurred while deleting the warehouse.";
+            alert(errorMessage);
         }
     };
 
