@@ -17,13 +17,37 @@ const InventoryModal = ({
         quantity: "",
         reorder_level: "",
         description: "",
-        transaction_type: "stock_in",
+        transaction_type: "",
     });
 
     const [errors, setErrors] = useState({});
     const [warehouses, setWarehouses] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [isExistingProduct, setIsExistingProduct] = useState(false);
+
+    useEffect(() => {
+        const fetchWarehouses = async () => {
+            try {
+                const response = await axios.get("/api/v1/warehouses");
+                setWarehouses(response.data.data);
+            } catch (error) {
+                console.error("Error fetching warehouses:", error);
+            }
+        };
+
+        const fetchProducts = async () => {
+            try {
+                const response = await axios.get("/api/v1/products");
+                setProducts(response.data.data);
+            } catch (error) {
+                console.error("Error fetching products:", error);
+            }
+        };
+
+        fetchWarehouses();
+        fetchProducts();
+    }, []);
 
     useEffect(() => {
         if (isOpen) {
@@ -34,80 +58,41 @@ const InventoryModal = ({
                     quantity: inventoryData.quantity || "",
                     reorder_level: inventoryData.reorder_level || "",
                     description: inventoryData.description || "",
-                    transaction_type: "adjustment",
+                    transaction_type: "",
                 });
-                
-                if (inventoryData.id) {
-                    fetchLastTransaction(inventoryData.id);
-                }
+
+                const existingProduct = products.some(
+                    (product) =>
+                        product.id.toString() ===
+                        inventoryData.product_id?.toString()
+                );
+                setIsExistingProduct(existingProduct);
             } else {
+                // Reset form for fresh creation
                 setFormData({
                     warehouse_id: "",
                     product_id: "",
                     quantity: "",
                     reorder_level: "",
                     description: "",
-                    transaction_type: "stock_in",
+                    transaction_type: "",
                 });
+                setIsExistingProduct(false);
             }
             setErrors({});
         }
-    }, [isOpen, inventoryData]);
-
-    const fetchLastTransaction = async (inventoryId) => {
-        try {
-            const response = await axios.get(`/api/v1/inventory-transactions`, {
-                params: {
-                    filter: {
-                        inventory_id: inventoryId
-                    },
-                    sort: "-created_at",
-                    perPage: 1
-                }
-            });
-            
-            if (response.data && response.data.data && response.data.data.length > 0) {
-                const lastTransaction = response.data.data[0];
-                console.log("Last transaction found:", lastTransaction);
-                
-                setFormData(prev => ({
-                    ...prev,
-                    transaction_type: lastTransaction.transaction_type || "adjustment"
-                }));
-            }
-        } catch (error) {
-            console.error("Error fetching last transaction:", error);
-        }
-    };
-
-    useEffect(() => {
-        if (isOpen) {
-            const fetchWarehouses = async () => {
-                try {
-                    const response = await axios.get("/api/v1/warehouses");
-                    setWarehouses(response.data.data);
-                } catch (error) {
-                    console.error("Error fetching warehouses:", error);
-                }
-            };
-
-            const fetchProducts = async () => {
-                try {
-                    const response = await axios.get("/api/v1/products");
-                    setProducts(response.data.data);
-                } catch (error) {
-                    console.error("Error fetching products:", error);
-                }
-            };
-
-            fetchWarehouses();
-            fetchProducts();
-        }
-    }, [isOpen]);
+    }, [isOpen, inventoryData, products]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
+
+        if (name === "product_id") {
+            const existingProduct = products.some(
+                (product) => product.id.toString() === value
+            );
+            setIsExistingProduct(existingProduct);
+        }
     };
 
     const validateForm = () => {
@@ -120,8 +105,8 @@ const InventoryModal = ({
             newErrors.reorder_level = "Reorder Level is required.";
         if (!formData.description)
             newErrors.description = "Description is required.";
-        if (!formData.transaction_type)
-            newErrors.transaction_type = "Transaction Type is required.";
+        if (isExistingProduct && !formData.transaction_type)
+            newErrors.transaction_type = "Transaction type is required.";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -134,32 +119,25 @@ const InventoryModal = ({
         setLoading(true);
         try {
             let apiUrl = "/api/v1/inventories";
-            console.log("Form data to be submitted:", formData);
-
-            if (inventoryData && inventoryData.id) {
-                console.log(`Updating inventory ID: ${inventoryData.id}`);
-                console.log("Full update payload:", formData);
-                console.log("API endpoint:", `${apiUrl}/${inventoryData.id}`);
-                const response = await axios.post(`${apiUrl}/${inventoryData.id}`, formData);
-                console.log("Update response:", response.data);
-            } else {
-                console.log("Creating new inventory");
-                console.log("Full create payload:", formData);
-                const response = await axios.post(apiUrl, formData);
-                console.log("Create response:", response.data);
+            if (isExistingProduct) {
+                apiUrl = `/api/v1/inventories/product/${formData.product_id}/${
+                    formData.transaction_type === "stock_in"
+                        ? "stock-in"
+                        : "stock-out"
+                }`;
             }
 
-            console.log("Refreshing inventory data");
-            await fetchInventories();
+            if (inventoryData && inventoryData.id) {
+                await axios.put(`${apiUrl}/${inventoryData.id}`, formData);
+            } else {
+                await axios.post(apiUrl, formData);
+            }
+
+            fetchInventories();
             onClose();
         } catch (error) {
+            setErrors(error.response?.data.errors || {});
             console.error("Error saving inventory:", error);
-            console.error("Response details:", error.response?.data);
-            setErrors(
-                error.response?.data?.errors || {
-                    general: "Error saving inventory. Please try again.",
-                }
-            );
         } finally {
             setLoading(false);
         }
@@ -183,12 +161,13 @@ const InventoryModal = ({
                     </button>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {errors.general && (
-                        <p className="text-red-500 text-base text-center mb-4">
-                            {errors.general}
-                        </p>
-                    )}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div
+                        className={`grid grid-cols-1 ${
+                            isExistingProduct
+                                ? "md:grid-cols-3"
+                                : "md:grid-cols-2"
+                        } gap-6`}
+                    >
                         <div>
                             <SelectFloating
                                 label="Warehouse"
@@ -223,6 +202,25 @@ const InventoryModal = ({
                                 </p>
                             )}
                         </div>
+                        {isExistingProduct && (
+                            <div>
+                                <SelectFloating
+                                    label="Transaction Type"
+                                    name="transaction_type"
+                                    value={formData.transaction_type}
+                                    onChange={handleChange}
+                                    options={[
+                                        { id: "stock_in", label: "Stock In" },
+                                        { id: "stock_out", label: "Stock Out" },
+                                    ]}
+                                />
+                                {errors.transaction_type && (
+                                    <p className="text-red-500 text-sm">
+                                        {errors.transaction_type}
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -251,25 +249,7 @@ const InventoryModal = ({
                                 </p>
                             )}
                         </div>
-                        <div>
-                            <SelectFloating
-                                label="Transaction Type"
-                                name="transaction_type"
-                                value={formData.transaction_type}
-                                onChange={handleChange}
-                                options={[
-                                    { id: "stock_in", label: "Stock In" },
-                                    { id: "stock_out", label: "Stock Out" },
-                                    { id: "adjustment", label: "Adjustment" }
-                                ]}
-                            />
-                            {errors.transaction_type && (
-                                <p className="text-red-500 text-sm">
-                                    {errors.transaction_type}
-                                </p>
-                            )}
-                        </div>
-                        <div>
+                        <div className="md:col-span-2">
                             <InputFloating
                                 label="Description"
                                 name="description"

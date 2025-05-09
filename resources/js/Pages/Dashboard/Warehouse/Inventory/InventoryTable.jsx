@@ -189,7 +189,7 @@ const InventoryTable = () => {
                                     {inventory.description}
                                 </td>
                                 <td className="py-3 px-4 flex justify-center text-center space-x-3">
-                                    <button
+                                    {/* <button
                                         onClick={() => {
                                             setSelectedInventory(inventory);
                                             setIsModalOpen(true);
@@ -198,7 +198,7 @@ const InventoryTable = () => {
                                         title="Edit Inventory"
                                     >
                                         <FontAwesomeIcon icon={faEdit} />
-                                    </button>
+                                    </button> */}
                                     {/* PDF Button */}
                                     {inventory.pdf_document ? (
                                         <button
