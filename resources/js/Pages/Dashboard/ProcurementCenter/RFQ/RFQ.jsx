@@ -75,7 +75,7 @@ const RFQsTable = () => {
 
     const handleEdit = (rfqId) => {
         if (rfqId) {
-            router.visit(`/rfqs/create-rfq?rfqId=${rfqId}`);
+            router.visit(`/rfqs/${rfqId}/edit`);
         } else {
             console.error("No ID found for RFQ log");
         }

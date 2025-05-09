@@ -100,6 +100,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/rfqs', function () { return Inertia::render('Dashboard', ['page' => 'ProcurementCenter/RFQ/RFQ']); })->name('rfq.index');
     Route::get('/rfqs/create-rfq', function () { return Inertia::render('Dashboard', ['page' => 'ProcurementCenter/RFQ/AddQuotationForm']); })->name('rfq.create');
+    Route::get('/rfqs/{id}/edit', function ($id) { return Inertia::render('Dashboard', ['page' => 'ProcurementCenter/RFQ/AddQuotationForm', 'rfqId' => $id]); })->name('rfq.edit');
 
     Route::prefix('quotations')->name('quotations.')->group(function () {
         Route::get('/', function () {
