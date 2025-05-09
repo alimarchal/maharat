@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import axios from "axios";
 
 const ProductsTable = () => {
     const [products, setProducts] = useState([]);
@@ -14,19 +15,14 @@ const ProductsTable = () => {
         const fetchProducts = async () => {
             setLoading(true);
             try {
-                const response = await fetch(
+                const response = await axios.get(
                     `/api/v1/products?include=category,unit&page=${currentPage}`
                 );
-                const data = await response.json();
-                if (response.ok) {
-                    setProducts(data.data || []);
-                    setLastPage(data.meta?.last_page || 1);
-                } else {
-                    setError(data.message || "Failed to fetch items.");
-                }
+                setProducts(response.data.data || []);
+                setLastPage(response.data.meta?.last_page || 1);
             } catch (err) {
                 console.error("Error fetching items:", err);
-                setError("Error loading items.");
+                setError(err.response?.data?.message || "Error loading items.");
             } finally {
                 setLoading(false);
             }
@@ -38,22 +34,13 @@ const ProductsTable = () => {
     const handleDelete = async (id) => {
         if (!confirm("Are you sure you want to delete this Item?")) return;
         try {
-            const response = await fetch(`/api/v1/products/${id}`, {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-            });
-
-            if (response.ok) {
-                setProducts((prevProducts) =>
-                    prevProducts.filter((product) => product.id !== id)
-                );
-            } else {
-                const data = await response.json();
-                alert(data.message || "Failed to delete item.");
-            }
+            await axios.delete(`/api/v1/products/${id}`);
+            setProducts((prevProducts) =>
+                prevProducts.filter((product) => product.id !== id)
+            );
         } catch (err) {
             console.error("Error deleting item:", err);
-            alert("An error occurred while deleting the item.");
+            alert(err.response?.data?.message || "An error occurred while deleting the item.");
         }
     };
 
