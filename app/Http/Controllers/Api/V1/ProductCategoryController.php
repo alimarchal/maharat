@@ -17,11 +17,23 @@ class ProductCategoryController extends Controller
 {
     public function index(): JsonResponse|ResourceCollection
     {
-        $categories = QueryBuilder::for(ProductCategory::class)
+        \Log::info('ProductCategory index request params:', request()->all());
+        
+        $query = QueryBuilder::for(ProductCategory::class)
             ->allowedFilters(ProductCategoryParameters::ALLOWED_FILTERS)
-            ->allowedSorts(ProductCategoryParameters::ALLOWED_SORTS)
-            ->paginate()
-            ->appends(request()->query());
+            ->allowedSorts(ProductCategoryParameters::ALLOWED_SORTS);
+
+        // If per_page is specified, return all records
+        if (request()->has('per_page')) {
+            $categories = $query->get();
+            \Log::info('Returning all categories:', ['count' => $categories->count()]);
+            return response()->json([
+                'data' => ProductCategoryResource::collection($categories)
+            ]);
+        }
+
+        // Otherwise, paginate the results
+        $categories = $query->paginate()->appends(request()->query());
 
         if ($categories->isEmpty()) {
             return response()->json([
