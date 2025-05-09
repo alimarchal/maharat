@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import axios from "axios";
 
 const CategoryTable = () => {
     const [category, setCategory] = useState([]);
@@ -14,17 +15,11 @@ const CategoryTable = () => {
         const fetchCategory = async () => {
             setLoading(true);
             try {
-                const response = await fetch(
+                const response = await axios.get(
                     `/api/v1/product-categories?page=${currentPage}`
                 );
-                const data = await response.json();
-
-                if (response.ok) {
-                    setCategory(data.data || []);
-                    setLastPage(data.meta?.last_page || 1);
-                } else {
-                    setError(data.message || "Failed to fetch category.");
-                }
+                setCategory(response.data.data || []);
+                setLastPage(response.data.meta?.last_page || 1);
             } catch (err) {
                 console.error("Error fetching category:", err);
                 setError("Error loading category.");
@@ -40,22 +35,14 @@ const CategoryTable = () => {
         if (!confirm("Are you sure you want to delete this Category?")) return;
 
         try {
-            const response = await fetch(`/api/v1/product-categories/${id}`, {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-            });
-
-            if (response.ok) {
-                setCategory((prevCategories) =>
-                    prevCategories.filter((cat) => cat.id !== id)
-                );
-            } else {
-                const data = await response.json();
-                alert(data.message || "Failed to delete category.");
-            }
+            await axios.delete(`/api/v1/product-categories/${id}`);
+            setCategory((prevCategories) =>
+                prevCategories.filter((cat) => cat.id !== id)
+            );
         } catch (err) {
             console.error("Error deleting category:", err);
-            alert("An error occurred while deleting the category.");
+            const errorMessage = err.response?.data?.message || "An error occurred while deleting the category.";
+            alert(errorMessage);
         }
     };
 
