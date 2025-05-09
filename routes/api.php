@@ -158,8 +158,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::put('/quotation-documents/{id}', [QuotationDocumentController::class, 'update']);
 
     // Inventory Management
-    Route::get('inventories/low-stock', [InventoryController::class, 'getLowStockItems']);
     Route::apiResource('inventories', InventoryController::class);
+    Route::get('inventories/low-stock', [InventoryController::class, 'getLowStockItems']);
     Route::post('/inventories/{id}/upload-excel', [InventoryController::class, 'uploadExcel']);
     Route::post('/inventories/{id}/upload-pdf', [InventoryController::class, 'uploadPDF']);
 
