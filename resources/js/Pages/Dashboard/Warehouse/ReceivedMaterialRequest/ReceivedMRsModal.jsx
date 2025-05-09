@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import InputFloating from "../../../../Components/InputFloating";
@@ -16,6 +17,22 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
         description: "",
     });
 
+    const [costCenters, setCostCenters] = useState([]);
+    const [departments, setDepartments] = useState([]);
+    const [errors, setErrors] = useState({});
+
+    useEffect(() => {
+        axios
+            .get("/api/v1/cost-centers")
+            .then((res) => setCostCenters(res.data.data))
+            .catch((err) => console.error("Error fetching cost centers:", err));
+
+        axios
+            .get("/api/v1/departments")
+            .then((res) => setDepartments(res.data.data))
+            .catch((err) => console.error("Error fetching departments:", err));
+    }, []);
+
     useEffect(() => {
         if (isOpen && requestData) {
             setFormData({
@@ -24,20 +41,24 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
                     requestData.items
                         ?.map((item) => item.product?.name)
                         .join(", ") || "",
-                cost_center_id: requestData.costCenter?.name || "",
-                sub_cost_center_id: requestData.subCostCenter?.name || "",
-                department_id: requestData.department?.name || "",
+                cost_center_id: requestData.cost_center_id || "",
+                sub_cost_center_id: requestData.sub_cost_center_id || "",
+                department_id: requestData.department_id || "",
                 priority: "",
                 status: "",
                 description: "",
             });
+            setErrors({});
         }
     }, [isOpen, requestData]);
 
-    const [errors, setErrors] = useState({});
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
+    };
 
     const validateForm = () => {
-        let newErrors = {};
+        const newErrors = {};
         if (!formData.material_request_id)
             newErrors.material_request_id = "Request Number is required";
         if (!formData.items) newErrors.items = "Items field is required";
@@ -53,10 +74,6 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
@@ -65,7 +82,7 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
             onSave(formData);
             onClose();
         } catch (error) {
-            setErrors(error.response?.data?.errors);
+            setErrors(error.response?.data?.errors || {});
         }
     };
 
@@ -83,6 +100,7 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
                         <FontAwesomeIcon icon={faTimes} />
                     </button>
                 </div>
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -114,12 +132,15 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
                             )}
                         </div>
                         <div>
-                            <InputFloating
+                            <SelectFloating
                                 label="Cost Center"
                                 name="cost_center_id"
                                 value={formData.cost_center_id}
                                 onChange={handleChange}
-                                disabled
+                                options={costCenters.map((c) => ({
+                                    id: c.id,
+                                    label: c.name,
+                                }))}
                             />
                             {errors.cost_center_id && (
                                 <p className="text-red-500 text-sm mt-1">
@@ -128,21 +149,27 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
                             )}
                         </div>
                         <div>
-                            <InputFloating
+                            <SelectFloating
                                 label="Sub Cost Center"
                                 name="sub_cost_center_id"
                                 value={formData.sub_cost_center_id}
                                 onChange={handleChange}
-                                disabled
+                                options={costCenters.map((c) => ({
+                                    id: c.id,
+                                    label: c.name,
+                                }))}
                             />
                         </div>
                         <div>
-                            <InputFloating
+                            <SelectFloating
                                 label="Department"
                                 name="department_id"
                                 value={formData.department_id}
                                 onChange={handleChange}
-                                disabled
+                                options={departments.map((dep) => ({
+                                    id: dep.id,
+                                    label: dep.name,
+                                }))}
                             />
                         </div>
                         <div>
