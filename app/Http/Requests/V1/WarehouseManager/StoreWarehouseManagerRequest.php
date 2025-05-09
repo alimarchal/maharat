@@ -3,6 +3,7 @@
 namespace App\Http\Requests\V1\WarehouseManager;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreWarehouseManagerRequest extends FormRequest
 {
@@ -15,12 +16,22 @@ class StoreWarehouseManagerRequest extends FormRequest
     {
         return [
             'warehouse_id' => ['required', 'exists:warehouses,id'],
-            'type' => ['nullable'],
+            'type' => ['required', 'string', 'in:Manager,Assistant'],
             'manager_id' => [
                 'required',
                 'exists:users,id',
-                'unique:warehouse_managers,manager_id,NULL,id,warehouse_id,' . $this->warehouse_id
+                Rule::unique('warehouse_managers')->where(function ($query) {
+                    return $query->where('type', $this->type)
+                               ->where('warehouse_id', '!=', $this->warehouse_id);
+                })
             ],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'manager_id.unique' => 'This manager is already assigned to another warehouse as a ' . strtolower($this->type),
         ];
     }
 }

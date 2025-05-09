@@ -110,6 +110,17 @@ const CreateWarehouse = () => {
                         longitude: formData.longitude,
                     }
                 );
+
+                // For edit mode, first delete existing manager assignments
+                const existingManagersResponse = await axios.get(
+                    `/api/v1/warehouse-managers?filter[warehouse_id]=${warehouseId}`
+                );
+                const existingManagers = existingManagersResponse.data.data;
+                
+                // Delete existing manager assignments
+                for (const manager of existingManagers) {
+                    await axios.delete(`/api/v1/warehouse-managers/${manager.id}`);
+                }
             } else {
                 warehouseResponse = await axios.post("/api/v1/warehouses", {
                     name: formData.name,
@@ -123,6 +134,15 @@ const CreateWarehouse = () => {
             const warehouseIdCreated =
                 warehouseId || warehouseResponse.data.data.id;
 
+            // Check if manager is already assigned to another warehouse
+            const existingManagerResponse = await axios.get(`/api/v1/warehouse-managers?filter[manager_id]=${formData.manager_id}`);
+            const existingManager = existingManagerResponse.data.data.find(m => m.type === "Manager" && m.warehouse_id !== warehouseIdCreated);
+            
+            if (existingManager) {
+                throw new Error("This manager is already assigned to another warehouse");
+            }
+
+            // Create new manager assignment
             await axios.post("/api/v1/warehouse-managers", {
                 warehouse_id: warehouseIdCreated,
                 manager_id: formData.manager_id,
@@ -130,6 +150,14 @@ const CreateWarehouse = () => {
             });
 
             if (formData.assistant_id) {
+                // Check if assistant is already assigned to another warehouse
+                const existingAssistantResponse = await axios.get(`/api/v1/warehouse-managers?filter[manager_id]=${formData.assistant_id}`);
+                const existingAssistant = existingAssistantResponse.data.data.find(m => m.type === "Assistant" && m.warehouse_id !== warehouseIdCreated);
+                
+                if (existingAssistant) {
+                    throw new Error("This assistant is already assigned to another warehouse");
+                }
+
                 await axios.post("/api/v1/warehouse-managers", {
                     warehouse_id: warehouseIdCreated,
                     manager_id: formData.assistant_id,
@@ -149,9 +177,10 @@ const CreateWarehouse = () => {
 
             router.visit("/warehouse-management");
         } catch (error) {
+            console.error("Error saving warehouse:", error);
             setErrors(
                 error.response?.data?.errors || {
-                    general: "An error occurred while saving the warehouse",
+                    general: error.message || "An error occurred while saving the warehouse",
                 }
             );
         } finally {
