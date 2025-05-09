@@ -5,7 +5,7 @@ import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import InputFloating from "../../../../Components/InputFloating";
 import SelectFloating from "../../../../Components/SelectFloating";
 
-const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
+function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
     const [formData, setFormData] = useState({
         material_request_id: "",
         items: "",
@@ -246,6 +246,6 @@ const ReceivedMRsModal = ({ isOpen, onClose, onSave, requestData }) => {
             </div>
         </div>
     );
-};
+}
 
 export default ReceivedMRsModal;
