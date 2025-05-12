@@ -223,7 +223,7 @@ const PaymentOrderTable = () => {
                                         "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {formatCurrency(order.total_amount)}
+                                    {order.total_amount}
                                 </td>
                                 <td className="py-3 px-4 text-center text-[#009FDC] hover:text-blue-800 cursor-pointer">
                                     {order.uploaded_attachment ? (

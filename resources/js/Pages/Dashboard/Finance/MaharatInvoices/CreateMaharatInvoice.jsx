@@ -1275,7 +1275,7 @@ export default function CreateMaharatInvoice() {
                                     value={formData.discount}
                                     onChange={handleInputChange}
                                     min="0"
-                                    step="0.01"
+                                    step="10"
                                     className="block w-24 rounded border-none shadow-none focus:ring-0 text-right appearance-none bg-transparent pr-0"
                                     placeholder="Enter Discount"
                                 />

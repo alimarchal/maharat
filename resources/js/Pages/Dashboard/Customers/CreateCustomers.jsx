@@ -10,11 +10,10 @@ const CreateCustomer = () => {
     const [formData, setFormData] = useState({
         name: "",
         commercial_registration_number: "",
-        tax_number: "",
         tax_group_registration_number: "",
         contact_number: "",
         type: "both",
-        city: "",
+        address: "",
         country_code: "SA",
         account_name: "",
         iban: "",
@@ -47,9 +46,7 @@ const CreateCustomer = () => {
         if (!formData.name.trim()) newErrors.name = "Customer Name is required";
         if (!formData.contact_number.trim())
             newErrors.contact_number = "Contact Number is required";
-        if (!formData.tax_number.trim())
-            newErrors.tax_number = "Tax Number is required";
-        if (!formData.city.trim()) newErrors.city = "City is required";
+        if (!formData.address.trim()) newErrors.address = "Address is required";
         if (!formData.country_code.trim())
             newErrors.country_code = "Country Code is required";
         if (!formData.iban.trim()) newErrors.iban = "IBAN is required";
@@ -111,19 +108,6 @@ const CreateCustomer = () => {
                     </div>
                     <div>
                         <InputFloating
-                            label="Tax Number"
-                            name="tax_number"
-                            value={formData.tax_number}
-                            onChange={handleChange}
-                        />
-                        {errors.tax_number && (
-                            <p className="text-red-500 text-sm">
-                                {errors.tax_number}
-                            </p>
-                        )}
-                    </div>
-                    <div>
-                        <InputFloating
                             label="Tax Group Registration Number"
                             name="tax_group_registration_number"
                             value={formData.tax_group_registration_number}
@@ -158,14 +142,14 @@ const CreateCustomer = () => {
                     </div>
                     <div>
                         <InputFloating
-                            label="City"
-                            name="city"
-                            value={formData.city}
+                            label="Address"
+                            name="address"
+                            value={formData.address}
                             onChange={handleChange}
                         />
-                        {errors.city && (
+                        {errors.address && (
                             <p className="text-red-500 text-sm">
-                                {errors.city}
+                                {errors.address}
                             </p>
                         )}
                     </div>

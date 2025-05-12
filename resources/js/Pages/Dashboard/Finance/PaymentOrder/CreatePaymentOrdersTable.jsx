@@ -153,7 +153,7 @@ const CreatePaymentOrdersTable = () => {
                                     {order?.quotation?.company_name || order?.supplier?.name || "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
-                                    ${order?.amount || "0.00"}
+                                    {order?.amount || "0.00"}
                                 </td>
                                 <td className="py-3 px-4 text-center text-[#009FDC] hover:text-blue-700 cursor-pointer">
                                     {order.attachment ? (
