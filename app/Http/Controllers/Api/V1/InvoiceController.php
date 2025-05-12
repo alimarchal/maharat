@@ -177,6 +177,7 @@ class InvoiceController extends Controller
         try {
             $validated = $request->validate([
                 'issue_date' => 'required|date',
+                'due_date' => 'nullable|date|after_or_equal:issue_date',
                 'payment_method' => 'nullable|string',
                 'vat_rate' => 'required|numeric|min:0',
                 'client_id' => 'nullable|exists:customers,id',
@@ -186,7 +187,7 @@ class InvoiceController extends Controller
                 'tax_amount' => 'required|numeric|min:0',
                 'total_amount' => 'required|numeric|min:0',
                 'paid_amount' => 'nullable|numeric',
-                'status' => 'required|in:Draft,Pending,Paid,Overdue,Cancelled',
+                'status' => 'required|in:Draft,Approved,Pending,Paid,Overdue,Cancelled',
                 'currency' => 'required|string|size:3',
                 'items' => 'required|array',
                 'items.*.name' => 'required|string',
@@ -203,18 +204,18 @@ class InvoiceController extends Controller
 
             // Remove items field before updating invoice
             $invoiceData = collect($validated)->except('items')->toArray();
-                $invoice->update($invoiceData);
+            $invoice->update($invoiceData);
 
             // Update items
             $invoice->items()->delete(); // Remove old items
             foreach ($validated['items'] as $item) {
                 $invoice->items()->create([
-                        'name' => $item['name'],
+                    'name' => $item['name'],
                     'description' => $item['description'],
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $item['unit_price'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
                     'subtotal' => $item['subtotal'],
-                        'tax_rate' => $item['tax_rate'],
+                    'tax_rate' => $item['tax_rate'],
                     'tax_amount' => $item['tax_amount'],
                     'total' => $item['total']
                 ]);

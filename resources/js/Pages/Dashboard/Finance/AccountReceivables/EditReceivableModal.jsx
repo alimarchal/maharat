@@ -5,6 +5,11 @@ import axios from "axios";
 import InputFloating from "@/Components/InputFloating";
 import SelectFloating from "@/Components/SelectFloating";
 
+// Add CSRF token setup for axios
+axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+axios.defaults.headers.common['Accept'] = 'application/json';
+axios.defaults.withCredentials = true;
+
 const EditReceivableModal = ({ isOpen, onClose, onSave, invoiceId }) => {
     const [formData, setFormData] = useState({
         customer_id: "",
@@ -74,6 +79,42 @@ const EditReceivableModal = ({ isOpen, onClose, onSave, invoiceId }) => {
         return date.toISOString().split("T")[0];
     };
 
+    const statusOptions = [
+        { id: "Draft", label: "Draft" },
+        { id: "Approved", label: "Approved" },
+        { id: "Pending", label: "Pending" },
+        { id: "Paid", label: "Paid" },
+        { id: "Partially_Paid", label: "Partially Paid" },
+        { id: "Overdue", label: "Overdue" },
+        { id: "Cancelled", label: "Cancelled" }
+    ];
+
+    // Calculate suggested status based on dates and paid amount
+    const calculateSuggestedStatus = () => {
+        const today = new Date();
+        const dueDate = formData.due_date ? new Date(formData.due_date) : null;
+        const totalAmount = parseFloat(formData.total_amount) || 0;
+        const paidAmount = parseFloat(formData.paid_amount) || 0;
+
+        if (paidAmount === 0) {
+            return dueDate && today > dueDate ? "Overdue" : "Pending";
+        } else if (paidAmount < totalAmount) {
+            return "Partially_Paid";
+        } else if (paidAmount >= totalAmount) {
+            return "Paid";
+        }
+        return "Draft";
+    };
+
+    // Update status when relevant fields change, but only if user hasn't manually changed it
+    useEffect(() => {
+        const suggestedStatus = calculateSuggestedStatus();
+        setFormData(prev => ({
+            ...prev,
+            status: suggestedStatus
+        }));
+    }, [formData.due_date, formData.total_amount, formData.paid_amount]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         let updatedData = { ...formData, [name]: value };
@@ -116,16 +157,17 @@ const EditReceivableModal = ({ isOpen, onClose, onSave, invoiceId }) => {
             const total = subtotal + taxAmount;
 
             const updateData = {
+                _method: 'PUT',
                 client_id: formData.customer_id,
                 status: formData.status,
                 issue_date: formData.issue_date,
-                due_date: formData.due_date,
+                due_date: formData.due_date || null,
                 payment_method: formData.payment_method,
                 vat_rate: vatRate,
                 subtotal,
                 tax_amount: taxAmount,
                 total_amount: formData.total_amount,
-                paid_amount: formData.paid_amount,
+                paid_amount: formData.paid_amount || "0.00",
                 currency: "SAR",
                 items: [
                     {
@@ -141,12 +183,15 @@ const EditReceivableModal = ({ isOpen, onClose, onSave, invoiceId }) => {
                 ],
             };
 
-            const response = await axios.put(
+            console.log('Sending update data:', updateData);
+
+            const response = await axios.post(
                 `/api/v1/invoices/${invoiceId}`,
                 updateData
             );
             onSave(response.data.data);
         } catch (error) {
+            console.error('Update error:', error.response?.data || error);
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             } else {
@@ -162,14 +207,6 @@ const EditReceivableModal = ({ isOpen, onClose, onSave, invoiceId }) => {
     };
 
     if (!isOpen) return null;
-
-    const statusOptions = [
-        { id: "Pending", label: "Pending" },
-        { id: "Paid", label: "Paid" },
-        { id: "Partially Paid", label: "Partially Paid" },
-        { id: "Overdue", label: "Overdue" },
-        { id: "Cancelled", label: "Cancelled" },
-    ];
 
     const paymentTermsOptions = [
         { id: "Cash", label: "Cash" },
