@@ -3,8 +3,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import InvoiceModal from "./InvoiceModal";
+import { usePage } from "@inertiajs/react";
 
 const InvoicesTable = () => {
+    const user_id = usePage().props.auth.user.id;
+    
     const [invoices, setInvoices] = useState([]);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -70,7 +73,7 @@ const InvoicesTable = () => {
             const now = new Date();
 
             const payload = {
-                user_id: auth.user.id,
+                user_id: user_id,
                 supplier_id: Number(formData.supplier_id),
                 purchase_order_id: Number(formData.purchase_order_id) || null,
                 amount: amount,
