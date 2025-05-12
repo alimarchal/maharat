@@ -28,6 +28,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
     const [errors, setErrors] = useState({});
     const [tempDocument, setTempDocument] = useState(null);
     const [formSubmitted, setFormSubmitted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Validate the entire form
     const validateForm = () => {
@@ -573,21 +574,11 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                     </div>
 
                     {/* Error Messages */}
-                    {errors.general && (
-                        <div className="text-red-500 text-sm mt-2 text-center">
-                            {errors.general}
-                        </div>
-                    )}
-
-                    {errors.submit && (
-                        <div className="text-red-500 text-sm mt-2 text-center">
-                            {errors.submit}
-                        </div>
-                    )}
-
-                    {errors.purchase_order_id && (
-                        <div className="text-red-500 text-sm mt-2 text-center">
-                            {errors.purchase_order_id}
+                    {(errors.general || errors.submit || errors.purchase_order_id) && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                            {errors.general && <p>{errors.general}</p>}
+                            {errors.submit && <p>{errors.submit}</p>}
+                            {errors.purchase_order_id && <p>{errors.purchase_order_id}</p>}
                         </div>
                     )}
 
