@@ -163,6 +163,12 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
         let badgeClass = "px-3 py-1 rounded-full text-xs font-medium";
         let icon = null;
 
+        // Format the status first
+        const formattedStatus = status?.replace(/_/g, ' ')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+
         switch (status?.toLowerCase()) {
             case "approved":
                 badgeClass += " bg-green-100 text-green-800";
@@ -172,9 +178,10 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
                 badgeClass += " bg-yellow-100 text-yellow-800";
                 icon = faCircleExclamation;
                 break;
-            case "partial":
-                badgeClass += " bg-red-100 text-red-800";
-                icon = faCircleXmark;
+            case "partially_paid":
+            case "partially paid":
+                badgeClass += " bg-green-100 text-green-800";
+                icon = faCircleCheck;
                 break;
             case "overdue":
                 badgeClass += " bg-purple-100 text-purple-800";
@@ -192,7 +199,7 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
         return (
             <span className={badgeClass}>
                 {icon && <FontAwesomeIcon icon={icon} className="mr-1" />}
-                {status}
+                {formattedStatus}
             </span>
         );
     };

@@ -187,7 +187,7 @@ class InvoiceController extends Controller
                 'tax_amount' => 'required|numeric|min:0',
                 'total_amount' => 'required|numeric|min:0',
                 'paid_amount' => 'nullable|numeric',
-                'status' => 'required|in:Draft,Approved,Pending,Paid,Overdue,Cancelled',
+                'status' => 'required|in:Draft,Approved,Pending,Paid,Partially_Paid,Overdue,Cancelled',
                 'currency' => 'required|string|size:3',
                 'items' => 'required|array',
                 'items.*.name' => 'required|string',

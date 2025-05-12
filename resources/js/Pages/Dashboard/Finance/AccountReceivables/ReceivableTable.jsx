@@ -28,7 +28,12 @@ const ReceivableTable = () => {
         setLoading(true);
 
         try {
-            const status = selectedFilter.toLowerCase();
+            let status = selectedFilter.toLowerCase();
+            // Map the filter status to match the backend status
+            if (status === "partially paid") {
+                status = "partially_paid";
+            }
+            
             let url = `/api/v1/invoices?include=client`;
 
             if (selectedFilter !== "All") {
@@ -62,7 +67,9 @@ const ReceivableTable = () => {
                     );
                 } else {
                     finalData = mappedData.filter(
-                        (invoice) => invoice.status.toLowerCase() === status
+                        (invoice) => 
+                            invoice.status.toLowerCase() === status ||
+                            (status === "partially_paid" && invoice.status.toLowerCase() === "partially_paid")
                     );
                 }
 
@@ -109,8 +116,9 @@ const ReceivableTable = () => {
         switch (status?.toLowerCase()) {
             case "approved":
                 return "bg-green-100 text-green-800";
+            case "partially_paid":
             case "partially paid":
-                return "bg-red-100 text-red-800";
+                return "bg-green-100 text-green-800";
             case "overdue":
                 return "bg-purple-100 text-purple-800";
             case "pending":
@@ -120,6 +128,17 @@ const ReceivableTable = () => {
             default:
                 return "bg-gray-300 text-gray-800";
         }
+    };
+
+    const formatStatus = (status) => {
+        if (!status) return "Pending";
+        
+        // Replace underscores with spaces and capitalize each word
+        return status
+            .replace(/_/g, ' ')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
     };
 
     return (
@@ -189,7 +208,7 @@ const ReceivableTable = () => {
                                             data.status
                                         )}`}
                                     >
-                                        {data.status}
+                                        {formatStatus(data.status)}
                                     </span>
                                 </td>
                                 <td className="py-3 px-4">
