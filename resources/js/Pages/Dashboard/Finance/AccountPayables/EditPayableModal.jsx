@@ -17,6 +17,32 @@ const EditPayableModal = ({ isOpen, onClose, onSave, paymentOrderId }) => {
         balance: "",
     });
 
+    // Calculate suggested status based on dates and paid amount
+    const calculateSuggestedStatus = () => {
+        const today = new Date();
+        const dueDate = formData.due_date ? new Date(formData.due_date) : null;
+        const totalAmount = parseFloat(formData.total_amount) || 0;
+        const paidAmount = parseFloat(formData.paid_amount) || 0;
+
+        if (paidAmount === 0) {
+            return dueDate && today > dueDate ? "Overdue" : "Pending";
+        } else if (paidAmount < totalAmount) {
+            return "Partially Paid";
+        } else if (paidAmount >= totalAmount) {
+            return "Paid";
+        }
+        return "Draft";
+    };
+
+    // Update status when relevant fields change
+    useEffect(() => {
+        const suggestedStatus = calculateSuggestedStatus();
+        setFormData(prev => ({
+            ...prev,
+            status: suggestedStatus
+        }));
+    }, [formData.due_date, formData.total_amount, formData.paid_amount]);
+
     const [suppliers, setSuppliers] = useState([]);
     const [errors, setErrors] = useState({});
     const [isSaving, setIsSaving] = useState(false);
@@ -51,49 +77,12 @@ const EditPayableModal = ({ isOpen, onClose, onSave, paymentOrderId }) => {
             const paid = parseFloat(orderData.paid_amount || 0);
             const balance = (subtotal - paid).toFixed(2);
 
-            // Format status from snake_case if needed
-            let formattedStatus = "Pending";
-            if (orderData.status) {
-                if (
-                    typeof orderData.status === "string" &&
-                    [
-                        "Draft",
-                        "Pending",
-                        "Paid",
-                        "Partially Paid",
-                        "Overdue",
-                    ].includes(orderData.status)
-                ) {
-                    formattedStatus = orderData.status;
-                } else if (orderData.status.toLowerCase() === "draft") {
-                    formattedStatus = "Draft";
-                } else {
-                    formattedStatus = orderData.status
-                        .replace(/_/g, " ")
-                        .replace(/\b\w/g, (l) => l.toUpperCase());
-
-                    const validStatuses = [
-                        "Pending",
-                        "Paid",
-                        "Partially Paid",
-                        "Overdue",
-                        "Draft",
-                    ];
-                    if (!validStatuses.includes(formattedStatus)) {
-                        formattedStatus = "Pending";
-                    }
-                }
-            }
-
             setFormData({
                 supplier_id: orderData.user_id?.toString() || "",
-                status: formattedStatus,
-                issue_date: formatDateForInput(orderData.issue_date),
-                due_date: formatDateForInput(orderData.due_date),
-                payment_method:
-                    orderData.payment_type ||
-                    orderData.payment_method ||
-                    "Net 30",
+                status: orderData.status || "Draft",
+                issue_date: orderData.issue_date || "",
+                due_date: orderData.due_date || "",
+                payment_method: orderData.payment_type || orderData.payment_method || "",
                 total_amount: orderData.total_amount?.toString() || "",
                 paid_amount: orderData.paid_amount?.toString() || "",
                 balance,
@@ -149,28 +138,12 @@ const EditPayableModal = ({ isOpen, onClose, onSave, paymentOrderId }) => {
         }
 
         try {
-            // Convert status to the API format if needed
-            let statusValue = formData.status.toLowerCase();
-
-            // Special handling for UI-formatted statuses
-            if (statusValue === "partially paid") {
-                statusValue = "partially_paid";
-            } else if (
-                statusValue !== "draft" &&
-                statusValue !== "paid" &&
-                statusValue !== "pending" &&
-                statusValue !== "overdue"
-            ) {
-                statusValue = statusValue.replace(/ /g, "_");
-            }
-
             const updateData = {
                 user_id: formData.supplier_id,
-                status: statusValue,
+                status: formData.status,
                 issue_date: formData.issue_date,
                 due_date: formData.due_date,
                 payment_type: formData.payment_method,
-                payment_method: formData.payment_method,
                 total_amount: formData.total_amount,
                 paid_amount: formData.paid_amount,
                 currency: "SAR",
@@ -204,6 +177,7 @@ const EditPayableModal = ({ isOpen, onClose, onSave, paymentOrderId }) => {
         { id: "Paid", label: "Paid" },
         { id: "Partially Paid", label: "Partially Paid" },
         { id: "Overdue", label: "Overdue" },
+        { id: "Cancelled", label: "Cancelled" }
     ];
 
     const paymentTermsOptions = [
@@ -211,8 +185,6 @@ const EditPayableModal = ({ isOpen, onClose, onSave, paymentOrderId }) => {
         { id: "Credit", label: "Credit" },
         { id: "Bank Transfer", label: "Bank Transfer" },
         { id: "Cheque", label: "Cheque" },
-        { id: "Net 30", label: "Net 30" },
-        { id: "Net 60", label: "Net 60" },
     ];
 
     const supplierOptions = suppliers.map((s) => ({
