@@ -22,12 +22,21 @@ class DepartmentController extends Controller
      */
     public function index(): JsonResponse|ResourceCollection
     {
-        $departments = QueryBuilder::for(Department::class)
+        $query = QueryBuilder::for(Department::class)
             ->allowedFilters(DepartmentParameters::ALLOWED_FILTERS)
             ->allowedSorts(DepartmentParameters::ALLOWED_SORTS)
             ->allowedIncludes(DepartmentParameters::ALLOWED_INCLUDES)
-            ->with('users') 
-            ->paginate()
+            ->with('users');
+
+        // If per_page is large (e.g. 1000), return all records without pagination
+        if (request()->get('per_page', 15) >= 1000) {
+            $departments = $query->get();
+            return response()->json([
+                'data' => DepartmentResource::collection($departments)
+            ], Response::HTTP_OK);
+        }
+
+        $departments = $query->paginate(request()->get('per_page', 15))
             ->appends(request()->query());
 
         if ($departments->isEmpty()) {
