@@ -159,13 +159,15 @@ function OrgChartTree({
         parentId: node.parent_id
     });
 
+    // Store all children in state to handle updates
+    const [allChildren, setAllChildren] = useState(node.children || []);
+
     // Get regular children and secretary separately
-    const children = node.children || [];
-    const regularChildren = children.filter(child => 
+    const regularChildren = allChildren.filter(child => 
         !(child.designation_id === 23 || 
           (child.title && child.title.toLowerCase().includes('secretary')))
     );
-    const secretaryChild = children.find(child => 
+    const secretaryChild = allChildren.find(child => 
         child.designation_id === 23 || 
         (child.title && child.title.toLowerCase().includes('secretary'))
     );
@@ -180,7 +182,8 @@ function OrgChartTree({
             title: secretaryChild.title,
             designationId: secretaryChild.designation_id
         } : null,
-        regularChildrenCount: regularChildren.length
+        regularChildrenCount: regularChildren.length,
+        allChildrenCount: allChildren.length
     });
 
     const handleDelete = (nodeToDelete = node) => {
@@ -191,15 +194,50 @@ function OrgChartTree({
                     return;
                 }
 
-                const index = parent.children.findIndex((child) => child.id === nodeToDelete.id);
-                if (index !== -1) {
-                    parent.children.splice(index, 1);
-                    onUpdate();
-                    onMarkForDeletion(nodeToDelete.id);
-                }
+                console.log("DEBUG - Deleting node:", {
+                    nodeToDelete: {
+                        id: nodeToDelete.id,
+                        name: nodeToDelete.name,
+                        isSecretary: nodeToDelete.designation_id === 23 || 
+                            (nodeToDelete.title && nodeToDelete.title.toLowerCase().includes('secretary'))
+                    },
+                    parent: {
+                        id: parent.id,
+                        allChildren: allChildren.map(c => ({
+                            id: c.id,
+                            name: c.name,
+                            isSecretary: c.designation_id === 23 || 
+                                (c.title && c.title.toLowerCase().includes('secretary'))
+                        }))
+                    }
+                });
+
+                // First mark the node for deletion
+                onMarkForDeletion(nodeToDelete.id);
+
+                // Then update the UI by removing from local state
+                const updatedChildren = allChildren.filter(child => child.id !== nodeToDelete.id);
+                setAllChildren(updatedChildren);
+                
+                // Update parent's children array for UI consistency
+                parent.children = updatedChildren;
+
+                console.log("DEBUG - After deletion:", {
+                    remainingChildren: updatedChildren.map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        isSecretary: c.designation_id === 23 || 
+                            (c.title && c.title.toLowerCase().includes('secretary'))
+                    }))
+                });
+
+                // Update the UI
+                onUpdate();
             } catch (error) {
                 console.error("Error in handleDelete:", error);
             }
+        } else {
+            console.error("Cannot delete node: no parent found");
         }
     };
 
@@ -414,10 +452,20 @@ const Chart = () => {
 
     const handleSave = async () => {
         try {
+            console.log("Nodes to delete:", nodesToDelete);
+            
+            // Delete all marked nodes
             for (const nodeId of nodesToDelete) {
-                await axios.delete(`/api/v1/users/${nodeId}`);
+                try {
+                    await axios.delete(`/api/v1/users/${nodeId}`);
+                    console.log(`Successfully deleted node ${nodeId}`);
+                } catch (error) {
+                    console.error(`Error deleting node ${nodeId}:`, error);
+                    // Continue with other deletions even if one fails
+                }
             }
-            setNodesToDelete([]);
+            
+            setNodesToDelete([]); // Clear the deletion list
             console.log("Saved Organization Chart:", orgChart);
             alert("Changes saved successfully!");
         } catch (error) {
@@ -430,7 +478,12 @@ const Chart = () => {
     };
 
     const handleMarkForDeletion = (nodeId) => {
-        setNodesToDelete((prevNodes) => [...prevNodes, nodeId]);
+        console.log("Marking node for deletion:", nodeId);
+        setNodesToDelete(prevNodes => {
+            const newNodes = [...prevNodes, nodeId];
+            console.log("Updated nodes to delete:", newNodes);
+            return newNodes;
+        });
     };
 
     if (!orgChart) {
