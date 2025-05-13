@@ -21,11 +21,20 @@ class DesignationController extends Controller
      */
     public function index(): JsonResponse|ResourceCollection
     {
-        $designations = QueryBuilder::for(Designation::class)
+        $query = QueryBuilder::for(Designation::class)
             ->allowedFilters(DesignationParameters::ALLOWED_FILTERS)
             ->allowedSorts(DesignationParameters::ALLOWED_SORTS)
-            ->allowedIncludes(DesignationParameters::ALLOWED_INCLUDES)
-            ->paginate()
+            ->allowedIncludes(DesignationParameters::ALLOWED_INCLUDES);
+
+        // If per_page is large (e.g. 1000), return all records without pagination
+        if (request()->get('per_page', 15) >= 1000) {
+            $designations = $query->get();
+            return response()->json([
+                'data' => DesignationResource::collection($designations)
+            ], Response::HTTP_OK);
+        }
+
+        $designations = $query->paginate(request()->get('per_page', 15))
             ->appends(request()->query());
 
         if ($designations->isEmpty()) {

@@ -46,8 +46,8 @@ useEffect(() => {
     const fetchData = async () => {
         try {
             const [designationsResponse, departmentsResponse] = await Promise.all([
-                axios.get('/api/v1/designations'),
-                axios.get('/api/v1/departments'),
+                axios.get('/api/v1/designations?per_page=1000'),
+                axios.get('/api/v1/departments?per_page=1000'),
             ]);
 
             setDesignations(designationsResponse.data.data);
@@ -501,7 +501,7 @@ useEffect(() => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
                         <SelectFloating
-                            label="Select Designation"
+                            label="Designation"
                             name="designation_id"
                             value={formData.designation_id}
                             onChange={handleChange}
@@ -518,7 +518,7 @@ useEffect(() => {
                     </div>
                     <div>
                         <SelectFloating
-                            label="Select Department"
+                            label="Department"
                             name="department_id"
                             value={formData.department_id}
                             onChange={handleChange}
