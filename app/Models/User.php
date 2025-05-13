@@ -67,6 +67,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's designation.
+     */
+    public function designation(): BelongsTo
+    {
+        return $this->belongsTo(Designation::class);
+    }
+
+    /**
      * Get the user's parent/supervisor.
      */
     public function parent(): BelongsTo
@@ -96,14 +104,6 @@ class User extends Authenticatable
     public function allSupervisors()
     {
         return $this->parent()->with('allSupervisors');
-    }
-
-    /**
-     * Get the designation associated with the user.
-     */
-    public function designation()
-    {
-        return $this->belongsTo(Designation::class, 'designation_id');
     }
 
     /**

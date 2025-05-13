@@ -363,6 +363,8 @@ class UserController extends Controller
             'email' => $user->email,
             'level' => $user->hierarchy_level,
             'image' => $user->attachment,
+            'designation_id' => $user->designation_id,
+            'parent_id' => $user->parent_id,
             'children' => []
         ];
 

@@ -16,6 +16,7 @@ function OrganizationNode({
     hasChildren,
     isExpanded,
     onToggleExpand,
+    isSecretary = false,
 }) {
     const [anchorEl, setAnchorEl] = useState(null);
 
@@ -122,6 +123,43 @@ function OrgChartTree({
 }) {
     const [isExpanded, setIsExpanded] = useState(true);
 
+    // Check if node is secretary
+    const isSecretary = node.designation_id === 23 || 
+        (node.title && node.title.toLowerCase().includes('secretary'));
+
+    console.log('SECRETARY CHECK:', {
+        nodeId: node.id,
+        nodeName: node.name,
+        isSecretary,
+        designationId: node.designation_id,
+        title: node.title,
+        parentId: node.parent_id
+    });
+
+    // Get regular children and secretary separately
+    const children = node.children || [];
+    const regularChildren = children.filter(child => 
+        !(child.designation_id === 23 || 
+          (child.title && child.title.toLowerCase().includes('secretary')))
+    );
+    const secretaryChild = children.find(child => 
+        child.designation_id === 23 || 
+        (child.title && child.title.toLowerCase().includes('secretary'))
+    );
+
+    console.log('NODE STRUCTURE:', {
+        nodeId: node.id,
+        nodeName: node.name,
+        hasSecretary: !!secretaryChild,
+        secretaryDetails: secretaryChild ? {
+            id: secretaryChild.id,
+            name: secretaryChild.name,
+            title: secretaryChild.title,
+            designationId: secretaryChild.designation_id
+        } : null,
+        regularChildrenCount: regularChildren.length
+    });
+
     const handleDelete = (nodeToDelete = node) => {
         if (parent) {
             try {
@@ -189,63 +227,26 @@ function OrgChartTree({
         return null;
     }
 
-    // Check if current node is a secretary
-    const isSecretary = node.designation_id === 23 || 
-                       (node.title && node.title.toLowerCase().includes('secretary'));
-
-    // If this is a secretary node, don't render it here (it will be rendered with its parent)
-    if (isSecretary) {
-        return null;
-    }
-
-    // Get regular children and secretary
-    const children = node.children || [];
-    const regularChildren = children.filter(child => 
-        child.designation_id !== 23 && 
-        (!child.title || !child.title.toLowerCase().includes('secretary'))
-    );
-    const secretary = children.find(child => 
-        child.designation_id === 23 || 
-        (child.title && child.title.toLowerCase().includes('secretary'))
-    );
-
-    console.log('Node structure:', {
-        nodeId: node.id,
-        nodeName: node.name,
-        hasSecretary: !!secretary,
-        secretaryDetails: secretary,
-        regularChildrenCount: regularChildren.length
-    });
-
     return (
         <TreeNode
             label={
                 <div className="org-node-container">
-                    <div className="main-node">
-                        <OrganizationNode
-                            node={node}
-                            onRename={() => {}}
-                            onDelete={handleDelete}
-                            onAddPosition={handleAddPosition}
-                            isRoot={isRoot}
-                            hasChildren={regularChildren.length > 0}
-                            isExpanded={isExpanded}
-                            onToggleExpand={handleToggleExpand}
-                        />
-                    </div>
-                    {secretary && (
+                    <OrganizationNode
+                        node={node}
+                        onRename={() => {}}
+                        onDelete={handleDelete}
+                        onAddPosition={handleAddPosition}
+                        isRoot={isRoot}
+                        hasChildren={regularChildren.length > 0}
+                        isExpanded={isExpanded}
+                        onToggleExpand={handleToggleExpand}
+                    />
+                    {secretaryChild && (
                         <div className="secretary-container">
-                            <div className="connecting-line" />
-                            <OrganizationNode
-                                node={secretary}
-                                onRename={() => {}}
-                                onDelete={() => handleDelete(secretary)}
-                                onAddPosition={() => {}}
-                                isRoot={false}
-                                hasChildren={false}
-                                isExpanded={false}
-                                onToggleExpand={() => {}}
-                                isSecretary={true}
+                            <div className="connecting-line"></div>
+                            <SecretaryNode 
+                                node={secretaryChild}
+                                onDelete={() => handleDelete(secretaryChild)}
                             />
                         </div>
                     )}
@@ -254,7 +255,7 @@ function OrgChartTree({
         >
             {isExpanded && regularChildren.map((child, index) => (
                 <OrgChartTree
-                    key={child.id || index}
+                    key={index}
                     node={child}
                     parent={node}
                     onUpdate={onUpdate}
@@ -264,6 +265,93 @@ function OrgChartTree({
                 />
             ))}
         </TreeNode>
+    );
+}
+
+// Add this new component for Secretary Node
+function SecretaryNode({ node, onDelete }) {
+    const [anchorEl, setAnchorEl] = useState(null);
+
+    const handleClick = (event) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleClose = () => {
+        setAnchorEl(null);
+    };
+
+    const handleEdit = () => {
+        if (node.id) {
+            router.visit(`/users?id=${node.id}`);
+        }
+        handleClose();
+    };
+
+    const handleDeleteClick = () => {
+        onDelete();
+        handleClose();
+    };
+
+    return (
+        <Card 
+            variant="outlined" 
+            className="org-node secretary-node"
+            sx={{
+                borderColor: '#009FDC',
+                backgroundColor: '#f8f9fa',
+                '&:hover': {
+                    borderColor: '#007cb8',
+                    backgroundColor: '#f0f0f0'
+                }
+            }}
+        >
+            <div className="node-header">
+                <div className="avatar">
+                    <FontAwesomeIcon 
+                        icon={faUser} 
+                        color="#009FDC"
+                    />
+                </div>
+                <IconButton 
+                    size="small" 
+                    className="menu-icon" 
+                    onClick={handleClick}
+                >
+                    <FontAwesomeIcon icon={faEllipsisV} />
+                </IconButton>
+            </div>
+            <Typography 
+                className="node-text font-bold" 
+                style={{ color: "#009FDC" }}
+            >
+                {node.department}
+            </Typography>
+            <Typography 
+                className="node-text" 
+                style={{ color: "red" }}
+            >
+                {node.title}
+            </Typography>
+            <Typography 
+                className="node-text" 
+                style={{ color: "black" }}
+            >
+                {node.name}
+            </Typography>
+
+            <Menu
+                open={Boolean(anchorEl)}
+                anchorEl={anchorEl}
+                onClose={handleClose}
+            >
+                <MenuItem onClick={handleEdit}>
+                    Edit
+                </MenuItem>
+                <MenuItem onClick={handleDeleteClick}>
+                    Delete
+                </MenuItem>
+            </Menu>
+        </Card>
     );
 }
 
@@ -277,6 +365,19 @@ const Chart = () => {
             try {
                 const response = await axios.get('/api/v1/users/organogram');
                 const organogramData = response.data.data;
+                
+                // Log the root node check
+                console.log('ROOT NODE CHECK:', {
+                    nodeId: organogramData.id,
+                    nodeName: organogramData.name,
+                    children: organogramData.children?.map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        title: c.title,
+                        designation_id: c.designation_id
+                    }))
+                });
+
                 setOrgChart(organogramData);
             } catch (error) {
                 console.error("Error fetching organogram data:", error);
@@ -333,45 +434,16 @@ const Chart = () => {
                             lineWidth={"2px"}
                             lineColor={"#bbc"}
                             lineBorderRadius={"12px"}
-                            label={
-                                <OrganizationNode
-                                    node={orgChart}
-                                    onRename={() => {}}
-                                    onDelete={() => {}}
-                                    onAddPosition={() => {
-                                        const updated = { ...orgChart };
-                                        if (!updated.children) {
-                                            updated.children = [];
-                                        }
-                                        updated.children.push({
-                                            department: "",
-                                            title: "",
-                                            name: "",
-                                            children: [],
-                                        });
-                                        setOrgChart(updated);
-                                    }}
-                                    isRoot={true}
-                                    hasChildren={orgChart.children && orgChart.children.length > 0}
-                                    isExpanded={rootExpanded}
-                                    onToggleExpand={() => setRootExpanded(!rootExpanded)}
-                                />
-                            }
                         >
-                            {orgChart.children &&
-                                orgChart.children.length > 0 &&
-                                rootExpanded &&
-                                orgChart.children.map((child, index) => (
-                                    <OrgChartTree
-                                        key={index}
-                                        node={child}
-                                        parent={orgChart}
-                                        onUpdate={updateOrgChart}
-                                        isRoot={false}
-                                        parentExpanded={rootExpanded}
-                                        onMarkForDeletion={handleMarkForDeletion}
-                                    />
-                                ))}
+                            {orgChart && (
+                                <OrgChartTree
+                                    node={orgChart}
+                                    onUpdate={updateOrgChart}
+                                    isRoot={true}
+                                    parentExpanded={true}
+                                    onMarkForDeletion={handleMarkForDeletion}
+                                />
+                            )}
                         </Tree>
                     </div>
                 </div>
