@@ -230,7 +230,7 @@ function OrgChartTree({
     return (
         <TreeNode
             label={
-                <div className="org-node-container">
+                <div style={{ position: 'relative' }}>
                     <OrganizationNode
                         node={node}
                         onRename={() => {}}
@@ -243,10 +243,17 @@ function OrgChartTree({
                     />
                     {secretaryChild && (
                         <div className="secretary-container">
-                            <div className="connecting-line"></div>
-                            <SecretaryNode 
+                            <div className="connecting-line" />
+                            <OrganizationNode
                                 node={secretaryChild}
+                                onRename={() => {}}
                                 onDelete={() => handleDelete(secretaryChild)}
+                                onAddPosition={() => {}}
+                                isRoot={false}
+                                hasChildren={false}
+                                isExpanded={false}
+                                onToggleExpand={() => {}}
+                                isSecretary={true}
                             />
                         </div>
                     )}
