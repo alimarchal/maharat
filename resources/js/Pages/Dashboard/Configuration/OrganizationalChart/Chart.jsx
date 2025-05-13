@@ -67,16 +67,39 @@ function OrganizationNode({
                     onClick={() => {
                         const currentLevel = node.hierarchy_level ?? 0; // Default to 0 if undefined
                         const newHierarchyLevel = currentLevel === 0 ? 1 : currentLevel + 1;
-                        const parentId = currentLevel === 0 ? null : node.id ?? null; // Ensure null if undefined
+                        
+                        // Special case for id=1 and its children
+                        let parentId;
+                        if (node.id === 1 || node.parent_id === 1) {
+                            parentId = 1;  // Force parent_id to be 1 for this special case
+                            console.log("DEBUG - Special case for id=1:", {
+                                nodeId: node.id,
+                                parentId: parentId,
+                                currentLevel,
+                                newHierarchyLevel
+                            });
+                        } else {
+                            parentId = currentLevel === 0 ? null : node.id ?? null;
+                            console.log("DEBUG - Using default case");
+                        }
+
+                        console.log("DEBUG - Final parentId:", parentId);
 
                         console.log("Sending to Users.jsx:", {
                             hierarchy_level: newHierarchyLevel,
-                            parent_id: parentId
+                            parent_id: parentId,
+                            node_details: {
+                                id: node.id,
+                                level: currentLevel,
+                                has_secretary: node.children?.some(child => 
+                                    child.designation_id === 23 || 
+                                    (child.title && child.title.toLowerCase().includes('secretary'))
+                                ) ?? false
+                            }
                         });
 
                         // Use query parameters instead of props
                         router.visit(`/users?hierarchy_level=${newHierarchyLevel}&parent_id=${parentId}`);
-
                     }}
                     sx={{ textTransform: "none", color: "#009FDC", fontSize: "0.85rem" }}
                 >
@@ -196,7 +219,9 @@ function OrgChartTree({
             }
     
             const nextLevel = parentData.hierarchy_level === 0 ? 1 : parentData.hierarchy_level + 1;
-            const parentId = parentData.hierarchy_level === 0 ? null : parentData.id;
+            
+            // Special case for id=1
+            const parentId = parentData.id === 1 ? 1 : parentData.id;
     
             if (!node.children) {
                 node.children = [];
@@ -206,7 +231,7 @@ function OrgChartTree({
                 department: "",
                 title: "",
                 name: "",
-                id: parentId,
+                id: parentId,  // Set this to the parent's id
                 hierarchy_level: nextLevel,
                 parent_id: parentId,
                 children: [],
@@ -230,7 +255,7 @@ function OrgChartTree({
     return (
         <TreeNode
             label={
-                <div style={{ position: 'relative' }}>
+                <div className="org-node-container">
                     <OrganizationNode
                         node={node}
                         onRename={() => {}}
@@ -243,17 +268,10 @@ function OrgChartTree({
                     />
                     {secretaryChild && (
                         <div className="secretary-container">
-                            <div className="connecting-line" />
-                            <OrganizationNode
+                            <div className="connecting-line"></div>
+                            <SecretaryNode 
                                 node={secretaryChild}
-                                onRename={() => {}}
                                 onDelete={() => handleDelete(secretaryChild)}
-                                onAddPosition={() => {}}
-                                isRoot={false}
-                                hasChildren={false}
-                                isExpanded={false}
-                                onToggleExpand={() => {}}
-                                isSecretary={true}
                             />
                         </div>
                     )}

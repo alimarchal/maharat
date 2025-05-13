@@ -14,6 +14,13 @@ const Users = () => {
     const hierarchy_level = urlParams.get('hierarchy_level') ? parseInt(urlParams.get('hierarchy_level')) : undefined;
     const parent_id = urlParams.get('parent_id') ? parseInt(urlParams.get('parent_id')) : null;
 
+    // Debug logs for parent_id handling
+    console.log("DEBUG - URL Parameters:", {
+        raw_parent_id: urlParams.get('parent_id'),
+        parsed_parent_id: parent_id,
+        hierarchy_level: hierarchy_level
+    });
+
     const [formData, setFormData] = useState({
         employee_id: "",
         username: "",
@@ -30,6 +37,12 @@ const Users = () => {
         description: "",
         parent_id: parent_id ?? null,
         hierarchy_level: hierarchy_level !== undefined ? hierarchy_level : 0,
+    });
+
+    // Debug log for initial formData
+    console.log("DEBUG - Initial FormData:", {
+        parent_id: formData.parent_id,
+        hierarchy_level: formData.hierarchy_level
     });
 
     const [designations, setDesignations] = useState([]);
