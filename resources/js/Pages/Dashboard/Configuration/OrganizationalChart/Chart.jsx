@@ -582,10 +582,7 @@ const Chart = () => {
                         </Tree>
                     </div>
                 </div>
-                <div 
-                    className="save-button"
-                    style={{ marginLeft: '3%' }}
-                >
+                <div className="save-button">
                     <button
                         onClick={handleSave}
                         className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium hover:bg-[#007CB8] transition-colors"
