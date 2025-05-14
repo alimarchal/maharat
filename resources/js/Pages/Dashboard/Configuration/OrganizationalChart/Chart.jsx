@@ -278,28 +278,30 @@ function OrgChartTree({
                     )}
                 </div>
             }
-            className={nodeClassName}
+            className={`${nodeClassName} ${isExpanded ? 'expanded' : 'collapsed'} ${regularChildren.length === 0 ? 'leaf' : ''}`}
         >
-            {isExpanded && regularChildren.map((child, index) => {
-                let extraClass = '';
-                if (secretaryChild && index === 0) {
-                    extraClass = 'first-after-secretary';
-                }
-                return (
-                    <OrgChartTree
-                        key={child.id || index}
-                        node={child}
-                        parent={node}
-                        onUpdate={onUpdate}
-                        isRoot={false}
-                        parentExpanded={isExpanded}
-                        onMarkForDeletion={onMarkForDeletion}
-                        extraClass={extraClass}
-                        expandedStates={expandedStates}
-                        onExpansionChange={onExpansionChange}
-                    />
-                );
-            })}
+            {regularChildren.length > 0 && isExpanded
+                ? regularChildren.map((child, index) => {
+                    let extraClass = '';
+                    if (secretaryChild && index === 0) {
+                        extraClass = 'first-after-secretary';
+                    }
+                    return (
+                        <OrgChartTree
+                            key={child.id || index}
+                            node={child}
+                            parent={node}
+                            onUpdate={onUpdate}
+                            isRoot={false}
+                            parentExpanded={isExpanded}
+                            onMarkForDeletion={onMarkForDeletion}
+                            extraClass={extraClass}
+                            expandedStates={expandedStates}
+                            onExpansionChange={onExpansionChange}
+                        />
+                    );
+                })
+                : null}
         </TreeNode>
     );
 }
