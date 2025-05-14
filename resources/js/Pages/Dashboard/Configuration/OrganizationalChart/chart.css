@@ -390,3 +390,154 @@
 .move-right-after-secretary {
   margin-left: 0 !important;
 }
+
+.org-tree-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+/* Hide lines when node has no children */
+.org-tree-node:not(:has(.org-tree-node)) .org-tree-node__lines {
+    display: none;
+}
+
+/* Hide lines when node is not expanded */
+.org-tree-node:not(.expanded) .org-tree-node__lines {
+    display: none;
+}
+
+/* Hide lines for leaf nodes */
+.org-tree-node:has(.org-tree-node__children:empty) .org-tree-node__lines {
+    display: none;
+}
+
+/* Remove unnecessary lines */
+.react-organizational-chart .org-chart-line {
+    display: none !important;
+}
+
+/* Only show lines for parent nodes that are expanded and have children */
+.react-organizational-chart .org-chart-node:has(.org-chart-node) .org-chart-line {
+    display: block !important;
+}
+
+/* Aggressively remove all lines */
+.react-organizational-chart .org-chart-line,
+.react-organizational-chart .org-chart-node::before,
+.react-organizational-chart .org-chart-node::after,
+.react-organizational-chart .org-chart-node > div::before,
+.react-organizational-chart .org-chart-node > div::after,
+.react-organizational-chart .org-chart-node > div > div::before,
+.react-organizational-chart .org-chart-node > div > div::after {
+    display: none !important;
+    border: none !important;
+    background: none !important;
+    content: none !important;
+}
+
+/* Only show lines for parent nodes that are expanded and have children */
+.react-organizational-chart .org-chart-node:has(.org-chart-node) .org-chart-line {
+    display: block !important;
+    border: 2px solid #bbc !important;
+}
+
+/* Remove any remaining line artifacts */
+.org-chart-node {
+    position: relative;
+}
+
+.org-chart-node::before,
+.org-chart-node::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* Hide relationship lines for collapsed or leaf nodes */
+.collapsed > .org-chart-node__lines,
+.leaf > .org-chart-node__lines,
+.collapsed > svg,
+.leaf > svg {
+  display: none !important;
+}
+
+/* Custom connector between parent and children */
+.custom-connector {
+  position: relative;
+  height: 32px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: -8px;
+  z-index: 0;
+}
+
+.vertical-line {
+  width: 2px;
+  height: 16px;
+  background: #bbc;
+  margin: 0 auto;
+}
+
+.horizontal-line-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  position: relative;
+  top: -1px;
+}
+
+.horizontal-line {
+  height: 2px;
+  background: #bbc;
+  margin: 0 auto;
+}
+
+/* Remove the old custom-vertical-line style */
+.custom-vertical-line {
+  display: none !important;
+}
+
+.after-secretary-sibling {
+  margin-left: 400px !important; /* Large enough to clear the secretary card */
+}
+
+.secretary-placeholder {
+  display: inline-block;
+  width: 260px; /* Match secretary card width */
+  min-width: 240px;
+  height: 1px;
+  margin-right: 20px; /* Match gap if needed */
+  vertical-align: top;
+}
+
+.secretary-spacer-node {
+  display: inline-block;
+  width: 380px;      /* Increased width for more space */
+  min-width: 380px;  /* Increased min-width for more space */
+  height: 1px;
+  margin-right: 40px; /* Increased gap */
+  vertical-align: top;
+  background: transparent;
+  border: none;
+  pointer-events: none;
+}
+
+.dummy-spacing-node {
+  width: 100px;
+  min-width: 100px;
+  height: 40px;
+  display: block;      /* TEMP: Make it visible for debugging */
+  pointer-events: none;
+}
+
+.dummy-spacing-node-container {
+  box-shadow: none !important;
+  background: transparent !important;
+  border: none !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}

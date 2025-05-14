@@ -130,8 +130,19 @@ function OrgChartTree({
     onMarkForDeletion,
     extraClass = '',
     expandedStates,
-    onExpansionChange
+    onExpansionChange,
+    isDummy
 }) {
+    // If this is a dummy node, render a TreeNode with the dummy-spacing-node class
+    if (node.isDummy) {
+        return (
+            <TreeNode
+                label={<div className="dummy-spacing-node">&nbsp;</div>}
+                className="dummy-spacing-node-container hide-branch"
+            />
+        );
+    }
+
     // Initialize expanded state from the Map, defaulting to false if not set
     const [isExpanded, setIsExpanded] = useState(() => {
         return expandedStates.get(node.id) ?? false;
@@ -280,28 +291,64 @@ function OrgChartTree({
             }
             className={`${nodeClassName} ${isExpanded ? 'expanded' : 'collapsed'} ${regularChildren.length === 0 ? 'leaf' : ''}`}
         >
-            {regularChildren.length > 0 && isExpanded
-                ? regularChildren.map((child, index) => {
-                    let extraClass = '';
-                    if (secretaryChild && index === 0) {
-                        extraClass = 'first-after-secretary';
-                    }
-                    return (
-                        <OrgChartTree
-                            key={child.id || index}
-                            node={child}
-                            parent={node}
-                            onUpdate={onUpdate}
-                            isRoot={false}
-                            parentExpanded={isExpanded}
-                            onMarkForDeletion={onMarkForDeletion}
-                            extraClass={extraClass}
-                            expandedStates={expandedStates}
-                            onExpansionChange={onExpansionChange}
-                        />
+            {(() => {
+                // Insert dummy node as a sibling after any child that has a secretary
+                let childrenToRender = [];
+                for (let i = 0; i < regularChildren.length; i++) {
+                    const child = regularChildren[i];
+                    childrenToRender.push(child);
+                    // If this child has a secretary, insert a dummy node after it
+                    const hasSecretary = (child.children || []).some(
+                        c => c.designation_id === 23 ||
+                            (c.title && c.title.toLowerCase().includes('secretary'))
                     );
-                })
-                : null}
+                    if (hasSecretary) {
+                        childrenToRender.push({
+                            id: `dummy-${child.id}`,
+                            isDummy: true,
+                            name: 'spacer',
+                            title: '',
+                            department: '',
+                            children: []
+                        });
+                    }
+                }
+                return childrenToRender.length > 0 && isExpanded
+                    ? childrenToRender.map((child, index) => {
+                        if (child.isDummy) {
+                            return (
+                                <OrgChartTree
+                                    key={child.id}
+                                    node={child}
+                                    parent={node}
+                                    onUpdate={onUpdate}
+                                    isRoot={false}
+                                    parentExpanded={isExpanded}
+                                    onMarkForDeletion={onMarkForDeletion}
+                                    extraClass={'dummy-spacing-node'}
+                                    expandedStates={expandedStates}
+                                    onExpansionChange={onExpansionChange}
+                                    isDummy
+                                />
+                            );
+                        }
+                        return (
+                            <OrgChartTree
+                                key={child.id || index}
+                                node={child}
+                                parent={node}
+                                onUpdate={onUpdate}
+                                isRoot={false}
+                                parentExpanded={isExpanded}
+                                onMarkForDeletion={onMarkForDeletion}
+                                extraClass={''}
+                                expandedStates={expandedStates}
+                                onExpansionChange={onExpansionChange}
+                            />
+                        );
+                    })
+                    : null;
+            })()}
         </TreeNode>
     );
 }
