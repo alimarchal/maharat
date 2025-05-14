@@ -5,7 +5,7 @@
 }
 
 .chart-page {
-  padding: 20px;
+  padding: 0;
   background-color: inherit;
   overflow: hidden;
   position: relative;
@@ -21,34 +21,35 @@
 
 /* Chart Container */
 .chart-wrapper {
-  width: 100%;
-  max-width: 1920px;
-  margin: 0 auto;
-  overflow: visible !important;
-  background-color: #fafafa; /* Softer white with slight gray tint */
-  background-image: radial-gradient(#f0f0f0 1px, transparent 1px); /* Even lighter dot pattern */
-  background-size: 10px 10px; /* Size of the dot pattern */
-  padding: 30px;
+  width: 93%;
+  max-width: 93%;
+  margin: 0;
+  overflow: hidden !important;
+  background-color: #fafafa;
+  background-image: radial-gradient(#f0f0f0 1px, transparent 1px);
+  background-size: 10px 10px;
+  padding: 20px;
   position: relative;
   border-radius: 16px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  padding-right: 400px !important; /* Space for secretary nodes */
+  padding-right: 0 !important;
 }
 
 .chart-container {
-  width: 135%;
+  width: 100%;
   min-height: 100%;
-  overflow: auto !important;
-  padding: 30px;
-  background-color: #fafafa; /* Softer white with slight gray tint */
-  background-image: radial-gradient(#f0f0f0 1px, transparent 1px); /* Even lighter dot pattern */
-  background-size: 10px 10px; /* Size of the dot pattern */
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 10px;
+  background-color: #fafafa;
+  background-image: radial-gradient(#f0f0f0 1px, transparent 1px);
+  background-size: 10px 10px;
   position: relative;
   border-radius: 2px;
-  /* Add custom scrollbar styling */
   scrollbar-width: thin;
   scrollbar-color: #009FDC #f0f0f0;
-  z-index: 0; /* Added z-index to create stacking context */
+  z-index: 0;
+  max-width: calc(93vw - 20px);
 }
 
 /* Custom scrollbar for WebKit browsers */
@@ -82,6 +83,13 @@
   border: 1px solid #e0e0e0 !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
   transition: all 0.3s ease;
+  position: relative;
+}
+
+/* Add Employee Node Positioning */
+.org-node:empty {
+  margin-left: var(--x-offset, 0);
+  margin-top: var(--y-offset, 0);
 }
 
 .org-node:hover {
@@ -115,12 +123,11 @@
 .react-organizational-chart {
   width: fit-content;
   margin: 0 auto;
-  padding: 20px;
-  max-width: 100%;
+  padding: 5px;
   overflow: visible !important;
-  background-color: #fafafa; /* Softer white with slight gray tint */
-  background-image: radial-gradient(#f0f0f0 1px, transparent 1px); /* Even lighter dot pattern */
-  background-size: 10px 10px; /* Size of the dot pattern */
+  background-color: #fafafa;
+  background-image: radial-gradient(#f0f0f0 1px, transparent 1px);
+  background-size: 10px 10px;
 }
 
 /* Lines between nodes */
@@ -165,20 +172,22 @@
 /* Container for the entire chart page */
 .chart-page-container {
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
   overflow-x: hidden;
   background-color: inherit;
   min-height: 100vh;
-  padding: 20px;
+  padding: 0;
 }
 
 /* Save Button */
 .save-button {
   margin-top: 30px;
-  padding: 0 30px;
+  padding: 0;
   position: sticky;
   bottom: 20px;
-  align-self: flex-end;
+  width: 93%; /* Prevent overflow */
+  display: flex;
+  justify-content: flex-end;
 }
 
 .save-button button {
@@ -192,6 +201,7 @@
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 4px rgba(0, 159, 220, 0.2);
+  /* margin-right: 20px;  Remove to prevent overflow */
 }
 
 .save-button button:hover {
@@ -227,19 +237,19 @@
 /* Container Structure */
 .org-node-container {
   position: relative;
-  display: inline-block;  /* Contain the absolute positioned secretary */
+  display: inline-block;
+  max-width: calc(93vw - 40px);
 }
 
 /* Secretary Node Styles */
 .secretary-container {
   position: absolute !important;
-  left: 100% !important;
+  left: calc(100% + 20px) !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
-  margin-left: 50px !important;
   display: flex !important;
   align-items: center !important;
-  z-index: 1 !important; /* Reduced z-index to prevent overlapping */
+  z-index: 2 !important;
 }
 
 .secretary-node {
@@ -247,14 +257,15 @@
   border: 2px solid #009FDC !important;
   min-width: 240px !important;
   box-shadow: 0 2px 4px rgba(0, 159, 220, 0.1) !important;
-  position: relative !important; /* Added position relative */
+  position: relative !important;
+  z-index: 3 !important;
 }
 
 /* Connecting line */
 .connecting-line {
   position: absolute !important;
-  left: -50px !important;
-  width: 50px !important;
+  left: -20px !important;
+  width: 20px !important;
   height: 2px !important;
   background-color: #009FDC !important;
   top: 50% !important;
@@ -269,7 +280,7 @@
 
 /* Parent node with secretary */
 .has-secretary {
-  margin-right: 40px;
+  margin-right: 260px;
 }
 
 /* Responsive adjustments */

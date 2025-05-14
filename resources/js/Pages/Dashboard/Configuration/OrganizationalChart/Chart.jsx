@@ -17,6 +17,7 @@ function OrganizationNode({
     isExpanded,
     onToggleExpand,
     isSecretary = false,
+    hasSecretary,
 }) {
     const [anchorEl, setAnchorEl] = useState(null);
 
@@ -35,6 +36,9 @@ function OrganizationNode({
         handleClose();
     };
 
+    // Secretary detection
+    const isSecretaryNode = node.designation_id === 23 || (node.title && node.title.toLowerCase().includes('secretary'));
+
     return (
         <Card variant="outlined" className="org-node">
             <div className="node-header">
@@ -51,9 +55,11 @@ function OrganizationNode({
 
             {node.name ? (
                 <>
-                    <Typography className="node-text font-bold" style={{ color: "#009FDC" }}>
-                        {node.department}
-                    </Typography>
+                    {!isSecretaryNode && (
+                        <Typography className="node-text font-bold" style={{ color: "#009FDC" }}>
+                            {node.department}
+                        </Typography>
+                    )}
                     <Typography className="node-text" style={{ color: "red" }}>
                         {node.title}
                     </Typography>
@@ -67,38 +73,13 @@ function OrganizationNode({
                     onClick={() => {
                         const currentLevel = node.hierarchy_level ?? 0; // Default to 0 if undefined
                         const newHierarchyLevel = currentLevel === 0 ? 1 : currentLevel + 1;
-                        
                         // Special case for id=1 and its children
                         let parentId;
                         if (node.id === 1 || node.parent_id === 1) {
                             parentId = 1;  // Force parent_id to be 1 for this special case
-                            console.log("DEBUG - Special case for id=1:", {
-                                nodeId: node.id,
-                                parentId: parentId,
-                                currentLevel,
-                                newHierarchyLevel
-                            });
                         } else {
                             parentId = currentLevel === 0 ? null : node.id ?? null;
-                            console.log("DEBUG - Using default case");
                         }
-
-                        console.log("DEBUG - Final parentId:", parentId);
-
-                        console.log("Sending to Users.jsx:", {
-                            hierarchy_level: newHierarchyLevel,
-                            parent_id: parentId,
-                            node_details: {
-                                id: node.id,
-                                level: currentLevel,
-                                has_secretary: node.children?.some(child => 
-                                    child.designation_id === 23 || 
-                                    (child.title && child.title.toLowerCase().includes('secretary'))
-                                ) ?? false
-                            }
-                        });
-
-                        // Use query parameters instead of props
                         router.visit(`/users?hierarchy_level=${newHierarchyLevel}&parent_id=${parentId}`);
                     }}
                     sx={{ textTransform: "none", color: "#009FDC", fontSize: "0.85rem" }}
@@ -190,54 +171,30 @@ function OrgChartTree({
         if (parent) {
             try {
                 if (!nodeToDelete || !nodeToDelete.id) {
-                    console.error("Invalid node or node ID");
+                    // For newly added empty nodes, just remove from UI
+                    const updatedChildren = allChildren.filter(child => 
+                        child !== nodeToDelete && 
+                        // Also check for empty nodes with matching parent_id
+                        !(child.parent_id === nodeToDelete.parent_id && !child.name)
+                    );
+                    setAllChildren(updatedChildren);
+                    parent.children = updatedChildren;
+                    onUpdate();
                     return;
                 }
 
-                console.log("DEBUG - Deleting node:", {
-                    nodeToDelete: {
-                        id: nodeToDelete.id,
-                        name: nodeToDelete.name,
-                        isSecretary: nodeToDelete.designation_id === 23 || 
-                            (nodeToDelete.title && nodeToDelete.title.toLowerCase().includes('secretary'))
-                    },
-                    parent: {
-                        id: parent.id,
-                        allChildren: allChildren.map(c => ({
-                            id: c.id,
-                            name: c.name,
-                            isSecretary: c.designation_id === 23 || 
-                                (c.title && c.title.toLowerCase().includes('secretary'))
-                        }))
-                    }
-                });
-
-                // First mark the node for deletion
+                // First mark the node for deletion in DB
                 onMarkForDeletion(nodeToDelete.id);
 
-                // Then update the UI by removing from local state
+                // Then update the UI
                 const updatedChildren = allChildren.filter(child => child.id !== nodeToDelete.id);
                 setAllChildren(updatedChildren);
-                
-                // Update parent's children array for UI consistency
                 parent.children = updatedChildren;
-
-                console.log("DEBUG - After deletion:", {
-                    remainingChildren: updatedChildren.map(c => ({
-                        id: c.id,
-                        name: c.name,
-                        isSecretary: c.designation_id === 23 || 
-                            (c.title && c.title.toLowerCase().includes('secretary'))
-                    }))
-                });
-
-                // Update the UI
                 onUpdate();
+
             } catch (error) {
                 console.error("Error in handleDelete:", error);
             }
-        } else {
-            console.error("Cannot delete node: no parent found");
         }
     };
 
@@ -258,23 +215,40 @@ function OrgChartTree({
     
             const nextLevel = parentData.hierarchy_level === 0 ? 1 : parentData.hierarchy_level + 1;
             
-            // Special case for id=1
-            const parentId = parentData.id === 1 ? 1 : parentData.id;
-    
-            if (!node.children) {
-                node.children = [];
+            // Special case for id=1: always add as direct child
+            const parentId = parentData.id === 1 ? 1 : node.id;
+            
+            // Check if there's already an empty node for this parent
+            const hasEmptyNode = allChildren.some(child => 
+                child.parent_id === parentId && !child.name
+            );
+
+            if (hasEmptyNode) {
+                console.log("Empty node already exists for this parent");
+                return;
             }
-    
-            node.children.push({
+
+            // Create new empty node
+            const newNode = {
                 department: "",
                 title: "",
                 name: "",
-                id: parentId,  // Set this to the parent's id
+                id: null,
                 hierarchy_level: nextLevel,
                 parent_id: parentId,
                 children: [],
-            });
+                // Add position data to handle secretary overlap
+                position: {
+                    x: secretaryChild ? -200 : 0, // Offset if there's a secretary
+                    y: (allChildren.length * 100) // Vertical spacing
+                }
+            };
     
+            setAllChildren([...allChildren, newNode]);
+            if (!node.children) {
+                node.children = [];
+            }
+            node.children.push(newNode);
             onUpdate();
     
         } catch (error) {
@@ -303,6 +277,7 @@ function OrgChartTree({
                         hasChildren={regularChildren.length > 0}
                         isExpanded={isExpanded}
                         onToggleExpand={handleToggleExpand}
+                        hasSecretary={!!secretaryChild}
                     />
                     {secretaryChild && (
                         <div className="secretary-container">
@@ -318,7 +293,7 @@ function OrgChartTree({
         >
             {isExpanded && regularChildren.map((child, index) => (
                 <OrgChartTree
-                    key={index}
+                    key={child.id || index}
                     node={child}
                     parent={node}
                     onUpdate={onUpdate}
@@ -355,6 +330,9 @@ function SecretaryNode({ node, onDelete }) {
         handleClose();
     };
 
+    // Secretary detection
+    const isSecretaryNode = node.designation_id === 23 || (node.title && node.title.toLowerCase().includes('secretary'));
+
     return (
         <Card 
             variant="outlined" 
@@ -383,12 +361,15 @@ function SecretaryNode({ node, onDelete }) {
                     <FontAwesomeIcon icon={faEllipsisV} />
                 </IconButton>
             </div>
-            <Typography 
-                className="node-text font-bold" 
-                style={{ color: "#009FDC" }}
-            >
-                {node.department}
-            </Typography>
+            {/* Hide department for secretary node */}
+            {!isSecretaryNode && (
+                <Typography 
+                    className="node-text font-bold" 
+                    style={{ color: "#009FDC" }}
+                >
+                    {node.department}
+                </Typography>
+            )}
             <Typography 
                 className="node-text" 
                 style={{ color: "red" }}
@@ -498,42 +479,40 @@ const Chart = () => {
 
     return (
         <div className="chart-page-container">
-            <div className="w-full max-w-[1400px] mx-auto">
-                <h2 className="text-2xl md:text-3xl font-bold text-[#2C323C] mb-2">
-                    Organizational Chart
-                </h2>
-                <p className="text-lg md:text-xl text-[#7D8086] mb-6">
-                    Manage users and their hierarchy here.
-                </p>
+            <h2 className="text-2xl md:text-3xl font-bold text-[#2C323C] mb-2">
+                Organizational Chart
+            </h2>
+            <p className="text-lg md:text-xl text-[#7D8086] mb-6">
+                Manage users and their hierarchy here.
+            </p>
 
-                <div className="chart-wrapper bg-white rounded-lg shadow-sm">
-                    <div className="chart-container">
-                        <Tree
-                            lineWidth={"2px"}
-                            lineColor={"#bbc"}
-                            lineBorderRadius={"12px"}
-                        >
-                            {orgChart && (
-                                <OrgChartTree
-                                    node={orgChart}
-                                    onUpdate={updateOrgChart}
-                                    isRoot={true}
-                                    parentExpanded={true}
-                                    onMarkForDeletion={handleMarkForDeletion}
-                                />
-                            )}
-                        </Tree>
-                    </div>
-                </div>
-
-                <div className="flex justify-end mt-6">
-                    <button
-                        onClick={handleSave}
-                        className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium hover:bg-[#007CB8] transition-colors"
+            <div className="chart-wrapper bg-white rounded-lg shadow-sm">
+                <div className="chart-container">
+                    <Tree
+                        lineWidth={"2px"}
+                        lineColor={"#bbc"}
+                        lineBorderRadius={"12px"}
                     >
-                        Save
-                    </button>
+                        {orgChart && (
+                            <OrgChartTree
+                                node={orgChart}
+                                onUpdate={updateOrgChart}
+                                isRoot={true}
+                                parentExpanded={true}
+                                onMarkForDeletion={handleMarkForDeletion}
+                            />
+                        )}
+                    </Tree>
                 </div>
+            </div>
+
+            <div className="save-button">
+                <button
+                    onClick={handleSave}
+                    className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium hover:bg-[#007CB8] transition-colors"
+                >
+                    Save
+                </button>
             </div>
         </div>
     );
