@@ -17,7 +17,8 @@ function OrganizationNode({
     isExpanded,
     onToggleExpand,
     isSecretary = false,
-    hasSecretary,
+    hasSecretaryParent,
+    extraClass
 }) {
     const [anchorEl, setAnchorEl] = useState(null);
 
@@ -40,7 +41,10 @@ function OrganizationNode({
     const isSecretaryNode = node.designation_id === 23 || (node.title && node.title.toLowerCase().includes('secretary'));
 
     return (
-        <Card variant="outlined" className="org-node">
+        <Card 
+            variant="outlined" 
+            className={`org-node ${hasSecretaryParent ? 'has-secretary-parent' : ''} ${extraClass ? extraClass : ''}`}
+        >
             <div className="node-header">
                 {/* Left: Main Icon (Centered) */}
                 <div className="avatar">
@@ -124,27 +128,29 @@ function OrgChartTree({
     isRoot,
     parentExpanded = true,
     onMarkForDeletion,
+    extraClass = '',
+    expandedStates,
+    onExpansionChange
 }) {
-    const [isExpanded, setIsExpanded] = useState(true);
+    // Initialize expanded state from the Map, defaulting to false if not set
+    const [isExpanded, setIsExpanded] = useState(() => {
+        return expandedStates.get(node.id) ?? false;
+    });
+
+    const handleToggleExpand = () => {
+        const newExpandedState = !isExpanded;
+        setIsExpanded(newExpandedState);
+        onExpansionChange(node.id, newExpandedState);
+    };
+
+    const [allChildren, setAllChildren] = useState(node.children || []);
 
     // Check if node is secretary
     const isSecretary = node.designation_id === 23 || 
         (node.title && node.title.toLowerCase().includes('secretary'));
 
-    console.log('SECRETARY CHECK:', {
-        nodeId: node.id,
-        nodeName: node.name,
-        isSecretary,
-        designationId: node.designation_id,
-        title: node.title,
-        parentId: node.parent_id
-    });
-
-    // Store all children in state to handle updates
-    const [allChildren, setAllChildren] = useState(node.children || []);
-
     // Get regular children and secretary separately
-    const regularChildren = allChildren.filter(child => 
+    let regularChildren = allChildren.filter(child => 
         !(child.designation_id === 23 || 
           (child.title && child.title.toLowerCase().includes('secretary')))
     );
@@ -153,48 +159,35 @@ function OrgChartTree({
         (child.title && child.title.toLowerCase().includes('secretary'))
     );
 
-    console.log('NODE STRUCTURE:', {
-        nodeId: node.id,
-        nodeName: node.name,
-        hasSecretary: !!secretaryChild,
-        secretaryDetails: secretaryChild ? {
-            id: secretaryChild.id,
-            name: secretaryChild.name,
-            title: secretaryChild.title,
-            designationId: secretaryChild.designation_id
-        } : null,
-        regularChildrenCount: regularChildren.length,
-        allChildrenCount: allChildren.length
-    });
+    // Debug: Log children structure for this node
+    if (node && node.id) {
+        console.log('[OrgChartTree] node.id:', node.id, {
+            allChildren: allChildren.map(c => c && {id: c.id, title: c.title}),
+            regularChildren: regularChildren.map(c => c && {id: c && c.id, title: c && c.title}),
+            secretaryChild: secretaryChild && {id: secretaryChild.id, title: secretaryChild.title}
+        });
+    }
+
+    // Check if parent has a secretary
+    const hasSecretaryParent = parent?.children?.some(child => 
+        child.designation_id === 23 || 
+        (child.title && child.title.toLowerCase().includes('secretary'))
+    );
 
     const handleDelete = (nodeToDelete = node) => {
         if (parent) {
-            try {
-                if (!nodeToDelete || !nodeToDelete.id) {
-                    // For newly added empty nodes, just remove from UI
-                    const updatedChildren = allChildren.filter(child => 
-                        child !== nodeToDelete && 
-                        // Also check for empty nodes with matching parent_id
-                        !(child.parent_id === nodeToDelete.parent_id && !child.name)
-                    );
-                    setAllChildren(updatedChildren);
-                    parent.children = updatedChildren;
-                    onUpdate();
-                    return;
-                }
-
-                // First mark the node for deletion in DB
-                onMarkForDeletion(nodeToDelete.id);
-
-                // Then update the UI
-                const updatedChildren = allChildren.filter(child => child.id !== nodeToDelete.id);
-                setAllChildren(updatedChildren);
-                parent.children = updatedChildren;
-                onUpdate();
-
-            } catch (error) {
-                console.error("Error in handleDelete:", error);
+            console.log('=== Delete Process Start ===');
+            console.log('Node to delete:', nodeToDelete);
+            
+            // Remove the node from parent's children
+            const index = parent.children.findIndex(child => child.id === nodeToDelete.id);
+            if (index !== -1) {
+                parent.children.splice(index, 1);
+                // Force a complete re-render
+                onUpdate(true);
             }
+            
+            console.log('=== Delete Process End ===');
         }
     };
 
@@ -216,39 +209,28 @@ function OrgChartTree({
             const nextLevel = parentData.hierarchy_level === 0 ? 1 : parentData.hierarchy_level + 1;
             
             // Special case for id=1: always add as direct child
-            const parentId = parentData.id === 1 ? 1 : node.id;
+            const parentId = parentData.id === 1 ? 1 : parentData.id;
             
-            // Check if there's already an empty node for this parent
-            const hasEmptyNode = allChildren.some(child => 
-                child.parent_id === parentId && !child.name
-            );
-
-            if (hasEmptyNode) {
-                console.log("Empty node already exists for this parent");
-                return;
-            }
-
-            // Create new empty node
+            // Create new node with unique temporary ID
+            const tempId = Date.now();
             const newNode = {
                 department: "",
                 title: "",
                 name: "",
-                id: null,
+                id: tempId,
                 hierarchy_level: nextLevel,
                 parent_id: parentId,
                 children: [],
-                // Add position data to handle secretary overlap
-                position: {
-                    x: secretaryChild ? -200 : 0, // Offset if there's a secretary
-                    y: (allChildren.length * 100) // Vertical spacing
-                }
             };
-    
-            setAllChildren([...allChildren, newNode]);
+
+            // Update local state
             if (!node.children) {
                 node.children = [];
             }
+
             node.children.push(newNode);
+            setAllChildren([...node.children]);
+            
             onUpdate();
     
         } catch (error) {
@@ -256,18 +238,24 @@ function OrgChartTree({
         }
     };
 
-    const handleToggleExpand = () => {
-        setIsExpanded(!isExpanded);
-    };
-
     if (!parentExpanded) {
         return null;
     }
 
+    // Add class if parent has secretary
+    const nodeClassName = hasSecretaryParent ? 'has-secretary-parent' : '';
+
+    // Build children array: secretary first (if present), then regular children
+    let childrenArray = [];
+    if (secretaryChild) {
+        childrenArray.push(secretaryChild);
+    }
+    childrenArray = [...childrenArray, ...regularChildren];
+
     return (
         <TreeNode
             label={
-                <div className="org-node-container">
+                <div className={`org-node-container ${nodeClassName} ${extraClass}`}>
                     <OrganizationNode
                         node={node}
                         onRename={() => {}}
@@ -277,7 +265,7 @@ function OrgChartTree({
                         hasChildren={regularChildren.length > 0}
                         isExpanded={isExpanded}
                         onToggleExpand={handleToggleExpand}
-                        hasSecretary={!!secretaryChild}
+                        hasSecretaryParent={hasSecretaryParent}
                     />
                     {secretaryChild && (
                         <div className="secretary-container">
@@ -290,18 +278,28 @@ function OrgChartTree({
                     )}
                 </div>
             }
+            className={nodeClassName}
         >
-            {isExpanded && regularChildren.map((child, index) => (
-                <OrgChartTree
-                    key={child.id || index}
-                    node={child}
-                    parent={node}
-                    onUpdate={onUpdate}
-                    isRoot={false}
-                    parentExpanded={isExpanded}
-                    onMarkForDeletion={onMarkForDeletion}
-                />
-            ))}
+            {isExpanded && regularChildren.map((child, index) => {
+                let extraClass = '';
+                if (secretaryChild && index === 0) {
+                    extraClass = 'first-after-secretary';
+                }
+                return (
+                    <OrgChartTree
+                        key={child.id || index}
+                        node={child}
+                        parent={node}
+                        onUpdate={onUpdate}
+                        isRoot={false}
+                        parentExpanded={isExpanded}
+                        onMarkForDeletion={onMarkForDeletion}
+                        extraClass={extraClass}
+                        expandedStates={expandedStates}
+                        onExpansionChange={onExpansionChange}
+                    />
+                );
+            })}
         </TreeNode>
     );
 }
@@ -403,6 +401,9 @@ const Chart = () => {
     const [orgChart, setOrgChart] = useState(null);
     const [rootExpanded, setRootExpanded] = useState(true);
     const [nodesToDelete, setNodesToDelete] = useState([]);
+    const [key, setKey] = useState(0);
+    // Add a Map to store expansion states for each node
+    const [expandedStates, setExpandedStates] = useState(new Map());
 
     useEffect(() => {
         const fetchData = async () => {
@@ -431,6 +432,28 @@ const Chart = () => {
         fetchData();
     }, []);
 
+    const updateOrgChart = (forceUpdate = false) => {
+        if (forceUpdate) {
+            // Force a complete re-render by incrementing the key
+            setKey(prev => prev + 1);
+        } else {
+            // Normal update
+            setOrgChart(prev => ({ ...prev }));
+        }
+    };
+
+    const handleMarkForDeletion = (nodeId) => {
+        console.log('=== Mark For Deletion Start ===');
+        console.log('Node ID to mark:', nodeId);
+        console.log('Current nodes to delete:', nodesToDelete);
+        setNodesToDelete(prevNodes => {
+            const newNodes = [...prevNodes, nodeId];
+            console.log('New nodes to delete:', newNodes);
+            return newNodes;
+        });
+        console.log('=== Mark For Deletion End ===');
+    };
+
     const handleSave = async () => {
         try {
             console.log("Nodes to delete:", nodesToDelete);
@@ -442,28 +465,28 @@ const Chart = () => {
                     console.log(`Successfully deleted node ${nodeId}`);
                 } catch (error) {
                     console.error(`Error deleting node ${nodeId}:`, error);
-                    // Continue with other deletions even if one fails
                 }
             }
             
-            setNodesToDelete([]); // Clear the deletion list
-            console.log("Saved Organization Chart:", orgChart);
+            // Clear the deletion list
+            setNodesToDelete([]);
+            
+            // Refresh the chart data
+            const response = await axios.get('/api/v1/users/organogram');
+            setOrgChart(response.data.data);
+            
             alert("Changes saved successfully!");
         } catch (error) {
             console.error("Error saving changes:", error);
         }
     };
 
-    const updateOrgChart = () => {
-        setOrgChart({ ...orgChart });
-    };
-
-    const handleMarkForDeletion = (nodeId) => {
-        console.log("Marking node for deletion:", nodeId);
-        setNodesToDelete(prevNodes => {
-            const newNodes = [...prevNodes, nodeId];
-            console.log("Updated nodes to delete:", newNodes);
-            return newNodes;
+    // Add function to handle expansion state changes
+    const handleExpansionChange = (nodeId, isExpanded) => {
+        setExpandedStates(prev => {
+            const newMap = new Map(prev);
+            newMap.set(nodeId, isExpanded);
+            return newMap;
         });
     };
 
@@ -478,7 +501,7 @@ const Chart = () => {
     }
 
     return (
-        <div className="chart-page-container">
+        <div className="chart-page-container" key={key}>
             <h2 className="text-2xl md:text-3xl font-bold text-[#2C323C] mb-2">
                 Organizational Chart
             </h2>
@@ -492,6 +515,7 @@ const Chart = () => {
                         lineWidth={"2px"}
                         lineColor={"#bbc"}
                         lineBorderRadius={"12px"}
+                        label={<div className="org-node-container"></div>}
                     >
                         {orgChart && (
                             <OrgChartTree
@@ -500,6 +524,8 @@ const Chart = () => {
                                 isRoot={true}
                                 parentExpanded={true}
                                 onMarkForDeletion={handleMarkForDeletion}
+                                expandedStates={expandedStates}
+                                onExpansionChange={handleExpansionChange}
                             />
                         )}
                     </Tree>

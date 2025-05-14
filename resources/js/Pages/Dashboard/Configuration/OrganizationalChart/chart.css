@@ -84,12 +84,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
   transition: all 0.3s ease;
   position: relative;
-}
-
-/* Add Employee Node Positioning */
-.org-node:empty {
-  margin-left: var(--x-offset, 0);
-  margin-top: var(--y-offset, 0);
+  z-index: 1;
 }
 
 .org-node:hover {
@@ -185,7 +180,7 @@
   padding: 0;
   position: sticky;
   bottom: 20px;
-  width: 93%; /* Prevent overflow */
+  width: 100%; /* Prevent overflow */
   display: flex;
   justify-content: flex-end;
 }
@@ -239,17 +234,19 @@
   position: relative;
   display: inline-block;
   max-width: calc(93vw - 40px);
+  margin: 0 10px;
 }
 
 /* Secretary Node Styles */
 .secretary-container {
   position: absolute !important;
-  left: calc(100% + 20px) !important;
+  left: 100% !important;
+  margin-left: 20px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
   display: flex !important;
   align-items: center !important;
-  z-index: 2 !important;
+  z-index: 10 !important;
 }
 
 .secretary-node {
@@ -258,7 +255,7 @@
   min-width: 240px !important;
   box-shadow: 0 2px 4px rgba(0, 159, 220, 0.1) !important;
   position: relative !important;
-  z-index: 3 !important;
+  z-index: 2 !important;
 }
 
 /* Connecting line */
@@ -280,6 +277,11 @@
 
 /* Parent node with secretary */
 .has-secretary {
+  margin-right: 40px;
+}
+
+/* Add spacing for nodes with secretary */
+.has-secretary + .org-node {
   margin-right: 260px;
 }
 
@@ -316,4 +318,75 @@
   .secretary-node {
     min-width: 180px;
   }
+}
+
+/* Ensure the tree lines extend properly */
+.react-organizational-chart .org-chart-line {
+  transition: all 0.3s ease;
+}
+
+.has-secretary-sibling {
+  margin-left: 260px !important; /* Secretary card width + gap */
+}
+
+.shift-left-for-secretary {
+  margin-left: -20px !important;
+}
+
+.move-right-after-secretary {
+  margin-left: 260px !important;
+}
+
+.first-after-secretary {
+  margin-left: 270px !important;
+}
+
+/* New rule for siblings after secretary */
+.org-node-container:has(+ .secretary-container) + .org-node-container {
+  margin-left: 280px !important; /* Secretary card width (240px) + gap (20px) + extra spacing (20px) */
+}
+
+/* Ensure proper spacing between all siblings */
+.org-node-container + .org-node-container {
+  margin-left: 20px !important;
+}
+
+/* Ensure proper spacing between nodes */
+.react-organizational-chart .org-chart-node {
+  margin: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Adjust spacing for nodes after secretary */
+.org-node-container:has(+ .secretary-container) + .org-node-container {
+  margin-left: 280px !important;
+}
+
+/* Ensure proper line alignment */
+.react-organizational-chart .org-chart-line {
+  border-color: #bbc;
+  position: relative;
+  z-index: 0;
+}
+
+/* Adjust the tree structure */
+.react-organizational-chart > div {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+/* Ensure proper spacing between levels */
+.react-organizational-chart .org-chart-node {
+  padding: 20px 0;
+}
+
+/* Remove conflicting styles */
+.first-after-secretary,
+.shift-left-for-secretary,
+.move-right-after-secretary {
+  margin-left: 0 !important;
 }
