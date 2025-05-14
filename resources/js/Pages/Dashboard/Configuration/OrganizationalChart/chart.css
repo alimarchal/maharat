@@ -5,9 +5,9 @@
 }
 
 .chart-page {
-  padding: 0;
+  padding: 20px;
   background-color: inherit;
-  overflow: hidden;
+  overflow-x: hidden;
   position: relative;
 }
 
@@ -20,35 +20,31 @@
 
 /* Chart Container */
 .chart-wrapper {
-  width: 93%;
-  max-width: 93%;
-  margin: 0;
-  overflow: hidden !important;
   background-color: #fafafa;
   background-image: radial-gradient(#f0f0f0 1px, transparent 1px);
   background-size: 10px 10px;
-  padding: 20px;
+  padding: 30px;
+  border-radius: 12px;
   position: relative;
-  border-radius: 16px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  padding-right: 0 !important;
+  z-index: 1;
+  max-width: 1540px;
+  width: 100%;
+  margin-left: 0;
+  min-height: 0;
 }
 
 .chart-container {
+  overflow-x: auto;
   width: 100%;
   min-height: 100%;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  padding: 10px;
+  padding: 20px;
   background-color: #fafafa;
   background-image: radial-gradient(#f0f0f0 1px, transparent 1px);
   background-size: 10px 10px;
   position: relative;
-  border-radius: 2px;
-  scrollbar-width: thin;
-  scrollbar-color: #009FDC #f0f0f0;
-  z-index: 0;
-  max-width: calc(93vw - 20px);
+  border-radius: 12px;
+  max-width: 1540px;
+  margin-left: 0;
 }
 
 /* Custom scrollbar for WebKit browsers */
@@ -174,15 +170,13 @@
 
 /* Save Button */
 .save-button {
-  margin-top: 30px;
-  padding: 0;
-  position: static;
-  width: 100%;
   display: flex;
   justify-content: flex-end;
-  max-width: 93%;
+  margin-top: 20px;
+  padding-right: 30px;
+  max-width: 1540px;
   margin-left: 0;
-  margin-right: 0;
+  margin-right: 40px;
 }
 
 .save-button button {
@@ -252,7 +246,7 @@
 .secretary-node {
   background-color: #f8f9fa !important;
   border: 2px solid #009FDC !important;
-  min-width: 240px !important;
+  min-width: 160px !important;
   box-shadow: 0 2px 4px rgba(0, 159, 220, 0.1) !important;
   position: relative !important;
   z-index: 2 !important;
