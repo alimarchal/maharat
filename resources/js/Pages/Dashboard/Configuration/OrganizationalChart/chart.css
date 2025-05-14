@@ -27,10 +27,11 @@
   border-radius: 12px;
   position: relative;
   z-index: 1;
-  max-width: 1540px;
+  max-width: calc(100vw - 250px);
   width: 100%;
   margin-left: 0;
   min-height: 0;
+  overflow-x: auto;
 }
 
 .chart-container {
@@ -43,7 +44,7 @@
   background-size: 10px 10px;
   position: relative;
   border-radius: 12px;
-  max-width: 1540px;
+  max-width: calc(100vw - 250px);
   margin-left: 0;
 }
 
@@ -172,11 +173,10 @@
 .save-button {
   display: flex;
   justify-content: flex-end;
-  margin-top: 20px;
+  margin: 24px auto 0 auto;
   padding-right: 30px;
-  max-width: 1540px;
-  margin-left: 0;
-  margin-right: 40px;
+  max-width: calc(100vw - 250px);
+  width: 100%;
 }
 
 .save-button button {
