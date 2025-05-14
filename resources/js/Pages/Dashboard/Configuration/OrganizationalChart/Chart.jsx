@@ -558,36 +558,38 @@ const Chart = () => {
                 Manage users and their hierarchy here.
             </p>
 
-            <div className="chart-wrapper bg-white rounded-lg shadow-sm">
-                <div className="chart-container">
-                    <Tree
-                        lineWidth={"2px"}
-                        lineColor={"#bbc"}
-                        lineBorderRadius={"12px"}
-                        label={<div className="org-node-container"></div>}
-                    >
-                        {orgChart && (
-                            <OrgChartTree
-                                node={orgChart}
-                                onUpdate={updateOrgChart}
-                                isRoot={true}
-                                parentExpanded={true}
-                                onMarkForDeletion={handleMarkForDeletion}
-                                expandedStates={expandedStates}
-                                onExpansionChange={handleExpansionChange}
-                            />
-                        )}
-                    </Tree>
+            {/* Wrap chart and save button in a flex column container */}
+            <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                <div className="chart-wrapper bg-white rounded-lg shadow-sm">
+                    <div className="chart-container">
+                        <Tree
+                            lineWidth={"2px"}
+                            lineColor={"#bbc"}
+                            lineBorderRadius={"12px"}
+                            label={<div className="org-node-container"></div>}
+                        >
+                            {orgChart && (
+                                <OrgChartTree
+                                    node={orgChart}
+                                    onUpdate={updateOrgChart}
+                                    isRoot={true}
+                                    parentExpanded={true}
+                                    onMarkForDeletion={handleMarkForDeletion}
+                                    expandedStates={expandedStates}
+                                    onExpansionChange={handleExpansionChange}
+                                />
+                            )}
+                        </Tree>
+                    </div>
                 </div>
-            </div>
-
-            <div className="save-button">
-                <button
-                    onClick={handleSave}
-                    className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium hover:bg-[#007CB8] transition-colors"
-                >
-                    Save
-                </button>
+                <div className="save-button">
+                    <button
+                        onClick={handleSave}
+                        className="bg-[#009FDC] text-white px-6 py-2 rounded-full text-xl font-medium hover:bg-[#007CB8] transition-colors"
+                    >
+                        Save
+                    </button>
+                </div>
             </div>
         </div>
     );

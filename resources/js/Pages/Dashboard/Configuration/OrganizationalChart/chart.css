@@ -9,7 +9,6 @@
   background-color: inherit;
   overflow: hidden;
   position: relative;
-  min-height: 100vh;
 }
 
 .org-row {
@@ -170,7 +169,6 @@
   max-width: 100%;
   overflow-x: hidden;
   background-color: inherit;
-  min-height: 100vh;
   padding: 0;
 }
 
@@ -178,11 +176,13 @@
 .save-button {
   margin-top: 30px;
   padding: 0;
-  position: sticky;
-  bottom: 20px;
-  width: 100%; /* Prevent overflow */
+  position: static;
+  width: 100%;
   display: flex;
   justify-content: flex-end;
+  max-width: 93%;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .save-button button {
@@ -526,10 +526,10 @@
 }
 
 .dummy-spacing-node {
-  width: 100px;
-  min-width: 100px;
+  width: 260px;
+  min-width: 260px;
   height: 40px;
-  display: block;      /* TEMP: Make it visible for debugging */
+  display: block;
   pointer-events: none;
 }
 
@@ -540,4 +540,14 @@
   min-width: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
+}
+
+.dummy-spacing-node-container > .org-chart-line {
+  display: none !important;
+}
+
+html, body {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
 }
