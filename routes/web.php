@@ -70,7 +70,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/product-categories', [ProductCategoryController::class, 'index'])->name('category.index');
     Route::get('/category', function () {
         return Inertia::render('Dashboard', ['page' => 'Warehouse/Category/CategoryIndex']);
-    })->name('category.index');
+    })->name('category.page');
     Route::get('/category/create', function () {
         return Inertia::render('Dashboard', ['page' => 'Warehouse/Category/CreateCategory']);
     })->name('category.create');
@@ -90,7 +90,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/warehouse-management', function () {
         return Inertia::render('Dashboard', ['page' => 'WarehouseManagement/WarehouseIndex']);
-    })->name('warehouse.index');
+    })->name('warehouse.management.index');
     Route::get('/warehouse-management/create', function () {
         return Inertia::render('Dashboard', ['page' => 'WarehouseManagement/CreateWarehouse']);
     })->name('warehouse.create');
@@ -105,7 +105,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('quotations')->name('quotations.')->group(function () {
         Route::get('/', function () {
             return Inertia::render('Dashboard', ['page' => 'ProcurementCenter/Quotations/Quotations']);
-        })->name('index');
+        })->name('list');
         Route::get('/create-quotation', function () {
             return Inertia::render('Dashboard', [
                 'page' => 'ProcurementCenter/Quotations/NewQuotation']);
@@ -123,7 +123,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/goods-receiving-notes', function () {
         return Inertia::render('Dashboard', ['page' => 'Warehouse/GRN/GRNTable']);
-    })->name('grns.index');
+    })->name('grns.page');
     Route::get('/goods-receiving-notes/create', function () {
         return Inertia::render('Dashboard', ['page' => 'Warehouse/GRN/CreateGRNTable']);
     })->name('grns.create');
@@ -151,25 +151,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('processStatus.index');
     Route::get('/statuses/request-status/{id}', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/MRStatusFlow', 'id' => $id]);
-    })->name('processStatus.index');
+    })->name('processStatus.request');
     Route::get('/statuses/rfq-status/{id}', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/RFQStatusFlow', 'id' => $id]);
-    })->name('processStatus.index');
+    })->name('processStatus.rfq');
     Route::get('/statuses/po-status/{id}', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/POStatusFlow', 'id' => $id]);
-    })->name('processStatus.index');
+    })->name('processStatus.po');
     Route::get('/statuses/pmt-status/{id}', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/PMTStatusFlow', 'id' => $id]);
-    })->name('processStatus.index');
+    })->name('processStatus.pmt');
     Route::get('/statuses/invoice-status/{id}', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/MInvoiceStatusFlow', 'id' => $id]);
-    })->name('processStatus.index');
+    })->name('processStatus.invoice');
     Route::get('/statuses/budget-status/{id}', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/BudgetRequestStatusFlow', 'id' => $id]);
-    })->name('processStatus.index');
+    })->name('processStatus.budget');
     Route::get('/statuses/total-budget-status/{id}', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/TotalBudgetStatusFlow', 'id' => $id]);
-    })->name('processStatus.index');
+    })->name('processStatus.totalBudget');
 
     Route::get('/inventory-tracking', function () {
         return Inertia::render('Dashboard', ['page' => 'Warehouse/Inventory/InventoryTable']);
@@ -214,7 +214,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/tasks', function () {
         return Inertia::render('Dashboard', ['page' => 'MyTasks/Tasks/TasksTable']);
-    })->name('tasks.index');
+    })->name('tasks.page');
     Route::get('/tasks/{id}/new', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'MyTasks/Tasks/ReviewTask', 'id' => $id]);
     })->name('tasks.create');
@@ -240,7 +240,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/accounts', function () {
         return Inertia::render('Dashboard', ['page' => 'Finance/Accounts/AccountsTable']);
-    })->name('accounts.index');
+    })->name('accounts.page');
 
     Route::get('/payment-orders', function () {
         return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/PaymentOrderTable']);
@@ -292,10 +292,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/request-budgets', function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/RequestBudgetTable']);
-    })->name('budget.index');
+    })->name('requestBudget.index');
     Route::get('/request-budgets/create', function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/BudgetRequestForm']);
-    })->name('budget.create');
+    })->name('requestBudget.create');
 
     Route::get('/material-requests', function () {
         return Inertia::render('Dashboard', ['page' => 'Warehouse/ReceivedMaterialRequest/ReceivedMRsTable']);
