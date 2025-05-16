@@ -16,7 +16,7 @@
 
         <!-- Scripts -->
         @routes
-        @viteReactRefresh
+        {{-- @viteReactRefresh --}}  <!-- Removed for production -->
         @vite(['resources/js/app.jsx', "resources/js/Pages/{$page['component']}.jsx"])
         @inertiaHead
     </head>
