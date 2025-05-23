@@ -218,7 +218,7 @@ const RequestTable = ({ selectedFilter }) => {
 
             {/* Pagination */}
             {!loading && !error && requests.length > 0 && (
-                <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                <div className="flex justify-end space-x-2 font-medium text-sm">
                     {Array.from(
                         { length: lastPage },
                         (_, index) => index + 1

@@ -58,6 +58,27 @@ export default function UserManualSubSections() {
         try {
             setIsLoading(true);
             setError(null);
+
+            // Check if we have children data in the URL params
+            const urlParams = new URLSearchParams(window.location.search);
+            const childrenData = urlParams.get('children');
+            const parentCardData = urlParams.get('parentCard');
+
+            if (childrenData) {
+                try {
+                    const parsedChildren = JSON.parse(decodeURIComponent(childrenData));
+                    console.log('ManualSubSection - Using children from URL params:', {
+                        children: parsedChildren,
+                        count: parsedChildren.length
+                    });
+                    setSubSections(parsedChildren);
+                    setIsLoading(false);
+                    return;
+                } catch (e) {
+                    console.error('ManualSubSection - Error parsing children data:', e);
+                }
+            }
+
             const [cardsResponse, guidesResponse] = await Promise.all([
                 axios.get("/api/v1/cards"),
                 axios.get("/api/v1/user-manuals"),
@@ -116,8 +137,8 @@ export default function UserManualSubSections() {
 
             setGuidesMap(grouped);
         } catch (error) {
-            console.error("Error fetching subsections:", error);
-            setError("Failed to load subsections. Please try again later.");
+            console.error("Error fetching sub-sections:", error);
+            setError("Failed to load sub-sections. Please try again later.");
             setSubSections([]);
         } finally {
             setIsLoading(false);
