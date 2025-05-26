@@ -97,7 +97,9 @@ class UserManualController extends Controller
         try {
             Log::info('Updating user manual', [
                 'manual_id' => $userManual->id,
-                'request_data' => $request->all()
+                'has_files' => $request->hasFile('steps.0.screenshots.0'),
+                'all_files' => $request->allFiles(),
+                'request_data_keys' => array_keys($request->all())
             ]);
 
             $manual = $this->service->updateManual($userManual, $request->validated());

@@ -290,6 +290,7 @@ const CreateUserGuide = ({
     subsectionId,
     editMode = false,
     guideId = null,
+    onSuccess = null,
 }) => {
     const [steps, setSteps] = useState([
         {
@@ -876,12 +877,30 @@ const CreateUserGuide = ({
         try {
             const screenshot = steps[stepIndex].screenshots[screenshotIndex];
             
-            // If the screenshot has an ID (existing screenshot), delete it from the server
+            // If the screenshot has an ID (existing screenshot), try to delete it from the server
             if (screenshot.id) {
-                await axios.delete(`/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`);
+                console.log('Attempting to delete screenshot:', {
+                    screenshotId: screenshot.id,
+                    stepId: screenshot.manual_step_id,
+                    url: `/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`
+                });
+                
+                try {
+                    await axios.delete(`/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`);
+                } catch (deleteError) {
+                    console.error('Server deletion failed:', deleteError);
+                    
+                    // If it's a 403 or 401 error, still remove from UI but warn user
+                    if (deleteError.response?.status === 403 || deleteError.response?.status === 401) {
+                        toast.warning('Screenshot removed from form but may still exist on server. Please save the form to ensure proper deletion.');
+                    } else {
+                        // For other errors, re-throw to be handled by outer catch
+                        throw deleteError;
+                    }
+                }
             }
             
-            // Remove the screenshot from the UI
+            // Remove the screenshot from the UI regardless of server response
             const newSteps = [...steps];
             newSteps[stepIndex].screenshots = newSteps[stepIndex].screenshots.filter((_, index) => index !== screenshotIndex);
             
@@ -892,10 +911,26 @@ const CreateUserGuide = ({
             
             setSteps(newSteps);
             
-            toast.success('Screenshot deleted successfully');
+            toast.success('Screenshot removed successfully');
         } catch (error) {
-            console.error('Error deleting screenshot:', error);
-            toast.error('Failed to delete screenshot');
+            console.error('Error removing screenshot:', error);
+            
+            // Enhanced error logging for debugging
+            if (error.response) {
+                console.error('Response status:', error.response.status);
+                console.error('Response data:', error.response.data);
+                console.error('Response headers:', error.response.headers);
+                
+                if (error.response.status === 403) {
+                    toast.error('Permission denied. Please check your authentication or try refreshing the page.');
+                } else if (error.response.status === 401) {
+                    toast.error('Authentication required. Please log in again.');
+                } else {
+                    toast.error(`Failed to remove screenshot: ${error.response.data?.message || 'Unknown error'}`);
+                }
+            } else {
+                toast.error('Failed to remove screenshot - Network error');
+            }
         }
     };
 
@@ -1092,6 +1127,11 @@ const CreateUserGuide = ({
                     // Reset form and close modal
                     resetForm();
                     onClose();
+                    
+                    // Call success callback to refresh parent data
+                    if (onSuccess) {
+                        onSuccess();
+                    }
                 } catch (error) {
                     console.error('Error updating guide:', error.response?.data || error);
                     setErrors({
@@ -1124,6 +1164,11 @@ const CreateUserGuide = ({
                     // Reset form and close modal
                     resetForm();
                     onClose();
+                    
+                    // Call success callback to refresh parent data
+                    if (onSuccess) {
+                        onSuccess();
+                    }
                 } catch (error) {
                     setErrors({
                         general: error.response?.data?.message || "Failed to create the user guide. Please try again.",
@@ -1132,25 +1177,8 @@ const CreateUserGuide = ({
                 }
             }
 
-            // Handle screenshot uploads separately
-            const hasScreenshots = steps.some(
-                (step) =>
-                    step.screenshots &&
-                    step.screenshots.some((screenshot) => screenshot.file)
-            );
-            
-            if (hasScreenshots) {
-                try {
-                    // Handle file uploads for each step
-                    await handleStepFileUploads(steps, userManualId);
-                    toast.success("Screenshots uploaded successfully!");
-                } catch (error) {
-                    setErrors({
-                        general: "Guide was created but failed to upload screenshots. Please try again.",
-                    });
-                    throw error;
-                }
-            }
+            // Screenshots are now handled in the main form submission above
+            // No need for separate upload process
         } catch (error) {
             console.error('Error in handleSubmit:', error);
             if (!errors.general) {

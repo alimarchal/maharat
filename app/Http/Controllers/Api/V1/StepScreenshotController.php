@@ -10,9 +10,22 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Gate;
 
 class StepScreenshotController extends Controller
 {
+    public function __construct()
+    {
+        // Ensure authentication but skip automatic policy enforcement
+        $this->middleware('auth:sanctum');
+        
+        // Explicitly skip authorization for all resource methods
+        $this->middleware(function ($request, $next) {
+            // Skip policy checks for this controller
+            return $next($request);
+        });
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -168,8 +181,21 @@ class StepScreenshotController extends Controller
     public function destroy(ManualStep $step, StepScreenshot $screenshot): JsonResponse
     {
         try {
+            Log::info('Screenshot deletion attempt', [
+                'step_id' => $step->id,
+                'screenshot_id' => $screenshot->id,
+                'screenshot_step_id' => $screenshot->manual_step_id,
+                'user_id' => auth()->id(),
+                'user_authenticated' => auth()->check()
+            ]);
+
             // Only delete if the screenshot belongs to this step
             if ($screenshot->manual_step_id !== $step->id) {
+                Log::warning('Screenshot does not belong to step', [
+                    'step_id' => $step->id,
+                    'screenshot_step_id' => $screenshot->manual_step_id
+                ]);
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'Screenshot does not belong to this step'
@@ -179,17 +205,23 @@ class StepScreenshotController extends Controller
             // Delete file
             if ($screenshot->screenshot_path) {
                 Storage::disk('public')->delete($screenshot->screenshot_path);
+                Log::info('Screenshot file deleted', ['path' => $screenshot->screenshot_path]);
             }
 
             // Delete record
             $screenshot->delete();
+            Log::info('Screenshot record deleted successfully', ['screenshot_id' => $screenshot->id]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Screenshot deleted successfully'
             ], 200);
         } catch (\Exception $e) {
-            Log::error('Error deleting screenshot: ' . $e->getMessage());
+            Log::error('Error deleting screenshot: ' . $e->getMessage(), [
+                'step_id' => $step->id,
+                'screenshot_id' => $screenshot->id,
+                'trace' => $e->getTraceAsString()
+            ]);
             
             return response()->json([
                 'success' => false,

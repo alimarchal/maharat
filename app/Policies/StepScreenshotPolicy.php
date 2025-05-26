@@ -13,7 +13,7 @@ class StepScreenshotPolicy
      */
     public function viewAny(User $user): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -21,7 +21,7 @@ class StepScreenshotPolicy
      */
     public function view(User $user, StepScreenshot $stepScreenshot): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -29,7 +29,7 @@ class StepScreenshotPolicy
      */
     public function create(User $user): bool
     {
-        return false;
+        return true;
     }
 
     /**

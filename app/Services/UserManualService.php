@@ -87,7 +87,12 @@ class UserManualService
     public function updateManual(UserManual $manual, array $data): UserManual
     {
         return DB::transaction(function () use ($manual, $data) {
-            Log::info('Starting manual update', ['manual_id' => $manual->id]);
+            Log::info('Starting manual update', [
+                'manual_id' => $manual->id,
+                'data_keys' => array_keys($data),
+                'has_steps' => isset($data['steps']),
+                'step_count' => isset($data['steps']) ? count($data['steps']) : 0
+            ]);
 
             // Update basic manual data
             $manual->update([
@@ -202,9 +207,14 @@ class UserManualService
 
                         $step->screenshots()->create([
                             'screenshot_path' => $path,
+                            'screenshot_url' => Storage::url($path),
                             'alt_text' => $stepData['screenshot_alts'][$screenshotIndex] ?? null,
                             'caption' => $stepData['screenshot_captions'][$screenshotIndex] ?? null,
+                            'type' => 'image',
                             'order' => $screenshotIndex + 1,
+                            'file_name' => $screenshot->getClientOriginalName(),
+                            'mime_type' => $screenshot->getMimeType(),
+                            'size' => $screenshot->getSize()
                         ]);
                         
                         Log::info('Screenshot uploaded', [
@@ -273,6 +283,12 @@ class UserManualService
             
             // Process each screenshot
             foreach ($stepData['screenshots'] as $screenshotIndex => $screenshot) {
+                Log::info('Processing screenshot', [
+                    'index' => $screenshotIndex,
+                    'type' => gettype($screenshot),
+                    'is_uploaded_file' => $screenshot instanceof \Illuminate\Http\UploadedFile
+                ]);
+                
                 if ($screenshot instanceof \Illuminate\Http\UploadedFile) {
                     // Delete existing screenshot at this position if it exists
                     $existingScreenshot = $existingScreenshots->where('order', $screenshotIndex + 1)->first();
@@ -312,6 +328,11 @@ class UserManualService
                             'order' => $screenshotIndex + 1,
                         ]);
                     }
+                } else {
+                    Log::info('Screenshot not processed - not an uploaded file or string', [
+                        'screenshot' => $screenshot,
+                        'type' => gettype($screenshot)
+                    ]);
                 }
             }
         }
