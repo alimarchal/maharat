@@ -52,7 +52,7 @@ class StepScreenshotController extends Controller
             $screenshot = new StepScreenshot([
                 'manual_step_id' => $step->id,
                 'screenshot_path' => $path,
-                'screenshot_url' => Storage::url($path),
+                'screenshot_url' => Storage::disk('public')->url($path),
                 'alt_text' => $request->alt_text,
                 'caption' => $request->caption,
                 'type' => $request->type ?? 'image',
@@ -131,7 +131,7 @@ class StepScreenshotController extends Controller
                 $path = $file->store('user-manuals/screenshots', 'public');
                 
                 $screenshot->screenshot_path = $path;
-                $screenshot->screenshot_url = Storage::url($path);
+                $screenshot->screenshot_url = Storage::disk('public')->url($path);
                 $screenshot->file_name = $file->getClientOriginalName();
                 $screenshot->mime_type = $file->getMimeType();
                 $screenshot->size = $file->getSize();

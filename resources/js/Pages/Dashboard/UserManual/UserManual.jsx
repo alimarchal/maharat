@@ -110,13 +110,20 @@ export default function UserManual() {
                 axios.get("/api/v1/user-manuals"),
             ]);
 
-            // Convert main_cards to array if it's a collection
-            const mainCards = Array.isArray(cardsRes.data.data.main_cards) 
-                ? cardsRes.data.data.main_cards 
-                : Object.values(cardsRes.data.data.main_cards || {});
+            console.log('Cards API Response:', cardsRes.data);
+            console.log('Guides API Response:', guidesRes.data);
 
-            const subCards = cardsRes.data.data.sub_cards || [];
-            const guidesData = guidesRes.data?.data || [];
+            // Safely extract main cards
+            let mainCards = [];
+            if (cardsRes.data?.data?.main_cards) {
+                mainCards = Array.isArray(cardsRes.data.data.main_cards)
+                    ? cardsRes.data.data.main_cards
+                    : Object.values(cardsRes.data.data.main_cards);
+            }
+
+            // Safely extract sub cards
+            const subCards = cardsRes.data?.data?.sub_cards || [];
+            console.log('Sub Cards:', subCards);
 
             // Create a map of sub-cards by parent_id
             const subCardsByParent = {};
@@ -126,6 +133,7 @@ export default function UserManual() {
                 }
                 subCardsByParent[subCard.parent_id].push(subCard);
             });
+            console.log('Sub Cards Map:', subCardsByParent);
             setSubCardsMap(subCardsByParent);
 
             const sortedMainCards = mainCards.sort((a, b) => {
@@ -136,6 +144,10 @@ export default function UserManual() {
             });
 
             setParentCards(sortedMainCards);
+
+            // Safely extract guides data
+            const guidesData = guidesRes.data?.data || [];
+            console.log('Guides Data:', guidesData);
 
             const guidesGrouped = {};
             guidesData.forEach((guide) => {
@@ -150,7 +162,12 @@ export default function UserManual() {
             setGuidesMap(guidesGrouped);
             setSubCards(subCards);
         } catch (error) {
-            console.error("Error fetching cards/guides", error);
+            console.error("Error fetching cards/guides:", error);
+            console.error("Error details:", {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status
+            });
         } finally {
             setIsLoading(false);
         }
@@ -282,7 +299,19 @@ export default function UserManual() {
                                                         
                                                         if (response.data.data.has_children) {
                                                             console.log('UserManual - Routing to ManualSubSection');
-                                                            router.visit(`/user-manual/${card.section_id}`);
+                                                            // Encode the children data for URL
+                                                            const encodedChildren = encodeURIComponent(JSON.stringify(response.data.data.children));
+                                                            const encodedParentCard = encodeURIComponent(JSON.stringify(card));
+                                                            
+                                                            router.get(`/user-manual/${card.section_id}`, {
+                                                                cardId: card.id,
+                                                                children: encodedChildren,
+                                                                parentCard: encodedParentCard
+                                                            }, {
+                                                                preserveState: true,
+                                                                preserveScroll: true,
+                                                                replace: true
+                                                            });
                                                         } else {
                                                             const guide = guidesMap[card.id]?.[0];
                                                             console.log('UserManual - No children, checking for guide:', {
@@ -294,7 +323,6 @@ export default function UserManual() {
                                                                 console.log('UserManual - Routing to GuideDetail');
                                                                 router.visit(`/user-manual/guide/${guide.id}`);
                                                             } else {
-                                                                // For any card without children and no guide, use section_id directly
                                                                 const targetUrl = `/user-manual/${card.section_id}`;
                                                                 console.log('UserManual - No guide, routing to card URL with cardId');
                                                                 router.get(targetUrl, {
@@ -313,7 +341,6 @@ export default function UserManual() {
                                                             console.log('UserManual - Error fallback: Routing to GuideDetail');
                                                             router.visit(`/user-manual/guide/${guide.id}`);
                                                         } else {
-                                                            // For any card without children and no guide, use section_id directly
                                                             const targetUrl = `/user-manual/${card.section_id}`;
                                                             console.log('UserManual - Error fallback: Routing to card URL with cardId');
                                                             router.get(targetUrl, {
