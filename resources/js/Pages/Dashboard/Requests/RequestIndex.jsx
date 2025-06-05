@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import RequestTable from "./RequestTable";
 import { Link } from "@inertiajs/react";
+import NewItemModal from "./NewItemModal";
 
 const RequestIndex = () => {
     const [selectedFilter, setSelectedFilter] = useState("All");
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const filters = ["All", "Pending", "Referred", "Rejected", "Approved"];
 
@@ -30,6 +32,14 @@ const RequestIndex = () => {
                         ))}
                     </div>
 
+                    <button
+                        type="button"
+                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                        onClick={() => setIsModalOpen(true)}
+                    >
+                        Request New Item
+                    </button>
+
                     <Link
                         href="/my-requests/create"
                         className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
@@ -39,6 +49,14 @@ const RequestIndex = () => {
                 </div>
             </div>
             <RequestTable selectedFilter={selectedFilter} />
+
+            {/* Render the modal */}
+            <NewItemModal
+                isOpen={isModalOpen}
+                onClose={() => {
+                    setIsModalOpen(false);
+                }}
+            />
         </div>
     );
 };
