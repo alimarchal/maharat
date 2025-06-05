@@ -81,6 +81,7 @@ use App\Http\Controllers\Api\V1\IncomeStatementController;
 use App\Http\Controllers\Api\V1\BalanceSheetController;
 use App\Http\Controllers\Api\V1\FaqApprovalController;
 use App\Http\Controllers\Api\V1\CardController;
+use App\Http\Controllers\ItemRequestController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -140,6 +141,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // Material Request Items routes
     Route::apiResource('material-request-items', MaterialRequestItemController::class);
     Route::apiResource('material-request-transactions', MaterialRequestTransactionController::class);
+
+    // Request Items routes
+    Route::apiResource('request-item', ItemRequestController::class);
 
     // RFQ routes
     Route::get('/rfqs/form-data', [RfqController::class, 'getFormData']);
