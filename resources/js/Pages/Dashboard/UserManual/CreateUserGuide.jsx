@@ -733,12 +733,14 @@ const CreateUserGuide = ({
     };
 
     const updateScreenshot = async (stepIndex, screenshotIndex, field, value) => {
+        console.log('DEBUG: Updating screenshot:', { stepIndex, screenshotIndex, field, value });
         const newSteps = [...steps];
         const screenshot = newSteps[stepIndex].screenshots[screenshotIndex];
         
         if (field === "file") {
             if (value) {
                 try {
+                    console.log('DEBUG: Processing file upload:', value);
                     const formData = new FormData();
                     formData.append("screenshot", value);
                     formData.append("alt_text", screenshot.alt_text || "");
@@ -749,6 +751,7 @@ const CreateUserGuide = ({
                     
                     // For new screenshots (no ID yet), just update the local state
                     if (!screenshot.id) {
+                        console.log('DEBUG: New screenshot, updating local state');
                         newSteps[stepIndex].screenshots[screenshotIndex] = {
                             ...screenshot,
                             file: value,
@@ -760,6 +763,7 @@ const CreateUserGuide = ({
                         };
                     } else {
                         // For existing screenshots, update both local state and server
+                        console.log('DEBUG: Existing screenshot, updating server');
                         const response = await axios.put(
                             `/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`,
                             formData,
@@ -770,25 +774,33 @@ const CreateUserGuide = ({
                             }
                         );
                         
-                        newSteps[stepIndex].screenshots[screenshotIndex] = {
-                            ...screenshot,
-                            file: value,
-                            file_name: value.name,
-                            mime_type: value.type,
-                            size: value.size,
-                            screenshot_url: response.data.data.screenshot_url,
-                            is_edited: true,
-                            order: screenshotIndex + 1
-                        };
+                        console.log('DEBUG: Server response:', response.data);
+                        
+                        if (response.data.success) {
+                            newSteps[stepIndex].screenshots[screenshotIndex] = {
+                                ...screenshot,
+                                file: value,
+                                file_name: value.name,
+                                mime_type: value.type,
+                                size: value.size,
+                                screenshot_path: response.data.data.screenshot_path,
+                                screenshot_url: response.data.data.screenshot_url,
+                                is_edited: true,
+                                order: screenshotIndex + 1
+                            };
+                        } else {
+                            throw new Error(response.data.message || 'Failed to update screenshot');
+                        }
                     }
                 } catch (error) {
                     console.error('Error updating screenshot:', error);
-                    toast.error('Failed to update screenshot');
+                    toast.error('Failed to update screenshot: ' + (error.response?.data?.message || error.message));
                     return;
                 }
             }
         } else {
             // For other fields, update both local state and server if it's an existing screenshot
+            console.log('DEBUG: Updating non-file field:', field);
             newSteps[stepIndex].screenshots[screenshotIndex][field] = value;
             
             if (screenshot.id) {
@@ -807,21 +819,28 @@ const CreateUserGuide = ({
                         }
                     );
                     
-                    // Update local state with server response
-                    newSteps[stepIndex].screenshots[screenshotIndex] = {
-                        ...screenshot,
-                        [field]: value,
-                        screenshot_url: response.data.data.screenshot_url,
-                        order: screenshot.order || screenshotIndex + 1
-                    };
+                    console.log('DEBUG: Server response for field update:', response.data);
+                    
+                    if (response.data.success) {
+                        newSteps[stepIndex].screenshots[screenshotIndex] = {
+                            ...screenshot,
+                            [field]: value,
+                            screenshot_path: response.data.data.screenshot_path,
+                            screenshot_url: response.data.data.screenshot_url,
+                            order: screenshot.order || screenshotIndex + 1
+                        };
+                    } else {
+                        throw new Error(response.data.message || 'Failed to update screenshot');
+                    }
                 } catch (error) {
-                    console.error('Error updating screenshot:', error);
-                    toast.error('Failed to update screenshot');
+                    console.error('Error updating screenshot field:', error);
+                    toast.error('Failed to update screenshot: ' + (error.response?.data?.message || error.message));
                     return;
                 }
             }
         }
         
+        console.log('DEBUG: Setting updated steps');
         setSteps(newSteps);
     };
 
@@ -877,10 +896,26 @@ const CreateUserGuide = ({
             const screenshot = steps[stepIndex].screenshots[screenshotIndex];
             
             // If the screenshot has an ID (existing screenshot), delete it from the server
-            if (screenshot.id) {
-                await axios.delete(`/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`);
+            // if (screenshot.id) {
+            //     await axios.delete(`/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`);
+            // }
+
+            const token = localStorage.getItem("authToken");
+
+            if (screenshot?.id && token) {
+                const config = {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                };
+
+                try {
+                    await axios.delete(`/api/v1/steps/${screenshot.manual_step_id}/screenshots/${screenshot.id}`, config);
+                } catch (error) {
+                    console.error("Error deleting screenshot:", error);
+                }
             }
-            
+
             // Remove the screenshot from the UI
             const newSteps = [...steps];
             newSteps[stepIndex].screenshots = newSteps[stepIndex].screenshots.filter((_, index) => index !== screenshotIndex);

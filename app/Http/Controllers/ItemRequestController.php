@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\RequestItem;
+use App\Models\ItemRequest;
 use Spatie\QueryBuilder\QueryBuilder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use App\Http\Resources\V1\ItemRequestResource;
 
 
 class ItemRequestController extends Controller
@@ -15,8 +18,13 @@ class ItemRequestController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $itemRequests = ItemRequest::latest()->paginate(10);
-        return view('request-item.index', compact('itemRequests'));
+        $itemRequests = ItemRequest::where('user_id', Auth::id())
+            ->latest()
+            ->paginate(10);
+
+        return response()->json([
+            'data' => $itemRequests
+        ]);
     }
 
     /**
@@ -24,23 +32,78 @@ class ItemRequestController extends Controller
      */
     public function create()
     {
-        return view('request-item.create');
+        return response()->json([
+            'message' => 'Ready to create new request'
+        ]);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        //
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string',
+                'quantity' => 'required|integer',
+                'photo' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:2048',
+                'description' => 'required|string',
+                'is_added' => 'boolean'
+            ]);
+
+            // Handle photo upload
+            if ($request->hasFile('photo')) {
+                $file = $request->file('photo');
+                if ($file->isValid()) {
+                    // Store the file and get the relative path
+                    $path = $file->store('item-requests', 'public');
+                    // Clean the path to remove any full URL
+                    $path = str_replace('public/', '', $path);
+                    $validated['photo'] = $path;
+                } else {
+                    return response()->json([
+                        'message' => 'Invalid file upload',
+                        'error' => 'The uploaded file is not valid'
+                    ], 422);
+                }
+            }
+
+            // Add user_id and ensure is_added is boolean
+            $validated['user_id'] = Auth::id();
+            $validated['is_added'] = $request->has('is_added') ? (bool) $request->is_added : false;
+
+            $itemRequest = ItemRequest::create($validated);
+
+            return response()->json([
+                'message' => 'Item request created successfully',
+                'data' => new ItemRequestResource($itemRequest),
+                'should_reload' => true
+            ]);
+
+        } catch (\Exception $e) {
+            // Delete uploaded file if there was an error
+            if (isset($path)) {
+                Storage::disk('public')->delete($path);
+            }
+
+            return response()->json([
+                'message' => 'Failed to create item request',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(string $id): JsonResponse
     {
-        return view('request-item.show', compact('itemRequests'));
+        $itemRequest = ItemRequest::where('user_id', Auth::id())
+            ->findOrFail($id);
+
+        return response()->json([
+            'data' => new ItemRequestResource($itemRequest)
+        ]);
     }
 
     /**
@@ -48,22 +111,98 @@ class ItemRequestController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        return view('request-item.edit', compact('itemRequest'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): JsonResponse
     {
-        //
+        try {
+            $itemRequest = ItemRequest::where('user_id', Auth::id())
+                ->findOrFail($id);
+
+            $validated = $request->validate([
+                'name' => 'sometimes|required|string',
+                'quantity' => 'sometimes|required|integer',
+                'photo' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:2048',
+                'description' => 'sometimes|required|string',
+                'is_added' => 'sometimes|boolean'
+            ]);
+
+            // Handle photo upload
+            if ($request->hasFile('photo')) {
+                $file = $request->file('photo');
+                if ($file->isValid()) {
+                    // Delete old photo if exists
+                    if ($itemRequest->photo) {
+                        Storage::disk('public')->delete($itemRequest->photo);
+                    }
+
+                    // Store the file and get the relative path
+                    $path = $file->store('item-requests', 'public');
+                    // Clean the path to remove any full URL
+                    $path = str_replace('public/', '', $path);
+                    $validated['photo'] = $path;
+                } else {
+                    return response()->json([
+                        'message' => 'Invalid file upload',
+                        'error' => 'The uploaded file is not valid'
+                    ], 422);
+                }
+            }
+
+            // Ensure is_added is boolean
+            if (isset($validated['is_added'])) {
+                $validated['is_added'] = (bool) $validated['is_added'];
+            }
+
+            $itemRequest->update($validated);
+
+            return response()->json([
+                'message' => 'Item request updated successfully',
+                'data' => new ItemRequestResource($itemRequest),
+                'should_reload' => true
+            ]);
+
+        } catch (\Exception $e) {
+            // Delete uploaded file if there was an error
+            if (isset($path)) {
+                Storage::disk('public')->delete($path);
+            }
+
+            return response()->json([
+                'message' => 'Failed to update item request',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(string $id): JsonResponse
     {
-        //
+        try {
+            $itemRequest = ItemRequest::where('user_id', Auth::id())
+                ->findOrFail($id);
+
+            // Delete photo if exists
+            if ($itemRequest->photo && Storage::disk('public')->exists($itemRequest->photo)) {
+                Storage::disk('public')->delete($itemRequest->photo);
+            }
+
+            $itemRequest->delete();
+
+            return response()->json([
+                'message' => 'Item request deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to delete item request',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

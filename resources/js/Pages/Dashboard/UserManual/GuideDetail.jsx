@@ -236,31 +236,45 @@ export default function GuideDetail() {
 
     // Use the direct URL format that works when clicked
     const getImageUrl = (screenshot) => {
-        // Check if screenshot_path exists and use it as primary source
-        if (screenshot.screenshot_path) {
-            const path = screenshot.screenshot_path;
-            // If it's already a full URL, return it
-            if (path.startsWith("http")) {
-                console.log(`DEBUG: Path is already a full URL: ${path}`);
-                return path;
-            }
-            
-            // Use the direct path format
-            const directUrl = `/storage/${path}`;
-            return directUrl;
-        }
+        // Add debug logging
+        console.log('DEBUG: Processing screenshot:', screenshot);
         
-        // Fallback to screenshot_url if screenshot_path doesn't exist
+        // Check if screenshot_url exists and use it as primary source
         if (screenshot.screenshot_url) {
+            console.log('DEBUG: Using screenshot_url:', screenshot.screenshot_url);
             return screenshot.screenshot_url;
         }
         
-        console.warn("DEBUG: No screenshot path or URL found");
-        return "/images/placeholder.png";
+        // Fallback to screenshot_path if screenshot_url doesn't exist
+        if (screenshot.screenshot_path) {
+            const path = screenshot.screenshot_path;
+            console.log('DEBUG: Using screenshot_path:', path);
+            
+            // If it's already a full URL, return it
+            if (path.startsWith('http')) {
+                console.log('DEBUG: Path is a full URL:', path);
+                return path;
+            }
+            
+            // If path already starts with /storage, use it directly
+            if (path.startsWith('/storage/')) {
+                console.log('DEBUG: Path already has /storage prefix:', path);
+                return path;
+            }
+            
+            // Add /storage/ prefix
+            const url = `/storage/${path}`;
+            console.log('DEBUG: Constructed URL from path:', url);
+            return url;
+        }
+        
+        console.warn('DEBUG: No screenshot path or URL found, using placeholder');
+        return '/images/placeholder.png';
     };
 
     // Enhanced screenshot error handling with more debugging
     const handleImageError = (screenshotId, url) => {
+        console.error('DEBUG: Image failed to load:', { screenshotId, url });
         
         // Track which images have errored
         setImageErrors((prev) => ({
@@ -502,70 +516,41 @@ export default function GuideDetail() {
                                                                 {step.screenshots
                                                                     .sort((a, b) => a.order - b.order)
                                                                     .map((screenshot, screenshotIdx) => {
-                                                                        const imageUrl =
-                                                                            getImageUrl(
-                                                                                screenshot
-                                                                            );
+                                                                        const imageUrl = getImageUrl(screenshot);
+                                                                        console.log('DEBUG: Rendering screenshot:', { screenshot, imageUrl });
                                                 
-                                                return (
+                                                                        return (
                                                                             <div
-                                                                                key={
-                                                                                    screenshotIdx
-                                                                                }
+                                                                                key={screenshotIdx}
                                                                                 className="border border-[#009FDC] rounded-lg overflow-hidden shadow-md w-full"
                                                                             >
-                                                                                {imageUrl &&
-                                                                                !imageErrors[
-                                                                                    screenshot
-                                                                                        .id
-                                                                                ] ? (
-                                                            <div className="flex justify-center">
-                                                                <img
-                                                                                            src={
-                                                                                                imageUrl
-                                                                                            }
-                                                                                            alt={
-                                                                                                screenshot.alt_text ||
-                                                                                                `Screenshot ${
-                                                                                                    screenshotIdx +
-                                                                                                    1
-                                                                                                }`
-                                                                                            }
+                                                                                {imageUrl && !imageErrors[screenshot.id] ? (
+                                                                                    <div className="flex justify-center">
+                                                                                        <img
+                                                                                            src={imageUrl}
+                                                                                            alt={screenshot.alt_text || `Screenshot ${screenshotIdx + 1}`}
                                                                                             className="p-2 w-full h-auto object-contain"
-                                                                                            onError={(
-                                                                                                e
-                                                                                            ) => {
-                                                                                                e.target.onerror =
-                                                                                                    null;
-                                                                                                e.target.src =
-                                                                                                    "/images/placeholder.png";
-                                                                                                handleImageError(
-                                                                                                    screenshot.id,
-                                                                                                    imageUrl
-                                                                                                );
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="bg-gray-100 flex flex-col items-center justify-center p-4 text-gray-500 h-48 w-full">
+                                                                                            onError={(e) => {
+                                                                                                console.error('DEBUG: Image load error:', { 
+                                                                                                    src: e.target.src,
+                                                                                                    screenshot
+                                                                                                });
+                                                                                                e.target.onerror = null;
+                                                                                                e.target.src = "/images/placeholder.png";
+                                                                                                handleImageError(screenshot.id, imageUrl);
+                                                                                            }}
+                                                                                        />
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <div className="bg-gray-100 flex flex-col items-center justify-center p-4 text-gray-500 h-48 w-full">
                                                                                         <p className="text-center">
                                                                                             Screenshot not available
                                                                                         </p>
-                                                            </div>
-                                                        )}
-                                                        {screenshot.caption && (
-                                                            <div className="p-2 bg-gray-50 text-center w-full">
-                                                                <p className="text-sm text-gray-700 text-center">
-                                                                                            {
-                                                                                                screenshot.caption
-                                                                                            }
-                                                                </p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                                                    }
-                                                                )}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })}
                                         </div>
                                             </div>
                                         )}
