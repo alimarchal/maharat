@@ -5,6 +5,7 @@ import SelectFloating from "../../../Components/SelectFloating";
 import InputFloating from "../../../Components/InputFloating";
 import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
+import { toast } from "react-hot-toast";
 
 const MakeRequest = () => {
     const { requestId } = usePage().props;
@@ -44,6 +45,34 @@ const MakeRequest = () => {
     const [filteredSubCostCenters, setFilteredSubCostCenters] = useState({});
     const [loading, setLoading] = useState(false);
     const [processError, setProcessError] = useState("");
+    const [name, setName] = useState('');
+    const [quantity, setQuantity] = useState('');
+    const [description, setDescription] = useState('');
+    const [photo, setPhoto] = useState(null);
+    const [photoPreview, setPhotoPreview] = useState(null);
+    const [isAdded, setIsAdded] = useState(false);
+
+    const resetForm = () => {
+        setName('');
+        setQuantity('');
+        setDescription('');
+        setPhoto(null);
+        setPhotoPreview(null);
+        setIsAdded(false);
+    };
+
+    const handlePhotoChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setPhoto(file);
+            // Create a preview URL
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPhotoPreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -169,6 +198,8 @@ const MakeRequest = () => {
                             urgency: item.urgency_status?.id || "",
                             photo: item.photo || null,
                             description: item.description || "",
+                            user_id: item.user_id || null,
+                            is_added: item.is_added || false
                         })),
                     });
                 })
@@ -278,7 +309,17 @@ const MakeRequest = () => {
                 : "/api/v1/material-requests";
             const method = requestId ? "put" : "post";
 
-            const materialRequest = await axios[method](url, formData);
+            // Add user_id and is_added to each item
+            const formDataWithUser = {
+                ...formData,
+                items: formData.items.map(item => ({
+                    ...item,
+                    user_id: user_id,
+                    is_added: false
+                }))
+            };
+
+            const materialRequest = await axios[method](url, formDataWithUser);
             const materialRequestId = materialRequest.data.data.id;
 
             // Fetch the Material Request process
@@ -353,6 +394,12 @@ const MakeRequest = () => {
 
             // Navigate to my-requests page
             router.visit("/my-requests");
+
+            if (process.should_reload) {
+                window.location.reload();
+            }
+
+            toast.success('Request created successfully');
         } catch (error) {
             console.error("Error submitting request:", error);
             setProcessError(

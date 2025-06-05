@@ -34,6 +34,7 @@ const RequestIndex = () => {
 
                     <button
                         type="button"
+                        title="Request a new item that is not listed in the stock items."
                         className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                         onClick={() => setIsModalOpen(true)}
                     >

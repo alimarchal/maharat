@@ -17,6 +17,8 @@ return new class extends Migration
             $table->integer('quantity');
             $table->string('photo')->nullable();
             $table->text('description');
+            $table->foreignId('user_id')->constrained('users');
+            $table->boolean('is_added')->default(false);
             $table->timestamps();
         });
     }
