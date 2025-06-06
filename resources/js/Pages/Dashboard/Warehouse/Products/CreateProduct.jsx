@@ -187,12 +187,12 @@ const CreateProduct = () => {
                 </div>
                 <div
                     className={`grid gap-4 ${
-                        showRequestItemField
+                        showRequestItemField && !productId
                             ? "grid-cols-1 md:grid-cols-3"
                             : "grid-cols-1 md:grid-cols-2"
                     }`}
                 >
-                    {showRequestItemField && (
+                    {showRequestItemField && !productId && (
                         <div>
                             <SelectFloating
                                 label="Requested Item"
@@ -288,7 +288,7 @@ const CreateProduct = () => {
                 </div>
             </form>
 
-            {pendingCount > 0 && (
+            {pendingCount > 0 && !productId && (
                 <div className="my-10">
                     <h2 className="text-3xl font-bold text-[#2C323C] mb-4">
                         Pending Requested Items
