@@ -3,13 +3,18 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faCamera } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import InputFloating from "@/Components/InputFloating";
+import { usePage } from "@inertiajs/react";
 
 const NewItemModal = ({ isOpen, onClose }) => {
+    const user_id = usePage().props.auth?.user?.id;
+
     const [formData, setFormData] = useState({
+        user_id: user_id,
         name: "",
         quantity: "",
         image: null,
         description: "",
+        is_added: false,
     });
 
     const [errors, setErrors] = useState({});
@@ -41,10 +46,12 @@ const NewItemModal = ({ isOpen, onClose }) => {
         setLoading(true);
         try {
             const payload = new FormData();
+            payload.append("user_id", formData.user_id);
             payload.append("name", formData.name);
             payload.append("quantity", formData.quantity);
             payload.append("photo", formData.image);
             payload.append("description", formData.description);
+            payload.append("is_added", formData.is_added ? "1" : "0");
 
             const response = await axios.post("/api/v1/request-item", payload, {
                 headers: { "Content-Type": "multipart/form-data" },
