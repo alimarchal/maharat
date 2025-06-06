@@ -82,16 +82,15 @@ function OrganizationNode({
                 <Button
                     startIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={() => {
-                        const currentLevel = node.hierarchy_level ?? 0; // Default to 0 if undefined
-                        const newHierarchyLevel = currentLevel === 0 ? 1 : currentLevel + 1;
-                        // Special case for id=1 and its children
-                        let parentId;
-                        if (node.id === 1 || node.parent_id === 1) {
-                            parentId = 1;  // Force parent_id to be 1 for this special case
+                        // If this is a temporary node (has no name), route to Users.jsx
+                        if (!node.name && node.parent_id) {
+                            router.visit(`/users?hierarchy_level=${node.hierarchy_level}&parent_id=${node.parent_id}`);
                         } else {
-                            parentId = currentLevel === 0 ? null : node.id ?? null;
+                            // Otherwise, add a new temporary node
+                            const currentLevel = node.hierarchy_level ?? 0;
+                            const newHierarchyLevel = currentLevel === 0 ? 1 : currentLevel + 1;
+                            handleAddPosition();
                         }
-                        router.visit(`/users?hierarchy_level=${newHierarchyLevel}&parent_id=${parentId}`);
                     }}
                     sx={{ textTransform: "none", color: "#009FDC", fontSize: "0.85rem" }}
                 >
@@ -226,9 +225,6 @@ function OrgChartTree({
     
             const nextLevel = parentData.hierarchy_level === 0 ? 1 : parentData.hierarchy_level + 1;
             
-            // Special case for id=1: always add as direct child
-            const parentId = parentData.id === 1 ? 1 : parentData.id;
-            
             // Create new node with unique temporary ID
             const tempId = Date.now();
             const newNode = {
@@ -237,7 +233,7 @@ function OrgChartTree({
                 name: "",
                 id: tempId,
                 hierarchy_level: nextLevel,
-                parent_id: parentId,
+                parent_id: parentData.id, // Use the actual parent ID
                 children: [],
             };
 
@@ -250,7 +246,6 @@ function OrgChartTree({
             setAllChildren([...node.children]);
             
             onUpdate();
-    
         } catch (error) {
             console.error("Error fetching parent data:", error);
         }
