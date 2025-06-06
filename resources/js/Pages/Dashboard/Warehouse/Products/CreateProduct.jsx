@@ -5,9 +5,12 @@ import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { useRequestItems } from "@/Components/RequestItemsContext";
 
 const CreateProduct = () => {
     const { productId } = usePage().props;
+    const { requestItems, pendingCount, updateRequestItemStatus } =
+        useRequestItems();
 
     const [formData, setFormData] = useState({
         name: "",
@@ -22,29 +25,8 @@ const CreateProduct = () => {
     const [units, setUnits] = useState([]);
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
-    const [requestItems, setRequestItems] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
-
-    const fetchRequestItems = async () => {
-        try {
-            const response = await axios.get("/api/v1/request-item");
-            setRequestItems(response.data.data || {});
-        } catch (err) {
-            console.error("Error fetching items:", err);
-            setRequestItems({});
-        }
-    };
-
-    useEffect(() => {
-        fetchRequestItems();
-    }, []);
-
-    const pendingCount = Array.isArray(requestItems?.data)
-        ? requestItems.data.filter((item) => {
-              return item.is_added === false;
-          }).length
-        : 0;
 
     const showRequestItemField =
         Array.isArray(requestItems?.data) &&
@@ -133,13 +115,7 @@ const CreateProduct = () => {
                 )
             ) {
                 try {
-                    await axios.put(
-                        `/api/v1/request-item/${formData.request_item}`,
-                        {
-                            is_added: true,
-                        }
-                    );
-                    await fetchRequestItems();
+                    await updateRequestItemStatus(formData.request_item);
                     setFormData((prev) => ({ ...prev, request_item: "" }));
                 } catch (err) {
                     setErrors((prev) => ({

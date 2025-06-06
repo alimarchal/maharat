@@ -10,8 +10,17 @@ import {
     faBookOpen,
 } from "@fortawesome/free-solid-svg-icons";
 import { router, usePage } from "@inertiajs/react";
+import { useRequestItems } from "./RequestItemsContext";
 
-const SidebarButton = ({ icon, link, isActive, isLogout, title }) => {
+const SidebarButton = ({
+    icon,
+    link,
+    isActive,
+    isLogout,
+    title,
+    showBadge,
+    badgeCount,
+}) => {
     const handleLogout = (e) => {
         if (isLogout) {
             e.preventDefault();
@@ -30,13 +39,24 @@ const SidebarButton = ({ icon, link, isActive, isLogout, title }) => {
         }
     };
 
+    const ButtonContent = () => (
+        <div className="relative">
+            <FontAwesomeIcon icon={icon} size="xl" />
+            {showBadge && badgeCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-sm h-5 w-5 rounded-full flex items-center justify-center font-medium">
+                    {badgeCount > 99 ? "99+" : badgeCount}
+                </span>
+            )}
+        </div>
+    );
+
     return isLogout ? (
         <button
             onClick={handleLogout}
             title={title}
             className="flex items-center justify-center w-14 h-14 rounded-full transition-all duration-300 ease-in-out bg-white text-[#9B9DA2] border border-[#B9BBBD] hover:bg-[#009FDC] hover:text-white hover:border-none"
         >
-            <FontAwesomeIcon icon={icon} size="xl" />
+            <ButtonContent />
         </button>
     ) : (
         <a
@@ -48,13 +68,14 @@ const SidebarButton = ({ icon, link, isActive, isLogout, title }) => {
                     : "bg-white text-[#9B9DA2] border border-[#B9BBBD] hover:bg-[#009FDC] hover:text-white hover:border-none"
             }`}
         >
-            <FontAwesomeIcon icon={icon} size="xl" />
+            <ButtonContent />
         </a>
     );
 };
 
 const Sidebar = ({ isOpen }) => {
     const { url } = usePage();
+    const { pendingCount } = useRequestItems();
 
     return (
         <>
@@ -75,6 +96,8 @@ const Sidebar = ({ isOpen }) => {
                         link="/notification-settings"
                         title="Notifications"
                         isActive={url === "/notification-settings"}
+                        showBadge={true}
+                        badgeCount={pendingCount}
                     />
                     {/* <SidebarButton
                         icon={faCommentDots}
