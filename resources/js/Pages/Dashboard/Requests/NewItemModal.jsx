@@ -43,11 +43,18 @@ const NewItemModal = ({ isOpen, onClose }) => {
             const payload = new FormData();
             payload.append("name", formData.name);
             payload.append("quantity", formData.quantity);
-            payload.append("image", formData.image);
+            payload.append("photo", formData.image);
             payload.append("description", formData.description);
 
-            await axios.post("/api/v1/request-item", payload, {
+            const response = await axios.post("/api/v1/request-item", payload, {
                 headers: { "Content-Type": "multipart/form-data" },
+            });
+
+            setFormData({
+                name: "",
+                quantity: "",
+                image: null,
+                description: "",
             });
 
             onClose();
