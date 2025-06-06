@@ -13,52 +13,75 @@ const CreateProduct = () => {
         unit_id: "",
         upc: "",
         description: "",
+        request_item: "",
     });
 
     const [categories, setCategories] = useState([]);
     const [units, setUnits] = useState([]);
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    const [requestItems, setRequestItems] = useState([]);
+
+    const fetchRequestItems = async () => {
+        try {
+            const response = await axios.get("/api/v1/request-item");
+            setRequestItems(response.data.data || {});
+        } catch (err) {
+            console.error("Error fetching items:", err);
+            setRequestItems({});
+        }
+    };
 
     useEffect(() => {
-        axios
-            .get("/api/v1/product-categories", {
-                params: {
-                    per_page: 1000,
-                    sort: 'name'
-                }
-            })
-            .then((response) => {
-                console.log('Categories response:', response.data);
-                setCategories(response.data.data || []);
-            })
-            .catch((error) => {
-                console.error("Error fetching categories:", error.response || error);
-            });
+        fetchRequestItems();
+    }, []);
 
-        axios
-            .get("/api/v1/units")
-            .then((response) => {
-                setUnits(response.data.data);
-            })
-            .catch((error) => console.error("Error fetching units:", error));
+    const pendingCount = Array.isArray(requestItems?.data)
+        ? requestItems.data.filter((item) => {
+              return item.is_added === false;
+          }).length
+        : 0;
 
-        if (productId) {
-            axios
-                .get(`/api/v1/products/${productId}`)
-                .then((response) => {
+    const showRequestItemField =
+        Array.isArray(requestItems?.data) &&
+        requestItems.data.some((item) => !item.is_added);
+
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            try {
+                const [categoriesRes, unitsRes] = await Promise.all([
+                    axios.get("/api/v1/product-categories", {
+                        params: { per_page: 1000, sort: "name" },
+                    }),
+                    axios.get("/api/v1/units"),
+                ]);
+
+                setCategories(categoriesRes.data.data || []);
+                setUnits(unitsRes.data.data || []);
+            } catch (error) {
+                console.error("Error fetching categories or units:", error);
+            }
+
+            if (productId) {
+                try {
+                    const res = await axios.get(
+                        `/api/v1/products/${productId}`
+                    );
+                    const data = res.data.data;
                     setFormData({
-                        name: response.data.data.name,
-                        category_id: response.data.data.category_id,
-                        unit_id: response.data.data.unit_id,
-                        upc: response.data.data.upc,
-                        description: response.data.data.description,
+                        name: data.name,
+                        category_id: data.category_id,
+                        unit_id: data.unit_id,
+                        upc: data.upc,
+                        description: data.description,
+                        request_item: "",
                     });
-                })
-                .catch((error) =>
-                    console.error("Error fetching product:", error)
-                );
-        }
+                } catch (error) {
+                    console.error("Error fetching product:", error);
+                }
+            }
+        };
+        fetchInitialData();
     }, [productId]);
 
     const handleChange = (e) => {
@@ -67,7 +90,7 @@ const CreateProduct = () => {
     };
 
     const validateForm = () => {
-        let newErrors = {};
+        const newErrors = {};
         if (!formData.name.trim()) newErrors.name = "Item Name is required";
         if (!formData.category_id)
             newErrors.category_id = "Category is required";
@@ -84,35 +107,43 @@ const CreateProduct = () => {
         e.preventDefault();
         if (!validateForm()) return;
         setLoading(true);
-
         try {
-            let response;
+            const payload = {
+                name: formData.name,
+                category_id: formData.category_id,
+                unit_id: formData.unit_id,
+                upc: formData.upc,
+                description: formData.description,
+            };
+
             if (productId) {
-                response = await axios.put(
-                    `/api/v1/products/${productId}`,
-                    formData,
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                            Accept: "application/json",
-                        },
-                    }
-                );
+                await axios.put(`/api/v1/products/${productId}`, payload);
             } else {
-                response = await axios.post("/api/v1/products", formData, {
-                    headers: {
-                        "Content-Type": "application/json",
-                        Accept: "application/json",
-                    },
-                });
+                await axios.post("/api/v1/products", payload);
             }
-            setFormData({
-                name: "",
-                category_id: "",
-                unit_id: "",
-                upc: "",
-                description: "",
-            });
+            if (
+                formData.request_item &&
+                Array.isArray(requestItems.data) &&
+                requestItems.data.some(
+                    (item) => item.id == formData.request_item
+                )
+            ) {
+                try {
+                    await axios.put(
+                        `/api/v1/request-item/${formData.request_item}`,
+                        {
+                            is_added: true,
+                        }
+                    );
+                    await fetchRequestItems();
+                    setFormData((prev) => ({ ...prev, request_item: "" }));
+                } catch (err) {
+                    setErrors((prev) => ({
+                        ...prev,
+                        request_item: "Failed to update request item status",
+                    }));
+                }
+            }
             router.visit("/items");
         } catch (error) {
             setErrors(
@@ -163,6 +194,35 @@ const CreateProduct = () => {
                             </p>
                         )}
                     </div>
+                </div>
+                <div
+                    className={`grid gap-4 ${
+                        showRequestItemField
+                            ? "grid-cols-1 md:grid-cols-3"
+                            : "grid-cols-1 md:grid-cols-2"
+                    }`}
+                >
+                    {showRequestItemField && (
+                        <div>
+                            <SelectFloating
+                                label="Requested Item"
+                                name="request_item"
+                                value={formData.request_item}
+                                onChange={handleChange}
+                                options={requestItems.data
+                                    .filter((item) => !item.is_added)
+                                    .map((item) => ({
+                                        id: item.id,
+                                        label: item.name,
+                                    }))}
+                            />
+                            {errors.request_item && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.request_item}
+                                </p>
+                            )}
+                        </div>
+                    )}
                     <div>
                         <SelectFloating
                             label="Unit"
@@ -239,6 +299,65 @@ const CreateProduct = () => {
                     </button>
                 </div>
             </form>
+
+            {pendingCount > 0 && (
+                <div className="my-10">
+                    <h2 className="text-3xl font-bold text-[#2C323C] mb-4">
+                        Pending Requested Items
+                    </h2>
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-center">
+                                <tr>
+                                    <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
+                                        ID
+                                    </th>
+                                    <th className="py-3 px-4">User Name</th>
+                                    <th className="py-3 px-4">Item Name</th>
+                                    <th className="py-3 px-4">Description</th>
+                                    <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                                        Quantity
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#D7D8D9] text-base font-medium text-center text-[#2C323C]">
+                                {loading ? (
+                                    <tr>
+                                        <td
+                                            colSpan="5"
+                                            className="text-start py-8"
+                                        >
+                                            <div className="w-10 h-10 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin mx-auto" />
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    requestItems.data
+                                        .filter((product) => !product.is_added)
+                                        .map((product) => (
+                                            <tr key={product.id}>
+                                                <td className="py-3 px-4">
+                                                    {product.id}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    {product.user_id}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    {product.name}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    {product.description}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    {product.quantity}
+                                                </td>
+                                            </tr>
+                                        ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
