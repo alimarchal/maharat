@@ -31,6 +31,11 @@ class ItemRequest extends Model
         'is_added' => false
     ];
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     protected function isAdded(): Attribute
     {
         return Attribute::make(
