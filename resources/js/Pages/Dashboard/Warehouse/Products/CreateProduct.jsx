@@ -339,7 +339,7 @@ const CreateProduct = () => {
                                                     {product.id}
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    {product.user_id}
+                                                    {product.user?.name}
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     {product.name}
