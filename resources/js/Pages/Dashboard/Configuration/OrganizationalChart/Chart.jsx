@@ -18,7 +18,8 @@ function OrganizationNode({
     onToggleExpand,
     isSecretary = false,
     hasSecretaryParent,
-    extraClass
+    extraClass,
+    onMarkForDeletion
 }) {
     const [anchorEl, setAnchorEl] = useState(null);
 
@@ -34,6 +35,12 @@ function OrganizationNode({
         if (node.id) {
             router.visit(`/users?id=${node.id}`);
         }
+        handleClose();
+    };
+
+    const handleDeleteClick = () => {
+        onDelete();
+        onMarkForDeletion(node.id);
         handleClose();
     };
 
@@ -112,7 +119,7 @@ function OrganizationNode({
                     Add Position
                 </MenuItem>
                 {!isRoot && (
-                    <MenuItem onClick={() => { onDelete(); handleClose(); }}>
+                    <MenuItem onClick={handleDeleteClick}>
                         Delete
                     </MenuItem>
                 )}
@@ -270,13 +277,14 @@ function OrgChartTree({
                     <OrganizationNode
                         node={node}
                         onRename={() => {}}
-                        onDelete={handleDelete}
+                        onDelete={() => handleDelete(node)}
                         onAddPosition={handleAddPosition}
                         isRoot={isRoot}
                         hasChildren={regularChildren.length > 0}
                         isExpanded={isExpanded}
                         onToggleExpand={handleToggleExpand}
                         hasSecretaryParent={hasSecretaryParent}
+                        onMarkForDeletion={onMarkForDeletion}
                     />
                     {secretaryChild && (
                         <div className="secretary-container">
@@ -284,6 +292,7 @@ function OrgChartTree({
                             <SecretaryNode 
                                 node={secretaryChild}
                                 onDelete={() => handleDelete(secretaryChild)}
+                                onMarkForDeletion={onMarkForDeletion}
                             />
                         </div>
                     )}
@@ -354,7 +363,7 @@ function OrgChartTree({
 }
 
 // Add this new component for Secretary Node
-function SecretaryNode({ node, onDelete }) {
+function SecretaryNode({ node, onDelete, onMarkForDeletion }) {
     const [anchorEl, setAnchorEl] = useState(null);
 
     const handleClick = (event) => {
@@ -374,6 +383,7 @@ function SecretaryNode({ node, onDelete }) {
 
     const handleDeleteClick = () => {
         onDelete();
+        onMarkForDeletion(node.id);
         handleClose();
     };
 
