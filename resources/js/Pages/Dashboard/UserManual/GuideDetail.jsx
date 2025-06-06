@@ -442,7 +442,7 @@ export default function GuideDetail() {
 
             {/* Timeline Section */}
             <div className="relative">
-                <div className="absolute left-6 top-10 bottom-20 w-0.5 bg-[#93D3EC]"></div>
+                <div className="absolute left-6 top-10 bottom-20 w-0.5 bg-[#93D3EC] z-[1]"></div>
 
                 <div className="space-y-12">
                 {tasks.map((step, index) => {
@@ -494,9 +494,9 @@ export default function GuideDetail() {
                     // Render regular steps with stepper
                     return (
                         <div key={index} className="flex">
-                            <div className="relative z-10">
+                            <div className="relative z-[1]">
                                 <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#93D3EC] text-lg font-medium">
-                                                    {step.step_number}
+                                    {step.step_number}
                                 </div>
                             </div>
                             <div className="ml-4 flex-1">
