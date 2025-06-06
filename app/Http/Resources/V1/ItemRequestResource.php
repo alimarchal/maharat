@@ -22,6 +22,7 @@ class ItemRequestResource extends JsonResource
             'photo' => $this->photo,
             'photo_url' => $this->photo_url,
             'user_id' => $this->user_id,
+            'user' => new UserResource($this->whenLoaded('user')),
             'is_added' => $this->is_added,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

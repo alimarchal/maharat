@@ -19,6 +19,7 @@ class ItemRequestController extends Controller
     public function index(Request $request): JsonResponse
     {
         $itemRequests = ItemRequest::where('user_id', Auth::id())
+            ->with('user')
             ->latest()
             ->paginate(10);
 
@@ -73,6 +74,7 @@ class ItemRequestController extends Controller
             $validated['is_added'] = $request->has('is_added') ? (bool) $request->is_added : false;
 
             $itemRequest = ItemRequest::create($validated);
+            $itemRequest->load('user');
 
             return response()->json([
                 'message' => 'Item request created successfully',
@@ -99,6 +101,7 @@ class ItemRequestController extends Controller
     public function show(string $id): JsonResponse
     {
         $itemRequest = ItemRequest::where('user_id', Auth::id())
+            ->with('user')
             ->findOrFail($id);
 
         return response()->json([
