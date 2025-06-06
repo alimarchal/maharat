@@ -1,29 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Link } from "@inertiajs/react";
 import ProductsTable from "./ProductsTable";
-import axios from "axios";
+import { useRequestItems } from "@/Components/RequestItemsContext";
 
 const ProductIndex = () => {
-    const [requestItems, setRequestItems] = useState([]);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const response = await axios.get("/api/v1/request-item");
-                setRequestItems(response.data.data || {});
-            } catch (err) {
-                console.error("Error fetching items:", err);
-                setRequestItems([]);
-            }
-        };
-        fetchData();
-    }, []);
-
-    const pendingCount = Array.isArray(requestItems?.data)
-        ? requestItems.data.filter((item) => {
-              return item.is_added === false;
-          }).length
-        : 0;
+    const { pendingCount } = useRequestItems();
 
     return (
         <div className="min-h-screen">

@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faCamera } from "@fortawesome/free-solid-svg-icons";
-import axios from "axios";
 import InputFloating from "@/Components/InputFloating";
 import { usePage } from "@inertiajs/react";
+import { useRequestItems } from "@/Components/RequestItemsContext";
 
 const NewItemModal = ({ isOpen, onClose }) => {
     const user_id = usePage().props.auth?.user?.id;
+    const { addNewRequestItem } = useRequestItems();
 
     const [formData, setFormData] = useState({
         user_id: user_id,
@@ -53,9 +54,7 @@ const NewItemModal = ({ isOpen, onClose }) => {
             payload.append("description", formData.description);
             payload.append("is_added", formData.is_added ? "1" : "0");
 
-            const response = await axios.post("/api/v1/request-item", payload, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
+            await addNewRequestItem(payload);
 
             setFormData({
                 name: "",

@@ -505,7 +505,7 @@ export default function MainDashboard({ roles, permissions }) {
                     <DashboardCard
                         icon={faWarehouse}
                         title="Warehouse"
-                        subtitle="Stock Management"
+                        subtitle="Warehouse Management"
                         bgColor="bg-[#F7EBBA]"
                         iconColor="text-[#665200]"
                         dropdownItems={
