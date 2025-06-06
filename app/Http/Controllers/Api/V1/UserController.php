@@ -231,8 +231,12 @@ class UserController extends Controller
                 ], 422);
             }
 
-            // Soft delete the user
-            $user->delete();  // This will now perform a soft delete since we added the SoftDeletes trait
+            // Update all references to this user to null
+            DB::table('cash_flow_transactions')->where('created_by', $user->id)->update(['created_by' => null]);
+            DB::table('cash_flow_transactions')->where('updated_by', $user->id)->update(['updated_by' => null]);
+            
+            // Hard delete the user
+            $user->delete();
 
             DB::commit();
             return response()->json(['message' => 'User deleted successfully']);
