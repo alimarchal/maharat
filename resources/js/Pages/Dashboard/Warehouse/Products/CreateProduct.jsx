@@ -3,6 +3,8 @@ import InputFloating from "../../../../Components/InputFloating";
 import SelectFloating from "../../../../Components/SelectFloating";
 import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEye, faTimes } from "@fortawesome/free-solid-svg-icons";
 
 const CreateProduct = () => {
     const { productId } = usePage().props;
@@ -21,6 +23,8 @@ const CreateProduct = () => {
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const [requestItems, setRequestItems] = useState([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState(null);
 
     const fetchRequestItems = async () => {
         try {
@@ -156,6 +160,16 @@ const CreateProduct = () => {
         }
     };
 
+    const handleViewItem = (item) => {
+        setSelectedItem(item);
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setSelectedItem(null);
+    };
+
     return (
         <>
             <h2 className="text-3xl font-bold text-[#2C323C]">
@@ -254,7 +268,6 @@ const CreateProduct = () => {
                         )}
                     </div>
                 </div>
-
                 <div>
                     <div className="relative w-full">
                         <textarea
@@ -282,7 +295,6 @@ const CreateProduct = () => {
                         </p>
                     )}
                 </div>
-
                 <div className="flex justify-end">
                     <button
                         type="submit"
@@ -315,8 +327,9 @@ const CreateProduct = () => {
                                     <th className="py-3 px-4">User Name</th>
                                     <th className="py-3 px-4">Item Name</th>
                                     <th className="py-3 px-4">Description</th>
+                                    <th className="py-3 px-4">Quantity</th>
                                     <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
-                                        Quantity
+                                        Action
                                     </th>
                                 </tr>
                             </thead>
@@ -350,11 +363,92 @@ const CreateProduct = () => {
                                                 <td className="py-3 px-4">
                                                     {product.quantity}
                                                 </td>
+                                                <td className="py-3 px-4 flex justify-center text-center space-x-3">
+                                                    <button
+                                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                                        title="View Item"
+                                                        onClick={() =>
+                                                            handleViewItem(
+                                                                product
+                                                            )
+                                                        }
+                                                    >
+                                                        <FontAwesomeIcon
+                                                            icon={faEye}
+                                                        />
+                                                    </button>
+                                                </td>
                                             </tr>
                                         ))
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Image Modal */}
+            {isModalOpen && selectedItem && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="bg-white p-8 rounded-2xl w-[90%] max-w-3xl">
+                        <div className="flex justify-between border-b pb-2 mb-4">
+                            <h2 className="text-3xl font-bold text-[#2C323C]">
+                                Item Details
+                            </h2>
+                            <button
+                                onClick={closeModal}
+                                className="text-red-500 hover:text-red-800"
+                            >
+                                <FontAwesomeIcon icon={faTimes} />
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 space-y-4 border-b pb-2">
+                            <p className="flex justify-start items-center gap-4">
+                                <strong>Item Name:</strong> {selectedItem.name}
+                            </p>
+                            <p className="flex justify-start items-center gap-4">
+                                <strong>User:</strong> {selectedItem.user?.name}
+                            </p>
+                            <p className="flex justify-start items-center gap-4">
+                                <strong>Quantity:</strong>
+                                {selectedItem.quantity}
+                            </p>
+                            <p className="flex justify-start items-center gap-4">
+                                <strong>Description:</strong>
+                                {selectedItem.description}
+                            </p>
+                        </div>
+
+                        {selectedItem.photo ? (
+                            <div className="flex justify-center text-center my-4 md:my-8">
+                                <img
+                                    src={`/storage/${selectedItem.photo}`}
+                                    alt={selectedItem.name}
+                                    className="max-w-full max-h-96 w-auto h-auto object-contain"
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex justify-center text-center my-4 md:my-8">
+                                <div className="bg-gray-100 rounded-lg p-6 border-2 border-dashed border-gray-300 max-w-md">
+                                    <svg
+                                        className="mx-auto h-12 w-12 text-gray-400 mb-3"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                        />
+                                    </svg>
+                                    <p className="text-gray-500 font-medium">
+                                        No image available
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
