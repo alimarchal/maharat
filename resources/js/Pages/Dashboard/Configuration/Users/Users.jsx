@@ -101,9 +101,14 @@ useEffect(() => {
                 
                 // If user has a parent_id, fetch the reporting manager's info
                 if (userData?.parent_id) {
-                    const reportingManagerResponse = await axios.get(`/api/v1/users/${userData.parent_id}`);
-                    console.log("Reporting Manager Response:", reportingManagerResponse.data); // Debug log
-                    setReportingManager(reportingManagerResponse.data.data.name);
+                    try {
+                        const reportingManagerResponse = await axios.get(`/api/v1/users/${userData.parent_id}`);
+                        console.log("Reporting Manager Response:", reportingManagerResponse.data); // Debug log
+                        setReportingManager(reportingManagerResponse.data.data.name);
+                    } catch (error) {
+                        console.error("Error fetching reporting manager:", error);
+                        setReportingManager("Not Available");
+                    }
                 }
             } 
             // If we're creating a new user with specified hierarchy and parent
@@ -117,33 +122,44 @@ useEffect(() => {
                 
                 // If parent_id is provided, fetch the reporting manager's name
                 if (parent_id) {
-                    const reportingManagerResponse = await axios.get(`/api/v1/users/${parent_id}`);
-                    console.log("Reporting Manager Response:", reportingManagerResponse.data);
-                    setReportingManager(reportingManagerResponse.data.data.name);
+                    try {
+                        const reportingManagerResponse = await axios.get(`/api/v1/users/${parent_id}`);
+                        console.log("Reporting Manager Response:", reportingManagerResponse.data);
+                        setReportingManager(reportingManagerResponse.data.data.name);
+                    } catch (error) {
+                        console.error("Error fetching reporting manager:", error);
+                        setReportingManager("Not Available");
+                    }
                 } 
                 // If hierarchy_level is 1 and no parent_id, fetch the top-level manager (hierarchy_level = 0)
                 else if (hierarchy_level === 1) {
                     console.log("Fetching top-level manager for hierarchy level 1");
-                    const topLevelManagerResponse = await axios.get('/api/v1/users', {
-                        params: {
-                            hierarchy_level: 0
+                    try {
+                        const topLevelManagerResponse = await axios.get('/api/v1/users', {
+                            params: {
+                                hierarchy_level: 0
+                            }
+                        });
+                        
+                        console.log("Top-Level Manager Response:", topLevelManagerResponse.data);
+                        
+                        if (Array.isArray(topLevelManagerResponse.data.data) && 
+                            topLevelManagerResponse.data.data.length > 0) {
+                            
+                            const topLevelManager = topLevelManagerResponse.data.data[0];
+                            setReportingManager(topLevelManager.name);
+                            
+                            setFormData(prevData => ({
+                                ...prevData,
+                                parent_id: topLevelManager.id
+                            }));
+                        } else {
+                            console.warn("No top-level manager found with hierarchy_level = 0");
+                            setReportingManager("Not Available");
                         }
-                    });
-                    
-                    console.log("Top-Level Manager Response:", topLevelManagerResponse.data);
-                    
-                    if (Array.isArray(topLevelManagerResponse.data.data) && 
-                        topLevelManagerResponse.data.data.length > 0) {
-                        
-                        const topLevelManager = topLevelManagerResponse.data.data[0];
-                        setReportingManager(topLevelManager.name);
-                        
-                        setFormData(prevData => ({
-                            ...prevData,
-                            parent_id: topLevelManager.id
-                        }));
-                    } else {
-                        console.warn("No top-level manager found with hierarchy_level = 0");
+                    } catch (error) {
+                        console.error("Error fetching top-level manager:", error);
+                        setReportingManager("Not Available");
                     }
                 }
             }

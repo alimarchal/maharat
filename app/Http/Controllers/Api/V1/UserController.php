@@ -221,9 +221,31 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
-        $user->delete();
+        try {
+            DB::beginTransaction();
+            
+            // Check if user has any subordinates
+            if ($user->children()->exists()) {
+                return response()->json([
+                    'error' => 'Cannot delete user with subordinates. Please reassign or delete subordinates first.'
+                ], 422);
+            }
 
-        return response()->noContent();
+            // Update all references to this user to null
+            DB::table('cash_flow_transactions')->where('created_by', $user->id)->update(['created_by' => null]);
+            DB::table('cash_flow_transactions')->where('updated_by', $user->id)->update(['updated_by' => null]);
+            
+            // Hard delete the user
+            $user->delete();
+
+            DB::commit();
+            return response()->json(['message' => 'User deleted successfully']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Delete failed: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
 
