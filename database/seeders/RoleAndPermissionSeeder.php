@@ -80,6 +80,10 @@ class RoleAndPermissionSeeder extends Seeder
             'view_employee_employee_branch_settings',
             'view_employee_employee_company_settings',
             'view_employee_employee_currency_settings',
+            'view_org_chart',
+            'edit_org_chart',
+            'view_dashboard',
+            'edit_profile'
         ];
 
         foreach ($permissions as $permission) {
