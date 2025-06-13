@@ -24,14 +24,19 @@ export default function GuideDetail() {
     const [debugInfo, setDebugInfo] = useState(null);
     const [imageErrors, setImageErrors] = useState({});
     const [isUnderConstruction, setIsUnderConstruction] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [canEditManual, setCanEditManual] = useState(false);
+    const [canDeleteManual, setCanDeleteManual] = useState(false);
 
     useEffect(() => {
         // Only fetch from API if we have a numeric ID
         if (guideId && !isNaN(parseInt(guideId))) {
             fetchGuideData();
+            fetchUserData();
         } else if (cardId) {
             // If we have a card ID but no guide ID, fetch the card data
             fetchCardData(cardId);
+            fetchUserData();
             setLoading(false);
             setIsUnderConstruction(true);
         } else {
@@ -125,6 +130,31 @@ export default function GuideDetail() {
         }
     };
 
+    const fetchUserData = async () => {
+        try {
+            const response = await axios.get("/api/v1/user/current", {
+                headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                },
+            });
+
+            if (response.data && response.data.data) {
+                const userData = response.data.data;
+                setIsAdmin(userData.roles && userData.roles.includes("Admin"));
+                
+                // Check for user manual permissions
+                if (userData.permissions) {
+                    setCanEditManual(userData.permissions.includes('edit_user_manual'));
+                    setCanDeleteManual(userData.permissions.includes('delete_user_manual'));
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching user data:", error);
+            setIsAdmin(false);
+        }
+    };
+
     const handleDelete = async () => {
         if (!guide || !guide.id) return;
         
@@ -175,11 +205,34 @@ export default function GuideDetail() {
             return true;
         }
         
-        // Check if user has admin permissions
+        // Check if user has admin permissions or edit_user_manual permission
         if (
             auth.user.permissions &&
             (auth.user.permissions.includes("manage_configuration") ||
-                auth.user.permissions.includes("edit_permission_settings"))
+                auth.user.permissions.includes("edit_permission_settings") ||
+                auth.user.permissions.includes("edit_user_manual"))
+        ) {
+            return true;
+        }
+        
+        return false;
+    };
+
+    // Function to check if user has permission to delete
+    const canDelete = () => {
+        if (!auth || !auth.user) return false;
+        
+        // Check if user is the creator of the guide
+        if (guide && guide.creator && guide.creator.id === auth.user.id) {
+            return true;
+        }
+        
+        // Check if user has admin permissions or delete_user_manual permission
+        if (
+            auth.user.permissions &&
+            (auth.user.permissions.includes("manage_configuration") ||
+                auth.user.permissions.includes("edit_permission_settings") ||
+                auth.user.permissions.includes("delete_user_manual"))
         ) {
             return true;
         }
@@ -417,25 +470,27 @@ export default function GuideDetail() {
             </div>
             
             {/* Edit/Delete Buttons for authenticated users with permissions */}
-            {guide && canEdit() && (
+            {guide && (isAdmin || canEditManual || canDeleteManual) && (
                 <div className="flex justify-end mb-4">
                     <div className="flex space-x-2">
-                        <button
-                            onClick={() => setIsEditModalOpen(true)}
-                            className="bg-[#009FDC] text-white p-2 rounded-full hover:bg-blue-600 transition duration-150"
-                            title="Edit Guide"
-                        >
-                            <Edit size={20} />
-                        </button>
-                        <button
-                                        onClick={() =>
-                                            setShowConfirmDelete(true)
-                                        }
-                            className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition duration-150"
-                            title="Delete Guide"
-                        >
-                            <Trash size={20} />
-                        </button>
+                        {(isAdmin || canEditManual) && (
+                            <button
+                                onClick={() => setIsEditModalOpen(true)}
+                                className="bg-[#009FDC] text-white p-2 rounded-full hover:bg-blue-600 transition duration-150"
+                                title="Edit Guide"
+                            >
+                                <Edit size={20} />
+                            </button>
+                        )}
+                        {(isAdmin || canDeleteManual) && (
+                            <button
+                                onClick={() => setShowConfirmDelete(true)}
+                                className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition duration-150"
+                                title="Delete Guide"
+                            >
+                                <Trash size={20} />
+                            </button>
+                        )}
                     </div>
                 </div>
             )}

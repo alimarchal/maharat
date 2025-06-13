@@ -31,7 +31,7 @@ class FaqPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasRole('admin'); // Only admins can create FAQs
+        return $user->hasPermissionTo('create_faqs');
     }
 
     /**
@@ -39,7 +39,7 @@ class FaqPolicy
      */
     public function update(User $user, Faq $faq): bool
     {
-        return $user->hasRole('admin'); // Only admins can update FAQs
+        return $user->hasPermissionTo('edit_faqs');
     }
 
     /**
@@ -47,7 +47,7 @@ class FaqPolicy
      */
     public function delete(User $user, Faq $faq): bool
     {
-        return $user->hasRole('admin'); // Only admins can delete FAQs
+        return $user->hasPermissionTo('delete_faqs');
     }
 
     /**
@@ -55,7 +55,7 @@ class FaqPolicy
      */
     public function restore(User $user, Faq $faq): bool
     {
-        return $user->hasRole('admin'); // Only admins can restore FAQs
+        return $user->hasPermissionTo('edit_faqs');
     }
 
     /**
@@ -63,6 +63,6 @@ class FaqPolicy
      */
     public function forceDelete(User $user, Faq $faq): bool
     {
-        return $user->hasRole('admin'); // Only admins can permanently delete FAQs
+        return $user->hasPermissionTo('delete_faqs');
     }
 }

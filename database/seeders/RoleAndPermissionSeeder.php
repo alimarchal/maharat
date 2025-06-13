@@ -35,6 +35,10 @@ class RoleAndPermissionSeeder extends Seeder
             'view_configuration',
             'view_faqs',
             'view_user_manual',
+            'create_user_manual',
+            'edit_user_manual',
+            'delete_user_manual',
+            'approve_user_manual',
             'manage_settings',
             'view_process_flow',
             'view_permission_settings',
@@ -82,11 +86,47 @@ class RoleAndPermissionSeeder extends Seeder
         $allPermissions = Permission::all();
 
         // Helper function to update or create role
-        $updateOrCreateRole = function($name, $parentRoleId = null, $permissions = []) use ($allPermissions) {
+        $updateOrCreateRole = function($name, $parentId, $permissions) {
+            // Convert permissions to array of names if it's a collection
+            if ($permissions instanceof \Illuminate\Database\Eloquent\Collection) {
+                $permissions = $permissions->pluck('name')->toArray();
+            }
+            
+            // Ensure view permissions exist
+            if (!in_array('view_faqs', $permissions)) {
+                $permissions[] = 'view_faqs';
+            }
+            if (!in_array('view_user_manual', $permissions)) {
+                $permissions[] = 'view_user_manual';
+            }
+            
+            // Add CRUD permissions for directors and admin
+            $isDirector = false;
+            $users = \App\Models\User::whereHas('designation', function($query) {
+                $query->where('name', 'like', '%Director%');
+            })->get();
+            
+            if ($users->isNotEmpty()) {
+                $isDirector = true;
+            }
+            
+            if ($isDirector || $name === 'Admin' || $name === 'Managing Director' || $name === 'Department Director') {
+                foreach ([
+                    'create_faqs', 'edit_faqs', 'delete_faqs',
+                    'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual',
+                ] as $perm) {
+                    if (!in_array($perm, $permissions)) {
+                        $permissions[] = $perm;
+                    }
+                }
+            }
+            
+            // Create/update role (without parent_id)
             $role = Role::updateOrCreate(
-                ['name' => $name, 'guard_name' => 'web'],
-                ['parent_role_id' => $parentRoleId]
+                ['name' => $name]
             );
+            
+            // Sync permissions
             $role->syncPermissions($permissions);
             return $role;
         };

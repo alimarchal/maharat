@@ -234,6 +234,9 @@ const FAQAccordion = () => {
     const [submitSuccess, setSubmitSuccess] = useState(false);
     const [faqs, setFaqs] = useState([]);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [canCreateFaq, setCanCreateFaq] = useState(false);
+    const [canEditFaq, setCanEditFaq] = useState(false);
+    const [canDeleteFaq, setCanDeleteFaq] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editingFaq, setEditingFaq] = useState(null);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -257,6 +260,13 @@ const FAQAccordion = () => {
             if (response.data && response.data.data) {
                 const userData = response.data.data;
                 setIsAdmin(userData.roles && userData.roles.includes("Admin"));
+                
+                // Check for FAQ permissions
+                if (userData.permissions) {
+                    setCanCreateFaq(userData.permissions.includes('create_faqs'));
+                    setCanEditFaq(userData.permissions.includes('edit_faqs'));
+                    setCanDeleteFaq(userData.permissions.includes('delete_faqs'));
+                }
             } else {
                 console.error("Invalid user data format:", response.data);
                 setIsAdmin(false);
@@ -437,20 +447,24 @@ const FAQAccordion = () => {
                         Find answers to common questions about our application
                     </p>
                 </div>
-                {isAdmin && (
+                {(canCreateFaq || canEditFaq || canDeleteFaq) && (
                     <div className="flex space-x-4">
-                        <button
-                            onClick={handleAdd}
-                            className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
-                        >
-                            Add FAQ
-                        </button>
-                        <button
-                            onClick={() => setIsEditMode(!isEditMode)}
-                            className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
-                        >
-                            {isEditMode ? "Done Editing" : "Edit FAQs"}
-                        </button>
+                        {canCreateFaq && (
+                            <button
+                                onClick={handleAdd}
+                                className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
+                            >
+                                Add FAQ
+                            </button>
+                        )}
+                        {(canEditFaq || canDeleteFaq) && (
+                            <button
+                                onClick={() => setIsEditMode(!isEditMode)}
+                                className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
+                            >
+                                {isEditMode ? "Done Editing" : "Edit FAQs"}
+                            </button>
+                        )}
                         <Link
                             href={route("faqs.view")}
                             className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
@@ -526,36 +540,40 @@ const FAQAccordion = () => {
                                                     <div className="flex items-center">
                                                         {isEditMode && (
                                                             <>
-                                                                <button
-                                                                    onClick={(
-                                                                        e
-                                                                    ) => {
-                                                                        e.stopPropagation();
-                                                                        handleEdit(
-                                                                            faq
-                                                                        );
-                                                                    }}
-                                                                    className="mr-4 text-[#009FDC] hover:text-[#007BB5]"
-                                                                >
-                                                                    <FaEdit />
-                                                                </button>
-                                                                <button
-                                                                    onClick={(
-                                                                        e
-                                                                    ) => {
-                                                                        e.stopPropagation();
-                                                                        handleDelete(
-                                                                            faq.id
-                                                                        );
-                                                                    }}
-                                                                    className="mr-4 text-red-500 hover:text-red-700"
-                                                                >
-                                                                    <FontAwesomeIcon
-                                                                        icon={
-                                                                            faTrash
-                                                                        }
-                                                                    />
-                                                                </button>
+                                                                {canEditFaq && (
+                                                                    <button
+                                                                        onClick={(
+                                                                            e
+                                                                        ) => {
+                                                                            e.stopPropagation();
+                                                                            handleEdit(
+                                                                                faq
+                                                                            );
+                                                                        }}
+                                                                        className="mr-4 text-[#009FDC] hover:text-[#007BB5]"
+                                                                    >
+                                                                        <FaEdit />
+                                                                    </button>
+                                                                )}
+                                                                {canDeleteFaq && (
+                                                                    <button
+                                                                        onClick={(
+                                                                            e
+                                                                        ) => {
+                                                                            e.stopPropagation();
+                                                                            handleDelete(
+                                                                                faq.id
+                                                                            );
+                                                                        }}
+                                                                        className="mr-4 text-red-500 hover:text-red-700"
+                                                                    >
+                                                                        <FontAwesomeIcon
+                                                                            icon={
+                                                                                faTrash
+                                                                            }
+                                                                        />
+                                                                    </button>
+                                                                )}
                                                             </>
                                                         )}
                                                         <span className="text-[#009FDC]">
