@@ -59,7 +59,13 @@ class RoleAndPermissionSeeder extends Seeder
             'view_configuration', 'manage_configuration',
             'view_org_chart', 'edit_org_chart',
             'view_process_flow', 'edit_process_flow',
-            'view_permission_settings', 'edit_permission_settings'
+            'view_permission_settings', 'edit_permission_settings',
+
+            // FAQs
+            'view_faqs', 'create_faqs', 'edit_faqs', 'delete_faqs', 'approve_faqs',
+
+            // User Manuals
+            'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual'
         ];
 
         foreach ($permissions as $permission) {
@@ -101,7 +107,9 @@ class RoleAndPermissionSeeder extends Seeder
             'view_configuration',
             'view_org_chart', 'edit_org_chart',
             'view_process_flow',
-            'view_permission_settings'
+            'view_permission_settings',
+            'view_faqs', 'create_faqs', 'edit_faqs', 'delete_faqs', 'approve_faqs',
+            'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual'
         ];
         $directorRole->givePermissionTo($directorPermissions);
 
@@ -126,7 +134,9 @@ class RoleAndPermissionSeeder extends Seeder
             'view_budget',
             'view_reports', 'create_reports',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow',
+            'view_faqs', 'create_faqs', 'edit_faqs', 'approve_faqs',
+            'view_user_manual', 'create_user_manual', 'edit_user_manual', 'approve_user_manual'
         ];
         $managerRole->givePermissionTo($managerPermissions);
 
