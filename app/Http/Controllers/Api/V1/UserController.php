@@ -21,14 +21,19 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Permission;
 use Storage;
+use App\Services\DesignationPermissionService;
 
 class UserController extends Controller
 {
     protected $notificationSettingsService;
+    protected $designationPermissionService;
 
-    public function __construct(NotificationSettingsService $notificationSettingsService)
-    {
+    public function __construct(
+        NotificationSettingsService $notificationSettingsService,
+        DesignationPermissionService $designationPermissionService
+    ) {
         $this->notificationSettingsService = $notificationSettingsService;
+        $this->designationPermissionService = $designationPermissionService;
     }
 
 
@@ -67,8 +72,9 @@ class UserController extends Controller
         }
 
         $user = User::create($validated);
-        $role = Role::find($request->role_id);
-        $user->assignRole($role->name);
+
+        // Assign role and permissions based on designation
+        $this->designationPermissionService->assignRoleAndPermissions($user);
 
         // Setup default notification settings
         $this->notificationSettingsService->setupDefaultSettingsForUser($user);
@@ -106,103 +112,18 @@ class UserController extends Controller
                 $validated['profile_photo_path'] = $path;
             }
 
-            // Extract permission-related data before updating the user model
-            $roleId = $validated['role_id'] ?? null;
-            $permissions = $validated['permissions'] ?? null;
-            $removePermissions = $validated['remove_permissions'] ?? null;
+            // Check if designation is being updated
+            $isDesignationUpdated = isset($validated['designation_id']) && $validated['designation_id'] !== $user->designation_id;
 
-            // Remove these fields so they don't interfere with the update
-            unset($validated['role_id'], $validated['permissions'], $validated['remove_permissions']);
+            // Remove role_id from validated data as we'll handle roles through designation
+            unset($validated['role_id']);
 
             // Update user basic information
             $user->update($validated);
 
-            // Handle role updates if provided
-            if ($roleId) {
-                try {
-                    // Remove all current roles
-                    $user->roles()->detach();
-
-                    // Assign new role - specify the 'web' guard
-                    $role = Role::findById($roleId, 'web');
-                    if ($role) {
-                        $user->assignRole($role);
-                    }
-                } catch (\Exception $e) {
-                    Log::error("Error assigning role: " . $e->getMessage());
-                    throw $e;
-                }
-            }
-
-            // Handle direct permission updates if provided
-            if (is_array($permissions)) {
-                try {
-                    $permissionObjects = [];
-
-                    foreach ($permissions as $permission) {
-                        if (is_string($permission) && !is_numeric($permission)) {
-                            // Find permission by name
-                            try {
-                                $p = Permission::where('name', $permission)->where('guard_name', 'web')->first();
-                                if ($p) {
-                                    $permissionObjects[] = $p;
-                                }
-                            } catch (\Exception $e) {
-                                Log::error("Error finding permission by name '{$permission}': " . $e->getMessage());
-                            }
-                        } else {
-                            // Find permission by ID
-                            try {
-                                $p = Permission::findById($permission, 'web');
-                                if ($p) {
-                                    $permissionObjects[] = $p;
-                                }
-                            } catch (\Exception $e) {
-                                Log::error("Error finding permission by ID {$permission}: " . $e->getMessage());
-                            }
-                        }
-                    }
-
-                    if (!empty($permissionObjects)) {
-                        // Sync permissions (replaces all existing permissions)
-                        $user->syncPermissions($permissionObjects);
-                    }
-                } catch (\Exception $e) {
-                    Log::error("Error syncing permissions: " . $e->getMessage());
-                    throw $e;
-                }
-            }
-
-            if (is_array($removePermissions)) {
-                try {
-                    foreach ($removePermissions as $permission) {
-                        if (is_string($permission) && !is_numeric($permission)) {
-                            // Remove by name
-                            if ($user->hasPermissionTo($permission, 'web')) {
-                                $user->revokePermissionTo($permission);
-//                                Log::info("Revoked permission by name: {$permission}");
-                            } else {
-//                                Log::info("User doesn't have permission '{$permission}' to revoke");
-                            }
-                        } else {
-                            // Remove by ID
-                            try {
-                                $p = Permission::findById($permission, 'web');
-                                if ($p && $user->hasPermissionTo($p)) {
-                                    $user->revokePermissionTo($p);
-//                                    Log::info("Revoked permission by ID: {$permission} (name: {$p->name})");
-                                } else {
-//                                    Log::info("User doesn't have permission with ID {$permission} to revoke");
-                                }
-                            } catch (\Exception $e) {
-//                                Log::error("Error finding permission to revoke by ID {$permission}: " . $e->getMessage());
-                            }
-                        }
-                    }
-                } catch (\Exception $e) {
-//                    Log::error("Error revoking permissions: " . $e->getMessage());
-                    throw $e;
-                }
+            // If designation was updated, reassign role and permissions
+            if ($isDesignationUpdated) {
+                $this->designationPermissionService->assignRoleAndPermissions($user);
             }
 
             DB::commit();
@@ -214,7 +135,8 @@ class UserController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
+            Log::error("Error updating user: " . $e->getMessage());
+            return response()->json(['error' => 'Failed to update user'], 500);
         }
     }
 
