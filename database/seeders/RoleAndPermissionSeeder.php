@@ -89,24 +89,13 @@ class RoleAndPermissionSeeder extends Seeder
             'view_employee_branch_settings',
             'view_employee_company_settings',
             'view_employee_currency_settings',
-            'view_employee_employee_type_settings',
-            'view_employee_employee_status_settings',
-            'view_employee_employee_category_settings',
-            'view_employee_employee_grade_settings',
-            'view_employee_employee_band_settings',
-            'view_employee_employee_level_settings',
-            'view_employee_employee_position_settings',
-            'view_employee_employee_role_settings',
-            'view_employee_employee_permission_settings',
-            'view_employee_employee_designation_settings',
-            'view_employee_employee_department_settings',
-            'view_employee_employee_branch_settings',
-            'view_employee_employee_company_settings',
-            'view_employee_employee_currency_settings',
             'view_org_chart',
             'edit_org_chart',
             'view_dashboard',
-            'edit_profile'
+            'edit_profile',
+            'view_notifications',
+            'manage_notifications',
+            'view_statuses'
         ];
 
         foreach ($permissions as $permission) {
@@ -136,18 +125,8 @@ class RoleAndPermissionSeeder extends Seeder
                 }
             }
             
-            // Add CRUD permissions for directors and admin
-            $isDirector = false;
-            $users = \App\Models\User::whereHas('designation', function($query) {
-                $query->where('name', 'like', '%Director%');
-            })->get();
-            
-            if ($users->isNotEmpty()) {
-                $isDirector = true;
-            }
-            
             // Add configuration center permissions only for directors and admin
-            if ($isDirector || $name === 'Admin' || $name === 'Managing Director' || $name === 'Department Director') {
+            if ($name === 'Admin' || $name === 'Managing Director' || $name === 'Department Director') {
                 $configPermissions = [
                     'view_configuration',
                     'view_org_chart',
@@ -171,7 +150,10 @@ class RoleAndPermissionSeeder extends Seeder
                     'view_employee_department_settings',
                     'view_employee_branch_settings',
                     'view_employee_company_settings',
-                    'view_employee_currency_settings'
+                    'view_employee_currency_settings',
+                    'view_notifications',
+                    'manage_notifications',
+                    'view_statuses'
                 ];
                 
                 foreach ($configPermissions as $perm) {
@@ -180,9 +162,16 @@ class RoleAndPermissionSeeder extends Seeder
                     }
                 }
             }
+
+            // Add notification permissions for users with warehouse access
+            if (in_array('view_warehouse', $permissions)) {
+                if (!in_array('view_notifications', $permissions)) {
+                    $permissions[] = 'view_notifications';
+                }
+            }
             
             // Add CRUD permissions for directors and admin
-            if ($isDirector || $name === 'Admin' || $name === 'Managing Director' || $name === 'Department Director') {
+            if ($name === 'Admin' || $name === 'Managing Director' || $name === 'Department Director') {
                 foreach ([
                     'create_faqs', 'edit_faqs', 'delete_faqs',
                     'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual',
@@ -220,12 +209,34 @@ class RoleAndPermissionSeeder extends Seeder
             'stock_in', 'stock_out',
             'view_budget', 'manage_budget', 'approve_budget',
             'view_reports', 'create_reports', 'export_reports',
-            'view_configuration',
-            'view_org_chart', 'edit_org_chart',
             'view_process_flow',
             'view_permission_settings',
             'view_faqs', 'create_faqs', 'edit_faqs', 'delete_faqs', 'approve_faqs',
-            'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual'
+            'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual',
+            'view_notifications', 'manage_notifications',
+            'view_configuration',
+            'view_org_chart',
+            'view_company_settings',
+            'view_department_settings',
+            'view_branch_settings',
+            'view_currency_settings',
+            'view_designation_settings',
+            'view_employee_settings',
+            'view_employee_type_settings',
+            'view_employee_status_settings',
+            'view_employee_category_settings',
+            'view_employee_grade_settings',
+            'view_employee_band_settings',
+            'view_employee_level_settings',
+            'view_employee_position_settings',
+            'view_employee_role_settings',
+            'view_employee_permission_settings',
+            'view_employee_designation_settings',
+            'view_employee_department_settings',
+            'view_employee_branch_settings',
+            'view_employee_company_settings',
+            'view_employee_currency_settings',
+            'view_statuses'
         ]);
 
         // Department Director
@@ -242,12 +253,34 @@ class RoleAndPermissionSeeder extends Seeder
             'stock_in', 'stock_out',
             'view_budget', 'manage_budget', 'approve_budget',
             'view_reports', 'create_reports', 'export_reports',
-            'view_configuration',
-            'view_org_chart', 'edit_org_chart',
             'view_process_flow',
             'view_permission_settings',
             'view_faqs', 'create_faqs', 'edit_faqs', 'delete_faqs', 'approve_faqs',
-            'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual'
+            'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual',
+            'view_notifications', 'manage_notifications',
+            'view_configuration',
+            'view_org_chart',
+            'view_company_settings',
+            'view_department_settings',
+            'view_branch_settings',
+            'view_currency_settings',
+            'view_designation_settings',
+            'view_employee_settings',
+            'view_employee_type_settings',
+            'view_employee_status_settings',
+            'view_employee_category_settings',
+            'view_employee_grade_settings',
+            'view_employee_band_settings',
+            'view_employee_level_settings',
+            'view_employee_position_settings',
+            'view_employee_role_settings',
+            'view_employee_permission_settings',
+            'view_employee_designation_settings',
+            'view_employee_department_settings',
+            'view_employee_branch_settings',
+            'view_employee_company_settings',
+            'view_employee_currency_settings',
+            'view_statuses'
         ]);
 
         // Secretary role with limited view permissions
@@ -353,7 +386,10 @@ class RoleAndPermissionSeeder extends Seeder
             'view_maharat_invoices', 'create_maharat_invoices',
             'view_budget', 'manage_budget',
             'view_reports', 'create_reports', 'export_reports',
-            'manage_settings'
+            'manage_settings',
+            'view_warehouse', 'manage_warehouse',
+            'view_procurement', 'manage_procurement',
+            'view_notifications'  // Added because they have warehouse access
         ]);
 
         // Procurement Officer
@@ -368,7 +404,21 @@ class RoleAndPermissionSeeder extends Seeder
             'view_warehouse', 'manage_warehouse',
             'stock_in', 'stock_out',
             'view_reports', 'create_reports', 'export_reports',
-            'manage_settings'
+            'manage_settings',
+            'view_notifications',  // Added because they have warehouse access
+            'view_finance', 'manage_finance',  // Added for Finance Center access
+            'view_budget', 'manage_budget'  // Added for Budget & Accounts access
+        ]);
+
+        // Procurement Specialist
+        $updateOrCreateRole('Procurement Specialist', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual',
+            'view_procurement', 'manage_procurement',
+            'view_rfqs', 'create_rfqs',
+            'view_purchase_orders', 'create_purchase_orders'
         ]);
 
         // Reset cached roles and permissions

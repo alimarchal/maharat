@@ -103,7 +103,7 @@ const Sidebar = ({ isOpen }) => {
                         title="Dashboard"
                         isActive={url === "/dashboard"}
                     />
-                    {hasPermission("manage_settings") && (
+                    {(hasPermission("view_notifications") || hasPermission("manage_notifications")) && (
                         <SidebarButton
                             icon={faBell}
                             link="/notification-settings"
