@@ -316,6 +316,34 @@ class RoleAndPermissionSeeder extends Seeder
             'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
+        // Accountant
+        $updateOrCreateRole('Accountant', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual',
+            'view_finance', 'manage_finance',
+            'view_maharat_invoices', 'create_maharat_invoices',
+            'view_budget', 'manage_budget',
+            'view_reports', 'create_reports', 'export_reports',
+            'manage_settings'
+        ]);
+
+        // Procurement Officer
+        $updateOrCreateRole('Procurement Officer', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual',
+            'view_procurement', 'manage_procurement',
+            'view_rfqs', 'create_rfqs',
+            'view_purchase_orders', 'create_purchase_orders',
+            'view_warehouse', 'manage_warehouse',
+            'stock_in', 'stock_out',
+            'view_reports', 'create_reports', 'export_reports',
+            'manage_settings'
+        ]);
+
         // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
     }

@@ -271,13 +271,13 @@ export default function MainDashboard({ roles, permissions }) {
             text: "RFQs",
             icon: faFileCirclePlus,
             onClick: () => router.visit("/rfqs"),
-            requiredPermission: "view_rfqs",
+            //requiredPermission: "view_rfqs",
         },
         {
             text: "Quotations",
             icon: faFileInvoice,
             onClick: () => router.visit("/quotations"),
-            requiredPermission: "view_quotations",
+            //requiredPermission: "view_quotations",
         },
         {
             text: "Purchase Orders",
@@ -289,7 +289,7 @@ export default function MainDashboard({ roles, permissions }) {
             text: "External Invoices",
             icon: faFileAlt,
             onClick: () => router.visit("/external-invoices"),
-            requiredPermission: "view_invoices",
+            //requiredPermission: "view_invoices",
         },
     ];
 
@@ -299,31 +299,31 @@ export default function MainDashboard({ roles, permissions }) {
             text: "Maharat Invoices",
             icon: faFileInvoice,
             onClick: () => router.visit("/maharat-invoices"),
-            requiredPermission: "view_maharat_invoices",
+            //requiredPermission: "view_maharat_invoices",
         },
         {
             text: "Accounts",
             icon: faBook,
             onClick: () => router.visit("/accounts"),
-            requiredPermission: "view_finance",
+            //requiredPermission: "view_finance",
         },
         {
             text: "Payment Orders",
             icon: faMoneyCheckDollar,
             onClick: () => router.visit("/payment-orders"),
-            requiredPermission: "view_payment_orders",
+            //requiredPermission: "view_payment_orders",
         },
         {
             text: "Account Receivables",
             icon: faFileInvoiceDollar,
             onClick: () => router.visit("/account-receivables"),
-            requiredPermission: "view_finance",
+            //requiredPermission: "view_finance",
         },
         {
             text: "Account Payables",
             icon: faFileInvoice,
             onClick: () => router.visit("/account-payables"),
-            requiredPermission: "view_finance",
+            //requiredPermission: "view_finance",
         },
     ];
 
@@ -333,31 +333,31 @@ export default function MainDashboard({ roles, permissions }) {
             text: "User Material Requests",
             icon: faFileAlt,
             onClick: () => router.visit("/material-requests"),
-            requiredPermission: "view_material_requests",
+            //requiredPermission: "view_material_requests",
         },
         {
             text: "Categories",
             icon: faListCheck,
             onClick: () => router.visit("/category"),
-            requiredPermission: "view_warehouse",
+            //requiredPermission: "view_warehouse",
         },
         {
             text: "Items",
             icon: faClipboardList,
             onClick: () => router.visit("/items"),
-            requiredPermission: "view_warehouse",
+            //requiredPermission: "view_warehouse",
         },
         {
             text: "Goods Receiving Notes",
             icon: faFileInvoice,
             onClick: () => router.visit("/goods-receiving-notes"),
-            requiredPermission: "view_goods_receiving_notes",
+            //requiredPermission: "view_goods_receiving_notes",
         },
         {
             text: "Inventory Tracking",
             icon: faChartBar,
             onClick: () => router.visit("/inventory-tracking"),
-            requiredPermission: "view_warehouse",
+            //requiredPermission: "view_warehouse",
         },
     ];
 
@@ -367,31 +367,31 @@ export default function MainDashboard({ roles, permissions }) {
             text: "Cost Centers",
             icon: faCoins,
             onClick: () => router.visit("/cost-centers"),
-            requiredPermission: "view_budget",
+            //requiredPermission: "view_budget",
         },
         {
             text: "Income Statement",
             icon: faChartLine,
             onClick: () => router.visit("/income-statement"),
-            requiredPermission: "view_finance",
+            //requiredPermission: "view_finance",
         },
         {
             text: "Balance Sheet",
             icon: faBalanceScale,
             onClick: () => router.visit("/balance-sheet"),
-            requiredPermission: "view_finance",
+            //requiredPermission: "view_finance",
         },
         {
             text: "Budget",
             icon: faMoneyBillWave,
             onClick: () => router.visit("/budget"),
-            requiredPermission: "view_budget",
+            //requiredPermission: "view_budget",
         },
         {
             text: "Request a Budget",
             icon: faFileSignature,
             onClick: () => router.visit("/request-budgets"),
-            requiredPermission: "view_budget",
+            //requiredPermission: "view_budget",
         },
     ];
 
@@ -401,25 +401,25 @@ export default function MainDashboard({ roles, permissions }) {
             text: "Organizational Chart",
             icon: faChartBar,
             onClick: () => router.visit("/chart"),
-            requiredPermission: "view_org_chart",
+            //requiredPermission: "view_org_chart",
         },
         {
             text: "Process Flow",
             icon: faDiagramProject,
             onClick: () => router.visit("/process-flow"),
-            requiredPermission: "view_process_flow",
+            //requiredPermission: "view_process_flow",
         },
         {
             text: "Notification Settings",
             icon: faBell,
             onClick: () => router.visit("/notification-settings"),
-            requiredPermission: "manage_settings",
+            //requiredPermission: "manage_settings",
         },
         {
             text: "Roles & Permission",
             icon: faUserPen,
             onClick: () => router.visit("/roles-permissions"),
-            requiredPermission: "view_permission_settings",
+            //requiredPermission: "view_permission_settings",
         },
     ];
 
