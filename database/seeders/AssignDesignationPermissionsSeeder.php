@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Role;
 
 class AssignDesignationPermissionsSeeder extends Seeder
 {
@@ -32,7 +33,7 @@ class AssignDesignationPermissionsSeeder extends Seeder
         $skippedCount = 0;
         $errorCount = 0;
 
-        $this->command->info('Starting permission assignment for ' . $users->count() . ' users...');
+        $this->command->info('Starting role and permission assignment for ' . $users->count() . ' users...');
 
         foreach ($users as $user) {
             try {
@@ -42,18 +43,30 @@ class AssignDesignationPermissionsSeeder extends Seeder
                     continue;
                 }
 
-                $user->assignPermissionsBasedOnDesignation();
-                $updatedCount++;
+                // Get the role based on designation
+                $role = Role::where('name', $user->designation->designation)->first();
                 
-                $this->command->info("Updated permissions for user {$user->id} ({$user->name}) with designation {$user->designation->designation}");
+                if ($role) {
+                    // Assign the role to the user
+                    $user->syncRoles([$role->name]);
+                    
+                    // Assign specific permissions based on designation
+                    $user->assignPermissionsBasedOnDesignation();
+                    
+                    $updatedCount++;
+                    $this->command->info("Updated roles and permissions for user {$user->id} ({$user->name}) with designation {$user->designation->designation}");
+                } else {
+                    $this->command->warn("No role found for designation: {$user->designation->designation}");
+                    $skippedCount++;
+                }
             } catch (\Exception $e) {
-                $this->command->error("Failed to update permissions for user {$user->id}: " . $e->getMessage());
-                Log::error("Failed to update permissions for user {$user->id}: " . $e->getMessage());
+                $this->command->error("Failed to update roles and permissions for user {$user->id}: " . $e->getMessage());
+                Log::error("Failed to update roles and permissions for user {$user->id}: " . $e->getMessage());
                 $errorCount++;
             }
         }
 
-        $this->command->info("Permission update completed:");
+        $this->command->info("Role and permission update completed:");
         $this->command->info("- Updated: {$updatedCount}");
         $this->command->info("- Skipped: {$skippedCount}");
         $this->command->info("- Errors: {$errorCount}");

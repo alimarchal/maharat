@@ -441,9 +441,6 @@ export default function MainDashboard({ roles, permissions }) {
     const showBudgetCard = hasPermission("Budget & Accounts");
     const showStatusesCard = hasPermission("Statuses");
     const showConfigCard = hasPermission("Configuration Center");
-    const showFAQsCard = hasPermission("FAQs");
-    const showUserManualCard = hasPermission("User Manual");
-    const showNotificationSettingsCard = hasPermission("Notification Settings");
 
     return (
         <>
@@ -540,36 +537,6 @@ export default function MainDashboard({ roles, permissions }) {
                         bgColor="bg-[#DEEEE9]"
                         iconColor="text-[#074D38]"
                         dropdownItems={configDropdownItems.length > 0 ? configDropdownItems : null}
-                    />
-                )}
-                {showFAQsCard && (
-                    <DashboardCard
-                        icon={faBook}
-                        title="FAQs"
-                        subtitle="Frequently Asked Questions"
-                        bgColor="bg-[#C4E4F0]"
-                        iconColor="text-[#005372]"
-                        onClick={() => router.visit("/faqs")}
-                    />
-                )}
-                {showUserManualCard && (
-                    <DashboardCard
-                        icon={faFileAlt}
-                        title="User Manual"
-                        subtitle="System Documentation"
-                        bgColor="bg-[#F7EBBA]"
-                        iconColor="text-[#665200]"
-                        onClick={() => router.visit("/user-manual")}
-                    />
-                )}
-                {showNotificationSettingsCard && (
-                    <DashboardCard
-                        icon={faBell}
-                        title="Notification Settings"
-                        subtitle="Manage Notifications"
-                        bgColor="bg-[#BFBCD8]"
-                        iconColor="text-[#393559]"
-                        onClick={() => router.visit("/notification-settings")}
                     />
                 )}
             </div>
