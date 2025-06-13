@@ -76,6 +76,18 @@ const SidebarButton = ({
 const Sidebar = ({ isOpen }) => {
     const { url } = usePage();
     const { pendingCount } = useRequestItems();
+    const user = usePage().props.auth.user;
+    const permissions = user?.permissions || [];
+    
+    // Debug
+    console.log('User:', user);
+    console.log('User permissions:', permissions);
+    
+    const hasPermission = (perm) => {
+        const result = permissions.includes(perm);
+        console.log(`Checking permission ${perm}:`, result);
+        return result;
+    };
 
     return (
         <>
@@ -91,14 +103,16 @@ const Sidebar = ({ isOpen }) => {
                         title="Dashboard"
                         isActive={url === "/dashboard"}
                     />
-                    <SidebarButton
-                        icon={faBell}
-                        link="/notification-settings"
-                        title="Notifications"
-                        isActive={url === "/notification-settings"}
-                        showBadge={true}
-                        badgeCount={pendingCount}
-                    />
+                    {hasPermission("manage_settings") && (
+                        <SidebarButton
+                            icon={faBell}
+                            link="/notification-settings"
+                            title="Notifications"
+                            isActive={url === "/notification-settings"}
+                            showBadge={true}
+                            badgeCount={pendingCount}
+                        />
+                    )}
                     {/* <SidebarButton
                         icon={faCommentDots}
                         link="/comments"
@@ -114,18 +128,22 @@ const Sidebar = ({ isOpen }) => {
                 </nav>
 
                 <div className="flex flex-col gap-6">
-                    <SidebarButton
-                        icon={faBookOpen}
-                        link="/user-manual"
-                        title="User Manual"
-                        isActive={url === "/user-manual"}
-                    />
-                    <SidebarButton
-                        icon={faQuestionCircle}
-                        link="/faqs"
-                        title="FAQs"
-                        isActive={url === "/faqs"}
-                    />
+                    {hasPermission("view_user_manual") && (
+                        <SidebarButton
+                            icon={faBookOpen}
+                            link="/user-manual"
+                            title="User Manual"
+                            isActive={url === "/user-manual"}
+                        />
+                    )}
+                    {hasPermission("view_faqs") && (
+                        <SidebarButton
+                            icon={faQuestionCircle}
+                            link="/faqs"
+                            title="FAQs"
+                            isActive={url === "/faqs"}
+                        />
+                    )}
                 </div>
             </aside>
 

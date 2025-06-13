@@ -6,6 +6,8 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class RoleAndPermissionSeeder extends Seeder
 {
@@ -20,46 +22,64 @@ class RoleAndPermissionSeeder extends Seeder
         // Run the document permissions seeder
         $this->call(DocumentPermissionSeeder::class);
 
-        // Create Permissions - All permissions from the matrix
+        // Create permissions
         $permissions = [
-            // User & Roles Management
-            'view_users', 'create_users', 'edit_users', 'delete_users',
-            'view_roles', 'create_roles', 'edit_roles', 'delete_roles',
-
-            // General Access
-            'view_dashboard', 'edit_profile', 'manage_settings',
-
-            // Requests Module
-            'view_requests', 'create_requests', 'edit_requests', 'delete_requests',
-            'approve_requests', 'view_material_requests', 'create_material_requests',
-
-            // Task Center
-            'view_tasks', 'create_tasks', 'assign_tasks',
-
-            // Procurement Center
-            'view_procurement', 'manage_procurement',
-            'view_rfqs', 'create_rfqs', 'approve_rfqs',
-            'view_purchase_orders', 'create_purchase_orders', 'approve_purchase_orders',
-
-            // Finance Center
-            'view_finance', 'manage_finance',
-            'view_maharat_invoices', 'create_maharat_invoices',
-
-            // Warehouse
-            'view_warehouse', 'manage_warehouse',
-            'stock_in', 'stock_out',
-
-            // Budget & Accounts
-            'view_budget', 'manage_budget', 'approve_budget',
-
-            // Reports & Statuses
-            'view_reports', 'create_reports', 'export_reports',
-
-            // Configuration Center
-            'view_configuration', 'manage_configuration',
-            'view_org_chart', 'edit_org_chart',
-            'view_process_flow', 'edit_process_flow',
-            'view_permission_settings', 'edit_permission_settings'
+            // Dashboard permissions
+            'view_requests',
+            'view_tasks',
+            'view_procurement',
+            'view_finance',
+            'view_warehouse',
+            'view_budget',
+            'view_reports',
+            'view_configuration',
+            'view_faqs',
+            'create_faqs',
+            'edit_faqs',
+            'delete_faqs',
+            'approve_faqs',
+            'view_user_manual',
+            'create_user_manual',
+            'edit_user_manual',
+            'delete_user_manual',
+            'approve_user_manual',
+            'manage_settings',
+            'view_process_flow',
+            'view_permission_settings',
+            'view_company_settings',
+            'view_department_settings',
+            'view_branch_settings',
+            'view_currency_settings',
+            'view_designation_settings',
+            'view_employee_settings',
+            'view_employee_type_settings',
+            'view_employee_status_settings',
+            'view_employee_category_settings',
+            'view_employee_grade_settings',
+            'view_employee_band_settings',
+            'view_employee_level_settings',
+            'view_employee_position_settings',
+            'view_employee_role_settings',
+            'view_employee_permission_settings',
+            'view_employee_designation_settings',
+            'view_employee_department_settings',
+            'view_employee_branch_settings',
+            'view_employee_company_settings',
+            'view_employee_currency_settings',
+            'view_employee_employee_type_settings',
+            'view_employee_employee_status_settings',
+            'view_employee_employee_category_settings',
+            'view_employee_employee_grade_settings',
+            'view_employee_employee_band_settings',
+            'view_employee_employee_level_settings',
+            'view_employee_employee_position_settings',
+            'view_employee_employee_role_settings',
+            'view_employee_employee_permission_settings',
+            'view_employee_employee_designation_settings',
+            'view_employee_employee_department_settings',
+            'view_employee_employee_branch_settings',
+            'view_employee_employee_company_settings',
+            'view_employee_employee_currency_settings',
         ];
 
         foreach ($permissions as $permission) {
@@ -69,23 +89,98 @@ class RoleAndPermissionSeeder extends Seeder
         // Get all permissions including document permissions
         $allPermissions = Permission::all();
 
-        // Admin/CEO - has all permissions
-        $adminRole = Role::firstOrCreate([
-            'name' => 'Admin',
-            'guard_name' => 'web',
-            'parent_role_id' => null
-        ]);
-        $adminRole->givePermissionTo($allPermissions);
+        // Helper function to update or create role
+        $updateOrCreateRole = function($name, $parentId, $permissions) {
+            // Convert permissions to array of names if it's a collection
+            if ($permissions instanceof \Illuminate\Database\Eloquent\Collection) {
+                $permissions = $permissions->pluck('name')->toArray();
+            }
+            
+            // Ensure view permissions exist for ALL roles
+            $basePermissions = [
+                'view_faqs',
+                'view_user_manual',
+                'view_process_flow'
+            ];
+            
+            foreach ($basePermissions as $perm) {
+                if (!in_array($perm, $permissions)) {
+                    $permissions[] = $perm;
+                }
+            }
+            
+            // Add CRUD permissions for directors and admin
+            $isDirector = false;
+            $users = \App\Models\User::whereHas('designation', function($query) {
+                $query->where('name', 'like', '%Director%');
+            })->get();
+            
+            if ($users->isNotEmpty()) {
+                $isDirector = true;
+            }
+            
+            // Add configuration center permissions only for directors and admin
+            if ($isDirector || $name === 'Admin' || $name === 'Managing Director' || $name === 'Department Director') {
+                $configPermissions = [
+                    'view_configuration',
+                    'view_org_chart',
+                    'view_permission_settings',
+                    'view_company_settings',
+                    'view_department_settings',
+                    'view_branch_settings',
+                    'view_currency_settings',
+                    'view_designation_settings',
+                    'view_employee_settings',
+                    'view_employee_type_settings',
+                    'view_employee_status_settings',
+                    'view_employee_category_settings',
+                    'view_employee_grade_settings',
+                    'view_employee_band_settings',
+                    'view_employee_level_settings',
+                    'view_employee_position_settings',
+                    'view_employee_role_settings',
+                    'view_employee_permission_settings',
+                    'view_employee_designation_settings',
+                    'view_employee_department_settings',
+                    'view_employee_branch_settings',
+                    'view_employee_company_settings',
+                    'view_employee_currency_settings'
+                ];
+                
+                foreach ($configPermissions as $perm) {
+                    if (!in_array($perm, $permissions)) {
+                        $permissions[] = $perm;
+                    }
+                }
+            }
+            
+            // Add CRUD permissions for directors and admin
+            if ($isDirector || $name === 'Admin' || $name === 'Managing Director' || $name === 'Department Director') {
+                foreach ([
+                    'create_faqs', 'edit_faqs', 'delete_faqs',
+                    'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual',
+                ] as $perm) {
+                    if (!in_array($perm, $permissions)) {
+                        $permissions[] = $perm;
+                    }
+                }
+            }
+            
+            // Create/update role (without parent_id)
+            $role = Role::updateOrCreate(
+                ['name' => $name]
+            );
+            
+            // Sync permissions
+            $role->syncPermissions($permissions);
+            return $role;
+        };
 
-        // Director
-        $directorRole = Role::firstOrCreate([
-            'name' => 'Director',
-            'guard_name' => 'web',
-            'parent_role_id' => $adminRole->id
-        ]);
-        $directorPermissions = [
-            'view_users', 'create_users', 'edit_users',
-            'view_roles',
+        // Admin/CEO - has all permissions
+        $adminRole = $updateOrCreateRole('Admin', null, $allPermissions);
+
+        // Managing Director
+        $managingDirectorRole = $updateOrCreateRole('Managing Director', $adminRole->id, [
             'view_dashboard', 'edit_profile',
             'view_requests', 'create_requests', 'edit_requests', 'delete_requests', 'approve_requests',
             'view_tasks', 'create_tasks', 'assign_tasks',
@@ -101,128 +196,153 @@ class RoleAndPermissionSeeder extends Seeder
             'view_configuration',
             'view_org_chart', 'edit_org_chart',
             'view_process_flow',
-            'view_permission_settings'
-        ];
-        $directorRole->givePermissionTo($directorPermissions);
-
-        // Manager
-        $managerRole = Role::firstOrCreate([
-            'name' => 'Manager',
-            'guard_name' => 'web',
-            'parent_role_id' => $directorRole->id
+            'view_permission_settings',
+            'view_faqs', 'create_faqs', 'edit_faqs', 'delete_faqs', 'approve_faqs',
+            'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual'
         ]);
-        $managerPermissions = [
-            'view_users',
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests', 'delete_requests', 'approve_requests',
-            'view_tasks', 'create_tasks', 'assign_tasks',
-            'view_procurement',
-            'view_rfqs', 'create_rfqs',
-            'view_purchase_orders', 'create_purchase_orders',
-            'view_finance',
-            'view_maharat_invoices', 'create_maharat_invoices',
-            'view_warehouse',
-            'stock_in', 'stock_out',
-            'view_budget',
-            'view_reports', 'create_reports',
-            'view_org_chart',
-            'view_process_flow'
-        ];
-        $managerRole->givePermissionTo($managerPermissions);
 
-        // Supervisor
-        $supervisorRole = Role::firstOrCreate([
-            'name' => 'Supervisor',
-            'guard_name' => 'web',
-            'parent_role_id' => $managerRole->id
-        ]);
-        $supervisorPermissions = [
-            'view_users',
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests', 'approve_requests',
-            'view_tasks', 'create_tasks', 'assign_tasks',
-            'view_procurement',
-            'view_rfqs',
-            'view_purchase_orders',
-            'view_warehouse',
-            'view_budget',
-            'view_reports',
-            'view_org_chart',
-            'view_process_flow'
-        ];
-        $supervisorRole->givePermissionTo($supervisorPermissions);
-
-        // User
-        $userRole = Role::firstOrCreate([
-            'name' => 'User',
-            'guard_name' => 'web',
-            'parent_role_id' => $supervisorRole->id
-        ]);
-        $userPermissions = [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks',
-            'view_org_chart',
-            'view_process_flow'
-        ];
-        $userRole->givePermissionTo($userPermissions);
-
-        // Procurement Officer
-        $procurementOfficer = Role::firstOrCreate([
-            'name' => 'Procurement Officer',
-            'guard_name' => 'web'
-        ]);
-        $procurementOfficerPermissions = [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks',
-            'view_procurement',
-            'view_rfqs', 'create_rfqs',
-            'view_purchase_orders', 'create_purchase_orders',
-            'view_warehouse',
-            'view_org_chart',
-            'view_process_flow'
-        ];
-        $procurementOfficer->givePermissionTo($procurementOfficerPermissions);
-
-        // Procurement Supervisor
-        $procurementSupervisor = Role::firstOrCreate([
-            'name' => 'Procurement Supervisor',
-            'guard_name' => 'web'
-        ]);
-        $procurementSupervisorPermissions = [
+        // Department Director
+        $departmentDirectorRole = $updateOrCreateRole('Department Director', $managingDirectorRole->id, [
             'view_dashboard', 'edit_profile',
             'view_requests', 'create_requests', 'edit_requests', 'delete_requests', 'approve_requests',
             'view_tasks', 'create_tasks', 'assign_tasks',
             'view_procurement', 'manage_procurement',
             'view_rfqs', 'create_rfqs', 'approve_rfqs',
             'view_purchase_orders', 'create_purchase_orders', 'approve_purchase_orders',
-            'view_maharat_invoices',
-            'view_budget',
-            'view_warehouse',
-            'view_org_chart',
-            'view_process_flow'
-        ];
-        $procurementSupervisor->givePermissionTo($procurementSupervisorPermissions);
-
-        // Warehouse Manager
-        $warehouseManager = Role::firstOrCreate([
-            'name' => 'Warehouse Manager',
-            'guard_name' => 'web'
-        ]);
-        $warehouseManagerPermissions = [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests', 'approve_requests',
-            'view_tasks', 'create_tasks', 'assign_tasks',
-            'view_procurement',
-            'view_rfqs',
-            'view_purchase_orders',
+            'view_finance', 'manage_finance',
+            'view_maharat_invoices', 'create_maharat_invoices',
             'view_warehouse', 'manage_warehouse',
             'stock_in', 'stock_out',
-            'view_org_chart',
-            'view_process_flow'
-        ];
-        $warehouseManager->givePermissionTo($warehouseManagerPermissions);
+            'view_budget', 'manage_budget', 'approve_budget',
+            'view_reports', 'create_reports', 'export_reports',
+            'view_configuration',
+            'view_org_chart', 'edit_org_chart',
+            'view_process_flow',
+            'view_permission_settings',
+            'view_faqs', 'create_faqs', 'edit_faqs', 'delete_faqs', 'approve_faqs',
+            'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual'
+        ]);
+
+        // Secretary role with limited view permissions
+        $secretaryRole = $updateOrCreateRole('Secretary', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual'
+        ]);
+
+        // Base User role with common permissions (view only)
+        $userRole = $updateOrCreateRole('User', $departmentDirectorRole->id, [
+            'view_dashboard',
+            'edit_profile',
+            'view_requests',
+            'create_requests',
+            'edit_requests',
+            'view_tasks',
+            'view_process_flow',
+            'view_faqs',
+            'view_user_manual'
+        ]);
+
+        // Graduation Coordinator
+        $updateOrCreateRole('Graduation Coordinator', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual'
+        ]);
+
+        // Social Media Specialist
+        $updateOrCreateRole('Social Media Specialist', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual'
+        ]);
+
+        // Marketing Specialist
+        $updateOrCreateRole('Marketing Specialist', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual'
+        ]);
+
+        // Internal Audit
+        $updateOrCreateRole('Internal Audit', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual'
+        ]);
+
+        // Project Management Officer
+        $updateOrCreateRole('Project Management Officer', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual'
+        ]);
+
+        // Admin & Support Supervisor
+        $updateOrCreateRole('Admin & Support Supervisor', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual'
+        ]);
+
+        // Messenger
+        $updateOrCreateRole('Messenger', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual'
+        ]);
+
+        // QA Site Representative
+        $updateOrCreateRole('QA Site Representative', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual'
+        ]);
+
+        // LTP Site Representative
+        $updateOrCreateRole('LTP Site Representative', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual'
+        ]);
+
+        // Accountant
+        $updateOrCreateRole('Accountant', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual',
+            'view_finance', 'manage_finance',
+            'view_maharat_invoices', 'create_maharat_invoices',
+            'view_budget', 'manage_budget',
+            'view_reports', 'create_reports', 'export_reports',
+            'manage_settings'
+        ]);
+
+        // Procurement Officer
+        $updateOrCreateRole('Procurement Officer', $departmentDirectorRole->id, [
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual',
+            'view_procurement', 'manage_procurement',
+            'view_rfqs', 'create_rfqs',
+            'view_purchase_orders', 'create_purchase_orders',
+            'view_warehouse', 'manage_warehouse',
+            'stock_in', 'stock_out',
+            'view_reports', 'create_reports', 'export_reports',
+            'manage_settings'
+        ]);
 
         // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();

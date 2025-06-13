@@ -22,6 +22,8 @@ export default function UserManualSubSections() {
     const [currentCardLevel, setCurrentCardLevel] = useState(0);
     const [showCardForm, setShowCardForm] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [canEditManual, setCanEditManual] = useState(false);
+    const [canDeleteManual, setCanDeleteManual] = useState(false);
 
     useEffect(() => {
         fetchSubSections();
@@ -42,6 +44,12 @@ export default function UserManualSubSections() {
             if (response.data && response.data.data) {
                 const userData = response.data.data;
                 setIsAdmin(userData.roles && userData.roles.includes("Admin"));
+                
+                // Check for user manual permissions
+                if (userData.permissions) {
+                    setCanEditManual(userData.permissions.includes('edit_user_manual'));
+                    setCanDeleteManual(userData.permissions.includes('delete_user_manual'));
+                }
             } else {
                 console.error("Invalid user data format:", response.data);
                 setIsAdmin(false);
@@ -183,83 +191,59 @@ export default function UserManualSubSections() {
             .join(" ");
     };
 
-    const SubManualSectionCard = ({ sectionCard, provided }) => {
-        const cardId = sectionCard.id;
-        const title = sectionCard.name;
-        const description = sectionCard.description;
-        const guides = guidesMap[cardId] || [];
-
-        const handleClick = async () => {
-            console.log('ManualSubSection - Starting card click handler:', {
-                cardId: cardId,
-                cardName: title,
-                sectionId: sectionCard.section_id,
-                subsectionId: sectionCard.subsection_id,
-                currentUrl: window.location.pathname
+    const handleClick = async (sectionCard) => {
+        console.log('ManualSubSection - Starting card click handler:', {
+            cardId: sectionCard.id,
+            cardName: sectionCard.name,
+            sectionId: sectionCard.section_id,
+            subsectionId: sectionCard.subsection_id,
+            currentUrl: window.location.pathname
+        });
+        
+        try {
+            console.log('ManualSubSection - Checking for children at:', `/api/v1/cards/${sectionCard.id}/children`);
+            const response = await axios.get(`/api/v1/cards/${sectionCard.id}/children`);
+            console.log('ManualSubSection - Children check response:', {
+                cardId: sectionCard.id,
+                hasChildren: response.data.data.has_children,
+                children: response.data.data.children,
+                responseData: response.data
             });
             
-            try {
-                console.log('ManualSubSection - Checking for children at:', `/api/v1/cards/${cardId}/children`);
-                const response = await axios.get(`/api/v1/cards/${cardId}/children`);
-                console.log('ManualSubSection - Children check response:', {
-                    cardId: cardId,
-                    hasChildren: response.data.data.has_children,
-                    children: response.data.data.children,
-                    responseData: response.data
+            if (response.data.data.has_children) {
+                // For any card with children, use section_id and subsection_id directly
+                const targetUrl = `/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id}`;
+                console.log('ManualSubSection - Card has children, routing to:', {
+                    targetUrl: targetUrl,
+                    currentUrl: window.location.pathname,
+                    sectionId: sectionCard.section_id,
+                    subsectionId: sectionCard.subsection_id,
+                    cardName: sectionCard.name
                 });
                 
-                if (response.data.data.has_children) {
-                    // For any card with children, use section_id and subsection_id directly
-                    const targetUrl = `/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id}`;
-                    console.log('ManualSubSection - Card has children, routing to:', {
-                        targetUrl: targetUrl,
-                        currentUrl: window.location.pathname,
-                        sectionId: sectionCard.section_id,
-                        subsectionId: sectionCard.subsection_id,
-                        cardName: title
-                    });
-                    router.get(targetUrl, {
-                        cardId: cardId
-                    }, {
-                        preserveState: true,
-                        preserveScroll: true,
-                        replace: true
-                    });
-                } else {
-                    const guide = guides[0];
-                    console.log('ManualSubSection - No children, checking for guide:', {
-                        hasGuide: !!guide,
-                        guideId: guide?.id
-                    });
-                    
-                    if (guide) {
-                        console.log('ManualSubSection - Routing to GuideDetail');
-                        router.visit(`/user-manual/guide/${guide.id}`);
-                    } else {
-                        // For any card without children and no guide, use section_id and subsection_id directly
-                        const targetUrl = `/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id}`;
-                        console.log('ManualSubSection - No guide, routing to card URL with cardId');
-                        router.get(targetUrl, {
-                            cardId: cardId
-                        }, {
-                            preserveState: true,
-                            preserveScroll: true,
-                            replace: true
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('ManualSubSection - Error checking for children:', error);
-                const guide = guides[0];
+                router.get(targetUrl, {
+                    cardId: sectionCard.id
+                }, {
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true
+                });
+            } else {
+                const guide = guidesMap[sectionCard.id]?.[0];
+                console.log('ManualSubSection - No children, checking for guide:', {
+                    hasGuide: !!guide,
+                    guideId: guide?.id
+                });
+                
                 if (guide) {
-                    console.log('ManualSubSection - Error fallback: Routing to GuideDetail');
+                    console.log('ManualSubSection - Routing to GuideDetail');
                     router.visit(`/user-manual/guide/${guide.id}`);
                 } else {
                     // For any card without children and no guide, use section_id and subsection_id directly
                     const targetUrl = `/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id}`;
-                    console.log('ManualSubSection - Error fallback: Routing to card URL with cardId');
+                    console.log('ManualSubSection - No guide, routing to card URL with cardId');
                     router.get(targetUrl, {
-                        cardId: cardId
+                        cardId: sectionCard.id
                     }, {
                         preserveState: true,
                         preserveScroll: true,
@@ -267,51 +251,66 @@ export default function UserManualSubSections() {
                     });
                 }
             }
-        };
+        } catch (error) {
+            console.error('ManualSubSection - Error checking for children:', error);
+            const guide = guidesMap[sectionCard.id]?.[0];
+            if (guide) {
+                console.log('ManualSubSection - Error fallback: Routing to GuideDetail');
+                router.visit(`/user-manual/guide/${guide.id}`);
+            } else {
+                const targetUrl = `/user-manual/${sectionCard.section_id}/${sectionCard.subsection_id}`;
+                console.log('ManualSubSection - Error fallback: Routing to card URL with cardId');
+                router.get(targetUrl, {
+                    cardId: sectionCard.id
+                }, {
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true
+                });
+            }
+        }
+    };
+
+    const SubManualSectionCard = ({ sectionCard, provided }) => {
+        const cardId = sectionCard.id;
+        const title = sectionCard.name;
+        const description = sectionCard.description;
+        const guides = guidesMap[cardId] || [];
 
         return (
             <div
                 ref={provided.innerRef}
                 {...provided.draggableProps}
                 className="bg-white rounded-xl shadow-md p-6 transition-transform hover:translate-y-[-5px] hover:shadow-lg cursor-pointer"
-                onClick={handleClick}
+                onClick={() => handleClick(sectionCard)}
             >
                 <div className="flex flex-col">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-2xl font-bold">
                             {title}
                         </h3>
-                        {isAdmin && (
+                        {(isAdmin || canEditManual || canDeleteManual) && (
                             <div className="flex items-center space-x-2">
-                                <div {...provided.dragHandleProps} className="cursor-move p-2 hover:bg-[#009FDC]/10 rounded-full transition-colors duration-200">
-                                    <FontAwesomeIcon icon={faGripVertical} className="text-[#009FDC] hover:text-[#007BB5] transition-colors duration-200" />
-                                </div>
-                                <button
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setSelectedCard(null);
-                                        setSelectedParentCard(sectionCard);
-                                        setCurrentCardLevel(2);
-                                        setShowCardForm(true);
-                                    }}
-                                    className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
-                                >
-                                    <FontAwesomeIcon icon={faPlus} className="text-lg" />
-                                </button>
-                                <button
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setSelectedCard(sectionCard);
-                                        setSelectedParentCard(null);
-                                        setCurrentCardLevel(1);
-                                        setShowCardForm(true);
-                                    }}
-                                    className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
-                                >
-                                    <FontAwesomeIcon icon={faEdit} className="text-lg" />
-                                </button>
+                                {isAdmin && (
+                                    <div {...provided.dragHandleProps} className="cursor-move p-2 hover:bg-[#009FDC]/10 rounded-full transition-colors duration-200">
+                                        <FontAwesomeIcon icon={faGripVertical} className="text-[#009FDC] hover:text-[#007BB5] transition-colors duration-200" />
+                                    </div>
+                                )}
+                                {(isAdmin || canEditManual) && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setSelectedCard(sectionCard);
+                                            setSelectedParentCard(null);
+                                            setCurrentCardLevel(1);
+                                            setShowCardForm(true);
+                                        }}
+                                        className="w-10 h-10 flex items-center justify-center bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition-colors duration-200"
+                                    >
+                                        <FontAwesomeIcon icon={faEdit} className="text-lg" />
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
