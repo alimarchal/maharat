@@ -88,5 +88,8 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(CardSeeder::class);
+
+        // Assign permissions based on designations
+        $this->call(AssignDesignationPermissionsSeeder::class);
     }
 }

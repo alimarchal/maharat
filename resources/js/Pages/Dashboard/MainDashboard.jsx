@@ -232,6 +232,24 @@ const DashboardCard = ({
 
 export default function MainDashboard({ roles, permissions }) {
     const hasPermission = (permission) => {
+        const permissionMap = {
+            "My Requests": "view_requests",
+            "Task Center": "view_tasks",
+            "Procurement Center": "view_procurement",
+            "Finance Center": "view_finance",
+            "Warehouse": "view_warehouse",
+            "Budget & Accounts": "view_budget",
+            "Statuses": "view_reports",
+            "Configuration Center": "view_configuration",
+            "FAQs": "view_faqs",
+            "User Manual": "view_user_manual",
+            "Notification Settings": "manage_settings"
+        };
+
+        if (permissionMap[permission]) {
+            return permissions && permissions.includes(permissionMap[permission]);
+        }
+
         return permissions && permissions.includes(permission);
     };
 
@@ -415,19 +433,17 @@ export default function MainDashboard({ roles, permissions }) {
     const configDropdownItems = filterDropdownItems(baseConfigDropdownItems);
 
     // Determine which cards to show based on permissions
-    const showRequestsCard = hasPermission("view_requests");
-    const showTasksCard = hasPermission("view_tasks");
-    const showProcurementCard =
-        purchaseDropdownItems.length > 0 || hasPermission("view_procurement");
-    const showFinanceCard =
-        financeDropdownItems.length > 0 || hasPermission("view_finance");
-    const showWarehouseCard =
-        warehouseDropdownItems.length > 0 || hasPermission("view_warehouse");
-    const showBudgetCard =
-        budgetDropdownItems.length > 0 || hasPermission("view_budget");
-    const showStatusesCard = hasPermission("view_reports");
-    const showConfigCard =
-        configDropdownItems.length > 0 || hasPermission("view_configuration");
+    const showRequestsCard = hasPermission("My Requests");
+    const showTasksCard = hasPermission("Task Center");
+    const showProcurementCard = hasPermission("Procurement Center");
+    const showFinanceCard = hasPermission("Finance Center");
+    const showWarehouseCard = hasPermission("Warehouse");
+    const showBudgetCard = hasPermission("Budget & Accounts");
+    const showStatusesCard = hasPermission("Statuses");
+    const showConfigCard = hasPermission("Configuration Center");
+    const showFAQsCard = hasPermission("FAQs");
+    const showUserManualCard = hasPermission("User Manual");
+    const showNotificationSettingsCard = hasPermission("Notification Settings");
 
     return (
         <>
@@ -452,11 +468,7 @@ export default function MainDashboard({ roles, permissions }) {
                         subtitle="My Requests & History"
                         bgColor="bg-[#C4E4F0]"
                         iconColor="text-[#005372]"
-                        onClick={
-                            hasPermission("view_requests")
-                                ? () => router.visit("/my-requests")
-                                : null
-                        }
+                        onClick={() => router.visit("/my-requests")}
                     />
                 )}
                 {showTasksCard && (
@@ -466,11 +478,7 @@ export default function MainDashboard({ roles, permissions }) {
                         subtitle="My Tasks & History"
                         bgColor="bg-[#F7EBBA]"
                         iconColor="text-[#665200]"
-                        onClick={
-                            hasPermission("view_tasks")
-                                ? () => router.visit("/tasks")
-                                : null
-                        }
+                        onClick={() => router.visit("/tasks")}
                     />
                 )}
                 {showProcurementCard && (
@@ -480,11 +488,7 @@ export default function MainDashboard({ roles, permissions }) {
                         subtitle="Procurement System"
                         bgColor="bg-[#BFBCD8]"
                         iconColor="text-[#393559]"
-                        dropdownItems={
-                            purchaseDropdownItems.length > 0
-                                ? purchaseDropdownItems
-                                : null
-                        }
+                        dropdownItems={purchaseDropdownItems.length > 0 ? purchaseDropdownItems : null}
                     />
                 )}
                 {showFinanceCard && (
@@ -494,11 +498,7 @@ export default function MainDashboard({ roles, permissions }) {
                         subtitle="Financials"
                         bgColor="bg-[#C4E4F0]"
                         iconColor="text-[#005372]"
-                        dropdownItems={
-                            financeDropdownItems.length > 0
-                                ? financeDropdownItems
-                                : null
-                        }
+                        dropdownItems={financeDropdownItems.length > 0 ? financeDropdownItems : null}
                     />
                 )}
                 {showWarehouseCard && (
@@ -508,16 +508,8 @@ export default function MainDashboard({ roles, permissions }) {
                         subtitle="Warehouse Management"
                         bgColor="bg-[#F7EBBA]"
                         iconColor="text-[#665200]"
-                        dropdownItems={
-                            warehouseDropdownItems.length > 0
-                                ? warehouseDropdownItems
-                                : null
-                        }
-                        onClick={
-                            hasPermission("manage_warehouse")
-                                ? () => router.visit("/warehouse-management")
-                                : null
-                        }
+                        dropdownItems={warehouseDropdownItems.length > 0 ? warehouseDropdownItems : null}
+                        onClick={() => router.visit("/warehouse-management")}
                     />
                 )}
                 {showBudgetCard && (
@@ -527,11 +519,7 @@ export default function MainDashboard({ roles, permissions }) {
                         subtitle="Planning & Accounting"
                         bgColor="bg-[#F7CCCC]"
                         iconColor="text-[#661E1E]"
-                        dropdownItems={
-                            budgetDropdownItems.length > 0
-                                ? budgetDropdownItems
-                                : null
-                        }
+                        dropdownItems={budgetDropdownItems.length > 0 ? budgetDropdownItems : null}
                     />
                 )}
                 {showStatusesCard && (
@@ -551,11 +539,37 @@ export default function MainDashboard({ roles, permissions }) {
                         subtitle="Process Flow"
                         bgColor="bg-[#DEEEE9]"
                         iconColor="text-[#074D38]"
-                        dropdownItems={
-                            configDropdownItems.length > 0
-                                ? configDropdownItems
-                                : null
-                        }
+                        dropdownItems={configDropdownItems.length > 0 ? configDropdownItems : null}
+                    />
+                )}
+                {showFAQsCard && (
+                    <DashboardCard
+                        icon={faBook}
+                        title="FAQs"
+                        subtitle="Frequently Asked Questions"
+                        bgColor="bg-[#C4E4F0]"
+                        iconColor="text-[#005372]"
+                        onClick={() => router.visit("/faqs")}
+                    />
+                )}
+                {showUserManualCard && (
+                    <DashboardCard
+                        icon={faFileAlt}
+                        title="User Manual"
+                        subtitle="System Documentation"
+                        bgColor="bg-[#F7EBBA]"
+                        iconColor="text-[#665200]"
+                        onClick={() => router.visit("/user-manual")}
+                    />
+                )}
+                {showNotificationSettingsCard && (
+                    <DashboardCard
+                        icon={faBell}
+                        title="Notification Settings"
+                        subtitle="Manage Notifications"
+                        bgColor="bg-[#BFBCD8]"
+                        iconColor="text-[#393559]"
+                        onClick={() => router.visit("/notification-settings")}
                     />
                 )}
             </div>

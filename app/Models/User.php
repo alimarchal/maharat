@@ -178,4 +178,41 @@ class User extends Authenticatable
     {
         return 'users.'.$this->id;
     }
+
+    /**
+     * Assign permissions based on the user's designation
+     */
+    public function assignPermissionsBasedOnDesignation()
+    {
+        if (!$this->designation) {
+            return;
+        }
+
+        $designation = $this->designation->designation;
+        $permissions = config('designation_permissions.' . $designation, []);
+        
+        if (!empty($permissions)) {
+            $this->syncPermissions($permissions);
+        }
+    }
+
+    /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Assign permissions when user is created
+        static::created(function ($user) {
+            $user->assignPermissionsBasedOnDesignation();
+        });
+
+        // Assign permissions when designation is updated
+        static::updated(function ($user) {
+            if ($user->isDirty('designation_id')) {
+                $user->assignPermissionsBasedOnDesignation();
+            }
+        });
+    }
 }
