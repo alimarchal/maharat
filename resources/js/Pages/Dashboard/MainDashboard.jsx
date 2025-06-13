@@ -246,11 +246,13 @@ export default function MainDashboard({ roles, permissions }) {
             "Notification Settings": "manage_settings"
         };
 
-        if (permissionMap[permission]) {
-            return permissions && permissions.includes(permissionMap[permission]);
+        // If the permission is a direct permission name (not a mapped one)
+        if (!permissionMap[permission]) {
+            return permissions && permissions.includes(permission);
         }
 
-        return permissions && permissions.includes(permission);
+        // Check mapped permission
+        return permissions && permissions.includes(permissionMap[permission]);
     };
 
     // Filter dropdown items based on user permissions

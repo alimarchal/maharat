@@ -109,7 +109,7 @@ class RoleAndPermissionSeeder extends Seeder
                 }
             }
             
-            // Add CRUD permissions for directors, admin, and secretary
+            // Add CRUD permissions for directors and admin
             $isDirector = false;
             $users = \App\Models\User::whereHas('designation', function($query) {
                 $query->where('name', 'like', '%Director%');
@@ -119,7 +119,43 @@ class RoleAndPermissionSeeder extends Seeder
                 $isDirector = true;
             }
             
-            if ($isDirector || $name === 'Admin' || $name === 'Managing Director' || $name === 'Department Director' || $name === 'Secretary') {
+            // Add configuration center permissions only for directors and admin
+            if ($isDirector || $name === 'Admin' || $name === 'Managing Director' || $name === 'Department Director') {
+                $configPermissions = [
+                    'view_configuration',
+                    'view_org_chart',
+                    'view_permission_settings',
+                    'view_company_settings',
+                    'view_department_settings',
+                    'view_branch_settings',
+                    'view_currency_settings',
+                    'view_designation_settings',
+                    'view_employee_settings',
+                    'view_employee_type_settings',
+                    'view_employee_status_settings',
+                    'view_employee_category_settings',
+                    'view_employee_grade_settings',
+                    'view_employee_band_settings',
+                    'view_employee_level_settings',
+                    'view_employee_position_settings',
+                    'view_employee_role_settings',
+                    'view_employee_permission_settings',
+                    'view_employee_designation_settings',
+                    'view_employee_department_settings',
+                    'view_employee_branch_settings',
+                    'view_employee_company_settings',
+                    'view_employee_currency_settings'
+                ];
+                
+                foreach ($configPermissions as $perm) {
+                    if (!in_array($perm, $permissions)) {
+                        $permissions[] = $perm;
+                    }
+                }
+            }
+            
+            // Add CRUD permissions for directors and admin
+            if ($isDirector || $name === 'Admin' || $name === 'Managing Director' || $name === 'Department Director') {
                 foreach ([
                     'create_faqs', 'edit_faqs', 'delete_faqs',
                     'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual',
@@ -189,12 +225,10 @@ class RoleAndPermissionSeeder extends Seeder
 
         // Secretary role with limited view permissions
         $secretaryRole = $updateOrCreateRole('Secretary', $departmentDirectorRole->id, [
-            'view_requests',
-            'view_tasks',
-            'view_reports',
-            'view_configuration',
-            'view_faqs',
-            'view_user_manual'
+            'view_dashboard', 'edit_profile',
+            'view_requests', 'create_requests', 'edit_requests',
+            'view_tasks', 'create_tasks',
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Base User role with common permissions (view only)
@@ -205,8 +239,6 @@ class RoleAndPermissionSeeder extends Seeder
             'create_requests',
             'edit_requests',
             'view_tasks',
-            'view_configuration',
-            'view_org_chart',
             'view_process_flow',
             'view_faqs',
             'view_user_manual'
@@ -217,8 +249,6 @@ class RoleAndPermissionSeeder extends Seeder
             'view_dashboard', 'edit_profile',
             'view_requests', 'create_requests', 'edit_requests',
             'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
             'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
@@ -227,8 +257,6 @@ class RoleAndPermissionSeeder extends Seeder
             'view_dashboard', 'edit_profile',
             'view_requests', 'create_requests', 'edit_requests',
             'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
             'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
@@ -237,8 +265,6 @@ class RoleAndPermissionSeeder extends Seeder
             'view_dashboard', 'edit_profile',
             'view_requests', 'create_requests', 'edit_requests',
             'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
             'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
@@ -247,28 +273,22 @@ class RoleAndPermissionSeeder extends Seeder
             'view_dashboard', 'edit_profile',
             'view_requests', 'create_requests', 'edit_requests',
             'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
             'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
-        // PMO
-        $updateOrCreateRole('PMO', $departmentDirectorRole->id, [
+        // Project Management Officer
+        $updateOrCreateRole('Project Management Officer', $departmentDirectorRole->id, [
             'view_dashboard', 'edit_profile',
             'view_requests', 'create_requests', 'edit_requests',
             'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
             'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
-        // A&S Supervisor
-        $updateOrCreateRole('A&S Superviser', $departmentDirectorRole->id, [
+        // Admin & Support Supervisor
+        $updateOrCreateRole('Admin & Support Supervisor', $departmentDirectorRole->id, [
             'view_dashboard', 'edit_profile',
             'view_requests', 'create_requests', 'edit_requests',
             'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
             'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
@@ -277,183 +297,22 @@ class RoleAndPermissionSeeder extends Seeder
             'view_dashboard', 'edit_profile',
             'view_requests', 'create_requests', 'edit_requests',
             'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
             'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
-        // HR Specialist
-        $updateOrCreateRole('HR Specialist', $departmentDirectorRole->id, [
+        // QA Site Representative
+        $updateOrCreateRole('QA Site Representative', $departmentDirectorRole->id, [
             'view_dashboard', 'edit_profile',
             'view_requests', 'create_requests', 'edit_requests',
             'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
             'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
-        // Accountant
-        $updateOrCreateRole('Accountant', $departmentDirectorRole->id, [
+        // LTP Site Representative
+        $updateOrCreateRole('LTP Site Representative', $departmentDirectorRole->id, [
             'view_dashboard', 'edit_profile',
             'view_requests', 'create_requests', 'edit_requests',
             'view_tasks', 'create_tasks',
-            'view_procurement',
-            'view_rfqs',
-            'view_purchase_orders',
-            'view_finance',
-            'view_maharat_invoices',
-            'view_warehouse',
-            'view_budget',
-            'view_faqs',
-            'view_user_manual'
-        ]);
-
-        // Procurement Specialist
-        $procurementSpecialistRole = $updateOrCreateRole('Procurement Specialist', $departmentDirectorRole->id, [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks', 'create_tasks',
-            'view_procurement',
-            'view_rfqs', 'create_rfqs',
-            'view_purchase_orders', 'create_purchase_orders',
-            'view_configuration',
-            'view_org_chart',
-            'view_process_flow', 'view_faqs', 'view_user_manual'
-        ]);
-
-        // Procurement Officer
-        $updateOrCreateRole('Procurement Officer', $procurementSpecialistRole->id, [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks', 'create_tasks',
-            'view_procurement',
-            'view_rfqs', 'create_rfqs',
-            'view_purchase_orders', 'create_purchase_orders',
-            'view_finance',
-            'view_maharat_invoices',
-            'view_warehouse',
-            'view_budget',
-            'view_faqs',
-            'view_user_manual'
-        ]);
-
-        // IT Specialist
-        $updateOrCreateRole('IT Specilist', $departmentDirectorRole->id, [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
-            'view_process_flow', 'view_faqs', 'view_user_manual'
-        ]);
-
-        // Academic Training Supervisor
-        $updateOrCreateRole('Academic Training Supervisor', $departmentDirectorRole->id, [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
-            'view_process_flow', 'view_faqs', 'view_user_manual'
-        ]);
-
-        // Vocational Training Supervisor
-        $updateOrCreateRole('Vocational Training Supervisor', $departmentDirectorRole->id, [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
-            'view_process_flow', 'view_faqs', 'view_user_manual'
-        ]);
-
-        // QA Site Rep
-        $updateOrCreateRole('QA Site Rep', $departmentDirectorRole->id, [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
-            'view_process_flow', 'view_faqs', 'view_user_manual'
-        ]);
-
-        // Vocational Training Coordinator
-        $updateOrCreateRole('Vocational Training Coordinaton', $departmentDirectorRole->id, [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
-            'view_process_flow', 'view_faqs', 'view_user_manual'
-        ]);
-
-        // LTP Site Rep
-        $updateOrCreateRole('LTP Site Rep', $departmentDirectorRole->id, [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
-            'view_process_flow', 'view_faqs', 'view_user_manual'
-        ]);
-
-        // Assessment Coordinator
-        $updateOrCreateRole('Assessment Coordinator', $departmentDirectorRole->id, [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
-            'view_process_flow', 'view_faqs', 'view_user_manual'
-        ]);
-
-        // LR Coordinator
-        $updateOrCreateRole('LR Coordinator', $departmentDirectorRole->id, [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
-            'view_process_flow', 'view_faqs', 'view_user_manual'
-        ]);
-
-        // Technical Training Specialist
-        $updateOrCreateRole('Technical Training Specialist', $departmentDirectorRole->id, [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
-            'view_process_flow', 'view_faqs', 'view_user_manual'
-        ]);
-
-        // Trainer
-        $updateOrCreateRole('Trainer', $departmentDirectorRole->id, [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
-            'view_process_flow', 'view_faqs', 'view_user_manual'
-        ]);
-
-        // Registrar
-        $updateOrCreateRole('Registrar', $departmentDirectorRole->id, [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
-            'view_process_flow', 'view_faqs', 'view_user_manual'
-        ]);
-
-        // Admin Clerk
-        $updateOrCreateRole('Admin Clerk', $departmentDirectorRole->id, [
-            'view_dashboard', 'edit_profile',
-            'view_requests', 'create_requests', 'edit_requests',
-            'view_tasks', 'create_tasks',
-            'view_configuration',
-            'view_org_chart',
             'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
