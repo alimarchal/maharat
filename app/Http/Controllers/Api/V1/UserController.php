@@ -67,23 +67,8 @@ class UserController extends Controller
         }
 
         $user = User::create($validated);
-        
-        // Get the designation
-        $designation = Designation::find($user->designation_id);
-        
-        if ($designation) {
-            // Assign role based on designation
-            $user->assignRole($designation->designation);
-            
-            // Assign permissions based on designation
-            $user->assignPermissionsBasedOnDesignation();
-        } else if ($request->role_id) {
-            // Fallback to role_id if designation is not found
-            $role = Role::find($request->role_id);
-            if ($role) {
-                $user->assignRole($role->name);
-            }
-        }
+        $role = Role::find($request->role_id);
+        $user->assignRole($role->name);
 
         // Setup default notification settings
         $this->notificationSettingsService->setupDefaultSettingsForUser($user);
