@@ -239,7 +239,7 @@ export default function MainDashboard({ roles, permissions }) {
             "Finance Center": "view_finance",
             "Warehouse": "view_warehouse",
             "Budget & Accounts": "view_budget",
-            "Statuses": "view_reports",
+            "Statuses": "view_statuses",
             "Configuration Center": "view_configuration",
             "FAQs": "view_faqs",
             "User Manual": "view_user_manual",

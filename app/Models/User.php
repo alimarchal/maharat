@@ -12,6 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use App\Services\DesignationPermissionService;
 
 class User extends Authenticatable
 {
@@ -188,12 +189,7 @@ class User extends Authenticatable
             return;
         }
 
-        $designation = $this->designation->designation;
-        $permissions = config('designation_permissions.' . $designation, []);
-        
-        if (!empty($permissions)) {
-            $this->syncPermissions($permissions);
-        }
+        app(DesignationPermissionService::class)->assignRoleAndPermissions($this);
     }
 
     /**

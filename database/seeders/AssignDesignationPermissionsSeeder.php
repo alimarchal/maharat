@@ -3,14 +3,21 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Services\DesignationPermissionService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Role;
 
 class AssignDesignationPermissionsSeeder extends Seeder
 {
+    protected $designationPermissionService;
+
+    public function __construct(DesignationPermissionService $designationPermissionService)
+    {
+        $this->designationPermissionService = $designationPermissionService;
+    }
+
     /**
      * Run the database seeds.
      */
@@ -43,22 +50,11 @@ class AssignDesignationPermissionsSeeder extends Seeder
                     continue;
                 }
 
-                // Get the role based on designation
-                $role = Role::where('name', $user->designation->designation)->first();
+                // Assign role and permissions using the service
+                $this->designationPermissionService->assignRoleAndPermissions($user);
                 
-                if ($role) {
-                    // Assign the role to the user
-                    $user->syncRoles([$role->name]);
-                    
-                    // Assign specific permissions based on designation
-                    $user->assignPermissionsBasedOnDesignation();
-                    
-                    $updatedCount++;
-                    $this->command->info("Updated roles and permissions for user {$user->id} ({$user->name}) with designation {$user->designation->designation}");
-                } else {
-                    $this->command->warn("No role found for designation: {$user->designation->designation}");
-                    $skippedCount++;
-                }
+                $updatedCount++;
+                $this->command->info("Updated roles and permissions for user {$user->id} ({$user->name}) with designation {$user->designation->designation}");
             } catch (\Exception $e) {
                 $this->command->error("Failed to update roles and permissions for user {$user->id}: " . $e->getMessage());
                 Log::error("Failed to update roles and permissions for user {$user->id}: " . $e->getMessage());
