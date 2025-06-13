@@ -96,12 +96,17 @@ class RoleAndPermissionSeeder extends Seeder
                 $permissions = $permissions->pluck('name')->toArray();
             }
             
-            // Ensure view permissions exist
-            if (!in_array('view_faqs', $permissions)) {
-                $permissions[] = 'view_faqs';
-            }
-            if (!in_array('view_user_manual', $permissions)) {
-                $permissions[] = 'view_user_manual';
+            // Ensure view permissions exist for ALL roles
+            $basePermissions = [
+                'view_faqs',
+                'view_user_manual',
+                'view_process_flow'
+            ];
+            
+            foreach ($basePermissions as $perm) {
+                if (!in_array($perm, $permissions)) {
+                    $permissions[] = $perm;
+                }
             }
             
             // Add CRUD permissions for directors and admin
@@ -182,6 +187,21 @@ class RoleAndPermissionSeeder extends Seeder
             'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual'
         ]);
 
+        // Base User role with common permissions
+        $userRole = $updateOrCreateRole('User', $departmentDirectorRole->id, [
+            'view_dashboard',
+            'edit_profile',
+            'view_requests',
+            'create_requests',
+            'edit_requests',
+            'view_tasks',
+            'view_configuration',
+            'view_org_chart',
+            'view_process_flow',
+            'view_faqs',
+            'view_user_manual'
+        ]);
+
         // Graduation Coordinator
         $updateOrCreateRole('Graduation Coordinator', $departmentDirectorRole->id, [
             'view_dashboard', 'edit_profile',
@@ -189,7 +209,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Social Media Specialist
@@ -199,7 +219,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Marketing Specialist
@@ -209,7 +229,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Internal Audit
@@ -219,7 +239,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // PMO
@@ -229,7 +249,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // A&S Supervisor
@@ -239,7 +259,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Messenger
@@ -249,7 +269,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // HR Specialist
@@ -259,7 +279,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Accountant
@@ -288,7 +308,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_purchase_orders', 'create_purchase_orders',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Procurement Officer
@@ -314,7 +334,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Academic Training Supervisor
@@ -324,7 +344,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Vocational Training Supervisor
@@ -334,7 +354,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // QA Site Rep
@@ -344,7 +364,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Vocational Training Coordinator
@@ -354,7 +374,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // LTP Site Rep
@@ -364,7 +384,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Assessment Coordinator
@@ -374,7 +394,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // LR Coordinator
@@ -384,7 +404,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Technical Training Specialist
@@ -394,7 +414,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Trainer
@@ -404,7 +424,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Registrar
@@ -414,7 +434,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Admin Clerk
@@ -424,7 +444,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_tasks', 'create_tasks',
             'view_configuration',
             'view_org_chart',
-            'view_process_flow'
+            'view_process_flow', 'view_faqs', 'view_user_manual'
         ]);
 
         // Reset cached roles and permissions

@@ -78,7 +78,16 @@ const Sidebar = ({ isOpen }) => {
     const { pendingCount } = useRequestItems();
     const user = usePage().props.auth.user;
     const permissions = user?.permissions || [];
-    const hasPermission = (perm) => permissions.includes(perm);
+    
+    // Debug
+    console.log('User:', user);
+    console.log('User permissions:', permissions);
+    
+    const hasPermission = (perm) => {
+        const result = permissions.includes(perm);
+        console.log(`Checking permission ${perm}:`, result);
+        return result;
+    };
 
     return (
         <>
