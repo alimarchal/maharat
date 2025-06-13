@@ -58,7 +58,7 @@ class UserSeeder extends Seeder
                 'name' => 'Mr. Sami Al Musalli',
                 'firstname' => 'Mr. Sami',
                 'lastname' => 'Al Musalli',
-                'username' => $generateUsername('Sami Al Musalli'),
+                'username' => $generateUsername('admin'),
                 'employee_id' => $generateEmployeeId(),
                 'landline' => $generateLandline(),
                 'mobile' => $generateMobile(),
@@ -80,14 +80,14 @@ class UserSeeder extends Seeder
                 'name' => 'Managing Director',
                 'firstname' => 'Department',
                 'lastname' => 'Director',
-                'username' => $generateUsername('Department Director'),
+                'username' => $generateUsername('director'),
                 'employee_id' => $generateEmployeeId(),
                 'landline' => $generateLandline(),
                 'mobile' => $generateMobile(),
                 'password' => Hash::make('password'),
             ]
         );
-        $director->assignRole('Director');
+        $director->assignRole('Managing Director');
         $this->notificationSettingsService->setupDefaultSettingsForUser($director);
 
 
@@ -95,17 +95,17 @@ class UserSeeder extends Seeder
         $manager = User::firstOrCreate(
             ['email' => 'manager@example.com'],
             [
-                'name' => 'Team Manager',
-                'firstname' => 'Team',
-                'lastname' => 'Manager',
-                'username' => $generateUsername('Team Manager'),
+                'name' => 'Department Director',
+                'firstname' => 'Department',
+                'lastname' => 'Director',
+                'username' => $generateUsername('manager'),
                 'employee_id' => $generateEmployeeId(),
                 'landline' => $generateLandline(),
                 'mobile' => $generateMobile(),
                 'password' => Hash::make('password'),
             ]
         );
-        $manager->assignRole('Manager');
+        $manager->assignRole('Department Director');
         $this->notificationSettingsService->setupDefaultSettingsForUser($manager);
 
 
@@ -113,17 +113,17 @@ class UserSeeder extends Seeder
         $supervisor = User::firstOrCreate(
             ['email' => 'supervisor@example.com'],
             [
-                'name' => 'Team Supervisor',
-                'firstname' => 'Team',
+                'name' => 'Admin & Support Supervisor',
+                'firstname' => 'Admin',
                 'lastname' => 'Supervisor',
-                'username' => $generateUsername('Team Supervisor'),
+                'username' => $generateUsername('supervisor'),
                 'employee_id' => $generateEmployeeId(),
                 'landline' => $generateLandline(),
                 'mobile' => $generateMobile(),
                 'password' => Hash::make('password'),
             ]
         );
-        $supervisor->assignRole('Supervisor');
+        $supervisor->assignRole('Admin & Support Supervisor');
         $this->notificationSettingsService->setupDefaultSettingsForUser($supervisor);
 
 
