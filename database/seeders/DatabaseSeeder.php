@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
@@ -11,6 +13,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Check if users table exists
+        if (!Schema::hasTable('users')) {
+            $this->command->error('Users table does not exist. Please run migrations first.');
+            return;
+        }
+
         $this->call([
             // Base data seeders
             StatusSeeder::class,
@@ -89,7 +97,11 @@ class DatabaseSeeder extends Seeder
 
         $this->call(CardSeeder::class);
 
-        // Assign permissions based on designations
-        $this->call(AssignDesignationPermissionsSeeder::class);
+        // Only run the designation permissions seeder if we have users
+        if (DB::table('users')->count() > 0) {
+            $this->call(AssignDesignationPermissionsSeeder::class);
+        } else {
+            $this->command->warn('No users found. Skipping designation permissions assignment.');
+        }
     }
 }
