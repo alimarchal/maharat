@@ -51,6 +51,7 @@ const MakeRequest = () => {
     const [photo, setPhoto] = useState(null);
     const [photoPreview, setPhotoPreview] = useState(null);
     const [isAdded, setIsAdded] = useState(false);
+    const [loadingProducts, setLoadingProducts] = useState(false);
 
     const resetForm = () => {
         setName('');
@@ -74,227 +75,42 @@ const MakeRequest = () => {
         }
     };
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [
-                    productsRes,
-                    categoriesRes,
-                    unitsRes,
-                    warehousesRes,
-                    costCentersRes,
-                    departmentsRes,
-                ] = await Promise.all([
-                    axios.get("/api/v1/products"),
-                    axios.get("/api/v1/product-categories"),
-                    axios.get("/api/v1/units"),
-                    axios.get("/api/v1/warehouses"),
-                    axios.get("/api/v1/cost-centers"),
-                    axios.get("/api/v1/departments"),
-                ]);
-
-                setProducts(productsRes.data.data);
-                setCategories(categoriesRes.data.data);
-                setUnits(unitsRes.data.data);
-                setWarehouses(warehousesRes.data.data);
-                setCostCenters(costCentersRes.data.data);
-                setSubCostCenters(costCentersRes.data.data);
-                setDepartments(departmentsRes.data.data);
-                fetchAllStatuses();
-
-                // Process cost centers to identify parent-child relationships
-                const costCenterData = costCentersRes.data.data;
-                processSubCostCenters(costCenterData);
-            } catch (error) {
-                console.error("Error fetching data:", error);
-            }
-        };
-        fetchData();
-    }, []);
-
-    // Process sub cost centers based on parent_id
-    const processSubCostCenters = (costCenterData) => {
-        const subCostCenterMap = {};
-
-        costCenterData.forEach((costCenter) => {
-            if (costCenter.parent_id) {
-                if (!subCostCenterMap[costCenter.parent_id]) {
-                    subCostCenterMap[costCenter.parent_id] = [];
-                }
-                subCostCenterMap[costCenter.parent_id].push(costCenter);
-            }
-        });
-
-        setFilteredSubCostCenters(subCostCenterMap);
-    };
-
-    useEffect(() => {
-        if (products.length === 0) return;
-        const updatedFilteredProducts = {};
-        categories.forEach((category) => {
-            const categoryProducts = products.filter(
-                (product) => product.category_id === category.id
-            );
-            updatedFilteredProducts[category.id] = categoryProducts;
-        });
-
-        setFilteredProducts(updatedFilteredProducts);
-    }, [products, categories]);
-
-    const fetchAllStatuses = async () => {
-        let allStatuses = [];
-        let page = 1;
-        let lastPage = false;
-
+    const fetchProductsForCategory = async (categoryId) => {
+        if (!categoryId) return;
+        
+        setLoadingProducts(true);
         try {
-            while (!lastPage) {
-                const response = await axios.get(
-                    `/api/v1/statuses?page=${page}`
-                );
-                const { data, meta } = response.data;
-                allStatuses = [...allStatuses, ...data];
-                if (meta?.last_page && page >= meta.last_page) {
-                    lastPage = true;
-                } else {
-                    page++;
-                }
+            console.log(`Fetching products for category ${categoryId}...`);
+            const response = await axios.get(`/api/v1/products?filter[category_id]=${categoryId}`);
+            console.log(`Products for category ${categoryId}:`, response.data);
+            
+            if (response.data && response.data.data) {
+                setFilteredProducts(prev => ({
+                    ...prev,
+                    [categoryId]: response.data.data
+                }));
             }
-            const urgencyStatuses = allStatuses.filter(
-                (status) => status.type === "Urgency"
-            );
-            setStatuses(urgencyStatuses);
         } catch (error) {
-            console.error("Error fetching all statuses:", error);
+            console.error(`Error fetching products for category ${categoryId}:`, error);
+        } finally {
+            setLoadingProducts(false);
         }
-    };
-
-    useEffect(() => {
-        if (requestId) {
-            axios
-                .get(
-                    `/api/v1/material-requests/${requestId}?include=requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus`
-                )
-                .then((response) => {
-                    const requestData = response.data.data;
-                    const items = requestData.items || [];
-                    if (items.length === 0) {
-                        console.warn("No items found in the request.");
-                        return;
-                    }
-                    setFormData({
-                        ...formData,
-                        warehouse_id: requestData.warehouse?.id || "",
-                        expected_delivery_date:
-                            requestData.expected_delivery_date || "",
-                        status_id: "1",
-                        cost_center_id: requestData.costCenter?.id || "",
-                        sub_cost_center_id: requestData.subCostCenter?.id || "",
-                        department_id: requestData.department?.id || "",
-                        items: items.map((item) => ({
-                            product_id: item.product?.id || "",
-                            unit_id: item.unit?.id || "",
-                            category_id: item.category?.id || "",
-                            quantity: item.quantity || "",
-                            urgency: item.urgency_status?.id || "",
-                            photo: item.photo || null,
-                            description: item.description || "",
-                            user_id: item.user_id || null,
-                            is_added: item.is_added || false
-                        })),
-                    });
-                })
-                .catch((error) => {
-                    console.error("Error fetching request data:", error);
-                });
-        }
-    }, [requestId]);
-
-    const validateForm = () => {
-        let newErrors = {};
-        if (!formData.cost_center_id)
-            newErrors.cost_center_id = "Cost Center is required";
-        if (!formData.sub_cost_center_id)
-            newErrors.sub_cost_center_id = "Sub Cost Center is required";
-        if (!formData.department_id)
-            newErrors.department_id = "Department is required";
-        if (!formData.warehouse_id)
-            newErrors.warehouse_id = "Warehouse is required";
-        if (!formData.expected_delivery_date)
-            newErrors.expected_delivery_date = "Delivery Date is required";
-
-        formData.items.forEach((item, index) => {
-            if (!item.product_id)
-                newErrors[`items.${index}.product_id`] = "Item is required";
-            if (!item.unit_id)
-                newErrors[`items.${index}.unit_id`] = "Unit is required";
-            if (!item.category_id)
-                newErrors[`items.${index}.category_id`] =
-                    "Category is required";
-            if (!item.quantity || isNaN(item.quantity) || item.quantity <= 0)
-                newErrors[`items.${index}.quantity`] =
-                    "Valid quantity is required";
-            if (!item.urgency)
-                newErrors[`items.${index}.urgency`] = "Urgency is required";
-            if (!item.description.trim())
-                newErrors[`items.${index}.description`] =
-                    "Description is required";
-        });
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleItemChange = (index, e) => {
         const { name, value } = e.target;
-        setFormData((prev) => {
-            const newItems = [...prev.items];
-            newItems[index] = { ...newItems[index], [name]: value };
-
-            if (name === "category_id") {
-                newItems[index].product_id = "";
-            }
-
-            return { ...prev, items: newItems };
-        });
-    };
-
-    const handleFileChange = async (index, e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const newItems = [...formData.items];
-            newItems[index].photo = file.name;
-            setFormData({ ...formData, items: newItems });
+        const newItems = [...formData.items];
+        newItems[index] = { ...newItems[index], [name]: value };
+        
+        // If category is changed, fetch products for that category
+        if (name === 'category_id') {
+            fetchProductsForCategory(value);
         }
-    };
-
-    const addItem = () => {
-        setFormData((prev) => ({
+        
+        setFormData(prev => ({
             ...prev,
-            items: [
-                ...prev.items,
-                {
-                    product_id: "",
-                    unit_id: "",
-                    category_id: "",
-                    quantity: "",
-                    urgency: "",
-                    photo: null,
-                    description: "",
-                },
-            ],
+            items: newItems
         }));
-    };
-
-    const handleDeleteItem = (index) => {
-        setFormData((prev) => {
-            const newItems = prev.items.filter((_, i) => i !== index);
-            return { ...prev, items: newItems };
-        });
     };
 
     const handleSubmit = async (e) => {
@@ -411,14 +227,213 @@ const MakeRequest = () => {
     };
 
     const getAvailableProducts = (index, categoryId) => {
-        if (!categoryId) return [];
-
-        return filteredProducts[categoryId] || [];
+        if (!categoryId) {
+            console.log('No category ID provided');
+            return [];
+        }
+        const products = filteredProducts[categoryId] || [];
+        console.log(`Getting products for category ${categoryId}. Available products:`, products);
+        return products;
     };
 
     const getAvailableSubCostCenters = (costCenterId) => {
         if (!costCenterId) return [];
         return filteredSubCostCenters[costCenterId] || [];
+    };
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                console.log('Starting to fetch data...');
+                
+                const [categoriesRes, unitsRes, warehousesRes, costCentersRes, departmentsRes] = await Promise.all([
+                    axios.get("/api/v1/product-categories"),
+                    axios.get("/api/v1/units"),
+                    axios.get("/api/v1/warehouses"),
+                    axios.get("/api/v1/cost-centers"),
+                    axios.get("/api/v1/departments"),
+                ]);
+
+                setCategories(categoriesRes.data.data);
+                setUnits(unitsRes.data.data);
+                setWarehouses(warehousesRes.data.data);
+                setCostCenters(costCentersRes.data.data);
+                setSubCostCenters(costCentersRes.data.data);
+                setDepartments(departmentsRes.data.data);
+                fetchAllStatuses();
+
+                // Process cost centers
+                const costCenterData = costCentersRes.data.data;
+                processSubCostCenters(costCenterData);
+
+            } catch (error) {
+                console.error("Error in fetchData:", error);
+                console.error("Error details:", {
+                    message: error.message,
+                    response: error.response?.data,
+                    status: error.response?.status
+                });
+            }
+        };
+        fetchData();
+    }, []);
+
+    // Process sub cost centers based on parent_id
+    const processSubCostCenters = (costCenterData) => {
+        const subCostCenterMap = {};
+
+        costCenterData.forEach((costCenter) => {
+            if (costCenter.parent_id) {
+                if (!subCostCenterMap[costCenter.parent_id]) {
+                    subCostCenterMap[costCenter.parent_id] = [];
+                }
+                subCostCenterMap[costCenter.parent_id].push(costCenter);
+            }
+        });
+
+        setFilteredSubCostCenters(subCostCenterMap);
+    };
+
+    const fetchAllStatuses = async () => {
+        let allStatuses = [];
+        let page = 1;
+        let lastPage = false;
+
+        try {
+            while (!lastPage) {
+                const response = await axios.get(
+                    `/api/v1/statuses?page=${page}`
+                );
+                const { data, meta } = response.data;
+                allStatuses = [...allStatuses, ...data];
+                if (meta?.last_page && page >= meta.last_page) {
+                    lastPage = true;
+                } else {
+                    page++;
+                }
+            }
+            const urgencyStatuses = allStatuses.filter(
+                (status) => status.type === "Urgency"
+            );
+            setStatuses(urgencyStatuses);
+        } catch (error) {
+            console.error("Error fetching all statuses:", error);
+        }
+    };
+
+    useEffect(() => {
+        if (requestId) {
+            axios
+                .get(
+                    `/api/v1/material-requests/${requestId}?include=requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus`
+                )
+                .then((response) => {
+                    const requestData = response.data.data;
+                    const items = requestData.items || [];
+                    if (items.length === 0) {
+                        console.warn("No items found in the request.");
+                        return;
+                    }
+                    setFormData({
+                        ...formData,
+                        warehouse_id: requestData.warehouse?.id || "",
+                        expected_delivery_date:
+                            requestData.expected_delivery_date || "",
+                        status_id: "1",
+                        cost_center_id: requestData.costCenter?.id || "",
+                        sub_cost_center_id: requestData.subCostCenter?.id || "",
+                        department_id: requestData.department?.id || "",
+                        items: items.map((item) => ({
+                            product_id: item.product?.id || "",
+                            unit_id: item.unit?.id || "",
+                            category_id: item.category?.id || "",
+                            quantity: item.quantity || "",
+                            urgency: item.urgency_status?.id || "",
+                            photo: item.photo || null,
+                            description: item.description || "",
+                            user_id: item.user_id || null,
+                            is_added: item.is_added || false
+                        })),
+                    });
+                })
+                .catch((error) => {
+                    console.error("Error fetching request data:", error);
+                });
+        }
+    }, [requestId]);
+
+    const validateForm = () => {
+        let newErrors = {};
+        if (!formData.cost_center_id)
+            newErrors.cost_center_id = "Cost Center is required";
+        if (!formData.sub_cost_center_id)
+            newErrors.sub_cost_center_id = "Sub Cost Center is required";
+        if (!formData.department_id)
+            newErrors.department_id = "Department is required";
+        if (!formData.warehouse_id)
+            newErrors.warehouse_id = "Warehouse is required";
+        if (!formData.expected_delivery_date)
+            newErrors.expected_delivery_date = "Delivery Date is required";
+
+        formData.items.forEach((item, index) => {
+            if (!item.product_id)
+                newErrors[`items.${index}.product_id`] = "Item is required";
+            if (!item.unit_id)
+                newErrors[`items.${index}.unit_id`] = "Unit is required";
+            if (!item.category_id)
+                newErrors[`items.${index}.category_id`] =
+                    "Category is required";
+            if (!item.quantity || isNaN(item.quantity) || item.quantity <= 0)
+                newErrors[`items.${index}.quantity`] =
+                    "Valid quantity is required";
+            if (!item.urgency)
+                newErrors[`items.${index}.urgency`] = "Urgency is required";
+            if (!item.description.trim())
+                newErrors[`items.${index}.description`] =
+                    "Description is required";
+        });
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleFileChange = async (index, e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const newItems = [...formData.items];
+            newItems[index].photo = file.name;
+            setFormData({ ...formData, items: newItems });
+        }
+    };
+
+    const addItem = () => {
+        setFormData((prev) => ({
+            ...prev,
+            items: [
+                ...prev.items,
+                {
+                    product_id: "",
+                    unit_id: "",
+                    category_id: "",
+                    quantity: "",
+                    urgency: "",
+                    photo: null,
+                    description: "",
+                },
+            ],
+        }));
+    };
+
+    const handleDeleteItem = (index) => {
+        setFormData((prev) => {
+            const newItems = prev.items.filter((_, i) => i !== index);
+            return { ...prev, items: newItems };
+        });
     };
 
     return (
