@@ -109,7 +109,7 @@ class RoleAndPermissionSeeder extends Seeder
                 }
             }
             
-            // Add CRUD permissions for directors and admin
+            // Add CRUD permissions for directors, admin, and secretary
             $isDirector = false;
             $users = \App\Models\User::whereHas('designation', function($query) {
                 $query->where('name', 'like', '%Director%');
@@ -119,7 +119,7 @@ class RoleAndPermissionSeeder extends Seeder
                 $isDirector = true;
             }
             
-            if ($isDirector || $name === 'Admin' || $name === 'Managing Director' || $name === 'Department Director') {
+            if ($isDirector || $name === 'Admin' || $name === 'Managing Director' || $name === 'Department Director' || $name === 'Secretary') {
                 foreach ([
                     'create_faqs', 'edit_faqs', 'delete_faqs',
                     'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual',
@@ -187,7 +187,17 @@ class RoleAndPermissionSeeder extends Seeder
             'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual'
         ]);
 
-        // Base User role with common permissions
+        // Secretary role with limited view permissions
+        $secretaryRole = $updateOrCreateRole('Secretary', $departmentDirectorRole->id, [
+            'view_requests',
+            'view_tasks',
+            'view_reports',
+            'view_configuration',
+            'view_faqs',
+            'view_user_manual'
+        ]);
+
+        // Base User role with common permissions (view only)
         $userRole = $updateOrCreateRole('User', $departmentDirectorRole->id, [
             'view_dashboard',
             'edit_profile',

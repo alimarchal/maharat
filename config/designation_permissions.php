@@ -7,6 +7,9 @@ return [
     'Department Director' => [
         'view_requests', 'view_tasks', 'view_procurement', 'view_finance', 'view_warehouse', 'view_budget', 'view_reports', 'view_configuration', 'view_faqs', 'view_user_manual', 'manage_settings'
     ],
+    'Secretary' => [
+        'view_requests', 'view_tasks', 'view_procurement', 'view_finance', 'view_warehouse', 'view_budget', 'view_reports', 'view_configuration', 'view_faqs', 'view_user_manual', 'manage_settings'
+    ],
     'Graduation Coordinator' => [
         'view_requests', 'view_tasks', 'view_reports', 'view_configuration', 'view_faqs', 'view_user_manual'
     ],
