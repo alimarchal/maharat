@@ -101,13 +101,14 @@ const ReceivedMRsTable = () => {
 
                 // Update the material request status
                 await axios.put(`/api/v1/material-requests/${selectedRequest.id}`, {
-                    status_id: 2 // Referred
+                    status_id: 51 // Status ID for "Issued"
                 });
 
+                // Update the status in the local state
                 setRequests(prevRequests => 
                     prevRequests.map(request => 
                         request.id === selectedRequest.id 
-                            ? { ...request, status: { ...request.status, name: "Issue Material" } }
+                            ? { ...request, status: { ...request.status, name: "Issued" } }
                             : request
                     )
                 );
