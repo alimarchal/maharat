@@ -61,18 +61,55 @@ const ReceivedMRsTable = () => {
             );
 
             if (response.data.data?.status === "Issue Material") {
+                const quantity = selectedRequest?.items[0]?.quantity;
+                const productId = selectedRequest?.items[0]?.product_id;
+                const warehouseId = selectedRequest?.warehouse_id;
+
+                // directly perform stock-in
+                await axios.post(
+                    `/api/v1/inventories/product/${productId}/stock-in`,
+                    {
+                        warehouse_id: warehouseId,
+                        product_id: productId,
+                        quantity: quantity,
+                        reorder_level: quantity,
+                        description: selectedRequest?.items[0]?.description,
+                        transaction_type: "stock_in",
+                        reference_type: "material_request",
+                        reference_number: `MR-${selectedRequest.id}`,
+                        notes: "Stock in for material request"
+                    }
+                );
+
+                // perform stock-out
                 const stockOutPayload = {
-                    warehouse_id: selectedRequest?.warehouse_id,
-                    product_id: selectedRequest?.items[0]?.product_id,
-                    quantity: selectedRequest?.items[0]?.quantity,
-                    reorder_level: selectedRequest?.items[0]?.quantity,
+                    warehouse_id: warehouseId,
+                    product_id: productId,
+                    quantity: quantity,
+                    reorder_level: quantity,
                     description: selectedRequest?.items[0]?.description,
                     transaction_type: "stock_out",
+                    reference_type: "material_request",
+                    reference_number: `MR-${selectedRequest.id}`,
+                    notes: "Stock out for material request"
                 };
 
                 await axios.post(
-                    `/api/v1/inventories/product/${selectedRequest?.items[0]?.product_id}/stock-out`,
+                    `/api/v1/inventories/product/${productId}/stock-out`,
                     stockOutPayload
+                );
+
+                // Update the material request status
+                await axios.put(`/api/v1/material-requests/${selectedRequest.id}`, {
+                    status_id: 2 // Referred
+                });
+
+                setRequests(prevRequests => 
+                    prevRequests.map(request => 
+                        request.id === selectedRequest.id 
+                            ? { ...request, status: { ...request.status, name: "Issue Material" } }
+                            : request
+                    )
                 );
             }
 
