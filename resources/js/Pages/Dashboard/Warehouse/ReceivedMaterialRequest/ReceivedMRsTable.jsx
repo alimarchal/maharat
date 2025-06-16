@@ -87,17 +87,24 @@ const ReceivedMRsTable = () => {
                     if (inventoryResponse.data?.data?.length > 0) {
                         const currentInventory = inventoryResponse.data.data[0];
                         const currentQuantity = parseFloat(currentInventory.quantity) || 0;
+                        const requestedQty = parseFloat(requestedQuantity);
 
                         console.log("Quantity calculation:", {
                             currentQuantity,
-                            requestedQuantity
+                            requestedQuantity: requestedQty
                         });
+
+                        // Check if we have enough stock
+                        if (currentQuantity < requestedQty) {
+                            alert(`Insufficient stock! Available: ${currentQuantity}, Requested: ${requestedQty}`);
+                            return;
+                        }
 
                         // Perform stock-out with requested quantity
                         const stockOutPayload = {
                             warehouse_id: warehouseId,
                             product_id: productId,
-                            quantity: requestedQuantity, // Use the requested quantity directly
+                            quantity: requestedQuantity,
                             description: selectedRequest?.items[0]?.description,
                             transaction_type: "stock_out",
                             reference_type: "material_request",
@@ -126,10 +133,16 @@ const ReceivedMRsTable = () => {
                             )
                         );
                     } else {
-                        throw new Error("No inventory found for this product and warehouse");
+                        alert("No inventory found for this product and warehouse");
+                        return;
                     }
                 } catch (stockError) {
                     console.error("Error during stock operations:", stockError);
+                    if (stockError.response?.data?.error?.includes("Insufficient stock")) {
+                        alert(stockError.response.data.error);
+                    } else {
+                        alert("Error processing stock operation. Please try again.");
+                    }
                     throw stockError; // Re-throw to be caught by outer catch
                 }
             } else {
@@ -142,7 +155,7 @@ const ReceivedMRsTable = () => {
             setIsModalOpen(false);
         } catch (error) {
             console.error("Error in handleSave:", error);
-            // You might want to show an error message to the user here
+            // Error message already shown in the catch block above
         }
     };
 
