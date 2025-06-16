@@ -55,63 +55,85 @@ const ReceivedMRsTable = () => {
 
     const handleSave = async (newRequest) => {
         try {
+            console.log("Starting handleSave with newRequest:", newRequest);
             const response = await axios.post(
                 "/api/v1/issue-materials",
                 newRequest
             );
+            console.log("Issue materials response:", response.data);
 
-            if (response.data.data?.status === "Issue Material") {
-                const quantity = selectedRequest?.items[0]?.quantity;
+            // Check if the response indicates successful issuance
+            if (response.data?.data?.status === "Issue Material" || response.data?.status === "Issue Material") {
+                console.log("Processing stock operations for request:", selectedRequest);
+                const requestedQuantity = selectedRequest?.items[0]?.quantity;
                 const productId = selectedRequest?.items[0]?.product_id;
                 const warehouseId = selectedRequest?.warehouse_id;
 
-                // directly perform stock-in
-                await axios.post(
-                    `/api/v1/inventories/product/${productId}/stock-in`,
-                    {
-                        warehouse_id: warehouseId,
-                        product_id: productId,
-                        quantity: quantity,
-                        reorder_level: quantity,
-                        description: selectedRequest?.items[0]?.description,
-                        transaction_type: "stock_in",
-                        reference_type: "material_request",
-                        reference_number: `MR-${selectedRequest.id}`,
-                        notes: "Stock in for material request"
-                    }
-                );
-
-                // perform stock-out
-                const stockOutPayload = {
-                    warehouse_id: warehouseId,
-                    product_id: productId,
-                    quantity: quantity,
-                    reorder_level: quantity,
-                    description: selectedRequest?.items[0]?.description,
-                    transaction_type: "stock_out",
-                    reference_type: "material_request",
-                    reference_number: `MR-${selectedRequest.id}`,
-                    notes: "Stock out for material request"
-                };
-
-                await axios.post(
-                    `/api/v1/inventories/product/${productId}/stock-out`,
-                    stockOutPayload
-                );
-
-                // Update the material request status
-                await axios.put(`/api/v1/material-requests/${selectedRequest.id}`, {
-                    status_id: 51 // Status ID for "Issued"
+                console.log("Stock operation details:", {
+                    requestedQuantity,
+                    productId,
+                    warehouseId
                 });
 
-                // Update the status in the local state
-                setRequests(prevRequests => 
-                    prevRequests.map(request => 
-                        request.id === selectedRequest.id 
-                            ? { ...request, status: { ...request.status, name: "Issued" } }
-                            : request
-                    )
-                );
+                try {
+                    // First get current inventory quantity
+                    const inventoryResponse = await axios.get(`/api/v1/inventories`, {
+                        params: {
+                            warehouse_id: warehouseId,
+                            product_id: productId
+                        }
+                    });
+
+                    if (inventoryResponse.data?.data?.length > 0) {
+                        const currentInventory = inventoryResponse.data.data[0];
+                        const currentQuantity = parseFloat(currentInventory.quantity) || 0;
+
+                        console.log("Quantity calculation:", {
+                            currentQuantity,
+                            requestedQuantity
+                        });
+
+                        // Perform stock-out with requested quantity
+                        const stockOutPayload = {
+                            warehouse_id: warehouseId,
+                            product_id: productId,
+                            quantity: requestedQuantity, // Use the requested quantity directly
+                            description: selectedRequest?.items[0]?.description,
+                            transaction_type: "stock_out",
+                            reference_type: "material_request",
+                            reference_number: `MR-${selectedRequest.id}`,
+                            notes: "Stock out for material request issuance"
+                        };
+
+                        const stockOutResponse = await axios.post(
+                            `/api/v1/inventories/product/${productId}/stock-out`,
+                            stockOutPayload
+                        );
+                        console.log("Stock-out response:", stockOutResponse.data);
+
+                        // Update the material request status
+                        const statusResponse = await axios.put(`/api/v1/material-requests/${selectedRequest.id}`, {
+                            status_id: 51 // Status ID for "Issued"
+                        });
+                        console.log("Status update response:", statusResponse.data);
+
+                        // Update the status in the local state
+                        setRequests(prevRequests => 
+                            prevRequests.map(request => 
+                                request.id === selectedRequest.id 
+                                    ? { ...request, status: { ...request.status, name: "Issued" } }
+                                    : request
+                            )
+                        );
+                    } else {
+                        throw new Error("No inventory found for this product and warehouse");
+                    }
+                } catch (stockError) {
+                    console.error("Error during stock operations:", stockError);
+                    throw stockError; // Re-throw to be caught by outer catch
+                }
+            } else {
+                console.log("Stock operations skipped - status condition not met:", response.data);
             }
 
             if (response.data) {
@@ -119,7 +141,8 @@ const ReceivedMRsTable = () => {
             }
             setIsModalOpen(false);
         } catch (error) {
-            console.error("Error saving requests:", error);
+            console.error("Error in handleSave:", error);
+            // You might want to show an error message to the user here
         }
     };
 
