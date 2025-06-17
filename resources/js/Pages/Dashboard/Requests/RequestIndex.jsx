@@ -7,7 +7,7 @@ const RequestIndex = () => {
     const [selectedFilter, setSelectedFilter] = useState("All");
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const filters = ["All", "Pending", "Referred", "Rejected", "Approved"];
+    const filters = ["All", "Issued", "Pending", "Rejected"];
 
     return (
         <div className="min-h-screen">

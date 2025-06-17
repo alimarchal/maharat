@@ -181,7 +181,7 @@ export default function CreatePurchaseOrder() {
                         options={[
                             ...rfqs.map((rfq) => ({
                                 id: rfq.id,
-                                label: rfq.organization_name,
+                                label: rfq.rfq_number,
                             })),
                         ]}
                         className="min-h-[70px] py-2"
@@ -196,8 +196,11 @@ export default function CreatePurchaseOrder() {
                             <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                                 Quotation #
                             </th>
-                            <th className="py-3 px-4">Date</th>
                             <th className="py-3 px-4">Category</th>
+                            <th className="py-3 px-4">Supplier Name</th>
+                            <th className="py-3 px-4">Total Amount</th>
+                            <th className="py-3 px-4">Date</th>
+                            <th className="py-3 px-4">Attachment</th>
                             <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                                 Action
                             </th>
@@ -208,7 +211,7 @@ export default function CreatePurchaseOrder() {
                         {!selectedRfq ? (
                             <tr>
                                 <td
-                                    colSpan="4"
+                                    colSpan="7"
                                     className="px-6 py-4 text-center text-gray-500"
                                 >
                                     Please select an RFQ to view quotations
@@ -216,14 +219,14 @@ export default function CreatePurchaseOrder() {
                             </tr>
                         ) : loading ? (
                             <tr>
-                                <td colSpan="4" className="text-center py-12">
+                                <td colSpan="7" className="text-center py-12">
                                     <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                                 </td>
                             </tr>
                         ) : error ? (
                             <tr>
                                 <td
-                                    colSpan="4"
+                                    colSpan="7"
                                     className="text-center text-red-500 font-medium py-4"
                                 >
                                     {error}
@@ -236,10 +239,19 @@ export default function CreatePurchaseOrder() {
                                         {quotation.quotation_number || "N/A"}
                                     </td>
                                     <td className="px-3 py-4">
+                                        {quotation.category_name || "N/A"}
+                                    </td>
+                                    <td className="px-3 py-4">
+                                        {quotation.supplier?.name || "N/A"}
+                                    </td>
+                                    <td className="px-3 py-4">
+                                        {quotation.total_amount || "N/A"}
+                                    </td>
+                                    <td className="px-3 py-4">
                                         {formatDate(quotation.created_at)}
                                     </td>
                                     <td className="px-3 py-4">
-                                        {quotation.category_name || "N/A"}
+                                        {quotation.documents || "N/A"}
                                     </td>
                                     <td className="px-3 py-4 text-center">
                                         {quotation.has_purchase_order ? (
@@ -269,7 +281,7 @@ export default function CreatePurchaseOrder() {
                         ) : (
                             <tr>
                                 <td
-                                    colSpan="4"
+                                    colSpan="7"
                                     className="px-6 py-4 text-center text-gray-500"
                                 >
                                     No quotations found for the selected RFQ

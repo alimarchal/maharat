@@ -5,6 +5,8 @@ namespace App\Http\Resources\V1;
 use App\Http\Resources\RequestBudgetResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\V1\PaymentOrderResource;
+use App\Http\Resources\V1\GrnResource;
 
 class PurchaseOrderResource extends JsonResource
 {
@@ -24,8 +26,8 @@ class PurchaseOrderResource extends JsonResource
             'rfq_id' => $this->rfq_id,
             'cost_center_id' => $this->cost_center_id,
             'sub_cost_center_id' => $this->sub_cost_center_id,
-            'purchase_order_date' => $this->purchase_order_date->toDateString(),
-            'expiry_date' => $this->expiry_date->toDateString(),
+            'purchase_order_date' => $this->purchase_order_date ? $this->purchase_order_date->toDateString() : null,
+            'expiry_date' => $this->expiry_date ? $this->expiry_date->toDateString() : null,
             'amount' => $this->amount,
             'attachment' => $this->attachment,
             'original_name' => $this->original_name,
@@ -44,7 +46,8 @@ class PurchaseOrderResource extends JsonResource
             'supplier' => new SupplierResource($this->whenLoaded('supplier')),
             'created_by' => new UserResource($this->whenLoaded('user')),
             'requestBudget' => new RequestBudgetResource($this->whenLoaded('requestBudget')),
-
+            'paymentOrders' => PaymentOrderResource::collection($this->whenLoaded('paymentOrders')),
+            'goodReceiveNotes' => GrnResource::collection($this->whenLoaded('goodReceiveNote')),
         ];
     }
 }

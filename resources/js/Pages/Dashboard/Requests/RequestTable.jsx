@@ -3,6 +3,8 @@ import { Link } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { usePage } from "@inertiajs/react";
+import ViewRequestModal from "../MyRequests/ViewRequestModal";
+import axios from "axios";
 
 const RequestTable = ({ selectedFilter }) => {
     const user_id = usePage().props.auth.user.id;
@@ -11,6 +13,8 @@ const RequestTable = ({ selectedFilter }) => {
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [selectedRequest, setSelectedRequest] = useState(null);
 
     useEffect(() => {
         const fetchRequests = async () => {
@@ -42,18 +46,14 @@ const RequestTable = ({ selectedFilter }) => {
         if (!confirm("Are you sure you want to delete this Request?")) return;
 
         try {
-            const response = await fetch(`/api/v1/material-requests/${id}`, {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-            });
-
-            if (response.ok) {
+            const response = await axios.delete(`/api/v1/material-requests/${id}`);
+            
+            if (response.status === 200) {
                 setRequests((prevRequests) =>
                     prevRequests.filter((req) => req.id !== id)
                 );
             } else {
-                const data = await response.json();
-                alert(data.message || "Failed to delete request.");
+                alert(response.data.message || "Failed to delete request.");
             }
         } catch (err) {
             console.error("Error deleting request:", err);
@@ -61,10 +61,16 @@ const RequestTable = ({ selectedFilter }) => {
         }
     };
 
+    const handleViewRequest = (request) => {
+        setSelectedRequest(request);
+        setIsViewModalOpen(true);
+    };
+
     const statusColors = {
         Pending: "text-yellow-500",
         Approved: "text-green-500",
         Rejected: "text-red-500",
+        Issued: "text-green-500"
     };
 
     const priorityColors = {
@@ -179,8 +185,9 @@ const RequestTable = ({ selectedFilter }) => {
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
+                                    <td className="py-3 px-4 flex justify-center space-x-3">
                                         <button
+                                            onClick={() => handleViewRequest(req)}
                                             className="text-[#9B9DA2] hover:text-gray-500"
                                             title="View Request"
                                         >
@@ -247,6 +254,15 @@ const RequestTable = ({ selectedFilter }) => {
                         Next
                     </button>
                 </div>
+            )}
+
+            {/* View Modal */}
+            {isViewModalOpen && (
+                <ViewRequestModal
+                    isOpen={isViewModalOpen}
+                    onClose={() => setIsViewModalOpen(false)}
+                    request={selectedRequest}
+                />
             )}
         </div>
     );
