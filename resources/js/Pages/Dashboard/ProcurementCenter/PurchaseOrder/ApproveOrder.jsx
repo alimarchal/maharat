@@ -67,12 +67,11 @@ const ApproveOrder = ({
                     }));
                 }
 
-                if (quotation.supplier_id) {
-                    setFormData((prev) => ({
-                        ...prev,
-                        supplier_id: quotation.supplier_id,
-                    }));
-                }
+                setFormData((prev) => ({
+                    ...prev,
+                    supplier_id: quotation.supplier_id,
+                    amount: quotation.total_amount,
+                }));
             }
         } catch (error) {
             console.error("Error fetching quotation details:", error);
@@ -304,7 +303,7 @@ const ApproveOrder = ({
                 );
             }
             const newPOId = response.data.data?.id;
-            
+
             if (newPOId) {
                 // Update budget request
                 const updatedBudgetData = {

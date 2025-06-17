@@ -283,7 +283,7 @@ export default function MainDashboard({ roles, permissions }) {
             text: "Purchase Orders",
             icon: faFileSignature,
             onClick: () => router.visit("/purchase-orders"),
-            requiredPermission: "view_purchase_orders",
+            // requiredPermission: "view_purchase_orders",
         },
         {
             text: "External Invoices",
