@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight, faEye } from "@fortawesome/free-solid-svg-icons";
 import ReceivedMRsModal from "./ReceivedMRsModal";
 import axios from "axios";
+import { toast } from "react-hot-toast";
 
 const ReceivedMRsTable = () => {
     const [requests, setRequests] = useState([]);
@@ -42,8 +43,9 @@ const ReceivedMRsTable = () => {
     }, [currentPage]);
 
     const statusColors = {
-        Pending: "text-yellow-500",
-        Issued: "text-green-500",
+        "Pending": "text-yellow-500",
+        "Issued": "text-green-500",
+        "Rejected": "text-red-500"
     };
 
     const priorityColors = {
@@ -53,35 +55,65 @@ const ReceivedMRsTable = () => {
         Normal: "text-green-500",
     };
 
-    const handleSave = async (newRequest) => {
+    const getStatusCell = (status) => {
+        const statusColors = {
+            "Pending": "bg-yellow-100 text-yellow-800",
+            "Issue Material": "bg-green-100 text-green-800",
+            "Rejected": "bg-red-100 text-red-800"
+        };
+
+        return (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status] || "bg-gray-100 text-gray-800"}`}>
+                {status}
+            </span>
+        );
+    };
+
+    const handleEdit = (request) => {
+        // Only allow editing if status is Pending
+        if (request.status?.name !== "Pending") {
+            toast.error("Only Pending requests can be modified");
+            return;
+        }
+        setSelectedRequest(request);
+        setIsModalOpen(true);
+    };
+
+    const handleSave = async (formData) => {
         try {
-            const response = await axios.post(
-                "/api/v1/issue-materials",
-                newRequest
-            );
-
-            if (response.data.data?.status === "Issue Material") {
-                const stockOutPayload = {
-                    warehouse_id: selectedRequest?.warehouse_id,
-                    product_id: selectedRequest?.items[0]?.product_id,
-                    quantity: selectedRequest?.items[0]?.quantity,
-                    reorder_level: selectedRequest?.items[0]?.quantity,
-                    description: selectedRequest?.items[0]?.description,
-                    transaction_type: "stock_out",
-                };
-
-                await axios.post(
-                    `/api/v1/inventories/product/${selectedRequest?.items[0]?.product_id}/stock-out`,
-                    stockOutPayload
-                );
+            // Check if the request is already Issued or Rejected
+            const currentRequest = requests.find(req => req.id === formData.material_request_id);
+            if (currentRequest?.status?.name === "Issued" || currentRequest?.status?.name === "Rejected") {
+                toast.error("This request has already been processed");
+                return;
             }
 
-            if (response.data) {
+            const response = await axios.post("/api/v1/issue-materials", {
+                material_request_id: formData.material_request_id,
+                cost_center_id: formData.cost_center_id,
+                sub_cost_center_id: formData.sub_cost_center_id,
+                department_id: formData.department_id,
+                priority: formData.priority,
+                status: formData.status,
+                description: formData.description,
+            });
+
+            // If status is Rejected, update the material request status
+            if (formData.status === "Rejected") {
+                await axios.put(`/api/v1/material-requests/${formData.material_request_id}`, {
+                    status_id: 52, // Status ID for Rejected
+                    rejection_reason: formData.description
+                });
+            }
+
+            if (response.data.success) {
+                toast.success("Material request updated successfully");
+                setIsModalOpen(false);
                 await fetchRequests();
             }
-            setIsModalOpen(false);
         } catch (error) {
-            console.error("Error saving requests:", error);
+            console.error("Error in handleSave:", error);
+            toast.error(error.response?.data?.message || "Failed to update material request");
         }
     };
 
@@ -224,8 +256,7 @@ const ReceivedMRsTable = () => {
                                         </button>
                                         <button
                                             onClick={() => {
-                                                setSelectedRequest(req);
-                                                setIsModalOpen(true);
+                                                handleEdit(req);
                                             }}
                                             className="text-[#9B9DA2] hover:text-gray-500"
                                             title="Issue Material Request"

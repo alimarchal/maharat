@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('sub_cost_center_id')->nullable()->comment('in cost center we are using parent_id for sub cost center')->constrained('cost_centers', 'id');
             $table->foreignId('department_id')->nullable()->constrained('departments', 'id');
             $table->enum('priority', ['High', 'Medium','Low'])->default('Low');
-            $table->enum('status', ['Pending', 'Issue Material'])->default('Pending');
+            $table->enum('status', ['Pending', 'Issue Material', 'Rejected'])->default('Pending');
             $table->text('description')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users', 'id');
             $table->foreignId('updated_by')->nullable()->constrained('users', 'id');

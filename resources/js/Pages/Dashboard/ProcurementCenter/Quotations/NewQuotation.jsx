@@ -16,26 +16,19 @@ export default function NewQuotation() {
 
         try {
             const response = await axios.get(
-                `/api/v1/rfqs?page=${currentPage}`
+                `/api/v1/rfqs?page=${currentPage}&filter[status_id]=47&sort=rfq_number`
             );
             const rfqsData = response.data.data;
 
             const rfqsWithDetails = await Promise.all(
                 rfqsData.map(async (rfq) => {
-                    const [categoryResponse, rfqDetailsResponse] =
-                        await Promise.all([
-                            axios.get(`/api/v1/rfq-categories/${rfq.id}`),
-                            axios.get(`/api/v1/rfqs/${rfq.id}`),
-                        ]);
-
+                    const categoryResponse = await axios.get(`/api/v1/rfq-categories/${rfq.id}`);
                     return {
                         ...rfq,
                         category_name: categoryResponse.data.data.category_name,
-                        rfq_number: rfqDetailsResponse.data.data.rfq_number,
                     };
                 })
             );
-            rfqsWithDetails.sort((a, b) => a.id - b.id);
 
             setRfqs(rfqsWithDetails);
             setLastPage(response.data.meta.last_page);

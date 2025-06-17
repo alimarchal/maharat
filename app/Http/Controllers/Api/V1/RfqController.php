@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Spatie\QueryBuilder\QueryBuilder;
 use Illuminate\Support\Facades\Schema;
+use App\QueryParameters\RfqParameters;
 
 class RfqController extends Controller
 {
@@ -37,7 +38,11 @@ class RfqController extends Controller
 
             Log::info('Final relationships to load: ' . implode(', ', $relationships));
 
-            $rfqs = Rfq::with($relationships)
+            $rfqs = QueryBuilder::for(Rfq::class)
+                ->allowedFilters(RfqParameters::ALLOWED_FILTERS)
+                ->allowedSorts(RfqParameters::ALLOWED_SORTS)
+                ->allowedIncludes(RfqParameters::ALLOWED_INCLUDES)
+                ->with($relationships)
                 ->orderBy('created_at', 'desc')
                 ->paginate(10);
 
@@ -51,22 +56,9 @@ class RfqController extends Controller
 
             Log::info('Successfully fetched RFQs');
 
-            return response()->json([
-                'data' => RfqResource::collection($rfqs),
-                'meta' => [
-                    'total' => $rfqs->total(),
-                    'per_page' => $rfqs->perPage(),
-                    'current_page' => $rfqs->currentPage(),
-                    'last_page' => $rfqs->lastPage(),
-                    'from' => $rfqs->firstItem(),
-                    'to' => $rfqs->lastItem(),
-                ],
-            ]);
+            return RfqResource::collection($rfqs);
         } catch (\Exception $e) {
-            Log::error('Failed to fetch RFQs: ' . $e->getMessage());
-            Log::error('Error occurred in file: ' . $e->getFile());
-            Log::error('Error occurred on line: ' . $e->getLine());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Error in RFQ index: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Failed to fetch RFQs',
                 'error' => $e->getMessage()
@@ -180,7 +172,10 @@ class RfqController extends Controller
                 'closing_date' => $request->input('closing_date'),
                 'payment_type' => $request->input('payment_type'),
                 'contact_number' => $request->input('contact_number'),
-                'status_id' => $request->input('status_id', 47),
+                'status_id' => DB::table('statuses')
+                    ->where('type', 'Purchase RFQ Status')
+                    ->where('name', 'Pending')
+                    ->value('id'),
                 'rfq_number' => $rfq_number,
                 'warehouse_id' => $request->input('warehouse_id'),
                 'cost_center_id' => $request->input('cost_center_id'),
@@ -638,6 +633,89 @@ class RfqController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch RFQs',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateStatus(Request $request, $id)
+    {
+        try {
+            Log::info('RFQ status update endpoint called', [
+                'rfq_id' => $id,
+                'request_data' => $request->all(),
+                'auth_user' => auth()->id()
+            ]);
+
+            $rfq = Rfq::findOrFail($id);
+            
+            Log::info('Found RFQ for status update', [
+                'rfq_id' => $id,
+                'current_status_id' => $rfq->status_id,
+                'new_status_id' => $request->input('status_id')
+            ]);
+            
+            // Update status
+            $rfq->status_id = $request->input('status_id');
+            $rfq->approved_at = now();
+            $rfq->approved_by = auth()->id();
+            
+            Log::info('About to save RFQ with new status', [
+                'rfq_id' => $id,
+                'new_status_id' => $rfq->status_id,
+                'is_dirty' => $rfq->isDirty(),
+                'changes' => $rfq->getDirty()
+            ]);
+
+            $updated = $rfq->save();
+            
+            Log::info('RFQ status update save result', [
+                'rfq_id' => $id,
+                'update_success' => $updated,
+                'final_status_id' => $rfq->status_id,
+                'is_dirty' => $rfq->isDirty(),
+                'changes' => $rfq->getDirty()
+            ]);
+
+            // Create status log entry
+            $logCreated = DB::table('rfq_status_logs')->insert([
+                'rfq_id' => $id,
+                'status_id' => $request->input('status_id'),
+                'changed_by' => auth()->id(),
+                'remarks' => 'RFQ Status Updated',
+                'approved_by' => auth()->id(),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            Log::info('Status log entry created', [
+                'rfq_id' => $id,
+                'log_created' => $logCreated
+            ]);
+
+            // Verify the update
+            $refreshedRfq = Rfq::find($id);
+            Log::info('Final RFQ status verification', [
+                'rfq_id' => $id,
+                'status_id' => $refreshedRfq->status_id,
+                'expected_status_id' => $request->input('status_id')
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'RFQ status updated successfully',
+                'data' => new RfqResource($rfq)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to update RFQ status', [
+                'rfq_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update RFQ status',
                 'error' => $e->getMessage()
             ], 500);
         }

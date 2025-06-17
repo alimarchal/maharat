@@ -456,4 +456,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // Process steps routes
     Route::post('/process-steps/reorder', [App\Http\Controllers\Api\V1\ProcessStepController::class, 'reorder']);
 
+    Route::put('/rfqs/{id}/status', [RfqController::class, 'updateStatus']);
+
 });

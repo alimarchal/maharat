@@ -15,6 +15,8 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 
 class TaskController extends Controller
 {
@@ -95,11 +97,141 @@ class TaskController extends Controller
     public function update(UpdateTaskRequest $request, Task $task): JsonResponse
     {
         try {
+            // Create a custom logger for RFQ status updates
+            $rfqLogger = new \Monolog\Logger('rfq_status');
+            $rfqLogger->pushHandler(new \Monolog\Handler\StreamHandler(storage_path('logs/rfq_status.log'), \Monolog\Logger::INFO));
+
+            $rfqLogger->info('=== TASK UPDATE STARTED ===', [
+                'task_id' => $task->id,
+                'rfq_id' => $task->rfq_id,
+                'status' => $request->input('status'),
+                'request_data' => $request->all()
+            ]);
+
             DB::beginTransaction();
 
             $task->update($request->validated());
 
+            // Check if this is an RFQ task and if it's being approved
+            if ($task->rfq_id && $request->input('status') === 'Approved') {
+                $rfqLogger->info('=== RFQ TASK APPROVAL CHECK ===', [
+                    'task_id' => $task->id,
+                    'rfq_id' => $task->rfq_id,
+                    'current_order_no' => $task->order_no,
+                    'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id')
+                ]);
+
+                // Get total number of required approvals for this RFQ
+                $totalApprovals = DB::table('tasks')
+                    ->where('rfq_id', $task->rfq_id)
+                    ->where('process_id', $task->process_id)
+                    ->count();
+
+                // Get all tasks for this RFQ to verify
+                $allTasks = DB::table('tasks')
+                    ->where('rfq_id', $task->rfq_id)
+                    ->where('process_id', $task->process_id)
+                    ->get();
+
+                $rfqLogger->info('=== RFQ APPROVAL TASKS ===', [
+                    'rfq_id' => $task->rfq_id,
+                    'total_tasks' => $totalApprovals,
+                    'current_task_order_no' => $task->order_no,
+                    'all_tasks' => $allTasks->toArray()
+                ]);
+
+                // Check if this is the final approval
+                $isFinalApproval = $task->order_no === $totalApprovals;
+
+                $rfqLogger->info('=== FINAL APPROVAL CHECK ===', [
+                    'rfq_id' => $task->rfq_id,
+                    'current_order_no' => $task->order_no,
+                    'total_approvals' => $totalApprovals,
+                    'is_final_approval' => $isFinalApproval,
+                    'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id')
+                ]);
+
+                if ($isFinalApproval) {
+                    $rfqLogger->info('=== FINAL APPROVAL DETECTED - UPDATING RFQ STATUS ===', [
+                        'rfq_id' => $task->rfq_id,
+                        'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
+                        'target_status_id' => 47
+                    ]);
+
+                    try {
+                        // Directly update the RFQ status in the database
+                        $updated = DB::table('rfqs')
+                            ->where('id', $task->rfq_id)
+                            ->update([
+                                'status_id' => 47,
+                                'approved_at' => now(),
+                                'approved_by' => auth()->id(),
+                                'updated_at' => now()
+                            ]);
+
+                        $rfqLogger->info('=== RFQ STATUS UPDATE RESULT ===', [
+                            'rfq_id' => $task->rfq_id,
+                            'update_success' => $updated,
+                            'rows_affected' => DB::connection()->getPdo()->lastInsertId(),
+                            'new_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id')
+                        ]);
+
+                        if (!$updated) {
+                            $rfqLogger->error('=== RFQ STATUS UPDATE FAILED ===', [
+                                'rfq_id' => $task->rfq_id,
+                                'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id')
+                            ]);
+                            throw new \Exception('Failed to update RFQ status');
+                        }
+
+                        // Create status log entry
+                        DB::table('rfq_status_logs')->insert([
+                            'rfq_id' => $task->rfq_id,
+                            'status_id' => 47,
+                            'changed_by' => auth()->id(),
+                            'remarks' => 'RFQ Approved and Activated by Final Approver',
+                            'approved_by' => auth()->id(),
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+
+                        // Verify the update
+                        $updatedRfq = DB::table('rfqs')->where('id', $task->rfq_id)->first();
+                        $rfqLogger->info('=== RFQ STATUS VERIFICATION ===', [
+                            'rfq_id' => $task->rfq_id,
+                            'status_id' => $updatedRfq->status_id,
+                            'expected_status' => 47,
+                            'update_successful' => $updatedRfq->status_id === 47
+                        ]);
+
+                        // Refresh the task's RFQ relationship to get the updated status
+                        $task->load('rfq');
+
+                    } catch (\Exception $e) {
+                        $rfqLogger->error('=== RFQ STATUS UPDATE ERROR ===', [
+                            'rfq_id' => $task->rfq_id,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                        throw $e;
+                    }
+                } else {
+                    $rfqLogger->info('=== NOT FINAL APPROVAL - SKIPPING RFQ STATUS UPDATE ===', [
+                        'rfq_id' => $task->rfq_id,
+                        'current_order_no' => $task->order_no,
+                        'total_approvals' => $totalApprovals,
+                        'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id')
+                    ]);
+                }
+            }
+
             DB::commit();
+
+            $rfqLogger->info('=== TASK UPDATE COMPLETED ===', [
+                'task_id' => $task->id,
+                'rfq_id' => $task->rfq_id,
+                'final_status_id' => $task->rfq ? $task->rfq->status_id : null
+            ]);
 
             return response()->json([
                 'message' => 'Task updated successfully',
@@ -120,6 +252,11 @@ class TaskController extends Controller
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
+            $rfqLogger->error('=== TASK UPDATE FAILED ===', [
+                'task_id' => $task->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
 
             return response()->json([
                 'message' => 'Failed to update task',
