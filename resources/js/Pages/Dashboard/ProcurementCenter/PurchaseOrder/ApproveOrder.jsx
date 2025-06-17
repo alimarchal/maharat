@@ -3,7 +3,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import InputFloating from "../../../../Components/InputFloating";
-import SelectFloating from "../../../../Components/SelectFloating";
 import { usePage } from "@inertiajs/react";
 
 const ApproveOrder = ({
@@ -19,8 +18,8 @@ const ApproveOrder = ({
     const [formData, setFormData] = useState({
         purchase_order_no: "",
         supplier_id: "",
+        supplier_name: "",
         purchase_order_date: "",
-        expiry_date: "",
         amount: "",
         attachment: null,
         status: "Approved",
@@ -28,7 +27,6 @@ const ApproveOrder = ({
         rfq_id: "",
     });
 
-    const [companies, setCompanies] = useState([]);
     const [errors, setErrors] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const [tempDocument, setTempDocument] = useState(null);
@@ -67,10 +65,13 @@ const ApproveOrder = ({
                     }));
                 }
 
+                // Set supplier information and amount from quotation
                 if (quotation.supplier_id) {
                     setFormData((prev) => ({
                         ...prev,
                         supplier_id: quotation.supplier_id,
+                        supplier_name: quotation.supplier?.name || "",
+                        amount: quotation.total_amount || "",
                     }));
                 }
             }
@@ -96,8 +97,8 @@ const ApproveOrder = ({
                 setFormData({
                     purchase_order_no: orderData.purchase_order_no || "",
                     supplier_id: orderData.supplier_id || "",
+                    supplier_name: orderData.supplier?.name || "",
                     purchase_order_date: orderData.purchase_order_date || "",
-                    expiry_date: orderData.expiry_date || "",
                     amount: orderData.amount || "",
                     attachment: orderData.attachment || null,
                     status: orderData.status || "Approved",
@@ -122,8 +123,6 @@ const ApproveOrder = ({
 
     useEffect(() => {
         if (isOpen && quotationId) {
-            fetchCompanies();
-
             if (isEdit && purchaseOrder) {
                 fetchPurchaseOrderDetails();
             } else {
@@ -137,19 +136,6 @@ const ApproveOrder = ({
             }
         }
     }, [isOpen, isEdit, quotationId]);
-
-    const fetchCompanies = async () => {
-        try {
-            const response = await axios.get("/api/v1/suppliers");
-            setCompanies(response.data.data || []);
-        } catch (error) {
-            console.error("Error fetching suppliers:", error);
-            setErrors((prev) => ({
-                ...prev,
-                supplier_id: "Failed to load suppliers. Please try again.",
-            }));
-        }
-    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -280,7 +266,8 @@ const ApproveOrder = ({
             Object.keys(dataToSubmit).forEach((key) => {
                 if (
                     dataToSubmit[key] !== null &&
-                    dataToSubmit[key] !== undefined
+                    dataToSubmit[key] !== undefined &&
+                    key !== "supplier_name"
                 ) {
                     formDataToSend.append(key, dataToSubmit[key]);
                 }
@@ -304,7 +291,7 @@ const ApproveOrder = ({
                 );
             }
             const newPOId = response.data.data?.id;
-            
+
             if (newPOId) {
                 // Update budget request
                 const updatedBudgetData = {
@@ -410,15 +397,12 @@ const ApproveOrder = ({
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <SelectFloating
+                            <InputFloating
                                 label="Supplier"
-                                name="supplier_id"
-                                value={formData.supplier_id}
+                                name="supplier_name"
+                                value={formData.supplier_name}
                                 onChange={handleChange}
-                                options={companies.map((company) => ({
-                                    id: company.id,
-                                    label: company.name,
-                                }))}
+                                disabled={true}
                                 error={errors.supplier_id}
                             />
                         </div>
@@ -429,6 +413,7 @@ const ApproveOrder = ({
                                 type="number"
                                 value={formData.amount}
                                 onChange={handleChange}
+                                disabled={true}
                                 error={errors.amount}
                             />
                         </div>
@@ -442,35 +427,25 @@ const ApproveOrder = ({
                                 error={errors.purchase_order_date}
                             />
                         </div>
-                        <div>
-                            <InputFloating
-                                label="Select Expiry Date"
-                                name="expiry_date"
-                                type="date"
-                                value={formData.expiry_date}
-                                onChange={handleChange}
-                                error={errors.expiry_date}
-                            />
-                        </div>
-                    </div>
 
-                    <div className="flex justify-center mt-2">
-                        <div className="w-full md:w-1/2 text-center">
-                            <div className="space-y-2 text-center">
-                                <label className="block text-sm font-medium text-gray-700 text-center">
-                                    Attachment (Optional)
-                                </label>
-                                <div className="flex justify-center">
-                                    <input
-                                        type="file"
-                                        onChange={handleFileChange}
-                                        className="w-full max-w-xs text-sm text-gray-500 text-center pl-16
+                        <div className="flex justify-start">
+                            <div className="w-full text-start">
+                                <div className="space-y-2 text-start">
+                                    <label className="block text-sm font-medium text-gray-700 text-center">
+                                        Attachment (Optional)
+                                    </label>
+                                    <div className="flex justify-start">
+                                        <input
+                                            type="file"
+                                            onChange={handleFileChange}
+                                            className="w-full max-w-xs text-sm text-gray-500 text-center pl-16
                                             file:mr-4 file:py-2 file:px-4
                                             file:rounded-full file:border-0
                                             file:text-sm file:font-semibold
                                             file:bg-[#009FDC] file:text-white
                                             hover:file:bg-[#007BB5]"
-                                    />
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>

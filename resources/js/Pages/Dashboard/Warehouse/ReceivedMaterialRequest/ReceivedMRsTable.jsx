@@ -20,19 +20,23 @@ const ReceivedMRsTable = () => {
     const fetchRequests = async () => {
         setLoading(true);
         try {
-            const response = await fetch(
-                `/api/v1/material-requests?include=requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus&page=${currentPage}`
-            );
-            const data = await response.json();
-            if (response.ok) {
-                setRequests(data.data || []);
-                setLastPage(data.meta?.last_page || 1);
-            } else {
-                setError(data.message || "Failed to fetch requests.");
+            const response = await axios.get('/api/v1/material-requests', {
+                params: {
+                    include: 'requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus',
+                    page: currentPage,
+                    per_page: 10
+                }
+            });
+            
+            if (response.data) {
+                setRequests(response.data.data || []);
+                setLastPage(response.data.meta?.last_page || 1);
+                setError("");
             }
         } catch (err) {
             console.error("Error fetching requests:", err);
             setError("Error loading received material requests.");
+            toast.error("Failed to load material requests");
         } finally {
             setLoading(false);
         }
