@@ -14,6 +14,8 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
+use Illuminate\Support\Facades\Log;
+use App\Models\Rfq;
 
 class RfqApprovalTransactionController extends Controller
 {
@@ -91,11 +93,104 @@ class RfqApprovalTransactionController extends Controller
             DB::beginTransaction();
 
             $validated = $request->validated();
+            Log::info('Updating RFQ approval transaction', [
+                'transaction_id' => $rfqApprovalTransaction->id,
+                'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                'new_status' => $validated['status'],
+                'order' => $rfqApprovalTransaction->order,
+                'validated_data' => $validated
+            ]);
 
             // Set the current user as updater
             $validated['updated_by'] = Auth::id();
 
             $rfqApprovalTransaction->update($validated);
+
+            // If the status is 'Approve', check if this is the final approval
+            if ($validated['status'] === 'Approve') {
+                Log::info('Approval detected, checking if final approval', [
+                    'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                    'current_status' => DB::table('rfqs')->where('id', $rfqApprovalTransaction->rfq_id)->value('status_id'),
+                    'approval_order' => $rfqApprovalTransaction->order
+                ]);
+
+                // Get total number of required approvals for this RFQ
+                $totalApprovals = DB::table('rfq_approval_transactions')
+                    ->where('rfq_id', $rfqApprovalTransaction->rfq_id)
+                    ->count();
+
+                // Check if this is the final approval
+                $isFinalApproval = $rfqApprovalTransaction->order === $totalApprovals;
+
+                Log::info('Approval status check', [
+                    'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                    'current_order' => $rfqApprovalTransaction->order,
+                    'total_approvals' => $totalApprovals,
+                    'is_final_approval' => $isFinalApproval
+                ]);
+
+                // Only update RFQ status if this is the final approval
+                if ($isFinalApproval) {
+                    Log::info('Final approval detected, updating RFQ status to Active', [
+                        'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                        'approval_order' => $rfqApprovalTransaction->order,
+                        'total_approvals' => $totalApprovals
+                    ]);
+
+                    try {
+                        // Create a new request to update the RFQ status
+                        $statusUpdateRequest = new \Illuminate\Http\Request();
+                        $statusUpdateRequest->merge(['status_id' => 47]);
+
+                        Log::info('Created status update request', [
+                            'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                            'request_data' => $statusUpdateRequest->all()
+                        ]);
+
+                        // Use the RFQ controller to update the status
+                        $rfqController = new \App\Http\Controllers\Api\V1\RfqController();
+                        
+                        Log::info('Calling RFQ status update endpoint', [
+                            'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                            'controller' => get_class($rfqController)
+                        ]);
+
+                        $response = $rfqController->updateStatus($statusUpdateRequest, $rfqApprovalTransaction->rfq_id);
+
+                        Log::info('RFQ status update response received', [
+                            'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                            'response_status' => $response->status(),
+                            'response_content' => $response->getContent()
+                        ]);
+
+                        // Verify the status was actually updated
+                        $updatedRfq = Rfq::find($rfqApprovalTransaction->rfq_id);
+                        Log::info('RFQ status after update', [
+                            'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                            'current_status_id' => $updatedRfq->status_id,
+                            'expected_status_id' => 47
+                        ]);
+
+                    } catch (\Exception $e) {
+                        Log::error('Failed to update RFQ status', [
+                            'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                    }
+                } else {
+                    Log::info('Not final approval yet', [
+                        'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                        'current_order' => $rfqApprovalTransaction->order,
+                        'total_approvals' => $totalApprovals
+                    ]);
+                }
+            } else {
+                Log::info('Not an approval status', [
+                    'status' => $validated['status'],
+                    'rfq_id' => $rfqApprovalTransaction->rfq_id
+                ]);
+            }
 
             DB::commit();
 
@@ -114,6 +209,10 @@ class RfqApprovalTransactionController extends Controller
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to update RFQ approval transaction', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'message' => 'Failed to update RFQ approval transaction',
                 'error' => $e->getMessage()

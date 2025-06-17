@@ -34,6 +34,7 @@ class RfqResource extends JsonResource
             'quotation_sent_at' => $this->quotation_sent_at,
             'quotation_document' => $this->quotation_document,
             'excel_attachment' => $this->excel_attachment,
+            'status_id' => $this->status_id,
 
             // Relationships
             'department' => new DepartmentResource($this->whenLoaded('department')),

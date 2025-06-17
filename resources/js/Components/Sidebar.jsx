@@ -79,14 +79,8 @@ const Sidebar = ({ isOpen }) => {
     const user = usePage().props.auth.user;
     const permissions = user?.permissions || [];
     
-    // Debug
-    console.log('User:', user);
-    console.log('User permissions:', permissions);
-    
     const hasPermission = (perm) => {
-        const result = permissions.includes(perm);
-        console.log(`Checking permission ${perm}:`, result);
-        return result;
+        return permissions.includes(perm);
     };
 
     return (
