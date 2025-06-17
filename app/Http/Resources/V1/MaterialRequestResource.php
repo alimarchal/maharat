@@ -18,6 +18,7 @@ class MaterialRequestResource extends JsonResource
             'sub_cost_center_id' => $this->sub_cost_center_id,
             'expected_delivery_date' => $this->expected_delivery_date?->toDateString(),
             'status_id' => $this->status_id,
+            'rejection_reason' => $this->rejection_reason,
             'requester' => new UserResource($this->whenLoaded('requester')),
             'warehouse' => new WarehouseResource($this->whenLoaded('warehouse')),
             'department' => new DepartmentResource($this->whenLoaded('department')),

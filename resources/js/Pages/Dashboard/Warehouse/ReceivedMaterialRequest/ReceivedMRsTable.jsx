@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight, faEye } from "@fortawesome/free-solid-svg-icons";
 import ReceivedMRsModal from "./ReceivedMRsModal";
+import ViewRequestModal from "./ViewRequestModal";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 
@@ -12,10 +13,11 @@ const ReceivedMRsTable = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [selectedFilter, setSelectedFilter] = useState("All");
 
-    const filters = ["All", "New", "Pending", "Issued"];
+    const filters = ["All", "Issued", "Pending", "Rejected"];
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -73,6 +75,34 @@ const ReceivedMRsTable = () => {
         );
     };
 
+    const handleViewRequest = async (request) => {
+        try {
+            const response = await axios.get(`/api/v1/issue-materials?filter[material_request_id]=${request.id}`);
+            const issueMaterialData = response.data.data[0];
+            
+            console.log("ReceivedMRsTable - Issue Material API Response:", response.data);
+            console.log("ReceivedMRsTable - Issue Material Data:", issueMaterialData);
+            
+            if (issueMaterialData) {
+                const updatedRequest = {
+                    ...request,
+                    transaction: issueMaterialData,
+                    description: issueMaterialData.description
+                };
+                console.log("ReceivedMRsTable - Updated Request:", updatedRequest);
+                setSelectedRequest(updatedRequest);
+            } else {
+                console.log("ReceivedMRsTable - No issue material data found for request:", request.id);
+                setSelectedRequest(request);
+            }
+            setIsViewModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching issue material:', error);
+            setSelectedRequest(request);
+            setIsViewModalOpen(true);
+        }
+    };
+
     const handleEdit = (request) => {
         // Only allow editing if status is Pending
         if (request.status?.name !== "Pending") {
@@ -85,41 +115,136 @@ const ReceivedMRsTable = () => {
 
     const handleSave = async (formData) => {
         try {
-            // Check if the request is already Issued or Rejected
-            const currentRequest = requests.find(req => req.id === formData.material_request_id);
-            if (currentRequest?.status?.name === "Issued" || currentRequest?.status?.name === "Rejected") {
-                toast.error("This request has already been processed");
-                return;
+            console.log('Starting handleSave with formData:', formData);
+            console.log('Description from formData:', formData.description);
+            console.log('Rejection reason from formData:', formData.rejection_reason);
+
+            // If status is "Issue Material", check stock availability first
+            if (formData.status === "Issue Material") {
+                const currentRequest = requests.find(r => r.id === formData.material_request_id);
+                console.log('Checking stock for request:', currentRequest);
+
+                // Check stock for each item
+                for (const item of currentRequest.items) {
+                    const requestedQty = parseFloat(item.quantity);
+                    const productId = item.product_id;
+                    const warehouseId = currentRequest.warehouse_id;
+                    const productName = item.product?.name || 'Unknown Product';
+
+                    console.log('Stock check details:', {
+                        requestedQuantity: requestedQty,
+                        productId,
+                        warehouseId
+                    });
+
+                    // Check current inventory quantity
+                    const inventoryResponse = await axios.get(`/api/v1/inventories`, {
+                        params: {
+                            'filter[warehouse_id]': warehouseId,
+                            'filter[product_id]': productId
+                        }
+                    });
+
+                    if (inventoryResponse.data?.data?.length > 0) {
+                        const currentInventory = inventoryResponse.data.data[0];
+                        const currentQuantity = parseFloat(currentInventory.quantity) || 0;
+
+                        console.log("Quantity calculation:", {
+                            currentQuantity,
+                            requestedQuantity: requestedQty
+                        });
+
+                        // Check if we have enough stock
+                        if (currentQuantity < requestedQty) {
+                            const errorMessage = `Cannot issue material! Insufficient stock for ${productName}.\n\nAvailable: ${currentQuantity} pieces\nRequested: ${requestedQty} pieces`;
+                            alert(errorMessage);
+                            return;
+                        }
+                    } else {
+                        const errorMessage = `Cannot issue material! No inventory found for ${productName} in the selected warehouse.`;
+                        alert(errorMessage);
+                        return;
+                    }
+                }
             }
 
-            const response = await axios.post("/api/v1/issue-materials", {
-                material_request_id: formData.material_request_id,
-                cost_center_id: formData.cost_center_id,
-                sub_cost_center_id: formData.sub_cost_center_id,
-                department_id: formData.department_id,
-                priority: formData.priority,
-                status: formData.status,
-                description: formData.description,
+            // Update material request status
+            let statusId;
+            if (formData.status === "Pending") {
+                statusId = 1;
+            } else if (formData.status === "Rejected") {
+                statusId = 52;
+            } else if (formData.status === "Issue Material") {
+                statusId = 51;
+            }
+
+            const statusResponse = await axios.put(`/api/v1/material-requests/${formData.material_request_id}`, {
+                status_id: statusId,
+                rejection_reason: formData.status === "Rejected" ? formData.rejection_reason : null
             });
+            console.log('Status update response:', statusResponse.data);
 
-            // If status is Rejected, update the material request status
-            if (formData.status === "Rejected") {
-                await axios.put(`/api/v1/material-requests/${formData.material_request_id}`, {
-                    status_id: 52, // Status ID for Rejected
-                    rejection_reason: formData.description
-                });
+            // Only proceed with issue material creation if status is "Issue Material"
+            if (formData.status === "Issue Material") {
+                // Create issue material record
+                const issueMaterialPayload = {
+                    material_request_id: formData.material_request_id,
+                    items: Array.isArray(formData.items) ? formData.items.map(item => ({
+                        product_id: item.product_id,
+                        quantity: item.requestedQty,
+                        unit_id: item.unit_id,
+                        description: item.description || null
+                    })) : [],
+                    cost_center_id: formData.cost_center_id,
+                    sub_cost_center_id: formData.sub_cost_center_id,
+                    department_id: formData.department_id,
+                    priority: formData.priority,
+                    status: formData.status,
+                    description: formData.description || null
+                };
+                
+                console.log('Issue Material Payload:', issueMaterialPayload);
+                
+                const issueMaterialResponse = await axios.post('/api/v1/issue-materials', issueMaterialPayload);
+                console.log('Issue materials response:', issueMaterialResponse.data);
+
+                // Process stock operations
+                await processStockOperations(formData);
             }
 
-            if (response.data.success) {
-                toast.success("Material request updated successfully");
-                setIsModalOpen(false);
-                await fetchRequests();
-            }
+            toast.success('Request processed successfully');
+            setIsModalOpen(false);
+            
+            // Force a complete refresh of the data
+            setLoading(true);
+            await fetchRequests();
+            setLoading(false);
+            
+            // Update local state to reflect the new status
+            const updatedRequests = requests.map(req => 
+                req.id === formData.material_request_id 
+                    ? { 
+                        ...req, 
+                        status: {
+                            id: statusId,
+                            name: formData.status === "Issue Material" ? "Issued" : 
+                                  formData.status === "Rejected" ? "Rejected" : 
+                                  formData.status === "Pending" ? "Pending" : "N/A"
+                        }
+                    }
+                    : req
+            );
+            setRequests(updatedRequests);
         } catch (error) {
-            console.error("Error in handleSave:", error);
-            toast.error(error.response?.data?.message || "Failed to update material request");
+            console.error('Error processing request:', error);
+            toast.error(error.response?.data?.message || 'Failed to process request');
         }
     };
+
+    const filteredRequests = requests.filter((req) => {
+        if (selectedFilter === "All") return true;
+        return req.status?.name === selectedFilter;
+    });
 
     return (
         <div className="w-full overflow-hidden">
@@ -182,14 +307,8 @@ const ReceivedMRsTable = () => {
                                 {error}
                             </td>
                         </tr>
-                    ) : requests.length > 0 ? (
-                        requests
-                            .filter(
-                                (req) =>
-                                    selectedFilter === "All" ||
-                                    req.status?.name === selectedFilter
-                            )
-                            .map((req) => (
+                    ) : filteredRequests.length > 0 ? (
+                        filteredRequests.map((req) => (
                                 <tr key={req.id}>
                                     <td className="py-3 px-4">MR-{req.id}</td>
                                     <td className="py-3 px-4">
@@ -255,20 +374,23 @@ const ReceivedMRsTable = () => {
                                         <button
                                             className="text-[#9B9DA2] hover:text-gray-500"
                                             title="View Request"
+                                            onClick={() => handleViewRequest(req)}
                                         >
                                             <FontAwesomeIcon icon={faEye} />
                                         </button>
-                                        <button
-                                            onClick={() => {
-                                                handleEdit(req);
-                                            }}
-                                            className="text-[#9B9DA2] hover:text-gray-500"
-                                            title="Issue Material Request"
-                                        >
-                                            <FontAwesomeIcon
-                                                icon={faChevronRight}
-                                            />
-                                        </button>
+                                        {req.status?.name === "Pending" && (
+                                            <button
+                                                onClick={() => {
+                                                    handleEdit(req);
+                                                }}
+                                                className="text-[#9B9DA2] hover:text-gray-500"
+                                                title="Issue Material Request"
+                                            >
+                                                <FontAwesomeIcon
+                                                    icon={faChevronRight}
+                                                />
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))
@@ -285,6 +407,39 @@ const ReceivedMRsTable = () => {
                 </tbody>
             </table>
 
+            {/* Pagination */}
+            {!loading && !error && requests.length > 0 && (
+                <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    {Array.from(
+                        { length: lastPage },
+                        (_, index) => index + 1
+                    ).map((page) => (
+                        <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-1 ${
+                                currentPage === page
+                                    ? "bg-[#009FDC] text-white"
+                                    : "border border-[#B9BBBD] bg-white"
+                            } rounded-full hover:bg-[#0077B6] transition`}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage >= lastPage
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage >= lastPage}
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
+
             {/* Render the modal */}
             {isModalOpen && (
                 <ReceivedMRsModal
@@ -292,6 +447,14 @@ const ReceivedMRsTable = () => {
                     onClose={() => setIsModalOpen(false)}
                     onSave={handleSave}
                     requestData={selectedRequest}
+                />
+            )}
+
+            {isViewModalOpen && (
+                <ViewRequestModal
+                    isOpen={isViewModalOpen}
+                    onClose={() => setIsViewModalOpen(false)}
+                    request={selectedRequest}
                 />
             )}
         </div>
