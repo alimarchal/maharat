@@ -7,14 +7,17 @@ use App\Http\Requests\V1\Quotation\StoreQuotationRequest;
 use App\Http\Requests\V1\Quotation\UpdateQuotationRequest;
 use App\Http\Resources\V1\QuotationResource;
 use App\Models\Quotation;
+use App\Models\QuotationDocument;
 use App\Models\Supplier;
 use App\QueryParameters\QuotationParameters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Spatie\QueryBuilder\QueryBuilder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class QuotationController extends Controller
 {
@@ -189,25 +192,29 @@ class QuotationController extends Controller
     public function destroy($id)
     {
         try {
-            $document = QuotationDocument::findOrFail($id);
+            $quotation = Quotation::findOrFail($id);
             
-            // Delete the file from storage
-            if (Storage::exists($document->file_path)) {
-                Storage::delete($document->file_path);
+            // Delete associated documents
+            foreach ($quotation->documents as $document) {
+                if (Storage::exists('public/' . $document->file_path)) {
+                    Storage::delete('public/' . $document->file_path);
+                }
+                $document->delete();
             }
             
-            // Delete the record
-            $document->delete();
+            // Delete the quotation
+            $quotation->delete();
             
             return response()->json([
                 'success' => true,
-                'message' => 'Document deleted successfully'
+                'message' => 'Quotation deleted successfully'
             ]);
             
         } catch (\Exception $e) {
+            Log::error('Error deleting quotation: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Error deleting document: ' . $e->getMessage()
+                'message' => 'Error deleting quotation: ' . $e->getMessage()
             ], 500);
         }
     }
