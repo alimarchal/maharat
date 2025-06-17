@@ -15,6 +15,7 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
         priority: "",
         status: "",
         description: "",
+        rejection_reason: "",
     });
 
     const [costCenters, setCostCenters] = useState([]);
@@ -47,6 +48,7 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                 priority: "",
                 status: "",
                 description: "",
+                rejection_reason: "",
             });
             setErrors({});
         }
@@ -66,9 +68,8 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
             newErrors.cost_center_id = "Cost Center is required";
         if (!formData.priority) newErrors.priority = "Priority is required";
         if (!formData.status) newErrors.status = "Status is required";
-        if (formData.status === "Pending" && !formData.description)
-            newErrors.description =
-                "Description is required when status is Pending";
+        if ((formData.status === "Pending" || formData.status === "Rejected") && !formData.description)
+            newErrors.description = "Description is required when status is Pending or Rejected";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -79,6 +80,13 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
         if (!validateForm()) return;
 
         try {
+            if (formData.status === "Rejected") {
+                await axios.put(`/api/v1/material-requests/${formData.material_request_id}`, {
+                    status: "Rejected",
+                    rejection_reason: formData.description
+                });
+            }
+
             onSave(formData);
             onClose();
         } catch (error) {
@@ -193,7 +201,7 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                     </div>
                     <div
                         className={`grid ${
-                            formData.status === "Pending"
+                            formData.status === "Pending" || formData.status === "Rejected"
                                 ? "grid-cols-1 md:grid-cols-2"
                                 : "grid-cols-1"
                         } gap-6`}
@@ -206,10 +214,8 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                                 onChange={handleChange}
                                 options={[
                                     { id: "Pending", label: "Pending" },
-                                    {
-                                        id: "Issue Material",
-                                        label: "Issue Material",
-                                    },
+                                    { id: "Rejected", label: "Rejected" },
+                                    { id: "Issue Material", label: "Issue Material" },
                                 ]}
                             />
                             {errors.status && (
@@ -218,10 +224,10 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                                 </p>
                             )}
                         </div>
-                        {formData.status === "Pending" && (
+                        {(formData.status === "Pending" || formData.status === "Rejected") && (
                             <div>
                                 <InputFloating
-                                    label="Description"
+                                    label={formData.status === "Rejected" ? "Rejection Reason" : "Description"}
                                     name="description"
                                     value={formData.description}
                                     onChange={handleChange}

@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight, faEye } from "@fortawesome/free-solid-svg-icons";
 import ReceivedMRsModal from "./ReceivedMRsModal";
 import axios from "axios";
+import { toast } from "react-hot-toast";
 
 const ReceivedMRsTable = () => {
     const [requests, setRequests] = useState([]);
@@ -42,8 +43,9 @@ const ReceivedMRsTable = () => {
     }, [currentPage]);
 
     const statusColors = {
-        Pending: "text-yellow-500",
-        Issued: "text-green-500",
+        "Pending": "text-yellow-500",
+        "Issued": "text-green-500",
+        "Rejected": "text-red-500"
     };
 
     const priorityColors = {
@@ -53,109 +55,65 @@ const ReceivedMRsTable = () => {
         Normal: "text-green-500",
     };
 
-    const handleSave = async (newRequest) => {
+    const getStatusCell = (status) => {
+        const statusColors = {
+            "Pending": "bg-yellow-100 text-yellow-800",
+            "Issue Material": "bg-green-100 text-green-800",
+            "Rejected": "bg-red-100 text-red-800"
+        };
+
+        return (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status] || "bg-gray-100 text-gray-800"}`}>
+                {status}
+            </span>
+        );
+    };
+
+    const handleEdit = (request) => {
+        // Only allow editing if status is Pending
+        if (request.status?.name !== "Pending") {
+            toast.error("Only Pending requests can be modified");
+            return;
+        }
+        setSelectedRequest(request);
+        setIsModalOpen(true);
+    };
+
+    const handleSave = async (formData) => {
         try {
-            console.log("Starting handleSave with newRequest:", newRequest);
-            const response = await axios.post(
-                "/api/v1/issue-materials",
-                newRequest
-            );
-            console.log("Issue materials response:", response.data);
-
-            // Check if the response indicates successful issuance
-            if (response.data?.data?.status === "Issue Material" || response.data?.status === "Issue Material") {
-                console.log("Processing stock operations for request:", selectedRequest);
-                const requestedQuantity = selectedRequest?.items[0]?.quantity;
-                const productId = selectedRequest?.items[0]?.product_id;
-                const warehouseId = selectedRequest?.warehouse_id;
-
-                console.log("Stock operation details:", {
-                    requestedQuantity,
-                    productId,
-                    warehouseId
-                });
-
-                try {
-                    // First get current inventory quantity
-                    const inventoryResponse = await axios.get(`/api/v1/inventories`, {
-                        params: {
-                            warehouse_id: warehouseId,
-                            product_id: productId
-                        }
-                    });
-
-                    if (inventoryResponse.data?.data?.length > 0) {
-                        const currentInventory = inventoryResponse.data.data[0];
-                        const currentQuantity = parseFloat(currentInventory.quantity) || 0;
-                        const requestedQty = parseFloat(requestedQuantity);
-
-                        console.log("Quantity calculation:", {
-                            currentQuantity,
-                            requestedQuantity: requestedQty
-                        });
-
-                        // Check if we have enough stock
-                        if (currentQuantity < requestedQty) {
-                            alert(`Insufficient stock! Available: ${currentQuantity}, Requested: ${requestedQty}`);
-                            return;
-                        }
-
-                        // Perform stock-out with requested quantity
-                        const stockOutPayload = {
-                            warehouse_id: warehouseId,
-                            product_id: productId,
-                            quantity: requestedQuantity,
-                            description: selectedRequest?.items[0]?.description,
-                            transaction_type: "stock_out",
-                            reference_type: "material_request",
-                            reference_number: `MR-${selectedRequest.id}`,
-                            notes: "Stock out for material request issuance"
-                        };
-
-                        const stockOutResponse = await axios.post(
-                            `/api/v1/inventories/product/${productId}/stock-out`,
-                            stockOutPayload
-                        );
-                        console.log("Stock-out response:", stockOutResponse.data);
-
-                        // Update the material request status
-                        const statusResponse = await axios.put(`/api/v1/material-requests/${selectedRequest.id}`, {
-                            status_id: 51 // Status ID for "Issued"
-                        });
-                        console.log("Status update response:", statusResponse.data);
-
-                        // Update the status in the local state
-                        setRequests(prevRequests => 
-                            prevRequests.map(request => 
-                                request.id === selectedRequest.id 
-                                    ? { ...request, status: { ...request.status, name: "Issued" } }
-                                    : request
-                            )
-                        );
-                    } else {
-                        alert("No inventory found for this product and warehouse");
-                        return;
-                    }
-                } catch (stockError) {
-                    console.error("Error during stock operations:", stockError);
-                    if (stockError.response?.data?.error?.includes("Insufficient stock")) {
-                        alert(stockError.response.data.error);
-                    } else {
-                        alert("Error processing stock operation. Please try again.");
-                    }
-                    throw stockError; // Re-throw to be caught by outer catch
-                }
-            } else {
-                console.log("Stock operations skipped - status condition not met:", response.data);
+            // Check if the request is already Issued or Rejected
+            const currentRequest = requests.find(req => req.id === formData.material_request_id);
+            if (currentRequest?.status?.name === "Issued" || currentRequest?.status?.name === "Rejected") {
+                toast.error("This request has already been processed");
+                return;
             }
 
-            if (response.data) {
+            const response = await axios.post("/api/v1/issue-materials", {
+                material_request_id: formData.material_request_id,
+                cost_center_id: formData.cost_center_id,
+                sub_cost_center_id: formData.sub_cost_center_id,
+                department_id: formData.department_id,
+                priority: formData.priority,
+                status: formData.status,
+                description: formData.description,
+            });
+
+            // If status is Rejected, update the material request status
+            if (formData.status === "Rejected") {
+                await axios.put(`/api/v1/material-requests/${formData.material_request_id}`, {
+                    status_id: 52, // Status ID for Rejected
+                    rejection_reason: formData.description
+                });
+            }
+
+            if (response.data.success) {
+                toast.success("Material request updated successfully");
+                setIsModalOpen(false);
                 await fetchRequests();
             }
-            setIsModalOpen(false);
         } catch (error) {
             console.error("Error in handleSave:", error);
-            // Error message already shown in the catch block above
+            toast.error(error.response?.data?.message || "Failed to update material request");
         }
     };
 
@@ -298,8 +256,7 @@ const ReceivedMRsTable = () => {
                                         </button>
                                         <button
                                             onClick={() => {
-                                                setSelectedRequest(req);
-                                                setIsModalOpen(true);
+                                                handleEdit(req);
                                             }}
                                             className="text-[#9B9DA2] hover:text-gray-500"
                                             title="Issue Material Request"
