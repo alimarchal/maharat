@@ -29,6 +29,8 @@ const QuotationModal = ({
     const [isSaving, setIsSaving] = useState(false);
     const [tempDocument, setTempDocument] = useState(null);
     const [existingDocument, setExistingDocument] = useState(null);
+    const [uploadError, setUploadError] = useState("");
+    const fileInputRef = React.useRef();
 
     useEffect(() => {
         if (isOpen) {
@@ -102,6 +104,7 @@ const QuotationModal = ({
         const file = e.target.files[0];
         if (file) {
             setTempDocument(file);
+            setUploadError("");
         }
     };
 
@@ -115,6 +118,7 @@ const QuotationModal = ({
         e.preventDefault();
         setIsSaving(true);
         setErrors({});
+        setUploadError("");
 
         const validationErrors = {};
         if (!formData.company_name)
@@ -184,7 +188,17 @@ const QuotationModal = ({
                     updatePayload
                 );
                 if (tempDocument) {
-                    await uploadDocumentToServer(quotation.id, tempDocument);
+                    const uploadSuccess = await uploadDocumentToServer(
+                        quotation.id,
+                        tempDocument
+                    );
+                    if (!uploadSuccess) {
+                        setUploadError("Failed to upload document. Please try again.");
+                        setIsSaving(false);
+                        return;
+                    }
+                    // Clear file input after upload
+                    if (fileInputRef.current) fileInputRef.current.value = "";
                 }
                 await axios.get(
                     `/api/v1/quotations/${
@@ -230,10 +244,17 @@ const QuotationModal = ({
                 formDataToSend
             );
             if (tempDocument && response.data.data && response.data.data.id) {
-                await uploadDocumentToServer(
+                const uploadSuccess = await uploadDocumentToServer(
                     response.data.data.id,
                     tempDocument
                 );
+                if (!uploadSuccess) {
+                    setUploadError("Failed to upload document. Please try again.");
+                    setIsSaving(false);
+                    return;
+                }
+                // Clear file input after upload
+                if (fileInputRef.current) fileInputRef.current.value = "";
             }
             onSave();
             onClose();
@@ -263,19 +284,20 @@ const QuotationModal = ({
     };
 
     const uploadDocumentToServer = async (quotationId, file) => {
-        if (!file) return;
-
+        if (!file) return true;
         const formData = new FormData();
         formData.append("document", file);
         formData.append("quotation_id", quotationId);
         formData.append("type", "quotation");
-
         try {
             await axios.post("/api/v1/quotation-documents", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             return true;
         } catch (error) {
+            setUploadError(
+                error.response?.data?.message || "Failed to upload document."
+            );
             return false;
         }
     };
@@ -404,7 +426,6 @@ const QuotationModal = ({
                             )}
                             <input
                                 type="file"
-                                onChange={handleFileChange}
                                 className="w-full text-sm text-gray-500
                                     file:mr-4 file:py-2 file:px-4
                                     file:rounded-full file:border-0
@@ -412,7 +433,12 @@ const QuotationModal = ({
                                     file:bg-[#009FDC] file:text-white
                                     hover:file:bg-[#007BB5]"
                                 accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                onChange={handleFileChange}
+                                ref={fileInputRef}
                             />
+                            {uploadError && (
+                                <div className="text-red-500 text-xs mt-1">{uploadError}</div>
+                            )}
                         </div>
                     </div>
 

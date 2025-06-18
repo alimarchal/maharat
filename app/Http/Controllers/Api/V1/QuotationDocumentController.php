@@ -1,4 +1,5 @@
 <?php
+// IMPORTANT: Ensure you have run 'php artisan storage:link' so that /storage points to storage/app/public for public file access.
 
 namespace App\Http\Controllers\Api\V1;
 
@@ -47,31 +48,32 @@ class QuotationDocumentController extends Controller
             'type' => 'required|string'
         ]);
 
-        // Ensure the directory exists directly in storage/app/public
-        if (!Storage::exists('public/quotations')) {
-            Storage::makeDirectory('public/quotations');
-            Log::info('Storage directory created: public/quotations');
+        // Ensure the directory exists directly in storage/app/public/quotations
+        $storageDir = 'quotations';
+        if (!Storage::disk('public')->exists($storageDir)) {
+            Storage::disk('public')->makeDirectory($storageDir);
+            Log::info('Storage directory created: ' . $storageDir);
         } else {
-            Log::info('Storage directory already exists: public/quotations');
+            Log::info('Storage directory already exists: ' . $storageDir);
         }
 
         // Find existing document for this quotation
         $existingDocument = QuotationDocument::where('quotation_id', $request->quotation_id)->first();
         
-        // Store the file directly in storage/app/public/quotations (without double public)
+        // Store the file directly in storage/app/public/quotations using the public disk
         $fileName = time() . '_' . $request->file('document')->getClientOriginalName();
-        $path = $request->file('document')->storeAs('public/quotations', $fileName);
+        $path = $request->file('document')->storeAs($storageDir, $fileName, 'public');
         Log::info('File stored at: ' . $path);
 
-        // Remove 'public/' prefix so the file is accessible via `/storage/`
-        $relativePath = str_replace('public/', '', $path);
+        // Store the relative path as 'quotations/filename.pdf'
+        $relativePath = 'quotations/' . $fileName;
         
         if ($existingDocument) {
             // Delete old file if it exists
             if ($existingDocument->file_path) {
-                $oldPath = 'public/' . $existingDocument->file_path;
-                if (Storage::exists($oldPath)) {
-                    Storage::delete($oldPath);
+                $oldPath = $existingDocument->file_path;
+                if (Storage::disk('public')->exists($oldPath)) {
+                    Storage::disk('public')->delete($oldPath);
                     Log::info('Old file deleted: ' . $oldPath);
                 }
             }
@@ -130,17 +132,18 @@ class QuotationDocumentController extends Controller
 
         // Delete old file if it exists
         if ($quotationDocument->file_path) {
-            $oldPath = 'public/' . $quotationDocument->file_path;
-            if (Storage::exists($oldPath)) {
-                Storage::delete($oldPath);
+            $oldPath = $quotationDocument->file_path;
+            if (Storage::disk('public')->exists($oldPath)) {
+                Storage::disk('public')->delete($oldPath);
                 Log::info('Old file deleted: ' . $oldPath);
             }
         }
 
-        // Store the file directly in storage/app/public/quotations (without double public)
+        // Store the file directly in storage/app/public/quotations using the public disk
+        $storageDir = 'quotations';
         $fileName = time() . '_' . $request->file('document')->getClientOriginalName();
-        $path = $request->file('document')->storeAs('public/quotations', $fileName);
-        $relativePath = str_replace('public/', '', $path);
+        $path = $request->file('document')->storeAs($storageDir, $fileName, 'public');
+        $relativePath = 'quotations/' . $fileName;
 
         // Update document details
         $quotationDocument->update([
@@ -163,9 +166,9 @@ class QuotationDocumentController extends Controller
             
             // Delete the physical file
             if ($document->file_path) {
-                $fullPath = 'public/' . $document->file_path;
-                if (Storage::exists($fullPath)) {
-                    Storage::delete($fullPath);
+                $fullPath = $document->file_path;
+                if (Storage::disk('public')->exists($fullPath)) {
+                    Storage::disk('public')->delete($fullPath);
                     Log::info('File deleted: ' . $fullPath);
                 }
             }
