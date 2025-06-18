@@ -244,7 +244,7 @@ const ApproveOrder = ({
             // Check if the form amount exceeds the available amount
             const availableAmount = Number(requestDetails.balance_amount);
             const enteredAmount = Number(formData.amount);
-            if (enteredAmount > availableAmount) {
+            if (enteredAmount < availableAmount) {
                 setErrors({
                     submit: "Insufficient Amount in this sub cost center for this Purchase Order.",
                 });
