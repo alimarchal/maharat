@@ -127,10 +127,12 @@ const ApproveOrder = ({
                 fetchPurchaseOrderDetails();
             } else {
                 const poNumber = generatePONumber();
+                const today = new Date().toISOString().split('T')[0];
                 setFormData((prev) => ({
                     ...prev,
                     purchase_order_no: poNumber,
                     quotation_id: quotationId,
+                    purchase_order_date: today,
                 }));
                 fetchQuotationDetails();
             }
