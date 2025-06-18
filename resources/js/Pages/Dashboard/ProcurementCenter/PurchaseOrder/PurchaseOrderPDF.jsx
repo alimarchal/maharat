@@ -263,19 +263,13 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
             doc.setFontSize(9);
             doc.setFont("helvetica", "bold");
             doc.text("Issue Date:", margin + 5, termsStartY + 8);
-            doc.text("Expiry Date:", margin + 5, termsStartY + 18);
-            doc.text("Total Amount:", margin + 5, termsStartY + 28);
+            doc.text("Total Amount:", margin + 5, termsStartY + 18);
 
             doc.setFont("helvetica", "normal");
             doc.text(
                 formatDateForDisplay(purchaseOrder.purchase_order_date),
                 margin + 40,
                 termsStartY + 8
-            );
-            doc.text(
-                formatDateForDisplay(purchaseOrder.expiry_date),
-                margin + 40,
-                termsStartY + 18
             );
             doc.text(
                 `${parseFloat(purchaseOrder.amount || 0).toLocaleString(
@@ -286,7 +280,7 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
                     }
                 )}`,
                 margin + 40,
-                termsStartY + 28
+                termsStartY + 18
             );
             
             // Right terms box
@@ -304,14 +298,9 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
             doc.setFont("helvetica", "bold");
             doc.text("RFQ #:", rightBoxX + 5, termsStartY + 8);
             doc.text(
-                "Expected Delivery:",
-                rightBoxX + 5,
-                termsStartY + 18
-            );
-            doc.text(
                 "Payment Terms:",
                 rightBoxX + 5,
-                termsStartY + 28
+                termsStartY + 18
             );
 
             doc.setFont("helvetica", "normal");
@@ -321,16 +310,9 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
                 termsStartY + 8
             );
             doc.text(
-                formatDateForDisplay(
-                    purchaseOrder.quotation?.rfq?.expected_delivery_date
-                ),
-                rightBoxX + 40,
-                termsStartY + 18
-            );
-            doc.text(
                 purchaseOrder.supplier?.payment_terms || "Standard 30 days",
                 rightBoxX + 40,
-                termsStartY + 28
+                termsStartY + 18
             );
 
             // Title for Order Items
