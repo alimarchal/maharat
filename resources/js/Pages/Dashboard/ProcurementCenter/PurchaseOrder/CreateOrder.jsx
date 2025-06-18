@@ -15,35 +15,19 @@ const FileDisplay = ({ file }) => {
         if (fixedPath.endsWith(".pdf.pdf")) {
             fixedPath = fixedPath.replace(".pdf.pdf", ".pdf");
         }
-        if (fixedPath.includes("/storage/") && !fixedPath.includes("/storage/public/")) {
-            fixedPath = fixedPath.replace("/storage/", "/storage/public/");
+        // Always use /storage/quotations/filename.pdf for quotations
+        if (fixedPath.includes("quotations/")) {
+            const fileName = fixedPath.split("quotations/").pop();
+            fixedPath = `/storage/quotations/${fileName}`;
         }
-        if (fixedPath.startsWith("http")) {
-            return fixedPath;
-        }
-
-        fixedPath = `/storage/public/${fixedPath}`.replace("/storage/public/public/", "/storage/public/");
+        // Remove /public if present
+        fixedPath = fixedPath.replace("/storage/public/", "/storage/");
         return fixedPath;
     };
 
-    // Try direct download via API
-    const downloadFile = async (filePath) => {
-        try {
-            const filePathSegments = filePath.split("/");
-            const fileName = filePathSegments[filePathSegments.length - 1];
-            window.open(filePath, "_blank");
-
-            try {
-                const response = await axios.get(`/api/v1/download-file?path=${encodeURIComponent(fileName)}&type=quotation`);
-                if (response.data && response.data.download_url) {
-                    window.open(response.data.download_url, "_blank");
-                }
-            } catch (error) {
-                window.open(filePath, "_blank");
-            }
-        } catch (error) {
-            alert("Could not download file. Please contact support.");
-        }
+    // Directly open the file for quotations
+    const openFile = (filePath) => {
+        window.open(filePath, "_blank");
     };
 
     if (!file) return <span className="text-gray-500">No document attached</span>;
@@ -60,12 +44,12 @@ const FileDisplay = ({ file }) => {
         <div className="flex flex-col items-center justify-center space-y-2">
             <DocumentArrowDownIcon
                 className="h-10 w-10 text-gray-500 cursor-pointer hover:text-gray-700 transition-colors"
-                onClick={() => fileUrl && downloadFile(fileUrl)}
+                onClick={() => fileUrl && openFile(fileUrl)}
             />
             {displayName && (
                 <span
                     className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
-                    onClick={() => fileUrl && downloadFile(fileUrl)}
+                    onClick={() => fileUrl && openFile(fileUrl)}
                 >
                     {displayName}
                 </span>

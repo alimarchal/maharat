@@ -280,7 +280,6 @@ export default function PurchaseOrdersTable() {
                                 <th className="py-3 px-4">Quotation #</th>
                                 <th className="py-3 px-4">Company</th>
                                 <th className="py-3 px-4">Issue Date</th>
-                                <th className="py-3 px-4">Expiry Date</th>
                                 <th className="py-3 px-4">Amount</th>
                                 <th className="py-3 px-4 text-center">
                                     Attachment
@@ -324,11 +323,6 @@ export default function PurchaseOrdersTable() {
                                         <td className="px-3 py-4">
                                             {formatDateForDisplay(
                                                 order.purchase_order_date
-                                            )}
-                                        </td>
-                                        <td className="px-3 py-4">
-                                            {formatDateForDisplay(
-                                                order.expiry_date
                                             )}
                                         </td>
                                         <td className="px-3 py-4">

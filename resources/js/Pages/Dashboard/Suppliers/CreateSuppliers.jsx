@@ -92,7 +92,7 @@ const CreateSupplier = () => {
             });
         }
         else {
-            setFormData({ ...formData, [name]: value });
+        setFormData({ ...formData, [name]: value });
         }
         setErrors({ ...errors, [name]: "" });
     };
