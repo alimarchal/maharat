@@ -95,6 +95,15 @@ class QuotationController extends Controller
                 $quotationNumber = $request->quotation_number;
             }
             
+            // Get the "Active" status for quotations
+            $activeStatus = \App\Models\Status::where('type', 'Quotation Status')
+                ->where('name', 'Active')
+                ->first();
+
+            if (!$activeStatus) {
+                throw new \Exception('Active status for quotations not found');
+            }
+            
             // Create the quotation record
             $quotation = Quotation::create([
                 'quotation_number' => $quotationNumber,
@@ -103,7 +112,8 @@ class QuotationController extends Controller
                 'issue_date' => $request->issue_date,
                 'valid_until' => $request->valid_until,
                 'total_amount' => $request->total_amount,
-                'notes' => $request->notes
+                'notes' => $request->notes,
+                'status_id' => $activeStatus->id // Set the default status as Active
             ]);
             
             // If RFQ company ID is provided, update the RFQ record
