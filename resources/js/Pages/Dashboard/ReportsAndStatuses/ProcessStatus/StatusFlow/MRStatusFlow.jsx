@@ -66,34 +66,33 @@ const MRStatusFlow = () => {
         setSelectedUser(null);
     };
 
-    // Create cards array - exactly same number as cardData
+    // Create cards array - show requester + all assigned users
     const createCardsArray = () => {
         if (cardData.length === 0) return [];
-
         const cards = [];
 
+        // First card - Always show the requester from the first record
+        if (cardData[0]) {
+            cards.push({
+                id: `requester-${cardData[0].id}`,
+                type: "requester",
+                user: cardData[0].requester,
+                status: "Filled Request",
+                created_at: cardData[0].created_at,
+                cardData: cardData[0],
+            });
+        }
+
+        // Then show all assigned users from all records
         cardData.forEach((card, index) => {
-            if (index === 0) {
-                // First card - Show requester from first data
-                cards.push({
-                    id: `requester-${card.id}`,
-                    type: "requester",
-                    user: card.requester,
-                    status: "Filled Request",
-                    created_at: card.created_at,
-                    cardData: card,
-                });
-            } else {
-                // Other cards - Show requester (not assigned_user) with status from respective data
-                cards.push({
-                    id: `requester-${card.id}`,
-                    type: "requester",
-                    user: card.requester,
-                    status: card.status,
-                    created_at: card.created_at,
-                    cardData: card,
-                });
-            }
+            cards.push({
+                id: `assigned-${card.id}`,
+                type: "assigned",
+                user: card.assigned_user,
+                status: card.status,
+                created_at: card.created_at,
+                cardData: card,
+            });
         });
 
         return cards;
