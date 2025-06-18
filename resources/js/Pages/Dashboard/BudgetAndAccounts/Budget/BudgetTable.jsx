@@ -9,6 +9,7 @@ import { Link } from "@inertiajs/react";
 import axios from "axios";
 import BudgetPDF from "./BudgetPDF";
 import BudgetExcel from "./BudgetExcel";
+import FiscalPeriodModal from "./FiscalPeriodModal";
 
 const BudgetTable = () => {
     const [budgets, setBudgets] = useState([]);
@@ -24,19 +25,37 @@ const BudgetTable = () => {
     const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
     const [selectedExcelBudgetId, setSelectedExcelBudgetId] = useState(null);
 
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Fixed: Added missing state variables that were being used in fetchDropdownData
+    const [departments, setDepartments] = useState([]);
+    const [costCenters, setCostCenters] = useState([]);
+    const [subCostCenters, setSubCostCenters] = useState([]);
+    const [fiscalPeriod, setFiscalPeriod] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+
     const filters = ["All", "Active", "Frozen", "Closed"];
 
     useEffect(() => {
         fetchBudgets();
+        fetchDropdownData();
     }, [currentPage]);
+
+    // Fixed: Added dependency for selectedFilter to refetch when filter changes
+    useEffect(() => {
+        fetchBudgets();
+    }, [selectedFilter]);
 
     const fetchBudgets = async () => {
         setLoading(true);
         setError("");
 
         try {
+            // Fixed: Include filter parameter in API call
+            const filterParam =
+                selectedFilter !== "All" ? `&status=${selectedFilter}` : "";
             const response = await axios.get(
-                `/api/v1/budgets?include=fiscalPeriod,department,costCenter,creator,updater&page=${currentPage}`
+                `/api/v1/budgets?include=fiscalPeriod,department,costCenter,creator,updater&page=${currentPage}${filterParam}`
             );
             if (response.data && response.data.data) {
                 setBudgets(response.data.data);
@@ -52,6 +71,28 @@ const BudgetTable = () => {
             );
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchDropdownData = async () => {
+        setIsLoading(true);
+        try {
+            const [deptResponse, costCenterResponse, fiscalPeriodResponse] =
+                await Promise.all([
+                    axios.get("/api/v1/departments"),
+                    axios.get("/api/v1/cost-centers"),
+                    axios.get("/api/v1/fiscal-periods"),
+                ]);
+            setDepartments(deptResponse.data.data || []);
+            setCostCenters(costCenterResponse.data.data || []);
+            setSubCostCenters(costCenterResponse.data.data || []);
+            setFiscalPeriod(fiscalPeriodResponse.data.data || []);
+        } catch (error) {
+            console.error("Error fetching dropdown data:", error);
+            // Fixed: setError should be a string, not an object
+            setError("Failed to load form data. Please try again.");
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -84,6 +125,19 @@ const BudgetTable = () => {
         }
     };
 
+    // Fixed: Reset to page 1 when filter changes
+    const handleFilterChange = (filter) => {
+        setSelectedFilter(filter);
+        setCurrentPage(1);
+    };
+
+    // Fixed: Add loading state check for pagination
+    const handlePageChange = (page) => {
+        if (page >= 1 && page <= lastPage && !loading) {
+            setCurrentPage(page);
+        }
+    };
+
     return (
         <div className="w-full">
             <div className="flex justify-between items-center mb-8">
@@ -98,18 +152,25 @@ const BudgetTable = () => {
                                         ? "bg-[#009FDC] text-white"
                                         : "text-[#9B9DA2]"
                                 }`}
-                                onClick={() => setSelectedFilter(filter)}
+                                onClick={() => handleFilterChange(filter)}
                             >
                                 {filter}
                             </button>
                         ))}
                     </div>
-                    <Link
+                    {/* <Link
                         href="/budget/create"
                         className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                     >
                         Create a Budget
-                    </Link>
+                    </Link> */}
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                        type="button"
+                    >
+                        Create a Fiscal Period
+                    </button>
                 </div>
             </div>
 
@@ -171,7 +232,7 @@ const BudgetTable = () => {
                     {loading ? (
                         <tr>
                             <td colSpan="7" className="text-center py-12">
-                                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+                                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin mx-auto"></div>
                             </td>
                         </tr>
                     ) : error ? (
@@ -233,9 +294,7 @@ const BudgetTable = () => {
                                         </button>
                                         <button
                                             onClick={() =>
-                                                handleGenerateExcel(
-                                                    budget.id
-                                                )
+                                                handleGenerateExcel(budget.id)
                                             }
                                             className="text-green-500 hover:text-green-600"
                                             title="Export to Excel"
@@ -259,6 +318,13 @@ const BudgetTable = () => {
                     )}
                 </tbody>
             </table>
+
+            {/* Fiscal Period Modal */}
+            <FiscalPeriodModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                fetchFiscalPeriods={fetchDropdownData}
+            />
 
             {/* Pagination */}
             {!loading && !error && budgets.length > 0 && (
