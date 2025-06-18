@@ -15,7 +15,7 @@ const QuotationModal = ({
     rfqId,
 }) => {
     const [formData, setFormData] = useState({
-        company_name: "",
+        company_name: "Maharat",
         supplier_name: "",
         issue_date: "",
         valid_until: "",
@@ -23,7 +23,7 @@ const QuotationModal = ({
         document: null,
     });
 
-    const [companies, setCompanies] = useState([]);
+    const [companies, setCompanies] = useState([{ id: 1, name: "Maharat" }]);
     const [suppliers, setSuppliers] = useState([]);
     const [errors, setErrors] = useState({});
     const [isSaving, setIsSaving] = useState(false);
@@ -55,7 +55,7 @@ const QuotationModal = ({
                     setExistingDocument(null);
                 }
                 setFormData({
-                    company_name: quotation.company_name || "",
+                    company_name: "Maharat",
                     supplier_name: quotation.supplier_name || "",
                     issue_date: formatDateForInput(quotation.issue_date) || "",
                     valid_until:
@@ -67,7 +67,7 @@ const QuotationModal = ({
             } else {
                 const today = new Date().toISOString().split("T")[0];
                 setFormData({
-                    company_name: "",
+                    company_name: "Maharat",
                     supplier_name: "",
                     issue_date: today,
                     valid_until: "",
@@ -82,9 +82,7 @@ const QuotationModal = ({
 
     const fetchFormData = async () => {
         try {
-            const companiesResponse = await axios.get("/api/v1/companies");
-            setCompanies(companiesResponse.data.data || []);
-
+            // No need to fetch companies since we only use Maharat
             const suppliersResponse = await axios.get("/api/v1/suppliers");
             setSuppliers(suppliersResponse.data.data || []);
         } catch (error) {
@@ -318,13 +316,11 @@ const QuotationModal = ({
                         <SelectFloating
                             label="Company"
                             name="company_name"
-                            value={formData.company_name}
+                            value="Maharat"
                             onChange={handleChange}
-                            options={companies.map((company) => ({
-                                id: company.name,
-                                label: company.name,
-                            }))}
+                            options={[{ id: "Maharat", label: "Maharat" }]}
                             error={errors.company_name}
+                            disabled={true}
                         />
                         <SelectFloating
                             label="Supplier"

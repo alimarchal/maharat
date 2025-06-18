@@ -2,9 +2,77 @@ import React, { useState, useEffect } from "react";
 import { PlusCircleIcon } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit } from "@fortawesome/free-solid-svg-icons";
+import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
 import SelectFloating from "@/Components/SelectFloating";
 import ApproveOrder from "./ApproveOrder";
+
+const FileDisplay = ({ file }) => {
+    // Helper function to fix file paths and extensions
+    const fixFilePath = (filePath) => {
+        if (!filePath) return null;
+        let fixedPath = filePath;
+        if (fixedPath.endsWith(".pdf.pdf")) {
+            fixedPath = fixedPath.replace(".pdf.pdf", ".pdf");
+        }
+        if (fixedPath.includes("/storage/") && !fixedPath.includes("/storage/public/")) {
+            fixedPath = fixedPath.replace("/storage/", "/storage/public/");
+        }
+        if (fixedPath.startsWith("http")) {
+            return fixedPath;
+        }
+
+        fixedPath = `/storage/public/${fixedPath}`.replace("/storage/public/public/", "/storage/public/");
+        return fixedPath;
+    };
+
+    // Try direct download via API
+    const downloadFile = async (filePath) => {
+        try {
+            const filePathSegments = filePath.split("/");
+            const fileName = filePathSegments[filePathSegments.length - 1];
+            window.open(filePath, "_blank");
+
+            try {
+                const response = await axios.get(`/api/v1/download-file?path=${encodeURIComponent(fileName)}&type=quotation`);
+                if (response.data && response.data.download_url) {
+                    window.open(response.data.download_url, "_blank");
+                }
+            } catch (error) {
+                window.open(filePath, "_blank");
+            }
+        } catch (error) {
+            alert("Could not download file. Please contact support.");
+        }
+    };
+
+    if (!file) return <span className="text-gray-500">No document attached</span>;
+
+    const fileUrl = file.file_path ? fixFilePath(file.file_path) : null;
+
+    // Fix display name if needed
+    let displayName = file.original_name || "Document";
+    if (displayName.endsWith(".pdf.pdf")) {
+        displayName = displayName.replace(".pdf.pdf", ".pdf");
+    }
+
+    return (
+        <div className="flex flex-col items-center justify-center space-y-2">
+            <DocumentArrowDownIcon
+                className="h-10 w-10 text-gray-500 cursor-pointer hover:text-gray-700 transition-colors"
+                onClick={() => fileUrl && downloadFile(fileUrl)}
+            />
+            {displayName && (
+                <span
+                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
+                    onClick={() => fileUrl && downloadFile(fileUrl)}
+                >
+                    {displayName}
+                </span>
+            )}
+        </div>
+    );
+};
 
 export default function CreatePurchaseOrder() {
     const [quotations, setQuotations] = useState([]);
@@ -45,7 +113,7 @@ export default function CreatePurchaseOrder() {
             let url = "/api/v1/quotations";
             const params = {
                 page: currentPage,
-                include: "rfq,purchaseOrder",
+                include: "rfq,purchaseOrder,documents",
                 per_page: 10,
             };
             const response = await axios.get(url, { params });
@@ -251,7 +319,13 @@ export default function CreatePurchaseOrder() {
                                         {formatDate(quotation.created_at)}
                                     </td>
                                     <td className="px-3 py-4">
-                                        {quotation.documents || "N/A"}
+                                        <div className="flex flex-col items-center justify-center w-full">
+                                            {quotation.documents && quotation.documents[0] ? (
+                                                <FileDisplay file={quotation.documents[0]} />
+                                            ) : (
+                                                <span className="text-gray-500">No document attached</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-3 py-4 text-center">
                                         {quotation.has_purchase_order ? (
