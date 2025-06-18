@@ -71,7 +71,29 @@ const CreateSupplier = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
+        
+        // Handle status mapping
+        if (name === 'status_id') {
+            // For Active (1), set is_approved to true
+            // For Inactive (2), set is_approved to false
+            const isApproved = value === '1';
+            setFormData({ 
+                ...formData, 
+                [name]: value,
+                is_approved: isApproved 
+            });
+        }
+        // Handle payment terms to store the actual text value
+        else if (name === 'payment_terms') {
+            const paymentTermText = value === '1' ? 'Cash' : 'Credit';
+            setFormData({ 
+                ...formData, 
+                [name]: paymentTermText 
+            });
+        }
+        else {
+            setFormData({ ...formData, [name]: value });
+        }
         setErrors({ ...errors, [name]: "" });
     };
 
@@ -111,10 +133,16 @@ const CreateSupplier = () => {
         setLoading(true);
 
         try {
+            const payload = {
+                ...formData,
+                // Ensure is_approved is set based on status_id
+                is_approved: formData.status_id === '1'
+            };
+
             if (supplierId) {
-                await axios.put(`/api/v1/suppliers/${supplierId}`, formData);
+                await axios.put(`/api/v1/suppliers/${supplierId}`, payload);
             } else {
-                await axios.post("/api/v1/suppliers", formData);
+                await axios.post("/api/v1/suppliers", payload);
             }
             router.visit("/suppliers");
         } catch (error) {
@@ -226,8 +254,8 @@ const CreateSupplier = () => {
                             value={formData.status_id}
                             onChange={handleChange}
                             options={[
-                                { id: 1, label: "Active" },
-                                { id: 2, label: "Inactive" },
+                                { id: "1", label: "Active" },
+                                { id: "2", label: "Inactive" },
                             ]}
                         />
                         {errors.status_id && (
@@ -240,11 +268,11 @@ const CreateSupplier = () => {
                         <SelectFloating
                             label="Payment Terms"
                             name="payment_terms"
-                            value={formData.payment_terms}
+                            value={formData.payment_terms === 'Cash' ? '1' : formData.payment_terms === 'Credit' ? '2' : ''}
                             onChange={handleChange}
                             options={[
-                                { id: 1, label: "Cash" },
-                                { id: 2, label: "Credit" },
+                                { id: "1", label: "Cash" },
+                                { id: "2", label: "Credit" },
                             ]}
                         />
                         {errors.payment_terms && (
