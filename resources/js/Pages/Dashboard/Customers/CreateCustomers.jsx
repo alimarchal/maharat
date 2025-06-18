@@ -9,12 +9,13 @@ const CreateCustomer = () => {
 
     const [formData, setFormData] = useState({
         name: "",
-        commercial_registration_number: "",
-        tax_group_registration_number: "",
+        cr_no: "",
+        vat_number: "",
         contact_number: "",
         type: "both",
         address: "",
         country_code: "SA",
+        email: "",
         account_name: "",
         iban: "",
     });
@@ -42,8 +43,9 @@ const CreateCustomer = () => {
     };
 
     const validateForm = () => {
-        let newErrors = {};
-        if (!formData.name.trim()) newErrors.name = "Customer Name is required";
+        const newErrors = {};
+        if (!formData.name) newErrors.name = "Name is required";
+        if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Invalid email format";
         if (!formData.contact_number.trim())
             newErrors.contact_number = "Contact Number is required";
         if (!formData.address.trim()) newErrors.address = "Address is required";
@@ -59,17 +61,22 @@ const CreateCustomer = () => {
         if (!validateForm()) return;
         setLoading(true);
 
+        console.log('Form data being submitted:', formData);
+
         try {
             if (customerId) {
-                await axios.put(`/api/v1/customers/${customerId}`, formData);
+                const response = await axios.put(`/api/v1/customers/${customerId}`, formData);
+                console.log('Update response:', response.data);
             } else {
-                await axios.post("/api/v1/customers", formData);
+                const response = await axios.post("/api/v1/customers", formData);
+                console.log('Create response:', response.data);
             }
             router.visit("/customers");
         } catch (error) {
+            console.error('Error submitting form:', error.response?.data);
             setErrors(
                 error.response?.data?.errors || {
-                    general: "An error occurred while saving the customer",
+                    general: ["Something went wrong!"],
                 }
             );
         } finally {
@@ -101,16 +108,16 @@ const CreateCustomer = () => {
                     <div>
                         <InputFloating
                             label="Commercial Registration Number"
-                            name="commercial_registration_number"
-                            value={formData.commercial_registration_number}
+                            name="cr_no"
+                            value={formData.cr_no}
                             onChange={handleChange}
                         />
                     </div>
                     <div>
                         <InputFloating
-                            label="Tax Group Registration Number"
-                            name="tax_group_registration_number"
-                            value={formData.tax_group_registration_number}
+                            label="VAT Number"
+                            name="vat_number"
+                            value={formData.vat_number}
                             onChange={handleChange}
                         />
                     </div>
@@ -135,8 +142,8 @@ const CreateCustomer = () => {
                             onChange={handleChange}
                             options={[
                                 { id: "both", label: "Both" },
-                                { id: "individual", label: "Individual" },
-                                { id: "corporate", label: "Corporate" },
+                                { id: "vendor", label: "Vendor" },
+                                { id: "client", label: "Client" }
                             ]}
                         />
                     </div>
@@ -164,6 +171,19 @@ const CreateCustomer = () => {
                         {errors.country_code && (
                             <p className="text-red-500 text-sm">
                                 {errors.country_code}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="Email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                        />
+                        {errors.email && (
+                            <p className="text-red-500 text-sm">
+                                {errors.email}
                             </p>
                         )}
                     </div>

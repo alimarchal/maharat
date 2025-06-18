@@ -13,10 +13,8 @@ class CustomerResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
-            'commercial_registration_number' => $this->commercial_registration_number,
-            'vat_number' => $this->vat_number, // Updated from tax_number
-            'tax_group_registration_number' => $this->tax_group_registration_number,
-            'cr_no' => $this->cr_no, // Added cr_no
+            'cr_no' => $this->cr_no,
+            'vat_number' => $this->vat_number,
             'contact_number' => $this->contact_number,
             'additional_number' => $this->additional_number,
             'client_code' => $this->client_code,

@@ -16,6 +16,7 @@ class UpdateCustomerRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'email' => ['nullable', 'string', 'email'],
             'commercial_registration_number' => [
                 'nullable',
                 'string',
