@@ -121,14 +121,17 @@ const QuotationModal = ({
         setUploadError("");
 
         const validationErrors = {};
-        if (!formData.company_name)
-            validationErrors.company_name = "Company is required";
         if (!formData.supplier_name)
             validationErrors.supplier_name = "Supplier is required";
         if (!formData.issue_date)
             validationErrors.issue_date = "Issue date is required";
         if (!formData.total_amount)
             validationErrors.total_amount = "Amount is required";
+        
+        // Make attachment required
+        if (!tempDocument && !existingDocument) {
+            validationErrors.document = "Attachment is required";
+        }
 
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
@@ -137,13 +140,8 @@ const QuotationModal = ({
         }
 
         try {
-            let companyId = null;
-            if (formData.company_name) {
-                const company = companies.find(
-                    (c) => c.name === formData.company_name
-                );
-                companyId = company ? company.id : null;
-            }
+            // Hardcode company to Maharat
+            const companyId = 1; // Assuming Maharat has ID 1
 
             let supplierId = null;
             if (formData.supplier_name) {
@@ -151,13 +149,6 @@ const QuotationModal = ({
                     (s) => s.name === formData.supplier_name
                 );
                 supplierId = supplier ? supplier.id : null;
-            }
-            if (!companyId) {
-                setErrors({
-                    company_name: "Selected company not found in system",
-                });
-                setIsSaving(false);
-                return;
             }
 
             if (!supplierId) {
@@ -335,7 +326,7 @@ const QuotationModal = ({
                 )}
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                        <SelectFloating
+                        {/* <SelectFloating
                             label="Company"
                             name="company_name"
                             value="Maharat"
@@ -343,7 +334,7 @@ const QuotationModal = ({
                             options={[{ id: "Maharat", label: "Maharat" }]}
                             error={errors.company_name}
                             disabled={true}
-                        />
+                        /> */}
                         <SelectFloating
                             label="Supplier"
                             name="supplier_name"
@@ -379,13 +370,16 @@ const QuotationModal = ({
                             onChange={handleChange}
                             error={errors.total_amount}
                         />
-                        <div className="space-y-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Attachment (Optional)
+                    </div>
+
+                    <div className="flex justify-center">
+                        <div className="space-y-2 w-full max-w-sm">
+                            <label className="block text-sm font-medium text-gray-700 mb-1 text-center">
+                                Attachment
                             </label>
 
                             {existingDocument && !tempDocument && (
-                                <div className="flex items-center space-x-2 mb-2">
+                                <div className="flex items-center justify-center space-x-2 mb-2">
                                     <DocumentArrowDownIcon
                                         className="h-5 w-5 text-gray-500 cursor-pointer hover:text-gray-700"
                                         onClick={() =>
@@ -417,27 +411,34 @@ const QuotationModal = ({
                             )}
 
                             {tempDocument && (
-                                <div
-                                    className="text-sm text-orange-600 mb-2 truncate max-w-[220px]"
-                                    title={tempDocument.name}
-                                >
-                                    Selected: {tempDocument.name}
+                                <div className="flex justify-center">
+                                    <div
+                                        className="text-sm text-orange-600 mb-2 truncate max-w-[220px] text-center"
+                                        title={tempDocument.name}
+                                    >
+                                        Selected: {tempDocument.name}
+                                    </div>
                                 </div>
                             )}
-                            <input
-                                type="file"
-                                className="w-full text-sm text-gray-500
-                                    file:mr-4 file:py-2 file:px-4
-                                    file:rounded-full file:border-0
-                                    file:text-sm file:font-semibold
-                                    file:bg-[#009FDC] file:text-white
-                                    hover:file:bg-[#007BB5]"
-                                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                                onChange={handleFileChange}
-                                ref={fileInputRef}
-                            />
+                            <div className="flex justify-end">
+                                <input
+                                    type="file"
+                                    className="text-sm text-gray-500
+                                        file:mr-4 file:py-2 file:px-4
+                                        file:rounded-full file:border-0
+                                        file:text-sm file:font-semibold
+                                        file:bg-[#009FDC] file:text-white
+                                        hover:file:bg-[#007BB5]"
+                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                    onChange={handleFileChange}
+                                    ref={fileInputRef}
+                                />
+                            </div>
                             {uploadError && (
-                                <div className="text-red-500 text-xs mt-1">{uploadError}</div>
+                                <div className="text-red-500 text-xs mt-1 text-center">{uploadError}</div>
+                            )}
+                            {errors.document && (
+                                <div className="text-red-500 text-xs mt-1 text-center">{errors.document}</div>
                             )}
                         </div>
                     </div>

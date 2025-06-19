@@ -274,7 +274,7 @@ export default function QuotationRFQ({ auth }) {
                             <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                                 Quotation #
                             </th>
-                            <th className="py-3 px-4">Company</th>
+                            {/* <th className="py-3 px-4">Company</th> */}
                             <th className="py-3 px-4">Supplier</th>
                             <th className="py-3 px-4">Issue Date</th>
                             <th className="py-3 px-4">Expiry Date</th>
@@ -291,14 +291,14 @@ export default function QuotationRFQ({ auth }) {
                     <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                         {loading ? (
                             <tr>
-                                <td colSpan="8" className="text-center py-12">
+                                <td colSpan="7" className="text-center py-12">
                                     <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                                 </td>
                             </tr>
                         ) : error ? (
                             <tr>
                                 <td
-                                    colSpan="8"
+                                    colSpan="7"
                                     className="text-center text-red-500 font-medium py-4"
                                 >
                                     {error}
@@ -310,9 +310,9 @@ export default function QuotationRFQ({ auth }) {
                                     <td className="px-3 py-4">
                                         {quotation.quotation_number}
                                     </td>
-                                    <td className="px-3 py-4">
+                                    {/* <td className="px-3 py-4">
                                         {quotation.company_name || "No company"}
-                                    </td>
+                                    </td> */}
                                     <td className="px-3 py-4">
                                         {quotation.supplier_name ||
                                             "No supplier"}
@@ -333,14 +333,32 @@ export default function QuotationRFQ({ auth }) {
                                         ).toLocaleString()}
                                     </td>
                                     <td className="px-3 py-4">
-                                        <div className="flex flex-col items-center justify-center w-full">
+                                        <div className="flex justify-center">
                                             {quotation.documents &&
                                             quotation.documents[0] ? (
-                                                <FileDisplay
-                                                    file={
-                                                        quotation.documents[0]
-                                                    }
-                                                />
+                                                <button
+                                                    className="w-8 h-8"
+                                                    onClick={() => {
+                                                        const filePath = quotation.documents[0].file_path;
+                                                        if (filePath) {
+                                                            const fixedPath = filePath.startsWith("http") 
+                                                                ? filePath 
+                                                                : filePath.startsWith("/storage/") 
+                                                                    ? filePath 
+                                                                    : filePath.startsWith("quotations/") 
+                                                                        ? `/storage/${filePath}` 
+                                                                        : filePath;
+                                                            window.open(fixedPath, "_blank");
+                                                        }
+                                                    }}
+                                                    title="View Document"
+                                                >
+                                                    <img
+                                                        src="/images/pdf-file.png"
+                                                        alt="PDF"
+                                                        className="w-full h-full"
+                                                    />
+                                                </button>
                                             ) : (
                                                 <span className="text-gray-500">
                                                     No document attached
@@ -371,7 +389,7 @@ export default function QuotationRFQ({ auth }) {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan="8" className="text-center py-4">
+                                <td colSpan="7" className="text-center py-4">
                                     No quotations available for this RFQ.
                                 </td>
                             </tr>
