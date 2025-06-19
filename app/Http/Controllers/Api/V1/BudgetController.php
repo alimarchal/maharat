@@ -46,6 +46,18 @@ class BudgetController extends Controller
         try {
             DB::beginTransaction();
 
+            // Check if budget already exists for this combination
+            if (Budget::existsForCombination(
+                $request->fiscal_period_id,
+                $request->cost_center_id,
+                $request->sub_cost_center_id
+            )) {
+                return response()->json([
+                    'message' => 'A budget already exists for this fiscal period, cost center, and sub cost center combination.',
+                    'error' => 'DUPLICATE_BUDGET'
+                ], Response::HTTP_CONFLICT);
+            }
+
             $budget = Budget::create($request->validated());
 
             DB::commit();
@@ -93,6 +105,19 @@ class BudgetController extends Controller
     {
         try {
             DB::beginTransaction();
+
+            // Check if budget already exists for this combination (excluding current budget)
+            if (Budget::existsForCombination(
+                $request->fiscal_period_id,
+                $request->cost_center_id,
+                $request->sub_cost_center_id,
+                $budget->id
+            )) {
+                return response()->json([
+                    'message' => 'A budget already exists for this fiscal period, cost center, and sub cost center combination.',
+                    'error' => 'DUPLICATE_BUDGET'
+                ], Response::HTTP_CONFLICT);
+            }
 
             $budget->update($request->validated());
 
@@ -153,6 +178,19 @@ class BudgetController extends Controller
             DB::beginTransaction();
 
             $budget = Budget::withTrashed()->findOrFail($id);
+            
+            // Check if budget already exists for this combination before restoring
+            if (Budget::existsForCombination(
+                $budget->fiscal_period_id,
+                $budget->cost_center_id,
+                $budget->sub_cost_center_id
+            )) {
+                return response()->json([
+                    'message' => 'Cannot restore budget. A budget already exists for this fiscal period, cost center, and sub cost center combination.',
+                    'error' => 'DUPLICATE_BUDGET'
+                ], Response::HTTP_CONFLICT);
+            }
+
             $budget->restore();
 
             DB::commit();
@@ -168,5 +206,44 @@ class BudgetController extends Controller
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * Get budget for specific combination.
+     */
+    public function getForCombination(): JsonResponse
+    {
+        $request = request();
+        
+        $fiscalPeriodId = $request->fiscal_period_id;
+        $costCenterId = $request->cost_center_id;
+        $subCostCenterId = $request->sub_cost_center_id;
+
+        if (!$fiscalPeriodId || !$costCenterId) {
+            return response()->json([
+                'message' => 'Fiscal period ID and cost center ID are required',
+                'error' => 'MISSING_REQUIRED_FIELDS'
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        $budget = Budget::getForCombination($fiscalPeriodId, $costCenterId, $subCostCenterId);
+
+        if (!$budget) {
+            return response()->json([
+                'message' => 'No budget found for this combination',
+                'data' => null
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        return response()->json([
+            'data' => new BudgetResource($budget->load([
+                'fiscalPeriod',
+                'department',
+                'costCenter',
+                'subCostCenter',
+                'creator',
+                'updater'
+            ]))
+        ], Response::HTTP_OK);
     }
 }

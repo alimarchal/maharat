@@ -281,9 +281,9 @@ export default function PurchaseOrdersTable() {
                                 <th className="py-3 px-4">Company</th>
                                 <th className="py-3 px-4">Issue Date</th>
                                 <th className="py-3 px-4">Amount</th>
-                                <th className="py-3 px-4 text-center">
+                                {/* <th className="py-3 px-4 text-center">
                                     Attachment
-                                </th>
+                                </th> */}
                                 <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                                     Action
                                 </th>
@@ -293,7 +293,7 @@ export default function PurchaseOrdersTable() {
                             {loading ? (
                                 <tr>
                                     <td
-                                        colSpan="8"
+                                        colSpan="7"
                                         className="text-center py-12"
                                     >
                                         <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
@@ -302,7 +302,7 @@ export default function PurchaseOrdersTable() {
                             ) : error ? (
                                 <tr>
                                     <td
-                                        colSpan="8"
+                                        colSpan="7"
                                         className="text-center text-red-500 font-medium py-4"
                                     >
                                         {error}
@@ -330,24 +330,27 @@ export default function PurchaseOrdersTable() {
                                                 order.amount || 0
                                             ).toLocaleString()}
                                         </td>
-                                        <td className="px-3 py-4 text-center">
-                                            <div className="flex flex-col items-center justify-center w-full">
+                                        {/* <td className="px-3 py-4 text-center">
+                                            <div className="flex justify-center">
                                                 {order.formatted_attachment ? (
-                                                    <FileDisplay
-                                                        file={
-                                                            order.formatted_attachment
-                                                        }
-                                                        fileName={
-                                                            order.original_name
-                                                        }
-                                                    />
+                                                    <button
+                                                        className="w-8 h-8"
+                                                        onClick={() => window.open(order.formatted_attachment, "_blank")}
+                                                        title="View Document"
+                                                    >
+                                                        <img
+                                                            src="/images/pdf-file.png"
+                                                            alt="PDF"
+                                                            className="w-full h-full"
+                                                        />
+                                                    </button>
                                                 ) : (
                                                     <span className="text-gray-500">
-                                                        No attachment
+                                                        No document attached
                                                     </span>
                                                 )}
                                             </div>
-                                        </td>
+                                        </td> */}
                                         <td className="px-3 py-4 text-center">
                                             <div className="flex flex-col items-center justify-center h-full">
                                                 <button
@@ -372,7 +375,7 @@ export default function PurchaseOrdersTable() {
                             ) : (
                                 <tr>
                                     <td
-                                        colSpan="8"
+                                        colSpan="7"
                                         className="text-center py-4"
                                     >
                                         No purchase orders available.

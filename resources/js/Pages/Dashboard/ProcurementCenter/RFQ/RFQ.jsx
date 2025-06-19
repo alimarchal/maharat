@@ -258,13 +258,13 @@ const RFQsTable = () => {
                                     </td>
                                     <td className="px-3 py-4 flex justify-center items-center text-center space-x-3">
                                         {log.status?.name === "Pending" ? (
-                                            <button
-                                                className="text-blue-400 hover:text-blue-500"
-                                                title="Edit RFQ"
-                                                onClick={() => handleEdit(log.id)}
-                                            >
-                                                <FontAwesomeIcon icon={faEdit} />
-                                            </button>
+                                        <button
+                                            className="text-blue-400 hover:text-blue-500"
+                                            title="Edit RFQ"
+                                            onClick={() => handleEdit(log.id)}
+                                        >
+                                            <FontAwesomeIcon icon={faEdit} />
+                                        </button>
                                         ) : (
                                             <div className="w-4 h-4"></div>
                                         )}

@@ -13,6 +13,7 @@ const ItemModal = ({
     units,
     brands,
     rfqId,
+    selectedCategoryId,
 }) => {
     const [formData, setFormData] = useState({
         product_id: "",
@@ -249,11 +250,13 @@ const ItemModal = ({
                                 className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                             >
                                 <option value="">Select Product</option>
-                                {products.map((product) => (
-                                    <option key={product.id} value={product.id}>
-                                        {product.name}
-                                    </option>
-                                ))}
+                                {products
+                                    .filter(product => !selectedCategoryId || product.category_id == selectedCategoryId)
+                                    .map((product) => (
+                                        <option key={product.id} value={product.id}>
+                                            {product.name}
+                                        </option>
+                                    ))}
                             </select>
                             {errors.product_id && (
                                 <p className="text-red-500 text-sm mt-1">
@@ -354,34 +357,55 @@ const ItemModal = ({
                             )}
                         </div>
                     </div>
-                    <div className="flex flex-col items-center justify-center space-y-4">
-                        <div className="space-y-2 text-center w-1/2">
-                            <label className="block text-sm font-medium text-gray-700">
+                    <div className="flex justify-center">
+                        <div className="space-y-2 w-full max-w-sm">
+                            <label className="block text-sm font-medium text-gray-700 mb-1 text-center">
                                 Attachment (Optional)
                             </label>
-                            <div className="mb-2">
-                                {tempFile ? (
+
+                            {tempFile && (
+                                <div className="flex justify-center">
                                     <div
-                                        className="text-sm text-orange-600 truncate max-w-full"
+                                        className="text-sm text-orange-600 mb-2 truncate max-w-[220px] text-center"
                                         title={tempFile.name}
                                     >
                                         Selected: {tempFile.name}
                                     </div>
-                                ) : (
-                                    <FileDisplay file={formData.attachment} />
-                                )}
+                                </div>
+                            )}
+
+                            {!tempFile && formData.attachment && (
+                                <div className="flex items-center justify-center space-x-2 mb-2">
+                                    <span
+                                        className="text-sm text-blue-600 cursor-pointer truncate max-w-[220px]"
+                                        title={formData.attachment.name || formData.attachment.original_filename}
+                                        onClick={() => {
+                                            if (formData.attachment.url || formData.attachment.path) {
+                                                const fileUrl = formData.attachment.url && formData.attachment.url.startsWith("http") 
+                                                    ? formData.attachment.url 
+                                                    : `/storage/${formData.attachment.url || formData.attachment.path}`.replace("/storage/storage/", "/storage/");
+                                                window.open(fileUrl, "_blank");
+                                            }
+                                        }}
+                                    >
+                                        {formData.attachment.name || formData.attachment.original_filename}
+                                    </span>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end">
+                                <input
+                                    type="file"
+                                    onChange={handleFileChange}
+                                    className="text-sm text-gray-500
+                                        file:mr-4 file:py-2 file:px-4
+                                        file:rounded-full file:border-0
+                                        file:text-sm file:font-semibold
+                                        file:bg-[#009FDC] file:text-white
+                                        hover:file:bg-[#007BB5]"
+                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                />
                             </div>
-                            <input
-                                type="file"
-                                onChange={handleFileChange}
-                                className="w-full text-sm text-gray-500
-                                    file:mr-4 file:py-2 file:px-4
-                                    file:rounded-full file:border-0
-                                    file:text-sm file:font-semibold
-                                    file:bg-[#009FDC] file:text-white
-                                    hover:file:bg-[#007BB5]"
-                                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                            />
                         </div>
                     </div>
 

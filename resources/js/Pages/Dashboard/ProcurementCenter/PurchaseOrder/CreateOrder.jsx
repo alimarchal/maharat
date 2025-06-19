@@ -252,7 +252,7 @@ export default function CreatePurchaseOrder() {
                             <th className="py-3 px-4">Supplier Name</th>
                             <th className="py-3 px-4">Total Amount</th>
                             <th className="py-3 px-4">Date</th>
-                            <th className="py-3 px-4">Attachment</th>
+                            <th className="py-3 px-4 text-center">Attachment</th>
                             <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                                 Action
                             </th>
@@ -303,11 +303,35 @@ export default function CreatePurchaseOrder() {
                                         {formatDate(quotation.created_at)}
                                     </td>
                                     <td className="px-3 py-4">
-                                        <div className="flex flex-col items-center justify-center w-full">
+                                        <div className="flex justify-center">
                                             {quotation.documents && quotation.documents[0] ? (
-                                                <FileDisplay file={quotation.documents[0]} />
+                                                <button
+                                                    className="w-8 h-8"
+                                                    onClick={() => {
+                                                        const filePath = quotation.documents[0].file_path;
+                                                        if (filePath) {
+                                                            const fixedPath = filePath.startsWith("http") 
+                                                                ? filePath 
+                                                                : filePath.startsWith("/storage/") 
+                                                                    ? filePath 
+                                                                    : filePath.startsWith("quotations/") 
+                                                                        ? `/storage/${filePath}` 
+                                                                        : filePath;
+                                                            window.open(fixedPath, "_blank");
+                                                        }
+                                                    }}
+                                                    title="View Document"
+                                                >
+                                                    <img
+                                                        src="/images/pdf-file.png"
+                                                        alt="PDF"
+                                                        className="w-full h-full"
+                                                    />
+                                                </button>
                                             ) : (
-                                                <span className="text-gray-500">No document attached</span>
+                                                <span className="text-gray-500">
+                                                    No document attached
+                                                </span>
                                             )}
                                         </div>
                                     </td>

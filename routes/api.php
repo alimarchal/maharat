@@ -273,6 +273,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::apiResource('budgets', BudgetController::class);
     Route::post('budgets/{id}/restore', [BudgetController::class, 'restore']);
+    Route::get('budgets/combination', [BudgetController::class, 'getForCombination']);
 
     // Customers routes
     Route::apiResource('customers', CustomerController::class);

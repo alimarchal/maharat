@@ -69,9 +69,10 @@ class StatusSeeder extends Seeder
 
             // RFQ Status
             ['type' => 'Payment', 'name' => 'Cash'],
-            ['type' => 'Payment', 'name' => 'Card'],
-            ['type' => 'Payment', 'name' => 'Cheque'],
-            ['type' => 'Payment', 'name' => 'Bank Transfer'],
+            ['type' => 'Payment', 'name' => 'Credit upto 30 days'],
+            ['type' => 'Payment', 'name' => 'Credit up to 60 days'],
+            ['type' => 'Payment', 'name' => 'Credit upto 90 days'],
+            ['type' => 'Payment', 'name' => 'Credit upto 120 days'],
             ['type' => 'RFQ Status', 'name' => 'Active'],
             ['type' => 'RFQ Status', 'name' => 'Pending'],
             ['type' => 'RFQ Status', 'name' => 'Rejected'],
