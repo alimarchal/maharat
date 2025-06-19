@@ -7,11 +7,14 @@ use App\Http\Requests\V1\MahratInvoiceApprovalTransaction\StoreMahratInvoiceAppr
 use App\Http\Requests\V1\MahratInvoiceApprovalTransaction\UpdateMahratInvoiceApprovalTransactionRequest;
 use App\Http\Resources\V1\MahratInvoiceApprovalTransactionResource;
 use App\Models\MahratInvoiceApprovalTransaction;
+use App\Models\Invoice;
 use App\QueryParameters\MahratInvoiceApprovalTransactionParameters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Spatie\QueryBuilder\QueryBuilder;
 
 class MahratInvoiceApprovalTransactionController extends Controller
@@ -110,17 +113,167 @@ class MahratInvoiceApprovalTransactionController extends Controller
         try {
             DB::beginTransaction();
 
-            $data = $request->validated();
+            $validated = $request->validated();
+            Log::info('Updating Maharat Invoice approval transaction', [
+                'transaction_id' => $mahratInvoiceApprovalTransaction->id,
+                'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                'new_status' => $validated['status'],
+                'order' => $mahratInvoiceApprovalTransaction->order,
+                'validated_data' => $validated
+            ]);
 
-            // Automatically add current user as updater
-            $data['updated_by'] = auth()->id();
+            // Set the current user as updater
+            $validated['updated_by'] = Auth::id();
 
-            $mahratInvoiceApprovalTransaction->update($data);
+            $mahratInvoiceApprovalTransaction->update($validated);
+
+            // If the status is 'Approve', check if this is the final approval
+            if ($validated['status'] === 'Approve') {
+                Log::info('Approval detected, checking if final approval', [
+                    'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                    'current_status' => DB::table('invoices')->where('id', $mahratInvoiceApprovalTransaction->invoice_id)->value('status'),
+                    'approval_order' => $mahratInvoiceApprovalTransaction->order
+                ]);
+
+                // Get total number of required approvals for this invoice
+                $totalApprovals = DB::table('mahrat_invoice_approval_transactions')
+                    ->where('invoice_id', $mahratInvoiceApprovalTransaction->invoice_id)
+                    ->count();
+
+                // Count how many approvals have been completed
+                $completedApprovals = DB::table('mahrat_invoice_approval_transactions')
+                    ->where('invoice_id', $mahratInvoiceApprovalTransaction->invoice_id)
+                    ->where('status', 'Approve')
+                    ->count();
+
+                // Check if this is the final approval (all transactions are approved)
+                $isFinalApproval = $completedApprovals === $totalApprovals;
+
+                Log::info('Approval status check', [
+                    'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                    'current_order' => $mahratInvoiceApprovalTransaction->order,
+                    'total_approvals' => $totalApprovals,
+                    'completed_approvals' => $completedApprovals,
+                    'is_final_approval' => $isFinalApproval
+                ]);
+
+                // Only update invoice status if this is the final approval
+                if ($isFinalApproval) {
+                    Log::info('Final approval detected, updating Invoice status to Pending', [
+                        'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                        'approval_order' => $mahratInvoiceApprovalTransaction->order,
+                        'total_approvals' => $totalApprovals,
+                        'completed_approvals' => $completedApprovals
+                    ]);
+
+                    try {
+                        // Create a new request to update the Invoice status
+                        $statusUpdateRequest = new \Illuminate\Http\Request();
+                        $statusUpdateRequest->merge(['status' => 'Pending']);
+
+                        Log::info('Created status update request', [
+                            'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                            'request_data' => $statusUpdateRequest->all()
+                        ]);
+
+                        // Use the Invoice controller to update the status
+                        $invoiceController = new \App\Http\Controllers\Api\V1\InvoiceController();
+                        
+                        Log::info('Calling Invoice status update endpoint', [
+                            'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                            'controller' => get_class($invoiceController)
+                        ]);
+
+                        $response = $invoiceController->updateStatus($statusUpdateRequest, $mahratInvoiceApprovalTransaction->invoice_id);
+
+                        Log::info('Invoice status update response received', [
+                            'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                            'response_status' => $response->status(),
+                            'response_content' => $response->getContent()
+                        ]);
+
+                        // Verify the status was actually updated
+                        $updatedInvoice = Invoice::find($mahratInvoiceApprovalTransaction->invoice_id);
+                        Log::info('Invoice status after update', [
+                            'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                            'current_status' => $updatedInvoice->status,
+                            'expected_status' => 'Pending'
+                        ]);
+
+                    } catch (\Exception $e) {
+                        Log::error('Failed to update Invoice status', [
+                            'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                    }
+                } else {
+                    Log::info('Not final approval yet', [
+                        'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                        'current_order' => $mahratInvoiceApprovalTransaction->order,
+                        'total_approvals' => $totalApprovals,
+                        'completed_approvals' => $completedApprovals
+                    ]);
+                }
+            } elseif ($validated['status'] === 'Reject') {
+                // If rejected, immediately update invoice status to Cancelled
+                Log::info('Rejection detected, updating Invoice status to Cancelled', [
+                    'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                    'approval_order' => $mahratInvoiceApprovalTransaction->order
+                ]);
+
+                try {
+                    // Create a new request to update the Invoice status
+                    $statusUpdateRequest = new \Illuminate\Http\Request();
+                    $statusUpdateRequest->merge(['status' => 'Cancelled']);
+
+                    Log::info('Created rejection status update request', [
+                        'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                        'request_data' => $statusUpdateRequest->all()
+                    ]);
+
+                    // Use the Invoice controller to update the status
+                    $invoiceController = new \App\Http\Controllers\Api\V1\InvoiceController();
+                    
+                    Log::info('Calling Invoice status update endpoint for rejection', [
+                        'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                        'controller' => get_class($invoiceController)
+                    ]);
+
+                    $response = $invoiceController->updateStatus($statusUpdateRequest, $mahratInvoiceApprovalTransaction->invoice_id);
+
+                    Log::info('Invoice rejection status update response received', [
+                        'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                        'response_status' => $response->status(),
+                        'response_content' => $response->getContent()
+                    ]);
+
+                    // Verify the status was actually updated
+                    $updatedInvoice = Invoice::find($mahratInvoiceApprovalTransaction->invoice_id);
+                    Log::info('Invoice status after rejection update', [
+                        'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                        'current_status' => $updatedInvoice->status,
+                        'expected_status' => 'Cancelled'
+                    ]);
+
+                } catch (\Exception $e) {
+                    Log::error('Failed to update Invoice status for rejection', [
+                        'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                }
+            } else {
+                Log::info('Not an approval or rejection status', [
+                    'status' => $validated['status'],
+                    'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id
+                ]);
+            }
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Mahrat invoice approval transaction updated successfully',
+                'message' => 'Maharat invoice approval transaction updated successfully',
                 'data' => new MahratInvoiceApprovalTransactionResource(
                     $mahratInvoiceApprovalTransaction->load([
                         'invoice',
@@ -134,8 +287,12 @@ class MahratInvoiceApprovalTransactionController extends Controller
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to update Maharat invoice approval transaction', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
-                'message' => 'Failed to update mahrat invoice approval transaction',
+                'message' => 'Failed to update Maharat invoice approval transaction',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }

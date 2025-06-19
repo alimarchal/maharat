@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
 use Spatie\QueryBuilder\AllowedFilter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class InvoiceController extends Controller
 {
@@ -383,6 +384,74 @@ class InvoiceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to upload document',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update the status of an invoice
+     */
+    public function updateStatus(Request $request, $id)
+    {
+        try {
+            Log::info('Invoice status update endpoint called', [
+                'invoice_id' => $id,
+                'request_data' => $request->all(),
+                'auth_user' => auth()->id()
+            ]);
+
+            $invoice = Invoice::findOrFail($id);
+            
+            Log::info('Found Invoice for status update', [
+                'invoice_id' => $id,
+                'current_status' => $invoice->status,
+                'new_status' => $request->input('status')
+            ]);
+            
+            // Update status
+            $invoice->status = $request->input('status');
+            
+            Log::info('About to save Invoice with new status', [
+                'invoice_id' => $id,
+                'new_status' => $invoice->status,
+                'is_dirty' => $invoice->isDirty(),
+                'changes' => $invoice->getDirty()
+            ]);
+
+            $updated = $invoice->save();
+            
+            Log::info('Invoice status update save result', [
+                'invoice_id' => $id,
+                'update_success' => $updated,
+                'final_status' => $invoice->status,
+                'is_dirty' => $invoice->isDirty(),
+                'changes' => $invoice->getDirty()
+            ]);
+
+            // Verify the update
+            $refreshedInvoice = Invoice::find($id);
+            Log::info('Final Invoice status verification', [
+                'invoice_id' => $id,
+                'status' => $refreshedInvoice->status,
+                'expected_status' => $request->input('status')
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Invoice status updated successfully',
+                'data' => new InvoiceResource($invoice)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to update Invoice status', [
+                'invoice_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update Invoice status',
                 'error' => $e->getMessage()
             ], 500);
         }

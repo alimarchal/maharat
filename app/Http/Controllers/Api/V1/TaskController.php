@@ -225,6 +225,162 @@ class TaskController extends Controller
                 }
             }
 
+            // Check if this is a Maharat Invoice task and if it's being approved
+            if ($task->invoice_id && $request->input('status') === 'Approved') {
+                Log::info('=== MAHARAT INVOICE TASK APPROVAL CHECK ===', [
+                    'task_id' => $task->id,
+                    'invoice_id' => $task->invoice_id,
+                    'current_order_no' => $task->order_no,
+                    'current_status' => DB::table('invoices')->where('id', $task->invoice_id)->value('status')
+                ]);
+
+                // Update the corresponding approval transaction
+                $approvalTransaction = DB::table('mahrat_invoice_approval_transactions')
+                    ->where('invoice_id', $task->invoice_id)
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->first();
+
+                if ($approvalTransaction) {
+                    Log::info('=== UPDATING MAHARAT INVOICE APPROVAL TRANSACTION ===', [
+                        'task_id' => $task->id,
+                        'invoice_id' => $task->invoice_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+
+                    // Update the approval transaction status
+                    $transactionUpdated = DB::table('mahrat_invoice_approval_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => 'Approve',
+                            'updated_by' => auth()->id(),
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== APPROVAL TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'invoice_id' => $task->invoice_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_success' => $transactionUpdated
+                    ]);
+
+                    if ($transactionUpdated) {
+                        // Now check if this is the final approval
+                        $totalApprovals = DB::table('mahrat_invoice_approval_transactions')
+                            ->where('invoice_id', $task->invoice_id)
+                            ->count();
+
+                        $completedApprovals = DB::table('mahrat_invoice_approval_transactions')
+                            ->where('invoice_id', $task->invoice_id)
+                            ->where('status', 'Approve')
+                            ->count();
+
+                        $isFinalApproval = $completedApprovals === $totalApprovals;
+
+                        Log::info('=== MAHARAT INVOICE FINAL APPROVAL CHECK ===', [
+                            'task_id' => $task->id,
+                            'invoice_id' => $task->invoice_id,
+                            'total_approvals' => $totalApprovals,
+                            'completed_approvals' => $completedApprovals,
+                            'is_final_approval' => $isFinalApproval
+                        ]);
+
+                        if ($isFinalApproval) {
+                            Log::info('=== FINAL MAHARAT INVOICE APPROVAL - UPDATING INVOICE STATUS ===', [
+                                'task_id' => $task->id,
+                                'invoice_id' => $task->invoice_id,
+                                'current_status' => DB::table('invoices')->where('id', $task->invoice_id)->value('status'),
+                                'target_status' => 'Pending'
+                            ]);
+
+                            // Update the invoice status to Pending
+                            $invoiceUpdated = DB::table('invoices')
+                                ->where('id', $task->invoice_id)
+                                ->update([
+                                    'status' => 'Pending',
+                                    'updated_at' => now()
+                                ]);
+
+                            Log::info('=== INVOICE STATUS UPDATE RESULT ===', [
+                                'task_id' => $task->id,
+                                'invoice_id' => $task->invoice_id,
+                                'update_success' => $invoiceUpdated,
+                                'new_status' => DB::table('invoices')->where('id', $task->invoice_id)->value('status')
+                            ]);
+                        } else {
+                            Log::info('=== NOT FINAL MAHARAT INVOICE APPROVAL - KEEPING DRAFT STATUS ===', [
+                                'task_id' => $task->id,
+                                'invoice_id' => $task->invoice_id,
+                                'total_approvals' => $totalApprovals,
+                                'completed_approvals' => $completedApprovals
+                            ]);
+                        }
+                    }
+                } else {
+                    Log::warning('=== NO APPROVAL TRANSACTION FOUND FOR INVOICE ===', [
+                        'task_id' => $task->id,
+                        'invoice_id' => $task->invoice_id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+                }
+            }
+
+            // Check if this is a Maharat Invoice task and if it's being rejected
+            if ($task->invoice_id && $request->input('status') === 'Rejected') {
+                Log::info('=== MAHARAT INVOICE TASK REJECTION CHECK ===', [
+                    'task_id' => $task->id,
+                    'invoice_id' => $task->invoice_id,
+                    'current_status' => DB::table('invoices')->where('id', $task->invoice_id)->value('status')
+                ]);
+
+                // Update the corresponding approval transaction
+                $approvalTransaction = DB::table('mahrat_invoice_approval_transactions')
+                    ->where('invoice_id', $task->invoice_id)
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->first();
+
+                if ($approvalTransaction) {
+                    Log::info('=== UPDATING MAHARAT INVOICE APPROVAL TRANSACTION FOR REJECTION ===', [
+                        'task_id' => $task->id,
+                        'invoice_id' => $task->invoice_id,
+                        'approval_transaction_id' => $approvalTransaction->id
+                    ]);
+
+                    // Update the approval transaction status
+                    $transactionUpdated = DB::table('mahrat_invoice_approval_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => 'Reject',
+                            'updated_by' => auth()->id(),
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== REJECTION TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'invoice_id' => $task->invoice_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_success' => $transactionUpdated
+                    ]);
+
+                    if ($transactionUpdated) {
+                        // Immediately update invoice status to Cancelled
+                        $invoiceUpdated = DB::table('invoices')
+                            ->where('id', $task->invoice_id)
+                            ->update([
+                                'status' => 'Cancelled',
+                                'updated_at' => now()
+                            ]);
+
+                        Log::info('=== INVOICE REJECTION STATUS UPDATE RESULT ===', [
+                            'task_id' => $task->id,
+                            'invoice_id' => $task->invoice_id,
+                            'update_success' => $invoiceUpdated,
+                            'new_status' => DB::table('invoices')->where('id', $task->invoice_id)->value('status')
+                        ]);
+                    }
+                }
+            }
+
             DB::commit();
 
             $rfqLogger->info('=== TASK UPDATE COMPLETED ===', [

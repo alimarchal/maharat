@@ -283,6 +283,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('invoices', InvoiceController::class);
     Route::post('/invoices/{id}/upload-document', [InvoiceController::class, 'uploadDocument']);
     Route::post('invoices/{id}/restore', [InvoiceController::class, 'restore']);
+    Route::put('/invoices/{id}/status', [InvoiceController::class, 'updateStatus']);
 
     Route::get('/invoices/payment-methods', [InvoiceController::class, 'getPaymentMethods']);
 
