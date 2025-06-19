@@ -7,9 +7,12 @@ import InputFloating from "../../../../Components/InputFloating";
 import { router, usePage } from "@inertiajs/react";
 
 const BudgetRequestForm = () => {
-    const user_id = usePage().props.auth.user.id;
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { budgetRequestId, auth } = usePage().props;
+    const user_id = auth.user.id;
+    const isEditing = !!budgetRequestId;
 
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         fiscal_period_id: "",
         department_id: "",
@@ -24,15 +27,17 @@ const BudgetRequestForm = () => {
     const [errors, setErrors] = useState({});
     const [departments, setDepartments] = useState([]);
     const [costCenters, setCostCenters] = useState([]);
-    const [subCostCenters, setSubCostCenters] = useState([]);
     const [fiscalYears, setFiscalYears] = useState([]);
     const [filteredSubCostCenters, setFilteredSubCostCenters] = useState([]);
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        fetchInitialData();
+        if (isEditing) {
+            fetchBudgetRequest();
+        }
+    }, [budgetRequestId]);
 
-    const fetchData = async () => {
+    const fetchInitialData = async () => {
         try {
             const [deptRes, costRes, yearRes] = await Promise.all([
                 axios.get("/api/v1/departments"),
@@ -41,15 +46,67 @@ const BudgetRequestForm = () => {
             ]);
             setDepartments(deptRes.data.data);
             setCostCenters(costRes.data.data);
-            setSubCostCenters(costRes.data.data);
             setFiscalYears(yearRes.data.data);
         } catch (error) {
-            console.error("Error fetching data", error);
+            console.error("Error fetching initial data", error);
             setErrors((prev) => ({
                 ...prev,
                 fetchError:
                     "Failed to load necessary data. Please refresh and try again.",
             }));
+        }
+    };
+
+    const fetchBudgetRequest = async () => {
+        setLoading(true);
+        try {
+            const response = await axios.get(
+                `/api/v1/request-budgets/${budgetRequestId}?include=fiscalPeriod,department,costCenter,subCostCenter`
+            );
+            const budgetRequest = response.data.data;
+
+            // First set the cost center to trigger sub cost center filtering
+            if (budgetRequest.cost_center_id) {
+                await filterSubCostCenters(budgetRequest.cost_center_id);
+            }
+
+            // Then set the form data after sub cost centers are filtered
+            setFormData({
+                fiscal_period_id: budgetRequest.fiscal_period_id || "",
+                department_id: budgetRequest.department_id || "",
+                cost_center_id: budgetRequest.cost_center_id || "",
+                sub_cost_center: budgetRequest.sub_cost_center || "",
+                previous_year_budget_amount:
+                    budgetRequest.previous_year_budget_amount || "",
+                requested_amount: budgetRequest.requested_amount || "",
+                urgency: budgetRequest.urgency || "",
+                attachment: null,
+                reason_for_increase: budgetRequest.reason_for_increase || "",
+            });
+        } catch (error) {
+            console.error("Error fetching budget request", error);
+            setErrors((prev) => ({
+                ...prev,
+                fetchError: "Failed to load budget request data.",
+            }));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filterSubCostCenters = async (costCenterId) => {
+        if (!costCenterId) {
+            setFilteredSubCostCenters([]);
+            return;
+        }
+
+        try {
+            const filtered = costCenters.filter(
+                (cost) => cost.parent_id === parseInt(costCenterId)
+            );
+            setFilteredSubCostCenters(filtered);
+        } catch (error) {
+            console.error("Error filtering sub cost centers", error);
         }
     };
 
@@ -60,7 +117,7 @@ const BudgetRequestForm = () => {
             [name]: value,
             ...(name === "cost_center_id" ? { sub_cost_center: "" } : {}),
         }));
-        // Clear the specific error when field is changed
+
         setErrors((prev) => ({ ...prev, [name]: undefined }));
 
         if (name === "cost_center_id") {
@@ -68,152 +125,158 @@ const BudgetRequestForm = () => {
         }
     };
 
-    const filterSubCostCenters = (costCenterId) => {
-        if (!costCenterId) {
-            setFilteredSubCostCenters([]);
-            return;
-        }
-        const filtered = subCostCenters.filter(
-            (cost) => cost.parent_id === parseInt(costCenterId)
-        );
-        setFilteredSubCostCenters(filtered);
-    };
-
     const handleFileChange = (e) => {
         setFormData((prev) => ({ ...prev, attachment: e.target.files[0] }));
-        // Clear attachment error if it exists
         setErrors((prev) => ({ ...prev, attachment: undefined }));
     };
 
     const validateForm = () => {
-        let newErrors = {};
+        const requiredFields = {
+            fiscal_period_id: "Year is required",
+            department_id: "Department is required",
+            cost_center_id: "Cost Center is required",
+            sub_cost_center: "Sub Cost Center is required",
+            previous_year_budget_amount: "Previous Budget is required",
+            requested_amount: "Requested Amount is required",
+            urgency: "Urgency is required",
+            reason_for_increase: "Reason is required",
+        };
 
-        // Validate required fields
-        if (!formData.fiscal_period_id)
-            newErrors.fiscal_period_id = "Year is required";
-        if (!formData.department_id)
-            newErrors.department_id = "Department is required";
-        if (!formData.cost_center_id)
-            newErrors.cost_center_id = "Cost Center is required";
-        if (!formData.sub_cost_center)
-            newErrors.sub_cost_center = "Sub Cost Center is required";
-        if (!formData.previous_year_budget_amount)
-            newErrors.previous_year_budget_amount =
-                "Previous Budget is required";
-        if (!formData.requested_amount)
-            newErrors.requested_amount = "Requested Amount is required";
-        if (!formData.urgency) newErrors.urgency = "Urgency is required";
-        if (!formData.reason_for_increase)
-            newErrors.reason_for_increase = "Reason is required";
+        const newErrors = {};
+        Object.entries(requiredFields).forEach(([field, message]) => {
+            if (!formData[field]) {
+                newErrors[field] = message;
+            }
+        });
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsSubmitting(true);
+    const createNewBudgetRequest = async () => {
+        const processResponse = await axios.get(
+            "/api/v1/processes?include=steps,creator,updater&filter[title]=Budget Request Approval"
+        );
+        const process = processResponse.data?.data?.[0];
+        const processSteps = process?.steps || [];
 
-        if (!validateForm()) {
+        // Check if process and steps exist
+        if (!process || processSteps.length === 0) {
+            setErrors({
+                submit: "No Process or steps found for Budget Request Approval",
+            });
+            setIsSubmitting(false);
+            return;
+        }
+        const processStep = processSteps[0];
+
+        const processResponseViaUser = await axios.get(
+            `/api/v1/process-steps/${processStep.id}/user/${user_id}`
+        );
+        const assignUser = processResponseViaUser?.data?.data;
+        if (!assignUser) {
+            setErrors({
+                submit: "No assignee found for this process step and user",
+            });
             setIsSubmitting(false);
             return;
         }
 
+        // Create budget request
+        const response = await axios.post("/api/v1/request-budgets", formData);
+        const budgetRequestId = response.data.data?.id;
+        if (!budgetRequestId) {
+            setErrors({
+                submit: "Failed to create budget request. No ID was returned.",
+            });
+            setIsSubmitting(false);
+            return;
+        }
+
+        // Create budget request transaction
+        const transactionPayload = {
+            request_budgets_id: budgetRequestId,
+            requester_id: user_id,
+            assigned_to: assignUser.approver_id,
+            order: processStep.order,
+            description: processStep.description,
+            status: "Pending",
+        };
+
+        await axios.post(
+            "/api/v1/budget-request-approval-trans",
+            transactionPayload
+        );
+
+        // Create task
+        const taskPayload = {
+            process_step_id: processStep.id,
+            process_id: processStep.process_id,
+            assigned_at: new Date().toISOString(),
+            urgency: "Normal",
+            assigned_to_user_id: assignUser.approver_id,
+            assigned_from_user_id: user_id,
+            request_budgets_id: budgetRequestId,
+        };
+
+        await axios.post("/api/v1/tasks", taskPayload);
+    };
+
+    const updateBudgetRequest = async () => {
+        await axios.put(`/api/v1/request-budgets/${budgetRequestId}`, formData);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        if (!validateForm()) return;
+
+        setIsSubmitting(true);
+
         try {
-            const processResponse = await axios.get(
-                "/api/v1/processes?include=steps,creator,updater&filter[title]=Budget Request Approval"
-            );
-            const process = processResponse.data?.data?.[0];
-            const processSteps = process?.steps || [];
-
-            // Check if process and steps exist
-            if (!process || processSteps.length === 0) {
-                setErrors({
-                    submit: "No Process or steps found for Budget Request Approval",
-                });
-                setIsSubmitting(false);
-                return;
+            if (isEditing) {
+                await updateBudgetRequest();
+            } else {
+                await createNewBudgetRequest();
             }
-            const processStep = processSteps[0];
-
-            const processResponseViaUser = await axios.get(
-                `/api/v1/process-steps/${processStep.id}/user/${user_id}`
-            );
-            const assignUser = processResponseViaUser?.data?.data;
-            if (!assignUser) {
-                setErrors({
-                    submit: "No assignee found for this process step and user",
-                });
-                setIsSubmitting(false);
-                return;
-            }
-
-            // Create budget request
-            const response = await axios.post(
-                "/api/v1/request-budgets",
-                formData
-            );
-
-            const budgetRequestId = response.data.data?.id;
-            if (!budgetRequestId) {
-                setErrors({
-                    submit: "Failed to create budget request. No ID was returned.",
-                });
-                setIsSubmitting(false);
-                return;
-            }
-
-            // Create budget request transaction
-            const RequestBudgetTransactionPayload = {
-                request_budgets_id: budgetRequestId,
-                requester_id: user_id,
-                assigned_to: assignUser.approver_id,
-                order: processStep.order,
-                description: processStep.description,
-                status: "Pending",
-            };
-
-            await axios.post(
-                "/api/v1/budget-request-approval-trans",
-                RequestBudgetTransactionPayload
-            );
-
-            // create task
-            const taskPayload = {
-                process_step_id: processStep.id,
-                process_id: processStep.process_id,
-                assigned_at: new Date().toISOString(),
-                urgency: "Normal",
-                assigned_to_user_id: assignUser.approver_id,
-                assigned_from_user_id: user_id,
-                request_budgets_id: budgetRequestId,
-            };
-
-            await axios.post("/api/v1/tasks", taskPayload);
             router.visit("/request-budgets");
         } catch (error) {
-            console.error("Error saving Request a budget:", error);
-            setIsSubmitting(false);
+            console.error("Error saving budget request:", error);
+            setErrors((prev) => ({
+                ...prev,
+                submit:
+                    error.message ||
+                    "An error occurred while saving the budget request.",
+            }));
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // Helper to render error message consistently
     const ErrorMessage = ({ error }) => {
         if (!error) return null;
         return <p className="text-red-500 text-sm mt-1">{error}</p>;
     };
+
+    if (loading) {
+        return (
+            <div className="w-full flex justify-center items-center py-12">
+                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full">
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-3xl font-bold text-[#2C323C]">
-                        Budget Request
+                        {isEditing ? "Edit Budget Request" : "Budget Request"}
                     </h2>
                     <p className="text-[#7D8086] text-lg">
-                        Request by department head for the budget
+                        {isEditing
+                            ? "Update your budget request details"
+                            : "Request by department head for the budget"}
                     </p>
                 </div>
                 <div className="w-full lg:w-1/4">
@@ -233,17 +296,9 @@ const BudgetRequestForm = () => {
                 </div>
             </div>
 
-            {/* Show any fetch errors at the top */}
-            {errors.fetchError && (
+            {(errors.fetchError || errors.submit) && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4 mb-2">
-                    <p>{errors.fetchError}</p>
-                </div>
-            )}
-
-            {/* Show any submission errors */}
-            {errors.submit && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4 mb-2">
-                    <p>{errors.submit}</p>
+                    <p>{errors.fetchError || errors.submit}</p>
                 </div>
             )}
 
@@ -303,6 +358,7 @@ const BudgetRequestForm = () => {
                         <ErrorMessage error={errors.sub_cost_center} />
                     </div>
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <InputFloating
@@ -353,7 +409,11 @@ const BudgetRequestForm = () => {
                                     {formData.attachment.name}
                                 </span>
                             ) : (
-                                <span className="text-sm">Attachment</span>
+                                <span className="text-sm">
+                                    {isEditing
+                                        ? "Update Attachment"
+                                        : "Attachment"}
+                                </span>
                             )}
                             <input
                                 type="file"
@@ -365,6 +425,7 @@ const BudgetRequestForm = () => {
                         </label>
                     </div>
                 </div>
+
                 <div className="w-full">
                     <div className="relative w-full">
                         <textarea
@@ -387,6 +448,7 @@ const BudgetRequestForm = () => {
                     </div>
                     <ErrorMessage error={errors.reason_for_increase} />
                 </div>
+
                 <div className="flex justify-end">
                     <button
                         type="submit"
@@ -397,7 +459,13 @@ const BudgetRequestForm = () => {
                         }`}
                         disabled={isSubmitting}
                     >
-                        {isSubmitting ? "Saving..." : "Save"}
+                        {isSubmitting
+                            ? isEditing
+                                ? "Updating..."
+                                : "Saving..."
+                            : isEditing
+                            ? "Update"
+                            : "Save"}
                     </button>
                 </div>
             </form>

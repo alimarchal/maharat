@@ -279,6 +279,12 @@ export default function AddQuotationForm() {
                     };
 
                     setFormData(formattedData);
+
+                    // Fetch sub cost centers if cost center is selected
+                    if (formattedData.cost_center_id) {
+                        await updateSubCostCenter(formattedData.cost_center_id);
+                    }
+
                     setLoading(false);
                 } else {
                     // In create mode, get new RFQ number
