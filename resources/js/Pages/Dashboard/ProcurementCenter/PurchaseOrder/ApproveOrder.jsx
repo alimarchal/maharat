@@ -218,12 +218,12 @@ const ApproveOrder = ({
 
             // Check budget availability
             const budgetResponse = await axios.get(
-                `/api/v1/request-budgets?filter[sub_cost_center]=${quotationDetails?.rfq?.sub_cost_center_id}&include=fiscalPeriod,department,costCenter,subCostCenter`
+                `/api/v1/budgets?filter[sub_cost_center_id]=${quotationDetails?.rfq?.sub_cost_center_id}&filter[cost_center_id]=${quotationDetails?.rfq?.cost_center_id}&include=fiscalPeriod,department,costCenter,subCostCenter`
             );
-            const requestDetails = budgetResponse.data?.data?.[0];
-            if (!requestDetails) {
+            const budgetDetails = budgetResponse.data?.data?.[0];
+            if (!budgetDetails) {
                 setErrors({
-                    submit: "No budget request found for this Sub cost center.",
+                    submit: "No budget found for this cost center and sub cost center combination.",
                 });
                 setIsSaving(false);
                 return;
@@ -231,22 +231,22 @@ const ApproveOrder = ({
 
             // Extract year from fiscal_year field
             const currentYear = new Date().getFullYear();
-            const requestFiscalYear =
-                requestDetails?.fiscal_period?.fiscal_year?.slice(0, 4);
-            if (requestFiscalYear != currentYear) {
+            const budgetFiscalYear =
+                budgetDetails?.fiscal_period?.fiscal_year?.slice(0, 4);
+            if (budgetFiscalYear != currentYear) {
                 setErrors({
-                    submit: "No budget request found for current fiscal year",
+                    submit: "No budget found for current fiscal year",
                 });
                 setIsSaving(false);
                 return;
             }
 
-            // Check if the form amount exceeds the available amount
-            const availableAmount = Number(requestDetails.balance_amount);
+            // Check if the form amount exceeds the available budget amount
+            const availableBudgetAmount = Number(budgetDetails.total_expense_planned);
             const enteredAmount = Number(formData.amount);
-            if (enteredAmount > availableAmount) {
+            if (enteredAmount < availableBudgetAmount) {
                 setErrors({
-                    submit: "Insufficient Amount in this sub cost center for this Purchase Order.",
+                    submit: "Purchase order amount exceeds the allocated budget for this cost center.",
                 });
                 setIsSaving(false);
                 return;
@@ -256,7 +256,7 @@ const ApproveOrder = ({
             const formDataToSend = new FormData();
             const dataToSubmit = {
                 ...formData,
-                budget_request_id: requestDetails?.id,
+                budget_request_id: budgetDetails?.id,
             };
 
             // Ensure we have a purchase order number
@@ -299,11 +299,11 @@ const ApproveOrder = ({
                 const updatedBudgetData = {
                     reserved_amount: formData.amount,
                     balance_amount:
-                        requestDetails.requested_amount - formData.amount,
+                        budgetDetails.total_expense_planned - formData.amount,
                 };
 
                 await axios.put(
-                    `/api/v1/request-budgets/${requestDetails?.id}`,
+                    `/api/v1/budgets/${budgetDetails?.id}`,
                     updatedBudgetData
                 );
 
