@@ -873,9 +873,11 @@ export default function CreateMaharatInvoice() {
                         {headerCompanyDetails.cr_no}
                     </p>
                 </div>
-                <div className="flex justify-end items-center">
-                    <QRCodeCanvas value={qrCodeText} size={120} />
-                </div>
+                {invoiceId && (
+                    <div className="flex justify-end items-center">
+                        <QRCodeCanvas value={qrCodeText} size={120} />
+                    </div>
+                )}
             </header>
 
             <section className="mt-6">
@@ -889,7 +891,7 @@ export default function CreateMaharatInvoice() {
                             <p className="w-full">{invoiceNumber}</p>
                         </div>
                         <div className="flex justify-start items-center gap-8">
-                            <strong className="w-26">Invoice Date:</strong>
+                            <strong className="w-32">Invoice Date:</strong>
                             <div className="w-full">
                                 <input
                                     type="date"
@@ -944,8 +946,8 @@ export default function CreateMaharatInvoice() {
                         </div>
                     </div>
                     <div className="w-full bg-gray-100 p-4 rounded-2xl">
-                        <div className="flex justify-start items-start gap-8">
-                            <strong className="w-32">Client:</strong>
+                        <div className="flex justify-start items-center gap-8">
+                            <strong className="w-32">Customer:</strong>
                             <div className="w-full">
                                 <select
                                     id="client_id"
@@ -954,7 +956,7 @@ export default function CreateMaharatInvoice() {
                                     onChange={handleClientChange}
                                     className="block w-full rounded-lg border border-gray-300"
                                 >
-                                    <option value="">Select Client</option>
+                                    <option value="">Select Customer</option>
                                     {clients.map((client) => (
                                         <option
                                             key={client.id}
@@ -967,7 +969,7 @@ export default function CreateMaharatInvoice() {
                             </div>
                         </div>
 
-                        <div className="flex justify-start items-start gap-4 my-4">
+                        <div className="flex justify-start items-center gap-4 my-4">
                             <strong className="w-36">Representative:</strong>
                             <div className="w-full">
                                 <select
@@ -1135,22 +1137,13 @@ export default function CreateMaharatInvoice() {
                                             }
                                             min="0"
                                             className="w-full rounded-lg border border-gray-300"
-                                            onBlur={(e) => {
-                                                const formatted = parseFloat(
-                                                    e.target.value
-                                                ).toLocaleString(undefined, {
-                                                    minimumFractionDigits: 2,
-                                                    maximumFractionDigits: 2,
-                                                });
-                                                e.target.value = formatted;
-                                            }}
                                         />
                                     </td>
                                     <td className="py-3 px-4 text-center">
                                         <input
                                             type="text"
                                             value={parseFloat(
-                                                item.subtotal
+                                                item.subtotal || 0
                                             ).toLocaleString(undefined, {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
@@ -1289,7 +1282,7 @@ export default function CreateMaharatInvoice() {
                             <div className="flex items-center gap-2">
                                 <p className="font-medium">
                                     {parseFloat(
-                                        formData.vat_amount
+                                        formData.vat_amount || 0
                                     ).toLocaleString(undefined, {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2,
