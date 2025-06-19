@@ -47,6 +47,7 @@ export default function AddQuotationForm() {
     const [companies, setCompanies] = useState([]);
     const [errors, setErrors] = useState({});
     const [isSaving, setIsSaving] = useState(false);
+    const [subCostCenters, setSubCostCenters] = useState([]);
 
     // Add state for modal
     const [isItemModalOpen, setIsItemModalOpen] = useState(false);
@@ -66,32 +67,37 @@ export default function AddQuotationForm() {
     };
 
     // Function to update sub cost center when cost center changes
-    const updateSubCostCenter = (selectedCostCenterId) => {
+    const updateSubCostCenter = async (selectedCostCenterId) => {
         if (!selectedCostCenterId) {
             handleFormInputChange("sub_cost_center_id", "");
+            setSubCostCenters([]);
             return;
         }
 
-        // Find the cost center that has this selected cost center as its parent
-        const subCostCenter = costCenters.find(
-            (center) => center.parent_id === parseInt(selectedCostCenterId)
-        );
+        try {
+            // Make API call to get sub cost centers for the selected cost center
+            const response = await axios.get(`/api/v1/cost-centers?filter[parent_id]=${selectedCostCenterId}`);
+            const subCostCentersData = response.data?.data || [];
+            setSubCostCenters(subCostCentersData);
 
-        if (subCostCenter) {
-            handleFormInputChange(
-                "sub_cost_center_id",
-                subCostCenter.id.toString()
-            );
-        } else {
+            // If there's only one sub cost center, auto-select it
+            if (subCostCentersData.length === 1) {
+                handleFormInputChange("sub_cost_center_id", subCostCentersData[0].id.toString());
+            } else {
+                handleFormInputChange("sub_cost_center_id", "");
+            }
+        } catch (error) {
+            console.error("Error fetching sub cost centers:", error);
+            setSubCostCenters([]);
             handleFormInputChange("sub_cost_center_id", "");
         }
     };
 
     // Handle cost center change
-    const handleCostCenterChange = (e) => {
+    const handleCostCenterChange = async (e) => {
         const value = e.target.value;
         handleFormInputChange("cost_center_id", value);
-        updateSubCostCenter(value);
+        await updateSubCostCenter(value);
     };
 
     // Add a useEffect to track formData changes
@@ -1128,8 +1134,9 @@ export default function AddQuotationForm() {
                                     e.target.value
                                 )
                             }
-                            className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                             required
+                            readOnly
                         />
 
                         <span className="font-medium text-gray-600">
@@ -1144,8 +1151,9 @@ export default function AddQuotationForm() {
                                     e.target.value
                                 )
                             }
-                            className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                             required
+                            readOnly
                         />
 
                         <span className="font-medium text-gray-600">City:</span>
@@ -1155,8 +1163,9 @@ export default function AddQuotationForm() {
                             onChange={(e) =>
                                 handleFormInputChange("city", e.target.value)
                             }
-                            className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                             required
+                            readOnly
                         />
 
                         <span className="font-medium text-gray-600">
@@ -1171,7 +1180,7 @@ export default function AddQuotationForm() {
                                         e.target.value
                                     )
                                 }
-                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                                className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                 required
                             >
                                 <option value="">Select Category</option>
@@ -1199,7 +1208,7 @@ export default function AddQuotationForm() {
                                         e.target.value
                                     )
                                 }
-                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                                className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                 required
                             >
                                 <option value="">Select Warehouse</option>
@@ -1222,7 +1231,7 @@ export default function AddQuotationForm() {
                             <select
                                 value={formData.cost_center_id || ""}
                                 onChange={handleCostCenterChange}
-                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                                className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                 required
                             >
                                 <option value="">Select Cost Center</option>
@@ -1253,7 +1262,7 @@ export default function AddQuotationForm() {
                                     e.target.value
                                 )
                             }
-                            className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                             required
                         />
 
@@ -1269,7 +1278,7 @@ export default function AddQuotationForm() {
                                     e.target.value
                                 )
                             }
-                            className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                             required
                         />
 
@@ -1282,7 +1291,7 @@ export default function AddQuotationForm() {
                             onChange={(e) =>
                                 handleFormInputChange("rfq_id", e.target.value)
                             }
-                            className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                             readOnly={!isEditing}
                             placeholder={
                                 isEditing ? "" : "Auto-generated by system"
@@ -1302,7 +1311,7 @@ export default function AddQuotationForm() {
                                         e.target.value
                                     )
                                 }
-                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                                className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                 required
                             >
                                 <option value="">Select Payment Type</option>
@@ -1330,25 +1339,40 @@ export default function AddQuotationForm() {
                                     e.target.value
                                 )
                             }
-                            className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                             required
+                            readOnly
                         />
 
-                        <span className="font-medium text-gray-600">
-                            Sub Cost Center:
-                        </span>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                value={
-                                    costCenterNames[
-                                        formData.sub_cost_center_id
-                                    ] || ""
-                                }
-                                className="w-1/2 bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                readOnly
-                            />
-                        </div>
+                        {subCostCenters.length > 0 && (
+                            <>
+                                <span className="font-medium text-gray-600">
+                                    Sub Cost Center:
+                                </span>
+                                <div className="relative">
+                                    <select
+                                        value={formData.sub_cost_center_id || ""}
+                                        onChange={(e) =>
+                                            handleFormInputChange(
+                                                "sub_cost_center_id",
+                                                e.target.value
+                                            )
+                                        }
+                                        className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                                    >
+                                        {subCostCenters.map((subCenter) => (
+                                            <option
+                                                key={subCenter.id}
+                                                value={subCenter.id.toString()}
+                                                className="text-[#009FDC] bg-blue-50"
+                                            >
+                                                {subCenter.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -1417,17 +1441,22 @@ export default function AddQuotationForm() {
                                         </td>
                                         <td className="px-4 py-2 text-center">
                                             {item.attachment ? (
-                                                <FileDisplay
-                                                    file={item.attachment}
-                                                    onFileClick={() =>
-                                                        handleFileClick(
-                                                            item.attachment
-                                                        )
-                                                    }
-                                                />
+                                                <div className="flex justify-center">
+                                                    <button
+                                                        className="w-8 h-8"
+                                                        onClick={() => handleFileClick(item.attachment)}
+                                                        title="View Document"
+                                                    >
+                                                        <img
+                                                            src="/images/pdf-file.png"
+                                                            alt="PDF"
+                                                            className="w-full h-full"
+                                                        />
+                                                    </button>
+                                                </div>
                                             ) : (
-                                                <span className="text-gray-500 text-sm">
-                                                    No Attachment
+                                                <span className="text-gray-500">
+                                                    No document attached
                                                 </span>
                                             )}
                                         </td>
@@ -1515,6 +1544,7 @@ export default function AddQuotationForm() {
                 units={units}
                 brands={brands}
                 rfqId={formData.id || formData.rfq_id}
+                selectedCategoryId={formData.category_id}
             />
         </div>
     );
