@@ -225,6 +225,79 @@ class TaskController extends Controller
                 }
             }
 
+            // Check if this is an RFQ task and if it's being rejected
+            if ($task->rfq_id && $request->input('status') === 'Rejected') {
+                $rfqLogger->info('=== RFQ TASK REJECTION CHECK ===', [
+                    'task_id' => $task->id,
+                    'rfq_id' => $task->rfq_id,
+                    'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id')
+                ]);
+
+                // Update the corresponding approval transaction
+                $approvalTransaction = DB::table('rfq_approval_transactions')
+                    ->where('rfq_id', $task->rfq_id)
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->first();
+
+                if ($approvalTransaction) {
+                    $rfqLogger->info('=== UPDATING RFQ APPROVAL TRANSACTION FOR REJECTION ===', [
+                        'task_id' => $task->id,
+                        'rfq_id' => $task->rfq_id,
+                        'approval_transaction_id' => $approvalTransaction->id
+                    ]);
+
+                    // Update the approval transaction status
+                    $transactionUpdated = DB::table('rfq_approval_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => 'Reject',
+                            'updated_by' => auth()->id(),
+                            'updated_at' => now()
+                        ]);
+
+                    $rfqLogger->info('=== RFQ REJECTION TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'rfq_id' => $task->rfq_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_success' => $transactionUpdated
+                    ]);
+
+                    if ($transactionUpdated) {
+                        // Immediately update RFQ status to Rejected (49)
+                        $rfqUpdated = DB::table('rfqs')
+                            ->where('id', $task->rfq_id)
+                            ->update([
+                                'status_id' => 49,
+                                'updated_at' => now()
+                            ]);
+
+                        $rfqLogger->info('=== RFQ REJECTION STATUS UPDATE RESULT ===', [
+                            'task_id' => $task->id,
+                            'rfq_id' => $task->rfq_id,
+                            'update_success' => $rfqUpdated,
+                            'new_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id')
+                        ]);
+
+                        // Create status log entry for rejection
+                        DB::table('rfq_status_logs')->insert([
+                            'rfq_id' => $task->rfq_id,
+                            'status_id' => 49,
+                            'changed_by' => auth()->id(),
+                            'remarks' => 'RFQ Rejected by Approver',
+                            'approved_by' => auth()->id(),
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    }
+                } else {
+                    $rfqLogger->warning('=== NO RFQ APPROVAL TRANSACTION FOUND ===', [
+                        'task_id' => $task->id,
+                        'rfq_id' => $task->rfq_id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+                }
+            }
+
             // Check if this is a Maharat Invoice task and if it's being approved
             if ($task->invoice_id && $request->input('status') === 'Approved') {
                 Log::info('=== MAHARAT INVOICE TASK APPROVAL CHECK ===', [
