@@ -296,6 +296,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/request-budgets/create', function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/BudgetRequestForm']);
     })->name('requestBudget.create');
+    Route::get('/request-budgets/{id}/edit', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/BudgetRequestForm', 'budgetRequestId' => $id]);
+    })->name('requestBudget.edit');
 
     Route::get('/material-requests', function () {
         return Inertia::render('Dashboard', ['page' => 'Warehouse/ReceivedMaterialRequest/ReceivedMRsTable']);

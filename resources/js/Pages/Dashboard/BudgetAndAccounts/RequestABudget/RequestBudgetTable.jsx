@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import axios from "axios";
 
@@ -47,6 +47,7 @@ const RequestBudgetTable = () => {
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             Year
                         </th>
+                        <th className="py-3 px-4">Created By</th>
                         <th className="py-3 px-4">Department</th>
                         <th className="py-3 px-4">Cost Center</th>
                         <th className="py-3 px-4">Sub Cost Center</th>
@@ -62,14 +63,14 @@ const RequestBudgetTable = () => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="9" className="text-center py-12">
+                            <td colSpan="10" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="9"
+                                colSpan="10"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -80,6 +81,9 @@ const RequestBudgetTable = () => {
                             <tr key={request.id}>
                                 <td className="py-3 px-4">
                                     {request.fiscal_period?.fiscal_year}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {request.creator?.name}
                                 </td>
                                 <td className="py-3 px-4">
                                     {request.department?.name}
@@ -101,15 +105,13 @@ const RequestBudgetTable = () => {
                                     {request.reason_for_increase}
                                 </td>
                                 <td className="py-3 px-4 flex items-center justify-center gap-4">
-                                    <button
-                                        className="text-gray-500 hover:text-gray-600"
-                                        title="View Budget Request"
+                                    <Link
+                                        href={`/request-budgets/${request.id}/edit`}
+                                        className="text-blue-400 hover:text-blue-500"
+                                        title="Edit Budget Request"
                                     >
-                                        <FontAwesomeIcon icon={faEye} />
-                                    </button>
-                                    {/* <button className="text-gray-600 hover:text-gray-800">
                                         <FontAwesomeIcon icon={faEdit} />
-                                    </button> */}
+                                    </Link>
                                     <button
                                         className="text-red-500 hover:text-red-800"
                                         title="Delete Budget Request"
@@ -122,7 +124,7 @@ const RequestBudgetTable = () => {
                     ) : (
                         <tr>
                             <td
-                                colSpan="9"
+                                colSpan="10"
                                 className="text-center text-[#2C323C] font-medium py-4"
                             >
                                 No Budget Requests found.

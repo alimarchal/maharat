@@ -1,10 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-    faEye,
-    faRemove,
-    faFileExcel,
-} from "@fortawesome/free-solid-svg-icons";
+import { faEye, faFileExcel } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import axios from "axios";
 import BudgetPDF from "./BudgetPDF";
@@ -27,31 +23,17 @@ const BudgetTable = () => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // Fixed: Added missing state variables that were being used in fetchDropdownData
-    const [departments, setDepartments] = useState([]);
-    const [costCenters, setCostCenters] = useState([]);
-    const [subCostCenters, setSubCostCenters] = useState([]);
-    const [fiscalPeriod, setFiscalPeriod] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
-
     const filters = ["All", "Active", "Frozen", "Closed"];
 
     useEffect(() => {
         fetchBudgets();
-        fetchDropdownData();
-    }, [currentPage]);
-
-    // Fixed: Added dependency for selectedFilter to refetch when filter changes
-    useEffect(() => {
-        fetchBudgets();
-    }, [selectedFilter]);
+    }, [currentPage, selectedFilter]);
 
     const fetchBudgets = async () => {
         setLoading(true);
         setError("");
 
         try {
-            // Fixed: Include filter parameter in API call
             const filterParam =
                 selectedFilter !== "All" ? `&status=${selectedFilter}` : "";
             const response = await axios.get(
@@ -71,28 +53,6 @@ const BudgetTable = () => {
             );
         } finally {
             setLoading(false);
-        }
-    };
-
-    const fetchDropdownData = async () => {
-        setIsLoading(true);
-        try {
-            const [deptResponse, costCenterResponse, fiscalPeriodResponse] =
-                await Promise.all([
-                    axios.get("/api/v1/departments"),
-                    axios.get("/api/v1/cost-centers"),
-                    axios.get("/api/v1/fiscal-periods"),
-                ]);
-            setDepartments(deptResponse.data.data || []);
-            setCostCenters(costCenterResponse.data.data || []);
-            setSubCostCenters(costCenterResponse.data.data || []);
-            setFiscalPeriod(fiscalPeriodResponse.data.data || []);
-        } catch (error) {
-            console.error("Error fetching dropdown data:", error);
-            // Fixed: setError should be a string, not an object
-            setError("Failed to load form data. Please try again.");
-        } finally {
-            setIsLoading(false);
         }
     };
 
@@ -125,17 +85,19 @@ const BudgetTable = () => {
         }
     };
 
-    // Fixed: Reset to page 1 when filter changes
     const handleFilterChange = (filter) => {
         setSelectedFilter(filter);
         setCurrentPage(1);
     };
 
-    // Fixed: Add loading state check for pagination
     const handlePageChange = (page) => {
         if (page >= 1 && page <= lastPage && !loading) {
             setCurrentPage(page);
         }
+    };
+
+    const refreshData = () => {
+        fetchBudgets();
     };
 
     return (
@@ -323,7 +285,7 @@ const BudgetTable = () => {
             <FiscalPeriodModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                fetchFiscalPeriods={fetchDropdownData}
+                fetchFiscalPeriods={refreshData}
             />
 
             {/* Pagination */}
