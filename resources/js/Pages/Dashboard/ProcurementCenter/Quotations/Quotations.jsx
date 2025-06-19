@@ -179,7 +179,27 @@ const Quotations = () => {
                                         })}
                                     </td>
                                     <td className="px-3 py-4">
-                                        {quotation.status?.name || "N/A"}
+                                        {typeof quotation.status?.name === "object" ? (
+                                            <span className="text-red-500">
+                                                Invalid Status
+                                            </span>
+                                        ) : (
+                                            <span
+                                                className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${
+                                                    quotation.status?.name === "Active"
+                                                        ? "bg-green-100 text-green-800"
+                                                        : quotation.status?.name === "Rejected"
+                                                        ? "bg-red-100 text-red-800"
+                                                        : quotation.status?.name === "Expired"
+                                                        ? "bg-red-100 text-red-800"
+                                                        : quotation.status?.name === "Approved"
+                                                        ? "bg-blue-100 text-blue-800"
+                                                        : "bg-yellow-100 text-yellow-800"
+                                                }`}
+                                            >
+                                                {quotation.status?.name || "N/A"}
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="px-3 py-4 text-center">
                                         {quotation.valid_until

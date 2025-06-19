@@ -185,8 +185,56 @@ class RfqApprovalTransactionController extends Controller
                         'total_approvals' => $totalApprovals
                     ]);
                 }
+            } elseif ($validated['status'] === 'Reject') {
+                // If rejected, immediately update RFQ status to Rejected (49)
+                Log::info('Rejection detected, updating RFQ status to Rejected', [
+                    'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                    'approval_order' => $rfqApprovalTransaction->order
+                ]);
+
+                try {
+                    // Create a new request to update the RFQ status
+                    $statusUpdateRequest = new \Illuminate\Http\Request();
+                    $statusUpdateRequest->merge(['status_id' => 49]);
+
+                    Log::info('Created rejection status update request', [
+                        'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                        'request_data' => $statusUpdateRequest->all()
+                    ]);
+
+                    // Use the RFQ controller to update the status
+                    $rfqController = new \App\Http\Controllers\Api\V1\RfqController();
+                    
+                    Log::info('Calling RFQ status update endpoint for rejection', [
+                        'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                        'controller' => get_class($rfqController)
+                    ]);
+
+                    $response = $rfqController->updateStatus($statusUpdateRequest, $rfqApprovalTransaction->rfq_id);
+
+                    Log::info('RFQ rejection status update response received', [
+                        'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                        'response_status' => $response->status(),
+                        'response_content' => $response->getContent()
+                    ]);
+
+                    // Verify the status was actually updated
+                    $updatedRfq = Rfq::find($rfqApprovalTransaction->rfq_id);
+                    Log::info('RFQ status after rejection update', [
+                        'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                        'current_status_id' => $updatedRfq->status_id,
+                        'expected_status_id' => 49
+                    ]);
+
+                } catch (\Exception $e) {
+                    Log::error('Failed to update RFQ status for rejection', [
+                        'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                }
             } else {
-                Log::info('Not an approval status', [
+                Log::info('Not an approval or rejection status', [
                     'status' => $validated['status'],
                     'rfq_id' => $rfqApprovalTransaction->rfq_id
                 ]);

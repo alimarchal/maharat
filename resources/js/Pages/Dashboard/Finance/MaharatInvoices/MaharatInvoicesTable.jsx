@@ -332,13 +332,17 @@ const MaharatInvoicesTable = () => {
                                     {formatDateTime(invoice.updated_at)}
                                 </td>
                                 <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
-                                    <Link
-                                        href={`/maharat-invoices/create/${invoice.id}`}
-                                        className="text-blue-400 hover:text-blue-500"
-                                        title="Edit Invoice"
-                                    >
-                                        <FontAwesomeIcon icon={faEdit} />
-                                    </Link>
+                                    {invoice.status === "Draft" ? (
+                                        <Link
+                                            href={`/maharat-invoices/create/${invoice.id}`}
+                                            className="text-blue-400 hover:text-blue-500"
+                                            title="Edit Invoice"
+                                        >
+                                            <FontAwesomeIcon icon={faEdit} />
+                                        </Link>
+                                    ) : (
+                                        <div className="w-4 h-4"></div>
+                                    )}
                                     <button
                                         className="w-4 h-4"
                                         onClick={() =>
