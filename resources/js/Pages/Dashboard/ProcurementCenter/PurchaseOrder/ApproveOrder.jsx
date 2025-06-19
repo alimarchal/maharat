@@ -244,7 +244,7 @@ const ApproveOrder = ({
             // Check if the form amount exceeds the available amount
             const availableAmount = Number(requestDetails.balance_amount);
             const enteredAmount = Number(formData.amount);
-            if (enteredAmount < availableAmount) {
+            if (enteredAmount > availableAmount) {
                 setErrors({
                     submit: "Insufficient Amount in this sub cost center for this Purchase Order.",
                 });
@@ -362,12 +362,21 @@ const ApproveOrder = ({
                             ? "Edit Purchase Order"
                             : "Create Purchase Order"}
                     </h2>
-                    <button
-                        onClick={onClose}
-                        className="text-red-500 hover:text-red-800"
-                    >
-                        <FontAwesomeIcon icon={faTimes} />
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <span className="text-sm text-gray-500">
+                            <span className="font-bold">Issue Date:</span> {new Date().toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                            })}
+                        </span>
+                        <button
+                            onClick={onClose}
+                            className="text-red-500 hover:text-red-800"
+                        >
+                            <FontAwesomeIcon icon={faTimes} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Loading indicator */}
@@ -403,8 +412,10 @@ const ApproveOrder = ({
                                 label="Supplier"
                                 name="supplier_name"
                                 value={formData.supplier_name}
-                                onChange={handleChange}
+                                onChange={() => {}}
+                                onKeyDown={(e) => e.preventDefault()}
                                 disabled={true}
+                                readOnly={true}
                                 error={errors.supplier_id}
                             />
                         </div>
@@ -414,12 +425,14 @@ const ApproveOrder = ({
                                 name="amount"
                                 type="number"
                                 value={formData.amount}
-                                onChange={handleChange}
+                                onChange={() => {}}
+                                onKeyDown={(e) => e.preventDefault()}
                                 disabled={true}
+                                readOnly={true}
                                 error={errors.amount}
                             />
                         </div>
-                        <div>
+                        {/* <div>
                             <InputFloating
                                 label="Select Issue Date"
                                 name="purchase_order_date"
@@ -428,9 +441,9 @@ const ApproveOrder = ({
                                 onChange={handleChange}
                                 error={errors.purchase_order_date}
                             />
-                        </div>
+                        </div> */}
 
-                        <div className="flex justify-start">
+                        {/* <div className="flex justify-start">
                             <div className="w-full text-start">
                                 <div className="space-y-2 text-start">
                                     <label className="block text-sm font-medium text-gray-700 text-center">
@@ -450,7 +463,7 @@ const ApproveOrder = ({
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div> */}
                     </div>
 
                     <div className="flex justify-center w-full mt-4">
