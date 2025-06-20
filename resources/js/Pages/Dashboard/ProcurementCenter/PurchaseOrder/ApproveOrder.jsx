@@ -218,7 +218,7 @@ const ApproveOrder = ({
 
             // Check budget availability
             const budgetResponse = await axios.get(
-                `/api/v1/request-budgets?filter[sub_cost_center]=${quotationDetails?.rfq?.sub_cost_center_id}&include=fiscalPeriod,department,costCenter,subCostCenter,creator`
+                `/api/v1/budgets?filter[sub_cost_center_id]=${quotationDetails?.rfq?.sub_cost_center_id}&include=fiscalPeriod,department,costCenter,subCostCenter,creator`
             );
             const budgetDetails = budgetResponse.data?.data?.[0];
             if (!budgetDetails) {
@@ -256,7 +256,7 @@ const ApproveOrder = ({
             const formDataToSend = new FormData();
             const dataToSubmit = {
                 ...formData,
-                budget_request_id: budgetDetails?.id,
+                budget_id: budgetDetails?.id,
             };
 
             // Ensure we have a purchase order number
@@ -295,17 +295,19 @@ const ApproveOrder = ({
             const newPOId = response.data.data?.id;
 
             if (newPOId) {
-                // Update budget request
-                const updatedBudgetData = {
-                    reserved_amount: formData.amount,
-                    balance_amount:
-                        budgetDetails.total_expense_planned - formData.amount,
-                };
+                // Update budget - note: budgets table doesn't have reserved_amount and balance_amount
+                // These fields are in request_budgets table, so we'll update the linked request_budget
+                if (budgetDetails.request_budget_id) {
+                    const updatedRequestBudgetData = {
+                        reserved_amount: formData.amount,
+                        balance_amount: budgetDetails.total_expense_planned - formData.amount,
+                    };
 
-                await axios.put(
-                    `/api/v1/budgets/${budgetDetails?.id}`,
-                    updatedBudgetData
-                );
+                    await axios.put(
+                        `/api/v1/request-budgets/${budgetDetails.request_budget_id}`,
+                        updatedRequestBudgetData
+                    );
+                }
 
                 // Create approval transaction
                 const POTransactionPayload = {

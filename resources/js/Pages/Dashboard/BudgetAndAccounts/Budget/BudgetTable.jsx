@@ -67,12 +67,12 @@ const BudgetTable = () => {
         budgets.forEach(budget => {
             // Use fiscal_period_id as the key since that's what determines the fiscal year
             const fiscalPeriodId = budget.fiscal_period_id || budget.fiscal_period?.id;
-            const fiscalYear = budget.fiscal_period?.fiscal_year || `Fiscal Period ${fiscalPeriodId}`;
+            const fiscalPeriod = budget.fiscal_period?.period_name || `Fiscal Period ${fiscalPeriodId}`;
             
             if (!grouped[fiscalPeriodId]) {
                 grouped[fiscalPeriodId] = {
                     fiscalPeriodId,
-                    fiscalYear,
+                    fiscalPeriod,
                     budgets: [],
                     totalRevenuePlanned: 0,
                     totalRevenueActual: 0,
@@ -226,7 +226,7 @@ const BudgetTable = () => {
                 <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                     <tr>
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
-                            Fiscal Year
+                            Fiscal Period
                         </th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">Total Revenue Planned</th>
@@ -259,7 +259,7 @@ const BudgetTable = () => {
                             <tr key={yearGroup.fiscalPeriodId} className="bg-gray-50">
                                 <td className="py-3 px-4">
                                     <div className="flex items-center gap-2">
-                                        <span className="font-semibold">{yearGroup.fiscalYear}</span>
+                                        <span className="font-semibold">{yearGroup.fiscalPeriod}</span>
                                         <span className="text-sm text-gray-500">
                                             ({yearGroup.budgets.length} {yearGroup.budgets.length === 1 ? 'budget' : 'budgets'})
                                         </span>
@@ -291,7 +291,7 @@ const BudgetTable = () => {
                                     <Link
                                         href={`budget/details/${yearGroup.budgets[0]?.id}?fiscal_period_id=${yearGroup.fiscalPeriodId}`}
                                         className="text-[#9B9DA2] hover:text-gray-500"
-                                        title={`View ${yearGroup.budgets.length} budget${yearGroup.budgets.length > 1 ? 's' : ''} for ${yearGroup.fiscalYear}`}
+                                        title={`View ${yearGroup.budgets.length} budget${yearGroup.budgets.length > 1 ? 's' : ''} for ${yearGroup.fiscalPeriod}`}
                                     >
                                         <FontAwesomeIcon icon={faEye} />
                                     </Link>
@@ -300,7 +300,7 @@ const BudgetTable = () => {
                                         onClick={() =>
                                             handleGeneratePDF(yearGroup.budgets[0]?.id)
                                         }
-                                        title={`Download PDF for ${yearGroup.fiscalYear}`}
+                                        title={`Download PDF for ${yearGroup.fiscalPeriod}`}
                                     >
                                         <img
                                             src="/images/pdf-file.png"
@@ -313,7 +313,7 @@ const BudgetTable = () => {
                                             handleGenerateExcel(yearGroup.budgets[0]?.id)
                                         }
                                         className="text-green-500 hover:text-green-600"
-                                        title={`Export ${yearGroup.fiscalYear} to Excel`}
+                                        title={`Export ${yearGroup.fiscalPeriod} to Excel`}
                                     >
                                         <FontAwesomeIcon
                                             icon={faFileExcel}
