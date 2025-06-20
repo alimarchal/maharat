@@ -554,6 +554,7 @@ class TaskController extends Controller
                                     // Check if budget already exists for this combination
                                     $existingBudget = DB::table('budgets')
                                         ->where('fiscal_period_id', $budgetRequest->fiscal_period_id)
+                                        ->where('department_id', $budgetRequest->department_id)
                                         ->where('cost_center_id', $budgetRequest->cost_center_id)
                                         ->where('sub_cost_center_id', $budgetRequest->sub_cost_center)
                                         ->first();
