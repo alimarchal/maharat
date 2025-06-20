@@ -50,5 +50,6 @@ class BudgetParameters
         'creator',
         'updater',
         'subCostCenter',
+        'requestBudget',
     ];
 }

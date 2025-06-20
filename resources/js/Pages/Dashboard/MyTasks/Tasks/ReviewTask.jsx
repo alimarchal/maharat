@@ -169,26 +169,8 @@ const ReviewTask = () => {
                 };
                 await axios.post("/api/v1/tasks", taskPayload);
 
-                // Special logic: if it's a Budget Request and action is Approve
-                if (
-                    key === "request_budgets_id" &&
-                    formData.action === "Approve"
-                ) {
-                    const budgetRes = await axios.get(
-                        `/api/v1/request-budgets/${id}`
-                    );
-                    const budgetData = budgetRes?.data?.data;
-                    if (budgetData) {
-                        const updatedPayload = {
-                            approved_amount: budgetData.requested_amount,
-                            balance_amount: budgetData.requested_amount,
-                        };
-                        await axios.put(
-                            `/api/v1/request-budgets/${id}`,
-                            updatedPayload
-                        );
-                    }
-                }
+                // Note: The TaskController already handles updating the request_budgets table
+                // when the task is approved, so we don't need to make an additional PUT request here
             }
 
             // Update task status if applicable

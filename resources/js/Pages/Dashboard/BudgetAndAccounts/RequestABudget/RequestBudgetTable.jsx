@@ -3,11 +3,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import axios from "axios";
+import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 
 const RequestBudgetTable = () => {
     const [budgetRequests, setBudgetRequests] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [deletingId, setDeletingId] = useState(null);
 
     useEffect(() => {
         const fetchBudgetRequests = async () => {
@@ -26,6 +28,22 @@ const RequestBudgetTable = () => {
 
         fetchBudgetRequests();
     }, []);
+
+    const handleDelete = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this budget request? This will also delete any associated tasks and approval transactions.")) {
+            return;
+        }
+
+        setDeletingId(id);
+        try {
+            await axios.delete(`/api/v1/request-budgets/${id}`);
+            setBudgetRequests(prev => prev.filter(request => request.id !== id));
+        } catch (err) {
+            alert("Failed to delete budget request. Please try again.");
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     return (
         <div className="w-full">
@@ -53,8 +71,8 @@ const RequestBudgetTable = () => {
                         <th className="py-3 px-4">Sub Cost Center</th>
                         <th className="py-3 px-4">Previous Budget</th>
                         <th className="py-3 px-4">Requested Amount</th>
-                        <th className="py-3 px-4">Urgency</th>
-                        <th className="py-3 px-4">Description</th>
+                        <th className="py-3 px-2">Planned Revenue</th>
+                        <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                             Actions
                         </th>
@@ -63,14 +81,14 @@ const RequestBudgetTable = () => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="10" className="text-center py-12">
+                            <td colSpan="9" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="10"
+                                colSpan="9"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -100,31 +118,78 @@ const RequestBudgetTable = () => {
                                 <td className="py-3 px-4">
                                     {request.requested_amount}
                                 </td>
-                                <td className="py-3 px-4">{request.urgency}</td>
-                                <td className="py-3 px-4">
-                                    {request.reason_for_increase}
+                                <td className="py-3 px-2">
+                                    {request.revenue_planned}
                                 </td>
-                                <td className="py-3 px-4 flex items-center justify-center gap-4">
-                                    <Link
-                                        href={`/request-budgets/${request.id}/edit`}
-                                        className="text-blue-400 hover:text-blue-500"
-                                        title="Edit Budget Request"
-                                    >
-                                        <FontAwesomeIcon icon={faEdit} />
-                                    </Link>
-                                    <button
-                                        className="text-red-500 hover:text-red-800"
-                                        title="Delete Budget Request"
-                                    >
-                                        <FontAwesomeIcon icon={faTrash} />
-                                    </button>
+                                <td className="py-3 px-4">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        request.status === 'Draft' ? 'bg-gray-100 text-gray-800' :
+                                        request.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                                        request.status === 'Approved' ? 'bg-green-100 text-green-800' :
+                                        request.status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                                        'bg-blue-100 text-blue-800'
+                                    }`}>
+                                        {request.status}
+                                    </span>
+                                </td>
+                                <td className="py-3 px-4">
+                                    <div className="flex items-start justify-center gap-4">
+                                        {request.status !== 'Approved' && (
+                                            <Link
+                                                href={`/request-budgets/${request.id}/edit`}
+                                                className="text-blue-400 hover:text-blue-500"
+                                                title="Edit Budget Request"
+                                            >
+                                                <FontAwesomeIcon icon={faEdit} />
+                                            </Link>
+                                        )}
+                                        {request.attachment_path && (
+                                            <button
+                                                className="w-4 h-4"
+                                                onClick={() => {
+                                                    const filePath = request.attachment_path;
+                                                    if (filePath) {
+                                                        const fixedPath = filePath.startsWith("http") 
+                                                            ? filePath 
+                                                            : filePath.startsWith("/storage/") 
+                                                                ? filePath 
+                                                                : `/storage/${filePath}`;
+                                                        window.open(fixedPath, "_blank");
+                                                    }
+                                                }}
+                                                title="View Attachment"
+                                            >
+                                                <img
+                                                    src="/images/pdf-file.png"
+                                                    alt="PDF"
+                                                    className="w-full h-full"
+                                                />
+                                            </button>
+                                        )}
+                                        {request.status !== 'Approved' && (
+                                            <button
+                                                className={`text-red-500 hover:text-red-800 ${
+                                                    deletingId === request.id ? 'opacity-50 cursor-not-allowed' : ''
+                                                }`}
+                                                title="Delete Budget Request"
+                                                onClick={() => handleDelete(request.id)}
+                                                disabled={deletingId === request.id}
+                                            >
+                                                {deletingId === request.id ? (
+                                                    <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                                                ) : (
+                                                    <FontAwesomeIcon icon={faTrash} />
+                                                )}
+                                            </button>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         ))
                     ) : (
                         <tr>
                             <td
-                                colSpan="10"
+                                colSpan="9"
                                 className="text-center text-[#2C323C] font-medium py-4"
                             >
                                 No Budget Requests found.

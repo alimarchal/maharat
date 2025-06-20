@@ -5,14 +5,16 @@ import { faLink } from "@fortawesome/free-solid-svg-icons";
 import SelectFloating from "../../../../Components/SelectFloating";
 import InputFloating from "../../../../Components/InputFloating";
 import { router, usePage } from "@inertiajs/react";
+import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 
 const BudgetRequestForm = () => {
     const { budgetRequestId, auth } = usePage().props;
     const user_id = auth.user.id;
-    const isEditing = !!budgetRequestId;
+    const isEditMode = !!budgetRequestId;
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [dataLoaded, setDataLoaded] = useState(false);
     const [formData, setFormData] = useState({
         fiscal_period_id: "",
         department_id: "",
@@ -30,13 +32,28 @@ const BudgetRequestForm = () => {
     const [costCenters, setCostCenters] = useState([]);
     const [fiscalYears, setFiscalYears] = useState([]);
     const [filteredSubCostCenters, setFilteredSubCostCenters] = useState([]);
+    const [tempAttachment, setTempAttachment] = useState(null);
+    const [existingAttachment, setExistingAttachment] = useState(null);
+    const [uploadError, setUploadError] = useState("");
+    const fileInputRef = React.useRef();
 
     useEffect(() => {
-        fetchInitialData();
-        if (isEditing) {
-            fetchBudgetRequest();
-        }
+        const initializeData = async () => {
+            await fetchInitialData();
+            if (isEditMode) {
+                await fetchBudgetRequest();
+            }
+        };
+        
+        initializeData();
     }, [budgetRequestId]);
+
+    // Add a separate useEffect to handle sub cost center filtering when costCenters are loaded
+    useEffect(() => {
+        if (costCenters.length > 0 && formData.cost_center_id) {
+            filterSubCostCenters(formData.cost_center_id);
+        }
+    }, [costCenters, formData.cost_center_id]);
 
     const fetchInitialData = async () => {
         try {
@@ -45,9 +62,11 @@ const BudgetRequestForm = () => {
                 axios.get("/api/v1/cost-centers"),
                 axios.get("/api/v1/fiscal-periods"),
             ]);
+            
             setDepartments(deptRes.data.data);
             setCostCenters(costRes.data.data);
             setFiscalYears(yearRes.data.data);
+            setDataLoaded(true);
         } catch (error) {
             console.error("Error fetching initial data", error);
             setErrors((prev) => ({
@@ -66,22 +85,23 @@ const BudgetRequestForm = () => {
             );
             const budgetRequest = response.data.data;
 
-            const costCenterId = budgetRequest.cost_center_id;
-            await filterSubCostCenters(costCenterId);
-
             setFormData({
-                fiscal_period_id: budgetRequest.fiscal_period_id || "",
-                department_id: budgetRequest.department_id || "",
-                cost_center_id: costCenterId || "",
-                sub_cost_center: budgetRequest.sub_cost_center || "",
-                previous_year_budget_amount:
-                    budgetRequest.previous_year_budget_amount || "",
-                requested_amount: budgetRequest.requested_amount || "",
-                revenue_planned: budgetRequest.revenue_planned || "",
-                urgency: budgetRequest.urgency || "",
-                attachment: null,
-                reason_for_increase: budgetRequest.reason_for_increase || "",
+                ...formData,
+                ...budgetRequest,
             });
+
+            // Handle existing attachment
+            if (budgetRequest.attachment_path) {
+                const attachmentData = {
+                    file_path: budgetRequest.attachment_path,
+                    original_name: budgetRequest.original_name || budgetRequest.attachment_path.split('/').pop() || 'Document'
+                };
+                setExistingAttachment(attachmentData);
+            } else {
+                setExistingAttachment(null);
+            }
+
+            setDataLoaded(true);
         } catch (error) {
             console.error("Error fetching budget request", error);
             setErrors((prev) => ({
@@ -100,12 +120,19 @@ const BudgetRequestForm = () => {
         }
 
         try {
-            const filtered = costCenters.filter(
-                (cost) => cost.parent_id === parseInt(costCenterId)
-            );
+            // Convert costCenterId to number for comparison
+            const numericCostCenterId = parseInt(costCenterId);
+            
+            // Filter cost centers that have the selected cost center as their parent
+            const filtered = costCenters.filter((cost) => {
+                return cost.parent_id === numericCostCenterId;
+            });
+            
+            console.log("Filtered sub cost centers for cost center", costCenterId, ":", filtered);
             setFilteredSubCostCenters(filtered);
         } catch (error) {
             console.error("Error filtering sub cost centers", error);
+            setFilteredSubCostCenters([]);
         }
     };
 
@@ -122,11 +149,20 @@ const BudgetRequestForm = () => {
         if (name === "cost_center_id") {
             filterSubCostCenters(value);
         }
+
+        // Clear hierarchical uniqueness error when key fields change
+        if (['fiscal_period_id', 'department_id', 'cost_center_id', 'sub_cost_center'].includes(name)) {
+            setErrors((prev) => ({ ...prev, hierarchical_uniqueness: undefined }));
+        }
     };
 
     const handleFileChange = (e) => {
-        setFormData((prev) => ({ ...prev, attachment: e.target.files[0] }));
-        setErrors((prev) => ({ ...prev, attachment: undefined }));
+        const file = e.target.files[0];
+        if (file) {
+            setTempAttachment(file);
+            setUploadError("");
+            setErrors((prev) => ({ ...prev, attachment: undefined }));
+        }
     };
 
     const validateForm = () => {
@@ -149,8 +185,86 @@ const BudgetRequestForm = () => {
             }
         });
 
+        // Check for attachment
+        if (!tempAttachment && !existingAttachment) {
+            newErrors.attachment = "Attachment is required";
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
+    };
+
+    const checkHierarchicalUniqueness = async () => {
+        if (!formData.fiscal_period_id || !formData.department_id || !formData.cost_center_id) {
+            return true; // Skip validation if required fields are not filled
+        }
+
+        try {
+            const response = await axios.get('/api/v1/request-budgets', {
+                params: {
+                    'filter[fiscal_period_id]': formData.fiscal_period_id,
+                    'filter[department_id]': formData.department_id,
+                    'filter[cost_center_id]': formData.cost_center_id,
+                    'filter[sub_cost_center]': formData.sub_cost_center || '',
+                    'include': 'fiscalPeriod,department,costCenter,subCostCenter'
+                }
+            });
+
+            const existingRequests = response.data.data || [];
+            
+            // Filter out the current record if in edit mode
+            const filteredRequests = isEditMode 
+                ? existingRequests.filter(req => req.id != budgetRequestId)
+                : existingRequests;
+
+            if (filteredRequests.length > 0) {
+                const existingRequest = filteredRequests[0];
+                const details = [];
+                
+                if (existingRequest.fiscal_period) {
+                    details.push(`Fiscal Year: ${existingRequest.fiscal_period.fiscal_year}`);
+                }
+                if (existingRequest.department) {
+                    details.push(`Department: ${existingRequest.department.name}`);
+                }
+                if (existingRequest.cost_center) {
+                    details.push(`Cost Center: ${existingRequest.cost_center.name}`);
+                }
+                if (existingRequest.sub_cost_center_details) {
+                    details.push(`Sub Cost Center: ${existingRequest.sub_cost_center_details.name}`);
+                }
+
+                setErrors(prev => ({
+                    ...prev,
+                    hierarchical_uniqueness: `Budget request already exists for ${details.join(', ')}`
+                }));
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Error checking hierarchical uniqueness:', error);
+            return true; // Allow submission if validation fails
+        }
+    };
+
+    const uploadAttachmentToServer = async (budgetRequestId, file) => {
+        if (!file) return true;
+        const formData = new FormData();
+        formData.append("attachment", file);
+        formData.append("request_budget_id", budgetRequestId);
+        formData.append("type", "budget_request");
+        try {
+            await axios.post("/api/v1/budget-request-attachments", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            return true;
+        } catch (error) {
+            setUploadError(
+                error.response?.data?.message || "Failed to upload attachment."
+            );
+            return false;
+        }
     };
 
     const createNewBudgetRequest = async () => {
@@ -183,7 +297,10 @@ const BudgetRequestForm = () => {
         }
 
         // Create budget request
-        const response = await axios.post("/api/v1/request-budgets", formData);
+        const response = await axios.post("/api/v1/request-budgets", {
+            ...formData,
+            status: "Draft"
+        });
         const budgetRequestId = response.data.data?.id;
         if (!budgetRequestId) {
             setErrors({
@@ -191,6 +308,20 @@ const BudgetRequestForm = () => {
             });
             setIsSubmitting(false);
             return;
+        }
+
+        // Upload attachment if provided
+        if (tempAttachment) {
+            const uploadSuccess = await uploadAttachmentToServer(budgetRequestId, tempAttachment);
+            if (!uploadSuccess) {
+                setErrors({
+                    submit: "Failed to upload attachment. Please try again.",
+                });
+                setIsSubmitting(false);
+                return;
+            }
+            // Clear file input after upload
+            if (fileInputRef.current) fileInputRef.current.value = "";
         }
 
         // Create budget request transaction
@@ -223,16 +354,71 @@ const BudgetRequestForm = () => {
     };
 
     const updateBudgetRequest = async () => {
-        await axios.put(`/api/v1/request-budgets/${budgetRequestId}`, formData);
+        console.log('updateBudgetRequest called with formData:', formData);
+        console.log('budgetRequestId:', budgetRequestId);
+        
+        // Extract only the required fields for the API
+        const updateData = {
+            fiscal_period_id: formData.fiscal_period_id,
+            department_id: formData.department_id,
+            cost_center_id: formData.cost_center_id,
+            sub_cost_center: formData.sub_cost_center,
+            previous_year_budget_amount: formData.previous_year_budget_amount,
+            requested_amount: formData.requested_amount,
+            revenue_planned: formData.revenue_planned,
+            previous_year_revenue: formData.previous_year_revenue,
+            current_year_revenue: formData.current_year_revenue,
+            approved_amount: formData.approved_amount,
+            reserved_amount: formData.reserved_amount,
+            consumed_amount: formData.consumed_amount,
+            balance_amount: formData.balance_amount,
+            urgency: formData.urgency,
+            attachment_path: formData.attachment_path,
+            original_name: formData.original_name || null,
+            reason_for_increase: formData.reason_for_increase,
+            status: formData.status
+        };
+        
+        console.log('Sending update data:', updateData);
+        
+        try {
+            const response = await axios.put(`/api/v1/request-budgets/${budgetRequestId}`, updateData);
+            console.log('Update response:', response.data);
+            
+            // Upload new attachment if provided
+            if (tempAttachment) {
+                console.log('Uploading attachment:', tempAttachment);
+                const uploadSuccess = await uploadAttachmentToServer(budgetRequestId, tempAttachment);
+                if (!uploadSuccess) {
+                    setErrors({
+                        submit: "Failed to upload attachment. Please try again.",
+                    });
+                    setIsSubmitting(false);
+                    return;
+                }
+                // Clear file input after upload
+                if (fileInputRef.current) fileInputRef.current.value = "";
+            }
+        } catch (error) {
+            console.error('Update request failed:', error.response?.data);
+            throw error;
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
+        
+        // Only check hierarchical uniqueness for new requests, not updates
+        if (!isEditMode) {
+            const isUnique = await checkHierarchicalUniqueness();
+            if (!isUnique) return;
+        }
+        
         setIsSubmitting(true);
 
         try {
-            if (isEditing) {
+            if (isEditMode) {
                 await updateBudgetRequest();
             } else {
                 await createNewBudgetRequest();
@@ -240,12 +426,22 @@ const BudgetRequestForm = () => {
             router.visit("/request-budgets");
         } catch (error) {
             console.error("Error saving budget request:", error);
-            setErrors((prev) => ({
-                ...prev,
-                submit:
-                    error.message ||
-                    "An error occurred while saving the budget request.",
-            }));
+            
+            // Handle backend validation errors
+            if (error.response?.data?.errors) {
+                const backendErrors = {};
+                Object.keys(error.response.data.errors).forEach(key => {
+                    backendErrors[key] = error.response.data.errors[key][0];
+                });
+                setErrors(prev => ({ ...prev, ...backendErrors }));
+            } else {
+                setErrors((prev) => ({
+                    ...prev,
+                    submit:
+                        error.message ||
+                        "An error occurred while saving the budget request.",
+                }));
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -256,7 +452,7 @@ const BudgetRequestForm = () => {
         return <p className="text-red-500 text-sm mt-1">{error}</p>;
     };
 
-    if (loading) {
+    if (loading || (!dataLoaded && isEditMode)) {
         return (
             <div className="w-full flex justify-center items-center py-12">
                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
@@ -269,34 +465,46 @@ const BudgetRequestForm = () => {
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-3xl font-bold text-[#2C323C]">
-                        {isEditing ? "Edit Budget Request" : "Budget Request"}
+                        {isEditMode ? "Edit Budget Request" : "Budget Request"}
                     </h2>
                     <p className="text-[#7D8086] text-lg">
-                        {isEditing
+                        {isEditMode
                             ? "Update your budget request details"
                             : "Request by department head for the budget"}
                     </p>
                 </div>
                 <div className="w-full lg:w-1/4">
-                    <SelectFloating
-                        label="Year"
-                        name="fiscal_period_id"
-                        value={formData.fiscal_period_id}
-                        onChange={handleChange}
-                        options={fiscalYears.map((year) => ({
-                            id: year.id,
-                            label: `${year.period_name} ${
-                                year.fiscal_year.split("-")[0]
-                            }`,
-                        }))}
-                    />
+                    {isEditMode ? (
+                        <InputFloating
+                            label="Year"
+                            name="fiscal_period_id"
+                            value={`${fiscalYears.find(year => year.id === formData.fiscal_period_id)?.period_name} ${fiscalYears.find(year => year.id === formData.fiscal_period_id)?.fiscal_year.split("-")[0]}`}
+                            onChange={() => {}}
+                            onKeyDown={(e) => e.preventDefault()}
+                            disabled={true}
+                            readOnly={true}
+                        />
+                    ) : (
+                        <SelectFloating
+                            label="Year"
+                            name="fiscal_period_id"
+                            value={formData.fiscal_period_id}
+                            onChange={handleChange}
+                            options={fiscalYears.map((year) => ({
+                                id: year.id,
+                                label: `${year.period_name} ${
+                                    year.fiscal_year.split("-")[0]
+                                }`,
+                            }))}
+                        />
+                    )}
                     <ErrorMessage error={errors.fiscal_period_id} />
                 </div>
             </div>
 
-            {(errors.fetchError || errors.submit) && (
+            {(errors.fetchError || errors.submit || errors.hierarchical_uniqueness) && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4 mb-2">
-                    <p>{errors.fetchError || errors.submit}</p>
+                    <p>{errors.fetchError || errors.submit || errors.hierarchical_uniqueness}</p>
                 </div>
             )}
 
@@ -316,43 +524,79 @@ const BudgetRequestForm = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                        <SelectFloating
-                            label="Department Name"
-                            name="department_id"
-                            value={formData.department_id}
-                            onChange={handleChange}
-                            options={departments.map((dept) => ({
-                                id: dept.id,
-                                label: dept.name,
-                            }))}
-                        />
+                        {isEditMode ? (
+                            <InputFloating
+                                label="Department Name"
+                                name="department_id"
+                                value={departments.find(dept => dept.id === formData.department_id)?.name || ''}
+                                onChange={() => {}}
+                                onKeyDown={(e) => e.preventDefault()}
+                                disabled={true}
+                                readOnly={true}
+                            />
+                        ) : (
+                            <SelectFloating
+                                label="Department Name"
+                                name="department_id"
+                                value={formData.department_id}
+                                onChange={handleChange}
+                                options={departments.map((dept) => ({
+                                    id: dept.id,
+                                    label: dept.name,
+                                }))}
+                            />
+                        )}
                         <ErrorMessage error={errors.department_id} />
                     </div>
                     <div>
-                        <SelectFloating
-                            label="Cost Center"
-                            name="cost_center_id"
-                            value={formData.cost_center_id}
-                            onChange={handleChange}
-                            options={costCenters.map((cost) => ({
-                                id: cost.id,
-                                label: cost.name,
-                            }))}
-                        />
+                        {isEditMode ? (
+                            <InputFloating
+                                label="Cost Center"
+                                name="cost_center_id"
+                                value={costCenters.find(cost => cost.id === formData.cost_center_id)?.name || ''}
+                                onChange={() => {}}
+                                onKeyDown={(e) => e.preventDefault()}
+                                disabled={true}
+                                readOnly={true}
+                            />
+                        ) : (
+                            <SelectFloating
+                                label="Cost Center"
+                                name="cost_center_id"
+                                value={formData.cost_center_id}
+                                onChange={handleChange}
+                                options={costCenters.map((cost) => ({
+                                    id: cost.id,
+                                    label: cost.name,
+                                }))}
+                            />
+                        )}
                         <ErrorMessage error={errors.cost_center_id} />
                     </div>
                     <div>
-                        <SelectFloating
-                            label="Sub Cost Center"
-                            name="sub_cost_center"
-                            value={formData.sub_cost_center}
-                            onChange={handleChange}
-                            options={filteredSubCostCenters.map((sub) => ({
-                                id: sub.id,
-                                label: sub.name,
-                            }))}
-                            disabled={!formData.cost_center_id}
-                        />
+                        {isEditMode ? (
+                            <InputFloating
+                                label="Sub Cost Center"
+                                name="sub_cost_center"
+                                value={filteredSubCostCenters.find(sub => sub.id === formData.sub_cost_center)?.name || ''}
+                                onChange={() => {}}
+                                onKeyDown={(e) => e.preventDefault()}
+                                disabled={true}
+                                readOnly={true}
+                            />
+                        ) : (
+                            <SelectFloating
+                                label="Sub Cost Center"
+                                name="sub_cost_center"
+                                value={formData.sub_cost_center}
+                                onChange={handleChange}
+                                options={filteredSubCostCenters.map((sub) => ({
+                                    id: sub.id,
+                                    label: sub.name,
+                                }))}
+                                disabled={!formData.cost_center_id}
+                            />
+                        )}
                         <ErrorMessage error={errors.sub_cost_center} />
                     </div>
                 </div>
@@ -410,30 +654,57 @@ const BudgetRequestForm = () => {
                         <ErrorMessage error={errors.urgency} />
                     </div>
                     <div>
-                        <label className="border p-5 rounded-2xl bg-white w-full flex items-center justify-center cursor-pointer relative">
-                            <FontAwesomeIcon
-                                icon={faLink}
-                                className="text-[#009FDC] mr-2"
-                            />
-                            {formData.attachment ? (
-                                <span className="text-gray-700 text-sm overflow-hidden text-ellipsis max-w-[80%]">
-                                    {formData.attachment.name}
-                                </span>
-                            ) : (
-                                <span className="text-sm">
-                                    {isEditing
-                                        ? "Update Attachment"
-                                        : "Attachment"}
-                                </span>
+                        <div>
+                            <label className="border p-5 rounded-2xl bg-white w-full flex items-center justify-center cursor-pointer relative">
+                                <FontAwesomeIcon
+                                    icon={faLink}
+                                    className="text-[#009FDC] mr-2"
+                                />
+                                {tempAttachment ? (
+                                    <span className="text-gray-700 text-sm overflow-hidden text-ellipsis max-w-[80%]">
+                                        {tempAttachment.name}
+                                    </span>
+                                ) : existingAttachment ? (
+                                    <span 
+                                        className="text-blue-600 text-sm overflow-hidden text-ellipsis max-w-[80%] hover:text-blue-800 hover:underline cursor-pointer"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            const filePath = existingAttachment.file_path;
+                                            if (filePath) {
+                                                const fixedPath = filePath.startsWith("http") 
+                                                    ? filePath 
+                                                    : filePath.startsWith("/storage/") 
+                                                        ? filePath 
+                                                        : `/storage/${filePath}`;
+                                                window.open(fixedPath, "_blank");
+                                            }
+                                        }}
+                                    >
+                                        {existingAttachment.original_name}
+                                    </span>
+                                ) : (
+                                    <span className="text-sm">
+                                        {isEditMode
+                                            ? "Update Attachment"
+                                            : "Attachment"}
+                                    </span>
+                                )}
+                                <input
+                                    type="file"
+                                    name="attachment"
+                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                    ref={fileInputRef}
+                                />
+                            </label>
+                            {uploadError && (
+                                <div className="text-red-500 text-xs mt-1 text-center">{uploadError}</div>
                             )}
-                            <input
-                                type="file"
-                                name="attachment"
-                                accept="image/*"
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
-                        </label>
+                            {errors.attachment && (
+                                <div className="text-red-500 text-xs mt-1 text-center">{errors.attachment}</div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -471,10 +742,10 @@ const BudgetRequestForm = () => {
                         disabled={isSubmitting}
                     >
                         {isSubmitting
-                            ? isEditing
+                            ? isEditMode
                                 ? "Updating..."
                                 : "Saving..."
-                            : isEditing
+                            : isEditMode
                             ? "Update"
                             : "Save"}
                     </button>
