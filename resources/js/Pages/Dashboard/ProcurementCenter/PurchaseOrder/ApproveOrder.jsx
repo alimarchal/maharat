@@ -218,7 +218,7 @@ const ApproveOrder = ({
 
             // Check budget availability
             const budgetResponse = await axios.get(
-                `/api/v1/budgets?filter[sub_cost_center_id]=${quotationDetails?.rfq?.sub_cost_center_id}&include=fiscalPeriod,department,costCenter,subCostCenter,creator`
+                `/api/v1/budgets?filter[sub_cost_center_id]=${quotationDetails?.rfq?.sub_cost_center_id}&include=fiscalPeriod,department,costCenter,subCostCenter,creator,requestBudget`
             );
             const budgetDetails = budgetResponse.data?.data?.[0];
             if (!budgetDetails) {
@@ -297,7 +297,7 @@ const ApproveOrder = ({
             if (newPOId) {
                 // Update budget - note: budgets table doesn't have reserved_amount and balance_amount
                 // These fields are in request_budgets table, so we'll update the linked request_budget
-                if (budgetDetails.request_budget_id) {
+                if (budgetDetails.request_budget_id && budgetDetails.request_budget) {
                     const updatedRequestBudgetData = {
                         reserved_amount: formData.amount,
                         balance_amount: budgetDetails.total_expense_planned - formData.amount,
