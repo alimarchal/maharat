@@ -64,9 +64,15 @@ const ReviewTask = () => {
         if (Object.keys(newErrors).length > 0) return;
 
         try {
+            // Ensure task_id is set to the current task's ID
+            const taskDescriptionData = {
+                ...formData,
+                task_id: taskData.id // Set the task_id to the current task's ID
+            };
+
             const response = await axios.post(
                 "/api/v1/task-descriptions",
-                formData
+                taskDescriptionData
             );
             const taskDescription = response.data.data;
 
@@ -174,7 +180,7 @@ const ReviewTask = () => {
             }
 
             // Update task status if applicable
-            if (taskDescription?.action && taskDescription?.task_id) {
+            if (taskDescription?.action && taskData?.id) {
                 const statusMap = {
                     Approve: "Approved",
                     Refer: "Referred",
@@ -186,7 +192,7 @@ const ReviewTask = () => {
                 if (status) {
                     const taskPayload = { status };
                     await axios.put(
-                        `/api/v1/tasks/${taskDescription.task?.id}`,
+                        `/api/v1/tasks/${taskData.id}`,
                         taskPayload
                     );
                 }
