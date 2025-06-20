@@ -7,7 +7,7 @@ import { usePage } from "@inertiajs/react";
 
 const InvoicesTable = () => {
     const user_id = usePage().props.auth.user.id;
-    
+
     const [invoices, setInvoices] = useState([]);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -223,6 +223,9 @@ const InvoicesTable = () => {
                             <th className="py-3 px-4">Status</th>
                             <th className="py-3 px-4">Payable Date</th>
                             <th className="py-3 px-4">Date & Time</th>
+                            <th className="py-3 px-4 text-center">
+                                Attachment
+                            </th>
                             <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                                 Actions
                             </th>
@@ -232,14 +235,14 @@ const InvoicesTable = () => {
                     <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                         {loading ? (
                             <tr>
-                                <td colSpan="8" className="text-center py-12">
+                                <td colSpan="9" className="text-center py-12">
                                     <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                                 </td>
                             </tr>
                         ) : error ? (
                             <tr>
                                 <td
-                                    colSpan="8"
+                                    colSpan="9"
                                     className="text-center text-red-500 font-medium py-4"
                                 >
                                     {error}
@@ -282,6 +285,9 @@ const InvoicesTable = () => {
                                     <td className="px-3 py-4">
                                         {formatDateTime(invoice.updated_at)}
                                     </td>
+                                    <td className="px-3 py-4">
+                                        {invoice.attachment}
+                                    </td>
                                     <td className="px-3 py-4 flex justify-center text-center space-x-3">
                                         <button
                                             onClick={() =>
@@ -305,10 +311,10 @@ const InvoicesTable = () => {
                         ) : (
                             <tr>
                                 <td
-                                    colSpan="8"
+                                    colSpan="9"
                                     className="px-6 py-4 text-center"
                                 >
-                                    No invoices found
+                                    No Customer invoices found
                                 </td>
                             </tr>
                         )}
