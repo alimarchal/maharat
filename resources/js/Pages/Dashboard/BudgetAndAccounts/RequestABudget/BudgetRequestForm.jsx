@@ -20,6 +20,7 @@ const BudgetRequestForm = () => {
         sub_cost_center: "",
         previous_year_budget_amount: "",
         requested_amount: "",
+        revenue_planned: "",
         urgency: "",
         attachment: null,
         reason_for_increase: "",
@@ -65,20 +66,18 @@ const BudgetRequestForm = () => {
             );
             const budgetRequest = response.data.data;
 
-            // First set the cost center to trigger sub cost center filtering
-            if (budgetRequest.cost_center_id) {
-                await filterSubCostCenters(budgetRequest.cost_center_id);
-            }
+            const costCenterId = budgetRequest.cost_center_id;
+            await filterSubCostCenters(costCenterId);
 
-            // Then set the form data after sub cost centers are filtered
             setFormData({
                 fiscal_period_id: budgetRequest.fiscal_period_id || "",
                 department_id: budgetRequest.department_id || "",
-                cost_center_id: budgetRequest.cost_center_id || "",
+                cost_center_id: costCenterId || "",
                 sub_cost_center: budgetRequest.sub_cost_center || "",
                 previous_year_budget_amount:
                     budgetRequest.previous_year_budget_amount || "",
                 requested_amount: budgetRequest.requested_amount || "",
+                revenue_planned: budgetRequest.revenue_planned || "",
                 urgency: budgetRequest.urgency || "",
                 attachment: null,
                 reason_for_increase: budgetRequest.reason_for_increase || "",
@@ -138,6 +137,7 @@ const BudgetRequestForm = () => {
             sub_cost_center: "Sub Cost Center is required",
             previous_year_budget_amount: "Previous Budget is required",
             requested_amount: "Requested Amount is required",
+            revenue_planned: "Revenue Planned is required",
             urgency: "Urgency is required",
             reason_for_increase: "Reason is required",
         };
@@ -228,9 +228,7 @@ const BudgetRequestForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         if (!validateForm()) return;
-
         setIsSubmitting(true);
 
         try {
@@ -359,7 +357,7 @@ const BudgetRequestForm = () => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <InputFloating
                             label="Previous Budget Amount"
@@ -384,6 +382,19 @@ const BudgetRequestForm = () => {
                         />
                         <ErrorMessage error={errors.requested_amount} />
                     </div>
+                    <div>
+                        <InputFloating
+                            label="Revenue Planned"
+                            name="revenue_planned"
+                            value={formData.revenue_planned}
+                            onChange={handleChange}
+                            type="number"
+                            min="0"
+                        />
+                        <ErrorMessage error={errors.revenue_planned} />
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <SelectFloating
                             label="Urgency"
