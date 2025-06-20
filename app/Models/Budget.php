@@ -23,6 +23,7 @@ class Budget extends Model
         'department_id',
         'cost_center_id',
         'sub_cost_center_id',
+        'request_budget_id',
         'description',
         'total_revenue_planned',
         'total_revenue_actual',
@@ -159,5 +160,13 @@ class Budget extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * Get the request budget that created this budget.
+     */
+    public function requestBudget(): BelongsTo
+    {
+        return $this->belongsTo(RequestBudget::class);
     }
 }

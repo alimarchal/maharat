@@ -526,7 +526,6 @@ class TaskController extends Controller
                                 ->update([
                                     'status' => 'Approved',
                                     'approved_amount' => DB::raw('requested_amount'),
-                                    'reserved_amount' => DB::raw('requested_amount'),
                                     'balance_amount' => DB::raw('requested_amount'),
                                     'updated_at' => now()
                                 ]);
@@ -593,6 +592,7 @@ class TaskController extends Controller
                                                 'department_id' => $budgetRequest->department_id,
                                                 'cost_center_id' => $budgetRequest->cost_center_id,
                                                 'sub_cost_center_id' => $budgetRequest->sub_cost_center,
+                                                'request_budget_id' => $budgetRequest->id,
                                                 'description' => 'Budget created from approved budget request',
                                                 'total_revenue_planned' => $budgetRequest->revenue_planned,
                                                 'total_revenue_actual' => 0,

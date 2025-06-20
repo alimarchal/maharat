@@ -24,12 +24,14 @@ const ViewBudget = () => {
             const fiscalPeriodId = res.data?.data?.fiscal_period_id;
 
             const response = await axios.get(
-                `/api/v1/budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator`
+                `/api/v1/budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator,requestBudget`
             );
             if (response.data && response.data.data) {
                 const filteredBudgets = response.data.data.filter(
                     (budget) => budget.fiscal_period_id === fiscalPeriodId
                 );
+                console.log('API Response:', response.data.data);
+                console.log('Filtered Budgets:', filteredBudgets);
                 setBudgets(filteredBudgets.length > 0 ? filteredBudgets : []);
             } else {
                 setError("Invalid response format. Please try again.");
@@ -51,7 +53,7 @@ const ViewBudget = () => {
 
     const totalApproved = budgets?.reduce(
         (sum, budget) =>
-            sum + (parseFloat(budget.total_expense_actual) || 0),
+            sum + (parseFloat(budget.request_budget?.approved_amount) || 0),
         0
     );
 
@@ -95,7 +97,7 @@ const ViewBudget = () => {
                                     {budget.cost_center?.name}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {budget.sub_cost_center_details?.name}
+                                    {budget.sub_cost_center?.name}
                                 </td>
                                 <td className="py-3 px-4">
                                     {budget.department?.name}
@@ -107,7 +109,7 @@ const ViewBudget = () => {
                                 </td>
                                 <td className="py-3 px-4 text-green-500">
                                     {parseFloat(
-                                        budget.total_expense_actual
+                                        budget.request_budget?.approved_amount || 0
                                     ).toLocaleString()}
                                 </td>
                             </tr>

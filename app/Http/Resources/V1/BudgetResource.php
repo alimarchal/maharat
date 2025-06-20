@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\V1;
 
+use App\Http\Resources\RequestBudgetResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -36,6 +37,7 @@ class BudgetResource extends JsonResource
             'department' => new DepartmentResource($this->whenLoaded('department')),
             'cost_center' => new CostCenterResource($this->whenLoaded('costCenter')),
             'sub_cost_center' => new CostCenterResource($this->whenLoaded('subCostCenter')),
+            'request_budget' => new RequestBudgetResource($this->whenLoaded('requestBudget')),
             'creator' => new UserResource($this->whenLoaded('creator')),
             'updater' => new UserResource($this->whenLoaded('updater')),
         ];

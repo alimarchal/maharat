@@ -276,16 +276,16 @@ const BudgetTable = () => {
                                     </span>
                                 </td>
                                 <td className="py-3 px-4 font-semibold">
-                                    ${yearGroup.totalRevenuePlanned.toLocaleString()}
+                                    {yearGroup.totalRevenuePlanned.toLocaleString()}
                                 </td>
                                 <td className="py-3 px-4 font-semibold">
-                                    ${yearGroup.totalRevenueActual.toLocaleString()}
+                                    {yearGroup.totalRevenueActual.toLocaleString()}
                                 </td>
                                 <td className="py-3 px-4 font-semibold">
-                                    ${yearGroup.totalExpensePlanned.toLocaleString()}
+                                    {yearGroup.totalExpensePlanned.toLocaleString()}
                                 </td>
                                 <td className="py-3 px-4 font-semibold">
-                                    ${yearGroup.totalExpenseActual.toLocaleString()}
+                                    {yearGroup.totalExpenseActual.toLocaleString()}
                                 </td>
                                 <td className="py-3 px-4 flex items-center justify-center text-center gap-4">
                                     <Link
