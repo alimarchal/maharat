@@ -363,7 +363,7 @@ const ApproveOrder = ({
                             : "Create Purchase Order"}
                     </h2>
                     <div className="flex items-center gap-4">
-                        <span className="text-sm text-gray-500">
+                        <span className="text-lg">
                             <span className="font-bold">Issue Date:</span> {new Date().toLocaleDateString("en-GB", {
                                 day: "2-digit",
                                 month: "2-digit",

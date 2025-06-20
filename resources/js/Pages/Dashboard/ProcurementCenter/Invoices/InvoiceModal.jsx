@@ -15,7 +15,8 @@ const InvoiceModal = ({
     const [formData, setFormData] = useState({
         supplier_id: "",
         amount: "",
-        status: "Draft",
+        vat_amount: "",
+        status: "Paid",
         type: "Cash",
         payable_date: new Date().toISOString().split("T")[0],
         purchase_order_id: "",
@@ -31,8 +32,6 @@ const InvoiceModal = ({
     const [isSaving, setIsSaving] = useState(false);
 
     const statusOptions = [
-        { id: "Draft", label: "Draft" },
-        { id: "Verified", label: "Verified" },
         { id: "Paid", label: "Paid" },
         { id: "UnPaid", label: "Unpaid" },
         { id: "Partially Paid", label: "Partially Paid" },
@@ -40,18 +39,23 @@ const InvoiceModal = ({
 
     const paymentTypeOptions = [
         { id: "Cash", label: "Cash" },
-        { id: "Credit", label: "Credit" },
+        { id: "Credit upto 30 days", label: "Credit upto 30 days" },
+        { id: "Credit upto 60 days", label: "Credit upto 60 days" },
+        { id: "Credit upto 90 days", label: "Credit upto 90 days" },
+        { id: "Credit upto 120 days", label: "Credit upto 120 days" },
     ];
 
     useEffect(() => {
         if (isOpen) {
             fetchSuppliers();
             fetchAvailablePurchaseOrders();
+
             if (invoice && isEdit) {
                 setFormData({
                     supplier_id: invoice.supplier_id || "",
                     amount: invoice.amount || "",
-                    status: invoice.status || "pending",
+                    vat_amount: invoice.vat_amount || "",
+                    status: invoice.status || "Paid",
                     type: invoice.type || "Cash",
                     payable_date:
                         invoice.payable_date ||
@@ -66,7 +70,8 @@ const InvoiceModal = ({
                 setFormData({
                     supplier_id: "",
                     amount: "",
-                    status: "Draft",
+                    vat_amount: "",
+                    status: "Paid",
                     type: "Cash",
                     payable_date: new Date().toISOString().split("T")[0],
                     purchase_order_id: "",
@@ -83,55 +88,47 @@ const InvoiceModal = ({
         try {
             const response = await axios.get("/api/v1/suppliers");
             setSuppliers(response.data.data || []);
-        } catch (error) {
+        } catch {
             setErrors({ fetch: "Failed to load suppliers" });
         }
     };
 
     const fetchAvailablePurchaseOrders = async () => {
         try {
-            // First try to get all purchase orders and use the client-side filtering approach
-            const allPOsResponse = await axios.get('/api/v1/purchase-orders');
-            const allInvoicesResponse = await axios.get('/api/v1/external-invoices');
-            
+            const allPOsResponse = await axios.get("/api/v1/purchase-orders");
+            const allInvoicesResponse = await axios.get(
+                "/api/v1/external-invoices"
+            );
+
             if (allPOsResponse.data.data && allInvoicesResponse.data.data) {
-                // Get IDs of purchase orders that already have invoices
                 const usedPOIds = allInvoicesResponse.data.data
-                    .filter(invoice => invoice.purchase_order_id)
-                    .map(invoice => invoice.purchase_order_id);
-                
-                // Filter out purchase orders that already have invoices
+                    .filter((invoice) => invoice.purchase_order_id)
+                    .map((invoice) => invoice.purchase_order_id);
+
                 const availablePOs = allPOsResponse.data.data
-                    .filter(po => !usedPOIds.includes(po.id))
-                    .map(po => ({
+                    .filter((po) => !usedPOIds.includes(po.id))
+                    .map((po) => ({
                         id: po.id,
-                        label: po.purchase_order_no || `PO-${po.id}`
+                        label: po.purchase_order_no || `PO-${po.id}`,
                     }));
                 setPurchaseOrders(availablePOs);
                 return;
             }
-            
-            // If the client-side approach failed, try the server endpoint
-            const response = await axios.get('/api/v1/purchase-orders/available');
 
+            const response = await axios.get(
+                "/api/v1/purchase-orders/available"
+            );
             if (response.data.success) {
-                // Map the raw SQL results to dropdown format
-                const purchaseOrdersData = response.data.data.map(po => ({
+                const purchaseOrdersData = response.data.data.map((po) => ({
                     id: po.id,
-                    label: po.purchase_order_no || `PO-${po.id}`
+                    label: po.purchase_order_no || `PO-${po.id}`,
                 }));
                 setPurchaseOrders(purchaseOrdersData);
             } else {
-                console.error('API returned success: false');
                 setPurchaseOrders([]);
             }
         } catch (error) {
-            console.error('Error fetching purchase orders:', error);
-            if (error.response?.data) {
-                console.error('Error response data:', error.response.data);
-            }
-            
-            // Set empty array as fallback
+            console.error("Error fetching purchase orders:", error);
             setPurchaseOrders([]);
         }
     };
@@ -183,6 +180,8 @@ const InvoiceModal = ({
             validationErrors.supplier_id = "Supplier is required";
         if (!submissionData.amount)
             validationErrors.amount = "Amount is required";
+        if (!submissionData.vat_amount)
+            validationErrors.vat_amount = "VAT Amount is required";
         if (!submissionData.status)
             validationErrors.status = "Status is required";
         if (!submissionData.type)
@@ -223,7 +222,9 @@ const InvoiceModal = ({
             <div className="bg-white p-8 rounded-2xl w-[90%] max-w-4xl">
                 <div className="flex justify-between border-b pb-2 mb-4">
                     <h2 className="text-3xl font-bold text-[#2C323C]">
-                        {isEdit ? "Edit Invoice" : "Add Invoice"}
+                        {isEdit
+                            ? "Edit Customer Invoice"
+                            : "Add Customer Invoice"}
                     </h2>
                     <button
                         onClick={onClose}
@@ -240,21 +241,14 @@ const InvoiceModal = ({
                                     label="Purchase Order"
                                     name="purchase_order_id"
                                     value={
-                                        formData.purchase_order_id
-                                            ? formData.purchase_order_id.toString()
-                                            : ""
+                                        formData.purchase_order_id?.toString() ||
+                                        ""
                                     }
                                     onChange={handleChange}
-                                    options={purchaseOrders.map((po) => {
-                                        console.log(
-                                            "Mapping purchase order for dropdown:",
-                                            po
-                                        );
-                                        return {
-                                            id: po.id.toString(),
-                                            label: po.label,
-                                        };
-                                    })}
+                                    options={purchaseOrders.map((po) => ({
+                                        id: po.id.toString(),
+                                        label: po.label,
+                                    }))}
                                     error={errors.purchase_order_id}
                                 />
                             )}
@@ -273,11 +267,7 @@ const InvoiceModal = ({
                             <SelectFloating
                                 label="Supplier"
                                 name="supplier_id"
-                                value={
-                                    formData.supplier_id
-                                        ? formData.supplier_id.toString()
-                                        : ""
-                                }
+                                value={formData.supplier_id?.toString() || ""}
                                 onChange={handleChange}
                                 options={suppliers.map((supplier) => ({
                                     id: supplier.id.toString(),
@@ -295,9 +285,16 @@ const InvoiceModal = ({
                                 onChange={handleChange}
                                 error={errors.amount}
                             />
-                            <p className="text-xs text-gray-500 mt-1 pl-2">
-                                VAT (15%) will be automatically calculated
-                            </p>
+                        </div>
+                        <div>
+                            <InputFloating
+                                label="VAT Amount"
+                                name="vat_amount"
+                                type="number"
+                                value={formData.vat_amount}
+                                onChange={handleChange}
+                                error={errors.vat_amount}
+                            />
                         </div>
                         <div>
                             <SelectFloating
@@ -321,10 +318,9 @@ const InvoiceModal = ({
                                         error={errors.status}
                                     />
                                 </div>
-
                                 <div>
                                     <InputFloating
-                                        label="Payable Date"
+                                        label="Invoice Date"
                                         name="payable_date"
                                         type="date"
                                         value={formData.payable_date}
