@@ -242,11 +242,12 @@ const ApproveOrder = ({
             }
 
             // Check if the form amount exceeds the available budget amount
-            const availableBudgetAmount = Number(budgetDetails.total_expense_planned);
+            const availableBalance = Number(budgetDetails.request_budget?.balance_amount || budgetDetails.total_expense_planned);
+            const originalBudget = Number(budgetDetails.total_expense_planned);
             const enteredAmount = Number(formData.amount);
-            if (enteredAmount > availableBudgetAmount) {
+            if (enteredAmount > availableBalance) {
                 setErrors({
-                    submit: "Purchase order amount exceeds the allocated budget for this cost center.",
+                    submit: `Purchase order amount (${enteredAmount}) exceeds available balance (${availableBalance}). Original budget: ${originalBudget}.`,
                 });
                 setIsSaving(false);
                 return;
