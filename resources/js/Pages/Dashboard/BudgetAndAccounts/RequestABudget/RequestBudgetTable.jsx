@@ -134,13 +134,15 @@ const RequestBudgetTable = () => {
                                 </td>
                                 <td className="py-3 px-4">
                                     <div className="flex items-start justify-center gap-4">
-                                        <Link
-                                            href={`/request-budgets/${request.id}/edit`}
-                                            className="text-blue-400 hover:text-blue-500"
-                                            title="Edit Budget Request"
-                                        >
-                                            <FontAwesomeIcon icon={faEdit} />
-                                        </Link>
+                                        {request.status !== 'Approved' && (
+                                            <Link
+                                                href={`/request-budgets/${request.id}/edit`}
+                                                className="text-blue-400 hover:text-blue-500"
+                                                title="Edit Budget Request"
+                                            >
+                                                <FontAwesomeIcon icon={faEdit} />
+                                            </Link>
+                                        )}
                                         {request.attachment_path && (
                                             <button
                                                 className="w-4 h-4"
@@ -164,20 +166,22 @@ const RequestBudgetTable = () => {
                                                 />
                                             </button>
                                         )}
-                                        <button
-                                            className={`text-red-500 hover:text-red-800 ${
-                                                deletingId === request.id ? 'opacity-50 cursor-not-allowed' : ''
-                                            }`}
-                                            title="Delete Budget Request"
-                                            onClick={() => handleDelete(request.id)}
-                                            disabled={deletingId === request.id}
-                                        >
-                                            {deletingId === request.id ? (
-                                                <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-                                            ) : (
-                                                <FontAwesomeIcon icon={faTrash} />
-                                            )}
-                                        </button>
+                                        {request.status !== 'Approved' && (
+                                            <button
+                                                className={`text-red-500 hover:text-red-800 ${
+                                                    deletingId === request.id ? 'opacity-50 cursor-not-allowed' : ''
+                                                }`}
+                                                title="Delete Budget Request"
+                                                onClick={() => handleDelete(request.id)}
+                                                disabled={deletingId === request.id}
+                                            >
+                                                {deletingId === request.id ? (
+                                                    <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                                                ) : (
+                                                    <FontAwesomeIcon icon={faTrash} />
+                                                )}
+                                            </button>
+                                        )}
                                     </div>
                                 </td>
                             </tr>

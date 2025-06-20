@@ -24,7 +24,7 @@ const ViewBudget = () => {
             const fiscalPeriodId = res.data?.data?.fiscal_period_id;
 
             const response = await axios.get(
-                `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator`
+                `/api/v1/budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator`
             );
             if (response.data && response.data.data) {
                 const filteredBudgets = response.data.data.filter(
@@ -45,13 +45,13 @@ const ViewBudget = () => {
     };
 
     const totalRequested = budgets?.reduce(
-        (sum, budget) => sum + (parseFloat(budget.requested_amount) || 0),
+        (sum, budget) => sum + (parseFloat(budget.total_expense_planned) || 0),
         0
     );
 
     const totalApproved = budgets?.reduce(
         (sum, budget) =>
-            sum + (parseFloat(budget.previous_year_budget_amount) || 0),
+            sum + (parseFloat(budget.total_expense_actual) || 0),
         0
     );
 
@@ -102,12 +102,12 @@ const ViewBudget = () => {
                                 </td>
                                 <td className="py-3 px-4 text-blue-500">
                                     {parseFloat(
-                                        budget.requested_amount
+                                        budget.total_expense_planned
                                     ).toLocaleString()}
                                 </td>
                                 <td className="py-3 px-4 text-green-500">
                                     {parseFloat(
-                                        budget.previous_year_budget_amount
+                                        budget.total_expense_actual
                                     ).toLocaleString()}
                                 </td>
                             </tr>

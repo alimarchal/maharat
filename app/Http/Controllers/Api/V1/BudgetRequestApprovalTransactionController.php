@@ -163,6 +163,8 @@ class BudgetRequestApprovalTransactionController extends Controller
                             ->where('id', $budgetRequestApprovalTransaction->request_budgets_id)
                             ->update([
                                 'status' => 'Approved',
+                                'reserved_amount' => DB::raw('revenue_planned'),
+                                'balance_amount' => DB::raw('revenue_planned'),
                                 'updated_at' => now()
                             ]);
 
@@ -184,62 +186,33 @@ class BudgetRequestApprovalTransactionController extends Controller
                                     'sub_cost_center_id' => $budgetRequest->sub_cost_center
                                 ]);
 
-                                // Check if budget already exists for this combination
-                                $existingBudget = Budget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
-                                    ->where('cost_center_id', $budgetRequest->cost_center_id)
-                                    ->where('sub_cost_center_id', $budgetRequest->sub_cost_center)
-                                    ->first();
+                                // Always create a new budget for the approved budget request
+                                $newBudget = Budget::create([
+                                    'fiscal_period_id' => $budgetRequest->fiscal_period_id,
+                                    'department_id' => $budgetRequest->department_id,
+                                    'cost_center_id' => $budgetRequest->cost_center_id,
+                                    'sub_cost_center_id' => $budgetRequest->sub_cost_center,
+                                    'description' => 'Budget created from approved budget request',
+                                    'total_revenue_planned' => $budgetRequest->revenue_planned,
+                                    'total_revenue_actual' => 0,
+                                    'total_expense_planned' => $budgetRequest->requested_amount,
+                                    'total_expense_actual' => 0,
+                                    'status' => 'Active',
+                                    'attachment_path' => $budgetRequest->attachment_path,
+                                    'original_name' => $budgetRequest->original_name,
+                                    'created_by' => Auth::id(),
+                                    'updated_by' => Auth::id()
+                                ]);
 
-                                if ($existingBudget) {
-                                    Log::warning('Budget already exists for this combination, updating instead', [
-                                        'request_budget_id' => $budgetRequest->id,
-                                        'existing_budget_id' => $existingBudget->id
-                                    ]);
+                                // Update the budget request to link to the new budget
+                                $budgetRequest->update([
+                                    'budget_id' => $newBudget->id
+                                ]);
 
-                                    // Update existing budget
-                                    $existingBudget->update([
-                                        'total_expense_planned' => $budgetRequest->requested_amount,
-                                        'total_revenue_planned' => $budgetRequest->revenue_planned,
-                                        'description' => 'Budget created from approved budget request',
-                                        'status' => 'Active',
-                                        'attachment_path' => $budgetRequest->attachment_path,
-                                        'original_name' => $budgetRequest->original_name,
-                                        'updated_by' => Auth::id()
-                                    ]);
-
-                                    // Update the budget request to link to the existing budget
-                                    $budgetRequest->update([
-                                        'budget_id' => $existingBudget->id
-                                    ]);
-                                } else {
-                                    // Create new budget
-                                    $newBudget = Budget::create([
-                                        'fiscal_period_id' => $budgetRequest->fiscal_period_id,
-                                        'department_id' => $budgetRequest->department_id,
-                                        'cost_center_id' => $budgetRequest->cost_center_id,
-                                        'sub_cost_center_id' => $budgetRequest->sub_cost_center,
-                                        'description' => 'Budget created from approved budget request',
-                                        'total_revenue_planned' => $budgetRequest->revenue_planned,
-                                        'total_revenue_actual' => 0,
-                                        'total_expense_planned' => $budgetRequest->requested_amount,
-                                        'total_expense_actual' => 0,
-                                        'status' => 'Active',
-                                        'attachment_path' => $budgetRequest->attachment_path,
-                                        'original_name' => $budgetRequest->original_name,
-                                        'created_by' => Auth::id(),
-                                        'updated_by' => Auth::id()
-                                    ]);
-
-                                    // Update the budget request to link to the new budget
-                                    $budgetRequest->update([
-                                        'budget_id' => $newBudget->id
-                                    ]);
-
-                                    Log::info('New budget created successfully', [
-                                        'request_budget_id' => $budgetRequest->id,
-                                        'new_budget_id' => $newBudget->id
-                                    ]);
-                                }
+                                Log::info('New budget created successfully', [
+                                    'request_budget_id' => $budgetRequest->id,
+                                    'new_budget_id' => $newBudget->id
+                                ]);
                             }
                         }
 
