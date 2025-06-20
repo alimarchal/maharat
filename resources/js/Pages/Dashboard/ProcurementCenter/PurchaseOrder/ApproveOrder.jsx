@@ -127,7 +127,7 @@ const ApproveOrder = ({
                 fetchPurchaseOrderDetails();
             } else {
                 const poNumber = generatePONumber();
-                const today = new Date().toISOString().split('T')[0];
+                const today = new Date().toISOString().split("T")[0];
                 setFormData((prev) => ({
                     ...prev,
                     purchase_order_no: poNumber,
@@ -218,7 +218,7 @@ const ApproveOrder = ({
 
             // Check budget availability
             const budgetResponse = await axios.get(
-                `/api/v1/budgets?filter[sub_cost_center_id]=${quotationDetails?.rfq?.sub_cost_center_id}&filter[cost_center_id]=${quotationDetails?.rfq?.cost_center_id}&include=fiscalPeriod,department,costCenter,subCostCenter`
+                `/api/v1/request-budgets?filter[sub_cost_center]=${quotationDetails?.rfq?.sub_cost_center_id}&include=fiscalPeriod,department,costCenter,subCostCenter,creator`
             );
             const budgetDetails = budgetResponse.data?.data?.[0];
             if (!budgetDetails) {
@@ -244,7 +244,7 @@ const ApproveOrder = ({
             // Check if the form amount exceeds the available budget amount
             const availableBudgetAmount = Number(budgetDetails.total_expense_planned);
             const enteredAmount = Number(formData.amount);
-            if (enteredAmount < availableBudgetAmount) {
+            if (enteredAmount > availableBudgetAmount) {
                 setErrors({
                     submit: "Purchase order amount exceeds the allocated budget for this cost center.",
                 });
