@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\BudgetApprovalTransactionController;
 use App\Http\Controllers\Api\V1\BudgetController;
 use App\Http\Controllers\Api\V1\BudgetRequestApprovalTransactionController;
+use App\Http\Controllers\Api\V1\BudgetRequestAttachmentController;
 use App\Http\Controllers\Api\V1\BudgetUsageController;
 use App\Http\Controllers\Api\V1\CashFlowTransactionController;
 use App\Http\Controllers\Api\V1\ChartOfAccountController;
@@ -270,6 +271,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('request-budgets', RequestBudgetController::class);
     Route::post('request-budgets/{id}/restore', [RequestBudgetController::class, 'restore']);
     Route::patch('request-budgets/{requestBudget}/status', [RequestBudgetController::class, 'updateStatus']);
+    
+    // Budget Request Attachments
+    Route::post('budget-request-attachments', [App\Http\Controllers\Api\V1\BudgetRequestAttachmentController::class, 'store']);
+    Route::delete('budget-request-attachments/{id}', [App\Http\Controllers\Api\V1\BudgetRequestAttachmentController::class, 'destroy']);
 
     Route::apiResource('budgets', BudgetController::class);
     Route::post('budgets/{id}/restore', [BudgetController::class, 'restore']);

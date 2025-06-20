@@ -454,6 +454,259 @@ class TaskController extends Controller
                 }
             }
 
+            // Check if this is a Budget Request task and if it's being approved
+            if ($task->request_budgets_id && $request->input('status') === 'Approved') {
+                Log::info('=== BUDGET REQUEST TASK APPROVAL CHECK ===', [
+                    'task_id' => $task->id,
+                    'request_budget_id' => $task->request_budgets_id,
+                    'current_order_no' => $task->order_no,
+                    'current_status' => DB::table('request_budgets')->where('id', $task->request_budgets_id)->value('status')
+                ]);
+
+                // Update the corresponding approval transaction
+                $approvalTransaction = DB::table('budget_request_approval_transactions')
+                    ->where('request_budgets_id', $task->request_budgets_id)
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->first();
+
+                if ($approvalTransaction) {
+                    Log::info('=== UPDATING BUDGET REQUEST APPROVAL TRANSACTION ===', [
+                        'task_id' => $task->id,
+                        'request_budget_id' => $task->request_budgets_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+
+                    // Update the approval transaction status
+                    $transactionUpdated = DB::table('budget_request_approval_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => 'Approve',
+                            'updated_by' => auth()->id(),
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== BUDGET REQUEST APPROVAL TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'request_budget_id' => $task->request_budgets_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_success' => $transactionUpdated
+                    ]);
+
+                    if ($transactionUpdated) {
+                        // Now check if this is the final approval
+                        $totalApprovals = DB::table('budget_request_approval_transactions')
+                            ->where('request_budgets_id', $task->request_budgets_id)
+                            ->count();
+
+                        $completedApprovals = DB::table('budget_request_approval_transactions')
+                            ->where('request_budgets_id', $task->request_budgets_id)
+                            ->where('status', 'Approve')
+                            ->count();
+
+                        $isFinalApproval = $completedApprovals === $totalApprovals;
+
+                        Log::info('=== BUDGET REQUEST FINAL APPROVAL CHECK ===', [
+                            'task_id' => $task->id,
+                            'request_budget_id' => $task->request_budgets_id,
+                            'total_approvals' => $totalApprovals,
+                            'completed_approvals' => $completedApprovals,
+                            'is_final_approval' => $isFinalApproval
+                        ]);
+
+                        if ($isFinalApproval) {
+                            Log::info('=== FINAL BUDGET REQUEST APPROVAL - UPDATING STATUS AND CREATING BUDGET ===', [
+                                'task_id' => $task->id,
+                                'request_budget_id' => $task->request_budgets_id,
+                                'current_status' => DB::table('request_budgets')->where('id', $task->request_budgets_id)->value('status'),
+                                'target_status' => 'Approved'
+                            ]);
+
+                            // Update the budget request status to Approved
+                            $budgetRequestUpdated = DB::table('request_budgets')
+                                ->where('id', $task->request_budgets_id)
+                                ->update([
+                                    'status' => 'Approved',
+                                    'updated_at' => now()
+                                ]);
+
+                            Log::info('=== BUDGET REQUEST STATUS UPDATE RESULT ===', [
+                                'task_id' => $task->id,
+                                'request_budget_id' => $task->request_budgets_id,
+                                'update_success' => $budgetRequestUpdated,
+                                'new_status' => DB::table('request_budgets')->where('id', $task->request_budgets_id)->value('status')
+                            ]);
+
+                            if ($budgetRequestUpdated) {
+                                // Create budget in budgets table from approved budget request
+                                $budgetRequest = DB::table('request_budgets')->where('id', $task->request_budgets_id)->first();
+                                
+                                if ($budgetRequest) {
+                                    Log::info('=== CREATING BUDGET FROM APPROVED BUDGET REQUEST ===', [
+                                        'task_id' => $task->id,
+                                        'request_budget_id' => $budgetRequest->id,
+                                        'fiscal_period_id' => $budgetRequest->fiscal_period_id,
+                                        'cost_center_id' => $budgetRequest->cost_center_id,
+                                        'sub_cost_center_id' => $budgetRequest->sub_cost_center
+                                    ]);
+
+                                    // Check if budget already exists for this combination
+                                    $existingBudget = DB::table('budgets')
+                                        ->where('fiscal_period_id', $budgetRequest->fiscal_period_id)
+                                        ->where('cost_center_id', $budgetRequest->cost_center_id)
+                                        ->where('sub_cost_center_id', $budgetRequest->sub_cost_center)
+                                        ->first();
+
+                                    if ($existingBudget) {
+                                        Log::warning('=== BUDGET ALREADY EXISTS, UPDATING INSTEAD ===', [
+                                            'task_id' => $task->id,
+                                            'request_budget_id' => $budgetRequest->id,
+                                            'existing_budget_id' => $existingBudget->id
+                                        ]);
+
+                                        // Update existing budget
+                                        DB::table('budgets')
+                                            ->where('id', $existingBudget->id)
+                                            ->update([
+                                                'total_expense_planned' => $budgetRequest->requested_amount,
+                                                'total_revenue_planned' => $budgetRequest->revenue_planned,
+                                                'description' => 'Budget updated from approved budget request',
+                                                'status' => 'Active',
+                                                'updated_by' => auth()->id(),
+                                                'updated_at' => now()
+                                            ]);
+
+                                        // Update the budget request to link to the existing budget
+                                        DB::table('request_budgets')
+                                            ->where('id', $budgetRequest->id)
+                                            ->update([
+                                                'budget_id' => $existingBudget->id,
+                                                'updated_at' => now()
+                                            ]);
+                                    } else {
+                                        // Create new budget
+                                        $newBudgetId = DB::table('budgets')->insertGetId([
+                                            'fiscal_period_id' => $budgetRequest->fiscal_period_id,
+                                            'department_id' => $budgetRequest->department_id,
+                                            'cost_center_id' => $budgetRequest->cost_center_id,
+                                            'sub_cost_center_id' => $budgetRequest->sub_cost_center,
+                                            'description' => 'Budget created from approved budget request',
+                                            'total_revenue_planned' => $budgetRequest->revenue_planned,
+                                            'total_revenue_actual' => 0,
+                                            'total_expense_planned' => $budgetRequest->requested_amount,
+                                            'total_expense_actual' => 0,
+                                            'status' => 'Active',
+                                            'created_by' => auth()->id(),
+                                            'updated_by' => auth()->id(),
+                                            'created_at' => now(),
+                                            'updated_at' => now()
+                                        ]);
+
+                                        // Update the budget request to link to the new budget
+                                        DB::table('request_budgets')
+                                            ->where('id', $budgetRequest->id)
+                                            ->update([
+                                                'budget_id' => $newBudgetId,
+                                                'updated_at' => now()
+                                            ]);
+
+                                        Log::info('=== NEW BUDGET CREATED SUCCESSFULLY ===', [
+                                            'task_id' => $task->id,
+                                            'request_budget_id' => $budgetRequest->id,
+                                            'new_budget_id' => $newBudgetId
+                                        ]);
+                                    }
+                                }
+                            }
+                        } else {
+                            Log::info('=== NOT FINAL BUDGET REQUEST APPROVAL - UPDATING TO PENDING ===', [
+                                'task_id' => $task->id,
+                                'request_budget_id' => $task->request_budgets_id,
+                                'total_approvals' => $totalApprovals,
+                                'completed_approvals' => $completedApprovals
+                            ]);
+
+                            // Update budget request status to Pending
+                            $budgetRequestUpdated = DB::table('request_budgets')
+                                ->where('id', $task->request_budgets_id)
+                                ->update([
+                                    'status' => 'Pending',
+                                    'updated_at' => now()
+                                ]);
+
+                            Log::info('=== BUDGET REQUEST STATUS UPDATE TO PENDING RESULT ===', [
+                                'task_id' => $task->id,
+                                'request_budget_id' => $task->request_budgets_id,
+                                'update_success' => $budgetRequestUpdated,
+                                'new_status' => DB::table('request_budgets')->where('id', $task->request_budgets_id)->value('status')
+                            ]);
+                        }
+                    }
+                } else {
+                    Log::warning('=== NO APPROVAL TRANSACTION FOUND FOR BUDGET REQUEST ===', [
+                        'task_id' => $task->id,
+                        'request_budget_id' => $task->request_budgets_id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+                }
+            }
+
+            // Check if this is a Budget Request task and if it's being rejected
+            if ($task->request_budgets_id && $request->input('status') === 'Rejected') {
+                Log::info('=== BUDGET REQUEST TASK REJECTION CHECK ===', [
+                    'task_id' => $task->id,
+                    'request_budget_id' => $task->request_budgets_id,
+                    'current_status' => DB::table('request_budgets')->where('id', $task->request_budgets_id)->value('status')
+                ]);
+
+                // Update the corresponding approval transaction
+                $approvalTransaction = DB::table('budget_request_approval_transactions')
+                    ->where('request_budgets_id', $task->request_budgets_id)
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->first();
+
+                if ($approvalTransaction) {
+                    Log::info('=== UPDATING BUDGET REQUEST APPROVAL TRANSACTION FOR REJECTION ===', [
+                        'task_id' => $task->id,
+                        'request_budget_id' => $task->request_budgets_id,
+                        'approval_transaction_id' => $approvalTransaction->id
+                    ]);
+
+                    // Update the approval transaction status
+                    $transactionUpdated = DB::table('budget_request_approval_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => 'Reject',
+                            'updated_by' => auth()->id(),
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== BUDGET REQUEST REJECTION TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'request_budget_id' => $task->request_budgets_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_success' => $transactionUpdated
+                    ]);
+
+                    if ($transactionUpdated) {
+                        // Immediately update budget request status to Rejected
+                        $budgetRequestUpdated = DB::table('request_budgets')
+                            ->where('id', $task->request_budgets_id)
+                            ->update([
+                                'status' => 'Rejected',
+                                'updated_at' => now()
+                            ]);
+
+                        Log::info('=== BUDGET REQUEST REJECTION STATUS UPDATE RESULT ===', [
+                            'task_id' => $task->id,
+                            'request_budget_id' => $task->request_budgets_id,
+                            'update_success' => $budgetRequestUpdated,
+                            'new_status' => DB::table('request_budgets')->where('id', $task->request_budgets_id)->value('status')
+                        ]);
+                    }
+                }
+            }
+
             DB::commit();
 
             $rfqLogger->info('=== TASK UPDATE COMPLETED ===', [

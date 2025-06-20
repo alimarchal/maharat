@@ -111,6 +111,7 @@ class RequestBudgetController extends Controller
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
+            
             return response()->json([
                 'message' => 'Failed to update request budget',
                 'error' => $e->getMessage()
@@ -126,12 +127,19 @@ class RequestBudgetController extends Controller
         try {
             DB::beginTransaction();
 
+            // Delete associated tasks
+            \App\Models\Task::where('request_budgets_id', $requestBudget->id)->delete();
+            
+            // Delete associated budget request approval transactions
+            \App\Models\BudgetRequestApprovalTransaction::where('request_budgets_id', $requestBudget->id)->delete();
+            
+            // Delete the budget request
             $requestBudget->delete();
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Request budget deleted successfully'
+                'message' => 'Request budget and associated data deleted successfully'
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();

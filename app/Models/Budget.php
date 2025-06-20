@@ -29,6 +29,8 @@ class Budget extends Model
         'total_expense_planned',
         'total_expense_actual',
         'status',
+        'attachment_path',
+        'original_name',
         'created_by',
         'updated_by',
     ];
