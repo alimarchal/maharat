@@ -214,8 +214,8 @@ const FiscalPeriodModal = ({ isOpen, onClose, onSave, fiscalPeriod, fetchFiscalP
                 <div className="flex justify-between border-b pb-2 mb-4">
                     <h2 className="text-3xl font-bold text-[#2C323C]">
                         {fiscalPeriod 
-                            ? (fiscalPeriod.budgets_count > 0 ? "Update Fiscal Period Status" : "Edit Fiscal Period") 
-                            : "Add Fiscal Period"
+                            ? (fiscalPeriod.budgets_count > 0 ? "Update Budget Status" : "Edit Budget") 
+                            : "Add a Budget"
                         }
                     </h2>
                     <button

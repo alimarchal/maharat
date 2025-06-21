@@ -290,7 +290,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/ViewBudget','budgetId' => $id]);
     })->name('budget.view');
 
-    Route::get('/budget/fiscal-periods', function () {
+    Route::get('/budget/fiscal-years', function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/EditFiscalPeriod']);
     })->name('fiscal-periods.index');
 
