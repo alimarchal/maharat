@@ -27,7 +27,9 @@ class PurchaseOrder extends Model
         'attachment',
         'original_name',
         'generated_document',
-        'status'
+        'status',
+        'fiscal_period_id',
+        'request_budget_id'
     ];
 
     protected $casts = [
@@ -40,6 +42,14 @@ class PurchaseOrder extends Model
     public function requestBudget(): BelongsTo
     {
         return $this->belongsTo(RequestBudget::class);
+    }
+
+    /**
+     * Get the fiscal period associated with the purchase order.
+     */
+    public function fiscalPeriod(): BelongsTo
+    {
+        return $this->belongsTo(FiscalPeriod::class);
     }
 
     /**

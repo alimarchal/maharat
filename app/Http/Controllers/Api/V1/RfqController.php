@@ -77,6 +77,9 @@ class RfqController extends Controller
                 'items.unit',
                 'items.brand',
                 'warehouse',
+                'department',
+                'costCenter',
+                'subCostCenter',
                 'requester',
                 'paymentType',
                 'categories',
@@ -167,7 +170,7 @@ class RfqController extends Controller
             $rfqData = [
                 'organization_name' => $request->input('organization_name'),
                 'organization_email' => $request->input('organization_email'),
-                'city' => $request->input('city'),
+                'city' => 'Riyadh', // Always set to Riyadh
                 'request_date' => $request->input('request_date'),
                 'closing_date' => $request->input('closing_date'),
                 'payment_type' => $request->input('payment_type'),
@@ -178,6 +181,7 @@ class RfqController extends Controller
                     ->value('id'),
                 'rfq_number' => $rfq_number,
                 'warehouse_id' => $request->input('warehouse_id'),
+                'department_id' => $request->input('department_id'),
                 'cost_center_id' => $request->input('cost_center_id'),
                 'sub_cost_center_id' => $request->input('sub_cost_center_id'),
                 'requester_id' => auth()->id() ?? 1,
@@ -318,8 +322,9 @@ class RfqController extends Controller
             $updateData = [
                 'organization_name' => $request->input('organization_name'),
                 'organization_email' => $request->input('organization_email'),
-                'city' => $request->input('city'),
+                'city' => 'Riyadh', // Always set to Riyadh
                 'warehouse_id' => $request->input('warehouse_id'),
+                'department_id' => $request->input('department_id'),
                 'request_date' => $request->input('request_date'),
                 'closing_date' => $request->input('closing_date'),
                 'rfq_number' => $request->input('rfq_number'),
@@ -616,6 +621,7 @@ class RfqController extends Controller
                     FROM purchase_orders
                     WHERE rfq_id IS NOT NULL
                 )
+                AND status_id = 47
                 ORDER BY created_at DESC
             ");
 

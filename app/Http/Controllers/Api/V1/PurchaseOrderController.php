@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use App\Services\PurchaseOrderBudgetService;
 use App\Models\RequestBudget;
+use App\Services\BudgetValidationService;
 
 class PurchaseOrderController extends Controller
 {
@@ -115,6 +116,62 @@ class PurchaseOrderController extends Controller
             // Generate unique purchase order number
             $validatedData['purchase_order_no'] = $this->generatePurchaseOrderNumber();
 
+            // Budget validation
+            $budgetService = new BudgetValidationService();
+            
+            // Get quotation to determine RFQ details
+            $quotation = \App\Models\Quotation::with('rfq')->find($validatedData['quotation_id']);
+            if (!$quotation || !$quotation->rfq) {
+                throw new \Exception('Quotation or associated RFQ not found');
+            }
+
+            $rfq = $quotation->rfq;
+            
+            // Get applicable fiscal periods for RFQ issue date
+            $fiscalPeriods = $budgetService->getApplicableFiscalPeriods($rfq->request_date);
+            
+            if ($fiscalPeriods->isEmpty()) {
+                throw new \Exception('RFQ date is not within any fiscal period range');
+            }
+
+            $fiscalPeriodId = null;
+            
+            // If multiple periods overlap, use the one provided in request or the most specific
+            if ($fiscalPeriods->count() > 1) {
+                if ($request->has('fiscal_period_id')) {
+                    $fiscalPeriodId = $request->input('fiscal_period_id');
+                    // Validate that the provided period is actually applicable
+                    if (!$fiscalPeriods->contains('id', $fiscalPeriodId)) {
+                        throw new \Exception('Selected fiscal period is not applicable for this RFQ date');
+                    }
+                } else {
+                    // Use the most specific period (shortest duration)
+                    $fiscalPeriodId = $fiscalPeriods->first()->id;
+                }
+            } else {
+                $fiscalPeriodId = $fiscalPeriods->first()->id;
+            }
+
+            // Validate budget availability
+            $budgetValidation = $budgetService->validateBudgetAvailability(
+                $rfq->department_id,
+                $rfq->cost_center_id,
+                $rfq->sub_cost_center_id,
+                $fiscalPeriodId,
+                $validatedData['amount']
+            );
+
+            if (!$budgetValidation['valid']) {
+                throw new \Exception($budgetValidation['message']);
+            }
+
+            // Reserve budget
+            $budgetService->reserveBudget($budgetValidation['budget'], $validatedData['amount']);
+
+            // Add fiscal period and budget info to purchase order
+            $validatedData['fiscal_period_id'] = $fiscalPeriodId;
+            $validatedData['request_budget_id'] = $budgetValidation['budget']->id;
+
             // Create purchase order
             $purchaseOrder = PurchaseOrder::create($validatedData);
 
@@ -139,6 +196,8 @@ class PurchaseOrderController extends Controller
                         'costCenter',
                         'subCostCenter',
                         'warehouse',
+                        'requestBudget',
+                        'fiscalPeriod'
                         ])
                 )
             ], Response::HTTP_CREATED);
@@ -332,6 +391,77 @@ class PurchaseOrderController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to upload document',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get applicable fiscal periods for a given date
+     */
+    public function getApplicableFiscalPeriods(Request $request): JsonResponse
+    {
+        try {
+            $date = $request->input('date');
+            if (!$date) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Date parameter is required'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            $budgetService = new BudgetValidationService();
+            $fiscalPeriods = $budgetService->getApplicableFiscalPeriods($date);
+
+            return response()->json([
+                'success' => true,
+                'data' => $fiscalPeriods,
+                'message' => $fiscalPeriods->count() > 1 
+                    ? 'Multiple fiscal periods overlap for this date. Please select one.' 
+                    : 'Fiscal period found'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error getting applicable fiscal periods: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get applicable fiscal periods',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Validate budget availability for purchase order creation
+     */
+    public function validateBudget(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'department_id' => 'required|integer',
+                'cost_center_id' => 'required|integer',
+                'sub_cost_center_id' => 'required|integer',
+                'fiscal_period_id' => 'required|integer',
+                'amount' => 'required|numeric|min:0'
+            ]);
+
+            $budgetService = new BudgetValidationService();
+            $validation = $budgetService->validateBudgetAvailability(
+                $request->input('department_id'),
+                $request->input('cost_center_id'),
+                $request->input('sub_cost_center_id'),
+                $request->input('fiscal_period_id'),
+                $request->input('amount')
+            );
+
+            return response()->json([
+                'success' => $validation['valid'],
+                'data' => $validation
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error validating budget: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to validate budget',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }

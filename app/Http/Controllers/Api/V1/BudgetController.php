@@ -26,7 +26,6 @@ class BudgetController extends Controller
         $budgets = QueryBuilder::for(Budget::class)
             ->allowedFilters([
                 ...BudgetParameters::ALLOWED_FILTERS,
-                AllowedFilter::custom('fiscal_period.status', new FiscalPeriodStatusFilter()),
             ])
             ->allowedSorts(BudgetParameters::ALLOWED_SORTS)
             ->allowedIncludes(BudgetParameters::ALLOWED_INCLUDES)

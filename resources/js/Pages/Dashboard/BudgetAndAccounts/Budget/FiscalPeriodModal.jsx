@@ -8,6 +8,7 @@ import SelectFloating from "../../../../Components/SelectFloating";
 const FiscalPeriodModal = ({ isOpen, onClose, onSave, fiscalPeriod, fetchFiscalPeriods }) => {
     const [formData, setFormData] = useState({
         fiscal_year_id: "",
+        budget_name: "",
         period_name: "",
         start_date: "",
         end_date: "",
@@ -42,6 +43,7 @@ const FiscalPeriodModal = ({ isOpen, onClose, onSave, fiscalPeriod, fetchFiscalP
         if (fiscalPeriod) {
             setFormData({
                 fiscal_year_id: fiscalPeriod.fiscal_year_id || "",
+                budget_name: fiscalPeriod.budget_name || "",
                 period_name: fiscalPeriod.period_name || "",
                 start_date: fiscalPeriod.start_date || "",
                 end_date: fiscalPeriod.end_date || "",
@@ -51,6 +53,7 @@ const FiscalPeriodModal = ({ isOpen, onClose, onSave, fiscalPeriod, fetchFiscalP
             // Reset form for new creation
             setFormData({
                 fiscal_year_id: "",
+                budget_name: "",
                 period_name: "",
                 start_date: "",
                 end_date: "",
@@ -118,6 +121,8 @@ const FiscalPeriodModal = ({ isOpen, onClose, onSave, fiscalPeriod, fetchFiscalP
         // Full validation for new fiscal periods or fiscal periods without budgets
         if (!formData.fiscal_year_id)
             newErrors.fiscal_year_id = "Fiscal Year is required.";
+        if (!formData.budget_name)
+            newErrors.budget_name = "Budget Name is required.";
         if (!formData.period_name)
             newErrors.period_name = "Period Name is required.";
         if (!formData.start_date)
@@ -302,6 +307,41 @@ const FiscalPeriodModal = ({ isOpen, onClose, onSave, fiscalPeriod, fetchFiscalP
                                     {errors.end_date && (
                                         <p className="text-red-500 text-sm">
                                             {errors.end_date}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {/* Budget Name and Period Name side by side */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <InputFloating
+                                        label="Budget Name"
+                                        name="budget_name"
+                                        value={formData.budget_name}
+                                        onChange={handleChange}
+                                        type="text"
+                                        placeholder=" "
+                                    />
+                                    {errors.budget_name && (
+                                        <p className="text-red-500 text-sm">
+                                            {errors.budget_name}
+                                        </p>
+                                    )}
+                                </div>
+                                <div>
+                                    <InputFloating
+                                        label="Period Name"
+                                        name="period_name"
+                                        value={formData.period_name}
+                                        onChange={handleChange}
+                                        type="text"
+                                        placeholder=" "
+                                        readOnly={true}
+                                    />
+                                    {errors.period_name && (
+                                        <p className="text-red-500 text-sm">
+                                            {errors.period_name}
                                         </p>
                                     )}
                                 </div>

@@ -18,6 +18,7 @@ class FiscalPeriodResource extends JsonResource
             'id' => $this->id,
             'fiscal_year_id' => $this->fiscal_year_id,
             'fiscal_year' => $this->fiscalYear?->fiscal_year,
+            'budget_name' => $this->budget_name,
             'period_name' => $this->period_name,
             'start_date' => $this->start_date->format('Y-m-d'),
             'end_date' => $this->end_date->format('Y-m-d'),

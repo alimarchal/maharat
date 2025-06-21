@@ -208,7 +208,11 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/quotations/upload-terms', [QuotationController::class, 'uploadTerms']);
     Route::get('/quotations/next-number', [QuotationController::class, 'getNextQuotationNumber']);
 
-    Route::get('/purchaseorder/next-number', [PurchaseOrderController::class, 'getNextPurchaseOrderNumber']);
+    // Purchase Orders API Routes
+    Route::get('purchase-orders/applicable-fiscal-periods', [PurchaseOrderController::class, 'getApplicableFiscalPeriods']);
+    Route::post('purchase-orders/validate-budget', [PurchaseOrderController::class, 'validateBudget']);
+    Route::apiResource('purchase-orders', PurchaseOrderController::class);
+    Route::post('purchase-orders/{id}/upload-document', [PurchaseOrderController::class, 'uploadDocument']);
 
     // Task Routes
     Route::apiResource('tasks', TaskController::class);
@@ -220,9 +224,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('task-descriptions/action/{action}', [TaskDescriptionController::class, 'getByAction']);
     Route::get('task-descriptions/task/{taskId}', [TaskDescriptionController::class, 'getByTaskId']);
 
-    // Purchase Orders API Routes
-    Route::apiResource('purchase-orders', PurchaseOrderController::class);
-    Route::post('purchase-orders/{id}/upload-document', [PurchaseOrderController::class, 'uploadDocument']);
     // GRN routes
     Route::apiResource('grns', GrnController::class);
     Route::post('/grns/save-all', [GrnController::class, 'saveAll']);

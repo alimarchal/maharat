@@ -25,6 +25,7 @@ class UpdateFiscalPeriodRequest extends FormRequest
     {
         return [
             'fiscal_year_id' => ['sometimes', 'required', 'exists:fiscal_years,id'],
+            'budget_name' => ['sometimes', 'required', 'string', 'max:255'],
             'period_name' => ['sometimes', 'required', 'string', 'max:255'],
             'start_date' => ['sometimes', 'required', 'date'],
             'end_date' => [

@@ -7,7 +7,6 @@ import InputFloating from "../../../../Components/InputFloating";
 const FiscalYearModal = ({ isOpen, onClose, onSave, fiscalYear, fetchFiscalYears }) => {
     const [formData, setFormData] = useState({
         fiscal_year: "",
-        name: "",
     });
 
     const [errors, setErrors] = useState({});
@@ -38,13 +37,11 @@ const FiscalYearModal = ({ isOpen, onClose, onSave, fiscalYear, fetchFiscalYears
         if (fiscalYear) {
             setFormData({
                 fiscal_year: fiscalYear.fiscal_year || "",
-                name: fiscalYear.name || "",
             });
         } else {
             // Reset form for new creation
             setFormData({
                 fiscal_year: "",
-                name: "",
             });
         }
         setErrors({});
@@ -80,8 +77,6 @@ const FiscalYearModal = ({ isOpen, onClose, onSave, fiscalYear, fetchFiscalYears
                 newErrors.fiscal_year = `Fiscal Year ${year} is already added.`;
             }
         }
-        if (!formData.name)
-            newErrors.name = "Budget Name is required.";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -119,7 +114,7 @@ const FiscalYearModal = ({ isOpen, onClose, onSave, fiscalYear, fetchFiscalYears
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white p-8 rounded-2xl w-[90%] max-w-2xl">
+            <div className="bg-white p-8 rounded-2xl w-[90%] max-w-md">
                 <div className="flex justify-between border-b pb-2 mb-4">
                     <h2 className="text-3xl font-bold text-[#2C323C]">
                         {fiscalYear ? "Edit Fiscal Year" : "Create Fiscal Year"}
@@ -131,43 +126,26 @@ const FiscalYearModal = ({ isOpen, onClose, onSave, fiscalYear, fetchFiscalYears
                         <FontAwesomeIcon icon={faTimes} />
                     </button>
                 </div>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="flex gap-4">
-                        <div className="w-1/2">
-                            <InputFloating
-                                label="Select Fiscal Year"
-                                name="fiscal_year"
-                                value={formData.fiscal_year ? `${formData.fiscal_year}-01-01` : ""}
-                                onChange={handleChange}
-                                type="date"
-                                placeholder="Select Year"
-                            />
-                            {errors.fiscal_year && (
-                                <p className="text-red-500 text-sm">
-                                    {errors.fiscal_year}
-                                </p>
-                            )}
-                        </div>
-                        <div className="w-1/2">
-                            <InputFloating
-                                label="Budget Name"
-                                name="name"
-                                value={formData.name}
-                                onChange={handleChange}
-                                type="text"
-                                placeholder="Enter budget name"
-                            />
-                            {errors.name && (
-                                <p className="text-red-500 text-sm">
-                                    {errors.name}
-                                </p>
-                            )}
-                        </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="w-full">
+                        <InputFloating
+                            label="Select Fiscal Year"
+                            name="fiscal_year"
+                            value={formData.fiscal_year ? `${formData.fiscal_year}-01-01` : ""}
+                            onChange={handleChange}
+                            type="date"
+                            placeholder="Select Year"
+                        />
+                        {errors.fiscal_year && (
+                            <p className="text-red-500 text-sm">
+                                {errors.fiscal_year}
+                            </p>
+                        )}
                     </div>
-                    <div className="my-4 flex justify-center w-full">
+                    <div className="w-full mt-4">
                         <button
                             type="submit"
-                            className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full"
+                            className="px-6 py-2 text-lg font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full"
                             disabled={loading}
                         >
                             {loading ? "Saving..." : fiscalYear ? "Update" : "Submit"}

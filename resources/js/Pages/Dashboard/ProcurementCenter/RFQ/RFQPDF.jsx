@@ -13,9 +13,10 @@ export default function RFQPDF({ rfqId, onGenerated }) {
             try {
                 setLoading(true);
                 // Include all related data in the request with expanded include list
-                const response = await axios.get(`/api/v1/rfqs/${rfqId}?include=status,warehouse,items.unit,items.brand,items.product,costCenter,subCostCenter,categories,paymentType,cost_center,sub_cost_center,payment_type,items.specifications`);
+                const response = await axios.get(`/api/v1/rfqs/${rfqId}?include=status,warehouse,items.unit,items.brand,items.product,costCenter,subCostCenter,categories,paymentType,cost_center,sub_cost_center,payment_type,items.specifications,department`);
                 if (response.data?.data) {
                     const data = response.data.data;
+                    
                     // If we have cost_center_id but no cost center data, fetch it
                     if (
                         data.cost_center_id &&
@@ -214,8 +215,9 @@ export default function RFQPDF({ rfqId, onGenerated }) {
             doc.text("Name:", margin, margin + 60); // Changed from +70 to +60
             doc.text("Email:", margin, margin + 67); // Changed from +77 to +67
             doc.text("City:", margin, margin + 74); // Changed from +84 to +74
-            doc.text("Warehouse:", margin, margin + 81); // Changed from +91 to +81
-            doc.text("Contact:", margin, margin + 88); // Changed from +98 to +88
+            doc.text("Department:", margin, margin + 81); // Changed from +91 to +81
+            doc.text("Warehouse:", margin, margin + 88); // Changed from +98 to +88
+            doc.text("Contact:", margin, margin + 95); // Changed from +105 to +95
 
             // Left column values with text overflow handling - use more space for values
             doc.setFont("helvetica", "normal");
@@ -257,13 +259,27 @@ export default function RFQPDF({ rfqId, onGenerated }) {
                 margin + 30,
                 margin + 74
             );
+            
+            // Department with fallback logic
+            let departmentName = "N/A";
+            if (rfqData.department) {
+                departmentName = rfqData.department.name || "N/A";
+            } else if (rfqData.department_id) {
+                departmentName = `ID: ${rfqData.department_id}`;
+            }
+            doc.text(
+                fitTextInColumn(departmentName, maxLeftWidth),
+                margin + 30,
+                margin + 81
+            );
+
             doc.text(
                 fitTextInColumn(
                     getSafeValue(rfqData, "warehouse.name"),
                     maxLeftWidth
                 ),
                 margin + 30,
-                margin + 81
+                margin + 88
             );
             doc.text(
                 fitTextInColumn(
@@ -271,7 +287,7 @@ export default function RFQPDF({ rfqId, onGenerated }) {
                     maxLeftWidth
                 ),
                 margin + 30,
-                margin + 88
+                margin + 95
             );
 
             // Category and Cost Centers - right column - adjust to match new spacing
@@ -368,12 +384,12 @@ export default function RFQPDF({ rfqId, onGenerated }) {
 
             // Add a horizontal line below the organization info - reduced spacing
             doc.setLineWidth(0.3); // Explicitly set line thickness
-            doc.line(margin, margin + 95, pageWidth - margin, margin + 95);
+            doc.line(margin, margin + 102, pageWidth - margin, margin + 102);
 
             // Items Section Title - centered - moved up
             doc.setFontSize(14);
             doc.setFont("helvetica", "bold");
-            doc.text("Items", pageWidth / 2, margin + 105, { align: "center" }); // Changed from +115 to +105
+            doc.text("Items", pageWidth / 2, margin + 112, { align: "center" }); // Changed from +105 to +112
 
             // Check if items exist and are in an array
             let tableResult;
@@ -440,7 +456,7 @@ export default function RFQPDF({ rfqId, onGenerated }) {
                 tableResult = autoTable(doc, {
                     head: [tableColumn],
                     body: tableRows,
-                    startY: margin + 110, // Changed from +120 to +110
+                    startY: margin + 117, // Changed from +110 to +117
                     margin: { left: margin, right: margin },
                     styles: {
                         fontSize: 9,

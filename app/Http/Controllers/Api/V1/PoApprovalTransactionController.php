@@ -100,6 +100,33 @@ class PoApprovalTransactionController extends Controller
 
             $poApprovalTransaction->update($validated);
 
+            // Update purchase order status based on approval transaction status
+            if (isset($validated['status'])) {
+                $purchaseOrder = $poApprovalTransaction->purchaseOrder;
+                if ($purchaseOrder) {
+                    $newStatus = null;
+                    
+                    if ($validated['status'] === 'Approve') {
+                        $newStatus = 'Approved';
+                    } elseif ($validated['status'] === 'Reject') {
+                        $newStatus = 'Rejected';
+                    }
+                    
+                    if ($newStatus) {
+                        $purchaseOrder->update(['status' => $newStatus]);
+                        
+                        // If rejected, release the reserved budget
+                        if ($newStatus === 'Rejected' && $purchaseOrder->request_budget_id) {
+                            $budgetService = new \App\Services\BudgetValidationService();
+                            $budget = \App\Models\RequestBudget::find($purchaseOrder->request_budget_id);
+                            if ($budget) {
+                                $budgetService->releaseBudget($budget, $purchaseOrder->amount);
+                            }
+                        }
+                    }
+                }
+            }
+
             DB::commit();
 
             return response()->json([

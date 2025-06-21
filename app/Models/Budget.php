@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Validation\Rule;
 
 class Budget extends Model
@@ -63,7 +64,7 @@ class Budget extends Model
             'total_revenue_actual' => 'nullable|numeric|min:0',
             'total_expense_planned' => 'required|numeric|min:0',
             'total_expense_actual' => 'nullable|numeric|min:0',
-            'status' => 'required|in:Active,Frozen,Closed',
+            'status' => 'required|in:Pending,Active,Frozen,Closed',
         ];
     }
 
@@ -168,5 +169,13 @@ class Budget extends Model
     public function requestBudget(): BelongsTo
     {
         return $this->belongsTo(RequestBudget::class);
+    }
+
+    /**
+     * Get the budget approval transactions for this budget.
+     */
+    public function budgetApprovalTransactions(): HasMany
+    {
+        return $this->hasMany(BudgetApprovalTransaction::class);
     }
 }

@@ -32,6 +32,9 @@ const ApproveOrder = ({
     const [tempDocument, setTempDocument] = useState(null);
     const [quotationDetails, setQuotationDetails] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [fiscalPeriods, setFiscalPeriods] = useState([]);
+    const [selectedFiscalPeriod, setSelectedFiscalPeriod] = useState(null);
+    const [budgetValidation, setBudgetValidation] = useState(null);
 
     const generatePONumber = () => {
         const date = new Date();
@@ -58,6 +61,9 @@ const ApproveOrder = ({
                         ...prev,
                         rfq_id: rfqId,
                     }));
+                    
+                    // Check fiscal periods for RFQ date
+                    await checkFiscalPeriods(quotation.rfq.request_date);
                 } else {
                     setErrors((prev) => ({
                         ...prev,
@@ -83,6 +89,77 @@ const ApproveOrder = ({
             }));
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const checkFiscalPeriods = async (rfqDate) => {
+        try {
+            const response = await axios.get('/api/v1/purchase-orders/applicable-fiscal-periods', {
+                params: { date: rfqDate }
+            });
+            
+            if (response.data.success) {
+                const periods = response.data.data;
+                setFiscalPeriods(periods);
+                
+                if (periods.length === 0) {
+                    setErrors(prev => ({
+                        ...prev,
+                        fiscal_period: 'RFQ date is not within any fiscal period range'
+                    }));
+                } else if (periods.length === 1) {
+                    setSelectedFiscalPeriod(periods[0]);
+                    await validateBudget(periods[0].id);
+                } else {
+                    // Multiple periods overlap - user needs to select
+                    setErrors(prev => ({
+                        ...prev,
+                        fiscal_period: 'Multiple fiscal periods overlap for this date. Please select one.'
+                    }));
+                }
+            }
+        } catch (error) {
+            console.error('Error checking fiscal periods:', error);
+            setErrors(prev => ({
+                ...prev,
+                fiscal_period: 'Failed to check fiscal periods'
+            }));
+        }
+    };
+
+    const validateBudget = async (fiscalPeriodId) => {
+        if (!quotationDetails?.rfq) return;
+        
+        try {
+            const response = await axios.post('/api/v1/purchase-orders/validate-budget', {
+                department_id: quotationDetails.rfq.department_id,
+                cost_center_id: quotationDetails.rfq.cost_center_id,
+                sub_cost_center_id: quotationDetails.rfq.sub_cost_center_id,
+                fiscal_period_id: fiscalPeriodId,
+                amount: formData.amount
+            });
+            
+            setBudgetValidation(response.data);
+            
+            if (!response.data.success) {
+                setErrors(prev => ({
+                    ...prev,
+                    budget: response.data.data.message
+                }));
+            } else {
+                // Clear budget error if validation passes
+                setErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors.budget;
+                    return newErrors;
+                });
+            }
+        } catch (error) {
+            console.error('Error validating budget:', error);
+            setErrors(prev => ({
+                ...prev,
+                budget: 'Failed to validate budget'
+            }));
         }
     };
 
@@ -216,38 +293,19 @@ const ApproveOrder = ({
                 return;
             }
 
-            // Check budget availability
-            const budgetResponse = await axios.get(
-                `/api/v1/budgets?filter[sub_cost_center_id]=${quotationDetails?.rfq?.sub_cost_center_id}&include=fiscalPeriod,department,costCenter,subCostCenter,creator,requestBudget`
-            );
-            const budgetDetails = budgetResponse.data?.data?.[0];
-            if (!budgetDetails) {
+            // Check if fiscal period is selected (for overlapping periods)
+            if (fiscalPeriods.length > 1 && !selectedFiscalPeriod) {
                 setErrors({
-                    submit: "No budget found for this cost center and sub cost center combination.",
+                    submit: "Please select a fiscal period from the overlapping options",
                 });
                 setIsSaving(false);
                 return;
             }
 
-            // Extract year from fiscal_year field
-            const currentYear = new Date().getFullYear();
-            const budgetFiscalYear =
-                budgetDetails?.fiscal_period?.fiscal_year?.slice(0, 4);
-            if (budgetFiscalYear != currentYear) {
+            // Check budget validation
+            if (budgetValidation && !budgetValidation.success) {
                 setErrors({
-                    submit: "No budget found for current fiscal year",
-                });
-                setIsSaving(false);
-                return;
-            }
-
-            // Check if the form amount exceeds the available budget amount
-            const availableBalance = Number(budgetDetails.request_budget?.balance_amount || budgetDetails.total_expense_planned);
-            const originalBudget = Number(budgetDetails.total_expense_planned);
-            const enteredAmount = Number(formData.amount);
-            if (enteredAmount > availableBalance) {
-                setErrors({
-                    submit: `Purchase order amount (${enteredAmount}) exceeds available balance (${availableBalance}). Original budget: ${originalBudget}.`,
+                    submit: budgetValidation.data.message,
                 });
                 setIsSaving(false);
                 return;
@@ -257,14 +315,14 @@ const ApproveOrder = ({
             const formDataToSend = new FormData();
             const dataToSubmit = {
                 ...formData,
-                budget_id: budgetDetails?.id,
+                fiscal_period_id: selectedFiscalPeriod?.id,
             };
 
             // Ensure we have a purchase order number
             if (!dataToSubmit.purchase_order_no) {
                 dataToSubmit.purchase_order_no = generatePONumber();
             }
-            dataToSubmit.status = "Approved";
+            dataToSubmit.status = "Draft"; // Start with Draft status
 
             Object.keys(dataToSubmit).forEach((key) => {
                 if (
@@ -296,20 +354,6 @@ const ApproveOrder = ({
             const newPOId = response.data.data?.id;
 
             if (newPOId) {
-                // Update budget - note: budgets table doesn't have reserved_amount and balance_amount
-                // These fields are in request_budgets table, so we'll update the linked request_budget
-                if (budgetDetails.request_budget_id && budgetDetails.request_budget) {
-                    const updatedRequestBudgetData = {
-                        reserved_amount: formData.amount,
-                        balance_amount: budgetDetails.total_expense_planned - formData.amount,
-                    };
-
-                    await axios.put(
-                        `/api/v1/request-budgets/${budgetDetails.request_budget_id}`,
-                        updatedRequestBudgetData
-                    );
-                }
-
                 // Create approval transaction
                 const POTransactionPayload = {
                     purchase_order_id: newPOId,
@@ -397,14 +441,48 @@ const ApproveOrder = ({
                 )}
 
                 {/* Error messages */}
-                {(errors.rfq_id || errors.submit) && (
+                {(errors.rfq_id || errors.submit || errors.fiscal_period || errors.budget) && (
                     <div
                         className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
                         role="alert"
                     >
                         <span className="block sm:inline">
-                            {errors.rfq_id || errors.submit}
+                            {errors.rfq_id || errors.submit || errors.fiscal_period || errors.budget}
                         </span>
+                    </div>
+                )}
+
+                {/* Fiscal Period Selection */}
+                {fiscalPeriods.length > 1 && (
+                    <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4">
+                        <div className="mb-3">
+                            <strong>Multiple fiscal periods overlap for this RFQ date. Please select one:</strong>
+                        </div>
+                        <select
+                            value={selectedFiscalPeriod?.id || ""}
+                            onChange={(e) => {
+                                const period = fiscalPeriods.find(p => p.id === parseInt(e.target.value));
+                                setSelectedFiscalPeriod(period);
+                                if (period) {
+                                    validateBudget(period.id);
+                                }
+                            }}
+                            className="w-full p-2 border border-yellow-400 rounded"
+                        >
+                            <option value="">Select Fiscal Period</option>
+                            {fiscalPeriods.map((period) => (
+                                <option key={period.id} value={period.id}>
+                                    {period.name} ({period.start_date} to {period.end_date})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                {/* Budget Validation Display */}
+                {budgetValidation && budgetValidation.success && (
+                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
+                        <strong>Budget Validation:</strong> Available amount: {budgetValidation.data.available_amount}
                     </div>
                 )}
 

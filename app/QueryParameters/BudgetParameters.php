@@ -51,5 +51,6 @@ class BudgetParameters
         'updater',
         'subCostCenter',
         'requestBudget',
+        'budgetApprovalTransactions',
     ];
 }

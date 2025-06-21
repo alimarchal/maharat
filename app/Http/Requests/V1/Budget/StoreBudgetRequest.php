@@ -32,7 +32,7 @@ class StoreBudgetRequest extends FormRequest
             'total_revenue_actual' => ['nullable', 'numeric', 'min:0'],
             'total_expense_planned' => ['required', 'numeric', 'min:0'],
             'total_expense_actual' => ['nullable', 'numeric', 'min:0'],
-            'status' => ['required', Rule::in(['Active', 'Frozen', 'Closed'])],
+            'status' => ['required', Rule::in(['Pending', 'Active', 'Frozen', 'Closed'])],
         ];
     }
 
