@@ -8,6 +8,7 @@ use App\Http\Requests\V1\BudgetApprovalTransaction\UpdateBudgetApprovalTransacti
 use App\Http\Resources\V1\BudgetApprovalTransactionResource;
 use App\Models\BudgetApprovalTransaction;
 use App\QueryParameters\BudgetApprovalTransactionParameters;
+use App\Services\BudgetApprovalService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
@@ -106,6 +107,14 @@ class BudgetApprovalTransactionController extends Controller
             $data['updated_by'] = auth()->id();
 
             $budgetApprovalTransaction->update($data);
+
+            // Check if this update affects the overall approval status
+            $approvalService = new BudgetApprovalService();
+            $approvalResult = $approvalService->checkApprovalCompletion($budgetApprovalTransaction->budget_id);
+            
+            if ($approvalResult === 'Approve' || $approvalResult === 'Reject') {
+                $approvalService->updateBudgetStatus($budgetApprovalTransaction->budget_id, $approvalResult);
+            }
 
             DB::commit();
 

@@ -16,6 +16,8 @@ const ViewBudget = () => {
     const [error, setError] = useState("");
     const [isApproving, setIsApproving] = useState(false);
     const [approvalError, setApprovalError] = useState("");
+    const [approvalSent, setApprovalSent] = useState(false);
+    const [fiscalPeriodId, setFiscalPeriodId] = useState(null);
 
     useEffect(() => {
         fetchBudget();
@@ -29,16 +31,24 @@ const ViewBudget = () => {
             const res = await axios.get(
                 `/api/v1/budgets/${budgetId}?include=fiscalPeriod,department,costCenter,subCostCenter,creator,updater`
             );
-            const fiscalPeriodId = res.data?.data?.fiscal_period_id;
+            const currentFiscalPeriodId = res.data?.data?.fiscal_period_id;
+            const currentBudgetStatus = res.data?.data?.status;
+            setFiscalPeriodId(currentFiscalPeriodId);
 
             const response = await axios.get(
-                `/api/v1/budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator,requestBudget`
+                `/api/v1/budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator,requestBudget,budgetApprovalTransactions`
             );
             if (response.data && response.data.data) {
                 const filteredBudgets = response.data.data.filter(
-                    (budget) => budget.fiscal_period_id === fiscalPeriodId
+                    (budget) => budget.fiscal_period_id === currentFiscalPeriodId && budget.status === currentBudgetStatus
                 );
                 setBudgets(filteredBudgets.length > 0 ? filteredBudgets : []);
+                
+                // Check if any budget in this fiscal period has approval transactions
+                const hasApprovalTransactions = filteredBudgets.some(budget => 
+                    budget.budget_approval_transactions && budget.budget_approval_transactions.length > 0
+                );
+                setApprovalSent(hasApprovalTransactions);
             } else {
                 setError("Invalid response format. Please try again.");
             }
@@ -89,40 +99,39 @@ const ViewBudget = () => {
                 return;
             }
 
-            // Create budget approval transactions for each budget
-            const approvalPromises = budgets.map(async (budget) => {
-                // Create budget approval transaction
-                const transactionPayload = {
-                    budget_id: budget.id,
-                    requester_id: user_id,
-                    assigned_to: assignUser.approver_id,
-                    order: processStep.order,
-                    description: processStep.description,
-                    status: "Pending",
-                };
+            // Only send approval request for the first budget in the fiscal period
+            const firstBudget = budgets[0];
+            
+            // Create budget approval transaction for the first budget only
+            const transactionPayload = {
+                budget_id: firstBudget.id,
+                requester_id: user_id,
+                assigned_to: assignUser.approver_id,
+                order: processStep.order,
+                description: processStep.description,
+                status: "Pending",
+            };
 
-                await axios.post(
-                    "/api/v1/budget-approval-transactions",
-                    transactionPayload
-                );
+            await axios.post(
+                "/api/v1/budget-approval-transactions",
+                transactionPayload
+            );
 
-                // Create task
-                const taskPayload = {
-                    process_step_id: processStep.id,
-                    process_id: processStep.process_id,
-                    assigned_at: new Date().toISOString(),
-                    urgency: "Normal",
-                    assigned_to_user_id: assignUser.approver_id,
-                    assigned_from_user_id: user_id,
-                    budget_id: budget.id,
-                };
+            // Create task for the first budget only
+            const taskPayload = {
+                process_step_id: processStep.id,
+                process_id: processStep.process_id,
+                assigned_at: new Date().toISOString(),
+                urgency: "Normal",
+                assigned_to_user_id: assignUser.approver_id,
+                assigned_from_user_id: user_id,
+                budget_id: firstBudget.id,
+            };
 
-                await axios.post("/api/v1/tasks", taskPayload);
-            });
-
-            // Wait for all approval processes to complete
-            await Promise.all(approvalPromises);
-            alert("Budget approval process initiated successfully!");
+            await axios.post("/api/v1/tasks", taskPayload);
+            
+            setApprovalSent(true);
+            alert("Budget approval process initiated successfully for this fiscal period!");
             await fetchBudget();
         } catch (error) {
             console.error("Error initiating budget approval:", error);
@@ -245,14 +254,14 @@ const ViewBudget = () => {
                 <div className="flex justify-end my-6">
                     <button
                         onClick={handleApproveBudget}
-                        disabled={isApproving || budgets.length === 0}
+                        disabled={isApproving || budgets.length === 0 || approvalSent}
                         className={`px-4 py-2 rounded-full text-xl font-medium ${
                             isApproving || budgets.length === 0
                                 ? "bg-gray-400 text-gray-600 cursor-not-allowed"
                                 : "bg-[#009FDC] text-white hover:bg-[#007CB8]"
                         }`}
                     >
-                        {isApproving ? "Processing..." : "Approve Budget"}
+                        {isApproving ? "Processing..." : approvalSent ? "Approval Sent" : "Approve Budget"}
                     </button>
                 </div>
             )}

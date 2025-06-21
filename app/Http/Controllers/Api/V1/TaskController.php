@@ -599,7 +599,7 @@ class TaskController extends Controller
                                                 'total_revenue_actual' => 0,
                                                 'total_expense_planned' => $budgetRequest->requested_amount,
                                                 'total_expense_actual' => 0,
-                                                'status' => 'Active',
+                                                'status' => 'Pending',
                                                 'attachment_path' => $budgetRequest->attachment_path,
                                                 'original_name' => $budgetRequest->original_name,
                                                 'created_by' => auth()->id(),
@@ -726,6 +726,141 @@ class TaskController extends Controller
                             'new_status' => DB::table('request_budgets')->where('id', $task->request_budgets_id)->value('status')
                         ]);
                     }
+                }
+            }
+
+            // Check if this is a Budget Approval task and if it's being approved
+            if ($task->budget_id && $request->input('status') === 'Approved') {
+                Log::info('=== BUDGET APPROVAL TASK APPROVAL CHECK ===', [
+                    'task_id' => $task->id,
+                    'budget_id' => $task->budget_id,
+                    'current_status' => DB::table('budgets')->where('id', $task->budget_id)->value('status')
+                ]);
+
+                // Find the corresponding budget approval transaction
+                $approvalTransaction = DB::table('budget_approval_transactions')
+                    ->where('budget_id', $task->budget_id)
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->first();
+
+                if ($approvalTransaction) {
+                    Log::info('=== FOUND BUDGET APPROVAL TRANSACTION, UPDATING IT ===', [
+                        'task_id' => $task->id,
+                        'budget_id' => $task->budget_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+
+                    // Update the approval transaction status
+                    $transactionUpdated = DB::table('budget_approval_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => 'Approve',
+                            'updated_by' => auth()->id(),
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== BUDGET APPROVAL TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'budget_id' => $task->budget_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_success' => $transactionUpdated
+                    ]);
+
+                    if ($transactionUpdated) {
+                        // Trigger the budget approval service to update budget status
+                        $approvalService = new \App\Services\BudgetApprovalService();
+                        $approvalResult = $approvalService->checkApprovalCompletion($task->budget_id);
+                        
+                        Log::info('=== BUDGET APPROVAL COMPLETION CHECK ===', [
+                            'task_id' => $task->id,
+                            'budget_id' => $task->budget_id,
+                            'approval_result' => $approvalResult
+                        ]);
+                        
+                        if ($approvalResult === 'Approve' || $approvalResult === 'Reject') {
+                            $approvalService->updateBudgetStatus($task->budget_id, $approvalResult);
+                            
+                            Log::info('=== BUDGET STATUS UPDATED ===', [
+                                'task_id' => $task->id,
+                                'budget_id' => $task->budget_id,
+                                'new_status' => DB::table('budgets')->where('id', $task->budget_id)->value('status')
+                            ]);
+                        }
+                    }
+                } else {
+                    Log::warning('=== NO BUDGET APPROVAL TRANSACTION FOUND ===', [
+                        'task_id' => $task->id,
+                        'budget_id' => $task->budget_id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+                }
+            }
+
+            // Check if this is a Budget Approval task and if it's being rejected
+            if ($task->budget_id && $request->input('status') === 'Rejected') {
+                Log::info('=== BUDGET APPROVAL TASK REJECTION CHECK ===', [
+                    'task_id' => $task->id,
+                    'budget_id' => $task->budget_id,
+                    'current_status' => DB::table('budgets')->where('id', $task->budget_id)->value('status')
+                ]);
+
+                // Find the corresponding budget approval transaction
+                $approvalTransaction = DB::table('budget_approval_transactions')
+                    ->where('budget_id', $task->budget_id)
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->first();
+
+                if ($approvalTransaction) {
+                    Log::info('=== UPDATING BUDGET APPROVAL TRANSACTION FOR REJECTION ===', [
+                        'task_id' => $task->id,
+                        'budget_id' => $task->budget_id,
+                        'approval_transaction_id' => $approvalTransaction->id
+                    ]);
+
+                    // Update the approval transaction status
+                    $transactionUpdated = DB::table('budget_approval_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => 'Reject',
+                            'updated_by' => auth()->id(),
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== BUDGET APPROVAL REJECTION TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'budget_id' => $task->budget_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_success' => $transactionUpdated
+                    ]);
+
+                    if ($transactionUpdated) {
+                        // Trigger the budget approval service to update budget status
+                        $approvalService = new \App\Services\BudgetApprovalService();
+                        $approvalResult = $approvalService->checkApprovalCompletion($task->budget_id);
+                        
+                        Log::info('=== BUDGET REJECTION COMPLETION CHECK ===', [
+                            'task_id' => $task->id,
+                            'budget_id' => $task->budget_id,
+                            'approval_result' => $approvalResult
+                        ]);
+                        
+                        if ($approvalResult === 'Approve' || $approvalResult === 'Reject') {
+                            $approvalService->updateBudgetStatus($task->budget_id, $approvalResult);
+                            
+                            Log::info('=== BUDGET STATUS UPDATED FOR REJECTION ===', [
+                                'task_id' => $task->id,
+                                'budget_id' => $task->budget_id,
+                                'new_status' => DB::table('budgets')->where('id', $task->budget_id)->value('status')
+                            ]);
+                        }
+                    }
+                } else {
+                    Log::warning('=== NO BUDGET APPROVAL TRANSACTION FOUND FOR REJECTION ===', [
+                        'task_id' => $task->id,
+                        'budget_id' => $task->budget_id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
                 }
             }
 

@@ -38,6 +38,7 @@ class BudgetResource extends JsonResource
             'cost_center' => new CostCenterResource($this->whenLoaded('costCenter')),
             'sub_cost_center' => new CostCenterResource($this->whenLoaded('subCostCenter')),
             'request_budget' => new RequestBudgetResource($this->whenLoaded('requestBudget')),
+            'budget_approval_transactions' => BudgetApprovalTransactionResource::collection($this->whenLoaded('budgetApprovalTransactions')),
             'creator' => new UserResource($this->whenLoaded('creator')),
             'updater' => new UserResource($this->whenLoaded('updater')),
         ];

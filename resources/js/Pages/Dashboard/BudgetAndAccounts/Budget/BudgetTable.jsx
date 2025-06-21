@@ -24,7 +24,7 @@ const BudgetTable = () => {
 
     const [isFiscalYearModalOpen, setIsFiscalYearModalOpen] = useState(false);
 
-    const filters = ["All", "Open", "Adjusting", "Closed"];
+    const filters = ["All", "Active", "Pending", "Frozen", "Closed"];
 
     useEffect(() => {
         fetchBudgets();
@@ -35,14 +35,16 @@ const BudgetTable = () => {
         setError("");
 
         try {
-            const status = selectedFilter.toLowerCase();
             let url = `/api/v1/budgets?include=fiscalPeriod,department,costCenter,creator,updater&page=${currentPage}`;
 
             if (selectedFilter !== "All") {
-                url += `&filter[fiscal_period.status]=${status}`;
+                url += `&filter[status]=${selectedFilter}`;
             }
 
+            console.log('BudgetTable fetchBudgets URL:', url);
             const response = await axios.get(url);
+            console.log('BudgetTable fetchBudgets response:', response.data);
+
             if (response.data && response.data.data) {
                 setBudgets(response.data.data);
                 setLastPage(response.data.meta?.last_page || 1);
@@ -60,42 +62,42 @@ const BudgetTable = () => {
         }
     };
 
-    // Group budgets by fiscal year
+    // Group budgets by fiscal year and status
     const groupBudgetsByYear = () => {
         const grouped = {};
 
         budgets.forEach((budget) => {
-            // Use fiscal_period_id as the key since that's what determines the fiscal year
-            const fiscalPeriodId =
-                budget.fiscal_period_id || budget.fiscal_period?.id;
-            const fiscalPeriod =
-                budget.fiscal_period?.period_name ||
-                `Fiscal Period ${fiscalPeriodId}`;
+            // Use fiscal_period_id AND status as the key
+            const fiscalPeriodId = budget.fiscal_period_id || budget.fiscal_period?.id;
+            const status = budget.status || "Unknown";
+            const key = `${fiscalPeriodId}_${status}`;
+            
+            const fiscalPeriod = budget.fiscal_period?.period_name || `Fiscal Period ${fiscalPeriodId}`;
 
-            if (!grouped[fiscalPeriodId]) {
-                grouped[fiscalPeriodId] = {
+            if (!grouped[key]) {
+                grouped[key] = {
                     fiscalPeriodId,
                     fiscalPeriod,
+                    status,
                     budgets: [],
                     totalRevenuePlanned: 0,
                     totalRevenueActual: 0,
                     totalExpensePlanned: 0,
                     totalExpenseActual: 0,
-                    status: budget.fiscal_period?.status || "Unknown",
                 };
             }
 
-            grouped[fiscalPeriodId].budgets.push(budget);
-            grouped[fiscalPeriodId].totalRevenuePlanned += parseFloat(
+            grouped[key].budgets.push(budget);
+            grouped[key].totalRevenuePlanned += parseFloat(
                 budget.total_revenue_planned || 0
             );
-            grouped[fiscalPeriodId].totalRevenueActual += parseFloat(
+            grouped[key].totalRevenueActual += parseFloat(
                 budget.total_revenue_actual || 0
             );
-            grouped[fiscalPeriodId].totalExpensePlanned += parseFloat(
+            grouped[key].totalExpensePlanned += parseFloat(
                 budget.total_expense_planned || 0
             );
-            grouped[fiscalPeriodId].totalExpenseActual += parseFloat(
+            grouped[key].totalExpenseActual += parseFloat(
                 budget.total_expense_actual || 0
             );
         });
@@ -294,17 +296,18 @@ const BudgetTable = () => {
                                 <td className="py-3 px-4">
                                     <span
                                         className={`px-2 py-1 rounded-full text-sm ${
-                                            yearGroup.status === "Open"
+                                            yearGroup.budgets[0]?.status === "Active"
                                                 ? "bg-green-100 text-green-800"
-                                                : yearGroup.status ===
-                                                  "Adjusting"
+                                                : yearGroup.budgets[0]?.status === "Pending"
                                                 ? "bg-yellow-100 text-yellow-800"
-                                                : yearGroup.status === "Closed"
+                                                : yearGroup.budgets[0]?.status === "Frozen"
+                                                ? "bg-blue-100 text-blue-800"
+                                                : yearGroup.budgets[0]?.status === "Closed"
                                                 ? "bg-red-100 text-red-800"
                                                 : "bg-gray-100 text-gray-800"
                                         }`}
                                     >
-                                        {yearGroup.status}
+                                        {yearGroup.budgets[0]?.status || "Unknown"}
                                     </span>
                                 </td>
                                 <td className="py-3 px-4 font-semibold">
@@ -327,13 +330,15 @@ const BudgetTable = () => {
                                     >
                                         <FontAwesomeIcon icon={faEye} />
                                     </Link>
-                                    <Link
-                                        href={`budget/details/${yearGroup.budgets[0]?.id}?fiscal_period_id=${yearGroup.fiscalPeriodId}&mode=edit`}
-                                        className="text-blue-400 hover:text-blue-500"
-                                        title="Approve Budget"
-                                    >
-                                        <FontAwesomeIcon icon={faEdit} />
-                                    </Link>
+                                    {yearGroup.budgets[0]?.status === 'Pending' && (
+                                        <Link
+                                            href={`budget/details/${yearGroup.budgets[0]?.id}?fiscal_period_id=${yearGroup.fiscalPeriodId}&mode=edit`}
+                                            className="text-blue-400 hover:text-blue-500"
+                                            title="Approve Budget"
+                                        >
+                                            <FontAwesomeIcon icon={faEdit} />
+                                        </Link>
+                                    )}
                                     <button
                                         className="w-4 h-4"
                                         onClick={() =>

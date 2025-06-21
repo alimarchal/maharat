@@ -229,7 +229,7 @@ class BudgetRequestApprovalTransactionController extends Controller
                                             'total_revenue_actual' => 0,
                                             'total_expense_planned' => $budgetRequest->requested_amount,
                                             'total_expense_actual' => 0,
-                                            'status' => 'Active',
+                                            'status' => 'Pending',
                                             'attachment_path' => $budgetRequest->attachment_path,
                                             'original_name' => $budgetRequest->original_name,
                                             'created_by' => Auth::id(),

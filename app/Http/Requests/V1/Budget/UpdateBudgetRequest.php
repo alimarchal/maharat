@@ -32,7 +32,7 @@ class UpdateBudgetRequest extends FormRequest
             'total_revenue_actual' => ['nullable', 'numeric', 'min:0'],
             'total_expense_planned' => ['sometimes', 'required', 'numeric', 'min:0'],
             'total_expense_actual' => ['nullable', 'numeric', 'min:0'],
-            'status' => ['sometimes', 'required', Rule::in(['Active', 'Frozen', 'Closed'])],
+            'status' => ['sometimes', 'required', Rule::in(['Pending', 'Active', 'Frozen', 'Closed'])],
         ];
     }
 
