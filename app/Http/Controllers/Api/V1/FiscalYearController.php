@@ -34,7 +34,6 @@ class FiscalYearController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'fiscal_year' => 'required|integer|min:1900|max:2100|unique:fiscal_years,fiscal_year',
-            'name' => 'required|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -50,7 +49,7 @@ class FiscalYearController extends Controller
 
         $fiscalYearModel = FiscalYear::create([
             'fiscal_year' => $fiscalYear,
-            'name' => $request->name,
+            'name' => "Budget " . $fiscalYear,
             'start_date' => $startDate,
             'end_date' => $endDate,
         ]);

@@ -132,6 +132,7 @@ const EditFiscalPeriod = () => {
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             Fiscal Year
                         </th>
+                        <th className="py-3 px-4">Budget Name</th>
                         <th className="py-3 px-4">Period Name</th>
                         <th className="py-3 px-4">Start Date</th>
                         <th className="py-3 px-4">End Date</th>
@@ -144,14 +145,14 @@ const EditFiscalPeriod = () => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="6" className="text-center py-12">
+                            <td colSpan="7" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin mx-auto"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="6"
+                                colSpan="7"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -179,7 +180,7 @@ const EditFiscalPeriod = () => {
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="py-3 px-4" colSpan="4">
+                                    <td className="py-3 px-4" colSpan="5">
                                         {/* Removed "Click to expand" text */}
                                     </td>
                                     <td className="py-3 px-4 text-center">
@@ -194,7 +195,10 @@ const EditFiscalPeriod = () => {
                                             {/* Empty cell for alignment */}
                                         </td>
                                         <td className="py-3 px-4">
-                                            <span className="font-semibold">{fiscalPeriod.period_name}</span>
+                                            <span>{fiscalPeriod.budget_name || '-'}</span>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <span>{fiscalPeriod.period_name}</span>
                                         </td>
                                         <td className="py-3 px-4">
                                             {new Date(fiscalPeriod.start_date).toLocaleDateString()}
@@ -242,7 +246,7 @@ const EditFiscalPeriod = () => {
                     ) : (
                         <tr>
                             <td
-                                colSpan="6"
+                                colSpan="7"
                                 className="text-center text-[#2C323C] font-medium py-4"
                             >
                                 No Fiscal Periods found.

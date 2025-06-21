@@ -15,6 +15,7 @@ class FiscalPeriod extends Model
     protected $fillable = [
         'fiscal_year_id',
         'period_name',
+        'budget_name',
         'start_date',
         'end_date',
         'transaction_closed_upto',
