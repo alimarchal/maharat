@@ -5,8 +5,7 @@ namespace App\QueryParameters;
 class FiscalPeriodParameters
 {
     const ALLOWED_FILTERS = [
-        'fiscal_year',
-        'period_number',
+        'fiscal_year_id',
         'period_name',
         'status',
         'created_by',
@@ -15,8 +14,7 @@ class FiscalPeriodParameters
 
     const ALLOWED_SORTS = [
         'id',
-        'fiscal_year',
-        'period_number',
+        'fiscal_year_id',
         'start_date',
         'end_date',
         'status',
@@ -25,6 +23,7 @@ class FiscalPeriodParameters
     ];
 
     const ALLOWED_INCLUDES = [
+        'fiscalYear',
         'creator',
         'updater'
     ];

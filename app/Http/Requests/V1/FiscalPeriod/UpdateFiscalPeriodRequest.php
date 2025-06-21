@@ -4,6 +4,7 @@ namespace App\Http\Requests\V1\FiscalPeriod;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Models\FiscalPeriod;
 
 class UpdateFiscalPeriodRequest extends FormRequest
 {
@@ -23,21 +24,7 @@ class UpdateFiscalPeriodRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'fiscal_year' => ['sometimes', 'required', 'date'],
-            'period_number' => [
-                'sometimes',
-                'required',
-                'integer',
-                'min:1',
-                Rule::unique('fiscal_periods')
-                    ->where(function ($query) {
-                        return $query->whereDate(
-                            'fiscal_year',
-                            $this->fiscal_year ?? $this->fiscal_period->fiscal_year
-                        );
-                    })
-                    ->ignore($this->fiscal_period)
-            ],
+            'fiscal_year_id' => ['sometimes', 'required', 'exists:fiscal_years,id'],
             'period_name' => ['sometimes', 'required', 'string', 'max:255'],
             'start_date' => ['sometimes', 'required', 'date'],
             'end_date' => [
@@ -54,6 +41,36 @@ class UpdateFiscalPeriodRequest extends FormRequest
             'status' => ['sometimes', 'required', Rule::in(['Open', 'Closed', 'Adjusting'])],
             'updated_by' => ['nullable', 'exists:users,id'],
         ];
+    }
+
+    /**
+     * Configure the validator instance.
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            $this->validateUniqueDateCombination($validator);
+        });
+    }
+
+    /**
+     * Validate that the start_date and end_date combination is unique within the fiscal year.
+     */
+    private function validateUniqueDateCombination($validator)
+    {
+        $fiscalYearId = $this->fiscal_year_id ?? $this->fiscal_period->fiscal_year_id;
+        $startDate = $this->start_date ?? $this->fiscal_period->start_date;
+        $endDate = $this->end_date ?? $this->fiscal_period->end_date;
+
+        $exists = FiscalPeriod::where('fiscal_year_id', $fiscalYearId)
+            ->where('start_date', $startDate)
+            ->where('end_date', $endDate)
+            ->where('id', '!=', $this->fiscal_period->id)
+            ->exists();
+
+        if ($exists) {
+            $validator->errors()->add('date_combination', 'A fiscal period with the same start date and end date already exists in this fiscal year.');
+        }
     }
 
     /**

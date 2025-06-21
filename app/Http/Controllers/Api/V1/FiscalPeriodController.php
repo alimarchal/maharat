@@ -26,6 +26,7 @@ class FiscalPeriodController extends Controller
             ->allowedFilters(FiscalPeriodParameters::ALLOWED_FILTERS)
             ->allowedSorts(FiscalPeriodParameters::ALLOWED_SORTS)
             ->allowedIncludes(FiscalPeriodParameters::ALLOWED_INCLUDES)
+            ->withCount('budgets')
             ->paginate()
             ->appends(request()->query());
 
@@ -129,6 +130,14 @@ class FiscalPeriodController extends Controller
                 return response()->json([
                     'message' => 'Cannot delete a closed fiscal period',
                     'error' => 'Closed periods are permanent records'
+                ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            // Prevent deleting periods that have budgets
+            if ($fiscalPeriod->hasBudgets()) {
+                return response()->json([
+                    'message' => 'Cannot delete a fiscal period that has associated budgets',
+                    'error' => 'Please remove all budgets associated with this period before deleting'
                 ], Response::HTTP_UNPROCESSABLE_ENTITY);
             }
 

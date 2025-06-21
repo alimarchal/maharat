@@ -16,8 +16,8 @@ class FiscalPeriodResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'fiscal_year' => $this->fiscal_year->format('Y-m-d'),
-            'period_number' => $this->period_number,
+            'fiscal_year_id' => $this->fiscal_year_id,
+            'fiscal_year' => $this->fiscalYear?->fiscal_year,
             'period_name' => $this->period_name,
             'start_date' => $this->start_date->format('Y-m-d'),
             'end_date' => $this->end_date->format('Y-m-d'),
@@ -28,8 +28,10 @@ class FiscalPeriodResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,
+            'budgets_count' => $this->budgets_count ?? 0,
 
             // Include related resources when loaded
+            'fiscal_year_data' => new FiscalYearResource($this->whenLoaded('fiscalYear')),
             'creator' => new UserResource($this->whenLoaded('creator')),
             'updater' => new UserResource($this->whenLoaded('updater')),
         ];
