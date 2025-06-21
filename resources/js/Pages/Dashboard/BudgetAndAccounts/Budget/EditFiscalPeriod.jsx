@@ -116,13 +116,13 @@ const EditFiscalPeriod = () => {
     return (
         <div className="w-full">
             <div className="flex justify-between items-center mb-8">
-                <h2 className="text-3xl font-bold text-[#2C323C]">Fiscal Periods</h2>
+                <h2 className="text-3xl font-bold text-[#2C323C]">Fiscal Years</h2>
                 <button
                     onClick={() => setIsModalOpen(true)}
                     className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                     type="button"
                 >
-                    Create a Fiscal Period
+                    Create a Budget
                 </button>
             </div>
 
