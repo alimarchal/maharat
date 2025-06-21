@@ -8,11 +8,13 @@ use App\Http\Requests\V1\Budget\UpdateBudgetRequest;
 use App\Http\Resources\V1\BudgetResource;
 use App\Models\Budget;
 use App\QueryParameters\BudgetParameters;
+use App\QueryFilters\FiscalPeriodStatusFilter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
+use Spatie\QueryBuilder\AllowedFilter;
 
 class BudgetController extends Controller
 {
@@ -22,7 +24,10 @@ class BudgetController extends Controller
     public function index(): JsonResponse|ResourceCollection
     {
         $budgets = QueryBuilder::for(Budget::class)
-            ->allowedFilters(BudgetParameters::ALLOWED_FILTERS)
+            ->allowedFilters([
+                ...BudgetParameters::ALLOWED_FILTERS,
+                AllowedFilter::custom('fiscal_period.status', new FiscalPeriodStatusFilter()),
+            ])
             ->allowedSorts(BudgetParameters::ALLOWED_SORTS)
             ->allowedIncludes(BudgetParameters::ALLOWED_INCLUDES)
             ->paginate()

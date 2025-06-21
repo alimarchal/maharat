@@ -6,14 +6,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FiscalPeriod extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'fiscal_year',
-        'period_number',
+        'fiscal_year_id',
         'period_name',
         'start_date',
         'end_date',
@@ -24,11 +24,18 @@ class FiscalPeriod extends Model
     ];
 
     protected $casts = [
-        'fiscal_year' => 'date',
         'start_date' => 'date',
         'end_date' => 'date',
         'transaction_closed_upto' => 'date'
     ];
+
+    /**
+     * Get the fiscal year that owns the fiscal period.
+     */
+    public function fiscalYear(): BelongsTo
+    {
+        return $this->belongsTo(FiscalYear::class);
+    }
 
     /**
      * Get the user who created the fiscal period.
@@ -44,6 +51,22 @@ class FiscalPeriod extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * Get the budgets associated with this fiscal period.
+     */
+    public function budgets(): HasMany
+    {
+        return $this->hasMany(Budget::class);
+    }
+
+    /**
+     * Check if the fiscal period has any budgets.
+     */
+    public function hasBudgets(): bool
+    {
+        return $this->budgets()->exists();
     }
 
     /**
@@ -67,6 +90,8 @@ class FiscalPeriod extends Model
      */
     public function scopeForYear($query, $year)
     {
-        return $query->whereYear('fiscal_year', $year);
+        return $query->whereHas('fiscalYear', function ($q) use ($year) {
+            $q->where('fiscal_year', $year);
+        });
     }
 }

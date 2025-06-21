@@ -4,6 +4,7 @@ namespace App\Http\Requests\V1\FiscalPeriod;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Models\FiscalPeriod;
 
 class StoreFiscalPeriodRequest extends FormRequest
 {
@@ -23,16 +24,7 @@ class StoreFiscalPeriodRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'fiscal_year' => ['required', 'date'],
-            'period_number' => [
-                'required',
-                'integer',
-                'min:1',
-                Rule::unique('fiscal_periods')
-                    ->where(function ($query) {
-                        return $query->whereDate('fiscal_year', $this->fiscal_year);
-                    })
-            ],
+            'fiscal_year_id' => ['required', 'exists:fiscal_years,id'],
             'period_name' => ['required', 'string', 'max:255'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
@@ -41,6 +33,35 @@ class StoreFiscalPeriodRequest extends FormRequest
             'created_by' => ['nullable', 'exists:users,id'],
             'updated_by' => ['nullable', 'exists:users,id'],
         ];
+    }
+
+    /**
+     * Configure the validator instance.
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            $this->validateUniqueDateCombination($validator);
+        });
+    }
+
+    /**
+     * Validate that the start_date and end_date combination is unique within the fiscal year.
+     */
+    private function validateUniqueDateCombination($validator)
+    {
+        $fiscalYearId = $this->fiscal_year_id;
+        $startDate = $this->start_date;
+        $endDate = $this->end_date;
+
+        $exists = FiscalPeriod::where('fiscal_year_id', $fiscalYearId)
+            ->where('start_date', $startDate)
+            ->where('end_date', $endDate)
+            ->exists();
+
+        if ($exists) {
+            $validator->errors()->add('date_combination', 'A fiscal period with the same start date and end date already exists in this fiscal year.');
+        }
     }
 
     /**

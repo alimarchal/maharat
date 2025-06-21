@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\V1\ExternalInvoiceController;
 use App\Http\Controllers\Api\V1\FaqController;
 use App\Http\Controllers\Api\V1\FinancialTransactionController;
 use App\Http\Controllers\Api\V1\FiscalPeriodController;
+use App\Http\Controllers\Api\V1\FiscalYearController;
 use App\Http\Controllers\Api\V1\GrnController;
 use App\Http\Controllers\Api\V1\GrnReceiveGoodController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
@@ -267,6 +268,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('fiscal-periods/{fiscalPeriod}/close', [FiscalPeriodController::class, 'close']);
     Route::post('fiscal-periods/{fiscalPeriod}/reopen', [FiscalPeriodController::class, 'reopen']);
     Route::apiResource('fiscal-periods', FiscalPeriodController::class);
+    
+    // Fiscal Years routes
+    Route::apiResource('fiscal-years', FiscalYearController::class);
+
     // Request Budget Routes
     Route::apiResource('request-budgets', RequestBudgetController::class);
     Route::post('request-budgets/{id}/restore', [RequestBudgetController::class, 'restore']);

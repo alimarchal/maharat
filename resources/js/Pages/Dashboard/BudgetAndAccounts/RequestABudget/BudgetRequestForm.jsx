@@ -60,7 +60,7 @@ const BudgetRequestForm = () => {
             const [deptRes, costRes, yearRes] = await Promise.all([
                 axios.get("/api/v1/departments"),
                 axios.get("/api/v1/cost-centers"),
-                axios.get("/api/v1/fiscal-periods"),
+                axios.get("/api/v1/fiscal-periods?filter[status]=open"),
             ]);
             
             setDepartments(deptRes.data.data);
@@ -476,9 +476,9 @@ const BudgetRequestForm = () => {
                 <div className="w-full lg:w-1/4">
                     {isEditMode ? (
                         <InputFloating
-                            label="Year"
+                            label="Period"
                             name="fiscal_period_id"
-                            value={`${fiscalYears.find(year => year.id === formData.fiscal_period_id)?.period_name} ${fiscalYears.find(year => year.id === formData.fiscal_period_id)?.fiscal_year.split("-")[0]}`}
+                            value={fiscalYears.find(year => year.id === formData.fiscal_period_id)?.period_name || ''}
                             onChange={() => {}}
                             onKeyDown={(e) => e.preventDefault()}
                             disabled={true}
@@ -486,15 +486,13 @@ const BudgetRequestForm = () => {
                         />
                     ) : (
                         <SelectFloating
-                            label="Year"
+                            label="Period"
                             name="fiscal_period_id"
                             value={formData.fiscal_period_id}
                             onChange={handleChange}
                             options={fiscalYears.map((year) => ({
                                 id: year.id,
-                                label: `${year.period_name} ${
-                                    year.fiscal_year.split("-")[0]
-                                }`,
+                                label: year.period_name,
                             }))}
                         />
                     )}
