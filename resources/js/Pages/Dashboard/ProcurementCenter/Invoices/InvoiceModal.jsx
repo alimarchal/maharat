@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
 import InputFloating from "../../../../Components/InputFloating";
 import SelectFloating from "../../../../Components/SelectFloating";
@@ -30,6 +31,10 @@ const InvoiceModal = ({
     const [purchaseOrders, setPurchaseOrders] = useState([]);
     const [errors, setErrors] = useState({});
     const [isSaving, setIsSaving] = useState(false);
+    const [tempDocument, setTempDocument] = useState(null);
+    const [existingDocument, setExistingDocument] = useState(null);
+    const [uploadError, setUploadError] = useState("");
+    const fileInputRef = React.useRef();
 
     const statusOptions = [
         { id: "Paid", label: "Paid" },
@@ -51,6 +56,27 @@ const InvoiceModal = ({
             fetchAvailablePurchaseOrders();
 
             if (invoice && isEdit) {
+                // Handle existing document for edit mode
+                if (invoice.documents && invoice.documents.length > 0) {
+                    setExistingDocument(invoice.documents[0]);
+                    if (invoice.documents[0].original_name) {
+                        const name = invoice.documents[0].original_name;
+                        if (name.endsWith(".pdf.pdf")) {
+                            const correctedName = name.replace(
+                                ".pdf.pdf",
+                                ".pdf"
+                            );
+                            const corrected = {
+                                ...invoice.documents[0],
+                                original_name: correctedName,
+                            };
+                            setExistingDocument(corrected);
+                        }
+                    }
+                } else {
+                    setExistingDocument(null);
+                }
+
                 setFormData({
                     supplier_id: invoice.supplier_id || "",
                     amount: invoice.amount || "",
@@ -80,6 +106,8 @@ const InvoiceModal = ({
                     total_amount: "",
                     attachment: null,
                 });
+                setExistingDocument(null);
+                setTempDocument(null);
             }
         }
     }, [isOpen, invoice, isEdit]);
@@ -149,6 +177,40 @@ const InvoiceModal = ({
         });
     };
 
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setTempDocument(file);
+            setUploadError("");
+        }
+    };
+
+    const uploadDocumentToServer = async (invoiceId, file) => {
+        if (!file) return true;
+        const formData = new FormData();
+        formData.append("document", file);
+        formData.append("invoice_id", invoiceId);
+        formData.append("type", "invoice");
+        try {
+            await axios.post("/api/v1/invoice-documents", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            return true;
+        } catch (error) {
+            setUploadError(
+                error.response?.data?.message || "Failed to upload document."
+            );
+            return false;
+        }
+    };
+
+    const fixFilePath = (filePath) => {
+        if (filePath && filePath.endsWith(".pdf.pdf")) {
+            return filePath.replace(".pdf.pdf", ".pdf");
+        }
+        return filePath;
+    };
+
     useEffect(() => {}, [formData]);
 
     useEffect(() => {
@@ -163,6 +225,7 @@ const InvoiceModal = ({
         e.preventDefault();
         setIsSaving(true);
         setErrors({});
+        setUploadError("");
 
         const submissionData = {
             ...formData,
@@ -191,6 +254,11 @@ const InvoiceModal = ({
         if (!isEdit && !submissionData.purchase_order_id)
             validationErrors.purchase_order_id = "Purchase Order is required";
 
+        // Make attachment required
+        if (!tempDocument && !existingDocument) {
+            validationErrors.attachment = "Attachment is required";
+        }
+
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
             setIsSaving(false);
@@ -198,8 +266,80 @@ const InvoiceModal = ({
         }
 
         try {
-            onSave(submissionData);
-            onClose();
+            if (isEdit) {
+                // For edit mode, handle document upload separately
+                const response = await axios.put(
+                    `/api/v1/external-invoices/${invoice.id}`,
+                    submissionData
+                );
+
+                if (tempDocument) {
+                    const uploadSuccess = await uploadDocumentToServer(
+                        invoice.id,
+                        tempDocument
+                    );
+                    if (!uploadSuccess) {
+                        setUploadError(
+                            "Failed to upload document. Please try again."
+                        );
+                        setIsSaving(false);
+                        return;
+                    }
+                    // Clear file input after upload
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                }
+
+                onSave(submissionData);
+                onClose();
+            } else {
+                // For create mode, use FormData to include the file
+                const formDataToSend = new FormData();
+                Object.keys(submissionData).forEach((key) => {
+                    if (
+                        submissionData[key] !== null &&
+                        submissionData[key] !== undefined &&
+                        key !== "attachment"
+                    ) {
+                        formDataToSend.append(key, submissionData[key]);
+                    }
+                });
+
+                if (tempDocument) {
+                    formDataToSend.append("attachment", tempDocument);
+                }
+
+                const response = await axios.post(
+                    "/api/v1/external-invoices",
+                    formDataToSend,
+                    {
+                        headers: { "Content-Type": "multipart/form-data" },
+                    }
+                );
+
+                // If there's a separate document upload endpoint, handle it here
+                if (
+                    tempDocument &&
+                    response.data.data &&
+                    response.data.data.id
+                ) {
+                    const uploadSuccess = await uploadDocumentToServer(
+                        response.data.data.id,
+                        tempDocument
+                    );
+                    if (!uploadSuccess) {
+                        setUploadError(
+                            "Failed to upload document. Please try again."
+                        );
+                        setIsSaving(false);
+                        return;
+                    }
+                    // Clear file input after upload
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                }
+
+                onSave(submissionData);
+                onClose();
+            }
         } catch (error) {
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
@@ -233,6 +373,16 @@ const InvoiceModal = ({
                         <FontAwesomeIcon icon={faTimes} />
                     </button>
                 </div>
+
+                {errors.submit && (
+                    <div
+                        className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+                        role="alert"
+                    >
+                        <span className="block sm:inline">{errors.submit}</span>
+                    </div>
+                )}
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -306,46 +456,107 @@ const InvoiceModal = ({
                                 error={errors.type}
                             />
                         </div>
+                        <div>
+                            <SelectFloating
+                                label="Status"
+                                name="status"
+                                value={formData.status}
+                                onChange={handleChange}
+                                options={statusOptions}
+                                error={errors.status}
+                            />
+                        </div>
                         {!isEdit && (
-                            <>
-                                <div>
-                                    <SelectFloating
-                                        label="Status"
-                                        name="status"
-                                        value={formData.status}
-                                        onChange={handleChange}
-                                        options={statusOptions}
-                                        error={errors.status}
-                                    />
-                                </div>
-                                <div>
-                                    <InputFloating
-                                        label="Invoice Date"
-                                        name="payable_date"
-                                        type="date"
-                                        value={formData.payable_date}
-                                        onChange={handleChange}
-                                        error={errors.payable_date}
-                                    />
-                                </div>
-                            </>
+                            <div>
+                                <InputFloating
+                                    label="Invoice Date"
+                                    name="payable_date"
+                                    type="date"
+                                    value={formData.payable_date}
+                                    onChange={handleChange}
+                                    error={errors.payable_date}
+                                />
+                            </div>
                         )}
                     </div>
 
-                    {isEdit && (
-                        <div className="w-full flex justify-start mt-6">
-                            <div className="w-1/2">
-                                <SelectFloating
-                                    label="Status"
-                                    name="status"
-                                    value={formData.status}
-                                    onChange={handleChange}
-                                    options={statusOptions}
-                                    error={errors.status}
+                    {/* Attachment Section */}
+                    <div className="flex justify-center">
+                        <div className="space-y-2 w-full max-w-sm">
+                            <label className="block text-sm font-medium text-gray-700 mb-1 text-center">
+                                Attachment
+                            </label>
+
+                            {existingDocument && !tempDocument && (
+                                <div className="flex items-center justify-center space-x-2 mb-2">
+                                    <DocumentArrowDownIcon
+                                        className="h-5 w-5 text-gray-500 cursor-pointer hover:text-gray-700"
+                                        onClick={() =>
+                                            existingDocument.file_path &&
+                                            window.open(
+                                                fixFilePath(
+                                                    existingDocument.file_path
+                                                ),
+                                                "_blank"
+                                            )
+                                        }
+                                    />
+                                    <span
+                                        className="text-sm text-blue-600 cursor-pointer truncate max-w-[220px]"
+                                        title={existingDocument.original_name}
+                                        onClick={() =>
+                                            existingDocument.file_path &&
+                                            window.open(
+                                                fixFilePath(
+                                                    existingDocument.file_path
+                                                ),
+                                                "_blank"
+                                            )
+                                        }
+                                    >
+                                        {existingDocument.original_name}
+                                    </span>
+                                </div>
+                            )}
+
+                            {tempDocument && (
+                                <div className="flex justify-center">
+                                    <div
+                                        className="text-sm text-orange-600 mb-2 truncate max-w-[220px] text-center"
+                                        title={tempDocument.name}
+                                    >
+                                        Selected: {tempDocument.name}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end">
+                                <input
+                                    type="file"
+                                    className="text-sm text-gray-500
+                                        file:mr-4 file:py-2 file:px-4
+                                        file:rounded-full file:border-0
+                                        file:text-sm file:font-semibold
+                                        file:bg-[#009FDC] file:text-white
+                                        hover:file:bg-[#007BB5]"
+                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                    onChange={handleFileChange}
+                                    ref={fileInputRef}
                                 />
                             </div>
+
+                            {uploadError && (
+                                <div className="text-red-500 text-xs mt-1 text-center">
+                                    {uploadError}
+                                </div>
+                            )}
+                            {errors.attachment && (
+                                <div className="text-red-500 text-xs mt-1 text-center">
+                                    {errors.attachment}
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </div>
 
                     <div className="mt-8 flex justify-center w-full">
                         <button
