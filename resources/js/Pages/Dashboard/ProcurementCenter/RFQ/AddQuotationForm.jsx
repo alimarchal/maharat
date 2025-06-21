@@ -14,7 +14,8 @@ export default function AddQuotationForm() {
     const [formData, setFormData] = useState({
         organization_name: "",
         organization_email: "",
-        city: "",
+        city: "Riyadh",
+        department_id: "",
         category_id: "",
         warehouse_id: "",
         cost_center_id: "",
@@ -32,6 +33,7 @@ export default function AddQuotationForm() {
     const [categories, setCategories] = useState([]);
     const [paymentTypes, setPaymentTypes] = useState([]);
     const [costCenters, setCostCenters] = useState([]);
+    const [departments, setDepartments] = useState([]);
     const [units, setUnits] = useState([]);
     const [brands, setBrands] = useState([]);
     const [attachments, setAttachments] = useState({});
@@ -41,6 +43,7 @@ export default function AddQuotationForm() {
     const [categoryNames, setCategoryNames] = useState({});
     const [paymentTypeNames, setPaymentTypeNames] = useState({});
     const [costCenterNames, setCostCenterNames] = useState({});
+    const [departmentNames, setDepartmentNames] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [products, setProducts] = useState([]);
@@ -107,6 +110,32 @@ export default function AddQuotationForm() {
         formData.category_id,
     ]);
 
+    // Add useEffect to handle department loading in edit mode
+    useEffect(() => {
+        if (isEditing && departments.length > 0 && formData.department_id === "") {
+            // If we're in edit mode, departments are loaded, but department_id is empty,
+            // it means the form data was set before departments were loaded
+            // We need to reload the RFQ data to set the department properly
+            if (rfqId) {
+                const reloadRfqData = async () => {
+                    try {
+                        const response = await axios.get(`/api/v1/rfqs/${rfqId}`);
+                        const rfqData = response.data?.data;
+                        if (rfqData && rfqData.department_id) {
+                            setFormData(prev => ({
+                                ...prev,
+                                department_id: rfqData.department_id.toString()
+                            }));
+                        }
+                    } catch (error) {
+                        console.error("Error reloading RFQ data for department:", error);
+                    }
+                };
+                reloadRfqData();
+            }
+        }
+    }, [isEditing, departments.length, formData.department_id, rfqId]);
+
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
@@ -124,7 +153,7 @@ export default function AddQuotationForm() {
                         ...prev,
                         organization_name: companiesData.name || "",
                         organization_email: companiesData.email || "",
-                        city: companiesData.city || "",
+                        department_id: "",
                         contact_no: companiesData.contact_number || "",
                     }));
                 }
@@ -250,7 +279,8 @@ export default function AddQuotationForm() {
                     const formattedData = {
                         organization_name: rfqData.organization_name || "",
                         organization_email: rfqData.organization_email || "",
-                        city: rfqData.city || "",
+                        city: rfqData.city || "Riyadh",
+                        department_id: rfqData.department_id?.toString() || "",
                         category_id:
                             categoryId ||
                             (rfqData.category_id
@@ -339,6 +369,7 @@ export default function AddQuotationForm() {
                     { name: "categories", url: "/api/v1/product-categories" },
                     { name: "warehouses", url: "/api/v1/warehouses" },
                     { name: "products", url: "/api/v1/products" },
+                    { name: "departments", url: "/api/v1/departments" },
                 ];
 
                 // Fetch each endpoint and handle potential errors individually
@@ -454,6 +485,19 @@ export default function AddQuotationForm() {
 
                         case "products":
                             setProducts(result.data);
+                            break;
+
+                        case "departments":
+                            setDepartments(result.data);
+
+                            // Create lookup map for departments
+                            const departmentLookup = {};
+                            result.data.forEach((department) => {
+                                if (department && department.id) {
+                                    departmentLookup[String(department.id)] = department.name;
+                                }
+                            });
+                            setDepartmentNames(departmentLookup);
                             break;
 
                         default:
@@ -780,7 +824,8 @@ export default function AddQuotationForm() {
             const rfqData = {
                 organization_name: formData.organization_name || "",
                 organization_email: formData.organization_email || "",
-                city: formData.city || "",
+                city: formData.city || "Riyadh",
+                department_id: formData.department_id || null,
                 category_id: formData.category_id || "",
                 warehouse_id: formData.warehouse_id || "",
                 cost_center_id: formData.cost_center_id || null,
@@ -1161,6 +1206,29 @@ export default function AddQuotationForm() {
                             required
                             readOnly
                         />
+
+                        <span className="font-medium text-gray-600">Department:</span>
+                        <div className="relative">
+                            <select
+                                value={formData.department_id || ""}
+                                onChange={(e) =>
+                                    handleFormInputChange("department_id", e.target.value)
+                                }
+                                className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                                required
+                            >
+                                <option value="">Select Department</option>
+                                {departments.map((department) => (
+                                    <option
+                                        key={department.id}
+                                        value={department.id.toString()}
+                                        className="text-[#009FDC] bg-blue-50"
+                                    >
+                                        {department.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
                         <span className="font-medium text-gray-600">City:</span>
                         <input

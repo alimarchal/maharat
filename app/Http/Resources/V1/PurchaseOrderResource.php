@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Http\Resources\V1\PaymentOrderResource;
 use App\Http\Resources\V1\GrnResource;
+use App\Http\Resources\V1\FiscalPeriodResource;
 
 class PurchaseOrderResource extends JsonResource
 {
@@ -33,6 +34,8 @@ class PurchaseOrderResource extends JsonResource
             'original_name' => $this->original_name,
             'generated_document' => $this->generated_document,
             'status' => $this->status,
+            'fiscal_period_id' => $this->fiscal_period_id,
+            'request_budget_id' => $this->request_budget_id,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
 
@@ -46,6 +49,7 @@ class PurchaseOrderResource extends JsonResource
             'supplier' => new SupplierResource($this->whenLoaded('supplier')),
             'created_by' => new UserResource($this->whenLoaded('user')),
             'requestBudget' => new RequestBudgetResource($this->whenLoaded('requestBudget')),
+            'fiscalPeriod' => new FiscalPeriodResource($this->whenLoaded('fiscalPeriod')),
             'paymentOrders' => PaymentOrderResource::collection($this->whenLoaded('paymentOrders')),
             'goodReceiveNotes' => GrnResource::collection($this->whenLoaded('goodReceiveNote')),
         ];

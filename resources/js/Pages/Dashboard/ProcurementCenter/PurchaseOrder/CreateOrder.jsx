@@ -337,16 +337,17 @@ export default function CreatePurchaseOrder() {
                                     </td>
                                     <td className="px-3 py-4 text-center">
                                         {quotation.has_purchase_order ? (
-                                            <button
-                                                onClick={() =>
-                                                    handleEditPO(quotation)
-                                                }
-                                                className="text-blue-400 hover:text-blue-500"
-                                            >
-                                                <FontAwesomeIcon
-                                                    icon={faEdit}
-                                                />
-                                            </button>
+                                            // <button
+                                            //     onClick={() =>
+                                            //         handleEditPO(quotation)
+                                            //     }
+                                            //     className="text-blue-400 hover:text-blue-500"
+                                            // >
+                                            //     <FontAwesomeIcon
+                                            //         icon={faEdit}
+                                            //     />
+                                            // </button>
+                                            <span className="text-gray-400">Created</span>
                                         ) : (
                                             <button
                                                 onClick={() =>

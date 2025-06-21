@@ -142,7 +142,7 @@ class Rfq extends Model
      */
     public function subCostCenter(): BelongsTo
     {
-        return $this->belongsTo(SubCostCenter::class, 'sub_cost_center_id');
+        return $this->belongsTo(CostCenter::class, 'sub_cost_center_id');
     }
 
     public function purchaseOrders(): HasMany
