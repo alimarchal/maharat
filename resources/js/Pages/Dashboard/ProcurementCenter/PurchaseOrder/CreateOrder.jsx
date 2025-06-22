@@ -152,7 +152,7 @@ export default function CreatePurchaseOrder() {
                         quotation.id
                     );
                     const rfqHasPurchaseOrder = quotation.rfq && quotation.rfq.id ? rfqIdsWithPO.has(quotation.rfq.id) : false;
-                    
+
                     return {
                         ...quotation,
                         category_name: categoryName,
@@ -321,14 +321,21 @@ export default function CreatePurchaseOrder() {
                                                     onClick={() => {
                                                         const filePath = quotation.documents[0].file_path;
                                                         if (filePath) {
-                                                            const fixedPath = filePath.startsWith("http") 
-                                                                ? filePath 
-                                                                : filePath.startsWith("/storage/") 
-                                                                    ? filePath 
-                                                                    : filePath.startsWith("quotations/") 
-                                                                        ? `/storage/${filePath}` 
-                                                                        : filePath;
-                                                            window.open(fixedPath, "_blank");
+                                                            const fixedPath = filePath.startsWith("http")
+                                                                    ? filePath
+                                                                    : filePath.startsWith(
+                                                                          "/storage/"
+                                                                      )
+                                                                    ? filePath
+                                                                    : filePath.startsWith(
+                                                                          "quotations/"
+                                                                      )
+                                                                    ? `/storage/${filePath}`
+                                                                    : filePath;
+                                                            window.open(
+                                                                fixedPath,
+                                                                "_blank"
+                                                            );
                                                         }
                                                     }}
                                                     title="View Document"
@@ -349,17 +356,32 @@ export default function CreatePurchaseOrder() {
                                     <td className="px-3 py-4 text-center">
                                         {quotation.has_purchase_order ? (
                                             <span className="text-gray-400">Created</span>
-                                        ) : quotation.rfq_has_purchase_order ? (
-                                            <span className="text-gray-400">PO Requested</span>
                                         ) : (
-                                            <button
-                                                onClick={() =>
-                                                    handleCreatePO(quotation)
-                                                }
-                                                className="text-gray-400 hover:text-gray-600"
-                                            >
-                                                <PlusCircleIcon className="h-6 w-6" />
-                                            </button>
+                                            (() => {
+                                                const rfqHasPO =
+                                                    quotations.some(
+                                                        (q) =>
+                                                            q.rfq?.id ===
+                                                                quotation.rfq
+                                                                    ?.id &&
+                                                            q.has_purchase_order
+                                                    );
+
+                                                return rfqHasPO ? (
+                                                    <span className="text-gray-400">
+                                                        PO Requested
+                                                    </span>
+                                                ) : (
+                                                    <button
+                                                        onClick={() =>
+                                                            handleCreatePO(quotation)
+                                                        }
+                                                        className="text-gray-400 hover:text-gray-600"
+                                                    >
+                                                        <PlusCircleIcon className="h-6 w-6" />
+                                                    </button>
+                                                );
+                                            })()
                                         )}
                                     </td>
                                 </tr>
