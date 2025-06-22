@@ -387,10 +387,27 @@ const ApproveOrder = ({
                 onClose();
             }
         } catch (error) {
+            console.error("Purchase order creation error:", error.response?.data);
+            
+            let errorMessage = "Failed to save purchase order";
+            
+            // Check for nested error structure
+            if (error.response?.data?.error) {
+                errorMessage = error.response.data.error;
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.response?.data?.errors) {
+                // Handle validation errors
+                const firstError = Object.values(error.response.data.errors)[0];
+                if (Array.isArray(firstError)) {
+                    errorMessage = firstError[0];
+                } else {
+                    errorMessage = firstError;
+                }
+            }
+            
             setErrors({
-                submit:
-                    error.response?.data?.message ||
-                    "Failed to save purchase order",
+                submit: errorMessage,
                 ...error.response?.data?.errors,
             });
         } finally {

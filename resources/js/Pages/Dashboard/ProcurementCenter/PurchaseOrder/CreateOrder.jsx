@@ -125,6 +125,14 @@ export default function CreatePurchaseOrder() {
             );
             setPurchaseOrders(purchaseOrdersData);
 
+            // Get all RFQ IDs that already have purchase orders
+            const rfqIdsWithPO = new Set();
+            purchaseOrdersData.forEach((po) => {
+                if (po.quotation && po.quotation.rfq_id) {
+                    rfqIdsWithPO.add(po.quotation.rfq_id);
+                }
+            });
+
             const quotationsWithDetails = await Promise.all(
                 quotationsData.map(async (quotation) => {
                     let categoryName = "N/A";
@@ -143,10 +151,13 @@ export default function CreatePurchaseOrder() {
                     const hasPurchaseOrder = quotationIdsWithPO.has(
                         quotation.id
                     );
+                    const rfqHasPurchaseOrder = quotation.rfq && quotation.rfq.id ? rfqIdsWithPO.has(quotation.rfq.id) : false;
+                    
                     return {
                         ...quotation,
                         category_name: categoryName,
                         has_purchase_order: hasPurchaseOrder,
+                        rfq_has_purchase_order: rfqHasPurchaseOrder,
                     };
                 })
             );
@@ -337,17 +348,9 @@ export default function CreatePurchaseOrder() {
                                     </td>
                                     <td className="px-3 py-4 text-center">
                                         {quotation.has_purchase_order ? (
-                                            // <button
-                                            //     onClick={() =>
-                                            //         handleEditPO(quotation)
-                                            //     }
-                                            //     className="text-blue-400 hover:text-blue-500"
-                                            // >
-                                            //     <FontAwesomeIcon
-                                            //         icon={faEdit}
-                                            //     />
-                                            // </button>
                                             <span className="text-gray-400">Created</span>
+                                        ) : quotation.rfq_has_purchase_order ? (
+                                            <span className="text-gray-400">PO Requested</span>
                                         ) : (
                                             <button
                                                 onClick={() =>

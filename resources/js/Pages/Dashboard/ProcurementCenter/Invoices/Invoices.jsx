@@ -129,7 +129,7 @@ const InvoicesTable = () => {
 
     const handleSaveInvoice = async (formData) => {
         // The modal already handles the API call, just refresh the data
-        await fetchInvoices();
+                await fetchInvoices();
     };
 
     const handleDelete = async (id) => {
@@ -330,22 +330,22 @@ const InvoicesTable = () => {
                                     <td className="px-3 py-4 flex justify-center text-center space-x-3">
                                         {invoice.status !== 'Paid' && invoice.status !== 'Approved' && (
                                             <>
-                                                <button
-                                                    onClick={() =>
-                                                        handleEditInvoice(invoice)
-                                                    }
-                                                    className="text-blue-400 hover:text-blue-500"
-                                                >
-                                                    <FontAwesomeIcon icon={faEdit} />
-                                                </button>
-                                                <button
-                                                    onClick={() =>
-                                                        handleDelete(invoice.id)
-                                                    }
-                                                    className="text-red-600 hover:text-red-800"
-                                                >
-                                                    <FontAwesomeIcon icon={faTrash} />
-                                                </button>
+                                        <button
+                                            onClick={() =>
+                                                handleEditInvoice(invoice)
+                                            }
+                                            className="text-blue-400 hover:text-blue-500"
+                                        >
+                                            <FontAwesomeIcon icon={faEdit} />
+                                        </button>
+                                        <button
+                                            onClick={() =>
+                                                handleDelete(invoice.id)
+                                            }
+                                            className="text-red-600 hover:text-red-800"
+                                        >
+                                            <FontAwesomeIcon icon={faTrash} />
+                                        </button>
                                             </>
                                         )}
                                     </td>
