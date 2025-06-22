@@ -18,6 +18,8 @@ class Account extends Model
         'description',
         'cost_center_id',
         'status',
+        'credit_amount',
+        'debit_amount',
         'created_by',
         'updated_by'
     ];
@@ -26,6 +28,8 @@ class Account extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
+        'credit_amount' => 'decimal:2',
+        'debit_amount' => 'decimal:2',
     ];
 
     /**

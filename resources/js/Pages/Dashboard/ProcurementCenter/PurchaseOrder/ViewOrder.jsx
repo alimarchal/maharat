@@ -49,7 +49,7 @@ export default function PurchaseOrdersTable() {
             const response = await axios.get("/api/v1/purchase-orders", {
                 params: {
                     page: currentPage,
-                    include: "quotation",
+                    include: "quotation,supplier",
                     per_page: 10,
                 },
             });
@@ -100,7 +100,7 @@ export default function PurchaseOrdersTable() {
                     return {
                         ...order,
                         quotation_number: quotationDetails.quotation_number,
-                        company_name: quotationDetails.company_name,
+                        supplier_name: order.supplier?.name || "N/A",
                         purchase_order_date: order.purchase_order_date,
                         expiry_date: order.expiry_date,
                         formatted_attachment: attachmentUrl,
@@ -278,7 +278,7 @@ export default function PurchaseOrdersTable() {
                                     PO #
                                 </th>
                                 <th className="py-3 px-4">Quotation #</th>
-                                <th className="py-3 px-4">Company</th>
+                                <th className="py-3 px-4">Supplier</th>
                                 <th className="py-3 px-4">Issue Date</th>
                                 <th className="py-3 px-4">Amount</th>
                                 {/* <th className="py-3 px-4 text-center">
@@ -318,7 +318,7 @@ export default function PurchaseOrdersTable() {
                                             {order.quotation_number || "N/A"}
                                         </td>
                                         <td className="px-3 py-4">
-                                            {order.company_name || "N/A"}
+                                            {order.supplier_name || "N/A"}
                                         </td>
                                         <td className="px-3 py-4">
                                             {formatDateForDisplay(

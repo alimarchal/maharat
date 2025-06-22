@@ -41,9 +41,7 @@ const BudgetTable = () => {
                 url += `&filter[status]=${selectedFilter}`;
             }
 
-            console.log('BudgetTable fetchBudgets URL:', url);
             const response = await axios.get(url);
-            console.log('BudgetTable fetchBudgets response:', response.data);
 
             if (response.data && response.data.data) {
                 setBudgets(response.data.data);
@@ -52,7 +50,6 @@ const BudgetTable = () => {
                 setError("Invalid response format. Please try again.");
             }
         } catch (error) {
-            console.error("Error fetching budgets:", error);
             setError(
                 error.response?.data?.message ||
                     "Failed to fetch budgets. Please try again."

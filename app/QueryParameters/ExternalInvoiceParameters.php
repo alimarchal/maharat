@@ -30,5 +30,6 @@ class ExternalInvoiceParameters
         'user',
         'supplier',
         'purchaseOrder',
+        'documents',
     ];
 }

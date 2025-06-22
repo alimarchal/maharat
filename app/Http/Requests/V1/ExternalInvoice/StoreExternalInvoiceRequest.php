@@ -26,11 +26,12 @@ class StoreExternalInvoiceRequest extends FormRequest
             'user_id' => ['nullable', 'exists:users,id'],
             'purchase_order_id' => ['nullable', 'exists:purchase_orders,id'],
             'supplier_id' => ['required', 'exists:suppliers,id'],
-            'invoice_id' => ['required', 'string', 'unique:external_invoices,invoice_id'],
             'amount' => ['required', 'numeric', 'min:0'],
+            'vat_amount' => ['required', 'numeric', 'min:0'],
             'status' => ['required', Rule::in(['Draft', 'Verified', 'Paid', 'UnPaid', 'Partially Paid'])],
-            'type' => ['required', Rule::in(['Cash', 'Credit'])],
+            'type' => ['required', Rule::in(['Cash', 'Credit upto 30 days', 'Credit upto 60 days', 'Credit upto 90 days', 'Credit upto 120 days'])],
             'payable_date' => ['required', 'date'],
+            'attachment' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png', 'max:10240'],
         ];
     }
 }

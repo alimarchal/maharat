@@ -27,6 +27,8 @@ class UpdateAccountRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'cost_center_id' => ['nullable', 'exists:cost_centers,id'],
             'status' => ['nullable', 'in:Approved,Pending'],
+            'credit_amount' => ['nullable', 'numeric', 'min:0'],
+            'debit_amount' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 

@@ -349,6 +349,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('external-invoices', ExternalInvoiceController::class);
     Route::post('external-invoices/{id}/restore', [ExternalInvoiceController::class, 'restore']);
     Route::get('purchase-orders/available', [ExternalInvoiceController::class, 'getAvailablePurchaseOrders'])->name('purchase-orders.available');
+    
+    // Invoice Documents
+    Route::post('invoice-documents', [App\Http\Controllers\Api\V1\InvoiceDocumentController::class, 'store']);
 
     Route::apiResource('rfq-approval-transactions', RfqApprovalTransactionController::class);
     Route::apiResource('po-approval-transactions', PoApprovalTransactionController::class);

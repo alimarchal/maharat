@@ -27,6 +27,7 @@ const AccountsTable = () => {
             const response = await axios.get(
                 `/api/v1/accounts?include=costCenter,chartOfAccount,chartOfAccount.accountCode&page=${currentPage}`
             );
+            console.log("API Response for accounts:", response.data);
             if (response.data && response.data.data) {
                 let filteredAccounts = response.data.data;
                 if (selectedFilter !== "All") {
@@ -98,11 +99,17 @@ const AccountsTable = () => {
     };
 
     const handleEdit = (account) => {
+        let chartOfAccountId = "";
+        if (account.chart_of_account && account.chart_of_account.account_code) {
+            chartOfAccountId = String(account.chart_of_account.account_code.id);
+        }
         setSelectedAccount({
             ...account,
-            chart_of_account_id: String(account.chart_of_account_id),
+            chart_of_account_id: chartOfAccountId,
             cost_center_id: account.cost_center_id,
             status: account.status,
+            credit_amount: account.credit_amount,
+            debit_amount: account.debit_amount,
         });
         setIsEditModalOpen(true);
     };
