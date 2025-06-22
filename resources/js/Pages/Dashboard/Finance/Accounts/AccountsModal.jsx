@@ -73,25 +73,15 @@ const AccountsModal = ({
             const costCentersResponse = await axios.get("/api/v1/cost-centers");
             setCostCenters(costCentersResponse.data.data || []);
 
-            const chartOfAccountsResponse = await axios.get(
-                "/api/v1/chart-of-accounts?include=accountCode"
-            );
+            // Fetch account types directly from account_codes table
+            const accountCodesResponse = await axios.get("/api/v1/account-codes");
+            
+            const accountTypes = accountCodesResponse.data.data.map((accountCode) => ({
+                id: accountCode.id,
+                label: accountCode.account_type,
+            }));
 
-            const uniqueTypes = new Map();
-            chartOfAccountsResponse.data.data.forEach((item) => {
-                if (
-                    item.account_code &&
-                    !uniqueTypes.has(item.account_code.id)
-                ) {
-                    uniqueTypes.set(item.account_code.id, {
-                        id: item.account_code.id,
-                        label: item.account_code.account_type,
-                    });
-                }
-            });
-
-            const formattedTypes = Array.from(uniqueTypes.values());
-            setAccountTypes(formattedTypes);
+            setAccountTypes(accountTypes);
         } catch (error) {
             setErrors({ fetch: "Failed to load form data" });
         }
