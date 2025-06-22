@@ -110,10 +110,28 @@ const InvoiceModal = ({
                     attachment: null,
                 });
                 setExistingDocument(null);
-                setTempDocument(null);
+            }
+            
+            // Always clear tempDocument when modal opens
+            setTempDocument(null);
+            // Clear file input if it exists
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
             }
         }
     }, [isOpen, invoice, isEdit]);
+
+    // Clean up state when modal closes
+    useEffect(() => {
+        if (!isOpen) {
+            setTempDocument(null);
+            setExistingDocument(null);
+            setUploadError("");
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+        }
+    }, [isOpen]);
 
     const fetchSuppliers = async () => {
         try {
@@ -216,9 +234,16 @@ const InvoiceModal = ({
     };
 
     const fixFilePath = (filePath) => {
-        if (filePath && filePath.endsWith(".pdf.pdf")) {
-            return filePath.replace(".pdf.pdf", ".pdf");
+        if (!filePath) return null;
+        if (filePath.startsWith("http")) return filePath;
+        if (filePath.startsWith("/storage/")) return filePath;
+        if (filePath.startsWith("invoices/")) return `/storage/${filePath}`;
+        
+        // Handle .pdf.pdf extension issue
+        if (filePath.endsWith(".pdf.pdf")) {
+            filePath = filePath.replace(".pdf.pdf", ".pdf");
         }
+        
         return filePath;
     };
 
