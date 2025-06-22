@@ -17,6 +17,7 @@ class AccountResource extends JsonResource
         return [
             'id' => $this->id,
             'chart_of_account_id' => $this->chart_of_account_id,
+            'account_code_id' => $this->account_code_id,
             'department_id' => $this->department_id,
             'name' => $this->name,
             'description' => $this->description,
@@ -34,6 +35,7 @@ class AccountResource extends JsonResource
             'creator' => new UserResource($this->whenLoaded('creator')),
             'updater' => new UserResource($this->whenLoaded('updater')),
             'chart_of_account' => new ChartOfAccountResource($this->whenLoaded('chartOfAccount')),
+            'account_code' => new AccountCodeResource($this->whenLoaded('accountCode')),
         ];
     }
 }

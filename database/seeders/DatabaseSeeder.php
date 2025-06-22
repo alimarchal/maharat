@@ -93,6 +93,8 @@ class DatabaseSeeder extends Seeder
             PaymentOrderApprovalTransactionSeeder::class,
             MahratInvoiceApprovalTransactionSeeder::class,
             FaqSeeder::class,
+
+            AccountsSeeder::class,
         ]);
 
         $this->call(CardSeeder::class);

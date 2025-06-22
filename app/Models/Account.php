@@ -6,22 +6,24 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\UserTracking;
 
 class Account extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, UserTracking;
 
     protected $fillable = [
-        'chart_of_account_id',
-        'department_id',
         'name',
         'description',
+        'chart_of_account_id',
+        'account_code_id',
         'cost_center_id',
+        'department_id',
         'status',
         'credit_amount',
         'debit_amount',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [
@@ -62,5 +64,13 @@ class Account extends Model
     public function chartOfAccount(): BelongsTo
     {
         return $this->belongsTo(ChartOfAccount::class, 'chart_of_account_id');
+    }
+
+    /**
+     * Get the account code associated with the account.
+     */
+    public function accountCode(): BelongsTo
+    {
+        return $this->belongsTo(AccountCode::class, 'account_code_id');
     }
 }

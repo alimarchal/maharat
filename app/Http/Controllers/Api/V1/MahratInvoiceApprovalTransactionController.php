@@ -9,6 +9,7 @@ use App\Http\Resources\V1\MahratInvoiceApprovalTransactionResource;
 use App\Models\MahratInvoiceApprovalTransaction;
 use App\Models\Invoice;
 use App\QueryParameters\MahratInvoiceApprovalTransactionParameters;
+use App\Services\BudgetRevenueUpdateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
@@ -199,6 +200,86 @@ class MahratInvoiceApprovalTransactionController extends Controller
                             'current_status' => $updatedInvoice->status,
                             'expected_status' => 'Pending'
                         ]);
+
+                        // Update budget revenue after invoice is approved
+                        if ($updatedInvoice && $updatedInvoice->status === 'Pending') {
+                            Log::info('Updating budget revenue for approved invoice', [
+                                'invoice_id' => $updatedInvoice->id,
+                                'invoice_amount' => $updatedInvoice->total_amount,
+                                'invoice_date' => $updatedInvoice->issue_date
+                            ]);
+
+                            $budgetService = new BudgetRevenueUpdateService();
+                            $budgetUpdateResult = $budgetService->updateBudgetRevenue($updatedInvoice);
+
+                            if ($budgetUpdateResult['success']) {
+                                Log::info('Budget revenue updated successfully', [
+                                    'invoice_id' => $updatedInvoice->id,
+                                    'message' => $budgetUpdateResult['message'],
+                                    'budgets_updated' => $budgetUpdateResult['budgets_updated']
+                                ]);
+
+                                // Update accounts after successful budget update
+                                Log::info('=== UPDATING ACCOUNTS FOR APPROVED INVOICE ===', [
+                                    'invoice_id' => $updatedInvoice->id,
+                                    'total_amount' => $updatedInvoice->total_amount,
+                                    'tax_amount' => $updatedInvoice->tax_amount
+                                ]);
+
+                                // Update Revenue/Income account (ID 4)
+                                $revenueAccountUpdated = DB::table('accounts')
+                                    ->where('id', 4)
+                                    ->where('name', 'Revenue/Income')
+                                    ->update([
+                                        'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $updatedInvoice->total_amount),
+                                        'updated_at' => now()
+                                    ]);
+
+                                Log::info('=== REVENUE ACCOUNT UPDATE RESULT ===', [
+                                    'invoice_id' => $updatedInvoice->id,
+                                    'account_id' => 4,
+                                    'account_name' => 'Revenue/Income',
+                                    'amount_added' => $updatedInvoice->total_amount,
+                                    'update_success' => $revenueAccountUpdated
+                                ]);
+
+                                // Update VAT Collected account (ID 9)
+                                $vatAccountUpdated = DB::table('accounts')
+                                    ->where('id', 9)
+                                    ->where('name', 'VAT Collected (on Maharat invoices)')
+                                    ->update([
+                                        'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $updatedInvoice->tax_amount),
+                                        'updated_at' => now()
+                                    ]);
+
+                                Log::info('=== VAT ACCOUNT UPDATE RESULT ===', [
+                                    'invoice_id' => $updatedInvoice->id,
+                                    'account_id' => 9,
+                                    'account_name' => 'VAT Collected (on Maharat invoices)',
+                                    'amount_added' => $updatedInvoice->tax_amount,
+                                    'update_success' => $vatAccountUpdated
+                                ]);
+
+                                if ($revenueAccountUpdated && $vatAccountUpdated) {
+                                    Log::info('=== ALL ACCOUNT UPDATES COMPLETED SUCCESSFULLY ===', [
+                                        'invoice_id' => $updatedInvoice->id,
+                                        'revenue_account_updated' => $revenueAccountUpdated,
+                                        'vat_account_updated' => $vatAccountUpdated
+                                    ]);
+                                } else {
+                                    Log::warning('=== SOME ACCOUNT UPDATES FAILED ===', [
+                                        'invoice_id' => $updatedInvoice->id,
+                                        'revenue_account_updated' => $revenueAccountUpdated,
+                                        'vat_account_updated' => $vatAccountUpdated
+                                    ]);
+                                }
+                            } else {
+                                Log::warning('Budget revenue update failed', [
+                                    'invoice_id' => $updatedInvoice->id,
+                                    'message' => $budgetUpdateResult['message']
+                                ]);
+                            }
+                        }
 
                     } catch (\Exception $e) {
                         Log::error('Failed to update Invoice status', [

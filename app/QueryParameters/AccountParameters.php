@@ -31,9 +31,28 @@ class AccountParameters
 
     public const ALLOWED_INCLUDES = [
         'costCenter',
+        'costCenterCount',
+        'costCenterExists',
         'creator',
+        'creatorCount',
+        'creatorExists',
         'updater',
+        'updaterCount',
+        'updaterExists',
         'chartOfAccount',
-        'chartOfAccount.accountCode'
+        'chartOfAccountCount',
+        'chartOfAccountExists',
+        'chartOfAccount.accountCode',
+        'accountCode',
     ];
+
+    /**
+     * Get all the allowed filters.
+     *
+     * @return array
+     */
+    public static function getAllowedFilters()
+    {
+        return self::ALLOWED_FILTERS;
+    }
 }

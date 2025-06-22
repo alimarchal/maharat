@@ -25,7 +25,7 @@ const AccountsTable = () => {
         setLoading(true);
         try {
             const response = await axios.get(
-                `/api/v1/accounts?include=costCenter,chartOfAccount,chartOfAccount.accountCode&page=${currentPage}`
+                `/api/v1/accounts?include=costCenter,accountCode&page=${currentPage}`
             );
             console.log("API Response for accounts:", response.data);
             if (response.data && response.data.data) {
@@ -50,27 +50,13 @@ const AccountsTable = () => {
 
     const fetchFormData = async () => {
         try {
-            const [costCentersResponse, chartOfAccountsResponse] =
-                await Promise.all([
-                    axios.get("/api/v1/cost-centers"),
-                    axios.get("/api/v1/chart-of-accounts?include=accountCode"),
-                ]);
+            const [costCentersResponse, accountCodesResponse] = await Promise.all([
+                axios.get("/api/v1/cost-centers"),
+                axios.get("/api/v1/account-codes"),
+            ]);
 
             setCostCenters(costCentersResponse.data.data || []);
-
-            const uniqueTypes = new Map();
-            chartOfAccountsResponse.data.data.forEach((item) => {
-                if (
-                    item.account_code &&
-                    !uniqueTypes.has(item.account_code.id)
-                ) {
-                    uniqueTypes.set(item.account_code.id, {
-                        id: item.id,
-                        name: item.account_code.account_type,
-                    });
-                }
-            });
-            setAccountTypes(Array.from(uniqueTypes.values()));
+            setAccountTypes(accountCodesResponse.data.data || []);
         } catch (error) {
             console.error("Error fetching form data:", error);
         }
@@ -99,18 +85,11 @@ const AccountsTable = () => {
     };
 
     const handleEdit = (account) => {
-        let chartOfAccountId = "";
-        if (account.chart_of_account && account.chart_of_account.account_code) {
-            chartOfAccountId = String(account.chart_of_account.account_code.id);
-        }
-        setSelectedAccount({
+        const accountToEdit = {
             ...account,
-            chart_of_account_id: chartOfAccountId,
-            cost_center_id: account.cost_center_id,
-            status: account.status,
-            credit_amount: account.credit_amount,
-            debit_amount: account.debit_amount,
-        });
+            account_code_id: account.account_code?.id || '',
+        };
+        setSelectedAccount(accountToEdit);
         setIsEditModalOpen(true);
     };
 
@@ -200,6 +179,8 @@ const AccountsTable = () => {
                         <th className="py-3 px-4">Description</th>
                         <th className="py-3 px-4">Type</th>
                         <th className="py-3 px-4">Cost Center</th>
+                        <th className="py-3 px-4">Credit Amount</th>
+                        <th className="py-3 px-4">Debit Amount</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                             Action
@@ -209,14 +190,14 @@ const AccountsTable = () => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="7" className="text-center py-12">
+                            <td colSpan="9" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="7"
+                                colSpan="9"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -231,13 +212,18 @@ const AccountsTable = () => {
                                     {account.description}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {account.chart_of_account?.account_code
-                                        ?.account_type || "N/A"}
+                                    {account.account_code?.account_type || "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
                                     {account.cost_center
                                         ? account.cost_center.name
                                         : "N/A"}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {account.credit_amount || 0}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {account.debit_amount || 0}
                                 </td>
                                 <td className="py-3 px-4">
                                     <span
@@ -249,25 +235,55 @@ const AccountsTable = () => {
                                     </span>
                                 </td>
                                 <td className="py-3 px-4 flex justify-center space-x-3">
-                                    <button
-                                        className="text-blue-400 hover:text-blue-500"
-                                        onClick={() => handleEdit(account)}
-                                    >
-                                        <FontAwesomeIcon icon={faEdit} />
-                                    </button>
-                                    <button
-                                        className="text-red-600 hover:text-red-800"
-                                        onClick={() => handleDelete(account.id)}
-                                        disabled={isDeleting}
-                                    >
-                                        <FontAwesomeIcon icon={faTrash} />
-                                    </button>
+                                    {(() => {
+                                        const accountName = account.name;
+                                        const isSpecialAccount = accountName === 'Special accounts';
+                                        const hasValue = parseFloat(account.credit_amount) > 0 || parseFloat(account.debit_amount) > 0;
+
+                                        // Define accounts that should NOT have an Edit button
+                                        const nonEditable = [
+                                            'Liabilities', 'Revenue/Income', 'Cost of Purchases', 
+                                            'VAT Paid (on purchases)', 'VAT Collected (on Maharat invoices)'
+                                        ];
+
+                                        // Define accounts that should NOT have a Delete button
+                                        const nonDeletable = [
+                                            'Assets', 'Liabilities', 'Equity', 'Revenue/Income', 
+                                            'Cost of Purchases', 'Operating Expenses', 'Non-Operating Expenses',
+                                            'VAT Paid (on purchases)', 'VAT Collected (on Maharat invoices)'
+                                        ];
+
+                                        const canEdit = !nonEditable.includes(accountName);
+                                        const canDelete = isSpecialAccount ? !hasValue : !nonDeletable.includes(accountName);
+
+                                        return (
+                                            <>
+                                                {canEdit && (
+                                                    <button
+                                                        className="text-blue-400 hover:text-blue-500"
+                                                        onClick={() => handleEdit(account)}
+                                                    >
+                                                        <FontAwesomeIcon icon={faEdit} />
+                                                    </button>
+                                                )}
+                                                {canDelete && (
+                                                    <button
+                                                        className="text-red-600 hover:text-red-800"
+                                                        onClick={() => handleDelete(account.id)}
+                                                        disabled={isDeleting}
+                                                    >
+                                                        <FontAwesomeIcon icon={faTrash} />
+                                                    </button>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
                                 </td>
                             </tr>
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="7" className="text-center py-4">
+                            <td colSpan="9" className="text-center py-4">
                                 No accounts found.
                             </td>
                         </tr>

@@ -16,7 +16,7 @@ const AccountsModal = ({
         name: "",
         status: "",
         description: "",
-        chart_of_account_id: "",
+        account_code_id: "",
         cost_center_id: "",
         credit_amount: "",
         debit_amount: "",
@@ -26,39 +26,39 @@ const AccountsModal = ({
     const [accountTypes, setAccountTypes] = useState([]);
     const [errors, setErrors] = useState({});
     const [isSaving, setIsSaving] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (isOpen) {
-            fetchFormData();
-            if (account && isEdit) {
-                console.log("Edit mode - Account data:", account);
-                console.log("Credit amount:", account.credit_amount, "Type:", typeof account.credit_amount);
-                console.log("Debit amount:", account.debit_amount, "Type:", typeof account.debit_amount);
-                
-                const newFormData = {
-                    name: account.name || "",
-                    description: account.description || "",
-                    chart_of_account_id: account.chart_of_account_id || "",
-                    cost_center_id: account.cost_center_id || "",
-                    status: account.status || "Pending",
-                    credit_amount: account.credit_amount !== null && account.credit_amount !== undefined ? account.credit_amount.toString() : "",
-                    debit_amount: account.debit_amount !== null && account.debit_amount !== undefined ? account.debit_amount.toString() : "",
-                };
-                
-                console.log("Setting form data:", newFormData);
-                setFormData(newFormData);
-            } else {
-                setFormData({
-                    name: "",
-                    description: "",
-                    chart_of_account_id: "",
-                    cost_center_id: "",
-                    status: "Pending",
-                    credit_amount: "",
-                    debit_amount: "",
-                });
+        const loadInitialData = async () => {
+            if (isOpen) {
+                setIsLoading(true);
+                await fetchFormData();
+                if (isEdit && account) {
+                    const newFormData = {
+                        name: account.name || "",
+                        description: account.description || "",
+                        account_code_id: account.account_code_id || "",
+                        cost_center_id: account.cost_center_id || "",
+                        status: account.status || "Pending",
+                        credit_amount: account.credit_amount !== null && account.credit_amount !== undefined ? account.credit_amount.toString() : "",
+                        debit_amount: account.debit_amount !== null && account.debit_amount !== undefined ? account.debit_amount.toString() : "",
+                    };
+                    setFormData(newFormData);
+                } else {
+                    setFormData({
+                        name: "",
+                        description: "",
+                        account_code_id: "",
+                        cost_center_id: "",
+                        status: "Pending",
+                        credit_amount: "",
+                        debit_amount: "",
+                    });
+                }
+                setIsLoading(false);
             }
-        }
+        };
+        loadInitialData();
     }, [isOpen, account, isEdit]);
 
     // Add debugging for formData changes
@@ -130,8 +130,8 @@ const AccountsModal = ({
         if (!formData.name) validationErrors.name = "Name is required";
         if (!formData.cost_center_id)
             validationErrors.cost_center_id = "Cost Center is required";
-        if (!formData.chart_of_account_id)
-            validationErrors.chart_of_account_id = "Type is required";
+        if (!formData.account_code_id)
+            validationErrors.account_code_id = "Type is required";
         if (!formData.status) validationErrors.status = "Status is required";
 
         // Validate credit and debit amounts
@@ -176,69 +176,41 @@ const AccountsModal = ({
 
         try {
             if (isEdit && account) {
-                // For edit mode, we need to handle chart_of_account_id properly
-                const selectedTypeId = parseInt(formData.chart_of_account_id, 10);
-                const selectedType = accountTypes.find(
-                    (type) => type.id === selectedTypeId
-                );
+                // Simplified Edit: Just update the account and its associated chart of account
+                const updatedAccountData = {
+                    ...cleanFormData,
+                    id: account.id,
+                    account_code_id: formData.account_code_id,
+                };
 
-                if (!selectedType) {
-                    setErrors({
-                        chart_of_account_id: "Please select a valid account type",
-                    });
-                    setIsSaving(false);
-                    return;
-                }
+                // Also update the associated chart of accounts record for consistency
+                await axios.put(`/api/v1/chart-of-accounts/${account.chart_of_account_id}`, {
+                    account_name: formData.name,
+                    description: formData.description,
+                    account_code_id: formData.account_code_id,
+                });
+                
+                onSave(updatedAccountData);
 
-                // Find the chart_of_account_id that corresponds to this account_code_id
-                try {
-                    const chartOfAccountsResponse = await axios.get(
-                        `/api/v1/chart-of-accounts?filter[account_code_id]=${selectedType.id}`
-                    );
-                    
-                    let chartOfAccountId = account.chart_of_account_id; // Keep existing if no match found
-                    
-                    if (chartOfAccountsResponse.data.data && chartOfAccountsResponse.data.data.length > 0) {
-                        // Use the first matching chart of account
-                        chartOfAccountId = chartOfAccountsResponse.data.data[0].id.toString();
-                    }
-
-                    const updatedFormData = {
-                        ...cleanFormData,
-                        chart_of_account_id: chartOfAccountId,
-                    };
-
-                    onSave(updatedFormData);
-                } catch (chartError) {
-                    setErrors({
-                        chart_of_account_id: "Failed to find matching chart of account",
-                    });
-                    setIsSaving(false);
-                    return;
-                }
             } else {
-                const selectedTypeId = parseInt(
-                    formData.chart_of_account_id,
-                    10
-                );
+                // Add New Account
+                const selectedTypeId = parseInt(formData.account_code_id, 10);
                 const selectedType = accountTypes.find(
                     (type) => type.id === selectedTypeId
                 );
 
                 if (!selectedType) {
-                    setErrors({
-                        chart_of_account_id:
-                            "Please select a valid account type",
-                    });
+                    setErrors({ account_code_id: "Please select a valid account type" });
                     setIsSaving(false);
                     return;
                 }
 
                 try {
+                    // Step 1: Create the chart_of_account record
                     const chartOfAccountData = {
                         account_name: formData.name,
                         description: formData.description,
-                        account_code_id: selectedType.id.toString(),
+                        account_code_id: selectedTypeId.toString(),
                         is_active: true,
                         parent_id: null,
                     };
@@ -246,11 +218,13 @@ const AccountsModal = ({
                         "/api/v1/chart-of-accounts",
                         chartOfAccountData
                     );
+
+                    // Step 2: Create the account record, linking to the new chart and adding the type ID
                     const accountData = {
                         name: formData.name,
                         description: formData.description,
-                        chart_of_account_id:
-                            chartOfAccountResponse.data.data.id.toString(),
+                        chart_of_account_id: chartOfAccountResponse.data.data.id.toString(),
+                        account_code_id: selectedTypeId.toString(),
                         cost_center_id: formData.cost_center_id.toString(),
                         department_id: null,
                         status: formData.status,
@@ -320,16 +294,18 @@ const AccountsModal = ({
                             name="cost_center_id"
                             value={formData.cost_center_id}
                             onChange={handleChange}
-                            options={costCenterOptions}
+                            options={isLoading ? [{ id: '', label: 'Loading...' }] : costCenterOptions}
+                            disabled={isLoading}
                             error={errors.cost_center_id}
                         />
                         <SelectFloating
                             label="Type"
-                            name="chart_of_account_id"
-                            value={formData.chart_of_account_id}
+                            name="account_code_id"
+                            value={formData.account_code_id}
                             onChange={handleChange}
-                            options={accountTypes}
-                            error={errors.chart_of_account_id}
+                            options={isLoading ? [{ id: '', label: 'Loading...' }] : accountTypes}
+                            disabled={isLoading}
+                            error={errors.account_code_id}
                         />
                         <SelectFloating
                             label="Status"

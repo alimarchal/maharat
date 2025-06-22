@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import SelectFloating from "../../../../Components/SelectFloating";
 import axios from "axios";
 import { router, usePage } from "@inertiajs/react";
+import { toast } from "react-hot-toast";
 
 const ReviewTask = () => {
     const { id } = usePage().props;
@@ -162,6 +163,11 @@ const ReviewTask = () => {
                 const payload = { ...commonPayload, [key]: id };
                 await axios.post(url, payload);
 
+                // Show budget update notification for invoice approvals
+                if (processTitle === "Maharat Invoice Approval" && taskDescription.action === "Approve") {
+                    toast.success("Invoice approved! Budget revenue will be updated automatically if main budget exists.");
+                }
+
                 const taskPayload = {
                     process_step_id: nextStep.id,
                     process_id: nextStep.process_id,
@@ -191,16 +197,48 @@ const ReviewTask = () => {
 
                 if (status) {
                     const taskPayload = { status };
-                    await axios.put(
-                        `/api/v1/tasks/${taskData.id}`,
-                        taskPayload
-                    );
+                    try {
+                        const taskUpdateResponse = await axios.put(
+                            `/api/v1/tasks/${taskData.id}`,
+                            taskPayload
+                        );
+                        console.log("Task status updated successfully:", taskUpdateResponse.data);
+                    } catch (taskUpdateError) {
+                        console.error("Task status update failed:", taskUpdateError);
+                        console.error("Task update error response:", taskUpdateError.response?.data);
+                        
+                        // Check for specific budget error in task update
+                        if (taskUpdateError.response?.data?.error === 'NO_MAIN_BUDGET') {
+                            console.log("NO_MAIN_BUDGET error detected in task update, showing toast");
+                            const errorMessage = taskUpdateError.response.data.message || "Approval failed: No main budget found for this invoice's fiscal period.";
+                            toast.error(errorMessage, { id: 'budget-error-toast' });
+                            return; // Don't navigate, stay on the page
+                        } else {
+                            console.log("Generic task update error, showing default message");
+                            const errorMessage = "Failed to update task status. Please try again.";
+                            toast.error(errorMessage, { id: 'budget-error-toast' });
+                            return; // Don't navigate, stay on the page
+                        }
+                    }
                 }
             }
 
             router.visit("/tasks");
         } catch (error) {
             console.error("Error submitting task:", error);
+            console.error("Error response:", error.response);
+            console.error("Error response data:", error.response?.data);
+            
+            // Check for specific budget error
+            if (error.response?.data?.error === 'NO_MAIN_BUDGET') {
+                console.log("NO_MAIN_BUDGET error detected, showing toast");
+                const errorMessage = error.response.data.message || "Approval failed: No main budget found for this invoice's fiscal period.";
+                toast.error(errorMessage, { id: 'budget-error-toast' });
+            } else {
+                console.log("Generic error, showing default message");
+                const errorMessage = "Failed to process task. Please try again.";
+                toast.error(errorMessage, { id: 'budget-error-toast' });
+            }
         }
     };
 
