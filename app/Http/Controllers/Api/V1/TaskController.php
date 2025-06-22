@@ -430,6 +430,66 @@ class TaskController extends Controller
                                         'message' => $budgetUpdateResult['message'],
                                         'budgets_updated' => $budgetUpdateResult['budgets_updated']
                                     ]);
+
+                                    // Update accounts after successful budget update
+                                    Log::info('=== UPDATING ACCOUNTS FOR APPROVED INVOICE ===', [
+                                        'task_id' => $task->id,
+                                        'invoice_id' => $invoice->id,
+                                        'total_amount' => $invoice->total_amount,
+                                        'tax_amount' => $invoice->tax_amount
+                                    ]);
+
+                                    // Update Revenue/Income account (ID 4)
+                                    $revenueAccountUpdated = DB::table('accounts')
+                                        ->where('id', 4)
+                                        ->where('name', 'Revenue/Income')
+                                        ->update([
+                                            'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $invoice->total_amount),
+                                            'updated_at' => now()
+                                        ]);
+
+                                    Log::info('=== REVENUE ACCOUNT UPDATE RESULT ===', [
+                                        'task_id' => $task->id,
+                                        'invoice_id' => $invoice->id,
+                                        'account_id' => 4,
+                                        'account_name' => 'Revenue/Income',
+                                        'amount_added' => $invoice->total_amount,
+                                        'update_success' => $revenueAccountUpdated
+                                    ]);
+
+                                    // Update VAT Collected account (ID 9)
+                                    $vatAccountUpdated = DB::table('accounts')
+                                        ->where('id', 9)
+                                        ->where('name', 'VAT Collected (on Maharat invoices)')
+                                        ->update([
+                                            'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $invoice->tax_amount),
+                                            'updated_at' => now()
+                                        ]);
+
+                                    Log::info('=== VAT ACCOUNT UPDATE RESULT ===', [
+                                        'task_id' => $task->id,
+                                        'invoice_id' => $invoice->id,
+                                        'account_id' => 9,
+                                        'account_name' => 'VAT Collected (on Maharat invoices)',
+                                        'amount_added' => $invoice->tax_amount,
+                                        'update_success' => $vatAccountUpdated
+                                    ]);
+
+                                    if ($revenueAccountUpdated && $vatAccountUpdated) {
+                                        Log::info('=== ALL ACCOUNT UPDATES COMPLETED SUCCESSFULLY ===', [
+                                            'task_id' => $task->id,
+                                            'invoice_id' => $invoice->id,
+                                            'revenue_account_updated' => $revenueAccountUpdated,
+                                            'vat_account_updated' => $vatAccountUpdated
+                                        ]);
+                                    } else {
+                                        Log::warning('=== SOME ACCOUNT UPDATES FAILED ===', [
+                                            'task_id' => $task->id,
+                                            'invoice_id' => $invoice->id,
+                                            'revenue_account_updated' => $revenueAccountUpdated,
+                                            'vat_account_updated' => $vatAccountUpdated
+                                        ]);
+                                    }
                                 } else {
                                     Log::warning('=== BUDGET REVENUE UPDATE FAILED ===', [
                                         'task_id' => $task->id,

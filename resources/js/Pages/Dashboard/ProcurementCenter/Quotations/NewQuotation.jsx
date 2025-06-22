@@ -20,8 +20,23 @@ export default function NewQuotation() {
             );
             const rfqsData = response.data.data;
 
+            // Fetch all purchase orders to check which RFQs already have POs
+            const purchaseOrdersResponse = await axios.get("/api/v1/purchase-orders");
+            const purchaseOrdersData = purchaseOrdersResponse.data.data || [];
+            
+            // Create a set of RFQ IDs that already have purchase orders
+            const rfqIdsWithPO = new Set();
+            purchaseOrdersData.forEach((po) => {
+                if (po.rfq_id) {
+                    rfqIdsWithPO.add(po.rfq_id);
+                }
+            });
+
+            // Filter out RFQs that already have purchase orders
+            const rfqsWithoutPO = rfqsData.filter((rfq) => !rfqIdsWithPO.has(rfq.id));
+
             const rfqsWithDetails = await Promise.all(
-                rfqsData.map(async (rfq) => {
+                rfqsWithoutPO.map(async (rfq) => {
                     const categoryResponse = await axios.get(`/api/v1/rfq-categories/${rfq.id}`);
                     return {
                         ...rfq,
@@ -59,9 +74,14 @@ export default function NewQuotation() {
         <div className="w-full">
             <div className="w-full overflow-hidden">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-[32px] font-bold text-[#2C323C]">
-                        New Quotations
-                    </h2>
+                    <div>
+                        <h2 className="text-[32px] font-bold text-[#2C323C]">
+                            New Quotations
+                        </h2>
+                        <p className="text-[#7D8086] text-lg mt-1">
+                            RFQs without Purchase Orders
+                        </p>
+                    </div>
                 </div>
 
                 <div className="w-full overflow-hidden">
