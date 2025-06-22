@@ -20,7 +20,9 @@ class ExternalInvoice extends Model
         'vat_amount',
         'status',
         'type',
-        'payable_date'
+        'payable_date',
+        'attachment_path',
+        'original_name'
     ];
 
     protected $casts = [
@@ -51,6 +53,14 @@ class ExternalInvoice extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    /**
+     * Get the documents associated with the invoice.
+     */
+    public function documents()
+    {
+        return $this->hasMany(InvoiceDocument::class, 'invoice_id');
     }
 
     /**

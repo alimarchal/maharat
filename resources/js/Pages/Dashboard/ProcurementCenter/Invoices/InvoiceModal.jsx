@@ -5,6 +5,7 @@ import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
 import InputFloating from "../../../../Components/InputFloating";
 import SelectFloating from "../../../../Components/SelectFloating";
+import { usePage } from "@inertiajs/react";
 
 const InvoiceModal = ({
     isOpen,
@@ -13,6 +14,8 @@ const InvoiceModal = ({
     invoice = null,
     isEdit = false,
 }) => {
+    const user_id = usePage().props.auth.user.id;
+    
     const [formData, setFormData] = useState({
         supplier_id: "",
         amount: "",
@@ -123,35 +126,34 @@ const InvoiceModal = ({
 
     const fetchAvailablePurchaseOrders = async () => {
         try {
-            const allPOsResponse = await axios.get("/api/v1/purchase-orders");
-            const allInvoicesResponse = await axios.get(
-                "/api/v1/external-invoices"
-            );
+            // Fetch only approved purchase orders
+            const response = await axios.get("/api/v1/purchase-orders?filter[status]=Approved");
+            
+            if (response.data.data) {
+                const allPOs = response.data.data;
+                const allInvoicesResponse = await axios.get("/api/v1/external-invoices");
 
-            if (allPOsResponse.data.data && allInvoicesResponse.data.data) {
-                const usedPOIds = allInvoicesResponse.data.data
-                    .filter((invoice) => invoice.purchase_order_id)
-                    .map((invoice) => invoice.purchase_order_id);
+                if (allInvoicesResponse.data.data) {
+                    const usedPOIds = allInvoicesResponse.data.data
+                        .filter((invoice) => invoice.purchase_order_id)
+                        .map((invoice) => invoice.purchase_order_id);
 
-                const availablePOs = allPOsResponse.data.data
-                    .filter((po) => !usedPOIds.includes(po.id))
-                    .map((po) => ({
+                    const availablePOs = allPOs
+                        .filter((po) => !usedPOIds.includes(po.id))
+                        .map((po) => ({
+                            id: po.id,
+                            label: po.purchase_order_no || `PO-${po.id}`,
+                            supplier_id: po.supplier_id,
+                        }));
+                    setPurchaseOrders(availablePOs);
+                } else {
+                    const availablePOs = allPOs.map((po) => ({
                         id: po.id,
                         label: po.purchase_order_no || `PO-${po.id}`,
+                        supplier_id: po.supplier_id,
                     }));
-                setPurchaseOrders(availablePOs);
-                return;
-            }
-
-            const response = await axios.get(
-                "/api/v1/purchase-orders/available"
-            );
-            if (response.data.success) {
-                const purchaseOrdersData = response.data.data.map((po) => ({
-                    id: po.id,
-                    label: po.purchase_order_no || `PO-${po.id}`,
-                }));
-                setPurchaseOrders(purchaseOrdersData);
+                    setPurchaseOrders(availablePOs);
+                }
             } else {
                 setPurchaseOrders([]);
             }
@@ -173,6 +175,15 @@ const InvoiceModal = ({
                 ...prev,
                 [name]: processedValue,
             };
+
+            // Auto-populate supplier when purchase order is selected
+            if (name === "purchase_order_id" && value) {
+                const selectedPO = purchaseOrders.find(po => po.id === parseInt(value, 10));
+                if (selectedPO) {
+                    newData.supplier_id = selectedPO.supplier_id;
+                }
+            }
+
             return newData;
         });
     };
@@ -211,16 +222,6 @@ const InvoiceModal = ({
         return filePath;
     };
 
-    useEffect(() => {}, [formData]);
-
-    useEffect(() => {
-        if (isOpen && purchaseOrders.length > 0 && formData.purchase_order_id) {
-            const selectedPO = purchaseOrders.find(
-                (po) => po.id === formData.purchase_order_id
-            );
-        }
-    }, [isOpen, purchaseOrders, formData.purchase_order_id]);
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSaving(true);
@@ -228,7 +229,7 @@ const InvoiceModal = ({
         setUploadError("");
 
         const submissionData = {
-            ...formData,
+            user_id: user_id,
             purchase_order_id: formData.purchase_order_id
                 ? parseInt(formData.purchase_order_id, 10)
                 : null,
@@ -236,6 +237,10 @@ const InvoiceModal = ({
                 ? parseInt(formData.supplier_id, 10)
                 : null,
             amount: formData.amount ? parseFloat(formData.amount) : null,
+            vat_amount: formData.vat_amount ? parseFloat(formData.vat_amount) : null,
+            status: formData.status,
+            type: formData.type,
+            payable_date: formData.payable_date,
         };
 
         const validationErrors = {};
@@ -267,28 +272,36 @@ const InvoiceModal = ({
 
         try {
             if (isEdit) {
-                // For edit mode, handle document upload separately
-                const response = await axios.put(
-                    `/api/v1/external-invoices/${invoice.id}`,
-                    submissionData
-                );
-
+                // For edit mode, if a new file is selected, use FormData
                 if (tempDocument) {
-                    const uploadSuccess = await uploadDocumentToServer(
-                        invoice.id,
-                        tempDocument
+                    const formDataToSend = new FormData();
+                    Object.keys(submissionData).forEach((key) => {
+                        if (
+                            submissionData[key] !== null &&
+                            submissionData[key] !== undefined &&
+                            key !== "attachment"
+                        ) {
+                            formDataToSend.append(key, submissionData[key]);
+                        }
+                    });
+                    formDataToSend.append("attachment", tempDocument);
+
+                    await axios.post(
+                        `/api/v1/external-invoices/${invoice.id}?_method=PUT`,
+                        formDataToSend,
+                        {
+                            headers: { "Content-Type": "multipart/form-data" },
+                        }
                     );
-                    if (!uploadSuccess) {
-                        setUploadError(
-                            "Failed to upload document. Please try again."
-                        );
-                        setIsSaving(false);
-                        return;
-                    }
                     // Clear file input after upload
                     if (fileInputRef.current) fileInputRef.current.value = "";
+                } else {
+                    // No new file, send JSON as before
+                    await axios.put(
+                        `/api/v1/external-invoices/${invoice.id}`,
+                        submissionData
+                    );
                 }
-
                 onSave(submissionData);
                 onClose();
             } else {
@@ -308,34 +321,13 @@ const InvoiceModal = ({
                     formDataToSend.append("attachment", tempDocument);
                 }
 
-                const response = await axios.post(
+                await axios.post(
                     "/api/v1/external-invoices",
                     formDataToSend,
                     {
                         headers: { "Content-Type": "multipart/form-data" },
                     }
                 );
-
-                // If there's a separate document upload endpoint, handle it here
-                if (
-                    tempDocument &&
-                    response.data.data &&
-                    response.data.data.id
-                ) {
-                    const uploadSuccess = await uploadDocumentToServer(
-                        response.data.data.id,
-                        tempDocument
-                    );
-                    if (!uploadSuccess) {
-                        setUploadError(
-                            "Failed to upload document. Please try again."
-                        );
-                        setIsSaving(false);
-                        return;
-                    }
-                    // Clear file input after upload
-                    if (fileInputRef.current) fileInputRef.current.value = "";
-                }
 
                 onSave(submissionData);
                 onClose();
@@ -414,15 +406,12 @@ const InvoiceModal = ({
                             )}
                         </div>
                         <div>
-                            <SelectFloating
+                            <InputFloating
                                 label="Supplier"
-                                name="supplier_id"
-                                value={formData.supplier_id?.toString() || ""}
-                                onChange={handleChange}
-                                options={suppliers.map((supplier) => ({
-                                    id: supplier.id.toString(),
-                                    label: supplier.name,
-                                }))}
+                                name="supplier_name"
+                                type="text"
+                                value={suppliers.find(s => s.id === formData.supplier_id)?.name || ""}
+                                readOnly={true}
                                 error={errors.supplier_id}
                             />
                         </div>
@@ -480,83 +469,133 @@ const InvoiceModal = ({
                         )}
                     </div>
 
-                    {/* Attachment Section */}
-                    <div className="flex justify-center">
-                        <div className="space-y-2 w-full max-w-sm">
-                            <label className="block text-sm font-medium text-gray-700 mb-1 text-center">
-                                Attachment
-                            </label>
+                    {/* Attachment Section - Only in add mode, positioned after invoice date */}
+                    {!isEdit && (
+                        <div className="flex justify-center">
+                            <div className="space-y-2 w-full max-w-sm">
+                                <label className="block text-sm font-medium text-gray-700 mb-1 text-center">
+                                    Attachment
+                                </label>
 
-                            {existingDocument && !tempDocument && (
-                                <div className="flex items-center justify-center space-x-2 mb-2">
-                                    <DocumentArrowDownIcon
-                                        className="h-5 w-5 text-gray-500 cursor-pointer hover:text-gray-700"
-                                        onClick={() =>
-                                            existingDocument.file_path &&
-                                            window.open(
-                                                fixFilePath(
-                                                    existingDocument.file_path
-                                                ),
-                                                "_blank"
-                                            )
-                                        }
-                                    />
-                                    <span
-                                        className="text-sm text-blue-600 cursor-pointer truncate max-w-[220px]"
-                                        title={existingDocument.original_name}
-                                        onClick={() =>
-                                            existingDocument.file_path &&
-                                            window.open(
-                                                fixFilePath(
-                                                    existingDocument.file_path
-                                                ),
-                                                "_blank"
-                                            )
-                                        }
-                                    >
-                                        {existingDocument.original_name}
-                                    </span>
-                                </div>
-                            )}
-
-                            {tempDocument && (
-                                <div className="flex justify-center">
-                                    <div
-                                        className="text-sm text-orange-600 mb-2 truncate max-w-[220px] text-center"
-                                        title={tempDocument.name}
-                                    >
-                                        Selected: {tempDocument.name}
+                                {tempDocument && (
+                                    <div className="flex justify-center">
+                                        <div
+                                            className="text-sm text-orange-600 mb-2 truncate max-w-[220px] text-center"
+                                            title={tempDocument.name}
+                                        >
+                                            Selected: {tempDocument.name}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            <div className="flex justify-end">
-                                <input
-                                    type="file"
-                                    className="text-sm text-gray-500
-                                        file:mr-4 file:py-2 file:px-4
-                                        file:rounded-full file:border-0
-                                        file:text-sm file:font-semibold
-                                        file:bg-[#009FDC] file:text-white
-                                        hover:file:bg-[#007BB5]"
-                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                                    onChange={handleFileChange}
-                                    ref={fileInputRef}
-                                />
+                                <div className="flex justify-end">
+                                    <input
+                                        type="file"
+                                        className="text-sm text-gray-500
+                                            file:mr-4 file:py-2 file:px-4
+                                            file:rounded-full file:border-0
+                                            file:text-sm file:font-semibold
+                                            file:bg-[#009FDC] file:text-white
+                                            hover:file:bg-[#007BB5]"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                        onChange={handleFileChange}
+                                        ref={fileInputRef}
+                                    />
+                                </div>
+
+                                {uploadError && (
+                                    <div className="text-red-500 text-xs mt-1 text-center">
+                                        {uploadError}
+                                    </div>
+                                )}
+                                {errors.attachment && (
+                                    <div className="text-red-500 text-xs mt-1 text-center">
+                                        {errors.attachment}
+                                    </div>
+                                )}
                             </div>
-
-                            {uploadError && (
-                                <div className="text-red-500 text-xs mt-1 text-center">
-                                    {uploadError}
-                                </div>
-                            )}
-                            {errors.attachment && (
-                                <div className="text-red-500 text-xs mt-1 text-center">
-                                    {errors.attachment}
-                                </div>
-                            )}
                         </div>
-                    </div>
+                    )}
+
+                    {/* Attachment Section - Only in edit mode, at the bottom */}
+                    {isEdit && (
+                        <div className="flex justify-center">
+                            <div className="space-y-2 w-full max-w-sm">
+                                <label className="block text-sm font-medium text-gray-700 mb-1 text-center">
+                                    Attachment
+                                </label>
+
+                                {existingDocument && !tempDocument && (
+                                    <div className="flex items-center justify-center space-x-2 mb-2">
+                                        <DocumentArrowDownIcon
+                                            className="h-5 w-5 text-gray-500 cursor-pointer hover:text-gray-700"
+                                            onClick={() =>
+                                                existingDocument.file_path &&
+                                                window.open(
+                                                    fixFilePath(
+                                                        existingDocument.file_path
+                                                    ),
+                                                    "_blank"
+                                                )
+                                            }
+                                        />
+                                        <span
+                                            className="text-sm text-blue-600 cursor-pointer truncate max-w-[220px]"
+                                            title={existingDocument.original_name}
+                                            onClick={() =>
+                                                existingDocument.file_path &&
+                                                window.open(
+                                                    fixFilePath(
+                                                        existingDocument.file_path
+                                                    ),
+                                                    "_blank"
+                                                )
+                                            }
+                                        >
+                                            {existingDocument.original_name}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {tempDocument && (
+                                    <div className="flex justify-center">
+                                        <div
+                                            className="text-sm text-orange-600 mb-2 truncate max-w-[220px] text-center"
+                                            title={tempDocument.name}
+                                        >
+                                            Selected: {tempDocument.name}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex justify-end">
+                                    <input
+                                        type="file"
+                                        className="text-sm text-gray-500
+                                            file:mr-4 file:py-2 file:px-4
+                                            file:rounded-full file:border-0
+                                            file:text-sm file:font-semibold
+                                            file:bg-[#009FDC] file:text-white
+                                            hover:file:bg-[#007BB5]"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                        onChange={handleFileChange}
+                                        ref={fileInputRef}
+                                    />
+                                </div>
+
+                                {uploadError && (
+                                    <div className="text-red-500 text-xs mt-1 text-center">
+                                        {uploadError}
+                                    </div>
+                                )}
+                                {errors.attachment && (
+                                    <div className="text-red-500 text-xs mt-1 text-center">
+                                        {errors.attachment}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="mt-8 flex justify-center w-full">
                         <button

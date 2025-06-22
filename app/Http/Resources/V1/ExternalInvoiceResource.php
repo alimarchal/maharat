@@ -14,6 +14,15 @@ class ExternalInvoiceResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        // Create virtual documents array from attachment fields
+        $documents = [];
+        if ($this->attachment_path) {
+            $documents[] = [
+                'file_path' => $this->attachment_path,
+                'original_name' => $this->original_name,
+            ];
+        }
+
         return [
             'id' => $this->id,
             'user_id' => $this->user_id,
@@ -26,6 +35,8 @@ class ExternalInvoiceResource extends JsonResource
             'status' => $this->status,
             'type' => $this->type,
             'payable_date' => $this->payable_date?->format('Y-m-d'),
+            'attachment_path' => $this->attachment_path,
+            'original_name' => $this->original_name,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,
@@ -34,6 +45,7 @@ class ExternalInvoiceResource extends JsonResource
             'user' => new UserResource($this->whenLoaded('user')),
             'supplier' => new SupplierResource($this->whenLoaded('supplier')),
             'purchase_order' => new PurchaseOrderResource($this->whenLoaded('purchaseOrder')),
+            'documents' => $documents,
         ];
     }
 }

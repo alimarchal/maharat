@@ -54,8 +54,15 @@ class ExternalInvoiceController extends Controller
             $data['invoice_id'] = $this->generateInvoiceId();
             $data['type'] = $data['type'] ?? 'Cash';
             
-            // Always calculate VAT as 15% of the amount
-            $data['vat_amount'] = $data['amount'] * 0.15;
+            // Handle file upload if present
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $filePath = $file->storeAs('invoices', $fileName, 'public');
+                
+                $data['attachment_path'] = $filePath;
+                $data['original_name'] = $file->getClientOriginalName();
+            }
 
             // Create the invoice
             $invoice = ExternalInvoice::create($data);
@@ -101,9 +108,14 @@ class ExternalInvoiceController extends Controller
 
             $data = $request->validated();
             
-            // Always calculate VAT as 15% of the amount
-            if (isset($data['amount'])) {
-                $data['vat_amount'] = $data['amount'] * 0.15;
+            // Handle file upload if present
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $filePath = $file->storeAs('invoices', $fileName, 'public');
+                
+                $data['attachment_path'] = $filePath;
+                $data['original_name'] = $file->getClientOriginalName();
             }
 
             $externalInvoice->update($data);

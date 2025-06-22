@@ -4,6 +4,69 @@ import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import InvoiceModal from "./InvoiceModal";
 import { usePage } from "@inertiajs/react";
+import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
+
+const FileDisplay = ({ file, pendingFile }) => {
+    // Helper function to fix file paths and extensions
+    const fixFilePath = (filePath) => {
+        if (!filePath) return null;
+        if (filePath.startsWith("http")) return filePath;
+        if (filePath.startsWith("/storage/")) return filePath;
+        if (filePath.startsWith("invoices/")) return `/storage/${filePath}`;
+        return filePath;
+    };
+
+    // Directly open the file for invoices
+    const openFile = (filePath) => {
+        window.open(filePath, "_blank");
+    };
+
+    // If there's a pending file to be uploaded, show it as a preview with an indicator
+    if (pendingFile) {
+        const tempUrl = URL.createObjectURL(pendingFile);
+
+        return (
+            <div className="flex flex-col items-center justify-center space-y-2">
+                <DocumentArrowDownIcon
+                    className="h-10 w-10 text-orange-500 cursor-pointer hover:text-orange-700 transition-colors"
+                    onClick={() => window.open(tempUrl, "_blank")}
+                />
+                <span className="text-sm text-orange-600 text-center break-words whitespace-normal w-full">
+                    {pendingFile.name} (Pending save)
+                </span>
+            </div>
+        );
+    }
+
+    if (!file)
+        return <span className="text-gray-500">No document attached</span>;
+
+    const fileUrl = file.file_path ? fixFilePath(file.file_path) : null;
+
+    // Fix display name if needed
+    let displayName = file.original_name || "Document";
+    if (displayName.endsWith(".pdf.pdf")) {
+        displayName = displayName.replace(".pdf.pdf", ".pdf");
+    }
+
+    return (
+        <div className="flex flex-col items-center justify-center space-y-2">
+            <DocumentArrowDownIcon
+                className="h-10 w-10 text-gray-500 cursor-pointer hover:text-gray-700 transition-colors"
+                onClick={() => fileUrl && openFile(fileUrl)}
+            />
+
+            {displayName && (
+                <span
+                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-center break-words whitespace-normal w-full"
+                    onClick={() => fileUrl && openFile(fileUrl)}
+                >
+                    {displayName}
+                </span>
+            )}
+        </div>
+    );
+};
 
 const InvoicesTable = () => {
     const user_id = usePage().props.auth.user.id;
@@ -23,7 +86,7 @@ const InvoicesTable = () => {
 
         try {
             const response = await axios.get(
-                `/api/v1/external-invoices?page=${currentPage}&include=supplier,purchaseOrder`
+                `/api/v1/external-invoices?page=${currentPage}&include=supplier,purchaseOrder,documents`
             );
 
             if (response.data && response.data.data) {
@@ -65,63 +128,8 @@ const InvoicesTable = () => {
     };
 
     const handleSaveInvoice = async (formData) => {
-        try {
-            const amount = Number(formData.amount || 0);
-            const vatAmount = formData.vat_amount
-                ? Number(formData.vat_amount)
-                : amount * 0.15;
-            const now = new Date();
-
-            const payload = {
-                user_id: user_id,
-                supplier_id: Number(formData.supplier_id),
-                purchase_order_id: Number(formData.purchase_order_id) || null,
-                amount: amount,
-                vat_amount: vatAmount,
-                type: formData.type || "Cash",
-                payable_date:
-                    formData.payable_date || now.toISOString().split("T")[0],
-                status: formData.status || "Draft",
-                invoice_id: isEdit
-                    ? selectedInvoice.invoice_id
-                    : `EXT-INV-${now.getTime()}`,
-                created_at: isEdit
-                    ? selectedInvoice.created_at
-                    : now.toISOString(),
-                updated_at: now.toISOString(),
-            };
-            if (!payload.supplier_id) {
-                throw new Error("Supplier is required");
-            }
-            if (!isEdit && !payload.purchase_order_id) {
-                throw new Error("Purchase Order is required");
-            }
-            if (!payload.type) {
-                throw new Error("Payment Type is required");
-            }
-            let response;
-            if (isEdit && selectedInvoice) {
-                response = await axios.put(
-                    `/api/v1/external-invoices/${selectedInvoice.id}`,
-                    payload
-                );
-            } else {
-                response = await axios.post(
-                    "/api/v1/external-invoices",
-                    payload
-                );
-            }
-            if (response.data) {
-                setError("");
-                await fetchInvoices();
-            }
-        } catch (error) {
-            setError(
-                "Failed to save invoice: " +
-                    (error.response?.data?.message || error.message)
-            );
-            throw error;
-        }
+        // The modal already handles the API call, just refresh the data
+        await fetchInvoices();
     };
 
     const handleDelete = async (id) => {
@@ -286,25 +294,60 @@ const InvoicesTable = () => {
                                         {formatDateTime(invoice.updated_at)}
                                     </td>
                                     <td className="px-3 py-4">
-                                        {invoice.attachment}
+                                        <div className="flex justify-center">
+                                            {invoice.documents &&
+                                            invoice.documents[0] ? (
+                                                <button
+                                                    className="w-8 h-8"
+                                                    onClick={() => {
+                                                        const filePath = invoice.documents[0].file_path;
+                                                        if (filePath) {
+                                                            const fixedPath = filePath.startsWith("http") 
+                                                                ? filePath 
+                                                                : filePath.startsWith("/storage/") 
+                                                                    ? filePath 
+                                                                    : filePath.startsWith("invoices/") 
+                                                                        ? `/storage/${filePath}` 
+                                                                        : filePath;
+                                                            window.open(fixedPath, "_blank");
+                                                        }
+                                                    }}
+                                                    title="View Document"
+                                                >
+                                                    <img
+                                                        src="/images/pdf-file.png"
+                                                        alt="PDF"
+                                                        className="w-full h-full"
+                                                    />
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-500">
+                                                    No document attached
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-3 py-4 flex justify-center text-center space-x-3">
-                                        <button
-                                            onClick={() =>
-                                                handleEditInvoice(invoice)
-                                            }
-                                            className="text-blue-400 hover:text-blue-500"
-                                        >
-                                            <FontAwesomeIcon icon={faEdit} />
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                handleDelete(invoice.id)
-                                            }
-                                            className="text-red-600 hover:text-red-800"
-                                        >
-                                            <FontAwesomeIcon icon={faTrash} />
-                                        </button>
+                                        {invoice.status !== 'Paid' && invoice.status !== 'Approved' && (
+                                            <>
+                                                <button
+                                                    onClick={() =>
+                                                        handleEditInvoice(invoice)
+                                                    }
+                                                    className="text-blue-400 hover:text-blue-500"
+                                                >
+                                                    <FontAwesomeIcon icon={faEdit} />
+                                                </button>
+                                                <button
+                                                    onClick={() =>
+                                                        handleDelete(invoice.id)
+                                                    }
+                                                    className="text-red-600 hover:text-red-800"
+                                                >
+                                                    <FontAwesomeIcon icon={faTrash} />
+                                                </button>
+                                            </>
+                                        )}
                                     </td>
                                 </tr>
                             ))
