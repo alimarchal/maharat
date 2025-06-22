@@ -84,9 +84,41 @@ const QuotationModal = ({
 
     const fetchFormData = async () => {
         try {
-            // No need to fetch companies since we only use Maharat
+            // Fetch all suppliers
             const suppliersResponse = await axios.get("/api/v1/suppliers");
-            setSuppliers(suppliersResponse.data.data || []);
+            const allSuppliers = suppliersResponse.data.data || [];
+            
+            // Fetch existing quotations for this RFQ to filter out used suppliers
+            let usedSupplierIds = new Set();
+            if (rfqId) {
+                try {
+                    const quotationsResponse = await axios.get(`/api/v1/quotations?rfq_id=${rfqId}`);
+                    const existingQuotations = quotationsResponse.data.data || [];
+                    console.log("Existing quotations for RFQ:", existingQuotations);
+                    usedSupplierIds = new Set(existingQuotations.map(q => q.supplier_id));
+                    console.log("Used supplier IDs:", Array.from(usedSupplierIds));
+                    
+                    // In edit mode, remove the current quotation's supplier from the used list
+                    // so it can still be selected
+                    if (isEdit && quotation && quotation.supplier_id) {
+                        usedSupplierIds.delete(quotation.supplier_id);
+                        console.log("Removed current supplier from used list:", quotation.supplier_id);
+                    }
+                } catch (error) {
+                    console.error("Error fetching existing quotations:", error);
+                }
+            }
+            
+            // Filter suppliers to exclude those already used for this RFQ
+            const availableSuppliers = allSuppliers.filter(supplier => 
+                !usedSupplierIds.has(supplier.id)
+            );
+            
+            console.log("All suppliers count:", allSuppliers.length);
+            console.log("Available suppliers count:", availableSuppliers.length);
+            console.log("Available suppliers:", availableSuppliers);
+            
+            setSuppliers(availableSuppliers);
         } catch (error) {
             setErrors({ fetch: "Failed to load form data" });
         }

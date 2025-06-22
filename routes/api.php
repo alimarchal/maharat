@@ -84,6 +84,7 @@ use App\Http\Controllers\Api\V1\BalanceSheetController;
 use App\Http\Controllers\Api\V1\FaqApprovalController;
 use App\Http\Controllers\Api\V1\CardController;
 use App\Http\Controllers\ItemRequestController;
+use App\Http\Controllers\Api\V1\AccountCodeController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -258,12 +259,12 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('accounts', AccountController::class);
     Route::post('accounts/{id}/restore', [AccountController::class, 'restore']);
 
+    // Account Codes routes
+    Route::apiResource('account-codes', AccountCodeController::class);
 
     Route::get('chart-of-accounts-tree', [ChartOfAccountController::class, 'tree']);
     Route::post('chart-of-accounts/{id}/restore', [ChartOfAccountController::class, 'restore']);
     Route::apiResource('chart-of-accounts', ChartOfAccountController::class);
-
-
 
     Route::post('fiscal-periods/{id}/restore', [FiscalPeriodController::class, 'restore']);
     Route::post('fiscal-periods/{fiscalPeriod}/close', [FiscalPeriodController::class, 'close']);
