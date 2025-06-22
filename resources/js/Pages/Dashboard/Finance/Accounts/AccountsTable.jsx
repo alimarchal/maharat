@@ -200,6 +200,8 @@ const AccountsTable = () => {
                         <th className="py-3 px-4">Description</th>
                         <th className="py-3 px-4">Type</th>
                         <th className="py-3 px-4">Cost Center</th>
+                        <th className="py-3 px-4">Credit Amount</th>
+                        <th className="py-3 px-4">Debit Amount</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                             Action
@@ -209,14 +211,14 @@ const AccountsTable = () => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="7" className="text-center py-12">
+                            <td colSpan="9" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="7"
+                                colSpan="9"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -240,6 +242,12 @@ const AccountsTable = () => {
                                         : "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
+                                    {account.credit_amount || 0}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {account.debit_amount || 0}
+                                </td>
+                                <td className="py-3 px-4">
                                     <span
                                         className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(
                                             account.status
@@ -249,25 +257,29 @@ const AccountsTable = () => {
                                     </span>
                                 </td>
                                 <td className="py-3 px-4 flex justify-center space-x-3">
-                                    <button
-                                        className="text-blue-400 hover:text-blue-500"
-                                        onClick={() => handleEdit(account)}
-                                    >
-                                        <FontAwesomeIcon icon={faEdit} />
-                                    </button>
-                                    <button
-                                        className="text-red-600 hover:text-red-800"
-                                        onClick={() => handleDelete(account.id)}
-                                        disabled={isDeleting}
-                                    >
-                                        <FontAwesomeIcon icon={faTrash} />
-                                    </button>
+                                    {account.chart_of_account?.account_code?.account_type !== "Revenue" && (
+                                        <>
+                                            <button
+                                                className="text-blue-400 hover:text-blue-500"
+                                                onClick={() => handleEdit(account)}
+                                            >
+                                                <FontAwesomeIcon icon={faEdit} />
+                                            </button>
+                                            <button
+                                                className="text-red-600 hover:text-red-800"
+                                                onClick={() => handleDelete(account.id)}
+                                                disabled={isDeleting}
+                                            >
+                                                <FontAwesomeIcon icon={faTrash} />
+                                            </button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="7" className="text-center py-4">
+                            <td colSpan="9" className="text-center py-4">
                                 No accounts found.
                             </td>
                         </tr>

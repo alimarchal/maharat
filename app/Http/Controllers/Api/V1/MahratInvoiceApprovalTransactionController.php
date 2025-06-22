@@ -9,6 +9,7 @@ use App\Http\Resources\V1\MahratInvoiceApprovalTransactionResource;
 use App\Models\MahratInvoiceApprovalTransaction;
 use App\Models\Invoice;
 use App\QueryParameters\MahratInvoiceApprovalTransactionParameters;
+use App\Services\BudgetRevenueUpdateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
@@ -199,6 +200,31 @@ class MahratInvoiceApprovalTransactionController extends Controller
                             'current_status' => $updatedInvoice->status,
                             'expected_status' => 'Pending'
                         ]);
+
+                        // Update budget revenue after invoice is approved
+                        if ($updatedInvoice && $updatedInvoice->status === 'Pending') {
+                            Log::info('Updating budget revenue for approved invoice', [
+                                'invoice_id' => $updatedInvoice->id,
+                                'invoice_amount' => $updatedInvoice->total_amount,
+                                'invoice_date' => $updatedInvoice->issue_date
+                            ]);
+
+                            $budgetService = new BudgetRevenueUpdateService();
+                            $budgetUpdateResult = $budgetService->updateBudgetRevenue($updatedInvoice);
+
+                            if ($budgetUpdateResult['success']) {
+                                Log::info('Budget revenue updated successfully', [
+                                    'invoice_id' => $updatedInvoice->id,
+                                    'message' => $budgetUpdateResult['message'],
+                                    'budgets_updated' => $budgetUpdateResult['budgets_updated']
+                                ]);
+                            } else {
+                                Log::warning('Budget revenue update failed', [
+                                    'invoice_id' => $updatedInvoice->id,
+                                    'message' => $budgetUpdateResult['message']
+                                ]);
+                            }
+                        }
 
                     } catch (\Exception $e) {
                         Log::error('Failed to update Invoice status', [

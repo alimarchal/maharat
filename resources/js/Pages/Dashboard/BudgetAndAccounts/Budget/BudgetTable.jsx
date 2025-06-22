@@ -84,19 +84,22 @@ const BudgetTable = () => {
                 };
             }
 
-            grouped[key].budgets.push(budget);
-            grouped[key].totalRevenuePlanned += parseFloat(
-                budget.total_revenue_planned || 0
-            );
-            grouped[key].totalRevenueActual += parseFloat(
-                budget.total_revenue_actual || 0
-            );
-            grouped[key].totalExpensePlanned += parseFloat(
-                budget.total_expense_planned || 0
-            );
-            grouped[key].totalExpenseActual += parseFloat(
-                budget.total_expense_actual || 0
-            );
+            // Only add the first budget for each fiscal period to avoid double counting
+            if (grouped[key].budgets.length === 0) {
+                grouped[key].budgets.push(budget);
+                grouped[key].totalRevenuePlanned = parseFloat(
+                    budget.total_revenue_planned || 0
+                );
+                grouped[key].totalRevenueActual = parseFloat(
+                    budget.total_revenue_actual || 0
+                );
+                grouped[key].totalExpensePlanned = parseFloat(
+                    budget.total_expense_planned || 0
+                );
+                grouped[key].totalExpenseActual = parseFloat(
+                    budget.total_expense_actual || 0
+                );
+            }
         });
 
         return Object.values(grouped);
