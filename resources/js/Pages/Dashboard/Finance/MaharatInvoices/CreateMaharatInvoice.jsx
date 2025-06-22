@@ -38,7 +38,13 @@ export default function CreateMaharatInvoice() {
     const [itemErrors, setItemErrors] = useState([]);
     const [itemTouched, setItemTouched] = useState([]);
     const [invoiceNumber, setInvoiceNumber] = useState("");
-    const [paymentMethods, setPaymentMethods] = useState([]);
+    const [paymentMethods] = useState([
+        "Cash",
+        "Credit upto 30 days",
+        "Credit upto 60 days",
+        "Credit upto 90 days",
+        "Credit upto 120 days",
+    ]);
     const [isEditMode, setIsEditMode] = useState(false);
     const [companyDetails, setCompanyDetails] = useState({
         name: "",
@@ -74,7 +80,6 @@ export default function CreateMaharatInvoice() {
     useEffect(() => {
         fetchHeaderCompanyDetails();
         fetchCompanies();
-        fetchPaymentMethods();
         fetchUsers();
         fetchClients();
 
@@ -237,28 +242,6 @@ export default function CreateMaharatInvoice() {
             ...prev,
             fetch: "Generated a temporary invoice number due to server error",
         }));
-    };
-
-    const fetchPaymentMethods = async () => {
-        try {
-            const response = await axios.get("/api/v1/invoices");
-            const uniqueMethods = [
-                ...new Set(
-                    response.data.data
-                        .map((invoice) => invoice.payment_method)
-                        .filter((method) => method)
-                ),
-            ];
-            setPaymentMethods(
-                uniqueMethods.length > 0 ? uniqueMethods : ["Cash", "Credit"]
-            );
-        } catch (error) {
-            setPaymentMethods(["Cash", "Credit"]);
-            setErrors((prev) => ({
-                ...prev,
-                paymentMethods: "Failed to load payment methods",
-            }));
-        }
     };
 
     const fetchUsers = async () => {

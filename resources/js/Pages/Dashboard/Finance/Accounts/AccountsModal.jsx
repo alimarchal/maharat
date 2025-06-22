@@ -31,15 +31,22 @@ const AccountsModal = ({
         if (isOpen) {
             fetchFormData();
             if (account && isEdit) {
-                setFormData({
+                console.log("Edit mode - Account data:", account);
+                console.log("Credit amount:", account.credit_amount, "Type:", typeof account.credit_amount);
+                console.log("Debit amount:", account.debit_amount, "Type:", typeof account.debit_amount);
+                
+                const newFormData = {
                     name: account.name || "",
                     description: account.description || "",
                     chart_of_account_id: account.chart_of_account_id || "",
                     cost_center_id: account.cost_center_id || "",
                     status: account.status || "Pending",
-                    credit_amount: account.credit_amount || "",
-                    debit_amount: account.debit_amount || "",
-                });
+                    credit_amount: account.credit_amount !== null && account.credit_amount !== undefined ? account.credit_amount.toString() : "",
+                    debit_amount: account.debit_amount !== null && account.debit_amount !== undefined ? account.debit_amount.toString() : "",
+                };
+                
+                console.log("Setting form data:", newFormData);
+                setFormData(newFormData);
             } else {
                 setFormData({
                     name: "",
@@ -53,6 +60,13 @@ const AccountsModal = ({
             }
         }
     }, [isOpen, account, isEdit]);
+
+    // Add debugging for formData changes
+    useEffect(() => {
+        if (isEdit && account) {
+            console.log("Current formData:", formData);
+        }
+    }, [formData, isEdit, account]);
 
     const fetchFormData = async () => {
         try {
@@ -86,18 +100,32 @@ const AccountsModal = ({
     const handleChange = (e) => {
         const { name, value } = e.target;
 
-        // Handle numeric fields for credit and debit amounts
-        if (name === "credit_amount" || name === "debit_amount") {
-            // Allow only numbers and decimal points
+        if (name === "credit_amount") {
+            // If user enters credit, clear and disable debit
             const numericValue = value.replace(/[^0-9.]/g, "");
-            // Prevent multiple decimal points
             const parts = numericValue.split(".");
             const formattedValue =
                 parts.length > 2
                     ? parts[0] + "." + parts.slice(1).join("")
                     : numericValue;
-
-            setFormData({ ...formData, [name]: formattedValue });
+            setFormData({
+                ...formData,
+                credit_amount: formattedValue,
+                debit_amount: formattedValue ? "" : formData.debit_amount,
+            });
+        } else if (name === "debit_amount") {
+            // If user enters debit, clear and disable credit
+            const numericValue = value.replace(/[^0-9.]/g, "");
+            const parts = numericValue.split(".");
+            const formattedValue =
+                parts.length > 2
+                    ? parts[0] + "." + parts.slice(1).join("")
+                    : numericValue;
+            setFormData({
+                ...formData,
+                debit_amount: formattedValue,
+                credit_amount: formattedValue ? "" : formData.credit_amount,
+            });
         } else {
             setFormData({ ...formData, [name]: value });
         }
@@ -129,7 +157,7 @@ const AccountsModal = ({
                 "Debit amount must be a valid number";
         }
 
-        // Optional: Add validation to ensure both credit and debit are not entered simultaneously
+        // Only one of credit or debit can be filled
         if (formData.credit_amount && formData.debit_amount) {
             validationErrors.credit_amount =
                 "Cannot have both credit and debit amounts";
@@ -143,9 +171,61 @@ const AccountsModal = ({
             return;
         }
 
+        // Ensure only one is sent as non-null
+        const cleanFormData = {
+            ...formData,
+            credit_amount: formData.credit_amount
+                ? parseFloat(formData.credit_amount)
+                : null,
+            debit_amount: formData.debit_amount
+                ? parseFloat(formData.debit_amount)
+                : null,
+        };
+        if (cleanFormData.credit_amount) cleanFormData.debit_amount = null;
+        if (cleanFormData.debit_amount) cleanFormData.credit_amount = null;
+
         try {
             if (isEdit && account) {
-                onSave(formData);
+                // For edit mode, we need to handle chart_of_account_id properly
+                const selectedTypeId = parseInt(formData.chart_of_account_id, 10);
+                const selectedType = accountTypes.find(
+                    (type) => type.id === selectedTypeId
+                );
+
+                if (!selectedType) {
+                    setErrors({
+                        chart_of_account_id: "Please select a valid account type",
+                    });
+                    setIsSaving(false);
+                    return;
+                }
+
+                // Find the chart_of_account_id that corresponds to this account_code_id
+                try {
+                    const chartOfAccountsResponse = await axios.get(
+                        `/api/v1/chart-of-accounts?filter[account_code_id]=${selectedType.id}`
+                    );
+                    
+                    let chartOfAccountId = account.chart_of_account_id; // Keep existing if no match found
+                    
+                    if (chartOfAccountsResponse.data.data && chartOfAccountsResponse.data.data.length > 0) {
+                        // Use the first matching chart of account
+                        chartOfAccountId = chartOfAccountsResponse.data.data[0].id.toString();
+                    }
+
+                    const updatedFormData = {
+                        ...cleanFormData,
+                        chart_of_account_id: chartOfAccountId,
+                    };
+
+                    onSave(updatedFormData);
+                } catch (chartError) {
+                    setErrors({
+                        chart_of_account_id: "Failed to find matching chart of account",
+                    });
+                    setIsSaving(false);
+                    return;
+                }
             } else {
                 const selectedTypeId = parseInt(
                     formData.chart_of_account_id,
@@ -184,12 +264,8 @@ const AccountsModal = ({
                         cost_center_id: formData.cost_center_id.toString(),
                         department_id: null,
                         status: formData.status,
-                        credit_amount: formData.credit_amount
-                            ? parseFloat(formData.credit_amount)
-                            : null,
-                        debit_amount: formData.debit_amount
-                            ? parseFloat(formData.debit_amount)
-                            : null,
+                        credit_amount: cleanFormData.credit_amount,
+                        debit_amount: cleanFormData.debit_amount,
                     };
                     onSave(accountData);
                 } catch (chartError) {

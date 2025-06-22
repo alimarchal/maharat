@@ -22,6 +22,8 @@ class AccountResource extends JsonResource
             'description' => $this->description,
             'cost_center_id' => $this->cost_center_id,
             'status' => $this->status,
+            'credit_amount' => $this->credit_amount,
+            'debit_amount' => $this->debit_amount,
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,
             'created_at' => $this->created_at,
