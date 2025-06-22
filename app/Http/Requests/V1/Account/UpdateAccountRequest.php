@@ -22,9 +22,10 @@ class UpdateAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'chart_of_account_id' => ['sometimes', 'required', 'string', 'max:255'],
+            'chart_of_account_id' => ['sometimes', 'exists:chart_of_accounts,id'],
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'account_code_id' => ['sometimes', 'exists:account_codes,id'],
             'cost_center_id' => ['nullable', 'exists:cost_centers,id'],
             'status' => ['nullable', 'in:Approved,Pending'],
             'credit_amount' => ['nullable', 'numeric', 'min:0'],
