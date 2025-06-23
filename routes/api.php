@@ -147,6 +147,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     // Request Items routes
     Route::apiResource('request-item', ItemRequestController::class);
+    Route::put('request-item/{id}/status', [ItemRequestController::class, 'updateStatus']);
+    Route::put('request-item/{id}/mark-requested', [ItemRequestController::class, 'markAsRequested']);
 
     // RFQ routes
     Route::get('/rfqs/form-data', [RfqController::class, 'getFormData']);

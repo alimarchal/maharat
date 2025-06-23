@@ -75,13 +75,16 @@ const SidebarButton = ({
 
 const Sidebar = ({ isOpen }) => {
     const { url } = usePage();
-    const { pendingCount } = useRequestItems();
+    const { pendingCount, approvedCount } = useRequestItems();
     const user = usePage().props.auth.user;
     const permissions = user?.permissions || [];
     
     const hasPermission = (perm) => {
         return permissions.includes(perm);
     };
+
+    // Calculate total notifications (pending + approved)
+    const totalNotifications = pendingCount + approvedCount;
 
     return (
         <>
@@ -104,7 +107,7 @@ const Sidebar = ({ isOpen }) => {
                             title="Notifications"
                             isActive={url === "/notification-settings"}
                             showBadge={true}
-                            badgeCount={pendingCount}
+                            badgeCount={totalNotifications}
                         />
                     )}
                     {/* <SidebarButton

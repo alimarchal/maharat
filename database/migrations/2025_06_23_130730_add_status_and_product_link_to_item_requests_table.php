@@ -11,20 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('item_requests', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->integer('quantity');
-            $table->string('photo')->nullable();
-            $table->text('description');
-            $table->foreignId('user_id')->constrained('users');
+        Schema::table('item_requests', function (Blueprint $table) {
             $table->foreignId('status_id')->nullable()->constrained('statuses')->default(1); // 1 = Pending
             $table->foreignId('approved_by')->nullable()->constrained('users'); // Who approved it
             $table->foreignId('product_id')->nullable()->constrained('products'); // Link to created product
             $table->timestamp('approved_at')->nullable(); // When it was approved
             $table->text('rejection_reason')->nullable(); // If rejected
-            $table->boolean('is_added')->default(false); // Keep for backward compatibility
-            $table->timestamps();
         });
     }
 
@@ -33,6 +25,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('item_requests');
+        Schema::table('item_requests', function (Blueprint $table) {
+            $table->dropForeign(['status_id']);
+            $table->dropForeign(['approved_by']);
+            $table->dropForeign(['product_id']);
+            $table->dropColumn(['status_id', 'approved_by', 'product_id', 'approved_at', 'rejection_reason']);
+        });
     }
 };

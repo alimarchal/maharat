@@ -4,6 +4,7 @@ import { faTimes, faCamera } from "@fortawesome/free-solid-svg-icons";
 import InputFloating from "@/Components/InputFloating";
 import { usePage } from "@inertiajs/react";
 import { useRequestItems } from "@/Components/RequestItemsContext";
+import { toast } from "react-hot-toast";
 
 const NewItemModal = ({ isOpen, onClose }) => {
     const user_id = usePage().props.auth?.user?.id;
@@ -20,6 +21,7 @@ const NewItemModal = ({ isOpen, onClose }) => {
 
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    const [apiError, setApiError] = useState("");
 
     const handleChange = (e) => {
         const { name, value, files } = e.target;
@@ -28,6 +30,8 @@ const NewItemModal = ({ isOpen, onClose }) => {
         } else {
             setFormData({ ...formData, [name]: value });
         }
+        // Clear API error when user starts typing
+        if (apiError) setApiError("");
     };
 
     const validateForm = () => {
@@ -45,12 +49,16 @@ const NewItemModal = ({ isOpen, onClose }) => {
         if (!validateForm()) return;
 
         setLoading(true);
+        setApiError(""); // Clear any previous API errors
+        
         try {
             const payload = new FormData();
             payload.append("user_id", formData.user_id);
             payload.append("name", formData.name);
             payload.append("quantity", formData.quantity);
-            payload.append("photo", formData.image);
+            if (formData.image) {
+                payload.append("photo", formData.image);
+            }
             payload.append("description", formData.description);
             payload.append("is_added", formData.is_added ? "1" : "0");
 
@@ -63,10 +71,47 @@ const NewItemModal = ({ isOpen, onClose }) => {
                 description: "",
             });
 
+            toast.success('New item request submitted successfully!');
             onClose();
         } catch (error) {
-            setErrors(error.response?.data.errors || {});
             console.error("Error saving new item:", error);
+            
+            // Handle different types of errors
+            if (error.response) {
+                // Server responded with error status
+                const status = error.response.status;
+                const data = error.response.data;
+                
+                if (status === 422) {
+                    // Validation errors
+                    setErrors(data.errors || {});
+                    toast.error('Please fix the validation errors above.');
+                } else if (status === 500) {
+                    // Server error
+                    setApiError('Server error occurred. Please try again later or contact support.');
+                    toast.error('Server error occurred. Please try again later.');
+                } else if (status === 401) {
+                    // Unauthorized
+                    setApiError('You are not authorized to perform this action.');
+                    toast.error('You are not authorized to perform this action.');
+                } else if (status === 403) {
+                    // Forbidden
+                    setApiError('You do not have permission to perform this action.');
+                    toast.error('You do not have permission to perform this action.');
+                } else {
+                    // Other server errors
+                    setApiError(data.message || `Server error (${status}). Please try again.`);
+                    toast.error(data.message || `Server error (${status}). Please try again.`);
+                }
+            } else if (error.request) {
+                // Network error
+                setApiError('Network error. Please check your internet connection and try again.');
+                toast.error('Network error. Please check your internet connection.');
+            } else {
+                // Other errors
+                setApiError('An unexpected error occurred. Please try again.');
+                toast.error('An unexpected error occurred. Please try again.');
+            }
         } finally {
             setLoading(false);
         }
@@ -88,6 +133,14 @@ const NewItemModal = ({ isOpen, onClose }) => {
                         <FontAwesomeIcon icon={faTimes} />
                     </button>
                 </div>
+                
+                {apiError && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                        <p className="font-bold">Error</p>
+                        <p>{apiError}</p>
+                    </div>
+                )}
+                
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -128,7 +181,7 @@ const NewItemModal = ({ isOpen, onClose }) => {
                                     </span>
                                 ) : (
                                     <span className="text-sm sm:text-base text-gray-400">
-                                        Add a Photo
+                                        Add a Photo (Optional)
                                     </span>
                                 )}
                                 <input
@@ -157,7 +210,7 @@ const NewItemModal = ({ isOpen, onClose }) => {
                     <div className="my-4 flex justify-center w-full">
                         <button
                             type="submit"
-                            className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full"
+                            className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full disabled:opacity-50"
                             disabled={loading}
                         >
                             {loading ? "Saving..." : "Submit"}

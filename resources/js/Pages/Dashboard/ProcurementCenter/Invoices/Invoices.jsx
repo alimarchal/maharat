@@ -95,7 +95,12 @@ const InvoicesTable = () => {
                 setError("");
             }
         } catch (error) {
-            setError("Failed to load invoices");
+            // Only set error if it's an actual API error, not just empty results
+            if (error.response?.status === 404 || error.response?.status === 500) {
+                setError("Failed to load invoices");
+            } else {
+                setError("");
+            }
         } finally {
             setLoading(false);
         }

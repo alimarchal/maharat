@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import RequestTable from "./RequestTable";
 import { Link } from "@inertiajs/react";
 import NewItemModal from "./NewItemModal";
+import { useRequestItems } from "@/Components/RequestItemsContext";
 
 const RequestIndex = () => {
     const [selectedFilter, setSelectedFilter] = useState("All");
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const { approvedCount, pendingCount } = useRequestItems();
 
     const filters = ["All", "Issued", "Pending", "Rejected"];
 
@@ -44,9 +46,14 @@ const RequestIndex = () => {
                     <Link
                         href="/my-requests/create"
                         title="Request a new item that is listed in the stock"
-                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                        className="relative bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                     >
                         Make New Request
+                        {approvedCount > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-sm h-6 w-6 rounded-full flex items-center justify-center">
+                                {approvedCount}
+                            </span>
+                        )}
                     </Link>
                 </div>
             </div>
