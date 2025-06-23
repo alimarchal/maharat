@@ -27,6 +27,7 @@ class UpdateExternalDeliveryNoteRequest extends FormRequest
             'purchase_order_id' => ['sometimes', 'nullable', 'exists:purchase_orders,id'],
             'delivery_note_number' => ['sometimes', 'nullable', 'string', 'max:255'],
             'attachment' => ['sometimes', 'nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:10240'], // 10MB max
+            'attachment_name' => ['sometimes', 'nullable', 'string', 'max:255'],
         ];
     }
 }

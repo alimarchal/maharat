@@ -22,21 +22,41 @@ class GrnController extends Controller
      */
     private function generateGrnNumber(): string
     {
-        $year = date('Y');
-        $lastGrn = Grn::whereYear('created_at', $year)
-            ->orderBy('grn_number', 'desc')
-            ->first();
+        $maxAttempts = 10;
+        $attempt = 0;
+        
+        do {
+            $attempt++;
+            $year = date('Y');
+            $lastGrn = Grn::whereYear('created_at', $year)
+                ->orderBy('grn_number', 'desc')
+                ->first();
 
-        if ($lastGrn) {
-            // Extract the numeric part and increment
-            $lastNumber = (int) substr($lastGrn->grn_number, -8);
-            $newNumber = $lastNumber + 1;
-        } else {
-            $newNumber = 1;
-        }
+            if ($lastGrn) {
+                // Extract the numeric part (last 5 digits) and increment
+                $lastNumber = (int) substr($lastGrn->grn_number, -5);
+                $newNumber = $lastNumber + 1;
+            } else {
+                $newNumber = 1;
+            }
 
-        // Format with leading zeros to maintain 5 digits
-        return sprintf("GRN-%s-%05d", $year, $newNumber);
+            // Format with leading zeros to maintain 5 digits
+            $grnNumber = sprintf("GRN-%s-%05d", $year, $newNumber);
+            
+            // Check if this number already exists (race condition protection)
+            $exists = Grn::where('grn_number', $grnNumber)->exists();
+            
+            if (!$exists) {
+                return $grnNumber;
+            }
+            
+            // If we've tried too many times, use a timestamp-based approach
+            if ($attempt >= $maxAttempts) {
+                $timestamp = time();
+                return sprintf("GRN-%s-%05d", $year, $timestamp % 100000);
+            }
+            
+        } while (true);
     }
 
     /**

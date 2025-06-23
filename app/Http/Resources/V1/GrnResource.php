@@ -25,6 +25,7 @@ class GrnResource extends JsonResource
             'quotation' => new QuotationResource($this->whenLoaded('quotation')),
             'purchase_order' => new PurchaseOrderResource($this->whenLoaded('purchaseOrder')),
             'receive_goods' => GrnReceiveGoodResource::collection($this->whenLoaded('receiveGoods')),
+            'external_delivery_notes' => ExternalDeliveryNoteResource::collection($this->whenLoaded('externalDeliveryNote')),
         ];
     }
 }

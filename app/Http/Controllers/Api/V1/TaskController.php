@@ -982,6 +982,168 @@ class TaskController extends Controller
                 }
             }
 
+            // Check if this is a Purchase Order task and if it's being approved
+            if ($task->purchase_order_id && $request->input('status') === 'Approved') {
+                Log::info('=== PURCHASE ORDER TASK APPROVAL CHECK ===', [
+                    'task_id' => $task->id,
+                    'purchase_order_id' => $task->purchase_order_id,
+                    'current_order_no' => $task->order_no,
+                    'current_status' => DB::table('purchase_orders')->where('id', $task->purchase_order_id)->value('status')
+                ]);
+
+                // Update the corresponding approval transaction
+                $approvalTransaction = DB::table('po_approval_transactions')
+                    ->where('purchase_order_id', $task->purchase_order_id)
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->first();
+
+                if ($approvalTransaction) {
+                    Log::info('=== UPDATING PURCHASE ORDER APPROVAL TRANSACTION ===', [
+                        'task_id' => $task->id,
+                        'purchase_order_id' => $task->purchase_order_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+
+                    // Update the approval transaction status
+                    $transactionUpdated = DB::table('po_approval_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => 'Approve',
+                            'updated_by' => auth()->id(),
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== PURCHASE ORDER APPROVAL TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'purchase_order_id' => $task->purchase_order_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_success' => $transactionUpdated
+                    ]);
+
+                    if ($transactionUpdated) {
+                        // Now check if this is the final approval
+                        $totalApprovals = DB::table('po_approval_transactions')
+                            ->where('purchase_order_id', $task->purchase_order_id)
+                            ->count();
+
+                        $completedApprovals = DB::table('po_approval_transactions')
+                            ->where('purchase_order_id', $task->purchase_order_id)
+                            ->where('status', 'Approve')
+                            ->count();
+
+                        $isFinalApproval = $completedApprovals === $totalApprovals;
+
+                        Log::info('=== PURCHASE ORDER FINAL APPROVAL CHECK ===', [
+                            'task_id' => $task->id,
+                            'purchase_order_id' => $task->purchase_order_id,
+                            'total_approvals' => $totalApprovals,
+                            'completed_approvals' => $completedApprovals,
+                            'is_final_approval' => $isFinalApproval
+                        ]);
+
+                        if ($isFinalApproval) {
+                            Log::info('=== FINAL PURCHASE ORDER APPROVAL - UPDATING STATUS ===', [
+                                'task_id' => $task->id,
+                                'purchase_order_id' => $task->purchase_order_id,
+                                'current_status' => DB::table('purchase_orders')->where('id', $task->purchase_order_id)->value('status'),
+                                'target_status' => 'Approved'
+                            ]);
+
+                            // Update the purchase order status to Approved
+                            $purchaseOrderUpdated = DB::table('purchase_orders')
+                                ->where('id', $task->purchase_order_id)
+                                ->update([
+                                    'status' => 'Approved',
+                                    'updated_at' => now()
+                                ]);
+
+                            Log::info('=== PURCHASE ORDER STATUS UPDATE RESULT ===', [
+                                'task_id' => $task->id,
+                                'purchase_order_id' => $task->purchase_order_id,
+                                'update_success' => $purchaseOrderUpdated,
+                                'new_status' => DB::table('purchase_orders')->where('id', $task->purchase_order_id)->value('status')
+                            ]);
+                        } else {
+                            Log::info('=== NOT FINAL PURCHASE ORDER APPROVAL - KEEPING DRAFT STATUS ===', [
+                                'task_id' => $task->id,
+                                'purchase_order_id' => $task->purchase_order_id,
+                                'total_approvals' => $totalApprovals,
+                                'completed_approvals' => $completedApprovals
+                            ]);
+                        }
+                    }
+                } else {
+                    Log::warning('=== NO APPROVAL TRANSACTION FOUND FOR PURCHASE ORDER ===', [
+                        'task_id' => $task->id,
+                        'purchase_order_id' => $task->purchase_order_id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+                }
+            }
+
+            // Check if this is a Purchase Order task and if it's being rejected
+            if ($task->purchase_order_id && $request->input('status') === 'Rejected') {
+                Log::info('=== PURCHASE ORDER TASK REJECTION CHECK ===', [
+                    'task_id' => $task->id,
+                    'purchase_order_id' => $task->purchase_order_id,
+                    'current_status' => DB::table('purchase_orders')->where('id', $task->purchase_order_id)->value('status')
+                ]);
+
+                // Update the corresponding approval transaction
+                $approvalTransaction = DB::table('po_approval_transactions')
+                    ->where('purchase_order_id', $task->purchase_order_id)
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->first();
+
+                if ($approvalTransaction) {
+                    Log::info('=== UPDATING PURCHASE ORDER APPROVAL TRANSACTION FOR REJECTION ===', [
+                        'task_id' => $task->id,
+                        'purchase_order_id' => $task->purchase_order_id,
+                        'approval_transaction_id' => $approvalTransaction->id
+                    ]);
+
+                    // Update the approval transaction status
+                    $transactionUpdated = DB::table('po_approval_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => 'Reject',
+                            'updated_by' => auth()->id(),
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== PURCHASE ORDER REJECTION TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'purchase_order_id' => $task->purchase_order_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_success' => $transactionUpdated
+                    ]);
+
+                    if ($transactionUpdated) {
+                        // Immediately update purchase order status to Rejected
+                        $purchaseOrderUpdated = DB::table('purchase_orders')
+                            ->where('id', $task->purchase_order_id)
+                            ->update([
+                                'status' => 'Rejected',
+                                'updated_at' => now()
+                            ]);
+
+                        Log::info('=== PURCHASE ORDER REJECTION STATUS UPDATE RESULT ===', [
+                            'task_id' => $task->id,
+                            'purchase_order_id' => $task->purchase_order_id,
+                            'update_success' => $purchaseOrderUpdated,
+                            'new_status' => DB::table('purchase_orders')->where('id', $task->purchase_order_id)->value('status')
+                        ]);
+                    }
+                } else {
+                    Log::warning('=== NO APPROVAL TRANSACTION FOUND FOR PURCHASE ORDER REJECTION ===', [
+                        'task_id' => $task->id,
+                        'purchase_order_id' => $task->purchase_order_id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+                }
+            }
+
             DB::commit();
 
             $rfqLogger->info('=== TASK UPDATE COMPLETED ===', [

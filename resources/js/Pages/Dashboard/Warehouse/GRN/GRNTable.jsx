@@ -3,6 +3,7 @@ import { Link } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faTrash } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
+import ViewGRNModal from "./ViewGRNModal";
 
 export default function GRNTable() {
     const [grns, setGrns] = useState([]);
@@ -10,12 +11,14 @@ export default function GRNTable() {
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [loading, setLoading] = useState(true);
+    const [selectedGrn, setSelectedGrn] = useState(null);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
     const fetchGrns = async () => {
         setLoading(true);
         try {
             const response = await fetch(
-                `/api/v1/grns?include=user,quotation,purchaseOrder,receiveGoods&page=${currentPage}`
+                `/api/v1/grns?include=user,quotation.supplier,purchaseOrder,receiveGoods.supplier,receiveGoods.category,externalDeliveryNote&page=${currentPage}`
             );
             const data = await response.json();
             if (response.ok) {
@@ -52,6 +55,11 @@ export default function GRNTable() {
         }
     };
 
+    const handleView = (grn) => {
+        setSelectedGrn(grn);
+        setIsViewModalOpen(true);
+    };
+
     return (
         <div className="w-full">
             <div className="w-full overflow-hidden">
@@ -76,9 +84,10 @@ export default function GRNTable() {
                                 </th>
                                 <th className="py-3 px-4">Quotation #</th>
                                 <th className="py-3 px-4">Purchase Order #</th>
-                                <th className="py-3 px-4">Category</th>
+                                <th className="py-3 px-4">Supplier</th>
                                 <th className="py-3 px-4">Quantity</th>
                                 <th className="py-3 px-4">Delivery Date</th>
+                                <th className="py-3 px-4">Attachment</th>
                                 <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                                     Actions
                                 </th>
@@ -88,7 +97,7 @@ export default function GRNTable() {
                             {loading ? (
                                 <tr>
                                     <td
-                                        colSpan="7"
+                                        colSpan="8"
                                         className="text-center py-12"
                                     >
                                         <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
@@ -97,7 +106,7 @@ export default function GRNTable() {
                             ) : error ? (
                                 <tr>
                                     <td
-                                        colSpan="7"
+                                        colSpan="8"
                                         className="text-center text-red-500 font-medium py-4"
                                     >
                                         {error}
@@ -123,7 +132,7 @@ export default function GRNTable() {
                                                 }
                                             </td>
                                             <td className="py-3 px-4">
-                                                {grn.quotation?.company_name}
+                                                {grn.quotation?.supplier?.name || grn.quotation?.company_name || "N/A"}
                                             </td>
                                             <td className="py-3 px-4">
                                                 {grn.quantity}
@@ -131,9 +140,43 @@ export default function GRNTable() {
                                             <td className="py-3 px-4">
                                                 {grn.delivery_date}
                                             </td>
+                                            <td className="py-3 px-4">
+                                                <div className="flex justify-center">
+                                                    {grn.external_delivery_notes && grn.external_delivery_notes[0] && grn.external_delivery_notes[0].attachment_path ? (
+                                                        <button
+                                                            className="w-8 h-8"
+                                                            onClick={() => {
+                                                                const filePath = grn.external_delivery_notes[0].attachment_path;
+                                                                if (filePath) {
+                                                                    const fixedPath = filePath.startsWith("http") 
+                                                                        ? filePath 
+                                                                        : filePath.startsWith("/storage/") 
+                                                                            ? filePath 
+                                                                            : filePath.startsWith("delivery-notes/") 
+                                                                                ? `/storage/${filePath}` 
+                                                                                : filePath;
+                                                                    window.open(fixedPath, "_blank");
+                                                                }
+                                                            }}
+                                                            title="View Document"
+                                                        >
+                                                            <img
+                                                                src="/images/pdf-file.png"
+                                                                alt="PDF"
+                                                                className="w-full h-full"
+                                                            />
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-gray-500">
+                                                            No document attached
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
                                             <td className="px-6 py-4 text-center">
                                                 <div className="flex justify-center text-center space-x-3">
                                                     <button
+                                                        onClick={() => handleView(grn)}
                                                         className="text-[#9B9DA2] hover:text-gray-500"
                                                         title="View GRN"
                                                     >
@@ -160,7 +203,7 @@ export default function GRNTable() {
                             ) : (
                                 <tr>
                                     <td
-                                        colSpan="7"
+                                        colSpan="8"
                                         className="text-center text-[#2C323C] font-medium py-4"
                                     >
                                         No GRNs found.
@@ -204,6 +247,16 @@ export default function GRNTable() {
                     )}
                 </div>
             </div>
+
+            {/* View GRN Modal */}
+            <ViewGRNModal
+                isOpen={isViewModalOpen}
+                onClose={() => {
+                    setIsViewModalOpen(false);
+                    setSelectedGrn(null);
+                }}
+                grn={selectedGrn}
+            />
         </div>
     );
 }

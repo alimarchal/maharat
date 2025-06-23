@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use App\Services\PurchaseOrderBudgetService;
 use App\Models\RequestBudget;
 use App\Services\BudgetValidationService;
+use App\Models\Quotation;
 
 class PurchaseOrderController extends Controller
 {
@@ -120,7 +121,7 @@ class PurchaseOrderController extends Controller
             $budgetService = new BudgetValidationService();
             
             // Get quotation to determine RFQ details
-            $quotation = \App\Models\Quotation::with('rfq')->find($validatedData['quotation_id']);
+            $quotation = Quotation::with('rfq')->find($validatedData['quotation_id']);
             if (!$quotation || !$quotation->rfq) {
                 throw new \Exception('Quotation or associated RFQ not found');
             }
@@ -181,6 +182,29 @@ class PurchaseOrderController extends Controller
                 $purchaseOrder->attachment = $path;
                 $purchaseOrder->original_name = $request->file('attachment')->getClientOriginalName();
                 $purchaseOrder->save();
+            } else {
+                // If no new attachment provided, try to copy from quotation document
+                if ($request->has('quotation_id')) {
+                    $quotation = Quotation::with('documents')->find($request->input('quotation_id'));
+                    if ($quotation && $quotation->documents->isNotEmpty()) {
+                        $quotationDocument = $quotation->documents->where('type', 'quotation')->first();
+                        if ($quotationDocument && $quotationDocument->file_path) {
+                            // Copy the file from quotations to purchase-orders directory
+                            $sourcePath = storage_path('app/public/' . $quotationDocument->file_path);
+                            if (file_exists($sourcePath)) {
+                                $fileName = time() . '_' . $quotationDocument->original_name;
+                                $destinationPath = 'purchase-orders/' . $fileName;
+                                
+                                // Copy the file
+                                if (Storage::disk('public')->copy($quotationDocument->file_path, $destinationPath)) {
+                                    $purchaseOrder->attachment = $destinationPath;
+                                    $purchaseOrder->original_name = $quotationDocument->original_name;
+                                    $purchaseOrder->save();
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             DB::commit();
@@ -269,6 +293,29 @@ class PurchaseOrderController extends Controller
                 $purchaseOrder->attachment = $path;
                 $purchaseOrder->original_name = $request->file('attachment')->getClientOriginalName();
                 $purchaseOrder->save();
+            } else {
+                // If no new attachment provided and no existing attachment, try to copy from quotation document
+                if (!$purchaseOrder->attachment && $request->has('quotation_id')) {
+                    $quotation = Quotation::with('documents')->find($request->input('quotation_id'));
+                    if ($quotation && $quotation->documents->isNotEmpty()) {
+                        $quotationDocument = $quotation->documents->where('type', 'quotation')->first();
+                        if ($quotationDocument && $quotationDocument->file_path) {
+                            // Copy the file from quotations to purchase-orders directory
+                            $sourcePath = storage_path('app/public/' . $quotationDocument->file_path);
+                            if (file_exists($sourcePath)) {
+                                $fileName = time() . '_' . $quotationDocument->original_name;
+                                $destinationPath = 'purchase-orders/' . $fileName;
+                                
+                                // Copy the file
+                                if (Storage::disk('public')->copy($quotationDocument->file_path, $destinationPath)) {
+                                    $purchaseOrder->attachment = $destinationPath;
+                                    $purchaseOrder->original_name = $quotationDocument->original_name;
+                                    $purchaseOrder->save();
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             DB::commit();

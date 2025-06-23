@@ -21,6 +21,7 @@ class ExternalDeliveryNoteResource extends JsonResource
             'purchase_order_id' => $this->purchase_order_id,
             'delivery_note_number' => $this->delivery_note_number,
             'attachment_path' => $this->attachment_path,
+            'attachment_name' => $this->attachment_name,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
 

@@ -27,6 +27,7 @@ class StoreExternalDeliveryNoteRequest extends FormRequest
             'purchase_order_id' => ['nullable', 'exists:purchase_orders,id'], // Now optional since it will be auto-populated
             'delivery_note_number' => ['nullable', 'string', 'max:255'],
             'attachment' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:10240'], // 10MB max
+            'attachment_name' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

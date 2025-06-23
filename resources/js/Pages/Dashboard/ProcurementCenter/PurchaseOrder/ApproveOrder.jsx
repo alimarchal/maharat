@@ -49,7 +49,7 @@ const ApproveOrder = ({
         setIsLoading(true);
         try {
             const response = await axios.get(
-                `/api/v1/quotations/${quotationId}`
+                `/api/v1/quotations/${quotationId}?include=documents`
             );
             if (response.data.data) {
                 const quotation = response.data.data;
@@ -79,6 +79,18 @@ const ApproveOrder = ({
                         supplier_name: quotation.supplier?.name || "",
                         amount: quotation.total_amount || "",
                     }));
+                }
+
+                // Set attachment information from quotation documents
+                if (quotation.documents && quotation.documents.length > 0) {
+                    const quotationDocument = quotation.documents.find(doc => doc.type === 'quotation');
+                    if (quotationDocument) {
+                        setFormData((prev) => ({
+                            ...prev,
+                            attachment: quotationDocument.file_path,
+                            original_name: quotationDocument.original_name,
+                        }));
+                    }
                 }
             }
         } catch (error) {
@@ -112,10 +124,10 @@ const ApproveOrder = ({
                     await validateBudget(periods[0].id);
                 } else {
                     // Multiple periods overlap - user needs to select
-                    setErrors(prev => ({
-                        ...prev,
-                        fiscal_period: 'Multiple fiscal periods overlap for this date. Please select one.'
-                    }));
+                    // setErrors(prev => ({
+                    //     ...prev,
+                    //     fiscal_period: 'Multiple fiscal periods overlap for this RFQ date. Please select one.'
+                    // }));
                 }
             }
         } catch (error) {
@@ -328,13 +340,17 @@ const ApproveOrder = ({
                 if (
                     dataToSubmit[key] !== null &&
                     dataToSubmit[key] !== undefined &&
-                    key !== "supplier_name"
+                    key !== "supplier_name" &&
+                    key !== "attachment" &&
+                    key !== "original_name"
                 ) {
                     formDataToSend.append(key, dataToSubmit[key]);
                 }
             });
 
+            // Handle attachment - only send if it's a new file upload
             if (tempDocument) {
+                // If user uploaded a new file, use that
                 formDataToSend.append("attachment", tempDocument);
             }
 
@@ -458,20 +474,20 @@ const ApproveOrder = ({
                 )}
 
                 {/* Error messages */}
-                {(errors.rfq_id || errors.submit || errors.fiscal_period || errors.budget) && (
+                {(errors.rfq_id || errors.submit || /* errors.fiscal_period || */ errors.budget) && (
                     <div
                         className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
                         role="alert"
                     >
                         <span className="block sm:inline">
-                            {errors.rfq_id || errors.submit || errors.fiscal_period || errors.budget}
+                            {errors.rfq_id || errors.submit || /* errors.fiscal_period || */ errors.budget}
                         </span>
                     </div>
                 )}
 
                 {/* Fiscal Period Selection */}
                 {fiscalPeriods.length > 1 && (
-                    <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4">
+                    <div className="bg-[#009FDC] bg-opacity-10 border border-[#009FDC] text-[#009FDC] px-4 py-3 rounded relative mb-4">
                         <div className="mb-3">
                             <strong>Multiple fiscal periods overlap for this RFQ date. Please select one:</strong>
                         </div>
@@ -484,12 +500,12 @@ const ApproveOrder = ({
                                     validateBudget(period.id);
                                 }
                             }}
-                            className="w-full p-2 border border-yellow-400 rounded"
+                            className="w-full p-2 border border-[#009FDC] rounded text-black"
                         >
                             <option value="">Select Fiscal Period</option>
                             {fiscalPeriods.map((period) => (
                                 <option key={period.id} value={period.id}>
-                                    {period.name} ({period.start_date} to {period.end_date})
+                                    {period.period_name}
                                 </option>
                             ))}
                         </select>
@@ -497,11 +513,11 @@ const ApproveOrder = ({
                 )}
 
                 {/* Budget Validation Display */}
-                {budgetValidation && budgetValidation.success && (
+                {/* {budgetValidation && budgetValidation.success && (
                     <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
                         <strong>Budget Validation:</strong> Available amount: {budgetValidation.data.available_amount}
                     </div>
-                )}
+                )} */}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

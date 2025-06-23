@@ -65,8 +65,10 @@ class ExternalDeliveryNoteController extends Controller
 
             // Handle file upload if provided
             if ($request->hasFile('attachment')) {
-                $path = $request->file('attachment')->store('delivery-notes', 'public');
+                $file = $request->file('attachment');
+                $path = $file->store('delivery-notes', 'public');
                 $data['attachment_path'] = $path;
+                $data['attachment_name'] = $request->input('attachment_name', $file->getClientOriginalName());
             }
 
             // Auto-populate purchase_order_id from GRN if grn_id is provided
@@ -125,8 +127,10 @@ class ExternalDeliveryNoteController extends Controller
                     Storage::disk('public')->delete($externalDeliveryNote->attachment_path);
                 }
 
-                $path = $request->file('attachment')->store('delivery-notes', 'public');
+                $file = $request->file('attachment');
+                $path = $file->store('delivery-notes', 'public');
                 $data['attachment_path'] = $path;
+                $data['attachment_name'] = $request->input('attachment_name', $file->getClientOriginalName());
             }
 
             $externalDeliveryNote->update($data);
