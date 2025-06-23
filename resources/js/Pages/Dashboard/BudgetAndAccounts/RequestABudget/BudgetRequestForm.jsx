@@ -465,34 +465,38 @@ const BudgetRequestForm = () => {
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-3xl font-bold text-[#2C323C]">
-                        {isEditMode ? "Edit Budget Request" : "Budget Request"}
+                        {isEditMode ? "Edit Department Budget Request" : "Department Budget Request"}
                     </h2>
                     <p className="text-[#7D8086] text-lg">
                         {isEditMode
-                            ? "Update your budget request details"
+                            ? "Update your department budget request details"
                             : "Request by department head for the budget"}
                     </p>
                 </div>
                 <div className="w-full lg:w-1/4">
                     {isEditMode ? (
                         <InputFloating
-                            label="Period"
+                            label="Budget"
                             name="fiscal_period_id"
-                            value={fiscalYears.find(year => year.id === formData.fiscal_period_id)?.period_name || ''}
+                            value={
+                                fiscalYears.find((year) => year.id === formData.fiscal_period_id)
+                                    ? `${fiscalYears.find((year) => year.id === formData.fiscal_period_id).budget_name} (${fiscalYears.find((year) => year.id === formData.fiscal_period_id).period_name})`
+                                    : ''
+                            }
                             onChange={() => {}}
                             onKeyDown={(e) => e.preventDefault()}
-                            disabled={true}
-                            readOnly={true}
+                            disabled
+                            readOnly
                         />
                     ) : (
                         <SelectFloating
-                            label="Period"
+                            label="Budget"
                             name="fiscal_period_id"
                             value={formData.fiscal_period_id}
                             onChange={handleChange}
                             options={fiscalYears.map((year) => ({
                                 id: year.id,
-                                label: year.period_name,
+                                label: `${year.budget_name} (${year.period_name})`,
                             }))}
                         />
                     )}
