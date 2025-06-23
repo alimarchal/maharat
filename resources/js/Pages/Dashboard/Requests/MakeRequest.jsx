@@ -215,7 +215,7 @@ const MakeRequest = () => {
             
             // Check if we already have products for this category
             if (!filteredProducts[value] || filteredProducts[value].length === 0) {
-                fetchProductsForCategory(value);
+            fetchProductsForCategory(value);
             }
         }
         
@@ -765,8 +765,8 @@ const MakeRequest = () => {
                                 options={(() => {
                                     const products = getAvailableProducts(index, item.category_id);
                                     return products.map((p) => ({
-                                        id: p.id,
-                                        label: p.name,
+                                    id: p.id,
+                                    label: p.name,
                                     }));
                                 })()}
                                 loading={loadingMoreProducts[item.category_id] || loadingProducts}

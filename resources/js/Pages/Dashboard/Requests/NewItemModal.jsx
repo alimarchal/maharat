@@ -57,7 +57,7 @@ const NewItemModal = ({ isOpen, onClose }) => {
             payload.append("name", formData.name);
             payload.append("quantity", formData.quantity);
             if (formData.image) {
-                payload.append("photo", formData.image);
+            payload.append("photo", formData.image);
             }
             payload.append("description", formData.description);
             payload.append("is_added", formData.is_added ? "1" : "0");

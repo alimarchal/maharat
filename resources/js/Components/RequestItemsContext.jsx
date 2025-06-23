@@ -120,7 +120,7 @@ export const RequestItemsProvider = ({ children, userId = null }) => {
         : 0;
 
     const approvedCount = Array.isArray(approvedItems) ? approvedItems.length : 0;
-    
+
     useEffect(() => {
         fetchRequestItems();
         if (userId) {

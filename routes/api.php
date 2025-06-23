@@ -150,6 +150,11 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::put('request-item/{id}/status', [ItemRequestController::class, 'updateStatus']);
     Route::put('request-item/{id}/mark-requested', [ItemRequestController::class, 'markAsRequested']);
 
+    // RFQ Requests routes
+    Route::apiResource('rfq-requests', \App\Http\Controllers\Api\V1\RfqRequestController::class);
+    Route::put('rfq-requests/{id}/status', [\App\Http\Controllers\Api\V1\RfqRequestController::class, 'updateStatus']);
+    Route::put('rfq-requests/{id}/mark-requested', [\App\Http\Controllers\Api\V1\RfqRequestController::class, 'markRequested']);
+
     // RFQ routes
     Route::get('/rfqs/form-data', [RfqController::class, 'getFormData']);
     Route::apiResource('rfqs', RfqController::class);

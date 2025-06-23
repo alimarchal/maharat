@@ -91,7 +91,7 @@ const SelectFloating = ({ label, name, value, onChange, options, onScroll, loadi
                                     className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-gray-900"
                                     onClick={() => handleSelect(option)}
                                 >
-                                    {option.label}
+                        {option.label}
                                 </div>
                             ))
                         ) : (

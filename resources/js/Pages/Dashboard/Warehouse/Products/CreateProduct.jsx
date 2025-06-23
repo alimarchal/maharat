@@ -392,7 +392,7 @@ const CreateProduct = () => {
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-3xl font-bold text-[#2C323C]">
                             Requested Items
-                        </h2>
+                    </h2>
                         <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
                             {filters.map((filter) => (
                                 <button
@@ -438,22 +438,22 @@ const CreateProduct = () => {
                                     </tr>
                                 ) : (
                                     getFilteredItems().map((product) => (
-                                        <tr key={product.id}>
-                                            <td className="py-3 px-4">
-                                                {product.id}
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                {product.user?.name}
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                {product.name}
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                {product.description}
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                {product.quantity}
-                                            </td>
+                                            <tr key={product.id}>
+                                                <td className="py-3 px-4">
+                                                    {product.id}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    {product.user?.name}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    {product.name}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    {product.description}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    {product.quantity}
+                                                </td>
                                             <td className="py-3 px-4">
                                                 <span
                                                     className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${
@@ -467,20 +467,20 @@ const CreateProduct = () => {
                                                     {product.status || "Pending"}
                                                 </span>
                                             </td>
-                                            <td className="py-3 px-4 flex justify-center text-center space-x-3">
-                                                <button
-                                                    className="text-[#9B9DA2] hover:text-gray-500"
-                                                    title="View Item"
-                                                    onClick={() =>
-                                                        handleViewItem(
-                                                            product
-                                                        )
-                                                    }
-                                                >
-                                                    <FontAwesomeIcon
-                                                        icon={faEye}
-                                                    />
-                                                </button>
+                                                <td className="py-3 px-4 flex justify-center text-center space-x-3">
+                                                    <button
+                                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                                        title="View Item"
+                                                        onClick={() =>
+                                                            handleViewItem(
+                                                                product
+                                                            )
+                                                        }
+                                                    >
+                                                        <FontAwesomeIcon
+                                                            icon={faEye}
+                                                        />
+                                                    </button>
                                                 {product.status === "Pending" ? (
                                                     <>
                                                         <button
@@ -505,9 +505,9 @@ const CreateProduct = () => {
                                                         <div className="w-20"></div>
                                                     </>
                                                 )}
-                                            </td>
-                                        </tr>
-                                    ))
+                                                </td>
+                                            </tr>
+                                        ))
                                 )}
                             </tbody>
                         </table>
@@ -584,7 +584,7 @@ const CreateProduct = () => {
                                     value={statusForm.status}
                                     disabled
                                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#009FDC] bg-gray-100"
-                                >
+                                    >
                                     <option value="Rejected">Rejected</option>
                                 </select>
                             </div>
@@ -600,7 +600,7 @@ const CreateProduct = () => {
                                     placeholder="Enter rejection reason..."
                                     required
                                 />
-                            </div>
+                                </div>
                             <div className="flex justify-end space-x-3 pt-4">
                                 <button
                                     onClick={closeStatusModal}

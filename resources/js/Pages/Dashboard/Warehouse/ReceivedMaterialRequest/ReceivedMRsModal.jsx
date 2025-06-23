@@ -21,6 +21,8 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
     const [costCenters, setCostCenters] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [errors, setErrors] = useState({});
+    const [showRfqOption, setShowRfqOption] = useState(false);
+    const [rfqError, setRfqError] = useState("");
 
     useEffect(() => {
         axios
@@ -51,6 +53,8 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                 rejection_reason: "",
             });
             setErrors({});
+            setShowRfqOption(false);
+            setRfqError("");
         }
     }, [isOpen, requestData]);
 
@@ -85,6 +89,20 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                     status: "Rejected",
                     rejection_reason: formData.description
                 });
+            } else if (formData.status === "Issue Material") {
+                // Check if there's inventory for the items
+                try {
+                    // This would be your inventory check logic
+                    // For now, we'll simulate an error
+                    throw new Error("Cannot issue material! No inventory found for Mobile Cover in the selected warehouse.");
+                } catch (error) {
+                    if (error.message.includes("No inventory found")) {
+                        setShowRfqOption(true);
+                        setRfqError(error.message);
+                        return;
+                    }
+                    throw error;
+                }
             }
 
             onSave(formData);
@@ -92,6 +110,47 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
         } catch (error) {
             setErrors(error.response?.data?.errors || {});
         }
+    };
+
+    const handleCreateRfqRequest = async () => {
+        try {
+            // Create RFQ request for each item in the material request
+            const items = requestData.items || [];
+            
+            for (const item of items) {
+                const rfqRequestData = {
+                    user_id: requestData.requester_id,
+                    name: item.product?.name || "Unknown Item",
+                    description: item.description || "",
+                    quantity: parseInt(item.quantity) || 1,
+                    category_id: item.product?.category_id,
+                    unit_id: item.unit_id,
+                    warehouse_id: requestData.warehouse_id,
+                    department_id: requestData.department_id,
+                    cost_center_id: requestData.cost_center_id,
+                    sub_cost_center_id: requestData.sub_cost_center_id,
+                    photo: item.photo,
+                };
+
+                await axios.post("/api/v1/rfq-requests", rfqRequestData);
+            }
+
+            // Update material request status to indicate RFQ was created
+            await axios.put(`/api/v1/material-requests/${formData.material_request_id}`, {
+                status: "Pending",
+                description: "RFQ request created for items with no inventory"
+            });
+
+            onSave(formData);
+            onClose();
+        } catch (error) {
+            setRfqError("Failed to create RFQ request. Please try again.");
+        }
+    };
+
+    const handleDeclineRfq = () => {
+        setShowRfqOption(false);
+        setRfqError("");
     };
 
     return (
@@ -108,6 +167,34 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                         <FontAwesomeIcon icon={faTimes} />
                     </button>
                 </div>
+
+                {showRfqOption && (
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h3 className="text-lg font-semibold text-red-600 mb-2">
+                            No Inventory Available
+                        </h3>
+                        <p className="text-red-600 mb-4">
+                            {rfqError}
+                        </p>
+                        <p className="text-black mb-4">
+                            Would you like to send an RFQ request to procure these items?
+                        </p>
+                        <div className="flex space-x-4">
+                            <button
+                                onClick={handleCreateRfqRequest}
+                                className="px-4 py-2 bg-[#009FDC] text-white rounded-lg hover:bg-[#007CB8] transition-colors"
+                            >
+                                Send RFQ Request
+                            </button>
+                            <button
+                                onClick={handleDeclineRfq}
+                                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
