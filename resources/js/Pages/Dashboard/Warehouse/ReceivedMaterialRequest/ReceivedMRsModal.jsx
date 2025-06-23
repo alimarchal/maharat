@@ -23,6 +23,7 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
     const [errors, setErrors] = useState({});
     const [showRfqOption, setShowRfqOption] = useState(false);
     const [rfqError, setRfqError] = useState("");
+    const [rfqAlreadyRequested, setRfqAlreadyRequested] = useState(false);
 
     useEffect(() => {
         axios
@@ -56,6 +57,37 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
             setShowRfqOption(false);
             setRfqError("");
         }
+    }, [isOpen, requestData]);
+
+    useEffect(() => {
+        // Check if RFQ request already exists for this material request
+        const checkRfqRequest = async () => {
+            if (isOpen && requestData && requestData.items && requestData.items.length > 0) {
+                try {
+                    // Check for any RFQ request for any of the items in this material request
+                    const rfqRes = await axios.get('/api/v1/rfq-requests', {
+                        params: {
+                            user_id: requestData.requester_id,
+                            warehouse_id: requestData.warehouse_id,
+                            // Optionally filter by item name or product id if needed
+                        }
+                    });
+                    const rfqRequests = rfqRes.data?.data || [];
+                    // If any RFQ request exists for any item in this MR, consider it already requested
+                    const alreadyRequested = requestData.items.some(item =>
+                        rfqRequests.some(r =>
+                            (r.name === item.product?.name || r.product_id === item.product?.id)
+                        )
+                    );
+                    setRfqAlreadyRequested(alreadyRequested);
+                } catch (err) {
+                    setRfqAlreadyRequested(false);
+                }
+            } else {
+                setRfqAlreadyRequested(false);
+            }
+        };
+        checkRfqRequest();
     }, [isOpen, requestData]);
 
     const handleChange = (e) => {
@@ -180,12 +212,16 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                             Would you like to send an RFQ request to procure these items?
                         </p>
                         <div className="flex space-x-4">
-                            <button
-                                onClick={handleCreateRfqRequest}
-                                className="px-4 py-2 bg-[#009FDC] text-white rounded-lg hover:bg-[#007CB8] transition-colors"
-                            >
-                                Send RFQ Request
-                            </button>
+                            {rfqAlreadyRequested ? (
+                                <span className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">RFQ already requested</span>
+                            ) : (
+                                <button
+                                    onClick={handleCreateRfqRequest}
+                                    className="px-4 py-2 bg-[#009FDC] text-white rounded-lg hover:bg-[#007CB8] transition-colors"
+                                >
+                                    Send RFQ Request
+                                </button>
+                            )}
                             <button
                                 onClick={handleDeclineRfq}
                                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
