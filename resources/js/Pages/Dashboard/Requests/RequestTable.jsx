@@ -118,108 +118,116 @@ const RequestTable = ({ selectedFilter }) => {
                                 {error}
                             </td>
                         </tr>
-                    ) : requests.length > 0 ? (
-                        requests
-                            .filter(
-                                (req) =>
-                                    selectedFilter === "All" ||
-                                    req.status?.name === selectedFilter
-                            )
-                            .map((req) => (
-                                <tr key={req.id}>
-                                    <td className="py-3 px-4">MR-{req.id}</td>
-                                    <td className="py-3 px-4">
-                                        <div className="flex flex-col">
-                                            {req.items?.map((item, index) => (
-                                                <span
-                                                    key={index}
-                                                    className="block"
-                                                >
-                                                    {item.product?.name}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {req.warehouse?.name || "N/A"}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {req.costCenter?.name || "N/A"}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {req.subCostCenter?.name || "N/A"}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {req.department?.name || "N/A"}
-                                    </td>
+                    ) : (() => {
+                        const filteredRequests = requests.filter(
+                            (req) =>
+                                selectedFilter === "All" ||
+                                req.status?.name === selectedFilter
+                        );
+                        
+                        if (filteredRequests.length === 0) {
+                            return (
+                                <tr>
                                     <td
-                                        className={`py-3 px-4 ${
-                                            priorityColors[
-                                                req.items?.[0]?.urgency_status
-                                                    ?.name
-                                            ]
-                                        }`}
+                                        colSpan="10"
+                                        className="text-center text-[#2C323C] font-medium py-4"
                                     >
-                                        {req.items?.[0]?.urgency_status?.name}
+                                        No requests available.
                                     </td>
-                                    <td
-                                        className={`py-3 px-4 font-semibold ${
-                                            statusColors[req.status?.name]
-                                        }`}
-                                    >
-                                        {req.status?.name}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        <div className="flex flex-col">
+                                </tr>
+                            );
+                        }
+                        
+                        return filteredRequests.map((req) => (
+                            <tr key={req.id}>
+                                <td className="py-3 px-4">MR-{req.id}</td>
+                                <td className="py-3 px-4">
+                                    <div className="flex flex-col">
+                                        {req.items?.map((item, index) => (
+                                            <span
+                                                key={index}
+                                                className="block"
+                                            >
+                                                {item.product?.name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                    {req.warehouse?.name || "N/A"}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {req.costCenter?.name || "N/A"}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {req.subCostCenter?.name || "N/A"}
+                                </td>
+                                <td className="py-3 px-4">
+                                    {req.department?.name || "N/A"}
+                                </td>
+                                <td
+                                    className={`py-3 px-4 ${
+                                        priorityColors[
+                                            req.items?.[0]?.urgency_status
+                                                ?.name
+                                        ]
+                                    }`}
+                                >
+                                    {req.items?.[0]?.urgency_status?.name}
+                                </td>
+                                <td
+                                    className={`py-3 px-4 font-semibold ${
+                                        statusColors[req.status?.name]
+                                    }`}
+                                >
+                                    {req.status?.name}
+                                </td>
+                                <td className="py-3 px-4">
+                                    <div className="flex flex-col">
+                                        {req.created_at
+                                            ? new Date(
+                                                  req.created_at
+                                              ).toLocaleDateString()
+                                            : "N/A"}
+                                        <span className="text-gray-400">
                                             {req.created_at
                                                 ? new Date(
                                                       req.created_at
-                                                  ).toLocaleDateString()
-                                                : "N/A"}
-                                            <span className="text-gray-400">
-                                                {req.created_at
-                                                    ? new Date(
-                                                          req.created_at
-                                                      ).toLocaleTimeString()
-                                                    : ""}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="py-3 px-4 flex justify-center space-x-3">
-                                        <button
-                                            onClick={() => handleViewRequest(req)}
-                                            className="text-[#9B9DA2] hover:text-gray-500"
-                                            title="View Request"
-                                        >
-                                            <FontAwesomeIcon icon={faEye} />
-                                        </button>
-                                        <Link
-                                            href={`/my-requests/${req.id}/edit`}
-                                            className="text-blue-400 hover:text-blue-500"
-                                            title="Edit Request"
-                                        >
-                                            <FontAwesomeIcon icon={faEdit} />
-                                        </Link>
-                                        <button
-                                            onClick={() => handleDelete(req.id)}
-                                            className="text-red-600 hover:text-red-800"
-                                            title="Delete Request"
-                                        >
-                                            <FontAwesomeIcon icon={faTrash} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                    ) : (
-                        <tr>
-                            <td
-                                colSpan="10"
-                                className="text-center text-[#2C323C] font-medium py-4"
-                            >
-                                No Material Requests found.
-                            </td>
-                        </tr>
-                    )}
+                                                  ).toLocaleTimeString()
+                                                : ""}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td className="py-3 px-4 flex justify-center space-x-3">
+                                    <button
+                                        onClick={() => handleViewRequest(req)}
+                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                        title="View Request"
+                                    >
+                                        <FontAwesomeIcon icon={faEye} />
+                                    </button>
+                                    {req.status?.name === "Draft" && (
+                                        <>
+                                            <Link
+                                                href={`/my-requests/${req.id}/edit`}
+                                                className="text-blue-400 hover:text-blue-500"
+                                                title="Edit Request"
+                                            >
+                                                <FontAwesomeIcon icon={faEdit} />
+                                            </Link>
+                                            <button
+                                                onClick={() => handleDelete(req.id)}
+                                                className="text-red-600 hover:text-red-800"
+                                                title="Delete Request"
+                                            >
+                                                <FontAwesomeIcon icon={faTrash} />
+                                            </button>
+                                        </>
+                                    )}
+                                </td>
+                            </tr>
+                        ));
+                    })()}
                 </tbody>
             </table>
 

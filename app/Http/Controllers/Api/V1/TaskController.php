@@ -251,7 +251,6 @@ class TaskController extends Controller
                         ->where('id', $approvalTransaction->id)
                         ->update([
                             'status' => 'Reject',
-                            'updated_by' => auth()->id(),
                             'updated_at' => now()
                         ]);
 
@@ -990,6 +989,181 @@ class TaskController extends Controller
                     Log::warning('=== NO APPROVAL TRANSACTION FOUND FOR PURCHASE ORDER REJECTION ===', [
                         'task_id' => $task->id,
                         'purchase_order_id' => $task->purchase_order_id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+                }
+            }
+
+            // Check if this is a Material Request task and if it's being approved
+            if ($task->material_request_id && $request->input('status') === 'Approved') {
+                Log::info('=== MATERIAL REQUEST TASK APPROVAL CHECK ===', [
+                    'task_id' => $task->id,
+                    'material_request_id' => $task->material_request_id,
+                    'current_order_no' => $task->order_no,
+                    'current_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id')
+                ]);
+
+                // Update the corresponding approval transaction
+                $approvalTransaction = DB::table('material_request_transactions')
+                    ->where('material_request_id', $task->material_request_id)
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->first();
+
+                if ($approvalTransaction) {
+                    Log::info('=== UPDATING MATERIAL REQUEST APPROVAL TRANSACTION ===', [
+                        'task_id' => $task->id,
+                        'material_request_id' => $task->material_request_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+
+                    // Update the approval transaction status
+                    $transactionUpdated = DB::table('material_request_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => 'Approve',
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== MATERIAL REQUEST APPROVAL TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'material_request_id' => $task->material_request_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_success' => $transactionUpdated
+                    ]);
+
+                    if ($transactionUpdated) {
+                        // Check if this is the final approval
+                        $totalApprovals = DB::table('material_request_transactions')
+                            ->where('material_request_id', $task->material_request_id)
+                            ->count();
+
+                        $completedApprovals = DB::table('material_request_transactions')
+                            ->where('material_request_id', $task->material_request_id)
+                            ->where('status', 'Approve')
+                            ->count();
+
+                        $isFinalApproval = $completedApprovals === $totalApprovals;
+
+                        Log::info('=== MATERIAL REQUEST FINAL APPROVAL CHECK ===', [
+                            'task_id' => $task->id,
+                            'material_request_id' => $task->material_request_id,
+                            'total_approvals' => $totalApprovals,
+                            'completed_approvals' => $completedApprovals,
+                            'is_final_approval' => $isFinalApproval
+                        ]);
+
+                        if ($isFinalApproval) {
+                            Log::info('=== FINAL MATERIAL REQUEST APPROVAL - UPDATING STATUS TO PENDING ===', [
+                                'task_id' => $task->id,
+                                'material_request_id' => $task->material_request_id,
+                                'current_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id'),
+                                'target_status_id' => 1
+                            ]);
+
+                            // Update the material request status to Pending (status_id = 1)
+                            $materialRequestUpdated = DB::table('material_requests')
+                                ->where('id', $task->material_request_id)
+                                ->update([
+                                    'status_id' => 1, // Pending
+                                    'updated_at' => now()
+                                ]);
+
+                            Log::info('=== MATERIAL REQUEST STATUS UPDATE RESULT ===', [
+                                'task_id' => $task->id,
+                                'material_request_id' => $task->material_request_id,
+                                'update_success' => $materialRequestUpdated,
+                                'new_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id')
+                            ]);
+                        } else {
+                            Log::info('=== NOT FINAL MATERIAL REQUEST APPROVAL - UPDATING STATUS TO REFERRED ===', [
+                                'task_id' => $task->id,
+                                'material_request_id' => $task->material_request_id,
+                                'total_approvals' => $totalApprovals,
+                                'completed_approvals' => $completedApprovals
+                            ]);
+
+                            // Update the material request status to Referred (status_id = 2)
+                            $materialRequestUpdated = DB::table('material_requests')
+                                ->where('id', $task->material_request_id)
+                                ->update([
+                                    'status_id' => 2, // Referred
+                                    'updated_at' => now()
+                                ]);
+
+                            Log::info('=== MATERIAL REQUEST STATUS UPDATE TO REFERRED RESULT ===', [
+                                'task_id' => $task->id,
+                                'material_request_id' => $task->material_request_id,
+                                'update_success' => $materialRequestUpdated,
+                                'new_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id')
+                            ]);
+                        }
+                    }
+                } else {
+                    Log::warning('=== NO APPROVAL TRANSACTION FOUND FOR MATERIAL REQUEST ===', [
+                        'task_id' => $task->id,
+                        'material_request_id' => $task->material_request_id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+                }
+            }
+
+            // Check if this is a Material Request task and if it's being rejected
+            if ($task->material_request_id && $request->input('status') === 'Rejected') {
+                Log::info('=== MATERIAL REQUEST TASK REJECTION CHECK ===', [
+                    'task_id' => $task->id,
+                    'material_request_id' => $task->material_request_id,
+                    'current_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id')
+                ]);
+
+                // Update the corresponding approval transaction
+                $approvalTransaction = DB::table('material_request_transactions')
+                    ->where('material_request_id', $task->material_request_id)
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->first();
+
+                if ($approvalTransaction) {
+                    Log::info('=== UPDATING MATERIAL REQUEST APPROVAL TRANSACTION FOR REJECTION ===', [
+                        'task_id' => $task->id,
+                        'material_request_id' => $task->material_request_id,
+                        'approval_transaction_id' => $approvalTransaction->id
+                    ]);
+
+                    // Update the approval transaction status
+                    $transactionUpdated = DB::table('material_request_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => 'Reject',
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== MATERIAL REQUEST REJECTION TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'material_request_id' => $task->material_request_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_success' => $transactionUpdated
+                    ]);
+
+                    if ($transactionUpdated) {
+                        // Immediately update material request status to Rejected (status_id = 3)
+                        $materialRequestUpdated = DB::table('material_requests')
+                            ->where('id', $task->material_request_id)
+                            ->update([
+                                'status_id' => 3, // Rejected
+                                'updated_at' => now()
+                            ]);
+
+                        Log::info('=== MATERIAL REQUEST REJECTION STATUS UPDATE RESULT ===', [
+                            'task_id' => $task->id,
+                            'material_request_id' => $task->material_request_id,
+                            'update_success' => $materialRequestUpdated,
+                            'new_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id')
+                        ]);
+                    }
+                } else {
+                    Log::warning('=== NO APPROVAL TRANSACTION FOUND FOR MATERIAL REQUEST REJECTION ===', [
+                        'task_id' => $task->id,
+                        'material_request_id' => $task->material_request_id,
                         'assigned_to' => $task->assigned_to_user_id
                     ]);
                 }
