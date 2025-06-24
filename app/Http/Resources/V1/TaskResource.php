@@ -47,7 +47,7 @@ class TaskResource extends JsonResource
             'invoice' => new InvoiceResource($this->whenLoaded('invoice')),
             'budget' => new BudgetResource($this->whenLoaded('budget')),
             'budget_approval_transaction' => new BudgetApprovalTransactionResource($this->whenLoaded('budget_approval_transaction')),
-            'request_budget' => new BudgetApprovalTransactionResource($this->whenLoaded('request_budget')),
+            'request_budget' => new \App\Http\Resources\RequestBudgetResource($this->whenLoaded('request_budget')),
         ];
     }
 }

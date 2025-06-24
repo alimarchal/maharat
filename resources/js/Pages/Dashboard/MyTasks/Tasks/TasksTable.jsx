@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import { usePage } from "@inertiajs/react";
+import ViewTaskModal from "./ViewTaskModal";
 
 const TasksTable = () => {
     const user_id = usePage().props.auth.user.id;
@@ -11,6 +12,8 @@ const TasksTable = () => {
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [selectedTask, setSelectedTask] = useState(null);
 
     const [selectedFilter, setSelectedFilter] = useState("All");
     const filters = ["All", "Pending", "Approved", "Referred", "Rejected"];
@@ -20,7 +23,7 @@ const TasksTable = () => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/tasks?include=processStep,process,assignedFromUser,assignedToUser,descriptions&page=${currentPage}&filter[assigned_to_user_id]=${user_id}`
+                    `/api/v1/tasks?include=processStep,process,assignedFromUser,assignedToUser,descriptions,material_request,material_request.items,material_request.items.product,material_request.items.unit,material_request.items.category,material_request.items.urgencyStatus,material_request.requester,material_request.warehouse,material_request.department,material_request.costCenter,rfq,rfq.items,rfq.items.product,rfq.items.unit,rfq.items.category,rfq.user,rfq.warehouse,rfq.department,rfq.costCenter,purchase_order,purchase_order.items,purchase_order.items.product,purchase_order.items.unit,purchase_order.supplier,purchase_order.user,purchase_order.currency,payment_order,payment_order.supplier,payment_order.user,payment_order.currency,invoice,invoice.items,invoice.items.product,invoice.items.unit,invoice.customer,invoice.user,invoice.currency,budget,budget.items,budget.items.category,budget.items.currency,budget.department,budget.costCenter,budget.currency,request_budget,request_budget.department,request_budget.costCenter,request_budget.currency&page=${currentPage}&filter[assigned_to_user_id]=${user_id}`
                 );
                 const data = await response.json();
                 if (response.ok) {
@@ -44,6 +47,11 @@ const TasksTable = () => {
         Approved: "text-green-500",
         Rejected: "text-red-500",
         Referred: "text-blue-500",
+    };
+
+    const handleViewTask = (task) => {
+        setSelectedTask(task);
+        setIsViewModalOpen(true);
     };
 
     return (
@@ -75,7 +83,6 @@ const TasksTable = () => {
                             Task Name
                         </th>
                         <th className="py-3 px-4">Created At</th>
-                        <th className="py-3 px-4">Deadline</th>
                         <th className="py-3 px-4">Urgency</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">From</th>
@@ -131,22 +138,6 @@ const TasksTable = () => {
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="py-3 px-4">
-                                        <div className="flex flex-col">
-                                            {req.deadline
-                                                ? new Date(
-                                                      req.deadline
-                                                  ).toLocaleDateString()
-                                                : "N/A"}
-                                            <span className="text-gray-400">
-                                                {req.deadline
-                                                    ? new Date(
-                                                          req.deadline
-                                                      ).toLocaleTimeString()
-                                                    : ""}
-                                            </span>
-                                        </div>
-                                    </td>
                                     <td className="py-3 px-4">{req.urgency}</td>
                                     <td
                                         className={`py-3 px-4 ${
@@ -161,7 +152,11 @@ const TasksTable = () => {
                                         {req.assigned_from_user?.name}
                                     </td>
                                     <td className="py-3 px-4 flex justify-center text-center space-x-3">
-                                        <button className="text-[#9B9DA2] hover:text-gray-500">
+                                        <button 
+                                            onClick={() => handleViewTask(req)}
+                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            title="View Task"
+                                        >
                                             <FontAwesomeIcon icon={faEye} />
                                         </button>
                                         {req.status !== "Approved" && (
@@ -221,6 +216,15 @@ const TasksTable = () => {
                         Next
                     </button>
                 </div>
+            )}
+
+            {/* View Task Modal */}
+            {isViewModalOpen && (
+                <ViewTaskModal
+                    isOpen={isViewModalOpen}
+                    onClose={() => setIsViewModalOpen(false)}
+                    task={selectedTask}
+                />
             )}
         </div>
     );
