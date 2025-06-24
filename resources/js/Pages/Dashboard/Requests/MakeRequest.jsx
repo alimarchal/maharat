@@ -17,7 +17,7 @@ const MakeRequest = () => {
         requester_id: user_id || "",
         warehouse_id: "",
         expected_delivery_date: "",
-        status_id: "1",
+        status_id: "53",
         cost_center_id: "",
         sub_cost_center_id: "",
         department_id: "",

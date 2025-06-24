@@ -124,9 +124,40 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
             } else if (formData.status === "Issue Material") {
                 // Check if there's inventory for the items
                 try {
-                    // This would be your inventory check logic
-                    // For now, we'll simulate an error
-                    throw new Error("Cannot issue material! No inventory found for Mobile Cover in the selected warehouse.");
+                    // Check inventory for each item in the request
+                    const items = requestData.items || [];
+                    let missingItems = [];
+                    
+                    for (const item of items) {
+                        const productId = item.product_id;
+                        const warehouseId = requestData.warehouse_id;
+                        const productName = item.product?.name || 'Unknown Product';
+                        const requestedQty = parseFloat(item.quantity);
+                        
+                        // Check current inventory quantity
+                        const inventoryResponse = await axios.get(`/api/v1/inventories`, {
+                            params: {
+                                'filter[warehouse_id]': warehouseId,
+                                'filter[product_id]': productId
+                            }
+                        });
+                        
+                        if (inventoryResponse.data?.data?.length === 0) {
+                            missingItems.push(productName);
+                        } else {
+                            const currentInventory = inventoryResponse.data.data[0];
+                            const currentQuantity = parseFloat(currentInventory.quantity) || 0;
+                            
+                            if (currentQuantity < requestedQty) {
+                                missingItems.push(`${productName} (Available: ${currentQuantity}, Requested: ${requestedQty})`);
+                            }
+                        }
+                    }
+                    
+                    if (missingItems.length > 0) {
+                        const errorMessage = `Cannot issue material! No inventory found for ${missingItems.join(', ')} in the selected warehouse.`;
+                        throw new Error(errorMessage);
+                    }
                 } catch (error) {
                     if (error.message.includes("No inventory found")) {
                         setShowRfqOption(true);

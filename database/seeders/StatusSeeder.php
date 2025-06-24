@@ -14,6 +14,7 @@ class StatusSeeder extends Seeder
     public function run(): void
     {
         $requests = [
+            ['type' => 'Request', 'name' => 'Draft'],
             ['type' => 'Request', 'name' => 'Pending'],
             ['type' => 'Request', 'name' => 'Referred'],
             ['type' => 'Request', 'name' => 'Rejected'],

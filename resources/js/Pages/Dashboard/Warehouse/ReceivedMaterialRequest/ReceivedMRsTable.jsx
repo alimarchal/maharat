@@ -26,7 +26,8 @@ const ReceivedMRsTable = () => {
                 params: {
                     include: 'requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus',
                     page: currentPage,
-                    per_page: 10
+                    per_page: 10,
+                    'filter[status_id]': '1,51,52' // Only fetch Issued (51), Pending (1), or Rejected (52) statuses
                 }
             });
             
@@ -126,15 +127,22 @@ const ReceivedMRsTable = () => {
 
                 // Check stock for each item
                 for (const item of currentRequest.items) {
+                    console.log('=== INVENTORY CHECK DEBUG ===');
+                    console.log('Full item object:', item);
+                    console.log('Item product_id:', item.product_id);
+                    console.log('Item product object:', item.product);
+                    console.log('Item product name:', item.product?.name);
+                    
                     const requestedQty = parseFloat(item.quantity);
-                    const productId = item.product_id;
+                    const productId = item.product_id; // This should be the actual product ID
                     const warehouseId = currentRequest.warehouse_id;
                     const productName = item.product?.name || 'Unknown Product';
 
                     console.log('Stock check details:', {
                         requestedQuantity: requestedQty,
                         productId,
-                        warehouseId
+                        warehouseId,
+                        productName
                     });
 
                     // Check current inventory quantity
@@ -144,6 +152,10 @@ const ReceivedMRsTable = () => {
                             'filter[product_id]': productId
                         }
                     });
+
+                    console.log('Inventory API URL:', `/api/v1/inventories?filter[warehouse_id]=${warehouseId}&filter[product_id]=${productId}`);
+                    console.log('Inventory response:', inventoryResponse.data);
+                    console.log('Inventory data length:', inventoryResponse.data?.data?.length);
 
                     if (inventoryResponse.data?.data?.length > 0) {
                         const currentInventory = inventoryResponse.data.data[0];
@@ -162,7 +174,11 @@ const ReceivedMRsTable = () => {
                         }
                     } else {
                         const errorMessage = `Cannot issue material! No inventory found for ${productName} in the selected warehouse.`;
-                        // alert(errorMessage); // Removed duplicate popup
+                        console.log('=== INVENTORY NOT FOUND ERROR ===');
+                        console.log('Product Name:', productName);
+                        console.log('Product ID:', productId);
+                        console.log('Warehouse ID:', warehouseId);
+                        alert(errorMessage);
                         return;
                     }
                 }
@@ -186,15 +202,17 @@ const ReceivedMRsTable = () => {
 
             // Only proceed with issue material creation if status is "Issue Material"
             if (formData.status === "Issue Material") {
-                // Create issue material record
+                const currentRequest = requests.find(r => r.id === formData.material_request_id);
+                
+                // Create issue material record with proper items mapping
                 const issueMaterialPayload = {
                     material_request_id: formData.material_request_id,
-                    items: Array.isArray(formData.items) ? formData.items.map(item => ({
+                    items: currentRequest.items.map(item => ({
                         product_id: item.product_id,
-                        quantity: item.requestedQty,
+                        quantity: parseFloat(item.quantity),
                         unit_id: item.unit_id,
                         description: item.description || null
-                    })) : [],
+                    })),
                     cost_center_id: formData.cost_center_id,
                     sub_cost_center_id: formData.sub_cost_center_id,
                     department_id: formData.department_id,
@@ -208,8 +226,42 @@ const ReceivedMRsTable = () => {
                 const issueMaterialResponse = await axios.post('/api/v1/issue-materials', issueMaterialPayload);
                 console.log('Issue materials response:', issueMaterialResponse.data);
 
-                // Process stock operations
-                await processStockOperations(formData);
+                // Process stock operations for each item
+                for (const item of currentRequest.items) {
+                    const requestedQty = parseFloat(item.quantity);
+                    const productId = item.product_id;
+                    const warehouseId = currentRequest.warehouse_id;
+
+                    // Get current inventory
+                    const inventoryResponse = await axios.get(`/api/v1/inventories`, {
+                        params: {
+                            'filter[warehouse_id]': warehouseId,
+                            'filter[product_id]': productId
+                        }
+                    });
+
+                    if (inventoryResponse.data?.data?.length > 0) {
+                        const currentInventory = inventoryResponse.data.data[0];
+                        const currentQuantity = parseFloat(currentInventory.quantity) || 0;
+                        const newQuantity = currentQuantity - requestedQty;
+
+                        // Update inventory with stock out
+                        await axios.put(`/api/v1/inventories/${currentInventory.id}`, {
+                            warehouse_id: warehouseId,
+                            product_id: productId,
+                            quantity: newQuantity,
+                            reorder_level: currentInventory.reorder_level,
+                            description: currentInventory.description,
+                            transaction_type: 'stock_out',
+                            reference_type: 'issue_material',
+                            reference_id: issueMaterialResponse.data.data.id,
+                            reference_number: `IM-${issueMaterialResponse.data.data.id}`,
+                            notes: `Stock out for material request #${formData.material_request_id}`
+                        });
+
+                        console.log(`Updated inventory for product ${item.product?.name}: ${currentQuantity} -> ${newQuantity}`);
+                    }
+                }
             }
 
             toast.success('Request processed successfully');
