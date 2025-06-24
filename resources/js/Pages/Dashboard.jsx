@@ -77,6 +77,7 @@ import Quotations from "./Dashboard/ProcurementCenter/Quotations/Quotations";
 import NewQuotation from "./Dashboard/ProcurementCenter/Quotations/NewQuotation";
 import QuotationRFQ from "./Dashboard/ProcurementCenter/Quotations/QuotationRFQ";
 import AddQuotationForm from "./Dashboard/ProcurementCenter/RFQ/AddQuotationForm";
+import AccountDetailsTable from "./Dashboard/Finance/Accounts/AccountDetailsTable";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -116,6 +117,7 @@ export default function Dashboard({ auth, page }) {
         if (page === "Finance/MaharatInvoices/CreateMaharatInvoice")
             return <CreateMaharatInvoice />;
         if (page === "Finance/Accounts/AccountsTable") return <AccountsTable />;
+        if (page === "Finance/Accounts/AccountDetailsTable") return <AccountDetailsTable />;
         if (page === "Finance/PaymentOrder/PaymentOrderTable")
             return <PaymentOrderTable />;
         if (page === "Finance/PaymentOrder/CreatePaymentOrderTable")

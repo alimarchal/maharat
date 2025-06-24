@@ -241,6 +241,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/accounts', function () {
         return Inertia::render('Dashboard', ['page' => 'Finance/Accounts/AccountsTable']);
     })->name('accounts.page');
+    Route::get('/accounts/{id}/details', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'Finance/Accounts/AccountDetailsTable', 'accountId' => $id]);
+    })->name('accounts.index');
 
     Route::get('/payment-orders', function () {
         return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/PaymentOrderTable']);
