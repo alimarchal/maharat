@@ -4,6 +4,7 @@ namespace App\Http\Resources\V1;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\RequestBudgetResource;
 
 class InvoiceResource extends JsonResource
 {
@@ -36,33 +37,9 @@ class InvoiceResource extends JsonResource
             'paid_amount' => $this->paid_amount,
             'currency' => $this->currency,
             'notes' => $this->notes,
+            'account_code_id' => $this->account_code_id,
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,
-
-            'company' => $this->whenLoaded('company', function () {
-                return [
-                    'id' => $this->company->id,
-                    'name' => $this->company->name,
-                    'address' => $this->company->address,
-                    'cr_no' => $this->company->cr_no,
-                    'vat_no' => $this->company->vat_no,
-                    'contact_number' => $this->company->contact_number,
-                    'email' => $this->company->email,
-                    'account_name' => $this->company->account_name,
-                    'account_no' => $this->company->account_no,
-                    'license_no' => $this->company->license_no,
-                    'iban' => $this->company->iban,
-                    'bank' => $this->company->bank,
-                    'branch' => $this->company->branch,
-                    'swift' => $this->company->swift,
-                    'currency' => $this->whenLoaded('currency', function () {
-                        return [
-                            'id' => $this->company->currency->id,
-                            'name' => $this->company->currency->name,
-                        ];
-                    }),
-                ];
-            }),
 
             'client' => new CustomerResource($this->whenLoaded('client')),
             'items' => InvoiceItemResource::collection($this->whenLoaded('items')),

@@ -222,16 +222,17 @@ class MahratInvoiceApprovalTransactionController extends Controller
                                 // Update accounts after successful budget update
                                 Log::info('=== UPDATING ACCOUNTS FOR APPROVED INVOICE ===', [
                                     'invoice_id' => $updatedInvoice->id,
-                                    'total_amount' => $updatedInvoice->total_amount,
-                                    'tax_amount' => $updatedInvoice->tax_amount
+                                    'subtotal' => $updatedInvoice->subtotal,
+                                    'tax_amount' => $updatedInvoice->tax_amount,
+                                    'total_amount' => $updatedInvoice->total_amount
                                 ]);
 
-                                // Update Revenue/Income account (ID 4)
+                                // Update Revenue/Income account (ID 4) with subtotal
                                 $revenueAccountUpdated = DB::table('accounts')
                                     ->where('id', 4)
                                     ->where('name', 'Revenue/Income')
                                     ->update([
-                                        'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $updatedInvoice->total_amount),
+                                        'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $updatedInvoice->subtotal),
                                         'updated_at' => now()
                                     ]);
 
@@ -239,38 +240,57 @@ class MahratInvoiceApprovalTransactionController extends Controller
                                     'invoice_id' => $updatedInvoice->id,
                                     'account_id' => 4,
                                     'account_name' => 'Revenue/Income',
-                                    'amount_added' => $updatedInvoice->total_amount,
+                                    'amount_added' => $updatedInvoice->subtotal,
                                     'update_success' => $revenueAccountUpdated
                                 ]);
 
-                                // Update VAT Collected account (ID 9)
+                                // Update VAT Receivables account (ID 13) with tax_amount
                                 $vatAccountUpdated = DB::table('accounts')
-                                    ->where('id', 9)
-                                    ->where('name', 'VAT Collected (on Maharat invoices)')
+                                    ->where('id', 13)
+                                    ->where('name', 'VAT Receivables (On Maharat Invoice)')
                                     ->update([
                                         'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $updatedInvoice->tax_amount),
                                         'updated_at' => now()
                                     ]);
 
-                                Log::info('=== VAT ACCOUNT UPDATE RESULT ===', [
+                                Log::info('=== VAT RECEIVABLES ACCOUNT UPDATE RESULT ===', [
                                     'invoice_id' => $updatedInvoice->id,
-                                    'account_id' => 9,
-                                    'account_name' => 'VAT Collected (on Maharat invoices)',
+                                    'account_id' => 13,
+                                    'account_name' => 'VAT Receivables (On Maharat Invoice)',
                                     'amount_added' => $updatedInvoice->tax_amount,
                                     'update_success' => $vatAccountUpdated
                                 ]);
 
-                                if ($revenueAccountUpdated && $vatAccountUpdated) {
+                                // Update Account Receivable account (ID 11) with total_amount
+                                $receivableAccountUpdated = DB::table('accounts')
+                                    ->where('id', 11)
+                                    ->where('name', 'Account Receivable')
+                                    ->update([
+                                        'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $updatedInvoice->total_amount),
+                                        'updated_at' => now()
+                                    ]);
+
+                                Log::info('=== ACCOUNT RECEIVABLE UPDATE RESULT ===', [
+                                    'invoice_id' => $updatedInvoice->id,
+                                    'account_id' => 11,
+                                    'account_name' => 'Account Receivable',
+                                    'amount_added' => $updatedInvoice->total_amount,
+                                    'update_success' => $receivableAccountUpdated
+                                ]);
+
+                                if ($revenueAccountUpdated && $vatAccountUpdated && $receivableAccountUpdated) {
                                     Log::info('=== ALL ACCOUNT UPDATES COMPLETED SUCCESSFULLY ===', [
                                         'invoice_id' => $updatedInvoice->id,
                                         'revenue_account_updated' => $revenueAccountUpdated,
-                                        'vat_account_updated' => $vatAccountUpdated
+                                        'vat_receivables_account_updated' => $vatAccountUpdated,
+                                        'account_receivable_updated' => $receivableAccountUpdated
                                     ]);
                                 } else {
                                     Log::warning('=== SOME ACCOUNT UPDATES FAILED ===', [
                                         'invoice_id' => $updatedInvoice->id,
                                         'revenue_account_updated' => $revenueAccountUpdated,
-                                        'vat_account_updated' => $vatAccountUpdated
+                                        'vat_receivables_account_updated' => $vatAccountUpdated,
+                                        'account_receivable_updated' => $receivableAccountUpdated
                                     ]);
                                 }
                             } else {

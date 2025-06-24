@@ -572,7 +572,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 )}
 
                                 {/* Invoice Details */}
-                                {task.process.title === "Maharat Invoice Approval" && task.invoice && (
+                                {task.process.title === "Invoice Approval" && task.invoice && (
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
@@ -584,32 +584,40 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 <span className="font-medium ml-2">{task.invoice.invoice_number || "N/A"}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Customer:</span>
-                                                <span className="font-medium ml-2">{task.invoice.customer?.name || "N/A"}</span>
+                                                <span className="text-gray-600">Client:</span>
+                                                <span className="font-medium ml-2">{task.invoice.client?.name || "N/A"}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Amount:</span>
-                                                <span className="font-medium ml-2">{task.invoice.amount || "N/A"}</span>
+                                                <span className="text-gray-600">Representative:</span>
+                                                <span className="font-medium ml-2">{task.invoice.representative?.name || "N/A"}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Currency:</span>
-                                                <span className="font-medium ml-2">{task.invoice.currency?.name || "N/A"}</span>
+                                                <span className="text-gray-600">Status:</span>
+                                                <span className="font-medium ml-2">{task.invoice.status || "N/A"}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Invoice Date:</span>
-                                                <span className="font-medium ml-2">
-                                                    {task.invoice.invoice_date ? new Date(task.invoice.invoice_date).toLocaleDateString() : "N/A"}
-                                                </span>
+                                                <span className="text-gray-600">Issue Date:</span>
+                                                <span className="font-medium ml-2">{task.invoice.issue_date || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Due Date:</span>
-                                                <span className="font-medium ml-2">
-                                                    {task.invoice.due_date ? new Date(task.invoice.due_date).toLocaleDateString() : "N/A"}
-                                                </span>
+                                                <span className="font-medium ml-2">{task.invoice.due_date || "N/A"}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Created By:</span>
-                                                <span className="font-medium ml-2">{task.invoice.user?.name || "N/A"}</span>
+                                                <span className="text-gray-600">Subtotal:</span>
+                                                <span className="font-medium ml-2">{task.invoice.subtotal || "N/A"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600">Tax Amount:</span>
+                                                <span className="font-medium ml-2">{task.invoice.tax_amount || "N/A"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600">Total Amount:</span>
+                                                <span className="font-medium ml-2">{task.invoice.total_amount || "N/A"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600">Currency:</span>
+                                                <span className="font-medium ml-2">{task.invoice.currency || "N/A"}</span>
                                             </div>
                                         </div>
                                         
@@ -624,18 +632,20 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                                 <th className="px-3 py-2 text-left">Item</th>
                                                                 <th className="px-3 py-2 text-left">Quantity</th>
                                                                 <th className="px-3 py-2 text-left">Unit Price</th>
-                                                                <th className="px-3 py-2 text-left">Total Price</th>
-                                                                <th className="px-3 py-2 text-left">Unit</th>
+                                                                <th className="px-3 py-2 text-left">Subtotal</th>
+                                                                <th className="px-3 py-2 text-left">Tax Amount</th>
+                                                                <th className="px-3 py-2 text-left">Total</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y">
                                                             {task.invoice.items.map((item, index) => (
                                                                 <tr key={index}>
-                                                                    <td className="px-3 py-2">{item.product?.name || "N/A"}</td>
+                                                                    <td className="px-3 py-2">{item.name || "N/A"}</td>
                                                                     <td className="px-3 py-2">{item.quantity || "N/A"}</td>
                                                                     <td className="px-3 py-2">{item.unit_price || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.total_price || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.unit?.name || "N/A"}</td>
+                                                                    <td className="px-3 py-2">{item.subtotal || "N/A"}</td>
+                                                                    <td className="px-3 py-2">{item.tax_amount || "N/A"}</td>
+                                                                    <td className="px-3 py-2">{item.total || "N/A"}</td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>

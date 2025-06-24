@@ -10,11 +10,13 @@ use App\Http\Resources\V1\LedgerResource;
 use App\Models\Account;
 use App\Models\Ledger;
 use App\QueryParameters\AccountParameters;
+use App\Services\AccountBalancingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Spatie\QueryBuilder\QueryBuilder;
 
 class AccountController extends Controller
@@ -89,7 +91,60 @@ class AccountController extends Controller
         try {
             DB::beginTransaction();
 
+            // Store original values for comparison
+            $originalCreditAmount = $account->credit_amount;
+            $originalDebitAmount = $account->debit_amount;
+
+            // Update the account
             $account->update($request->validated());
+
+            // Check if this is the Cash account (ID 12) and if credit_amount is being increased
+            if ($account->id == 12 && $account->name === 'Cash' && 
+                $request->has('credit_amount') && 
+                $request->credit_amount > 0) {
+                
+                $creditAmount = $request->credit_amount;
+                
+                // Use the AccountBalancingService to handle automatic balancing
+                $balancingResults = AccountBalancingService::handleCashCreditBalancing(
+                    $account->id, 
+                    $creditAmount, 
+                    $originalCreditAmount
+                );
+                
+                // Log the results
+                if ($balancingResults['account_receivable_updated'] || $balancingResults['vat_collected_updated'] || $balancingResults['vat_receivables_updated']) {
+                    Log::info('=== ACCOUNT BALANCING COMPLETED ===', [
+                        'account_id' => $account->id,
+                        'account_name' => $account->name,
+                        'balancing_results' => $balancingResults
+                    ]);
+                }
+            }
+
+            // Check if this is the VAT Collected account (ID 9) and if credit_amount is being increased
+            if ($account->id == 9 && $account->name === 'VAT Collected (on Maharat invoices)' && 
+                $request->has('credit_amount') && 
+                $request->credit_amount > 0) {
+                
+                $creditAmount = $request->credit_amount;
+                
+                // Use the AccountBalancingService to handle VAT balancing
+                $vatBalancingResults = AccountBalancingService::handleVatCollectedBalancing(
+                    $account->id, 
+                    $creditAmount, 
+                    $originalCreditAmount
+                );
+                
+                // Log the results
+                if ($vatBalancingResults['vat_receivables_updated']) {
+                    Log::info('=== VAT BALANCING COMPLETED ===', [
+                        'account_id' => $account->id,
+                        'account_name' => $account->name,
+                        'balancing_results' => $vatBalancingResults
+                    ]);
+                }
+            }
 
             DB::commit();
 

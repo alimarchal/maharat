@@ -6,30 +6,23 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Invoice\StoreInvoiceRequest;
 use App\Http\Requests\V1\Invoice\UpdateInvoiceRequest;
 use App\Http\Resources\V1\InvoiceResource;
+use App\Http\Resources\V1\InvoiceCollection;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\QueryParameters\InvoiceParameters;
+use App\Services\BudgetValidationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Spatie\QueryBuilder\QueryBuilder;
 use Spatie\QueryBuilder\AllowedFilter;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class InvoiceController extends Controller
 {
-    /**
-     * Generate a unique invoice number with format INV-XXXXX
-     */
-    private function generateInvoiceNumber(): string
-    {
-        $latestInvoice = Invoice::orderBy('id', 'desc')->first();
-        $nextId = $latestInvoice ? $latestInvoice->id + 1 : 1;
-        return 'INV-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
-    }
-
     /**
      * Calculate line item totals
      */
@@ -73,6 +66,9 @@ class InvoiceController extends Controller
         ];
     }
 
+    /**
+     * Display a listing of invoices.
+     */
     public function index(): JsonResponse|ResourceCollection
     {
         $invoices = QueryBuilder::for(Invoice::class)
@@ -89,167 +85,208 @@ class InvoiceController extends Controller
             ], Response::HTTP_OK);
         }
 
-        return InvoiceResource::collection($invoices);
+        return new InvoiceCollection($invoices);
     }
 
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'invoice_number' => 'nullable|unique:invoices',
-            'client_id' => 'required|exists:customers,id',
-            'status' => 'required|in:Draft,Pending,Paid,Overdue,Cancelled',
-            'payment_method' => 'nullable|string',
-            'representative_id' => 'nullable|string',
-            'issue_date' => 'required|date',
-            'due_date' => 'nullable|date|after_or_equal:issue_date',
-            'vat_rate' => 'required|numeric|min:0',
-            'subtotal' => 'required|numeric',
-            'tax_amount' => 'nullable|numeric',
-            'discount_amount' => 'nullable|numeric',
-            'paid_amount' => 'nullable|numeric',
-            'total_amount' => 'required|numeric',
-            'currency' => 'required|string|size:3',
-        ]);
-
-        try {
-            $validated['invoice_number'] = $this->generateInvoiceNumber();
-            $invoice = Invoice::create($validated);
-            return new InvoiceResource($invoice);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to create invoice',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function show(string $id): JsonResponse
+    /**
+     * Store a newly created invoice in storage.
+     */
+    public function store(StoreInvoiceRequest $request): JsonResponse
     {
         try {
-            $invoice = Invoice::with(['client', 'items' => function($query) {
-                $query->select('id', 'invoice_id', 'name', 'description', 'quantity', 'unit_price', 'subtotal');
-            }])->findOrFail($id);
-
-        return response()->json([
-                'data' => [
-                    'id' => $invoice->id,
-                    'invoice_number' => $invoice->invoice_number,
-                    'client_id' => $invoice->client_id,
-                    'company' => $invoice->company,
-                    'status' => $invoice->status,
-                    'payment_method' => $invoice->payment_method,
-                    'representative_id' => $invoice->representative_id,
-                    'representative_email' => $invoice->representative_email,
-                    'issue_date' => $invoice->issue_date,
-                    'due_date' => $invoice->due_date,
-                    'discounted_days' => $invoice->discounted_days,
-                    'vat_rate' => $invoice->vat_rate,
-                    'subtotal' => $invoice->subtotal,
-                    'tax_amount' => $invoice->tax_amount,
-                    'discount_amount' => $invoice->discount_amount,
-                    'total_amount' => $invoice->total_amount,
-                    'paid_amount' => $invoice->paid_amount,
-                    'currency' => $invoice->currency,
-                    'notes' => $invoice->notes,
-                    'invoice_document' => $invoice->invoice_document,
-                    'items' => $invoice->items->map(function($item) {
-                        return [
-                            'id' => $item->id,
-                            'name' => $item->name,
-                            'description' => $item->description,
-                            'quantity' => $item->quantity,
-                            'unit_price' => $item->unit_price,
-                            'subtotal' => $item->subtotal
-                        ];
-                    })
-                ]
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to fetch invoice',
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-
-    public function update(Request $request, Invoice $invoice)
-    {
-        try {
-            $validated = $request->validate([
-                'issue_date' => 'required|date',
-                'due_date' => 'nullable|date|after_or_equal:issue_date',
-                'payment_method' => 'nullable|string',
-                'vat_rate' => 'required|numeric|min:0',
-                'client_id' => 'nullable|exists:customers,id',
-                'representative_id' => 'nullable|string',
-                'subtotal' => 'required|numeric|min:0',
-                'discount_amount' => 'nullable|numeric|min:0',
-                'tax_amount' => 'required|numeric|min:0',
-                'total_amount' => 'required|numeric|min:0',
-                'paid_amount' => 'nullable|numeric',
-                'status' => 'required|in:Draft,Approved,Pending,Paid,Partially_Paid,Overdue,Cancelled',
-                'currency' => 'required|string|size:3',
-                'items' => 'required|array',
-                'items.*.name' => 'required|string',
-                'items.*.description' => 'nullable|string',
-                'items.*.quantity' => 'required|numeric|min:0',
-                'items.*.unit_price' => 'required|numeric|min:0',
-                'items.*.subtotal' => 'required|numeric|min:0',
-                'items.*.tax_rate' => 'required|numeric|min:0',
-                'items.*.tax_amount' => 'required|numeric|min:0',
-                'items.*.total' => 'required|numeric|min:0'
-            ]);
-
             DB::beginTransaction();
 
-            // Remove items field before updating invoice
-            $invoiceData = collect($validated)->except('items')->toArray();
-            $invoice->update($invoiceData);
+            // Get validated data
+            $validatedData = $request->validated();
 
-            // Update items
-            $invoice->items()->delete(); // Remove old items
-            foreach ($validated['items'] as $item) {
-                $invoice->items()->create([
-                    'name' => $item['name'],
-                    'description' => $item['description'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'subtotal' => $item['subtotal'],
-                    'tax_rate' => $item['tax_rate'],
-                    'tax_amount' => $item['tax_amount'],
-                    'total' => $item['total']
-                ]);
+            // Add the authenticated user's ID as creator
+            $validatedData['created_by'] = auth()->id();
+            $validatedData['updated_by'] = auth()->id();
+
+            // Budget validation for invoice creation
+            $budgetService = new BudgetValidationService();
+            
+            // Get applicable fiscal periods for invoice date
+            $fiscalPeriods = $budgetService->getApplicableFiscalPeriods($validatedData['issue_date']);
+            
+            if ($fiscalPeriods->isEmpty()) {
+                throw new \Exception('Invoice date is not within any fiscal period range');
+            }
+
+            $fiscalPeriodId = null;
+            
+            // If multiple periods overlap, use the one provided in request or the most specific
+            if ($fiscalPeriods->count() > 1) {
+                if ($request->has('fiscal_period_id')) {
+                    $fiscalPeriodId = $request->input('fiscal_period_id');
+                    // Validate that the provided period is actually applicable
+                    if (!$fiscalPeriods->contains('id', $fiscalPeriodId)) {
+                        throw new \Exception('Selected fiscal period is not applicable for this invoice date');
+                    }
+                } else {
+                    // Use the most specific period (shortest duration)
+                    $fiscalPeriodId = $fiscalPeriods->first()->id;
+                }
+            } else {
+                $fiscalPeriodId = $fiscalPeriods->first()->id;
+            }
+
+            // For invoices, we need to validate that there's a budget available for revenue tracking
+            // This is different from purchase orders - we're checking if there's a budget to track revenue
+            $budgetValidation = $budgetService->validateBudgetAvailability(
+                $request->input('department_id', 1), // Default department if not provided
+                $request->input('cost_center_id', 1), // Default cost center if not provided
+                $request->input('sub_cost_center_id', 1), // Default sub cost center if not provided
+                $fiscalPeriodId,
+                0 // For invoices, we don't need to reserve budget, just check if budget exists
+            );
+
+            if (!$budgetValidation['valid']) {
+                throw new \Exception('No approved budget found for the specified criteria. Cannot create invoice without proper budget allocation.');
+            }
+
+            // Create invoice
+            $invoice = Invoice::create($validatedData);
+
+            // Handle invoice items if provided
+            if ($request->has('items') && is_array($request->input('items'))) {
+                foreach ($request->input('items') as $itemData) {
+                    $itemData['invoice_id'] = $invoice->id;
+                    InvoiceItem::create($itemData);
+                }
             }
 
             DB::commit();
 
             return response()->json([
+                'message' => 'Invoice created successfully',
+                'data' => new InvoiceResource($invoice->load(['items', 'client', 'representative']))
+            ], Response::HTTP_CREATED);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to create invoice',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Display the specified invoice.
+     */
+    public function show(string $id): JsonResponse
+    {
+        try {
+            $invoice = QueryBuilder::for(Invoice::class)
+                ->allowedIncludes(InvoiceParameters::ALLOWED_INCLUDES)
+                ->findOrFail($id);
+
+            return response()->json([
+                'data' => new InvoiceResource($invoice)
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Invoice not found',
+                'error' => $e->getMessage()
+            ], Response::HTTP_NOT_FOUND);
+        }
+    }
+
+    /**
+     * Update the specified invoice in storage.
+     */
+    public function update(UpdateInvoiceRequest $request, string $id): JsonResponse
+    {
+        try {
+            DB::beginTransaction();
+
+            $invoice = Invoice::findOrFail($id);
+            $validatedData = $request->validated();
+
+            // Add the authenticated user's ID as updater
+            $validatedData['updated_by'] = auth()->id();
+
+            // Budget validation for invoice update
+            if ($request->has('issue_date')) {
+                $budgetService = new BudgetValidationService();
+                
+                // Get applicable fiscal periods for invoice date
+                $fiscalPeriods = $budgetService->getApplicableFiscalPeriods($validatedData['issue_date']);
+                
+                if ($fiscalPeriods->isEmpty()) {
+                    throw new \Exception('Invoice date is not within any fiscal period range');
+                }
+
+                $fiscalPeriodId = null;
+                
+                // If multiple periods overlap, use the one provided in request or the most specific
+                if ($fiscalPeriods->count() > 1) {
+                    if ($request->has('fiscal_period_id')) {
+                        $fiscalPeriodId = $request->input('fiscal_period_id');
+                        // Validate that the provided period is actually applicable
+                        if (!$fiscalPeriods->contains('id', $fiscalPeriodId)) {
+                            throw new \Exception('Selected fiscal period is not applicable for this invoice date');
+                        }
+                    } else {
+                        // Use the most specific period (shortest duration)
+                        $fiscalPeriodId = $fiscalPeriods->first()->id;
+                    }
+                } else {
+                    $fiscalPeriodId = $fiscalPeriods->first()->id;
+                }
+
+                // Validate budget availability
+                $budgetValidation = $budgetService->validateBudgetAvailability(
+                    $request->input('department_id', 1),
+                    $request->input('cost_center_id', 1),
+                    $request->input('sub_cost_center_id', 1),
+                    $fiscalPeriodId,
+                    0
+                );
+
+                if (!$budgetValidation['valid']) {
+                    throw new \Exception('No approved budget found for the specified criteria. Cannot update invoice without proper budget allocation.');
+                }
+            }
+
+            $invoice->update($validatedData);
+
+            DB::commit();
+
+            return response()->json([
                 'message' => 'Invoice updated successfully',
-                'data' => $invoice->load('items')
-            ]);
+                'data' => new InvoiceResource($invoice->load(['items', 'client', 'representative']))
+            ], Response::HTTP_OK);
+
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
                 'message' => 'Failed to update invoice',
                 'error' => $e->getMessage()
-            ], 500);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-
-    public function destroy(Invoice $invoice): JsonResponse
+    /**
+     * Remove the specified invoice from storage.
+     */
+    public function destroy(string $id): JsonResponse
     {
         try {
             DB::beginTransaction();
+
+            $invoice = Invoice::findOrFail($id);
             $invoice->delete();
+
             DB::commit();
+
             return response()->json([
                 'message' => 'Invoice deleted successfully'
             ], Response::HTTP_OK);
+
         } catch (\Exception $e) {
             DB::rollBack();
-
             return response()->json([
                 'message' => 'Failed to delete invoice',
                 'error' => $e->getMessage()
@@ -257,81 +294,118 @@ class InvoiceController extends Controller
         }
     }
 
-    public function restore(string $id): JsonResponse
+    /**
+     * Get applicable fiscal periods for a given date
+     */
+    public function getApplicableFiscalPeriods(Request $request): JsonResponse
     {
         try {
-            DB::beginTransaction();
+            $date = $request->input('date');
+            if (!$date) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Date parameter is required'
+                ], Response::HTTP_BAD_REQUEST);
+            }
 
-            $invoice = Invoice::withTrashed()->findOrFail($id);
-            $invoice->restore();
-
-            DB::commit();
+            $budgetService = new BudgetValidationService();
+            $fiscalPeriods = $budgetService->getApplicableFiscalPeriods($date);
 
             return response()->json([
-                'message' => 'Invoice restored successfully',
-                'data' => new InvoiceResource($invoice->load('client', 'items'))
-            ], Response::HTTP_OK);
+                'success' => true,
+                'data' => $fiscalPeriods,
+                'message' => $fiscalPeriods->count() > 1 
+                    ? 'Multiple fiscal periods overlap for this date. Please select one.' 
+                    : 'Fiscal period found'
+            ]);
         } catch (\Exception $e) {
-            DB::rollBack();
-
+            \Log::error('Error getting applicable fiscal periods: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Failed to restore invoice',
+                'success' => false,
+                'message' => 'Failed to get applicable fiscal periods',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-    public function getPaymentMethods()
+    /**
+     * Validate budget availability for invoice creation
+     */
+    public function validateBudget(Request $request): JsonResponse
     {
         try {
-            // You can modify this array based on your requirements
-            $paymentMethods = ['Cash', 'Credit', 'Bank Transfer', 'Cheque'];
+            $request->validate([
+                'department_id' => 'required|integer',
+                'cost_center_id' => 'required|integer',
+                'sub_cost_center_id' => 'required|integer',
+                'fiscal_period_id' => 'required|integer',
+                'amount' => 'required|numeric|min:0'
+            ]);
+
+            $budgetService = new BudgetValidationService();
+            $validation = $budgetService->validateBudgetAvailability(
+                $request->input('department_id'),
+                $request->input('cost_center_id'),
+                $request->input('sub_cost_center_id'),
+                $request->input('fiscal_period_id'),
+                $request->input('amount')
+            );
 
             return response()->json([
-                'success' => true,
-                'payment_methods' => $paymentMethods
+                'success' => $validation['valid'],
+                'data' => $validation
             ]);
         } catch (\Exception $e) {
+            \Log::error('Error validating budget: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch payment methods',
+                'message' => 'Failed to validate budget',
                 'error' => $e->getMessage()
-            ], 500);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-    public function getNextInvoiceNumber()
+    /**
+     * Add items to an invoice
+     */
+    public function addItems(Request $request, string $id): JsonResponse
     {
         try {
-            $nextInvoiceNumber = $this->generateInvoiceNumber();
+            DB::beginTransaction();
 
-            return response()->json([
-                'success' => true,
-                'next_number' => $nextInvoiceNumber
+            $invoice = Invoice::findOrFail($id);
+            
+            $request->validate([
+                'items' => 'required|array',
+                'items.*.name' => 'required|string',
+                'items.*.description' => 'nullable|string',
+                'items.*.quantity' => 'required|numeric|min:0',
+                'items.*.unit_price' => 'required|numeric|min:0',
+                'items.*.subtotal' => 'required|numeric|min:0',
+                'items.*.tax_rate' => 'nullable|numeric|min:0',
+                'items.*.tax_amount' => 'nullable|numeric|min:0',
+                'items.*.total' => 'required|numeric|min:0',
             ]);
-        } catch (\Exception $e) {
-            \Log::error('Error generating next invoice number: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to generate next invoice number',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
 
-    protected function validateInvoice(Request $request)
-    {
-        return $request->validate([
-            'issue_date' => 'required|date',
-            'payment_method' => 'required|string',
-            'vat_rate' => 'required|numeric|min:0',
-            'company_id' => 'required|exists:companies,id',
-            'representative_id' => 'required|exists:users,id',
-            'subtotal' => 'required|numeric|min:0',
-            'discount_amount' => 'required|numeric|min:0',
-            'tax_amount' => 'required|numeric|min:0',
-            'total_amount' => 'required|numeric|min:0',
-        ]);
+            foreach ($request->input('items') as $itemData) {
+                $itemData['invoice_id'] = $invoice->id;
+                InvoiceItem::create($itemData);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Invoice items added successfully',
+                'data' => new InvoiceResource($invoice->load(['items', 'client', 'representative']))
+            ], Response::HTTP_CREATED);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to add invoice items',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
@@ -346,46 +420,30 @@ class InvoiceController extends Controller
                 'invoice_document' => 'required|file|mimes:pdf|max:10240', // max 10MB
             ]);
 
-            if ($request->hasFile('invoice_document')) {
-                // Delete old file if exists
-                if ($invoice->invoice_document && file_exists(public_path($invoice->invoice_document))) {
-                    unlink(public_path($invoice->invoice_document));
-                }
+            $file = $request->file('invoice_document');
+            $path = $file->store('invoices', 'public');
 
-                $file = $request->file('invoice_document');
-                $fileName = 'invoice_' . $invoice->invoice_number . '_' . time() . '.pdf';
-                $path = 'uploads/invoices/';
-
-                // Make sure the directory exists
-                if (!file_exists(public_path($path))) {
-                    mkdir(public_path($path), 0777, true);
-                }
-
-                // Move the file to the public directory
-                $file->move(public_path($path), $fileName);
-
-                // Update the invoice with the document path
-                $invoice->invoice_document = $path . $fileName;
-                $invoice->save();
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Document uploaded successfully',
-                    'document_url' => $invoice->invoice_document
-                ]);
-            }
+            // Update invoice with document path
+            $invoice->update([
+                'document_path' => $path,
+                'document_name' => $file->getClientOriginalName()
+            ]);
 
             return response()->json([
-                'success' => false,
-                'message' => 'No document found in request'
-            ], 400);
+                'success' => true,
+                'message' => 'Document uploaded successfully',
+                'document_url' => Storage::disk('public')->url($path)
+            ], Response::HTTP_OK);
 
         } catch (\Exception $e) {
+            \Log::error('Failed to upload document: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to upload document',
                 'error' => $e->getMessage()
-            ], 500);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -455,5 +513,51 @@ class InvoiceController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Get the next invoice number
+     */
+    public function getNextInvoiceNumber(): JsonResponse
+    {
+        try {
+            $nextInvoiceNumber = $this->generateInvoiceNumber();
+            
+            return response()->json([
+                'success' => true,
+                'next_number' => $nextInvoiceNumber
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            \Log::error('Error generating next invoice number: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate next invoice number',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Generate unique invoice number
+     */
+    private function generateInvoiceNumber(): string
+    {
+        // Get the latest invoice number
+        $latestInvoice = Invoice::orderBy('id', 'desc')->first();
+        
+        if ($latestInvoice) {
+            // Extract the numeric part from the latest invoice number
+            $match = preg_match('/INV-(\d+)/', $latestInvoice->invoice_number, $matches);
+            if ($match && isset($matches[1])) {
+                $nextNumber = intval($matches[1]) + 1;
+            } else {
+                $nextNumber = 1;
+            }
+        } else {
+            $nextNumber = 1;
+        }
+        
+        // Format as INV-XXXXX (5 digits with leading zeros)
+        return 'INV-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
     }
 }

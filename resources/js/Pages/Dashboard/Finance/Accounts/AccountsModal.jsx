@@ -14,6 +14,7 @@ const AccountsModal = ({
 }) => {
     const [formData, setFormData] = useState({
         name: "",
+        account_number: "",
         status: "",
         description: "",
         account_code_id: "",
@@ -36,17 +37,19 @@ const AccountsModal = ({
                 if (isEdit && account) {
                     const newFormData = {
                         name: account.name || "",
+                        account_number: account.account_number || "",
                         description: account.description || "",
                         account_code_id: account.account_code_id || "",
                         cost_center_id: account.cost_center_id || "",
                         status: account.status || "Pending",
-                        credit_amount: account.credit_amount !== null && account.credit_amount !== undefined ? account.credit_amount.toString() : "",
-                        debit_amount: account.debit_amount !== null && account.debit_amount !== undefined ? account.debit_amount.toString() : "",
+                        credit_amount: "", // Clear in edit mode
+                        debit_amount: "", // Clear in edit mode
                     };
                     setFormData(newFormData);
                 } else {
                     setFormData({
                         name: "",
+                        account_number: "",
                         description: "",
                         account_code_id: "",
                         cost_center_id: "",
@@ -98,12 +101,38 @@ const AccountsModal = ({
                 parts.length > 2
                     ? parts[0] + "." + parts.slice(1).join("")
                     : numericValue;
-            setFormData({
-                ...formData,
-                credit_amount: formattedValue,
-                debit_amount: formattedValue ? "" : formData.debit_amount,
-            });
+            
+            if (isEdit && account) {
+                // In edit mode, treat the input as the increase amount
+                const originalCredit = parseFloat(account.credit_amount || 0);
+                const increaseAmount = parseFloat(formattedValue) || 0;
+                const newTotalCredit = originalCredit + increaseAmount;
+                
+                setFormData({
+                    ...formData,
+                    credit_amount: formattedValue, // Keep the user input as is for display
+                    debit_amount: "", // Clear debit
+                });
+                
+                // Store the calculated total in a hidden field or state for backend
+                setFormData(prev => ({
+                    ...prev,
+                    _calculated_credit_amount: newTotalCredit
+                }));
+            } else {
+                // In create mode, use the value as is
+                setFormData({
+                    ...formData,
+                    credit_amount: formattedValue,
+                    debit_amount: formattedValue ? "" : formData.debit_amount,
+                });
+            }
         } else if (name === "debit_amount") {
+            // Temporarily disable debit field in edit mode
+            if (isEdit && account) {
+                return; // Don't allow changes to debit field in edit mode
+            }
+            
             // If user enters debit, clear and disable credit
             const numericValue = value.replace(/[^0-9.]/g, "");
             const parts = numericValue.split(".");
@@ -165,13 +194,13 @@ const AccountsModal = ({
         const cleanFormData = {
             ...formData,
             credit_amount: formData.credit_amount
-                ? parseFloat(formData.credit_amount)
+                ? (isEdit && account ? formData._calculated_credit_amount : parseFloat(formData.credit_amount))
                 : null,
             debit_amount: formData.debit_amount
                 ? parseFloat(formData.debit_amount)
                 : null,
         };
-        if (cleanFormData.credit_amount) cleanFormData.debit_amount = null;
+        
         if (cleanFormData.debit_amount) cleanFormData.credit_amount = null;
 
         try {
@@ -187,7 +216,7 @@ const AccountsModal = ({
                 await axios.put(`/api/v1/chart-of-accounts/${account.chart_of_account_id}`, {
                     account_name: formData.name,
                     description: formData.description,
-                    account_code_id: formData.account_code_id,
+                    account_code_id: formData.account_code_id.toString(),
                 });
                 
                 onSave(updatedAccountData);
@@ -222,6 +251,7 @@ const AccountsModal = ({
                     // Step 2: Create the account record, linking to the new chart and adding the type ID
                     const accountData = {
                         name: formData.name,
+                        account_number: formData.account_number,
                         description: formData.description,
                         chart_of_account_id: chartOfAccountResponse.data.data.id.toString(),
                         account_code_id: selectedTypeId.toString(),
@@ -289,6 +319,13 @@ const AccountsModal = ({
                             onChange={handleChange}
                             error={errors.name}
                         />
+                        <InputFloating
+                            label="Account Number"
+                            name="account_number"
+                            value={formData.account_number}
+                            onChange={handleChange}
+                            error={errors.account_number}
+                        />
                         <SelectFloating
                             label="Cost Center"
                             name="cost_center_id"
@@ -316,7 +353,14 @@ const AccountsModal = ({
                             error={errors.status}
                         />
                         <InputFloating
-                            label="Credit Amount"
+                            label="Description"
+                            name="description"
+                            value={formData.description}
+                            onChange={handleChange}
+                            error={errors.description}
+                        />
+                        <InputFloating
+                            label={isEdit && account ? "Credit Amount Increase" : "Credit Amount"}
                             name="credit_amount"
                             type="text"
                             value={formData.credit_amount}
@@ -330,15 +374,9 @@ const AccountsModal = ({
                             value={formData.debit_amount}
                             onChange={handleChange}
                             error={errors.debit_amount}
+                            disabled={isEdit && account}
                         />
                     </div>
-                    <InputFloating
-                        label="Description"
-                        name="description"
-                        value={formData.description}
-                        onChange={handleChange}
-                        error={errors.description}
-                    />
                     <div className="my-4 flex justify-center w-full">
                         <button
                             type="submit"

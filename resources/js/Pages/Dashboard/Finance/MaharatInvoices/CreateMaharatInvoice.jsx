@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FaPlus, FaTrash } from "react-icons/fa";
 import { router, usePage } from "@inertiajs/react";
 import { QRCodeCanvas } from "qrcode.react";
+import axios from "axios";
 
 export default function CreateMaharatInvoice() {
     const { invoiceId } = usePage().props;
@@ -71,6 +72,11 @@ export default function CreateMaharatInvoice() {
         cr_no: "",
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [fiscalPeriods, setFiscalPeriods] = useState([]);
+    const [selectedFiscalPeriod, setSelectedFiscalPeriod] = useState(null);
+    const [budgetValidation, setBudgetValidation] = useState(null);
+    const [showErrorModal, setShowErrorModal] = useState(false);
+    const [errorModalMessage, setErrorModalMessage] = useState("");
 
     useEffect(() => {
         setItemErrors(formData.items.map(() => ({})));
@@ -90,6 +96,88 @@ export default function CreateMaharatInvoice() {
             fetchNextInvoiceNumber();
         }
     }, [invoiceId]);
+
+    // Check fiscal periods when invoice date changes
+    useEffect(() => {
+        if (formData.invoice_date) {
+            checkFiscalPeriods(formData.invoice_date);
+        }
+    }, [formData.invoice_date]);
+
+    const checkFiscalPeriods = async (invoiceDate) => {
+        try {
+            const response = await axios.get('/api/v1/invoices/applicable-fiscal-periods', {
+                params: { date: invoiceDate }
+            });
+            
+            if (response.data.success) {
+                const periods = response.data.data;
+                setFiscalPeriods(periods);
+                
+                if (periods.length === 0) {
+                    // Don't show error immediately, just set the state
+                    setErrors(prev => ({
+                        ...prev,
+                        fiscal_period: 'Invoice date is not within any fiscal period range'
+                    }));
+                } else if (periods.length === 1) {
+                    setSelectedFiscalPeriod(periods[0]);
+                    await validateBudget(periods[0].id);
+                } else {
+                    // Multiple periods overlap - user needs to select
+                    setErrors(prev => ({
+                        ...prev,
+                        fiscal_period: 'Multiple fiscal periods overlap for this invoice date. Please select one.'
+                    }));
+                }
+            }
+        } catch (error) {
+            console.error('Error checking fiscal periods:', error);
+            setErrors(prev => ({
+                ...prev,
+                fiscal_period: 'Failed to check fiscal periods'
+            }));
+        }
+    };
+
+    const validateBudget = async (fiscalPeriodId) => {
+        try {
+            const response = await axios.post('/api/v1/invoices/validate-budget', {
+                department_id: 1, // Default department
+                cost_center_id: 1, // Default cost center
+                sub_cost_center_id: 1, // Default sub cost center
+                fiscal_period_id: fiscalPeriodId,
+                amount: 0 // For invoices, we don't need to reserve budget, just check if budget exists
+            });
+            
+            setBudgetValidation(response.data);
+            
+            if (!response.data.success) {
+                setErrors(prev => ({
+                    ...prev,
+                    budget: response.data.data.message
+                }));
+            } else {
+                // Clear budget error if validation passes
+                setErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors.budget;
+                    return newErrors;
+                });
+            }
+        } catch (error) {
+            console.error('Error validating budget:', error);
+            setErrors(prev => ({
+                ...prev,
+                budget: 'Failed to validate budget'
+            }));
+        }
+    };
+
+    const showError = (message) => {
+        setErrorModalMessage(message);
+        setShowErrorModal(true);
+    };
 
     const fetchHeaderCompanyDetails = async () => {
         try {
@@ -398,8 +486,14 @@ export default function CreateMaharatInvoice() {
                     ? parseFloat(value) || 0
                     : parseFloat(formData.discount) || 0;
 
-            const vatAmount = (subtotal * vatRate) / 100;
-            const total = Math.max(subtotal + vatAmount - discount, 0);
+            // Apply discount to subtotal first
+            const discountedSubtotal = Math.max(subtotal - discount, 0);
+
+            // Calculate VAT amount based on the discounted subtotal
+            const vatAmount = (discountedSubtotal * vatRate) / 100;
+
+            // Calculate final total = discounted subtotal + VAT
+            const total = discountedSubtotal + vatAmount;
 
             setFormData((prevData) => ({
                 ...prevData,
@@ -464,11 +558,14 @@ export default function CreateMaharatInvoice() {
         const vatRate = parseFloat(formData.vat_rate) || 0;
         const discount = parseFloat(formData.discount) || 0;
 
-        // Calculate VAT amount based on the current VAT rate
-        const vatAmount = (subtotal * vatRate) / 100;
+        // Apply discount to subtotal first
+        const discountedSubtotal = Math.max(subtotal - discount, 0);
 
-        // Calculate final total (Net Amount)
-        const total = Math.max(subtotal + vatAmount - discount, 0);
+        // Calculate VAT amount based on the discounted subtotal
+        const vatAmount = (discountedSubtotal * vatRate) / 100;
+
+        // Calculate final total (Net Amount) = discounted subtotal + VAT
+        const total = discountedSubtotal + vatAmount;
 
         // Update form data with new calculations
         setFormData((prevData) => ({
@@ -558,6 +655,42 @@ export default function CreateMaharatInvoice() {
         setIsSubmitting(true);
 
         try {
+            // Check for fiscal period errors first
+            if (errors.fiscal_period) {
+                showError(errors.fiscal_period);
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Check for budget errors
+            if (errors.budget) {
+                showError(errors.budget);
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Check if fiscal period is selected (for overlapping periods)
+            if (fiscalPeriods.length > 1 && !selectedFiscalPeriod) {
+                const errorMsg = "Please select a fiscal period from the overlapping options";
+                setErrors({
+                    submit: errorMsg,
+                });
+                showError(errorMsg);
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Check budget validation
+            if (budgetValidation && !budgetValidation.success) {
+                const errorMsg = budgetValidation.data.message;
+                setErrors({
+                    submit: errorMsg,
+                });
+                showError(errorMsg);
+                setIsSubmitting(false);
+                return;
+            }
+
             const processResponse = await axios.get(
                 "/api/v1/processes?include=steps,creator,updater&filter[title]=Maharat Invoice Approval"
             );
@@ -566,9 +699,11 @@ export default function CreateMaharatInvoice() {
 
             // Check if process and steps exist
             if (!process || processSteps.length === 0) {
+                const errorMsg = "No Process or steps found for Maharat Invoice Approval";
                 setErrors({
-                    submit: "No Process or steps found for Maharat Invoice Approval",
+                    submit: errorMsg,
                 });
+                showError(errorMsg);
                 setIsSubmitting(false);
                 return;
             }
@@ -579,25 +714,34 @@ export default function CreateMaharatInvoice() {
             );
             const assignUser = processResponseViaUser?.data?.data;
             if (!assignUser) {
+                const errorMsg = "No assignee found for this process step and user";
                 setErrors({
-                    submit: "No assignee found for this process step and user",
+                    submit: errorMsg,
                 });
+                showError(errorMsg);
                 setIsSubmitting(false);
                 return;
             }
 
             const formattedItems = formData.items.map((item) => {
-                const itemTaxAmount =
-                    (Number(item.subtotal) * Number(formData.vat_rate)) / 100;
-                const itemTotal = Number(item.subtotal) + itemTaxAmount;
+                const itemSubtotal = Number(item.subtotal);
+                const discount = Number(formData.discount) || 0;
+                const vatRate = Number(formData.vat_rate) || 0;
+                
+                // Apply discount to subtotal first (distribute discount across items)
+                const discountedSubtotal = Math.max(itemSubtotal - (discount / formData.items.length), 0);
+                
+                // Calculate VAT on discounted subtotal
+                const itemTaxAmount = (discountedSubtotal * vatRate) / 100;
+                const itemTotal = discountedSubtotal + itemTaxAmount;
 
                 return {
                     name: item.item_id,
                     description: item.description,
                     quantity: Number(item.quantity),
                     unit_price: Number(item.unit_price),
-                    subtotal: Number(item.subtotal),
-                    tax_rate: Number(formData.vat_rate),
+                    subtotal: discountedSubtotal,
+                    tax_rate: formData.vat_rate.toString(), // Use string to preserve precision
                     tax_amount: itemTaxAmount,
                     total: itemTotal,
                 };
@@ -607,8 +751,7 @@ export default function CreateMaharatInvoice() {
                 invoice_number: invoiceNumber,
                 issue_date: formData.invoice_date,
                 payment_method: formData.payment_terms,
-                vat_rate: formData.vat_rate,
-                company_id: 1,
+                vat_rate: formData.vat_rate.toString(),
                 client_id: formData.client_id,
                 representative_id: formData.representative || null,
                 subtotal: formData.subtotal,
@@ -618,6 +761,7 @@ export default function CreateMaharatInvoice() {
                 status: "Draft",
                 currency: "SAR",
                 account_code_id: 4,
+                fiscal_period_id: selectedFiscalPeriod?.id,
                 items: formattedItems,
             };
 
@@ -678,11 +822,32 @@ export default function CreateMaharatInvoice() {
             // Navigate to invoices page regardless of approval process success
             router.visit("/maharat-invoices");
         } catch (error) {
-            setErrors(
-                error.response?.data?.errors || {
-                    general: "An error occurred while saving the invoice",
+            console.error("Invoice creation error:", error.response?.data);
+            
+            let errorMessage = "Failed to save invoice";
+            
+            // Check for nested error structure
+            if (error.response?.data?.error) {
+                errorMessage = error.response.data.error;
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.response?.data?.errors) {
+                // Handle validation errors
+                const firstError = Object.values(error.response.data.errors)[0];
+                if (Array.isArray(firstError)) {
+                    errorMessage = firstError[0];
+                } else {
+                    errorMessage = firstError;
                 }
-            );
+            }
+            
+            // Show error in modal
+            showError(errorMessage);
+            
+            setErrors({
+                submit: errorMessage,
+                ...error.response?.data?.errors,
+            });
             setIsSubmitting(false);
         }
     };
@@ -698,8 +863,15 @@ export default function CreateMaharatInvoice() {
             const formattedItems = items.map((item) => {
                 // Calculate tax amount based on subtotal and vat rate
                 const vatRate = parseFloat(item.tax_rate || formData.vat_rate);
-                const vatAmount = parseFloat(item.subtotal) * (vatRate / 100);
-                const total = parseFloat(item.subtotal) + vatAmount;
+                const itemSubtotal = parseFloat(item.subtotal);
+                const discount = parseFloat(formData.discount) || 0;
+                
+                // Apply discount to subtotal first
+                const discountedSubtotal = Math.max(itemSubtotal - (discount / items.length), 0);
+                
+                // Calculate VAT on discounted subtotal
+                const vatAmount = discountedSubtotal * (vatRate / 100);
+                const total = discountedSubtotal + vatAmount;
 
                 return {
                     item_name: item.name, // For validation
@@ -707,11 +879,11 @@ export default function CreateMaharatInvoice() {
                     description: item.description || "",
                     quantity: parseFloat(item.quantity),
                     unit_price: parseFloat(item.unit_price),
-                    subtotal: parseFloat(item.subtotal),
-                    tax_rate: vatRate,
+                    subtotal: discountedSubtotal, // Use discounted subtotal
+                    tax_rate: formData.vat_rate.toString(), // Use string to preserve precision
                     tax_amount: vatAmount,
                     total: total,
-                    discount: 0.0, // Default to zero for now
+                    discount: discount / items.length, // Distribute discount across items
                 };
             });
             const response = await axios.post(
@@ -818,11 +990,47 @@ export default function CreateMaharatInvoice() {
     return (
         <div className="flex flex-col bg-white rounded-2xl shadow-lg p-6 max-w-7xl mx-auto">
             {/* Display general errors at the top of the form */}
-            {(errors.general || errors.submit || errors.fetch) && (
+            {(errors.general || errors.submit || errors.fetch || errors.fiscal_period || errors.budget) && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                     {errors.general && <p>{errors.general}</p>}
                     {errors.submit && <p>{errors.submit}</p>}
                     {errors.fetch && <p>{errors.fetch}</p>}
+                    {errors.fiscal_period && <p>{errors.fiscal_period}</p>}
+                    {errors.budget && <p>{errors.budget}</p>}
+                </div>
+            )}
+
+            {/* Fiscal Period Selection */}
+            {fiscalPeriods.length > 1 && (
+                <div className="bg-[#009FDC] bg-opacity-10 border border-[#009FDC] text-[#009FDC] px-4 py-3 rounded relative mb-4">
+                    <div className="mb-3">
+                        <strong>Multiple fiscal periods overlap for this invoice date. Please select one:</strong>
+                    </div>
+                    <select
+                        value={selectedFiscalPeriod?.id || ""}
+                        onChange={(e) => {
+                            const period = fiscalPeriods.find(p => p.id === parseInt(e.target.value));
+                            setSelectedFiscalPeriod(period);
+                            if (period) {
+                                validateBudget(period.id);
+                            }
+                        }}
+                        className="w-full p-2 border border-[#009FDC] rounded text-black"
+                    >
+                        <option value="">Select Fiscal Period</option>
+                        {fiscalPeriods.map((period) => (
+                            <option key={period.id} value={period.id}>
+                                {period.period_name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            {/* Budget Validation Display */}
+            {budgetValidation && budgetValidation.success && (
+                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
+                    <strong>Budget Validation:</strong> Budget allocation found for this fiscal period.
                 </div>
             )}
 
@@ -1318,6 +1526,38 @@ export default function CreateMaharatInvoice() {
                     </div>
                 </div>
             </div>
+
+            {/* Error Modal */}
+            {showErrorModal && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+                    <div className="bg-white p-8 rounded-2xl w-[90%] max-w-md">
+                        <div className="flex justify-between items-center border-b pb-4 mb-4">
+                            <h2 className="text-2xl font-bold text-red-600">
+                                Error
+                            </h2>
+                            <button
+                                onClick={() => setShowErrorModal(false)}
+                                className="text-gray-500 hover:text-gray-800 text-xl"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="mb-6">
+                            <p className="text-gray-700 text-lg">
+                                {errorModalMessage}
+                            </p>
+                        </div>
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => setShowErrorModal(false)}
+                                className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-200"
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

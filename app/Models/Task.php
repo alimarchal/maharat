@@ -31,7 +31,6 @@ class Task extends Model
         'invoice_id',
         'read_status',
         'tasks',
-        'read_status',
         'status',
     ];
 
@@ -113,6 +112,6 @@ class Task extends Model
 
     public function assignedUser(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'assigned_to');
+        return $this->belongsTo(User::class, 'assigned_to_user_id');
     }
 }

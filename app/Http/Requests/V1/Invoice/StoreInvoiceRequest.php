@@ -14,8 +14,8 @@ class StoreInvoiceRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'invoice_number' => ['nullable', 'string', 'unique:invoices'],
             'client_id' => ['nullable', 'exists:customers,id'],
-            'company_id' => ['required', 'exists:companies,id'],
             'status' => ['required', 'string', 'in:Draft,Pending,Paid,Overdue,Cancelled'],
             'payment_method' => ['nullable', 'string'],
             'representative_id' => ['nullable', 'string'],  
@@ -30,7 +30,16 @@ class StoreInvoiceRequest extends FormRequest
             'total_amount' => ['required', 'numeric', 'min:0'],
             'currency' => ['required', 'string', 'size:3'],
             'notes' => ['nullable', 'string'], 
-            'account_code_id' => ['nullable', 'exists:account_codes,id']
+            'account_code_id' => ['nullable', 'exists:account_codes,id'],
+            'items' => ['nullable', 'array'],
+            'items.*.name' => ['required_with:items', 'string'],
+            'items.*.description' => ['nullable', 'string'],
+            'items.*.quantity' => ['required_with:items', 'numeric', 'min:0'],
+            'items.*.unit_price' => ['required_with:items', 'numeric', 'min:0'],
+            'items.*.subtotal' => ['required_with:items', 'numeric', 'min:0'],
+            'items.*.tax_rate' => ['nullable', 'numeric', 'min:0'],
+            'items.*.tax_amount' => ['nullable', 'numeric', 'min:0'],
+            'items.*.total' => ['required_with:items', 'numeric', 'min:0'],
         ];
     }
 }

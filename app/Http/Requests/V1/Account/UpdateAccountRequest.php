@@ -24,6 +24,7 @@ class UpdateAccountRequest extends FormRequest
         return [
             'chart_of_account_id' => ['sometimes', 'exists:chart_of_accounts,id'],
             'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'account_number' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'account_code_id' => ['sometimes', 'exists:account_codes,id'],
             'cost_center_id' => ['nullable', 'exists:cost_centers,id'],

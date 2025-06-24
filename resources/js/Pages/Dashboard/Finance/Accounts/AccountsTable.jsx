@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash, faPlus, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import AccountsModal from "./AccountsModal";
+import SuccessModal from "../../../../Components/SuccessModal";
 import { Link } from "@inertiajs/react";
 
 const AccountsTable = () => {
@@ -12,6 +13,11 @@ const AccountsTable = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [isDeleting, setIsDeleting] = useState(false);
+    const [successModal, setSuccessModal] = useState({
+        isOpen: false,
+        message: "",
+        title: "Success!"
+    });
 
     const [selectedFilter, setSelectedFilter] = useState("All");
     const filters = ["All", "Approved", "Pending"];
@@ -24,6 +30,7 @@ const AccountsTable = () => {
 
     const fetchAccounts = async () => {
         setLoading(true);
+        setError("");
         try {
             const response = await axios.get(
                 `/api/v1/accounts?include=costCenter,accountCode&page=${currentPage}`
@@ -78,6 +85,11 @@ const AccountsTable = () => {
             await axios.post("/api/v1/accounts", formData);
             fetchAccounts();
             setIsModalOpen(false);
+            setSuccessModal({
+                isOpen: true,
+                message: "Account created successfully!",
+                title: "Success!"
+            });
         } catch (error) {
             setError(error.response?.data?.message || "Failed to save account");
         } finally {
@@ -96,10 +108,59 @@ const AccountsTable = () => {
 
     const handleUpdate = async (formData) => {
         setLoading(true);
+        setError("");
         try {
-            await axios.put(`/api/v1/accounts/${selectedAccount.id}`, formData);
+            const response = await axios.put(`/api/v1/accounts/${selectedAccount.id}`, formData);
             setIsEditModalOpen(false);
             fetchAccounts();
+            
+            // Check if this was a Cash account update with credit amount
+            if (selectedAccount.id === 12 && selectedAccount.name === 'Cash' && formData.credit_amount) {
+                const originalCredit = selectedAccount.credit_amount || 0;
+                const newCredit = parseFloat(formData.credit_amount);
+                const increase = newCredit - originalCredit;
+                
+                if (increase > 0) {
+                    const vatAmount = increase * 0.15;
+                    setSuccessModal({
+                        isOpen: true,
+                        message: `Account updated successfully! Automatic balancing applied: Account Receivable debited by ${increase.toFixed(2)} and VAT Collected credited by ${vatAmount.toFixed(2)} (15%).`,
+                        title: "Success!"
+                    });
+                } else {
+                    setSuccessModal({
+                        isOpen: true,
+                        message: "Account updated successfully!",
+                        title: "Success!"
+                    });
+                }
+            } 
+            // Check if this was a VAT Collected account update with credit amount
+            else if (selectedAccount.id === 9 && selectedAccount.name === 'VAT Collected (on Maharat invoices)' && formData.credit_amount) {
+                const originalCredit = selectedAccount.credit_amount || 0;
+                const newCredit = parseFloat(formData.credit_amount);
+                const increase = newCredit - originalCredit;
+                
+                if (increase > 0) {
+                    setSuccessModal({
+                        isOpen: true,
+                        message: `Account updated successfully! Automatic balancing applied: VAT Receivables debited by ${increase.toFixed(2)}.`,
+                        title: "Success!"
+                    });
+                } else {
+                    setSuccessModal({
+                        isOpen: true,
+                        message: "Account updated successfully!",
+                        title: "Success!"
+                    });
+                }
+            } else {
+                setSuccessModal({
+                    isOpen: true,
+                    message: "Account updated successfully!",
+                    title: "Success!"
+                });
+            }
         } catch (error) {
             console.error("Error updating account:", error);
             setError("Failed to update account");
@@ -170,20 +231,21 @@ const AccountsTable = () => {
                 </div>
             </div>
 
-            <table className="w-full">
+            <table className="w-full table-fixed">
                 <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                     <tr>
-                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
+                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl w-[8%]">
                             ID
                         </th>
-                        <th className="py-3 px-4">Name</th>
-                        <th className="py-3 px-4">Description</th>
-                        <th className="py-3 px-4">Type</th>
-                        <th className="py-3 px-4">Cost Center</th>
-                        <th className="py-3 px-4">Total Credit Amount</th>
-                        <th className="py-3 px-4">Total Debit Amount</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
+                        <th className="py-3 px-4 w-[10%]">Account Number</th>
+                        <th className="py-3 px-4 w-[15%]">Name</th>
+                        <th className="py-3 px-4 w-[20%]">Description</th>
+                        <th className="py-3 px-4 w-[8%]">Type</th>
+                        <th className="py-3 px-4 w-[10%]">Cost Center</th>
+                        <th className="py-3 px-4 w-[10%]">Total Credit Amount</th>
+                        <th className="py-3 px-4 w-[10%]">Total Debit Amount</th>
+                        <th className="py-3 px-4 w-[7%]">Status</th>
+                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center w-[10%]">
                             Action
                         </th>
                     </tr>
@@ -191,14 +253,14 @@ const AccountsTable = () => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="9" className="text-center py-12">
+                            <td colSpan="10" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="9"
+                                colSpan="10"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -207,23 +269,26 @@ const AccountsTable = () => {
                     ) : accounts.length > 0 ? (
                         accounts.map((account) => (
                             <tr key={account.id}>
-                                <td className="py-3 px-4">{account.id}</td>
+                                <td className="py-3 px-4 truncate">{account.id}</td>
+                                <td className="py-3 px-4 truncate">
+                                    {account.account_number || "N/A"}
+                                </td>
                                 <td className="py-3 px-4">{account.name}</td>
                                 <td className="py-3 px-4">
                                     {account.description}
                                 </td>
-                                <td className="py-3 px-4">
+                                <td className="py-3 px-4 truncate">
                                     {account.account_code?.account_type || "N/A"}
                                 </td>
-                                <td className="py-3 px-4">
+                                <td className="py-3 px-4 truncate">
                                     {account.cost_center
                                         ? account.cost_center.name
                                         : "N/A"}
                                 </td>
-                                <td className="py-3 px-4">
+                                <td className="py-3 px-4 truncate">
                                     {account.credit_amount || 0}
                                 </td>
-                                <td className="py-3 px-4">
+                                <td className="py-3 px-4 truncate">
                                     {account.debit_amount || 0}
                                 </td>
                                 <td className="py-3 px-4">
@@ -244,18 +309,25 @@ const AccountsTable = () => {
                                         // Define accounts that should NOT have an Edit button
                                         const nonEditable = [
                                             'Liabilities', 'Revenue/Income', 'Cost of Purchases', 
-                                            'VAT Paid (on purchases)', 'VAT Collected (on Maharat invoices)'
+                                            'VAT Paid (on purchases)', 'VAT Collected (on Maharat invoices)',
+                                            'Account Receivable', 'Revenue', 'VAT Receivables (On Maharat Invoice)'
                                         ];
 
                                         // Define accounts that should NOT have a Delete button
                                         const nonDeletable = [
                                             'Assets', 'Liabilities', 'Equity', 'Revenue/Income', 
                                             'Cost of Purchases', 'Operating Expenses', 'Non-Operating Expenses',
-                                            'VAT Paid (on purchases)', 'VAT Collected (on Maharat invoices)'
+                                            'VAT Paid (on purchases)', 'VAT Collected (on Maharat invoices)',
+                                            'Account Receivable', 'Revenue', 'VAT Receivables (On Maharat Invoice)'
+                                        ];
+
+                                        // Define accounts that can only be edited (no delete)
+                                        const editOnly = [
+                                            'Cash', 'Asset'
                                         ];
 
                                         const canEdit = !nonEditable.includes(accountName);
-                                        const canDelete = isSpecialAccount ? !hasValue : !nonDeletable.includes(accountName);
+                                        const canDelete = isSpecialAccount ? !hasValue : !nonDeletable.includes(accountName) && !editOnly.includes(accountName);
 
                                         return (
                                             <>
@@ -291,7 +363,7 @@ const AccountsTable = () => {
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="9" className="text-center py-4">
+                            <td colSpan="10" className="text-center py-4">
                                 No accounts found.
                             </td>
                         </tr>
@@ -349,6 +421,16 @@ const AccountsTable = () => {
                     onSave={handleUpdate}
                     account={selectedAccount}
                     isEdit={true}
+                />
+            )}
+
+            {/* Success Modal */}
+            {successModal.isOpen && (
+                <SuccessModal
+                    isOpen={successModal.isOpen}
+                    onClose={() => setSuccessModal({ ...successModal, isOpen: false })}
+                    title={successModal.title}
+                    message={successModal.message}
                 />
             )}
         </div>

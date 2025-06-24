@@ -7,19 +7,23 @@ use Illuminate\Database\Eloquent\Builder;
 
 class InvoiceParameters
 {
+    public const ALLOWED_FILTERS = [
+        'invoice_number',
+        'representative_id',
+        'representative_email',
+        'client_id',
+        'status',
+        'payment_method',
+        'issue_date',
+        'due_date',
+        'currency',
+        'account_code_id',
+    ];
+
     public static function getAllowedFilters()
     {
         return [
-            'invoice_number',
-            'representative_id',
-            'representative_email',
-            'client_id',
-            'company_id',
-            'status',
-            'payment_method',
-            'issue_date',
-            'due_date',
-            'currency',
+            ...self::ALLOWED_FILTERS,
             // Custom date range filters
             AllowedFilter::callback('issue_date_from', function (Builder $query, $value) {
                 $query->whereDate('issue_date', '>=', $value);
@@ -48,7 +52,7 @@ class InvoiceParameters
 
     public const ALLOWED_INCLUDES = [
         'client',
-        'company',
-        'items'
+        'representative',
+        'items',
     ];
 }
