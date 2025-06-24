@@ -234,19 +234,19 @@ const AccountsTable = () => {
             <table className="w-full table-fixed">
                 <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                     <tr>
-                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl w-[8%]">
+                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl w-[5%]">
                             ID
                         </th>
-                        <th className="py-3 px-4 w-[10%]">Account Number</th>
-                        <th className="py-3 px-4 w-[15%]">Name</th>
-                        <th className="py-3 px-4 w-[20%]">Description</th>
-                        <th className="py-3 px-4 w-[8%]">Type</th>
-                        <th className="py-3 px-4 w-[10%]">Cost Center</th>
-                        <th className="py-3 px-4 w-[10%]">Total Credit Amount</th>
-                        <th className="py-3 px-4 w-[10%]">Total Debit Amount</th>
+                        <th className="py-3 px-4">Name</th>
+                        <th className="py-3 px-4">Account Number</th>
+                        <th className="py-3 px-4 w-[15%]">Description</th>
+                        <th className="py-3 px-4">Type</th>
+                        <th className="py-3 px-4">Cost Center</th>
+                        <th className="py-3 px-4">Total Credit Amount</th>
+                        <th className="py-3 px-4">Total Debit Amount</th>
                         <th className="py-3 px-4 w-[7%]">Status</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center w-[10%]">
-                            Action
+                            Actions
                         </th>
                     </tr>
                 </thead>
@@ -270,10 +270,10 @@ const AccountsTable = () => {
                         accounts.map((account) => (
                             <tr key={account.id}>
                                 <td className="py-3 px-4 truncate">{account.id}</td>
+                                <td className="py-3 px-4">{account.name}</td>
                                 <td className="py-3 px-4 truncate">
                                     {account.account_number || "N/A"}
                                 </td>
-                                <td className="py-3 px-4">{account.name}</td>
                                 <td className="py-3 px-4">
                                     {account.description}
                                 </td>

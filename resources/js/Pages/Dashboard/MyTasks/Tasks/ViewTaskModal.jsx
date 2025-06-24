@@ -229,13 +229,13 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 <h4 className="font-semibold text-gray-700 mb-2">Requested Items:</h4>
                                                 <div className="overflow-x-auto">
                                                     <table className="w-full text-sm">
-                                                        <thead className="bg-gray-50">
+                                                        <thead className="bg-gray-200">
                                                             <tr>
-                                                                <th className="px-3 py-2 text-left">Item</th>
-                                                                <th className="px-3 py-2 text-left">Category</th>
-                                                                <th className="px-3 py-2 text-left">Quantity</th>
-                                                                <th className="px-3 py-2 text-left">Unit</th>
-                                                                <th className="px-3 py-2 text-left">Priority</th>
+                                                                <th className="p-3 rounded-tl-xl rounded-bl-xl text-left">Item</th>
+                                                                <th className="p-3 text-left">Category</th>
+                                                                <th className="p-3 text-left">Quantity</th>
+                                                                <th className="p-3 text-left">Unit</th>
+                                                                <th className="p-3 rounded-tr-xl rounded-br-xl text-left">Priority</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y">
