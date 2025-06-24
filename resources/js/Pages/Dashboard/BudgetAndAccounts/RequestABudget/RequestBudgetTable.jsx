@@ -49,13 +49,13 @@ const RequestBudgetTable = () => {
         <div className="w-full">
             <div className="flex justify-between items-center text-center mb-6">
                 <h2 className="text-3xl font-bold text-[#2C323C]">
-                    Budget Requests
+                    Department Budget Requests
                 </h2>
                 <Link
                     href={`/request-budgets/create`}
                     className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                 >
-                    Create department Budget Request
+                    Create Department Budget Request
                 </Link>
             </div>
 
