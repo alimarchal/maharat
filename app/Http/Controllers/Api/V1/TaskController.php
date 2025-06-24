@@ -338,172 +338,23 @@ class TaskController extends Controller
                     ]);
 
                     if ($transactionUpdated) {
-                        // Now check if this is the final approval
-                        $totalApprovals = DB::table('mahrat_invoice_approval_transactions')
-                            ->where('invoice_id', $task->invoice_id)
-                            ->count();
-
-                        $completedApprovals = DB::table('mahrat_invoice_approval_transactions')
-                            ->where('invoice_id', $task->invoice_id)
-                            ->where('status', 'Approve')
-                            ->count();
-
-                        $isFinalApproval = $completedApprovals === $totalApprovals;
-
-                        Log::info('=== MAHARAT INVOICE FINAL APPROVAL CHECK ===', [
+                        // Trigger the budget approval service to update budget status
+                        $approvalService = new \App\Services\BudgetApprovalService();
+                        $approvalResult = $approvalService->checkApprovalCompletion($task->budget_id, $approvalTransaction->id);
+                        
+                        Log::info('=== BUDGET APPROVAL COMPLETION CHECK ===', [
                             'task_id' => $task->id,
-                            'invoice_id' => $task->invoice_id,
-                            'total_approvals' => $totalApprovals,
-                            'completed_approvals' => $completedApprovals,
-                            'is_final_approval' => $isFinalApproval
+                            'budget_id' => $task->budget_id,
+                            'approval_result' => $approvalResult
                         ]);
-
-                        if ($isFinalApproval) {
-                            Log::info('=== FINAL MAHARAT INVOICE APPROVAL - CHECKING BUDGET BEFORE UPDATING INVOICE STATUS ===', [
-                                'task_id' => $task->id,
-                                'invoice_id' => $task->invoice_id,
-                                'current_status' => DB::table('invoices')->where('id', $task->invoice_id)->value('status'),
-                                'target_status' => 'Pending'
-                            ]);
-
-                            // Get the invoice details for budget validation
-                            $invoice = DB::table('invoices')->where('id', $task->invoice_id)->first();
+                        
+                        if ($approvalResult === 'Approve' || $approvalResult === 'Reject') {
+                            $approvalService->updateBudgetStatus($task->budget_id, $approvalResult);
                             
-                            if (!$invoice) {
-                                throw new \Exception('Invoice not found');
-                            }
-
-                            // Check if main budget exists BEFORE approving
-                            $budgetService = new \App\Services\BudgetRevenueUpdateService();
-                            $budgetCheckResult = $budgetService->checkMainBudgetExists((object)$invoice);
-
-                            if (!$budgetCheckResult['exists']) {
-                                Log::warning('=== FINAL APPROVAL BLOCKED - NO MAIN BUDGET FOUND ===', [
-                                    'task_id' => $task->id,
-                                    'invoice_id' => $invoice->id,
-                                    'message' => $budgetCheckResult['message']
-                                ]);
-                                
-                                DB::rollBack();
-                                return response()->json([
-                                    'message' => 'Approval failed: ' . $budgetCheckResult['message'],
-                                    'error' => 'NO_MAIN_BUDGET'
-                                ], Response::HTTP_BAD_REQUEST);
-                            }
-
-                            Log::info('=== MAIN BUDGET FOUND, PROCEEDING WITH INVOICE STATUS UPDATE ===', [
+                            Log::info('=== BUDGET STATUS UPDATED ===', [
                                 'task_id' => $task->id,
-                                'invoice_id' => $invoice->id,
-                                'budget_message' => $budgetCheckResult['message']
-                            ]);
-
-                            // Update the invoice status to Pending
-                            $invoiceUpdated = DB::table('invoices')
-                                ->where('id', $task->invoice_id)
-                                ->update([
-                                    'status' => 'Pending',
-                                    'updated_at' => now()
-                                ]);
-
-                            Log::info('=== INVOICE STATUS UPDATE RESULT ===', [
-                                'task_id' => $task->id,
-                                'invoice_id' => $task->invoice_id,
-                                'update_success' => $invoiceUpdated,
-                                'new_status' => DB::table('invoices')->where('id', $task->invoice_id)->value('status')
-                            ]);
-
-                            // Update budget revenue after invoice is approved
-                            if ($invoiceUpdated) {
-                                Log::info('=== UPDATING BUDGET REVENUE FOR APPROVED INVOICE ===', [
-                                    'task_id' => $task->id,
-                                    'invoice_id' => $invoice->id,
-                                    'invoice_amount' => $invoice->total_amount,
-                                    'invoice_date' => $invoice->issue_date
-                                ]);
-
-                                $budgetUpdateResult = $budgetService->updateBudgetRevenue((object)$invoice);
-
-                                if ($budgetUpdateResult['success']) {
-                                    Log::info('=== BUDGET REVENUE UPDATED SUCCESSFULLY ===', [
-                                        'task_id' => $task->id,
-                                        'invoice_id' => $invoice->id,
-                                        'message' => $budgetUpdateResult['message'],
-                                        'budgets_updated' => $budgetUpdateResult['budgets_updated']
-                                    ]);
-
-                                    // Update accounts after successful budget update
-                                    Log::info('=== UPDATING ACCOUNTS FOR APPROVED INVOICE ===', [
-                                        'task_id' => $task->id,
-                                        'invoice_id' => $invoice->id,
-                                        'total_amount' => $invoice->total_amount,
-                                        'tax_amount' => $invoice->tax_amount
-                                    ]);
-
-                                    // Update Revenue/Income account (ID 4)
-                                    $revenueAccountUpdated = DB::table('accounts')
-                                        ->where('id', 4)
-                                        ->where('name', 'Revenue/Income')
-                                        ->update([
-                                            'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $invoice->total_amount),
-                                            'updated_at' => now()
-                                        ]);
-
-                                    Log::info('=== REVENUE ACCOUNT UPDATE RESULT ===', [
-                                        'task_id' => $task->id,
-                                        'invoice_id' => $invoice->id,
-                                        'account_id' => 4,
-                                        'account_name' => 'Revenue/Income',
-                                        'amount_added' => $invoice->total_amount,
-                                        'update_success' => $revenueAccountUpdated
-                                    ]);
-
-                                    // Update VAT Collected account (ID 9)
-                                    $vatAccountUpdated = DB::table('accounts')
-                                        ->where('id', 9)
-                                        ->where('name', 'VAT Collected (on Maharat invoices)')
-                                        ->update([
-                                            'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $invoice->tax_amount),
-                                            'updated_at' => now()
-                                        ]);
-
-                                    Log::info('=== VAT ACCOUNT UPDATE RESULT ===', [
-                                        'task_id' => $task->id,
-                                        'invoice_id' => $invoice->id,
-                                        'account_id' => 9,
-                                        'account_name' => 'VAT Collected (on Maharat invoices)',
-                                        'amount_added' => $invoice->tax_amount,
-                                        'update_success' => $vatAccountUpdated
-                                    ]);
-
-                                    if ($revenueAccountUpdated && $vatAccountUpdated) {
-                                        Log::info('=== ALL ACCOUNT UPDATES COMPLETED SUCCESSFULLY ===', [
-                                            'task_id' => $task->id,
-                                            'invoice_id' => $invoice->id,
-                                            'revenue_account_updated' => $revenueAccountUpdated,
-                                            'vat_account_updated' => $vatAccountUpdated
-                                        ]);
-                                    } else {
-                                        Log::warning('=== SOME ACCOUNT UPDATES FAILED ===', [
-                                            'task_id' => $task->id,
-                                            'invoice_id' => $invoice->id,
-                                            'revenue_account_updated' => $revenueAccountUpdated,
-                                            'vat_account_updated' => $vatAccountUpdated
-                                        ]);
-                                    }
-                                } else {
-                                    Log::warning('=== BUDGET REVENUE UPDATE FAILED ===', [
-                                        'task_id' => $task->id,
-                                        'invoice_id' => $invoice->id,
-                                        'message' => $budgetUpdateResult['message']
-                                    ]);
-                                }
-                            }
-                        } else {
-                            Log::info('=== NOT FINAL MAHARAT INVOICE APPROVAL - KEEPING DRAFT STATUS ===', [
-                                'task_id' => $task->id,
-                                'invoice_id' => $task->invoice_id,
-                                'total_approvals' => $totalApprovals,
-                                'completed_approvals' => $completedApprovals
+                                'budget_id' => $task->budget_id,
+                                'new_status' => DB::table('budgets')->where('id', $task->budget_id)->value('status')
                             ]);
                         }
                     }
@@ -888,7 +739,7 @@ class TaskController extends Controller
                     if ($transactionUpdated) {
                         // Trigger the budget approval service to update budget status
                         $approvalService = new \App\Services\BudgetApprovalService();
-                        $approvalResult = $approvalService->checkApprovalCompletion($task->budget_id);
+                        $approvalResult = $approvalService->checkApprovalCompletion($task->budget_id, $approvalTransaction->id);
                         
                         Log::info('=== BUDGET APPROVAL COMPLETION CHECK ===', [
                             'task_id' => $task->id,
@@ -955,9 +806,9 @@ class TaskController extends Controller
                     if ($transactionUpdated) {
                         // Trigger the budget approval service to update budget status
                         $approvalService = new \App\Services\BudgetApprovalService();
-                        $approvalResult = $approvalService->checkApprovalCompletion($task->budget_id);
+                        $approvalResult = $approvalService->checkApprovalCompletion($task->budget_id, $approvalTransaction->id);
                         
-                        Log::info('=== BUDGET REJECTION COMPLETION CHECK ===', [
+                        Log::info('=== BUDGET APPROVAL COMPLETION CHECK ===', [
                             'task_id' => $task->id,
                             'budget_id' => $task->budget_id,
                             'approval_result' => $approvalResult
@@ -966,7 +817,7 @@ class TaskController extends Controller
                         if ($approvalResult === 'Approve' || $approvalResult === 'Reject') {
                             $approvalService->updateBudgetStatus($task->budget_id, $approvalResult);
                             
-                            Log::info('=== BUDGET STATUS UPDATED FOR REJECTION ===', [
+                            Log::info('=== BUDGET STATUS UPDATED ===', [
                                 'task_id' => $task->id,
                                 'budget_id' => $task->budget_id,
                                 'new_status' => DB::table('budgets')->where('id', $task->budget_id)->value('status')

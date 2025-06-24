@@ -27,9 +27,6 @@ class ItemRequestController extends Controller
             // Filter by user_id if provided
             if (isset($filters['user_id'])) {
                 $query->where('user_id', $filters['user_id']);
-            } else {
-                // Default to current user if no user_id filter
-                $query->where('user_id', Auth::id());
             }
             
             // Filter by status if provided
@@ -52,10 +49,8 @@ class ItemRequestController extends Controller
                     $query->where('status', 'Pending');
                 }
             }
-        } else {
-            // Default behavior: show only current user's items
-            $query->where('user_id', Auth::id());
         }
+        // If no filter is provided, show all items (no user filtering)
 
         $itemRequests = $query->paginate(10);
 

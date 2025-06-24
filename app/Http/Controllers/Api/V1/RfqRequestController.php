@@ -13,11 +13,9 @@ class RfqRequestController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $user_id = $request->get('user_id', Auth::id());
         $status = $request->get('status');
 
-        $query = RfqRequest::with(['user', 'category', 'unit', 'warehouse', 'department', 'costCenter', 'subCostCenter'])
-            ->where('user_id', $user_id);
+        $query = RfqRequest::with(['user', 'category', 'unit', 'warehouse', 'department', 'costCenter', 'subCostCenter']);
 
         if ($status) {
             $query->where('status', $status);
@@ -58,6 +56,43 @@ class RfqRequestController extends Controller
             'message' => 'RFQ request created successfully',
             'data' => new RfqRequestResource($rfqRequest)
         ], 201);
+    }
+
+    public function update(Request $request, $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => 'nullable|in:Pending,Approved,Rejected',
+            'rejection_reason' => 'nullable|string',
+            'approved_by' => 'nullable|exists:users,id',
+            'rfq_id' => 'nullable|exists:rfqs,id',
+        ]);
+
+        $rfqRequest = RfqRequest::findOrFail($id);
+
+        $updateData = [];
+
+        if (isset($validated['status'])) {
+            $updateData['status'] = $validated['status'];
+            
+            if ($validated['status'] === 'Approved') {
+                $updateData['approved_at'] = now();
+                $updateData['approved_by'] = $validated['approved_by'] ?? Auth::id();
+                $updateData['rfq_id'] = $validated['rfq_id'] ?? null;
+            } elseif ($validated['status'] === 'Rejected') {
+                $updateData['rejection_reason'] = $validated['rejection_reason'] ?? null;
+            }
+        }
+
+        if (isset($validated['rejection_reason'])) {
+            $updateData['rejection_reason'] = $validated['rejection_reason'];
+        }
+
+        $rfqRequest->update($updateData);
+
+        return response()->json([
+            'message' => 'RFQ request updated successfully',
+            'data' => new RfqRequestResource($rfqRequest)
+        ]);
     }
 
     public function updateStatus(Request $request, $id): JsonResponse
