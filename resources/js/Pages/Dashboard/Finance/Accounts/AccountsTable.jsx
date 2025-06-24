@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit, faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faEdit, faTrash, faPlus, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import AccountsModal from "./AccountsModal";
+import { Link } from "@inertiajs/react";
 
 const AccountsTable = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -179,8 +180,8 @@ const AccountsTable = () => {
                         <th className="py-3 px-4">Description</th>
                         <th className="py-3 px-4">Type</th>
                         <th className="py-3 px-4">Cost Center</th>
-                        <th className="py-3 px-4">Credit Amount</th>
-                        <th className="py-3 px-4">Debit Amount</th>
+                        <th className="py-3 px-4">Total Credit Amount</th>
+                        <th className="py-3 px-4">Total Debit Amount</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                             Action
@@ -275,6 +276,13 @@ const AccountsTable = () => {
                                                         <FontAwesomeIcon icon={faTrash} />
                                                     </button>
                                                 )}
+                                                <Link
+                                                    href={`/accounts/${account.id}/details`}
+                                                    className="text-[#9B9DA2] hover:text-gray-500"
+                                                    title="View Account Details"
+                                                >
+                                                    <FontAwesomeIcon icon={faChevronRight} />
+                                                </Link>
                                             </>
                                         );
                                     })()}
