@@ -13,9 +13,11 @@ export const useRequestItems = () => {
     return context;
 };
 
-export const RequestItemsProvider = ({ children }) => {
+export const RequestItemsProvider = ({ children, userId = null }) => {
     const [requestItems, setRequestItems] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [approvedItems, setApprovedItems] = useState([]);
+    const [loadingApproved, setLoadingApproved] = useState(false);
 
     const fetchRequestItems = async () => {
         setLoading(true);
@@ -30,14 +32,68 @@ export const RequestItemsProvider = ({ children }) => {
         }
     };
 
-    const updateRequestItemStatus = async (itemId) => {
+    const fetchApprovedItems = async (userIdParam = null) => {
+        setLoadingApproved(true);
         try {
-            await axios.put(`/api/v1/request-item/${itemId}`, {
-                is_added: true,
-            });
-            await fetchRequestItems();
+            const params = { 
+                filter: { 
+                    status: "Approved",
+                    is_requested: false // Only show items that haven't been requested yet
+                } 
+            };
+            const targetUserId = userIdParam || userId;
+            if (targetUserId) {
+                params.filter.user_id = targetUserId;
+            }
+            const response = await axios.get("/api/v1/request-item", { params });
+            // Extract the data array from the paginated response
+            const items = response.data.data?.data || response.data.data || [];
+            setApprovedItems(items);
         } catch (err) {
-            console.error("Error updating request item:", err);
+            console.error("Error fetching approved items:", err);
+            setApprovedItems([]);
+        } finally {
+            setLoadingApproved(false);
+        }
+    };
+
+    const updateRequestItemStatus = async (itemId, status, productId = null) => {
+        try {
+            const payload = {
+                status: status,
+                approved_by: 1, // Assuming admin user ID is 1
+            };
+
+            if (productId) {
+                payload.product_id = productId;
+            }
+
+            if (status === "Approved") {
+                payload.is_added = true;
+            }
+
+            await axios.put(`/api/v1/request-item/${itemId}/status`, payload);
+            
+            // Update local state immediately
+            setRequestItems(prev => {
+                if (Array.isArray(prev?.data)) {
+                    return {
+                        ...prev,
+                        data: prev.data.map(item => 
+                            item.id === itemId 
+                                ? { ...item, status: status, product_id: productId, is_added: status === "Approved" }
+                                : item
+                        )
+                    };
+                }
+                return prev;
+            });
+
+            // Refresh data from server
+            await fetchRequestItems();
+            await fetchApprovedItems(userId);
+        } catch (err) {
+            console.error("Error updating request item status:", err);
             throw err;
         }
     };
@@ -60,18 +116,27 @@ export const RequestItemsProvider = ({ children }) => {
     };
 
     const pendingCount = Array.isArray(requestItems?.data)
-        ? requestItems.data.filter((item) => item.is_added === false).length
+        ? requestItems.data.filter((item) => item.status === "Pending").length
         : 0;
+
+    const approvedCount = Array.isArray(approvedItems) ? approvedItems.length : 0;
 
     useEffect(() => {
         fetchRequestItems();
+        if (userId) {
+            fetchApprovedItems(userId);
+        }
     }, []);
 
     const value = {
         requestItems,
         pendingCount,
+        approvedItems,
+        approvedCount,
         loading,
+        loadingApproved,
         fetchRequestItems,
+        fetchApprovedItems,
         updateRequestItemStatus,
         addNewRequestItem,
     };

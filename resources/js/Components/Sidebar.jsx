@@ -11,6 +11,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { router, usePage } from "@inertiajs/react";
 import { useRequestItems } from "./RequestItemsContext";
+import { useRfqRequests } from "./RfqRequestsContext";
 
 const SidebarButton = ({
     icon,
@@ -75,13 +76,17 @@ const SidebarButton = ({
 
 const Sidebar = ({ isOpen }) => {
     const { url } = usePage();
-    const { pendingCount } = useRequestItems();
+    const { pendingCount, approvedCount } = useRequestItems();
+    const { pendingCount: rfqPendingCount } = useRfqRequests();
     const user = usePage().props.auth.user;
     const permissions = user?.permissions || [];
     
     const hasPermission = (perm) => {
         return permissions.includes(perm);
     };
+
+    // Calculate total notifications (pending + approved + RFQ pending)
+    const totalNotifications = pendingCount + approvedCount + rfqPendingCount;
 
     return (
         <>
@@ -104,7 +109,7 @@ const Sidebar = ({ isOpen }) => {
                             title="Notifications"
                             isActive={url === "/notification-settings"}
                             showBadge={true}
-                            badgeCount={pendingCount}
+                            badgeCount={totalNotifications}
                         />
                     )}
                     {/* <SidebarButton

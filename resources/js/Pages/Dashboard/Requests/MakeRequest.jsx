@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCamera, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faCamera, faPlus, faTrash, faCheckCircle } from "@fortawesome/free-solid-svg-icons";
 import SelectFloating from "../../../Components/SelectFloating";
 import InputFloating from "../../../Components/InputFloating";
 import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import { useRequestItems } from "@/Components/RequestItemsContext";
 
 const MakeRequest = () => {
     const { requestId } = usePage().props;
     const user_id = usePage().props.auth.user.id;
+    const { approvedItems, approvedCount, fetchApprovedItems } = useRequestItems();
 
     const [formData, setFormData] = useState({
         requester_id: user_id || "",
@@ -52,6 +54,20 @@ const MakeRequest = () => {
     const [photoPreview, setPhotoPreview] = useState(null);
     const [isAdded, setIsAdded] = useState(false);
     const [loadingProducts, setLoadingProducts] = useState(false);
+    const [showApprovedItems, setShowApprovedItems] = useState(false);
+    const [selectedApprovedItem, setSelectedApprovedItem] = useState(null);
+
+    // Pagination states for categories and products
+    const [categoriesPage, setCategoriesPage] = useState(1);
+    const [categoriesHasMore, setCategoriesHasMore] = useState(true);
+    const [loadingCategories, setLoadingCategories] = useState(false);
+    const [productsPages, setProductsPages] = useState({});
+    const [productsHasMore, setProductsHasMore] = useState({});
+    const [loadingMoreProducts, setLoadingMoreProducts] = useState({});
+    
+    // Request flags to prevent multiple simultaneous calls
+    const [categoriesRequestInProgress, setCategoriesRequestInProgress] = useState(false);
+    const [productsRequestInProgress, setProductsRequestInProgress] = useState({});
 
     const resetForm = () => {
         setName('');
@@ -60,6 +76,7 @@ const MakeRequest = () => {
         setPhoto(null);
         setPhotoPreview(null);
         setIsAdded(false);
+        setSelectedApprovedItem(null);
     };
 
     const handlePhotoChange = (e) => {
@@ -75,36 +92,131 @@ const MakeRequest = () => {
         }
     };
 
-    const fetchProductsForCategory = async (categoryId) => {
+    const fetchCategories = async (page = 1, append = false) => {
+        if (loadingCategories || categoriesRequestInProgress) return;
+        
+        setLoadingCategories(true);
+        setCategoriesRequestInProgress(true);
+        try {
+            const response = await axios.get(`/api/v1/product-categories?page=${page}&per_page=10`);
+            const { data, meta } = response.data;
+            
+            if (append) {
+                setCategories(prev => [...prev, ...data]);
+            } else {
+                setCategories(data);
+            }
+            
+            // Check if meta exists and has pagination info
+            if (meta && meta.current_page && meta.last_page) {
+                setCategoriesHasMore(meta.current_page < meta.last_page);
+                setCategoriesPage(meta.current_page);
+            } else {
+                // If no pagination meta, assume we have all data
+                setCategoriesHasMore(false);
+                setCategoriesPage(1);
+            }
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+            setCategoriesHasMore(false);
+        } finally {
+            setLoadingCategories(false);
+            setCategoriesRequestInProgress(false);
+        }
+    };
+
+    const fetchProductsForCategory = async (categoryId, page = 1, append = false) => {
         if (!categoryId) return;
         
-        setLoadingProducts(true);
+        if (loadingMoreProducts[categoryId] || productsRequestInProgress[categoryId]) return;
+        
+        setLoadingMoreProducts(prev => ({ ...prev, [categoryId]: true }));
+        setProductsRequestInProgress(prev => ({ ...prev, [categoryId]: true }));
         try {
-            console.log(`Fetching products for category ${categoryId}...`);
-            const response = await axios.get(`/api/v1/products?filter[category_id]=${categoryId}`);
-            console.log(`Products for category ${categoryId}:`, response.data);
+            const response = await axios.get(`/api/v1/products?filter[category_id]=${categoryId}&page=${page}&per_page=10`);
+            
+            const { data, meta } = response.data;
             
             if (response.data && response.data.data) {
                 setFilteredProducts(prev => ({
                     ...prev,
-                    [categoryId]: response.data.data
+                    [categoryId]: append ? [...(prev[categoryId] || []), ...data] : data
                 }));
+                
+                // Check if meta exists and has pagination info
+                if (meta && meta.current_page && meta.last_page) {
+                    setProductsHasMore(prev => ({
+                        ...prev,
+                        [categoryId]: meta.current_page < meta.last_page
+                    }));
+                    
+                    setProductsPages(prev => ({
+                        ...prev,
+                        [categoryId]: meta.current_page
+                    }));
+                } else {
+                    // If no pagination meta, assume we have all data
+                    setProductsHasMore(prev => ({
+                        ...prev,
+                        [categoryId]: false
+                    }));
+                    
+                    setProductsPages(prev => ({
+                        ...prev,
+                        [categoryId]: 1
+                    }));
+                }
             }
         } catch (error) {
             console.error(`Error fetching products for category ${categoryId}:`, error);
+            setProductsHasMore(prev => ({
+                ...prev,
+                [categoryId]: false
+            }));
         } finally {
-            setLoadingProducts(false);
+            setLoadingMoreProducts(prev => ({ ...prev, [categoryId]: false }));
+            setProductsRequestInProgress(prev => ({ ...prev, [categoryId]: false }));
+        }
+    };
+
+    const handleCategoryScroll = (e) => {
+        if (loadingCategories || !categoriesHasMore) return;
+        
+        const { scrollTop, scrollHeight, clientHeight } = e.target;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 10;
+        
+        if (isNearBottom) {
+            fetchCategories(categoriesPage + 1, true);
+        }
+    };
+
+    const handleProductScroll = (categoryId, e) => {
+        if (!categoryId || loadingMoreProducts[categoryId] || !productsHasMore[categoryId]) return;
+        
+        const { scrollTop, scrollHeight, clientHeight } = e.target;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 10;
+        
+        if (isNearBottom) {
+            const nextPage = (productsPages[categoryId] || 1) + 1;
+            fetchProductsForCategory(categoryId, nextPage, true);
         }
     };
 
     const handleItemChange = (index, e) => {
         const { name, value } = e.target;
         const newItems = [...formData.items];
+        const oldCategoryId = newItems[index].category_id;
+        
         newItems[index] = { ...newItems[index], [name]: value };
         
-        // If category is changed, fetch products for that category
+        // If category is changed, fetch products for that category and reset product selection
         if (name === 'category_id') {
+            newItems[index].product_id = ""; // Reset product selection
+            
+            // Check if we already have products for this category
+            if (!filteredProducts[value] || filteredProducts[value].length === 0) {
             fetchProductsForCategory(value);
+            }
         }
         
         setFormData(prev => ({
@@ -215,6 +327,18 @@ const MakeRequest = () => {
                 window.location.reload();
             }
 
+            // Mark the approved item as requested if one was selected
+            if (selectedApprovedItem) {
+                try {
+                    await axios.put(`/api/v1/request-item/${selectedApprovedItem.id}/mark-requested`);
+                    // Refresh the approved items list to remove the requested item
+                    await fetchApprovedItems(user_id);
+                    setSelectedApprovedItem(null); // Clear the selected item
+                } catch (error) {
+                    console.error('Error marking approved item as requested:', error);
+                }
+            }
+
             toast.success('Request created successfully');
         } catch (error) {
             console.error("Error submitting request:", error);
@@ -228,11 +352,9 @@ const MakeRequest = () => {
 
     const getAvailableProducts = (index, categoryId) => {
         if (!categoryId) {
-            console.log('No category ID provided');
             return [];
         }
         const products = filteredProducts[categoryId] || [];
-        console.log(`Getting products for category ${categoryId}. Available products:`, products);
         return products;
     };
 
@@ -244,23 +366,22 @@ const MakeRequest = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                console.log('Starting to fetch data...');
-                
-                const [categoriesRes, unitsRes, warehousesRes, costCentersRes, departmentsRes] = await Promise.all([
-                    axios.get("/api/v1/product-categories"),
+                const [unitsRes, warehousesRes, costCentersRes, departmentsRes] = await Promise.all([
                     axios.get("/api/v1/units"),
                     axios.get("/api/v1/warehouses"),
                     axios.get("/api/v1/cost-centers"),
                     axios.get("/api/v1/departments"),
                 ]);
 
-                setCategories(categoriesRes.data.data);
                 setUnits(unitsRes.data.data);
                 setWarehouses(warehousesRes.data.data);
                 setCostCenters(costCentersRes.data.data);
                 setSubCostCenters(costCentersRes.data.data);
                 setDepartments(departmentsRes.data.data);
                 fetchAllStatuses();
+
+                // Fetch categories with pagination
+                fetchCategories();
 
                 // Process cost centers
                 const costCenterData = costCentersRes.data.data;
@@ -334,7 +455,8 @@ const MakeRequest = () => {
                         console.warn("No items found in the request.");
                         return;
                     }
-                    setFormData({
+                    
+                    const newFormData = {
                         ...formData,
                         warehouse_id: requestData.warehouse?.id || "",
                         expected_delivery_date:
@@ -354,6 +476,16 @@ const MakeRequest = () => {
                             user_id: item.user_id || null,
                             is_added: item.is_added || false
                         })),
+                    };
+                    
+                    setFormData(newFormData);
+                    
+                    // Fetch products for each category in the items
+                    const uniqueCategories = [...new Set(items.map(item => item.category?.id).filter(Boolean))];
+                    uniqueCategories.forEach(categoryId => {
+                        if (categoryId && !filteredProducts[categoryId]) {
+                            fetchProductsForCategory(categoryId);
+                        }
                     });
                 })
                 .catch((error) => {
@@ -436,6 +568,55 @@ const MakeRequest = () => {
         });
     };
 
+    const handleSelectApprovedItem = async (approvedItem) => {
+        try {
+            // Check if the approved item has a linked product
+            if (!approvedItem.product_id) {
+                toast.error('No product linked to this approved item');
+                return;
+            }
+
+            // Get the linked product details
+            const productResponse = await axios.get(`/api/v1/products/${approvedItem.product_id}`);
+            const product = productResponse.data.data;
+            
+            // Get the category and unit details
+            const [categoryResponse, unitResponse] = await Promise.all([
+                axios.get(`/api/v1/product-categories/${product.category_id}`),
+                axios.get(`/api/v1/units/${product.unit_id}`)
+            ]);
+            
+            const category = categoryResponse.data.data;
+            const unit = unitResponse.data.data;
+            
+            // Auto-fill the form with the approved item details
+            setFormData(prev => ({
+                ...prev,
+                items: [{
+                    product_id: product.id,
+                    unit_id: unit.id,
+                    category_id: category.id,
+                    quantity: approvedItem.quantity,
+                    urgency: "1", // Default urgency
+                    photo: null,
+                    description: approvedItem.description || "",
+                }]
+            }));
+            
+            // Store the selected approved item for later use
+            setSelectedApprovedItem(approvedItem);
+            
+            // Fetch products for the category to ensure dropdown works
+            await fetchProductsForCategory(category.id);
+            
+            toast.success(`Form filled with approved item: ${approvedItem.name}`);
+            setShowApprovedItems(false);
+        } catch (error) {
+            console.error('Error selecting approved item:', error);
+            toast.error('Error loading approved item details');
+        }
+    };
+
     return (
         <>
             <h2 className="text-3xl font-bold text-[#2C323C]">
@@ -446,6 +627,87 @@ const MakeRequest = () => {
             <p className="text-[#7D8086] text-xl mb-6">
                 Employee requests for materials from the Maharat warehouse.
             </p>
+
+            {/* Approved Items Section */}
+            {!requestId && (
+                <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-2xl font-medium text-[#6E66AC] flex items-center">
+                            <FontAwesomeIcon icon={faCheckCircle} className="mr-2 text-green-500" />
+                            Your Approved Items ({approvedCount})
+                        </h3>
+                        <button
+                            onClick={() => setShowApprovedItems(!showApprovedItems)}
+                            className="text-[#009FDC] hover:text-[#007CB8] font-medium"
+                        >
+                            {showApprovedItems ? 'Hide' : 'Show'} Approved Items
+                        </button>
+                    </div>
+                    
+                    {showApprovedItems && (
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-center">
+                                    <tr>
+                                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
+                                            ID
+                                        </th>
+                                        <th className="py-3 px-4">Item Name</th>
+                                        <th className="py-3 px-4">Description</th>
+                                        <th className="py-3 px-4">Quantity</th>
+                                        <th className="py-3 px-4">Requested Date</th>
+                                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                                            Action
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#D7D8D9] text-base font-medium text-center text-[#2C323C]">
+                                    {approvedItems.length > 0 ? (
+                                        approvedItems.map((item) => (
+                                            <tr key={item.id} className={`hover:bg-gray-50 ${selectedApprovedItem?.id === item.id ? 'bg-blue-50' : ''}`}>
+                                                <td className="py-3 px-4">
+                                                    {item.id}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    {item.name}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    {item.description || 'No description'}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    {item.quantity}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    {new Date(item.created_at).toLocaleDateString()}
+                                                </td>
+                                                <td className="py-3 px-4 flex justify-center text-center space-x-3">
+                                                    <button
+                                                        onClick={() => handleSelectApprovedItem(item)}
+                                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                                            selectedApprovedItem?.id === item.id 
+                                                                ? 'bg-green-500 text-white cursor-default' 
+                                                                : 'bg-[#009FDC] text-white hover:bg-[#007CB8]'
+                                                        }`}
+                                                        disabled={selectedApprovedItem?.id === item.id}
+                                                    >
+                                                        {selectedApprovedItem?.id === item.id ? 'Selected' : 'Make Request'}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="6" className="py-3 px-4 text-sm text-gray-500 text-center">
+                                                No approved items found
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {processError && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
@@ -479,10 +741,13 @@ const MakeRequest = () => {
                                 name="category_id"
                                 value={item.category_id}
                                 onChange={(e) => handleItemChange(index, e)}
+                                onScroll={handleCategoryScroll}
                                 options={categories.map((p) => ({
                                     id: p.id,
                                     label: p.name,
                                 }))}
+                                loading={loadingCategories}
+                                hasMore={categoriesHasMore}
                             />
                             {errors[`items.${index}.category_id`] && (
                                 <p className="text-red-500 text-sm">
@@ -496,13 +761,16 @@ const MakeRequest = () => {
                                 name="product_id"
                                 value={item.product_id}
                                 onChange={(e) => handleItemChange(index, e)}
-                                options={getAvailableProducts(
-                                    index,
-                                    item.category_id
-                                ).map((p) => ({
+                                onScroll={(e) => handleProductScroll(item.category_id, e)}
+                                options={(() => {
+                                    const products = getAvailableProducts(index, item.category_id);
+                                    return products.map((p) => ({
                                     id: p.id,
                                     label: p.name,
-                                }))}
+                                    }));
+                                })()}
+                                loading={loadingMoreProducts[item.category_id] || loadingProducts}
+                                hasMore={productsHasMore[item.category_id] || false}
                             />
                             {errors[`items.${index}.product_id`] && (
                                 <p className="text-red-500 text-sm">

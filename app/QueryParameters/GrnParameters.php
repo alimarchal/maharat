@@ -24,7 +24,11 @@ class GrnParameters
     const ALLOWED_INCLUDES = [
         'user',
         'quotation',
+        'quotation.supplier',
         'purchaseOrder',
         'receiveGoods',
+        'receiveGoods.supplier',
+        'receiveGoods.category',
+        'externalDeliveryNote',
     ];
 }

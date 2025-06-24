@@ -19,6 +19,7 @@ class ExternalDeliveryNote extends Model
         'purchase_order_id',
         'delivery_note_number',
         'attachment_path',
+        'attachment_name',
     ];
 
     /**

@@ -5,11 +5,29 @@ import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faEdit } from "@fortawesome/free-solid-svg-icons";
 import ItemModal from "./ItemModal";
+import { RfqRequestsProvider, useRfqRequests } from '@/Components/RfqRequestsContext';
+import RfqRequestsTable from './RfqRequestsTable';
+import SelectFloating from '@/Components/SelectFloating';
 
-export default function AddQuotationForm() {
+function AddQuotationFormWrapper(props) {
+    return (
+        <RfqRequestsProvider>
+            <AddQuotationForm {...props} />
+        </RfqRequestsProvider>
+    );
+}
+
+export default AddQuotationFormWrapper;
+
+function AddQuotationForm() {
     const { rfqId } = usePage().props;
     const user_id = usePage().props.auth.user.id;
-
+    const {
+        fetchRfqRequests,
+        markRfqRequestAsRequested,
+        updateRfqRequestStatus,
+    } = useRfqRequests();
+    const [selectedRfqRequest, setSelectedRfqRequest] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         organization_name: "",
@@ -56,6 +74,51 @@ export default function AddQuotationForm() {
     const [isItemModalOpen, setIsItemModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
     const [isEditingItem, setIsEditingItem] = useState(false);
+    const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+
+    // Handle click outside to close dropdown
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            const dropdown = document.querySelector('[data-dropdown="category"]');
+            if (dropdown && !dropdown.contains(event.target)) {
+                setIsCategoryOpen(false);
+            }
+        };
+
+        if (isCategoryOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isCategoryOpen]);
+
+    // Pagination states for dropdowns
+    const [categoriesPage, setCategoriesPage] = useState(1);
+    const [categoriesHasMore, setCategoriesHasMore] = useState(true);
+    const [loadingCategories, setLoadingCategories] = useState(false);
+    const [categoriesRequestInProgress, setCategoriesRequestInProgress] = useState(false);
+
+    const [warehousesPage, setWarehousesPage] = useState(1);
+    const [warehousesHasMore, setWarehousesHasMore] = useState(true);
+    const [loadingWarehouses, setLoadingWarehouses] = useState(false);
+    const [warehousesRequestInProgress, setWarehousesRequestInProgress] = useState(false);
+
+    const [departmentsPage, setDepartmentsPage] = useState(1);
+    const [departmentsHasMore, setDepartmentsHasMore] = useState(true);
+    const [loadingDepartments, setLoadingDepartments] = useState(false);
+    const [departmentsRequestInProgress, setDepartmentsRequestInProgress] = useState(false);
+
+    const [costCentersPage, setCostCentersPage] = useState(1);
+    const [costCentersHasMore, setCostCentersHasMore] = useState(true);
+    const [loadingCostCenters, setLoadingCostCenters] = useState(false);
+    const [costCentersRequestInProgress, setCostCentersRequestInProgress] = useState(false);
+
+    const [paymentTypesPage, setPaymentTypesPage] = useState(1);
+    const [paymentTypesHasMore, setPaymentTypesHasMore] = useState(true);
+    const [loadingPaymentTypes, setLoadingPaymentTypes] = useState(false);
+    const [paymentTypesRequestInProgress, setPaymentTypesRequestInProgress] = useState(false);
 
     // Function to get all children of a cost center recursively
     const getAllChildren = (node) => {
@@ -101,6 +164,218 @@ export default function AddQuotationForm() {
         const value = e.target.value;
         handleFormInputChange("cost_center_id", value);
         await updateSubCostCenter(value);
+    };
+
+    // Pagination functions for dropdowns
+    const fetchCategories = async (page = 1, append = false) => {
+        if (loadingCategories || categoriesRequestInProgress) return;
+        
+        setLoadingCategories(true);
+        setCategoriesRequestInProgress(true);
+        try {
+            const response = await axios.get(`/api/v1/product-categories?page=${page}&per_page=10`);
+            const { data, meta } = response.data;
+            
+            if (append) {
+                setCategories(prev => [...prev, ...data]);
+            } else {
+                setCategories(data);
+            }
+            
+            if (meta && meta.current_page && meta.last_page) {
+                setCategoriesHasMore(meta.current_page < meta.last_page);
+                setCategoriesPage(meta.current_page);
+            } else {
+                setCategoriesHasMore(false);
+                setCategoriesPage(1);
+            }
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+            setCategoriesHasMore(false);
+        } finally {
+            setLoadingCategories(false);
+            setCategoriesRequestInProgress(false);
+        }
+    };
+
+    const fetchWarehouses = async (page = 1, append = false) => {
+        if (loadingWarehouses || warehousesRequestInProgress) return;
+        
+        setLoadingWarehouses(true);
+        setWarehousesRequestInProgress(true);
+        try {
+            const response = await axios.get(`/api/v1/warehouses?page=${page}&per_page=10`);
+            const { data, meta } = response.data;
+            
+            if (append) {
+                setWarehouses(prev => [...prev, ...data]);
+            } else {
+                setWarehouses(data);
+            }
+            
+            if (meta && meta.current_page && meta.last_page) {
+                setWarehousesHasMore(meta.current_page < meta.last_page);
+                setWarehousesPage(meta.current_page);
+            } else {
+                setWarehousesHasMore(false);
+                setWarehousesPage(1);
+            }
+        } catch (error) {
+            console.error('Error fetching warehouses:', error);
+            setWarehousesHasMore(false);
+        } finally {
+            setLoadingWarehouses(false);
+            setWarehousesRequestInProgress(false);
+        }
+    };
+
+    const fetchDepartments = async (page = 1, append = false) => {
+        if (loadingDepartments || departmentsRequestInProgress) return;
+        
+        setLoadingDepartments(true);
+        setDepartmentsRequestInProgress(true);
+        try {
+            const response = await axios.get(`/api/v1/departments?page=${page}&per_page=10`);
+            const { data, meta } = response.data;
+            
+            if (append) {
+                setDepartments(prev => [...prev, ...data]);
+            } else {
+                setDepartments(data);
+            }
+            
+            if (meta && meta.current_page && meta.last_page) {
+                setDepartmentsHasMore(meta.current_page < meta.last_page);
+                setDepartmentsPage(meta.current_page);
+            } else {
+                setDepartmentsHasMore(false);
+                setDepartmentsPage(1);
+            }
+        } catch (error) {
+            console.error('Error fetching departments:', error);
+            setDepartmentsHasMore(false);
+        } finally {
+            setLoadingDepartments(false);
+            setDepartmentsRequestInProgress(false);
+        }
+    };
+
+    const fetchCostCenters = async (page = 1, append = false) => {
+        if (loadingCostCenters || costCentersRequestInProgress) return;
+        
+        setLoadingCostCenters(true);
+        setCostCentersRequestInProgress(true);
+        try {
+            const response = await axios.get(`/api/v1/cost-centers?page=${page}&per_page=10`);
+            const { data, meta } = response.data;
+            
+            if (append) {
+                setCostCenters(prev => [...prev, ...data]);
+            } else {
+                setCostCenters(data);
+            }
+            
+            if (meta && meta.current_page && meta.last_page) {
+                setCostCentersHasMore(meta.current_page < meta.last_page);
+                setCostCentersPage(meta.current_page);
+            } else {
+                setCostCentersHasMore(false);
+                setCostCentersPage(1);
+            }
+        } catch (error) {
+            console.error('Error fetching cost centers:', error);
+            setCostCentersHasMore(false);
+        } finally {
+            setLoadingCostCenters(false);
+            setCostCentersRequestInProgress(false);
+        }
+    };
+
+    const fetchPaymentTypes = async (page = 1, append = false) => {
+        if (loadingPaymentTypes || paymentTypesRequestInProgress) return;
+        
+        setLoadingPaymentTypes(true);
+        setPaymentTypesRequestInProgress(true);
+        try {
+            const response = await axios.get(`/api/v1/statuses?filter[type]=payment&page=${page}&per_page=10`);
+            const { data, meta } = response.data;
+            
+            if (append) {
+                setPaymentTypes(prev => [...prev, ...data]);
+            } else {
+                setPaymentTypes(data);
+            }
+            
+            if (meta && meta.current_page && meta.last_page) {
+                setPaymentTypesHasMore(meta.current_page < meta.last_page);
+                setPaymentTypesPage(meta.current_page);
+            } else {
+                setPaymentTypesHasMore(false);
+                setPaymentTypesPage(1);
+            }
+        } catch (error) {
+            console.error('Error fetching payment types:', error);
+            setPaymentTypesHasMore(false);
+        } finally {
+            setLoadingPaymentTypes(false);
+            setPaymentTypesRequestInProgress(false);
+        }
+    };
+
+    // Scroll handlers for dropdowns
+    const handleCategoryScroll = (e) => {
+        if (loadingCategories || !categoriesHasMore) return;
+        
+        const { scrollTop, scrollHeight, clientHeight } = e.target;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 10;
+        
+        if (isNearBottom) {
+            fetchCategories(categoriesPage + 1, true);
+        }
+    };
+
+    const handleWarehouseScroll = (e) => {
+        if (loadingWarehouses || !warehousesHasMore) return;
+        
+        const { scrollTop, scrollHeight, clientHeight } = e.target;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 10;
+        
+        if (isNearBottom) {
+            fetchWarehouses(warehousesPage + 1, true);
+        }
+    };
+
+    const handleDepartmentScroll = (e) => {
+        if (loadingDepartments || !departmentsHasMore) return;
+        
+        const { scrollTop, scrollHeight, clientHeight } = e.target;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 10;
+        
+        if (isNearBottom) {
+            fetchDepartments(departmentsPage + 1, true);
+        }
+    };
+
+    const handleCostCenterScroll = (e) => {
+        if (loadingCostCenters || !costCentersHasMore) return;
+        
+        const { scrollTop, scrollHeight, clientHeight } = e.target;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 10;
+        
+        if (isNearBottom) {
+            fetchCostCenters(costCentersPage + 1, true);
+        }
+    };
+
+    const handlePaymentTypeScroll = (e) => {
+        if (loadingPaymentTypes || !paymentTypesHasMore) return;
+        
+        const { scrollTop, scrollHeight, clientHeight } = e.target;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 10;
+        
+        if (isNearBottom) {
+            fetchPaymentTypes(paymentTypesPage + 1, true);
+        }
     };
 
     // Add a useEffect to track formData changes
@@ -359,152 +634,42 @@ export default function AddQuotationForm() {
             try {
                 setLoading(true);
 
-                const endpoints = [
-                    {
-                        name: "units",
-                        url: "/api/v1/units",
-                        params: { per_page: 100 },
-                    },
-                    { name: "brands", url: "/api/v1/brands" },
-                    { name: "categories", url: "/api/v1/product-categories" },
-                    { name: "warehouses", url: "/api/v1/warehouses" },
-                    { name: "products", url: "/api/v1/products" },
-                    { name: "departments", url: "/api/v1/departments" },
-                ];
+                // Fetch units and brands (no pagination needed for these)
+                const [unitsRes, brandsRes] = await Promise.all([
+                    axios.get("/api/v1/units"),
+                    axios.get("/api/v1/brands"),
+                ]);
 
-                // Fetch each endpoint and handle potential errors individually
-                const results = await Promise.all(
-                    endpoints.map(async (endpoint) => {
-                        try {
-                            const response = await axios.get(endpoint.url, {
-                                params: endpoint.params,
-                            });
-                            let data = response.data?.data || [];
+                setUnits(unitsRes.data.data);
+                setBrands(brandsRes.data.data);
 
-                            // Handle pagination for units
-                            if (
-                                endpoint.name === "units" &&
-                                response.data?.meta
-                            ) {
-                                const meta = response.data.meta;
-                                if (meta.last_page > 1) {
-                                    const remainingRequests = [];
-                                    for (
-                                        let page = 2;
-                                        page <= meta.last_page;
-                                        page++
-                                    ) {
-                                        remainingRequests.push(
-                                            axios.get(endpoint.url, {
-                                                params: {
-                                                    ...endpoint.params,
-                                                    page,
-                                                },
-                                            })
-                                        );
-                                    }
-                                    const remainingResponses =
-                                        await Promise.all(remainingRequests);
-                                    remainingResponses.forEach((response) => {
-                                        if (response.data?.data) {
-                                            data = [
-                                                ...data,
-                                                ...response.data.data,
-                                            ];
-                                        }
-                                    });
-                                }
-                            }
-
-                            return {
-                                name: endpoint.name,
-                                data: data,
-                            };
-                        } catch (error) {
-                            return { name: endpoint.name, data: [] };
-                        }
-                    })
-                );
-
-                // Apply results to state
-                results.forEach((result) => {
-                    switch (result.name) {
-                        case "categories":
-                            setCategories(result.data);
-
-                            // Create lookup map for categories
-                            const categoryLookup = {};
-                            result.data.forEach((category) => {
-                                if (category && category.id) {
-                                    categoryLookup[String(category.id)] =
-                                        category.name;
-                                }
-                            });
-                            setCategoryNames(categoryLookup);
-                            break;
-
-                        case "units":
-                            setUnits(result.data);
-
-                            // Create lookup map for units
-                            const unitLookup = {};
-                            result.data.forEach((unit) => {
-                                if (unit && unit.id) {
-                                    unitLookup[String(unit.id)] = unit.name;
-                                }
-                            });
-                            setUnitNames(unitLookup);
-                            break;
-
-                        case "brands":
-                            setBrands(result.data);
-
-                            // Create lookup map for brands
-                            const brandLookup = {};
-                            result.data.forEach((brand) => {
-                                if (brand && brand.id) {
-                                    brandLookup[String(brand.id)] = brand.name;
-                                }
-                            });
-                            setBrandNames(brandLookup);
-                            break;
-
-                        case "warehouses":
-                            setWarehouses(result.data);
-
-                            // Create lookup map for warehouses
-                            const warehouseLookup = {};
-                            result.data.forEach((warehouse) => {
-                                if (warehouse && warehouse.id) {
-                                    warehouseLookup[String(warehouse.id)] =
-                                        warehouse.name;
-                                }
-                            });
-                            setWarehouseNames(warehouseLookup);
-                            break;
-
-                        case "products":
-                            setProducts(result.data);
-                            break;
-
-                        case "departments":
-                            setDepartments(result.data);
-
-                            // Create lookup map for departments
-                            const departmentLookup = {};
-                            result.data.forEach((department) => {
-                                if (department && department.id) {
-                                    departmentLookup[String(department.id)] = department.name;
-                                }
-                            });
-                            setDepartmentNames(departmentLookup);
-                            break;
-
-                        default:
-                            break;
+                // Create lookup maps
+                const unitLookup = {};
+                unitsRes.data.data.forEach((unit) => {
+                    if (unit && unit.id) {
+                        unitLookup[String(unit.id)] = unit.name;
                     }
                 });
+                setUnitNames(unitLookup);
 
+                const brandLookup = {};
+                brandsRes.data.data.forEach((brand) => {
+                    if (brand && brand.id) {
+                        brandLookup[String(brand.id)] = brand.name;
+                    }
+                });
+                setBrandNames(brandLookup);
+
+                // Fetch initial data for paginated dropdowns
+                await Promise.all([
+                    fetchCategories(),
+                    fetchWarehouses(),
+                    fetchDepartments(),
+                    fetchCostCenters(),
+                    fetchPaymentTypes(),
+                ]);
+
+                // Fetch all statuses for payment types (keeping existing logic)
                 try {
                     const statusesResponse = await axios.get(
                         "/api/v1/statuses",
@@ -786,11 +951,127 @@ export default function AddQuotationForm() {
         }
     };
 
+    useEffect(() => {
+        // Remove the manual fetch call since it's now handled by the context
+        // fetchRfqRequests(user_id);
+    }, [user_id]);
+
+    // Add useEffect to ensure category is set when categories are loaded
+    useEffect(() => {
+        if (selectedRfqRequest && categories.length > 0 && formData.category_id === "") {
+            console.log('Categories loaded, updating category for selected RFQ request');
+            setFormData(prev => ({
+                ...prev,
+                category_id: selectedRfqRequest.category_id ? String(selectedRfqRequest.category_id) : ""
+            }));
+        }
+    }, [categories, selectedRfqRequest, formData.category_id]);
+
+    // Update lookup maps when data is loaded
+    useEffect(() => {
+        if (categories.length > 0) {
+            const categoryLookup = {};
+            categories.forEach((category) => {
+                if (category && category.id) {
+                    categoryLookup[String(category.id)] = category.name;
+                }
+            });
+            setCategoryNames(categoryLookup);
+        }
+    }, [categories]);
+
+    useEffect(() => {
+        if (warehouses.length > 0) {
+            const warehouseLookup = {};
+            warehouses.forEach((warehouse) => {
+                if (warehouse && warehouse.id) {
+                    warehouseLookup[String(warehouse.id)] = warehouse.name;
+                }
+            });
+            setWarehouseNames(warehouseLookup);
+        }
+    }, [warehouses]);
+
+    useEffect(() => {
+        if (departments.length > 0) {
+            const departmentLookup = {};
+            departments.forEach((department) => {
+                if (department && department.id) {
+                    departmentLookup[String(department.id)] = department.name;
+                }
+            });
+            setDepartmentNames(departmentLookup);
+        }
+    }, [departments]);
+
+    useEffect(() => {
+        if (costCenters.length > 0) {
+            const costCenterLookup = {};
+            costCenters.forEach((center) => {
+                if (center && center.id) {
+                    costCenterLookup[String(center.id)] = center.name;
+                }
+            });
+            setCostCenterNames(costCenterLookup);
+        }
+    }, [costCenters]);
+
+    useEffect(() => {
+        if (paymentTypes.length > 0) {
+            const paymentTypeLookup = {};
+            paymentTypes.forEach((type) => {
+                if (type && type.id) {
+                    paymentTypeLookup[String(type.id)] = type.name;
+                }
+            });
+            setPaymentTypeNames(paymentTypeLookup);
+        }
+    }, [paymentTypes]);
+
+    // Handler for Make RFQ button
+    const handleSelectRfqRequest = (rfqRequest) => {
+        console.log('Selected RFQ Request:', rfqRequest);
+        console.log('Current categories:', categories);
+        
+        setSelectedRfqRequest(rfqRequest);
+        // Auto-fill the form with the RFQ request data
+        setFormData((prev) => {
+            const newFormData = {
+                ...prev,
+                category_id: rfqRequest.category_id ? String(rfqRequest.category_id) : "",
+                warehouse_id: rfqRequest.warehouse_id ? String(rfqRequest.warehouse_id) : "",
+                cost_center_id: rfqRequest.cost_center_id ? String(rfqRequest.cost_center_id) : "",
+                sub_cost_center_id: rfqRequest.sub_cost_center_id ? String(rfqRequest.sub_cost_center_id) : "",
+                department_id: rfqRequest.department_id ? String(rfqRequest.department_id) : "",
+                items: [
+                    {
+                        product_id: "", // No product yet
+                        item_name: rfqRequest.name,
+                        description: rfqRequest.description || "",
+                        unit_id: rfqRequest.unit_id ? String(rfqRequest.unit_id) : "",
+                        quantity: rfqRequest.quantity,
+                        brand_id: "",
+                        expected_delivery_date: "",
+                        rfq_id: rfqId || "",
+                        status_id: 48,
+                    },
+                ],
+            };
+            console.log('Updated formData:', newFormData);
+            return newFormData;
+        });
+
+        // Load sub cost centers if cost center is selected
+        if (rfqRequest.cost_center_id) {
+            updateSubCostCenter(String(rfqRequest.cost_center_id));
+        }
+    };
+
+    // After successful RFQ creation, mark the request as requested
     const handleSaveAndSubmit = async (e) => {
         e.preventDefault();
         setIsSaving(true);
         setErrors({});
-
         try {
             const processResponse = await axios.get(
                 "/api/v1/processes?include=steps,creator,updater&filter[title]=RFQ Approval"
@@ -1022,6 +1303,17 @@ export default function AddQuotationForm() {
             };
             await axios.post("/api/v1/tasks", taskPayload);
 
+            // Mark the RFQ request as requested only after successful RFQ creation
+            if (selectedRfqRequest) {
+                try {
+                    await axios.put(`/api/v1/rfq-requests/${selectedRfqRequest.id}/mark-requested`);
+                    markRfqRequestAsRequested(selectedRfqRequest.id);
+                    setSelectedRfqRequest(null);
+                } catch (error) {
+                    console.error('Error marking RFQ request as requested:', error);
+                }
+            }
+
             router.visit(route("rfq.index"));
         } catch (error) {
             setErrors({
@@ -1131,6 +1423,8 @@ export default function AddQuotationForm() {
 
     return (
         <div className="w-full">
+            {/* RFQ Requests Table at the top */}
+            <RfqRequestsTable onSelectRfqRequest={handleSelectRfqRequest} />
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <div>
@@ -1207,15 +1501,26 @@ export default function AddQuotationForm() {
                             readOnly
                         />
 
+                        <span className="font-medium text-gray-600">City:</span>
+                        <input
+                            type="text"
+                            value={formData.city}
+                            onChange={(e) =>
+                                handleFormInputChange("city", e.target.value)
+                            }
+                            className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            required
+                            readOnly
+                        />
+
                         <span className="font-medium text-gray-600">Department:</span>
-                        <div className="relative">
+                        <div className="relative w-[55%]">
                             <select
                                 value={formData.department_id || ""}
                                 onChange={(e) =>
                                     handleFormInputChange("department_id", e.target.value)
                                 }
-                                className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                required
+                                className="w-full bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                             >
                                 <option value="">Select Department</option>
                                 {departments.map((department) => (
@@ -1230,50 +1535,71 @@ export default function AddQuotationForm() {
                             </select>
                         </div>
 
-                        <span className="font-medium text-gray-600">City:</span>
-                        <input
-                            type="text"
-                            value={formData.city}
-                            onChange={(e) =>
-                                handleFormInputChange("city", e.target.value)
-                            }
-                            className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                            required
-                            readOnly
-                        />
-
                         <span className="font-medium text-gray-600">
                             Category:
                         </span>
-                        <div className="relative">
-                            <select
-                                value={formData.category_id || ""}
-                                onChange={(e) =>
-                                    handleFormInputChange(
-                                        "category_id",
-                                        e.target.value
-                                    )
-                                }
-                                className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                required
-                            >
-                                <option value="">Select Category</option>
-                                {categories.map((category) => (
-                                    <option
-                                        key={category.id}
-                                        value={String(category.id)}
-                                        className="text-[#009FDC] bg-blue-50"
-                                    >
-                                        {category.name}
-                                    </option>
-                                ))}
-                            </select>
+                        <div className="relative w-[55%]">
+                            <div className="relative" data-dropdown="category">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                                    className="w-full bg-blue-50 border border-gray-400 rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base"
+                                >
+                                    <span className={formData.category_id ? "text-black" : "text-black"}>
+                                        {formData.category_id 
+                                            ? categories.find(c => c.id.toString() === formData.category_id)?.name || "Select Category"
+                                            : "Select Category"
+                                        }
+                                    </span>
+                                    <svg className={`w-4 h-4 transition-transform ${isCategoryOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                
+                                {isCategoryOpen && (
+                                    <div className="absolute z-50 w-full mt-1 bg-blue-50 border border-gray-400 rounded-xl shadow-lg max-h-32 overflow-hidden">
+                                        <style>
+                                            {`
+                                                .custom-scrollbar::-webkit-scrollbar {
+                                                    width: 4px;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-track {
+                                                    background: transparent;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-thumb {
+                                                    background: #009FDC;
+                                                    border-radius: 2px;
+                                                    min-height: 20px;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                                                    background: #007CB8;
+                                                }
+                                            `}
+                                        </style>
+                                        <div className="py-1 custom-scrollbar overflow-y-auto max-h-32 pr-2">
+                                            {categories.map((category) => (
+                                                <button
+                                                    key={category.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        handleFormInputChange("category_id", category.id.toString());
+                                                        setIsCategoryOpen(false);
+                                                    }}
+                                                    className="w-full px-3 py-2 text-left text-[#009FDC] hover:bg-blue-100 focus:bg-blue-100 focus:outline-none text-base"
+                                                >
+                                                    {category.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <span className="font-medium text-gray-600">
                             Warehouse:
                         </span>
-                        <div className="relative">
+                        <div className="relative w-[55%]">
                             <select
                                 value={formData.warehouse_id || ""}
                                 onChange={(e) =>
@@ -1282,8 +1608,7 @@ export default function AddQuotationForm() {
                                         e.target.value
                                     )
                                 }
-                                className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                required
+                                className="w-full bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                             >
                                 <option value="">Select Warehouse</option>
                                 {warehouses.map((warehouse) => (
@@ -1301,21 +1626,20 @@ export default function AddQuotationForm() {
                         <span className="font-medium text-gray-600">
                             Cost Center:
                         </span>
-                        <div className="relative">
+                        <div className="relative w-[55%]">
                             <select
                                 value={formData.cost_center_id || ""}
                                 onChange={handleCostCenterChange}
-                                className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                required
+                                className="w-full bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                             >
                                 <option value="">Select Cost Center</option>
-                                {costCenters.map((center) => (
+                                {costCenters.map((costCenter) => (
                                     <option
-                                        key={center.id}
-                                        value={center.id.toString()}
+                                        key={costCenter.id}
+                                        value={costCenter.id.toString()}
                                         className="text-[#009FDC] bg-blue-50"
                                     >
-                                        {center.name}
+                                        {costCenter.name}
                                     </option>
                                 ))}
                             </select>
@@ -1376,7 +1700,7 @@ export default function AddQuotationForm() {
                         <span className="font-medium text-gray-600">
                             Payment Type:
                         </span>
-                        <div className="relative">
+                        <div className="relative w-[55%]">
                             <select
                                 value={formData.payment_type || ""}
                                 onChange={(e) =>
@@ -1385,17 +1709,16 @@ export default function AddQuotationForm() {
                                         e.target.value
                                     )
                                 }
-                                className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                required
+                                className="w-full bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                             >
                                 <option value="">Select Payment Type</option>
-                                {paymentTypes.map((type) => (
+                                {paymentTypes.map((paymentType) => (
                                     <option
-                                        key={type.id}
-                                        value={type.id.toString()}
+                                        key={paymentType.id}
+                                        value={paymentType.id.toString()}
                                         className="text-[#009FDC] bg-blue-50"
                                     >
-                                        {type.name}
+                                        {paymentType.name}
                                     </option>
                                 ))}
                             </select>

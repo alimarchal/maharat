@@ -4,7 +4,7 @@ import SelectFloating from "../../../../Components/SelectFloating";
 import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faTimes, faEdit } from "@fortawesome/free-solid-svg-icons";
 import { useRequestItems } from "@/Components/RequestItemsContext";
 
 const CreateProduct = () => {
@@ -27,6 +27,15 @@ const CreateProduct = () => {
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
+    const [selectedFilter, setSelectedFilter] = useState("All");
+    const [statusUpdateModal, setStatusUpdateModal] = useState(false);
+    const [selectedItemForStatus, setSelectedItemForStatus] = useState(null);
+    const [statusForm, setStatusForm] = useState({
+        status: "Pending",
+        rejection_reason: ""
+    });
+
+    const filters = ["All", "Pending", "Approved", "Rejected"];
 
     const showRequestItemField =
         Array.isArray(requestItems?.data) &&
@@ -102,11 +111,16 @@ const CreateProduct = () => {
                 description: formData.description,
             };
 
+            let createdProduct;
             if (productId) {
-                await axios.put(`/api/v1/products/${productId}`, payload);
+                const response = await axios.put(`/api/v1/products/${productId}`, payload);
+                createdProduct = response.data.data;
             } else {
-                await axios.post("/api/v1/products", payload);
+                const response = await axios.post("/api/v1/products", payload);
+                createdProduct = response.data.data;
             }
+
+            // Update the request item status if one was selected
             if (
                 formData.request_item &&
                 Array.isArray(requestItems.data) &&
@@ -115,7 +129,17 @@ const CreateProduct = () => {
                 )
             ) {
                 try {
-                    await updateRequestItemStatus(formData.request_item);
+                    // Update the request item status to approved and link the product
+                    await axios.put(`/api/v1/request-item/${formData.request_item}/status`, {
+                        status: "Approved",
+                        approved_by: 1, // Assuming admin user ID is 1, you might want to get this dynamically
+                        product_id: createdProduct.id,
+                        is_added: true
+                    });
+                    
+                    // Update the local state
+                    updateRequestItemStatus(formData.request_item, "Approved", createdProduct.id);
+                    
                     setFormData((prev) => ({ ...prev, request_item: "" }));
                 } catch (err) {
                     setErrors((prev) => ({
@@ -144,6 +168,81 @@ const CreateProduct = () => {
     const closeModal = () => {
         setIsModalOpen(false);
         setSelectedItem(null);
+    };
+
+    const handleFilterChange = (filter) => {
+        setSelectedFilter(filter);
+    };
+
+    const handleEditStatus = (item) => {
+        setSelectedItemForStatus(item);
+        setStatusForm({
+            status: "Rejected",
+            rejection_reason: ""
+        });
+        setStatusUpdateModal(true);
+    };
+
+    const closeStatusModal = () => {
+        setStatusUpdateModal(false);
+        setSelectedItemForStatus(null);
+        setStatusForm({
+            status: "Rejected",
+            rejection_reason: ""
+        });
+    };
+
+    const handleStatusUpdate = async () => {
+        try {
+            const payload = {
+                status: "Rejected",
+                approved_by: 1,
+                rejection_reason: statusForm.rejection_reason
+            };
+
+            await axios.put(`/api/v1/request-item/${selectedItemForStatus.id}/status`, payload);
+            
+            // Update the local state
+            updateRequestItemStatus(selectedItemForStatus.id, "Rejected");
+            
+            closeStatusModal();
+        } catch (error) {
+            console.error("Error updating status:", error);
+            setErrors((prev) => ({
+                ...prev,
+                status: "Failed to update status",
+            }));
+        }
+    };
+
+    const handleAddItem = (item) => {
+        // Auto-fill the form with the selected item's data
+        setFormData({
+            name: item.name,
+            category_id: item.category_id || "",
+            unit_id: item.unit_id || "",
+            upc: "", // UPC will need to be filled manually
+            description: item.description || "",
+            request_item: item.id.toString(),
+        });
+        
+        // Scroll to the form
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const getFilteredItems = () => {
+        if (!Array.isArray(requestItems?.data)) return [];
+        
+        switch (selectedFilter) {
+            case "Pending":
+                return requestItems.data.filter(item => item.status === "Pending");
+            case "Approved":
+                return requestItems.data.filter(item => item.status === "Approved");
+            case "Rejected":
+                return requestItems.data.filter(item => item.status === "Rejected");
+            default:
+                return requestItems.data;
+        }
     };
 
     return (
@@ -290,9 +389,26 @@ const CreateProduct = () => {
 
             {pendingCount > 0 && !productId && (
                 <div className="my-10">
-                    <h2 className="text-3xl font-bold text-[#2C323C] mb-4">
-                        Pending Requested Items
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-3xl font-bold text-[#2C323C]">
+                            Requested Items
                     </h2>
+                        <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
+                            {filters.map((filter) => (
+                                <button
+                                    key={filter}
+                                    className={`px-6 py-2 rounded-full text-xl transition ${
+                                        selectedFilter === filter
+                                            ? "bg-[#009FDC] text-white"
+                                            : "text-[#9B9DA2]"
+                                    }`}
+                                    onClick={() => handleFilterChange(filter)}
+                                >
+                                    {filter}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-center">
@@ -304,6 +420,7 @@ const CreateProduct = () => {
                                     <th className="py-3 px-4">Item Name</th>
                                     <th className="py-3 px-4">Description</th>
                                     <th className="py-3 px-4">Quantity</th>
+                                    <th className="py-3 px-4">Status</th>
                                     <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
                                         Action
                                     </th>
@@ -313,16 +430,14 @@ const CreateProduct = () => {
                                 {loading ? (
                                     <tr>
                                         <td
-                                            colSpan="5"
+                                            colSpan="7"
                                             className="text-start py-8"
                                         >
                                             <div className="w-10 h-10 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin mx-auto" />
                                         </td>
                                     </tr>
                                 ) : (
-                                    requestItems.data
-                                        .filter((product) => !product.is_added)
-                                        .map((product) => (
+                                    getFilteredItems().map((product) => (
                                             <tr key={product.id}>
                                                 <td className="py-3 px-4">
                                                     {product.id}
@@ -339,6 +454,19 @@ const CreateProduct = () => {
                                                 <td className="py-3 px-4">
                                                     {product.quantity}
                                                 </td>
+                                            <td className="py-3 px-4">
+                                                <span
+                                                    className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${
+                                                        product.status === "Approved"
+                                                            ? "bg-green-100 text-green-800"
+                                                            : product.status === "Rejected"
+                                                            ? "bg-red-100 text-red-800"
+                                                            : "bg-yellow-100 text-yellow-800"
+                                                    }`}
+                                                >
+                                                    {product.status || "Pending"}
+                                                </span>
+                                            </td>
                                                 <td className="py-3 px-4 flex justify-center text-center space-x-3">
                                                     <button
                                                         className="text-[#9B9DA2] hover:text-gray-500"
@@ -353,6 +481,30 @@ const CreateProduct = () => {
                                                             icon={faEye}
                                                         />
                                                     </button>
+                                                {product.status === "Pending" ? (
+                                                    <>
+                                                        <button
+                                                            className="text-[#009FDC] hover:text-[#007CB8]"
+                                                            title="Edit Status"
+                                                            onClick={() => handleEditStatus(product)}
+                                                        >
+                                                            <FontAwesomeIcon
+                                                                icon={faEdit}
+                                                            />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleAddItem(product)}
+                                                            className="px-4 py-2 rounded-lg text-sm font-medium bg-[#009FDC] text-white hover:bg-[#007CB8] transition-colors"
+                                                        >
+                                                            Add Item
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="w-6"></div>
+                                                        <div className="w-20"></div>
+                                                    </>
+                                                )}
                                                 </td>
                                             </tr>
                                         ))
@@ -395,7 +547,7 @@ const CreateProduct = () => {
                             </p>
                         </div>
 
-                        {selectedItem.photo ? (
+                        {selectedItem.photo && (
                             <div className="flex justify-center text-center my-4 md:my-8">
                                 <img
                                     src={`/storage/${selectedItem.photo}`}
@@ -403,28 +555,68 @@ const CreateProduct = () => {
                                     className="max-w-full max-h-96 w-auto h-auto object-contain"
                                 />
                             </div>
-                        ) : (
-                            <div className="flex justify-center text-center my-4 md:my-8">
-                                <div className="bg-gray-100 rounded-lg p-6 border-2 border-dashed border-gray-300 max-w-md">
-                                    <svg
-                                        className="mx-auto h-12 w-12 text-gray-400 mb-3"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                        />
-                                    </svg>
-                                    <p className="text-gray-500 font-medium">
-                                        No image available
-                                    </p>
-                                </div>
-                            </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Status Update Modal */}
+            {statusUpdateModal && selectedItemForStatus && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="bg-white p-8 rounded-2xl w-[90%] max-w-md">
+                        <div className="flex justify-between border-b pb-2 mb-4">
+                            <h2 className="text-2xl font-bold text-[#2C323C]">
+                                Update Status
+                            </h2>
+                            <button
+                                onClick={closeStatusModal}
+                                className="text-red-500 hover:text-red-800"
+                            >
+                                <FontAwesomeIcon icon={faTimes} />
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Status
+                                </label>
+                                <select
+                                    value={statusForm.status}
+                                    disabled
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#009FDC] bg-gray-100"
+                                    >
+                                    <option value="Rejected">Rejected</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Rejection Reason <span className="text-red-500">*</span>
+                                </label>
+                                <textarea
+                                    value={statusForm.rejection_reason}
+                                    onChange={(e) => setStatusForm(prev => ({ ...prev, rejection_reason: e.target.value }))}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#009FDC]"
+                                    rows="3"
+                                    placeholder="Enter rejection reason..."
+                                    required
+                                />
+                                </div>
+                            <div className="flex justify-end space-x-3 pt-4">
+                                <button
+                                    onClick={closeStatusModal}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleStatusUpdate}
+                                    disabled={!statusForm.rejection_reason.trim()}
+                                    className="px-4 py-2 bg-[#009FDC] text-white rounded-lg hover:bg-[#007CB8] disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Reject Item
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

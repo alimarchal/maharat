@@ -30,5 +30,7 @@ class RfqItemParameters
         'category',
         'unit',
         'status',
+        'product',
+        'brand',
     ];
 }

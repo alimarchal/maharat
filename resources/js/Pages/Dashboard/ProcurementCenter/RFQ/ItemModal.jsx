@@ -34,18 +34,33 @@ const ItemModal = ({
     useEffect(() => {
         if (isOpen) {
             if (isEdit && item) {
-                setFormData({
-                    product_id: item.product_id || "",
+                console.log('Editing item:', item);
+                console.log('Available products:', products);
+                
+                // Try to find product_id by item_name if product_id is empty
+                let productId = item.product_id ? String(item.product_id) : "";
+                if (!productId && item.item_name && products.length > 0) {
+                    const matchingProduct = products.find(p => p.name === item.item_name);
+                    if (matchingProduct) {
+                        productId = String(matchingProduct.id);
+                        console.log('Found matching product by name:', matchingProduct);
+                    }
+                }
+                
+                const newFormData = {
+                    product_id: productId,
                     item_name: item.item_name || "",
                     description: item.description || "",
-                    unit_id: item.unit_id || "",
+                    unit_id: item.unit_id ? String(item.unit_id) : "",
                     quantity: item.quantity || "",
-                    brand_id: item.brand_id || "",
+                    brand_id: item.brand_id ? String(item.brand_id) : "",
                     expected_delivery_date: item.expected_delivery_date || "",
                     attachment: item.attachment || null,
                     id: item.id,
                     rfq_id: rfqId,
-                });
+                };
+                console.log('Setting formData for edit:', newFormData);
+                setFormData(newFormData);
             } else {
                 const today = new Date();
                 const nextMonth = new Date(today);
@@ -68,19 +83,35 @@ const ItemModal = ({
             setTempFile(null);
             setErrors({});
         }
-    }, [isOpen, item, isEdit, rfqId]);
+    }, [isOpen, item, isEdit, rfqId, products]);
+
+    // Additional useEffect to handle product selection when products are loaded
+    useEffect(() => {
+        if (isEdit && item && products.length > 0 && formData.product_id) {
+            const productExists = products.find(p => String(p.id) === String(formData.product_id));
+            if (!productExists) {
+                console.log('Product not found in products list, clearing product_id');
+                setFormData(prev => ({
+                    ...prev,
+                    product_id: "",
+                    item_name: "",
+                    description: ""
+                }));
+            }
+        }
+    }, [products, isEdit, item, formData.product_id]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
 
         if (name === "product_id") {
             const selectedProduct = products.find(
-                (p) => p.id === Number(value)
+                (p) => String(p.id) === value
             );
             if (selectedProduct) {
                 setFormData({
                     ...formData,
-                    product_id: selectedProduct.id,
+                    product_id: String(selectedProduct.id),
                     item_name: selectedProduct.name,
                     description: selectedProduct.description || "",
                 });
@@ -253,7 +284,7 @@ const ItemModal = ({
                                 {products
                                     .filter(product => !selectedCategoryId || product.category_id == selectedCategoryId)
                                     .map((product) => (
-                                        <option key={product.id} value={product.id}>
+                                        <option key={product.id} value={String(product.id)}>
                                             {product.name}
                                         </option>
                                     ))}
@@ -288,7 +319,7 @@ const ItemModal = ({
                             >
                                 <option value="">Select Unit</option>
                                 {units.map((unit) => (
-                                    <option key={unit.id} value={unit.id}>
+                                    <option key={unit.id} value={String(unit.id)}>
                                         {unit.name}
                                     </option>
                                 ))}
@@ -328,7 +359,7 @@ const ItemModal = ({
                             >
                                 <option value="">Select Brand</option>
                                 {brands.map((brand) => (
-                                    <option key={brand.id} value={brand.id}>
+                                    <option key={brand.id} value={String(brand.id)}>
                                         {brand.name}
                                     </option>
                                 ))}

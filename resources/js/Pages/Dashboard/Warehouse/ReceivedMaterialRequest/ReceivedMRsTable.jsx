@@ -162,7 +162,7 @@ const ReceivedMRsTable = () => {
                         }
                     } else {
                         const errorMessage = `Cannot issue material! No inventory found for ${productName} in the selected warehouse.`;
-                        alert(errorMessage);
+                        // alert(errorMessage); // Removed duplicate popup
                         return;
                     }
                 }

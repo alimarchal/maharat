@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Force select dropdowns to open downwards */
+select {
+    transform-origin: top !important;
+}
+
+select:focus {
+    transform-origin: top !important;
+}
+
+/* Ensure dropdown opens below the select element */
+select option {
+    transform-origin: top !important;
+}
+
+/* Additional CSS to prevent upward opening */
+.dropdown-down {
+    transform-origin: top !important;
+}
+
+.dropdown-down:focus {
+    transform-origin: top !important;
+}

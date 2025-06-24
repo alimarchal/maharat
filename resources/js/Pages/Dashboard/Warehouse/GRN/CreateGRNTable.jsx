@@ -17,7 +17,7 @@ const CreateGRNTable = () => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/purchase-orders?has_good_receive_note=false&include=department,costCenter,subCostCenter,warehouse,quotation,supplier,user,requestForQuotation.items&page=${currentPage}`
+                    `/api/v1/purchase-orders?has_good_receive_note=false&include=department,costCenter,subCostCenter,warehouse,quotation.rfq.items,quotation.rfq.items.unit,quotation.rfq.items.brand,quotation.rfq.items.product,supplier,user&page=${currentPage}`
                 );
                 const res = await response.json();
                 if (response.ok) {

@@ -297,7 +297,9 @@ export default function Dashboard({ auth, page }) {
                 </div>
             )}
 
-            <main className="p-6 flex-1">{renderComponent()}</main>
+            <main className="p-6 flex-1">
+                {renderComponent()}
+            </main>
         </AuthenticatedLayout>
     );
 }

@@ -45,4 +45,9 @@ class Grn extends Model
     {
         return $this->hasMany(GrnReceiveGood::class);
     }
+
+    public function externalDeliveryNote(): HasMany
+    {
+        return $this->hasMany(ExternalDeliveryNote::class);
+    }
 }
