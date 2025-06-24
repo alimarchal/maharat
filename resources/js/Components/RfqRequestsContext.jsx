@@ -22,11 +22,10 @@ export const RfqRequestsProvider = ({ children }) => {
     const [loading, setLoading] = useState(false);
 
     const fetchRfqRequests = async (user_id) => {
-        if (!user_id) return;
-        
         setLoading(true);
         try {
-            const response = await axios.get(`/api/v1/rfq-requests?user_id=${user_id}`);
+            // Remove user_id filter to show all RFQ requests for all users
+            const response = await axios.get(`/api/v1/rfq-requests`);
             console.log('RFQ Requests API Response:', response.data);
             const requests = response.data.data || [];
             

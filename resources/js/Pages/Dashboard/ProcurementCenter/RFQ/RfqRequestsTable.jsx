@@ -1,10 +1,34 @@
 import React, { useState } from 'react';
 import { useRfqRequests } from '@/Components/RfqRequestsContext';
+import axios from 'axios';
 
 const RfqRequestsTable = ({ onSelectRfqRequest }) => {
-    const { pendingCount, getPendingRfqRequests, loading } = useRfqRequests();
+    const { pendingCount, getPendingRfqRequests, loading, updateRfqRequestStatus } = useRfqRequests();
     const [showTable, setShowTable] = useState(false);
+    const [rejectingId, setRejectingId] = useState(null);
     const pendingRequests = getPendingRfqRequests();
+
+    const handleReject = async (item) => {
+        if (!confirm('Are you sure you want to reject this RFQ request?')) {
+            return;
+        }
+
+        setRejectingId(item.id);
+        try {
+            await axios.put(`/api/v1/rfq-requests/${item.id}`, {
+                status: 'Rejected',
+                rejection_reason: 'Rejected by user'
+            });
+            
+            // Update the local state
+            updateRfqRequestStatus(item.id, 'Rejected');
+        } catch (error) {
+            console.error('Error rejecting RFQ request:', error);
+            alert('Failed to reject RFQ request. Please try again.');
+        } finally {
+            setRejectingId(null);
+        }
+    };
 
     return (
         <div className="mb-8">
@@ -24,23 +48,21 @@ const RfqRequestsTable = ({ onSelectRfqRequest }) => {
                     <table className="w-full">
                         <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-center">
                             <tr>
-                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">ID</th>
-                                <th className="py-3 px-4">Item Name</th>
+                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">Item Name</th>
                                 <th className="py-3 px-4">Description</th>
                                 <th className="py-3 px-4">Quantity</th>
                                 <th className="py-3 px-4">Requested Date</th>
-                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">Action</th>
+                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[#D7D8D9] text-base font-medium text-center text-[#2C323C]">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="6" className="py-3 px-4 text-center text-gray-500">Loading...</td>
+                                    <td colSpan="5" className="py-3 px-4 text-center text-gray-500">Loading...</td>
                                 </tr>
                             ) : pendingRequests.length > 0 ? (
                                 pendingRequests.map((item) => (
                                     <tr key={item.id}>
-                                        <td className="py-3 px-4">{item.id}</td>
                                         <td className="py-3 px-4">{item.name}</td>
                                         <td className="py-3 px-4">{item.description || 'No description'}</td>
                                         <td className="py-3 px-4">{item.quantity}</td>
@@ -52,12 +74,19 @@ const RfqRequestsTable = ({ onSelectRfqRequest }) => {
                                             >
                                                 Make RFQ
                                             </button>
+                                            <button
+                                                onClick={() => handleReject(item)}
+                                                disabled={rejectingId === item.id}
+                                                className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {rejectingId === item.id ? 'Rejecting...' : 'Reject'}
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="6" className="py-3 px-4 text-sm text-gray-500 text-center">
+                                    <td colSpan="5" className="py-3 px-4 text-sm text-gray-500 text-center">
                                         No RFQ requests found
                                     </td>
                                 </tr>

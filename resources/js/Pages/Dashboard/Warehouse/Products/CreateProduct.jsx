@@ -4,7 +4,7 @@ import SelectFloating from "../../../../Components/SelectFloating";
 import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faTimes, faEdit } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faTimes } from "@fortawesome/free-solid-svg-icons";
 import { useRequestItems } from "@/Components/RequestItemsContext";
 
 const CreateProduct = () => {
@@ -27,15 +27,7 @@ const CreateProduct = () => {
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
-    const [selectedFilter, setSelectedFilter] = useState("All");
-    const [statusUpdateModal, setStatusUpdateModal] = useState(false);
-    const [selectedItemForStatus, setSelectedItemForStatus] = useState(null);
-    const [statusForm, setStatusForm] = useState({
-        status: "Pending",
-        rejection_reason: ""
-    });
-
-    const filters = ["All", "Pending", "Approved", "Rejected"];
+    const [rejectingId, setRejectingId] = useState(null);
 
     const showRequestItemField =
         Array.isArray(requestItems?.data) &&
@@ -170,48 +162,28 @@ const CreateProduct = () => {
         setSelectedItem(null);
     };
 
-    const handleFilterChange = (filter) => {
-        setSelectedFilter(filter);
-    };
+    const handleReject = async (item) => {
+        if (!confirm('Are you sure you want to reject this item request?')) {
+            return;
+        }
 
-    const handleEditStatus = (item) => {
-        setSelectedItemForStatus(item);
-        setStatusForm({
-            status: "Rejected",
-            rejection_reason: ""
-        });
-        setStatusUpdateModal(true);
-    };
-
-    const closeStatusModal = () => {
-        setStatusUpdateModal(false);
-        setSelectedItemForStatus(null);
-        setStatusForm({
-            status: "Rejected",
-            rejection_reason: ""
-        });
-    };
-
-    const handleStatusUpdate = async () => {
+        setRejectingId(item.id);
         try {
             const payload = {
                 status: "Rejected",
                 approved_by: 1,
-                rejection_reason: statusForm.rejection_reason
+                rejection_reason: "Rejected by user"
             };
 
-            await axios.put(`/api/v1/request-item/${selectedItemForStatus.id}/status`, payload);
+            await axios.put(`/api/v1/request-item/${item.id}/status`, payload);
             
             // Update the local state
-            updateRequestItemStatus(selectedItemForStatus.id, "Rejected");
-            
-            closeStatusModal();
+            updateRequestItemStatus(item.id, "Rejected");
         } catch (error) {
-            console.error("Error updating status:", error);
-            setErrors((prev) => ({
-                ...prev,
-                status: "Failed to update status",
-            }));
+            console.error("Error rejecting item:", error);
+            alert('Failed to reject item request. Please try again.');
+        } finally {
+            setRejectingId(null);
         }
     };
 
@@ -230,19 +202,9 @@ const CreateProduct = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const getFilteredItems = () => {
+    const getPendingItems = () => {
         if (!Array.isArray(requestItems?.data)) return [];
-        
-        switch (selectedFilter) {
-            case "Pending":
-                return requestItems.data.filter(item => item.status === "Pending");
-            case "Approved":
-                return requestItems.data.filter(item => item.status === "Approved");
-            case "Rejected":
-                return requestItems.data.filter(item => item.status === "Rejected");
-            default:
-                return requestItems.data;
-        }
+        return requestItems.data.filter(item => item.status === "Pending");
     };
 
     return (
@@ -391,38 +353,21 @@ const CreateProduct = () => {
                 <div className="my-10">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-3xl font-bold text-[#2C323C]">
-                            Requested Items
-                    </h2>
-                        <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
-                            {filters.map((filter) => (
-                                <button
-                                    key={filter}
-                                    className={`px-6 py-2 rounded-full text-xl transition ${
-                                        selectedFilter === filter
-                                            ? "bg-[#009FDC] text-white"
-                                            : "text-[#9B9DA2]"
-                                    }`}
-                                    onClick={() => handleFilterChange(filter)}
-                                >
-                                    {filter}
-                                </button>
-                            ))}
-                        </div>
+                            Pending Item Requests
+                        </h2>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-center">
                                 <tr>
                                     <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
-                                        ID
+                                        User Name
                                     </th>
-                                    <th className="py-3 px-4">User Name</th>
                                     <th className="py-3 px-4">Item Name</th>
                                     <th className="py-3 px-4">Description</th>
                                     <th className="py-3 px-4">Quantity</th>
-                                    <th className="py-3 px-4">Status</th>
                                     <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
-                                        Action
+                                        Actions
                                     </th>
                                 </tr>
                             </thead>
@@ -430,18 +375,15 @@ const CreateProduct = () => {
                                 {loading ? (
                                     <tr>
                                         <td
-                                            colSpan="7"
+                                            colSpan="5"
                                             className="text-start py-8"
                                         >
                                             <div className="w-10 h-10 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin mx-auto" />
                                         </td>
                                     </tr>
                                 ) : (
-                                    getFilteredItems().map((product) => (
+                                    getPendingItems().map((product) => (
                                             <tr key={product.id}>
-                                                <td className="py-3 px-4">
-                                                    {product.id}
-                                                </td>
                                                 <td className="py-3 px-4">
                                                     {product.user?.name}
                                                 </td>
@@ -454,19 +396,6 @@ const CreateProduct = () => {
                                                 <td className="py-3 px-4">
                                                     {product.quantity}
                                                 </td>
-                                            <td className="py-3 px-4">
-                                                <span
-                                                    className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${
-                                                        product.status === "Approved"
-                                                            ? "bg-green-100 text-green-800"
-                                                            : product.status === "Rejected"
-                                                            ? "bg-red-100 text-red-800"
-                                                            : "bg-yellow-100 text-yellow-800"
-                                                    }`}
-                                                >
-                                                    {product.status || "Pending"}
-                                                </span>
-                                            </td>
                                                 <td className="py-3 px-4 flex justify-center text-center space-x-3">
                                                     <button
                                                         className="text-[#9B9DA2] hover:text-gray-500"
@@ -481,30 +410,19 @@ const CreateProduct = () => {
                                                             icon={faEye}
                                                         />
                                                     </button>
-                                                {product.status === "Pending" ? (
-                                                    <>
-                                                        <button
-                                                            className="text-[#009FDC] hover:text-[#007CB8]"
-                                                            title="Edit Status"
-                                                            onClick={() => handleEditStatus(product)}
-                                                        >
-                                                            <FontAwesomeIcon
-                                                                icon={faEdit}
-                                                            />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleAddItem(product)}
-                                                            className="px-4 py-2 rounded-lg text-sm font-medium bg-[#009FDC] text-white hover:bg-[#007CB8] transition-colors"
-                                                        >
-                                                            Add Item
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <div className="w-6"></div>
-                                                        <div className="w-20"></div>
-                                                    </>
-                                                )}
+                                                    <button
+                                                        onClick={() => handleAddItem(product)}
+                                                        className="px-4 py-2 rounded-lg text-sm font-medium bg-[#009FDC] text-white hover:bg-[#007CB8] transition-colors"
+                                                    >
+                                                        Add Item
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleReject(product)}
+                                                        disabled={rejectingId === product.id}
+                                                        className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        {rejectingId === product.id ? 'Rejecting...' : 'Reject'}
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))
@@ -556,67 +474,6 @@ const CreateProduct = () => {
                                 />
                             </div>
                         )}
-                    </div>
-                </div>
-            )}
-
-            {/* Status Update Modal */}
-            {statusUpdateModal && selectedItemForStatus && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-white p-8 rounded-2xl w-[90%] max-w-md">
-                        <div className="flex justify-between border-b pb-2 mb-4">
-                            <h2 className="text-2xl font-bold text-[#2C323C]">
-                                Update Status
-                            </h2>
-                            <button
-                                onClick={closeStatusModal}
-                                className="text-red-500 hover:text-red-800"
-                            >
-                                <FontAwesomeIcon icon={faTimes} />
-                            </button>
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Status
-                                </label>
-                                <select
-                                    value={statusForm.status}
-                                    disabled
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#009FDC] bg-gray-100"
-                                    >
-                                    <option value="Rejected">Rejected</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Rejection Reason <span className="text-red-500">*</span>
-                                </label>
-                                <textarea
-                                    value={statusForm.rejection_reason}
-                                    onChange={(e) => setStatusForm(prev => ({ ...prev, rejection_reason: e.target.value }))}
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#009FDC]"
-                                    rows="3"
-                                    placeholder="Enter rejection reason..."
-                                    required
-                                />
-                                </div>
-                            <div className="flex justify-end space-x-3 pt-4">
-                                <button
-                                    onClick={closeStatusModal}
-                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleStatusUpdate}
-                                    disabled={!statusForm.rejection_reason.trim()}
-                                    className="px-4 py-2 bg-[#009FDC] text-white rounded-lg hover:bg-[#007CB8] disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Reject Item
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             )}
