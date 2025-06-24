@@ -365,13 +365,17 @@ const MaharatInvoicesTable = () => {
                                             className="w-full h-full"
                                         />
                                     </button>
-                                    <button
-                                        onClick={() => handleDelete(invoice.id)}
-                                        className="text-red-600 hover:text-red-900"
-                                        title="Delete Invoice"
-                                    >
-                                        <FontAwesomeIcon icon={faTrash} />
-                                    </button>
+                                    {invoice.status === "Draft" ? (
+                                        <button
+                                            onClick={() => handleDelete(invoice.id)}
+                                            className="text-red-600 hover:text-red-900"
+                                            title="Delete Invoice"
+                                        >
+                                            <FontAwesomeIcon icon={faTrash} />
+                                        </button>
+                                    ) : (
+                                        <div className="w-4 h-4"></div>
+                                    )}
                                 </td>
                             </tr>
                         ))

@@ -23,6 +23,7 @@ class StoreAccountRequest extends FormRequest
         return [
             'chart_of_account_id' => ['required', 'string', 'max:255'],
             'name' => ['required', 'string', 'max:255'],
+            'account_number' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'cost_center_id' => ['nullable', 'exists:cost_centers,id'],
             'department_id' => ['nullable', 'exists:departments,id'],

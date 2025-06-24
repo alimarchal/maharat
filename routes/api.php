@@ -222,6 +222,14 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('purchase-orders', PurchaseOrderController::class);
     Route::post('purchase-orders/{id}/upload-document', [PurchaseOrderController::class, 'uploadDocument']);
 
+    // Invoices API Routes
+    Route::get('invoices/applicable-fiscal-periods', [InvoiceController::class, 'getApplicableFiscalPeriods']);
+    Route::post('invoices/validate-budget', [InvoiceController::class, 'validateBudget']);
+    Route::get('next-invoice-number', [InvoiceController::class, 'getNextInvoiceNumber']);
+    Route::apiResource('invoices', InvoiceController::class);
+    Route::post('invoices/{id}/items', [InvoiceController::class, 'addItems']);
+    Route::post('invoices/{id}/upload-document', [InvoiceController::class, 'uploadDocument']);
+
     // Task Routes
     Route::apiResource('tasks', TaskController::class);
     Route::put('tasks/{task}/mark-as-read', [TaskController::class, 'markAsRead']);

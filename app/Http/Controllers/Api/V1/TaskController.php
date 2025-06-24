@@ -337,23 +337,167 @@ class TaskController extends Controller
                     ]);
 
                     if ($transactionUpdated) {
-                        // Trigger the budget approval service to update budget status
-                        $approvalService = new \App\Services\BudgetApprovalService();
-                        $approvalResult = $approvalService->checkApprovalCompletion($task->budget_id, $approvalTransaction->id);
-                        
-                        Log::info('=== BUDGET APPROVAL COMPLETION CHECK ===', [
+                        // Check if this is the final approval
+                        $totalApprovals = DB::table('mahrat_invoice_approval_transactions')
+                            ->where('invoice_id', $task->invoice_id)
+                            ->count();
+
+                        $completedApprovals = DB::table('mahrat_invoice_approval_transactions')
+                            ->where('invoice_id', $task->invoice_id)
+                            ->where('status', 'Approve')
+                            ->count();
+
+                        $isFinalApproval = $completedApprovals === $totalApprovals;
+
+                        Log::info('=== MAHARAT INVOICE FINAL APPROVAL CHECK ===', [
                             'task_id' => $task->id,
-                            'budget_id' => $task->budget_id,
-                            'approval_result' => $approvalResult
+                            'invoice_id' => $task->invoice_id,
+                            'total_approvals' => $totalApprovals,
+                            'completed_approvals' => $completedApprovals,
+                            'is_final_approval' => $isFinalApproval
                         ]);
-                        
-                        if ($approvalResult === 'Approve' || $approvalResult === 'Reject') {
-                            $approvalService->updateBudgetStatus($task->budget_id, $approvalResult);
-                            
-                            Log::info('=== BUDGET STATUS UPDATED ===', [
+
+                        if ($isFinalApproval) {
+                            Log::info('=== FINAL MAHARAT INVOICE APPROVAL - UPDATING STATUS AND ACCOUNTS ===', [
                                 'task_id' => $task->id,
-                                'budget_id' => $task->budget_id,
-                                'new_status' => DB::table('budgets')->where('id', $task->budget_id)->value('status')
+                                'invoice_id' => $task->invoice_id,
+                                'current_status' => DB::table('invoices')->where('id', $task->invoice_id)->value('status'),
+                                'target_status' => 'Pending'
+                            ]);
+
+                            // Update invoice status to Pending
+                            $invoiceUpdated = DB::table('invoices')
+                                ->where('id', $task->invoice_id)
+                                ->update([
+                                    'status' => 'Pending',
+                                    'updated_at' => now()
+                                ]);
+
+                            Log::info('=== INVOICE STATUS UPDATE RESULT ===', [
+                                'task_id' => $task->id,
+                                'invoice_id' => $task->invoice_id,
+                                'update_success' => $invoiceUpdated,
+                                'new_status' => DB::table('invoices')->where('id', $task->invoice_id)->value('status')
+                            ]);
+
+                            if ($invoiceUpdated) {
+                                // Get invoice details for account updates
+                                $invoice = DB::table('invoices')->where('id', $task->invoice_id)->first();
+                                
+                                if ($invoice) {
+                                    Log::info('=== UPDATING ACCOUNTS FOR APPROVED INVOICE ===', [
+                                        'task_id' => $task->id,
+                                        'invoice_id' => $invoice->id,
+                                        'subtotal' => $invoice->subtotal,
+                                        'tax_amount' => $invoice->tax_amount,
+                                        'total_amount' => $invoice->total_amount
+                                    ]);
+
+                                    // Update Revenue/Income account (ID 4) with subtotal
+                                    $revenueAccountUpdated = DB::table('accounts')
+                                        ->where('id', 4)
+                                        ->where('name', 'Revenue/Income')
+                                        ->update([
+                                            'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $invoice->subtotal),
+                                            'updated_at' => now()
+                                        ]);
+
+                                    Log::info('=== REVENUE ACCOUNT UPDATE RESULT ===', [
+                                        'task_id' => $task->id,
+                                        'invoice_id' => $invoice->id,
+                                        'account_id' => 4,
+                                        'account_name' => 'Revenue/Income',
+                                        'amount_added' => $invoice->subtotal,
+                                        'update_success' => $revenueAccountUpdated
+                                    ]);
+
+                                    // Update VAT Receivables account (ID 13) with tax_amount
+                                    $vatAccountUpdated = DB::table('accounts')
+                                        ->where('id', 13)
+                                        ->where('name', 'VAT Receivables (On Maharat Invoice)')
+                                        ->update([
+                                            'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $invoice->tax_amount),
+                                            'updated_at' => now()
+                                        ]);
+
+                                    Log::info('=== VAT RECEIVABLES ACCOUNT UPDATE RESULT ===', [
+                                        'task_id' => $task->id,
+                                        'invoice_id' => $invoice->id,
+                                        'account_id' => 13,
+                                        'account_name' => 'VAT Receivables (On Maharat Invoice)',
+                                        'amount_added' => $invoice->tax_amount,
+                                        'update_success' => $vatAccountUpdated
+                                    ]);
+
+                                    // Update Account Receivable account (ID 11) with total_amount
+                                    $receivableAccountUpdated = DB::table('accounts')
+                                        ->where('id', 11)
+                                        ->where('name', 'Account Receivable')
+                                        ->update([
+                                            'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $invoice->total_amount),
+                                            'updated_at' => now()
+                                        ]);
+
+                                    Log::info('=== ACCOUNT RECEIVABLE UPDATE RESULT ===', [
+                                        'task_id' => $task->id,
+                                        'invoice_id' => $invoice->id,
+                                        'account_id' => 11,
+                                        'account_name' => 'Account Receivable',
+                                        'amount_added' => $invoice->total_amount,
+                                        'update_success' => $receivableAccountUpdated
+                                    ]);
+
+                                    if ($revenueAccountUpdated && $vatAccountUpdated && $receivableAccountUpdated) {
+                                        Log::info('=== ALL ACCOUNT UPDATES COMPLETED SUCCESSFULLY ===', [
+                                            'task_id' => $task->id,
+                                            'invoice_id' => $invoice->id,
+                                            'revenue_account_updated' => $revenueAccountUpdated,
+                                            'vat_receivables_account_updated' => $vatAccountUpdated,
+                                            'account_receivable_updated' => $receivableAccountUpdated
+                                        ]);
+
+                                        // Update budget revenue after successful account updates
+                                        Log::info('=== UPDATING BUDGET REVENUE FOR APPROVED INVOICE ===', [
+                                            'task_id' => $task->id,
+                                            'invoice_id' => $invoice->id,
+                                            'invoice_amount' => $invoice->total_amount,
+                                            'invoice_date' => $invoice->issue_date
+                                        ]);
+
+                                        $budgetService = new \App\Services\BudgetRevenueUpdateService();
+                                        $budgetUpdateResult = $budgetService->updateBudgetRevenue($invoice);
+
+                                        if ($budgetUpdateResult['success']) {
+                                            Log::info('=== BUDGET REVENUE UPDATED SUCCESSFULLY ===', [
+                                                'task_id' => $task->id,
+                                                'invoice_id' => $invoice->id,
+                                                'message' => $budgetUpdateResult['message'],
+                                                'budgets_updated' => $budgetUpdateResult['budgets_updated']
+                                            ]);
+                                        } else {
+                                            Log::warning('=== BUDGET REVENUE UPDATE FAILED ===', [
+                                                'task_id' => $task->id,
+                                                'invoice_id' => $invoice->id,
+                                                'message' => $budgetUpdateResult['message']
+                                            ]);
+                                        }
+                                    } else {
+                                        Log::warning('=== SOME ACCOUNT UPDATES FAILED ===', [
+                                            'task_id' => $task->id,
+                                            'invoice_id' => $invoice->id,
+                                            'revenue_account_updated' => $revenueAccountUpdated,
+                                            'vat_receivables_account_updated' => $vatAccountUpdated,
+                                            'account_receivable_updated' => $receivableAccountUpdated
+                                        ]);
+                                    }
+                                }
+                            }
+                        } else {
+                            Log::info('=== NOT FINAL MAHARAT INVOICE APPROVAL - KEEPING DRAFT STATUS ===', [
+                                'task_id' => $task->id,
+                                'invoice_id' => $task->invoice_id,
+                                'total_approvals' => $totalApprovals,
+                                'completed_approvals' => $completedApprovals
                             ]);
                         }
                     }

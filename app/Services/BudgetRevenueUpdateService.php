@@ -100,51 +100,14 @@ class BudgetRevenueUpdateService
      */
     private function findMainBudgets($date)
     {
-        // First, let's log what we're looking for
-        Log::info('Searching for main budgets', [
-            'invoice_date' => $date,
-            'search_criteria' => [
-                'period_name_contains' => ['Jan 1', 'Dec 31'],
-                'date_range' => $date,
-                'same_year' => true,
-                'start_month' => 1,
-                'end_month' => 12
-            ]
-        ]);
-
-        $budgets = Budget::where('status', 'Active')
+        // Find all budgets with status Active whose fiscal period covers the date
+        return Budget::where('status', 'Active')
             ->whereHas('fiscalPeriod', function($query) use ($date) {
-                $query->where(function($q) use ($date) {
-                    // Check for full year period name pattern (e.g., "Jan 1, 2025 - Dec 31st 2025")
-                    // Must contain both "Jan 1" and "Dec 31" in the period name
-                    $q->where('period_name', 'LIKE', '%Jan 1%')
-                      ->where('period_name', 'LIKE', '%Dec 31%')
-                      ->where('start_date', '<=', $date)
-                      ->where('end_date', '>=', $date)
-                      // Ensure it's a full year period (start and end in same year)
-                      ->whereRaw('YEAR(start_date) = YEAR(end_date)')
-                      // Ensure it starts in January and ends in December
-                      ->whereRaw('MONTH(start_date) = 1')
-                      ->whereRaw('MONTH(end_date) = 12');
-                });
-            })->with('fiscalPeriod')->get();
-
-        // Log what we found
-        Log::info('Found budgets with fiscal periods', [
-            'total_budgets' => $budgets->count(),
-            'budgets_details' => $budgets->map(function($budget) {
-                return [
-                    'budget_id' => $budget->id,
-                    'fiscal_period_id' => $budget->fiscal_period_id,
-                    'period_name' => $budget->fiscalPeriod->period_name ?? 'N/A',
-                    'start_date' => $budget->fiscalPeriod->start_date ?? 'N/A',
-                    'end_date' => $budget->fiscalPeriod->end_date ?? 'N/A',
-                    'total_revenue_actual' => $budget->total_revenue_actual ?? 0
-                ];
+                $query->where('start_date', '<=', $date)
+                      ->where('end_date', '>=', $date);
             })
-        ]);
-
-        return $budgets;
+            ->with('fiscalPeriod')
+            ->get();
     }
 
     /**

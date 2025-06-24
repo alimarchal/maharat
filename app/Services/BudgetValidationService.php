@@ -40,11 +40,10 @@ class BudgetValidationService
      */
     public function validateBudgetAvailability($departmentId, $costCenterId, $subCostCenterId, $fiscalPeriodId, $amount)
     {
-        $budget = RequestBudget::where('department_id', $departmentId)
-            ->where('cost_center_id', $costCenterId)
-            ->where('sub_cost_center', $subCostCenterId)
-            ->where('fiscal_period_id', $fiscalPeriodId)
-            ->where('status', 'Approved')
+        // For invoices, we just need to check if any approved budget exists for the fiscal period
+        // We don't need to match specific department, cost center, or sub cost center
+        $budget = \App\Models\Budget::where('fiscal_period_id', $fiscalPeriodId)
+            ->where('status', 'Active')
             ->first();
 
         if (!$budget) {
@@ -55,18 +54,12 @@ class BudgetValidationService
             ];
         }
 
-        if ($budget->balance_amount < $amount) {
-            return [
-                'valid' => false,
-                'message' => 'Insufficient budget. Available amount: ' . number_format($budget->balance_amount, 2),
-                'available_amount' => $budget->balance_amount
-            ];
-        }
-
+        // For invoices, we don't need to check balance amount since we're not reserving budget
+        // We just need to confirm that a budget exists for the fiscal period
         return [
             'valid' => true,
             'budget' => $budget,
-            'available_amount' => $budget->balance_amount
+            'available_amount' => $budget->total_expense_planned ?? 0
         ];
     }
 
