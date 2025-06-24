@@ -24,7 +24,7 @@ const BudgetTable = () => {
 
     const [isFiscalYearModalOpen, setIsFiscalYearModalOpen] = useState(false);
 
-    const filters = ["All", "Active", "Pending", "Frozen", "Closed"];
+    const filters = ["All", "Active", "Pending", "Closed"];
 
     useEffect(() => {
         fetchBudgets();
@@ -84,22 +84,22 @@ const BudgetTable = () => {
                 };
             }
 
-            // Only add the first budget for each fiscal period to avoid double counting
-            if (grouped[key].budgets.length === 0) {
-                grouped[key].budgets.push(budget);
-                grouped[key].totalRevenuePlanned = parseFloat(
-                    budget.total_revenue_planned || 0
-                );
-                grouped[key].totalRevenueActual = parseFloat(
-                    budget.total_revenue_actual || 0
-                );
-                grouped[key].totalExpensePlanned = parseFloat(
-                    budget.total_expense_planned || 0
-                );
-                grouped[key].totalExpenseActual = parseFloat(
-                    budget.total_expense_actual || 0
-                );
-            }
+            // Add ALL budgets for this fiscal period and status combination
+            grouped[key].budgets.push(budget);
+            
+            // Sum up the totals from all budgets
+            grouped[key].totalRevenuePlanned += parseFloat(
+                budget.total_revenue_planned || 0
+            );
+            grouped[key].totalRevenueActual += parseFloat(
+                budget.total_revenue_actual || 0
+            );
+            grouped[key].totalExpensePlanned += parseFloat(
+                budget.total_expense_planned || 0
+            );
+            grouped[key].totalExpenseActual += parseFloat(
+                budget.total_expense_actual || 0
+            );
         });
 
         return Object.values(grouped);
@@ -300,8 +300,6 @@ const BudgetTable = () => {
                                                 ? "bg-green-100 text-green-800"
                                                 : yearGroup.budgets[0]?.status === "Pending"
                                                 ? "bg-yellow-100 text-yellow-800"
-                                                : yearGroup.budgets[0]?.status === "Frozen"
-                                                ? "bg-blue-100 text-blue-800"
                                                 : yearGroup.budgets[0]?.status === "Closed"
                                                 ? "bg-red-100 text-red-800"
                                                 : "bg-gray-100 text-gray-800"
