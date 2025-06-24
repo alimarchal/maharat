@@ -9,7 +9,7 @@ import { useRequestItems } from "@/Components/RequestItemsContext";
 
 const CreateProduct = () => {
     const { productId } = usePage().props;
-    const { requestItems, pendingCount, updateRequestItemStatus } =
+    const { requestItems, pendingCount, updateRequestItemStatus, fetchRequestItems } =
         useRequestItems();
 
     const [formData, setFormData] = useState({
@@ -179,6 +179,9 @@ const CreateProduct = () => {
             
             // Update the local state
             updateRequestItemStatus(item.id, "Rejected");
+            
+            // Refresh the request items data to update the table
+            await fetchRequestItems();
         } catch (error) {
             console.error("Error rejecting item:", error);
             alert('Failed to reject item request. Please try again.');
