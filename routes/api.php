@@ -85,6 +85,7 @@ use App\Http\Controllers\Api\V1\FaqApprovalController;
 use App\Http\Controllers\Api\V1\CardController;
 use App\Http\Controllers\ItemRequestController;
 use App\Http\Controllers\Api\V1\AccountCodeController;
+use App\Http\Controllers\Api\V1\TransactionFlowController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -273,6 +274,11 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::apiResource('accounts', AccountController::class);
     Route::post('accounts/{id}/restore', [AccountController::class, 'restore']);
+
+    // Transaction Flow routes
+    Route::get('transaction-flows', [TransactionFlowController::class, 'index']);
+    Route::get('accounts/{accountId}/transaction-flows', [TransactionFlowController::class, 'getAccountFlows']);
+    Route::post('transaction-flows/cash', [TransactionFlowController::class, 'recordCashFlows']);
 
     // Account Codes routes
     Route::apiResource('account-codes', AccountCodeController::class);

@@ -122,6 +122,18 @@ const AccountsTable = () => {
                 
                 if (increase > 0) {
                     const vatAmount = increase * 0.15;
+                    
+                    // Record transaction flows for Cash update
+                    try {
+                        await axios.post('/api/v1/transaction-flows/cash', {
+                            cash_amount: increase,
+                            description: `Cash credited by ${increase.toFixed(2)}`
+                        });
+                    } catch (flowError) {
+                        console.error("Failed to record transaction flows:", flowError);
+                        // Don't show error to user as account update was successful
+                    }
+                    
                     setSuccessModal({
                         isOpen: true,
                         message: `Account updated successfully! Automatic balancing applied: Account Receivable debited by ${increase.toFixed(2)} and VAT Collected credited by ${vatAmount.toFixed(2)} (15%).`,

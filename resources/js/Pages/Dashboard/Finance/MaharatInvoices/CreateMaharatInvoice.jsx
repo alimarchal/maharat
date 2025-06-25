@@ -763,7 +763,7 @@ export default function CreateMaharatInvoice() {
                 vat_rate: formData.vat_rate.toString(),
                 client_id: formData.client_id,
                 representative_id: formData.representative || null,
-                subtotal: formData.subtotal,
+                subtotal: (parseFloat(formData.subtotal) - parseFloat(formData.discount || 0)).toFixed(2),
                 discount_amount: formData.discount,
                 tax_amount: formData.vat_amount,
                 total_amount: formData.total,
@@ -1033,13 +1033,6 @@ export default function CreateMaharatInvoice() {
                             </option>
                         ))}
                     </select>
-                </div>
-            )}
-
-            {/* Budget Validation Display */}
-            {budgetValidation && budgetValidation.success && (
-                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
-                    <strong>Budget Validation:</strong> Budget allocation found for this fiscal period.
                 </div>
             )}
 

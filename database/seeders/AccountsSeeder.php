@@ -121,7 +121,7 @@ class AccountsSeeder extends Seeder
                 'deletable' => false
             ],
             [
-                'name' => 'Special accounts', 
+                'name' => 'Special Accounts', 
                 'account_number' => '9000',
                 'description' => 'Special purpose accounts for specific transactions',
                 'code' => $special, 
