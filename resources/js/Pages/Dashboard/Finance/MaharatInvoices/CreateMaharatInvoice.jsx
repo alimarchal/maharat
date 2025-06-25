@@ -386,6 +386,15 @@ export default function CreateMaharatInvoice() {
                     }));
                 }
             }
+            let itemDetails;
+            if (invoice.id) {
+                try {
+                    const itemResponse = await axios.get(`/api/v1/invoices/${invoice.id}/items`);
+                    itemDetails = itemResponse.data.data
+                } catch (error) {
+                    console.error("Error fetching item details:", error);
+                }
+            }
 
             // Set form data with invoice details and client details
             setFormData((prevData) => ({
@@ -406,8 +415,8 @@ export default function CreateMaharatInvoice() {
                 total: invoice.total_amount || "0.00",
                 discount: invoice.discount_amount || "0",
                 items:
-                    invoice.items?.length > 0
-                        ? invoice.items.map((item) => ({
+                    itemDetails?.length > 0
+                        ? itemDetails.map((item) => ({
                               id: item.id,
                               item_id: item.name,
                               description: item.description,
