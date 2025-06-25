@@ -16,7 +16,7 @@ export default function CreateMaharatInvoice() {
         vat_no: "",
         email: "",
         mobile: "",
-        invoice_date: "",
+        invoice_date: new Date().toISOString().split("T")[0],
         payment_terms: "",
         vat_rate: "",
         vat_amount: "",
@@ -1091,9 +1091,8 @@ export default function CreateMaharatInvoice() {
                                     id="invoice_date"
                                     name="invoice_date"
                                     value={formData.invoice_date}
-                                    onChange={handleInputChange}
-                                    onBlur={() => handleBlur("invoice_date")}
-                                    className="block w-full border border-gray-300 rounded-lg"
+                                    className="block w-full rounded-lg bg-gray-100 outline-none border-none focus:outline-none focus:border-none focus:ring-0"
+                                    readOnly
                                 />
                             </div>
                         </div>

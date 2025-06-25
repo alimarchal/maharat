@@ -104,6 +104,7 @@ const AccountsTable = () => {
         };
         setSelectedAccount(accountToEdit);
         setIsEditModalOpen(true);
+        setError("");
     };
 
     const handleUpdate = async (formData) => {
@@ -122,17 +123,6 @@ const AccountsTable = () => {
                 
                 if (increase > 0) {
                     const vatAmount = increase * 0.15;
-                    
-                    // Record transaction flows for Cash update
-                    try {
-                        await axios.post('/api/v1/transaction-flows/cash', {
-                            cash_amount: increase,
-                            description: `Cash credited by ${increase.toFixed(2)}`
-                        });
-                    } catch (flowError) {
-                        console.error("Failed to record transaction flows:", flowError);
-                        // Don't show error to user as account update was successful
-                    }
                     
                     setSuccessModal({
                         isOpen: true,
@@ -175,7 +165,22 @@ const AccountsTable = () => {
             }
         } catch (error) {
             console.error("Error updating account:", error);
-            setError("Failed to update account");
+            // Display the actual error message from the API
+            const errorMessage = error.response?.data?.message || 
+                                error.response?.data?.error || 
+                                error.message || 
+                                "Failed to update account";
+            setError(errorMessage);
+            
+            // Log detailed error for debugging
+            console.error("Detailed error:", {
+                status: error.response?.status,
+                data: error.response?.data,
+                message: errorMessage
+            });
+            
+            // Throw the error so the modal can catch it
+            throw error;
         } finally {
             setLoading(false);
         }
@@ -298,10 +303,10 @@ const AccountsTable = () => {
                                         : "N/A"}
                                 </td>
                                 <td className="py-3 px-4 truncate">
-                                    {account.credit_amount || 0}
+                                    {account.credit_amount && parseFloat(account.credit_amount) > 0 ? account.credit_amount : ''}
                                 </td>
                                 <td className="py-3 px-4 truncate">
-                                    {account.debit_amount || 0}
+                                    {account.debit_amount && parseFloat(account.debit_amount) > 0 ? account.debit_amount : ''}
                                 </td>
                                 <td className="py-3 px-4">
                                     <span
@@ -429,7 +434,10 @@ const AccountsTable = () => {
             {isEditModalOpen && selectedAccount && (
                 <AccountsModal
                     isOpen={isEditModalOpen}
-                    onClose={() => setIsEditModalOpen(false)}
+                    onClose={() => {
+                        setIsEditModalOpen(false);
+                        setError("");
+                    }}
                     onSave={handleUpdate}
                     account={selectedAccount}
                     isEdit={true}

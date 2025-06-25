@@ -50,17 +50,22 @@ class TransactionFlowController extends Controller
             $request->validate([
                 'cash_amount' => 'required|numeric|min:0',
                 'description' => 'nullable|string',
-                'reference_number' => 'nullable|string'
+                'invoice_number' => 'nullable|string',
+                'attachment' => 'nullable|string',
+                'original_name' => 'nullable|string'
             ]);
 
             $flows = TransactionFlowService::recordCashTransactionFlows(
                 $request->input('cash_amount'),
                 $request->input('description'),
-                $request->input('reference_number')
+                $request->input('invoice_number'),
+                $request->input('attachment'),
+                $request->input('original_name')
             );
 
             Log::info('Cash transaction flows recorded successfully', [
                 'cash_amount' => $request->input('cash_amount'),
+                'invoice_number' => $request->input('invoice_number'),
                 'flows_count' => count($flows)
             ]);
 

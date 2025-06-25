@@ -1654,14 +1654,9 @@ function AddQuotationForm() {
                         <input
                             type="date"
                             value={formData.issue_date}
-                            onChange={(e) =>
-                                handleFormInputChange(
-                                    "issue_date",
-                                    e.target.value
-                                )
-                            }
                             className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                             required
+                            readOnly
                         />
 
                         <span className="font-medium text-gray-600">

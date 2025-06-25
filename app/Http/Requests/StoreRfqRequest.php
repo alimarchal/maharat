@@ -23,7 +23,7 @@ class StoreRfqRequest extends FormRequest
             'contact_number' => ['required', 'string', 'max:255'],
             'request_type' => ['required', 'exists:statuses,id'],
             'payment_type' => ['required', 'exists:statuses,id'],
-            'request_date' => ['required', 'date'],
+            'request_date' => ['nullable', 'date'],
             'expected_delivery_date' => ['required', 'date', 'after_or_equal:request_date'],
             'attachments' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],

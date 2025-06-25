@@ -23,6 +23,8 @@ class TransactionFlow extends Model
         'description',
         'reference_number',
         'transaction_date',
+        'attachment',
+        'original_name',
         'created_by',
         'updated_by'
     ];
