@@ -10,6 +10,7 @@ use App\Http\Resources\V1\TaskCollection;
 use App\Models\Task;
 use App\Models\TaskDescription;
 use App\QueryParameters\TaskParameters;
+use App\Services\TransactionFlowService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -455,6 +456,33 @@ class TaskController extends Controller
                                             'vat_receivables_account_updated' => $vatAccountUpdated,
                                             'account_receivable_updated' => $receivableAccountUpdated
                                         ]);
+
+                                        // Record transaction flows for audit trail
+                                        try {
+                                            Log::info('=== RECORDING TRANSACTION FLOWS FOR INVOICE APPROVAL ===', [
+                                                'task_id' => $task->id,
+                                                'invoice_id' => $invoice->id
+                                            ]);
+
+                                            $transactionFlows = TransactionFlowService::recordInvoiceApprovalFlows($invoice);
+
+                                            Log::info('=== TRANSACTION FLOWS RECORDED SUCCESSFULLY ===', [
+                                                'task_id' => $task->id,
+                                                'invoice_id' => $invoice->id,
+                                                'flows_count' => count($transactionFlows),
+                                                'flow_ids' => array_map(function($flow) {
+                                                    return $flow->id;
+                                                }, $transactionFlows)
+                                            ]);
+                                        } catch (\Exception $e) {
+                                            Log::error('=== FAILED TO RECORD TRANSACTION FLOWS ===', [
+                                                'task_id' => $task->id,
+                                                'invoice_id' => $invoice->id,
+                                                'error' => $e->getMessage(),
+                                                'trace' => $e->getTraceAsString()
+                                            ]);
+                                            // Don't throw the exception as account updates were successful
+                                        }
 
                                         // Update budget revenue after successful account updates
                                         Log::info('=== UPDATING BUDGET REVENUE FOR APPROVED INVOICE ===', [
