@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faUpload } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import InputFloating from "../../../../Components/InputFloating";
 import SelectFloating from "../../../../Components/SelectFloating";
@@ -21,6 +21,7 @@ const AccountsModal = ({
         cost_center_id: "",
         credit_amount: "",
         debit_amount: "",
+        invoice_number: "",
     });
 
     const [costCenters, setCostCenters] = useState([]);
@@ -28,6 +29,8 @@ const AccountsModal = ({
     const [errors, setErrors] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [tempFile, setTempFile] = useState(null);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -44,6 +47,7 @@ const AccountsModal = ({
                         status: account.status || "Pending",
                         credit_amount: "", // Clear in edit mode
                         debit_amount: "", // Clear in edit mode
+                        invoice_number: account.invoice_number || "",
                     };
                     setFormData(newFormData);
                 } else {
@@ -56,8 +60,10 @@ const AccountsModal = ({
                         status: "Pending",
                         credit_amount: "",
                         debit_amount: "",
+                        invoice_number: "",
                     });
                 }
+                setTempFile(null); // Reset file on modal open
                 setIsLoading(false);
             }
         };
@@ -77,16 +83,60 @@ const AccountsModal = ({
             setCostCenters(costCentersResponse.data.data || []);
 
             // Fetch account types directly from account_codes table
-            const accountCodesResponse = await axios.get("/api/v1/account-codes");
-            
-            const accountTypes = accountCodesResponse.data.data.map((accountCode) => ({
-                id: accountCode.id,
-                label: accountCode.account_type,
-            }));
+            const accountCodesResponse = await axios.get(
+                "/api/v1/account-codes"
+            );
+
+            const accountTypes = accountCodesResponse.data.data.map(
+                (accountCode) => ({
+                    id: accountCode.id,
+                    label: accountCode.account_type,
+                })
+            );
 
             setAccountTypes(accountTypes);
         } catch (error) {
             setErrors({ fetch: "Failed to load form data" });
+        }
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // Validate file size (max 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                setErrors({
+                    ...errors,
+                    attachment: "File size must be less than 10MB",
+                });
+                return;
+            }
+
+            // Validate file type (common document and image types)
+            const allowedTypes = [
+                "image/jpeg",
+                "image/jpg",
+                "image/png",
+                "image/gif",
+                "application/pdf",
+                "application/msword",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/vnd.ms-excel",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "text/plain",
+            ];
+
+            if (!allowedTypes.includes(file.type)) {
+                setErrors({
+                    ...errors,
+                    attachment:
+                        "Please select a valid file type (PDF, DOC, DOCX, XLS, XLSX, TXT, or image)",
+                });
+                return;
+            }
+
+            setTempFile(file);
+            setErrors({ ...errors, attachment: "" }); // Clear any previous errors
         }
     };
 
@@ -101,23 +151,23 @@ const AccountsModal = ({
                 parts.length > 2
                     ? parts[0] + "." + parts.slice(1).join("")
                     : numericValue;
-            
+
             if (isEdit && account) {
                 // In edit mode, treat the input as the increase amount
                 const originalCredit = parseFloat(account.credit_amount || 0);
                 const increaseAmount = parseFloat(formattedValue) || 0;
                 const newTotalCredit = originalCredit + increaseAmount;
-                
+
                 setFormData({
                     ...formData,
                     credit_amount: formattedValue, // Keep the user input as is for display
                     debit_amount: "", // Clear debit
                 });
-                
+
                 // Store the calculated total in a hidden field or state for backend
-                setFormData(prev => ({
+                setFormData((prev) => ({
                     ...prev,
-                    _calculated_credit_amount: newTotalCredit
+                    _calculated_credit_amount: newTotalCredit,
                 }));
             } else {
                 // In create mode, use the value as is
@@ -132,7 +182,7 @@ const AccountsModal = ({
             if (isEdit && account) {
                 return; // Don't allow changes to debit field in edit mode
             }
-            
+
             // If user enters debit, clear and disable credit
             const numericValue = value.replace(/[^0-9.]/g, "");
             const parts = numericValue.split(".");
@@ -147,6 +197,30 @@ const AccountsModal = ({
             });
         } else {
             setFormData({ ...formData, [name]: value });
+        }
+    };
+
+    const uploadFile = async (file) => {
+        if (!file) return null;
+
+        const uploadFormData = new FormData();
+        uploadFormData.append("file", file);
+        uploadFormData.append("folder", "accounts"); // Optional: organize files by folder
+
+        try {
+            const response = await axios.post(
+                "/api/v1/upload",
+                uploadFormData,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                }
+            );
+            return response.data.file_path || response.data.url; // Adjust based on your API response
+        } catch (error) {
+            console.error("File upload failed:", error);
+            throw new Error("Failed to upload file");
         }
     };
 
@@ -190,20 +264,37 @@ const AccountsModal = ({
             return;
         }
 
-        // Ensure only one is sent as non-null
-        const cleanFormData = {
-            ...formData,
-            credit_amount: formData.credit_amount
-                ? (isEdit && account ? formData._calculated_credit_amount : parseFloat(formData.credit_amount))
-                : null,
-            debit_amount: formData.debit_amount
-                ? parseFloat(formData.debit_amount)
-                : null,
-        };
-        
-        if (cleanFormData.debit_amount) cleanFormData.credit_amount = null;
-
         try {
+            // Upload file if present
+            let attachmentPath = null;
+            if (tempFile) {
+                try {
+                    attachmentPath = await uploadFile(tempFile);
+                } catch (uploadError) {
+                    setErrors({
+                        attachment: "Failed to upload file. Please try again.",
+                    });
+                    setIsSaving(false);
+                    return;
+                }
+            }
+
+            // Ensure only one is sent as non-null
+            const cleanFormData = {
+                ...formData,
+                credit_amount: formData.credit_amount
+                    ? isEdit && account
+                        ? formData._calculated_credit_amount
+                        : parseFloat(formData.credit_amount)
+                    : null,
+                debit_amount: formData.debit_amount
+                    ? parseFloat(formData.debit_amount)
+                    : null,
+                attachment: attachmentPath,
+            };
+
+            if (cleanFormData.debit_amount) cleanFormData.credit_amount = null;
+
             if (isEdit && account) {
                 // Simplified Edit: Just update the account and its associated chart of account
                 const updatedAccountData = {
@@ -213,14 +304,16 @@ const AccountsModal = ({
                 };
 
                 // Also update the associated chart of accounts record for consistency
-                await axios.put(`/api/v1/chart-of-accounts/${account.chart_of_account_id}`, {
-                    account_name: formData.name,
-                    description: formData.description,
-                    account_code_id: formData.account_code_id.toString(),
-                });
-                
-                onSave(updatedAccountData);
+                await axios.put(
+                    `/api/v1/chart-of-accounts/${account.chart_of_account_id}`,
+                    {
+                        account_name: formData.name,
+                        description: formData.description,
+                        account_code_id: formData.account_code_id.toString(),
+                    }
+                );
 
+                onSave(updatedAccountData);
             } else {
                 // Add New Account
                 const selectedTypeId = parseInt(formData.account_code_id, 10);
@@ -229,7 +322,9 @@ const AccountsModal = ({
                 );
 
                 if (!selectedType) {
-                    setErrors({ account_code_id: "Please select a valid account type" });
+                    setErrors({
+                        account_code_id: "Please select a valid account type",
+                    });
                     setIsSaving(false);
                     return;
                 }
@@ -253,13 +348,16 @@ const AccountsModal = ({
                         name: formData.name,
                         account_number: formData.account_number,
                         description: formData.description,
-                        chart_of_account_id: chartOfAccountResponse.data.data.id.toString(),
+                        chart_of_account_id:
+                            chartOfAccountResponse.data.data.id.toString(),
                         account_code_id: selectedTypeId.toString(),
                         cost_center_id: formData.cost_center_id.toString(),
                         department_id: null,
                         status: formData.status,
                         credit_amount: cleanFormData.credit_amount,
                         debit_amount: cleanFormData.debit_amount,
+                        invoice_number: formData.invoice_number,
+                        attachment: cleanFormData.attachment,
                     };
                     onSave(accountData);
                 } catch (chartError) {
@@ -278,7 +376,9 @@ const AccountsModal = ({
             }
             onClose();
         } catch (error) {
-            setErrors(error.response.data.errors);
+            setErrors(
+                error.response?.data?.errors || { submit: "An error occurred" }
+            );
         } finally {
             setIsSaving(false);
         }
@@ -298,7 +398,7 @@ const AccountsModal = ({
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white p-8 rounded-2xl w-[90%] max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-white p-8 rounded-2xl w-[90%] max-w-4xl max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between border-b pb-2 mb-4">
                     <h2 className="text-3xl font-bold text-[#2C323C]">
                         {isEdit ? "Edit Account" : "Add Account"}
@@ -320,7 +420,7 @@ const AccountsModal = ({
                             error={errors.name}
                         />
                         <InputFloating
-                            label="Account Number"
+                            label="Account Code"
                             name="account_number"
                             value={formData.account_number}
                             onChange={handleChange}
@@ -331,7 +431,11 @@ const AccountsModal = ({
                             name="cost_center_id"
                             value={formData.cost_center_id}
                             onChange={handleChange}
-                            options={isLoading ? [{ id: '', label: 'Loading...' }] : costCenterOptions}
+                            options={
+                                isLoading
+                                    ? [{ id: "", label: "Loading..." }]
+                                    : costCenterOptions
+                            }
                             disabled={isLoading}
                             error={errors.cost_center_id}
                         />
@@ -340,7 +444,11 @@ const AccountsModal = ({
                             name="account_code_id"
                             value={formData.account_code_id}
                             onChange={handleChange}
-                            options={isLoading ? [{ id: '', label: 'Loading...' }] : accountTypes}
+                            options={
+                                isLoading
+                                    ? [{ id: "", label: "Loading..." }]
+                                    : accountTypes
+                            }
                             disabled={isLoading}
                             error={errors.account_code_id}
                         />
@@ -360,7 +468,11 @@ const AccountsModal = ({
                             error={errors.description}
                         />
                         <InputFloating
-                            label={isEdit && account ? "Credit Amount Increase" : "Credit Amount"}
+                            label={
+                                isEdit && account
+                                    ? "Credit Amount Increase"
+                                    : "Credit Amount"
+                            }
                             name="credit_amount"
                             type="text"
                             value={formData.credit_amount}
@@ -376,6 +488,60 @@ const AccountsModal = ({
                             error={errors.debit_amount}
                             disabled={isEdit && account}
                         />
+                        <InputFloating
+                            label="Invoice Number"
+                            name="invoice_number"
+                            value={formData.invoice_number}
+                            onChange={handleChange}
+                            error={errors.invoice_number}
+                        />
+                        {/* Attachment Section */}
+                        <div className="flex justify-start">
+                            <div className="space-y-2 w-full max-w-sm">
+                                <label className="block text-sm font-medium text-gray-700 mb-1 text-center">
+                                    Attachment
+                                </label>
+
+                                {tempFile && (
+                                    <div className="flex justify-center">
+                                        <div
+                                            className="text-sm text-orange-600 mb-2 truncate max-w-[220px] text-center"
+                                            title={tempFile.name}
+                                        >
+                                            Selected: {tempFile.name}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex justify-center space-x-2">
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileChange}
+                                        className="hidden"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            fileInputRef.current?.click()
+                                        }
+                                        className="flex items-center px-4 py-2 bg-gray-100 text-blue-600 rounded-lg hover:bg-gray-200 transition duration-200"
+                                    >
+                                        <FontAwesomeIcon
+                                            icon={faUpload}
+                                            className="mr-2"
+                                        />
+                                        Choose File
+                                    </button>
+                                </div>
+                                {errors.attachment && (
+                                    <div className="text-red-500 text-sm text-center">
+                                        {errors.attachment}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                     <div className="my-4 flex justify-center w-full">
                         <button

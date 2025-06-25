@@ -250,7 +250,7 @@ const AccountsTable = () => {
                             ID
                         </th>
                         <th className="py-3 px-4">Name</th>
-                        <th className="py-3 px-4">Account Number</th>
+                        <th className="py-3 px-4">Account Code</th>
                         <th className="py-3 px-4 w-[15%]">Description</th>
                         <th className="py-3 px-4">Type</th>
                         <th className="py-3 px-4">Cost Center</th>
