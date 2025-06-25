@@ -47,6 +47,28 @@ class Invoice extends Model
     ];
 
     /**
+     * Boot method to set default values and prevent updates to certain fields
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Set issue_date to current date when creating
+        static::creating(function ($invoice) {
+            if (empty($invoice->issue_date)) {
+                $invoice->issue_date = now()->toDateString();
+            }
+        });
+
+        // Prevent issue_date from being updated
+        static::updating(function ($invoice) {
+            if ($invoice->isDirty('issue_date')) {
+                $invoice->issue_date = $invoice->getOriginal('issue_date');
+            }
+        });
+    }
+
+    /**
      * Get the client (customer that received the invoice).
      */
     public function client(): BelongsTo

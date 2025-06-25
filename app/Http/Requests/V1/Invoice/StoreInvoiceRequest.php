@@ -20,7 +20,7 @@ class StoreInvoiceRequest extends FormRequest
             'payment_method' => ['nullable', 'string'],
             'representative_id' => ['nullable', 'string'],  
             'representative_email' => ['nullable', 'email'],  
-            'issue_date' => ['required', 'date'],
+            'issue_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:issue_date'],
             'discounted_days' => ['nullable', 'integer', 'min:0'],  
             'vat_rate' => ['required', 'numeric', 'min:0'],

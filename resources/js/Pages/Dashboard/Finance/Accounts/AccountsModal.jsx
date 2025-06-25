@@ -15,7 +15,7 @@ const AccountsModal = ({
     const [formData, setFormData] = useState({
         name: "",
         account_number: "",
-        status: "",
+        status: "Approved",
         description: "",
         account_code_id: "",
         cost_center_id: "",
@@ -30,6 +30,7 @@ const AccountsModal = ({
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [tempFile, setTempFile] = useState(null);
+    const [uploadError, setUploadError] = useState("");
     const fileInputRef = useRef(null);
 
     useEffect(() => {
@@ -137,6 +138,7 @@ const AccountsModal = ({
 
             setTempFile(file);
             setErrors({ ...errors, attachment: "" }); // Clear any previous errors
+            setUploadError(""); // Clear upload error
         }
     };
 
@@ -217,7 +219,7 @@ const AccountsModal = ({
                     },
                 }
             );
-            return response.data.file_path || response.data.url; // Adjust based on your API response
+            return response.data.file_path; // Return the file path from the response
         } catch (error) {
             console.error("File upload failed:", error);
             throw new Error("Failed to upload file");
@@ -228,6 +230,7 @@ const AccountsModal = ({
         e.preventDefault();
         setIsSaving(true);
         setErrors({});
+        setUploadError("");
 
         const validationErrors = {};
         if (!formData.name) validationErrors.name = "Name is required";
@@ -236,6 +239,7 @@ const AccountsModal = ({
         if (!formData.account_code_id)
             validationErrors.account_code_id = "Type is required";
         if (!formData.status) validationErrors.status = "Status is required";
+        if (!tempFile) validationErrors.attachment = "Attachment is required";
 
         // Validate credit and debit amounts
         if (
@@ -267,13 +271,13 @@ const AccountsModal = ({
         try {
             // Upload file if present
             let attachmentPath = null;
+            let originalName = null;
             if (tempFile) {
                 try {
                     attachmentPath = await uploadFile(tempFile);
+                    originalName = tempFile.name;
                 } catch (uploadError) {
-                    setErrors({
-                        attachment: "Failed to upload file. Please try again.",
-                    });
+                    setUploadError("Failed to upload file. Please try again.");
                     setIsSaving(false);
                     return;
                 }
@@ -291,6 +295,7 @@ const AccountsModal = ({
                     ? parseFloat(formData.debit_amount)
                     : null,
                 attachment: attachmentPath,
+                original_name: originalName,
             };
 
             if (cleanFormData.debit_amount) cleanFormData.credit_amount = null;
@@ -313,7 +318,21 @@ const AccountsModal = ({
                     }
                 );
 
-                onSave(updatedAccountData);
+                try {
+                    await onSave(updatedAccountData);
+                    onClose(); // Only close on success
+                } catch (error) {
+                    // Handle errors from the parent component
+                    console.error("Error from parent component:", error);
+                    // Extract the specific error message from the API response
+                    const errorMessage = error.response?.data?.error || 
+                                        error.response?.data?.message || 
+                                        error.message || 
+                                        "Failed to update account";
+                    setErrors({ submit: errorMessage });
+                    setIsSaving(false);
+                    return;
+                }
             } else {
                 // Add New Account
                 const selectedTypeId = parseInt(formData.account_code_id, 10);
@@ -358,8 +377,10 @@ const AccountsModal = ({
                         debit_amount: cleanFormData.debit_amount,
                         invoice_number: formData.invoice_number,
                         attachment: cleanFormData.attachment,
+                        original_name: cleanFormData.original_name,
                     };
                     onSave(accountData);
+                    onClose(); // Only close on success
                 } catch (chartError) {
                     if (chartError.response?.data?.errors) {
                         setErrors(chartError.response.data.errors);
@@ -374,7 +395,6 @@ const AccountsModal = ({
                     return;
                 }
             }
-            onClose();
         } catch (error) {
             setErrors(
                 error.response?.data?.errors || { submit: "An error occurred" }
@@ -410,6 +430,46 @@ const AccountsModal = ({
                         <FontAwesomeIcon icon={faTimes} />
                     </button>
                 </div>
+                {/* General Error Display - Moved to top */}
+                {errors.submit && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                        <div className="flex">
+                            <div className="flex-shrink-0">
+                                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            <div className="ml-3">
+                                <h3 className="text-sm font-medium text-red-800">
+                                    Error
+                                </h3>
+                                <div className="mt-2 text-sm text-red-700">
+                                    {errors.submit}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {/* Upload Error Display - Moved to top */}
+                {uploadError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                        <div className="flex">
+                            <div className="flex-shrink-0">
+                                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            <div className="ml-3">
+                                <h3 className="text-sm font-medium text-red-800">
+                                    Upload Error
+                                </h3>
+                                <div className="mt-2 text-sm text-red-700">
+                                    {uploadError}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <InputFloating
@@ -496,10 +556,10 @@ const AccountsModal = ({
                             error={errors.invoice_number}
                         />
                         {/* Attachment Section */}
-                        <div className="flex justify-start">
+                        <div className="flex justify-center">
                             <div className="space-y-2 w-full max-w-sm">
                                 <label className="block text-sm font-medium text-gray-700 mb-1 text-center">
-                                    Attachment
+                                    Attachment <span className="text-red-500">*</span>
                                 </label>
 
                                 {tempFile && (
@@ -513,30 +573,23 @@ const AccountsModal = ({
                                     </div>
                                 )}
 
-                                <div className="flex justify-center space-x-2">
+                                <div className="flex justify-end">
                                     <input
                                         type="file"
-                                        ref={fileInputRef}
-                                        onChange={handleFileChange}
-                                        className="hidden"
+                                        className="text-sm text-gray-500
+                                            file:mr-4 file:py-2 file:px-4
+                                            file:rounded-full file:border-0
+                                            file:text-sm file:font-semibold
+                                            file:bg-[#009FDC] file:text-white
+                                            hover:file:bg-[#007BB5]"
                                         accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif"
+                                        onChange={handleFileChange}
+                                        ref={fileInputRef}
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            fileInputRef.current?.click()
-                                        }
-                                        className="flex items-center px-4 py-2 bg-gray-100 text-blue-600 rounded-lg hover:bg-gray-200 transition duration-200"
-                                    >
-                                        <FontAwesomeIcon
-                                            icon={faUpload}
-                                            className="mr-2"
-                                        />
-                                        Choose File
-                                    </button>
                                 </div>
+
                                 {errors.attachment && (
-                                    <div className="text-red-500 text-sm text-center">
+                                    <div className="text-red-500 text-xs mt-1 text-center">
                                         {errors.attachment}
                                     </div>
                                 )}

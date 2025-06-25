@@ -86,6 +86,7 @@ use App\Http\Controllers\Api\V1\CardController;
 use App\Http\Controllers\ItemRequestController;
 use App\Http\Controllers\Api\V1\AccountCodeController;
 use App\Http\Controllers\Api\V1\TransactionFlowController;
+use App\Http\Controllers\Api\V1\UploadController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -374,6 +375,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     
     // Invoice Documents
     Route::post('invoice-documents', [App\Http\Controllers\Api\V1\InvoiceDocumentController::class, 'store']);
+
+    // General Upload Route
+    Route::post('upload', [UploadController::class, 'store']);
 
     Route::apiResource('rfq-approval-transactions', RfqApprovalTransactionController::class);
     Route::apiResource('po-approval-transactions', PoApprovalTransactionController::class);

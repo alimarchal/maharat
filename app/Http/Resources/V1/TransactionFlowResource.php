@@ -26,6 +26,8 @@ class TransactionFlowResource extends JsonResource
             'description' => $this->description,
             'reference_number' => $this->reference_number,
             'transaction_date' => $this->transaction_date?->format('Y-m-d'),
+            'attachment' => $this->attachment,
+            'original_name' => $this->original_name,
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
 

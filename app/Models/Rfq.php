@@ -54,6 +54,28 @@ class Rfq extends Model
     ];
 
     /**
+     * Boot method to set default values and prevent updates to certain fields
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Set request_date to current date when creating
+        static::creating(function ($rfq) {
+            if (empty($rfq->request_date)) {
+                $rfq->request_date = now()->toDateString();
+            }
+        });
+
+        // Prevent request_date from being updated
+        static::updating(function ($rfq) {
+            if ($rfq->isDirty('request_date')) {
+                $rfq->request_date = $rfq->getOriginal('request_date');
+            }
+        });
+    }
+
+    /**
      * Get the categories for the RFQ.
      */
     public function categories(): BelongsToMany

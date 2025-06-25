@@ -6,6 +6,7 @@ use App\Models\TransactionFlow;
 use App\Models\Account;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class TransactionFlowService
 {
@@ -21,6 +22,8 @@ class TransactionFlowService
      * @param string $description
      * @param string $referenceNumber
      * @param string $transactionDate
+     * @param string $attachment
+     * @param string $originalName
      * @return TransactionFlow
      */
     public static function recordTransactionFlow(
@@ -32,7 +35,9 @@ class TransactionFlowService
         array $relatedAccounts = [],
         string $description = null,
         string $referenceNumber = null,
-        string $transactionDate = null
+        string $transactionDate = null,
+        string $attachment = null,
+        string $originalName = null
     ): TransactionFlow {
         // Get current account balance and account type
         $account = Account::with('accountCode')->find($accountId);
@@ -83,6 +88,8 @@ class TransactionFlowService
             'description' => $description,
             'reference_number' => $referenceNumber,
             'transaction_date' => $transactionDate ?? now()->toDateString(),
+            'attachment' => $attachment,
+            'original_name' => $originalName,
             'created_by' => Auth::id(),
             'updated_by' => Auth::id()
         ]);
@@ -140,7 +147,7 @@ class TransactionFlowService
                 ],
                 description: "Revenue credited for Maharat invoice subtotal",
                 referenceNumber: $referenceNumber,
-                transactionDate: $invoice->issue_date ?? now()->toDateString()
+                transactionDate: now()->toDateString()
             );
             $flows[] = $revenueFlow;
 
@@ -167,7 +174,7 @@ class TransactionFlowService
                 ],
                 description: "VAT Receivables credited for Maharat invoice tax",
                 referenceNumber: $referenceNumber,
-                transactionDate: $invoice->issue_date ?? now()->toDateString()
+                transactionDate: now()->toDateString()
             );
             $flows[] = $vatFlow;
 
@@ -194,7 +201,7 @@ class TransactionFlowService
                 ],
                 description: "Account Receivable credited for Maharat invoice total",
                 referenceNumber: $referenceNumber,
-                transactionDate: $invoice->issue_date ?? now()->toDateString()
+                transactionDate: now()->toDateString()
             );
             $flows[] = $receivableFlow;
 
@@ -212,13 +219,17 @@ class TransactionFlowService
      *
      * @param float $cashAmount
      * @param string $description
-     * @param string $referenceNumber
+     * @param string $invoiceNumber
+     * @param string $attachment
+     * @param string $originalName
      * @return array
      */
     public static function recordCashTransactionFlows(
         float $cashAmount,
         string $description = null,
-        string $referenceNumber = null
+        string $invoiceNumber = null,
+        string $attachment = null,
+        string $originalName = null
     ): array {
         $flows = [];
         $vatAmount = $cashAmount * 0.15; // 15% VAT
@@ -226,137 +237,155 @@ class TransactionFlowService
         try {
             DB::beginTransaction();
 
-            // Generate sequential reference number if not provided
-            if (!$referenceNumber) {
-                $lastCashFlow = TransactionFlow::where('reference_number', 'like', 'CASH-%')
-                    ->orderBy('id', 'desc')
-                    ->first();
+            // Handle reference number based on invoice number prefix
+            $referenceNumber = null;
+            $relatedEntityType = null;
+            $relatedEntityId = null;
+
+            if ($invoiceNumber) {
+                $referenceNumber = $invoiceNumber; // Use invoice number as reference
                 
-                if ($lastCashFlow) {
-                    // Extract the number from the last reference
-                    preg_match('/CASH-(\d+)/', $lastCashFlow->reference_number, $matches);
-                    $lastNumber = intval($matches[1] ?? 0);
-                    $nextNumber = $lastNumber + 1;
-                } else {
-                    $nextNumber = 1;
+                if (str_starts_with($invoiceNumber, 'INV')) {
+                    // Maharat invoice logic
+                    $relatedEntityType = 'Invoice';
+                    // Find the invoice to get its ID
+                    $invoice = \App\Models\Invoice::where('invoice_number', $invoiceNumber)->first();
+                    if ($invoice) {
+                        $relatedEntityId = $invoice->id;
+                    }
+                } elseif (str_starts_with($invoiceNumber, 'PMT')) {
+                    // Payment order logic - will be implemented later
+                    $relatedEntityType = 'PaymentOrder';
+                    // TODO: Implement payment order logic
                 }
-                
-                $referenceNumber = 'CASH-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
             }
 
-            // Record Cash flow (ID 12)
-            $cashFlow = self::recordTransactionFlow(
-                accountId: 12,
-                transactionType: 'credit',
-                amount: $cashAmount,
-                relatedEntityType: 'cash_transaction',
-                relatedEntityId: null,
-                relatedAccounts: [
-                    [
-                        'account_id' => 11, // Account Receivable
-                        'transaction_type' => 'debit',
-                        'amount' => $cashAmount,
-                        'description' => 'Account Receivable debited for cash receipt'
-                    ],
-                    [
-                        'account_id' => 9, // VAT Collected
-                        'transaction_type' => 'credit',
-                        'amount' => $vatAmount,
-                        'description' => 'VAT Collected credited (15% of cash receipt)'
-                    ],
-                    [
-                        'account_id' => 13, // VAT Receivables
-                        'transaction_type' => 'debit',
-                        'amount' => $vatAmount,
-                        'description' => 'VAT Receivables debited for VAT collection'
-                    ]
-                ],
-                description: $description ?? "Cash credited",
-                referenceNumber: $referenceNumber,
-                transactionDate: now()->toDateString()
-            );
-            $flows[] = $cashFlow;
+            // 1. Credit Cash Account (ID 12)
+            $cashAccount = Account::find(12);
+            if ($cashAccount) {
+                $newCashCredit = ($cashAccount->credit_amount ?? 0) + $cashAmount;
+                $cashAccount->update([
+                    'credit_amount' => $newCashCredit,
+                    'updated_by' => auth()->id()
+                ]);
 
-            // Record Account Receivable debit (ID 11)
-            $receivableFlow = self::recordTransactionFlow(
-                accountId: 11,
-                transactionType: 'debit',
-                amount: $cashAmount,
-                relatedEntityType: 'cash_transaction',
-                relatedEntityId: null,
-                relatedAccounts: [
+                // Record transaction flow for Cash
+                $cashFlow = self::recordTransactionFlow(
+                    $cashAccount->id,
+                    'Credit',
+                    $cashAmount,
+                    $relatedEntityType,
+                    $relatedEntityId,
                     [
-                        'account_id' => 12, // Cash
-                        'transaction_type' => 'credit',
-                        'amount' => $cashAmount,
-                        'description' => 'Cash credited for receipt'
-                    ]
-                ],
-                description: "Account Receivable debited for cash receipt",
-                referenceNumber: $referenceNumber,
-                transactionDate: now()->toDateString()
-            );
-            $flows[] = $receivableFlow;
-
-            // Record VAT Collected credit (ID 9)
-            $vatCollectedFlow = self::recordTransactionFlow(
-                accountId: 9,
-                transactionType: 'credit',
-                amount: $vatAmount,
-                relatedEntityType: 'cash_transaction',
-                relatedEntityId: null,
-                relatedAccounts: [
-                    [
-                        'account_id' => 12, // Cash
-                        'transaction_type' => 'credit',
-                        'amount' => $cashAmount,
-                        'description' => 'Cash credited for receipt'
+                        'account_receivable' => 11,
+                        'vat_collected' => 9,
+                        'vat_receivables' => 13
                     ],
-                    [
-                        'account_id' => 13, // VAT Receivables
-                        'transaction_type' => 'debit',
-                        'amount' => $vatAmount,
-                        'description' => 'VAT Receivables debited for VAT collection'
-                    ]
-                ],
-                description: "VAT Collected credited (15% of cash receipt)",
-                referenceNumber: $referenceNumber,
-                transactionDate: now()->toDateString()
-            );
-            $flows[] = $vatCollectedFlow;
+                    $description ?? 'Cash credit transaction',
+                    $referenceNumber,
+                    now()->toDateString(),
+                    $attachment,
+                    $originalName
+                );
+                $flows[] = $cashFlow;
+            }
 
-            // Record VAT Receivables debit (ID 13)
-            $vatReceivablesFlow = self::recordTransactionFlow(
-                accountId: 13,
-                transactionType: 'debit',
-                amount: $vatAmount,
-                relatedEntityType: 'cash_transaction',
-                relatedEntityId: null,
-                relatedAccounts: [
-                    [
-                        'account_id' => 12, // Cash
-                        'transaction_type' => 'credit',
-                        'amount' => $cashAmount,
-                        'description' => 'Cash credited for receipt'
-                    ],
-                    [
-                        'account_id' => 9, // VAT Collected
-                        'transaction_type' => 'credit',
-                        'amount' => $vatAmount,
-                        'description' => 'VAT Collected credited (15% of cash receipt)'
-                    ]
-                ],
-                description: "VAT Receivables debited for VAT collection",
-                referenceNumber: $referenceNumber,
-                transactionDate: now()->toDateString()
-            );
-            $flows[] = $vatReceivablesFlow;
+            // 2. Debit Account Receivable (ID 11) by the same amount
+            $accountReceivable = Account::find(11);
+            if ($accountReceivable) {
+                $newReceivableCredit = ($accountReceivable->credit_amount ?? 0) - $cashAmount;
+                $accountReceivable->update([
+                    'credit_amount' => max(0, $newReceivableCredit), // Ensure it doesn't go negative
+                    'updated_by' => auth()->id()
+                ]);
+
+                // Record transaction flow for Account Receivable
+                $receivableFlow = self::recordTransactionFlow(
+                    $accountReceivable->id,
+                    'Debit',
+                    $cashAmount,
+                    $relatedEntityType,
+                    $relatedEntityId,
+                    ['cash' => 12],
+                    $description ?? 'Account receivable debit',
+                    $referenceNumber,
+                    now()->toDateString(),
+                    $attachment,
+                    $originalName
+                );
+                $flows[] = $receivableFlow;
+            }
+
+            // 3. Credit VAT Collected (ID 9) by 15% of the cash amount
+            $vatCollected = Account::find(9);
+            if ($vatCollected) {
+                $newVatCredit = ($vatCollected->credit_amount ?? 0) + $vatAmount;
+                $vatCollected->update([
+                    'credit_amount' => $newVatCredit,
+                    'updated_by' => auth()->id()
+                ]);
+
+                // Record transaction flow for VAT Collected
+                $vatCollectedFlow = self::recordTransactionFlow(
+                    $vatCollected->id,
+                    'Credit',
+                    $vatAmount,
+                    $relatedEntityType,
+                    $relatedEntityId,
+                    ['cash' => 12],
+                    $description ?? 'VAT collected credit',
+                    $referenceNumber,
+                    now()->toDateString(),
+                    $attachment,
+                    $originalName
+                );
+                $flows[] = $vatCollectedFlow;
+            }
+
+            // 4. Debit VAT Receivables (ID 13) by the same VAT amount
+            $vatReceivables = Account::find(13);
+            if ($vatReceivables) {
+                $newVatReceivablesCredit = ($vatReceivables->credit_amount ?? 0) - $vatAmount;
+                $vatReceivables->update([
+                    'credit_amount' => max(0, $newVatReceivablesCredit), // Ensure it doesn't go negative
+                    'updated_by' => auth()->id()
+                ]);
+
+                // Record transaction flow for VAT Receivables
+                $vatReceivablesFlow = self::recordTransactionFlow(
+                    $vatReceivables->id,
+                    'Debit',
+                    $vatAmount,
+                    $relatedEntityType,
+                    $relatedEntityId,
+                    ['cash' => 12],
+                    $description ?? 'VAT receivables debit',
+                    $referenceNumber,
+                    now()->toDateString(),
+                    $attachment,
+                    $originalName
+                );
+                $flows[] = $vatReceivablesFlow;
+            }
 
             DB::commit();
-            return $flows;
 
+            Log::info('=== CASH TRANSACTION FLOWS RECORDED ===', [
+                'cash_amount' => $cashAmount,
+                'vat_amount' => $vatAmount,
+                'invoice_number' => $invoiceNumber,
+                'reference_number' => $referenceNumber,
+                'flows_count' => count($flows)
+            ]);
+
+            return $flows;
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to record cash transaction flows', [
+                'error' => $e->getMessage(),
+                'cash_amount' => $cashAmount,
+                'invoice_number' => $invoiceNumber
+            ]);
             throw $e;
         }
     }
@@ -373,8 +402,8 @@ class TransactionFlowService
     {
         $query = TransactionFlow::with(['account', 'creator'])
             ->where('account_id', $accountId)
-            ->orderBy('transaction_date', 'asc')
-            ->orderBy('created_at', 'asc');
+            ->orderBy('transaction_date', 'desc')
+            ->orderBy('created_at', 'desc');
 
         if ($startDate && $endDate) {
             $query->dateRange($startDate, $endDate);
@@ -425,5 +454,109 @@ class TransactionFlowService
 
         // Reverse the collection to show newest first
         return $flows->reverse();
+    }
+
+    /**
+     * Record Cash transaction flows without updating account balances (for use when balances are already updated).
+     *
+     * @param float $cashAmount
+     * @param string $description
+     * @param string $invoiceNumber
+     * @param string $attachment
+     * @param string $originalName
+     * @return array
+     */
+    public static function recordCashTransactionFlowsWithoutBalanceUpdate(
+        float $cashAmount,
+        string $description = null,
+        string $invoiceNumber = null,
+        string $attachment = null,
+        string $originalName = null
+    ): array {
+        Log::info('=== RECORD CASH TRANSACTION FLOWS WITHOUT BALANCE UPDATE STARTED ===', [
+            'cash_amount' => $cashAmount,
+            'description' => $description,
+            'invoice_number' => $invoiceNumber,
+            'attachment' => $attachment,
+            'original_name' => $originalName
+        ]);
+
+        $flows = [];
+
+        try {
+            Log::info('=== STARTING DATABASE TRANSACTION ===');
+            DB::beginTransaction();
+
+            // Handle reference number based on invoice number prefix
+            $referenceNumber = null;
+            $relatedEntityType = null;
+            $relatedEntityId = null;
+
+            if ($invoiceNumber) {
+                $referenceNumber = $invoiceNumber; // Use invoice number as reference
+                
+                if (str_starts_with($invoiceNumber, 'INV')) {
+                    // Maharat invoice logic
+                    $relatedEntityType = 'Invoice';
+                    // Find the invoice to get its ID
+                    $invoice = \App\Models\Invoice::where('invoice_number', $invoiceNumber)->first();
+                    if ($invoice) {
+                        $relatedEntityId = $invoice->id;
+                    }
+                } elseif (str_starts_with($invoiceNumber, 'PMT')) {
+                    // Payment order logic - will be implemented later
+                    $relatedEntityType = 'PaymentOrder';
+                    // TODO: Implement payment order logic
+                }
+            }
+
+            Log::info('=== REFERENCE NUMBER PROCESSED ===', [
+                'reference_number' => $referenceNumber,
+                'related_entity_type' => $relatedEntityType,
+                'related_entity_id' => $relatedEntityId
+            ]);
+
+            // Only record transaction flow for Cash (ID 12) - the main account being updated
+            Log::info('=== RECORDING CASH TRANSACTION FLOW ===');
+            $cashFlow = self::recordTransactionFlow(
+                12, // Cash account ID
+                'credit',
+                $cashAmount,
+                $relatedEntityType,
+                $relatedEntityId,
+                [
+                    'account_receivable' => 11,
+                    'vat_collected' => 9,
+                    'vat_receivables' => 13
+                ],
+                $description ?? 'Cash and cash equivalents held by the company',
+                $referenceNumber,
+                now()->toDateString(),
+                $attachment,
+                $originalName
+            );
+            $flows[] = $cashFlow;
+
+            Log::info('=== COMMITTING DATABASE TRANSACTION ===');
+            DB::commit();
+
+            Log::info('=== CASH TRANSACTION FLOWS RECORDED (WITHOUT BALANCE UPDATE) ===', [
+                'cash_amount' => $cashAmount,
+                'invoice_number' => $invoiceNumber,
+                'reference_number' => $referenceNumber,
+                'flows_count' => count($flows)
+            ]);
+
+            return $flows;
+        } catch (\Exception $e) {
+            Log::error('=== FAILED TO RECORD CASH TRANSACTION FLOWS (WITHOUT BALANCE UPDATE) ===', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'cash_amount' => $cashAmount,
+                'invoice_number' => $invoiceNumber
+            ]);
+            DB::rollBack();
+            throw $e;
+        }
     }
 } 

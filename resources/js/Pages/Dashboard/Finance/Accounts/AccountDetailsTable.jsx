@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { usePage } from "@inertiajs/react";
+import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
 
 const AccountDetailsTable = () => {
@@ -25,8 +26,23 @@ const AccountDetailsTable = () => {
                 setAccountInfo(accountResponse.data.data);
                 
                 // Set transaction flows from the flows API call
-                setTransactions(flowsResponse.data.data || []);
+                const flows = flowsResponse.data.data || [];
                 
+                // Calculate running balance for each transaction
+                let runningBalance = 0;
+                const flowsWithBalance = flows.map((flow, index) => {
+                    if (flow.transaction_type === 'credit') {
+                        runningBalance += parseFloat(flow.amount);
+                    } else {
+                        runningBalance -= parseFloat(flow.amount);
+                    }
+                    return {
+                        ...flow,
+                        running_balance: runningBalance
+                    };
+                });
+                
+                setTransactions(flowsWithBalance);
                 setError("");
             } catch (error) {
                 console.error("Error fetching account details:", error);
@@ -84,27 +100,28 @@ const AccountDetailsTable = () => {
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             ID
                         </th>
-                        <th className="py-3 px-4">Transaction Type</th>
-                        <th className="py-3 px-4">Amount</th>
-                        <th className="py-3 px-4">Balance</th>
-                        <th className="py-3 px-4">Date</th>
+                        <th className="py-3 px-4">Transaction Date</th>
                         <th className="py-3 px-4">Reference</th>
+                        <th className="py-3 px-4">Description</th>
+                        <th className="py-3 px-4">Credit</th>
+                        <th className="py-3 px-4">Debit</th>
+                        <th className="py-3 px-4">Available Balance</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
-                            Description
+                            Attachment
                         </th>
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="7" className="text-center py-12">
+                            <td colSpan="8" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="7"
+                                colSpan="8"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -114,25 +131,6 @@ const AccountDetailsTable = () => {
                         transactions.map((flow, index) => (
                             <tr key={flow.id}>
                                 <td className="py-3 px-4 text-center">{index + 1}</td>
-                                <td className="py-3 px-4 text-center">
-                                    <span className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${
-                                        flow.transaction_type === 'credit' 
-                                            ? 'bg-green-100 text-green-800' 
-                                            : 'bg-red-100 text-red-800'
-                                    }`}>
-                                        {flow.transaction_type.toUpperCase()}
-                                    </span>
-                                </td>
-                                <td className="py-3 px-4 text-center">
-                                    <span className={`font-semibold ${
-                                        flow.transaction_type === 'credit' 
-                                            ? 'text-green-600' 
-                                            : 'text-red-600'
-                                    }`}>
-                                        {flow.transaction_type === 'credit' ? '+' : '-'}{flow.amount}
-                                    </span>
-                                </td>
-                                <td className="py-3 px-4 text-center font-semibold">{flow.balance_after}</td>
                                 <td className="py-3 px-4 text-center">{flow.transaction_date}</td>
                                 <td className="py-3 px-4 text-center">{flow.reference_number || 'N/A'}</td>
                                 <td className="py-3 px-4 text-center">
@@ -140,11 +138,54 @@ const AccountDetailsTable = () => {
                                         <div className="font-medium">{flow.description}</div>
                                     </div>
                                 </td>
+                                <td className="py-3 px-4 text-center">
+                                    {flow.transaction_type === 'credit' ? (
+                                        <span className="font-semibold text-green-600">
+                                            {flow.amount}
+                                        </span>
+                                    ) : (
+                                        ''
+                                    )}
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                    {flow.transaction_type === 'debit' ? (
+                                        <span className="font-semibold text-red-600">
+                                            {flow.amount}
+                                        </span>
+                                    ) : (
+                                        ''
+                                    )}
+                                </td>
+                                <td className="py-3 px-4 text-center font-semibold">
+                                    {flow.running_balance?.toFixed(2) || '0.00'}
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                    {flow.attachment ? (
+                                        <div className="flex items-center justify-center">
+                                            <img
+                                                src="/images/pdf-file.png"
+                                                alt="PDF"
+                                                className="h-6 w-6 cursor-pointer hover:opacity-80"
+                                                onClick={() =>
+                                                    flow.attachment &&
+                                                    window.open(
+                                                        flow.attachment.startsWith('http') 
+                                                            ? flow.attachment 
+                                                            : `/storage/${flow.attachment}`,
+                                                        "_blank"
+                                                    )
+                                                }
+                                            />
+                                        </div>
+                                    ) : (
+                                        'N/A'
+                                    )}
+                                </td>
                             </tr>
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="7" className="text-center py-4">
+                            <td colSpan="8" className="text-center py-4">
                                 No transaction flows found for this account.
                             </td>
                         </tr>

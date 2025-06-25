@@ -20,7 +20,7 @@ class StoreRfqRequest extends FormRequest
             'request_type_id' => ['required', 'exists:request_types,id'],
             'payment_type_id' => ['required', 'exists:payment_types,id'],
             'status_id' => ['required', 'exists:statuses,id'],
-            'request_date' => ['required', 'date', 'before_or_equal:today'],
+            'request_date' => ['nullable', 'date'],
             'required_date' => ['required', 'date', 'after_or_equal:request_date'],
             'remarks' => ['nullable', 'string'],
 
