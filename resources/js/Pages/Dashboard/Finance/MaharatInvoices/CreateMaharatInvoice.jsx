@@ -6,7 +6,9 @@ import axios from "axios";
 
 export default function CreateMaharatInvoice() {
     const { invoiceId } = usePage().props;
-    const user_id = usePage().props.auth.user.id;
+    const { user } = usePage().props.auth;
+    const user_detail = user;
+    const user_id = user.id;
     const [companies, setCompanies] = useState([]);
     const [formData, setFormData] = useState({
         client_id: "",
@@ -1460,9 +1462,7 @@ export default function CreateMaharatInvoice() {
                                     name="discount"
                                     value={formData.discount}
                                     onChange={handleInputChange}
-                                    min="0"
-                                    step="10"
-                                    className="block w-24 rounded border-none shadow-none focus:ring-0 text-right appearance-none bg-transparent pr-0"
+                                    className="w-full rounded-lg border border-gray-300"
                                     placeholder="Enter Discount"
                                 />
                                 <span className="font-medium">
@@ -1505,6 +1505,10 @@ export default function CreateMaharatInvoice() {
                                 </span>
                             </div>
                         </div>
+                    </div>
+                    <div className="m-2 flex justify-start items-center gap-4 font-medium text-lg">
+                        <strong>Prepared By:</strong>
+                        <p>{user_detail.name}</p>
                     </div>
                     <div className="mt-8 flex justify-end">
                         <button

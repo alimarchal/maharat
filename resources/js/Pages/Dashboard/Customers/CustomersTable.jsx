@@ -58,14 +58,14 @@ const CustomersTable = () => {
                     <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                         <tr>
                             <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
-                                ID
+                                #
                             </th>
                             <th className="py-3 px-4">Customer</th>
-                            <th className="py-3 px-4">Account Name</th>
+                            <th className="py-3 px-4">IBAN</th>
                             <th className="py-3 px-4">CR Number</th>
                             <th className="py-3 px-4">VAT Number</th>
+                            <th className="py-3 px-4">Representative Name</th>
                             <th className="py-3 px-4">Contact</th>
-                            <th className="py-3 px-4">Country</th>
                             <th className="py-3 px-4">Address</th>
                             <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
                                 Actions
@@ -93,12 +93,20 @@ const CustomersTable = () => {
                                 <tr key={item.id}>
                                     <td className="py-3 px-4">{item.id}</td>
                                     <td className="py-3 px-4">{item.name}</td>
-                                    <td className="py-3 px-4">{item.account_name}</td>
+                                    <td className="py-3 px-4">{item.iban}</td>
                                     <td className="py-3 px-4">{item.cr_no}</td>
-                                    <td className="py-3 px-4">{item.vat_number}</td>
-                                    <td className="py-3 px-4">{item.contact_number}</td>
-                                    <td className="py-3 px-4">{item.country_code}</td>
-                                    <td className="py-3 px-4">{item.address}</td>
+                                    <td className="py-3 px-4">
+                                        {item.vat_number}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {item.account_name}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {item.contact_number}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {item.address}
+                                    </td>
                                     <td className="py-3 px-4 flex space-x-3">
                                         <Link
                                             href={`/customers/${item.id}/edit`}

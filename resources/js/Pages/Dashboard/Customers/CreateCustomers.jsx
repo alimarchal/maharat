@@ -45,12 +45,18 @@ const CreateCustomer = () => {
     const validateForm = () => {
         const newErrors = {};
         if (!formData.name) newErrors.name = "Name is required";
-        if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Invalid email format";
+        if (!formData.email.trim()) {
+            newErrors.email = "Email is required";
+        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+            newErrors.email = "Invalid email format";
+        }
         if (!formData.contact_number.trim())
             newErrors.contact_number = "Contact Number is required";
         if (!formData.address.trim()) newErrors.address = "Address is required";
         if (!formData.country_code.trim())
             newErrors.country_code = "Country Code is required";
+        if (!formData.account_name.trim())
+            newErrors.account_name = "Representative Name is required";
         if (!formData.iban.trim()) newErrors.iban = "IBAN is required";
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -60,20 +66,15 @@ const CreateCustomer = () => {
         e.preventDefault();
         if (!validateForm()) return;
         setLoading(true);
-
-        console.log('Form data being submitted:', formData);
-
         try {
             if (customerId) {
                 const response = await axios.put(`/api/v1/customers/${customerId}`, formData);
-                console.log('Update response:', response.data);
             } else {
                 const response = await axios.post("/api/v1/customers", formData);
-                console.log('Create response:', response.data);
             }
             router.visit("/customers");
         } catch (error) {
-            console.error('Error submitting form:', error.response?.data);
+            console.error("Error submitting form:", error.response?.data);
             setErrors(
                 error.response?.data?.errors || {
                     general: ["Something went wrong!"],
@@ -143,7 +144,7 @@ const CreateCustomer = () => {
                             options={[
                                 { id: "both", label: "Both" },
                                 { id: "vendor", label: "Vendor" },
-                                { id: "client", label: "Client" }
+                                { id: "client", label: "Client" },
                             ]}
                         />
                     </div>
@@ -189,14 +190,6 @@ const CreateCustomer = () => {
                     </div>
                     <div>
                         <InputFloating
-                            label="Account Name"
-                            name="account_name"
-                            value={formData.account_name}
-                            onChange={handleChange}
-                        />
-                    </div>
-                    <div>
-                        <InputFloating
                             label="IBAN"
                             name="iban"
                             value={formData.iban}
@@ -205,6 +198,19 @@ const CreateCustomer = () => {
                         {errors.iban && (
                             <p className="text-red-500 text-sm">
                                 {errors.iban}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <InputFloating
+                            label="Representative Name"
+                            name="account_name"
+                            value={formData.account_name}
+                            onChange={handleChange}
+                        />
+                        {errors.account_name && (
+                            <p className="text-red-500 text-sm">
+                                {errors.account_name}
                             </p>
                         )}
                     </div>
