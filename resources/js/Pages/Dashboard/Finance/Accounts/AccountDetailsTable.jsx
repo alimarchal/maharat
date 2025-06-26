@@ -10,6 +10,7 @@ const AccountDetailsTable = () => {
     const [accountInfo, setAccountInfo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [finalBalance, setFinalBalance] = useState(0);
 
     useEffect(() => {
         const fetchAccountDetails = async () => {
@@ -43,6 +44,7 @@ const AccountDetailsTable = () => {
                 });
                 
                 setTransactions(flowsWithBalance);
+                setFinalBalance(runningBalance);
                 setError("");
             } catch (error) {
                 console.error("Error fetching account details:", error);
@@ -105,7 +107,6 @@ const AccountDetailsTable = () => {
                         <th className="py-3 px-4">Description</th>
                         <th className="py-3 px-4">Credit</th>
                         <th className="py-3 px-4">Debit</th>
-                        <th className="py-3 px-4">Available Balance</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
                             Attachment
                         </th>
@@ -114,14 +115,14 @@ const AccountDetailsTable = () => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="8" className="text-center py-12">
+                            <td colSpan="7" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="8"
+                                colSpan="7"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -156,9 +157,6 @@ const AccountDetailsTable = () => {
                                         ''
                                     )}
                                 </td>
-                                <td className="py-3 px-4 text-center font-semibold">
-                                    {flow.running_balance?.toFixed(2) || '0.00'}
-                                </td>
                                 <td className="py-3 px-4 text-center">
                                     {flow.attachment ? (
                                         <div className="flex items-center justify-center">
@@ -185,13 +183,29 @@ const AccountDetailsTable = () => {
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="8" className="text-center py-4">
+                            <td colSpan="7" className="text-center py-4">
                                 No transaction flows found for this account.
                             </td>
                         </tr>
                     )}
                 </tbody>
             </table>
+
+            {/* Balance section below table */}
+            {!loading && !error && (
+                <div className="mt-6 pt-4 border-t-2 border-[#D7D8D9]">
+                    <div className="flex justify-end">
+                        <div className="bg-[#C7E7DE] px-6 py-3 rounded-lg">
+                            <span className="text-[#2C323C] text-xl font-medium mr-4">
+                                Total:
+                            </span>
+                            <span className={`text-lg font-bold ${finalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {finalBalance.toFixed(2)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
