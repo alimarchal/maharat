@@ -21,6 +21,7 @@ class Invoice extends Model
         'payment_method',
         'representative_id',
         'representative_email',
+        'representative_name',
         'issue_date',
         'due_date',
         'discounted_days',

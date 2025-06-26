@@ -34,6 +34,7 @@ class StoreCustomerRequest extends FormRequest
 
             // Bank account fields
             'account_name' => ['nullable', 'string'],
+            'representative_name' => ['nullable', 'string', 'max:255'],
             'account_number' => ['nullable', 'string'],
             'iban' => ['nullable', 'string'],
             'swift_code' => ['nullable', 'string'],

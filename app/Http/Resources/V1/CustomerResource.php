@@ -29,6 +29,7 @@ class CustomerResource extends JsonResource
     
             // Bank account fields
             'account_name' => $this->account_name,
+            'representative_name' => $this->representative_name,
             'account_number' => $this->account_number,
             'iban' => $this->iban,
             'swift_code' => $this->swift_code,

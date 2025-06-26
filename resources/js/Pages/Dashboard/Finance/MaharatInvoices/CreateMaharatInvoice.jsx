@@ -402,7 +402,7 @@ export default function CreateMaharatInvoice() {
             setFormData((prevData) => ({
                 ...prevData,
                 client_id: invoice.client_id || "",
-                representative: invoice.representative_id || "",
+                representative: invoice.representative_name || "",
                 // Use client details instead of company details
                 address: clientDetails.address || "",
                 cr_no: clientDetails.cr_no || "",
@@ -764,7 +764,7 @@ export default function CreateMaharatInvoice() {
                 payment_method: formData.payment_terms,
                 vat_rate: formData.vat_rate,
                 client_id: formData.client_id,
-                representative_id: formData.representative || null,
+                representative_name: formData.representative || null,
                 subtotal: (parseFloat(formData.subtotal) - parseFloat(formData.discount || 0)).toFixed(2),
                 discount_amount: formData.discount,
                 tax_amount: formData.vat_amount,
@@ -950,6 +950,7 @@ export default function CreateMaharatInvoice() {
                 vat_no: "",
                 mobile: "",
                 email: "",
+                representative: "",
             }));
             return;
         }
@@ -965,6 +966,7 @@ export default function CreateMaharatInvoice() {
                 vat_no: client.vat_number || "",
                 mobile: client.contact_number || "",
                 email: client.email || "",
+                representative: client.representative_name || "",
             }));
         } catch (error) {
             console.error("Error fetching client details:", error);
@@ -1163,29 +1165,12 @@ export default function CreateMaharatInvoice() {
                             </div>
                         </div>
 
-                        <div className="flex justify-start items-center gap-4 my-4">
-                            <strong className="w-36">Representative:</strong>
-                            <div className="w-full">
-                                <select
-                                    id="representative"
-                                    name="representative"
-                                    value={formData.representative}
-                                    onChange={handleInputChange}
-                                    className="block w-full rounded-lg border border-gray-300"
-                                >
-                                    <option value="">
-                                        Select Representative
-                                    </option>
-                                    {users.map((user) => (
-                                        <option key={user.id} value={user.id}>
-                                            {user.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                        <div className="flex justify-start items-start gap-6 mt-4">
+                            <strong className="w-32">Representative:</strong>
+                            <p className="w-full">{formData.representative}</p>
                         </div>
 
-                        <div className="flex justify-start items-start gap-6">
+                        <div className="flex justify-start items-start gap-6 mt-8">
                             <strong className="w-32">Address:</strong>
                             <p className="w-full">{formData.address}</p>
                         </div>
@@ -1454,15 +1439,18 @@ export default function CreateMaharatInvoice() {
                         </div>
                         <div className="flex justify-between items-center gap-2">
                             <strong className="w-1/4">Discount:</strong>
-                            <div className="flex items-center gap-2 justify-end -mt-1">
+                            <div className="flex items-center gap-2">
                                 <input
                                     type="number"
                                     id="discount"
                                     name="discount"
                                     value={formData.discount}
                                     onChange={handleInputChange}
-                                    className="w-full rounded-lg border border-gray-300"
-                                    placeholder="Enter Discount"
+                                    className="w-24 rounded-lg border border-gray-300 text-right pr-2"
+                                    placeholder="0.00"
+                                    step="0.01"
+                                    min="0"
+                                    style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' }}
                                 />
                                 <span className="font-medium">
                                     {companyDetails.currency_code || "SAR"}

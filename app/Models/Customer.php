@@ -31,6 +31,7 @@ class Customer extends Model
     
         // Bank account fields
         'account_name',
+        'representative_name',
         'account_number',
         'iban',
         'swift_code',

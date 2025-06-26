@@ -21,9 +21,10 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
     const [costCenters, setCostCenters] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [errors, setErrors] = useState({});
-    const [showRfqOption, setShowRfqOption] = useState(false);
-    const [rfqError, setRfqError] = useState("");
-    const [rfqAlreadyRequested, setRfqAlreadyRequested] = useState(false);
+    //TODO: Uncomment when second phase has started for new feature
+    // const [showRfqOption, setShowRfqOption] = useState(false);
+    // const [rfqError, setRfqError] = useState("");
+    // const [rfqAlreadyRequested, setRfqAlreadyRequested] = useState(false);
 
     useEffect(() => {
         axios
@@ -54,41 +55,43 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                 rejection_reason: "",
             });
             setErrors({});
-            setShowRfqOption(false);
-            setRfqError("");
+            //TODO: Uncomment when second phase has started for new feature
+            // setShowRfqOption(false);
+            // setRfqError("");
         }
     }, [isOpen, requestData]);
 
-    useEffect(() => {
-        // Check if RFQ request already exists for this material request
-        const checkRfqRequest = async () => {
-            if (isOpen && requestData && requestData.items && requestData.items.length > 0) {
-                try {
-                    // Check for any RFQ request for any of the items in this material request
-                    const rfqRes = await axios.get('/api/v1/rfq-requests', {
-                        params: {
-                            user_id: requestData.requester_id,
-                            warehouse_id: requestData.warehouse_id,
-                            // Optionally filter by item name or product id if needed
-                        }
-                    });
-                    const rfqRequests = rfqRes.data?.data || [];
-                    // If any RFQ request exists for any item in this MR, consider it already requested
-                    const alreadyRequested = requestData.items.some(item =>
-                        rfqRequests.some(r =>
-                            (r.name === item.product?.name || r.product_id === item.product?.id)
-                        )
-                    );
-                    setRfqAlreadyRequested(alreadyRequested);
-                } catch (err) {
-                    setRfqAlreadyRequested(false);
-                }
-            } else {
-                setRfqAlreadyRequested(false);
-            }
-        };
-        checkRfqRequest();
-    }, [isOpen, requestData]);
+    //TODO: Uncomment when second phase has started for new feature
+    // useEffect(() => {
+    //     // Check if RFQ request already exists for this material request
+    //     const checkRfqRequest = async () => {
+    //         if (isOpen && requestData && requestData.items && requestData.items.length > 0) {
+    //             try {
+    //                 // Check for any RFQ request for any of the items in this material request
+    //                 const rfqRes = await axios.get('/api/v1/rfq-requests', {
+    //                     params: {
+    //                         user_id: requestData.requester_id,
+    //                         warehouse_id: requestData.warehouse_id,
+    //                         // Optionally filter by item name or product id if needed
+    //                     }
+    //                 });
+    //                 const rfqRequests = rfqRes.data?.data || [];
+    //                 // If any RFQ request exists for any item in this MR, consider it already requested
+    //                 const alreadyRequested = requestData.items.some(item =>
+    //                     rfqRequests.some(r =>
+    //                         (r.name === item.product?.name || r.product_id === item.product?.id)
+    //                     )
+    //                 );
+    //                 setRfqAlreadyRequested(alreadyRequested);
+    //             } catch (err) {
+    //                 setRfqAlreadyRequested(false);
+    //             }
+    //         } else {
+    //             setRfqAlreadyRequested(false);
+    //         }
+    //     };
+    //     checkRfqRequest();
+    // }, [isOpen, requestData]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -160,8 +163,13 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                     }
                 } catch (error) {
                     if (error.message.includes("No inventory found")) {
-                        setShowRfqOption(true);
-                        setRfqError(error.message);
+                        //TODO: Uncomment when second phase has started for new feature
+                        // setShowRfqOption(true);
+                        // setRfqError(error.message);
+                        // return;
+                        
+                        // For now, just show the error and don't proceed
+                        setErrors({ general: error.message });
                         return;
                     }
                     throw error;
@@ -175,46 +183,48 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
         }
     };
 
-    const handleCreateRfqRequest = async () => {
-        try {
-            // Create RFQ request for each item in the material request
-            const items = requestData.items || [];
+    //TODO: Uncomment when second phase has started for new feature
+    // const handleCreateRfqRequest = async () => {
+    //     try {
+    //         // Create RFQ request for each item in the material request
+    //         const items = requestData.items || [];
             
-            for (const item of items) {
-                const rfqRequestData = {
-                    user_id: requestData.requester_id,
-                    name: item.product?.name || "Unknown Item",
-                    description: item.description || "",
-                    quantity: parseInt(item.quantity) || 1,
-                    category_id: item.product?.category_id,
-                    unit_id: item.unit_id,
-                    warehouse_id: requestData.warehouse_id,
-                    department_id: requestData.department_id,
-                    cost_center_id: requestData.cost_center_id,
-                    sub_cost_center_id: requestData.sub_cost_center_id,
-                    photo: item.photo,
-                };
+    //         for (const item of items) {
+    //             const rfqRequestData = {
+    //                 user_id: requestData.requester_id,
+    //                 name: item.product?.name || "Unknown Item",
+    //                 description: item.description || "",
+    //                 quantity: parseInt(item.quantity) || 1,
+    //                 category_id: item.product?.category_id,
+    //                 unit_id: item.unit_id,
+    //                 warehouse_id: requestData.warehouse_id,
+    //                 department_id: requestData.department_id,
+    //                 cost_center_id: requestData.cost_center_id,
+    //                 sub_cost_center_id: requestData.sub_cost_center_id,
+    //                 photo: item.photo,
+    //             };
 
-                await axios.post("/api/v1/rfq-requests", rfqRequestData);
-            }
+    //             await axios.post("/api/v1/rfq-requests", rfqRequestData);
+    //         }
 
-            // Update material request status to indicate RFQ was created
-            await axios.put(`/api/v1/material-requests/${formData.material_request_id}`, {
-                status: "Pending",
-                description: "RFQ request created for items with no inventory"
-            });
+    //         // Update material request status to indicate RFQ was created
+    //         await axios.put(`/api/v1/material-requests/${formData.material_request_id}`, {
+    //             status: "Pending",
+    //             description: "RFQ request created for items with no inventory"
+    //         });
 
-            onSave(formData);
-            onClose();
-        } catch (error) {
-            setRfqError("Failed to create RFQ request. Please try again.");
-        }
-    };
+    //         onSave(formData);
+    //         onClose();
+    //     } catch (error) {
+    //         setRfqError("Failed to create RFQ request. Please try again.");
+    //     }
+    // };
 
-    const handleDeclineRfq = () => {
-        setShowRfqOption(false);
-        setRfqError("");
-    };
+    //TODO: Uncomment when second phase has started for new feature
+    // const handleDeclineRfq = () => {
+    //     setShowRfqOption(false);
+    //     setRfqError("");
+    // };
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
@@ -231,6 +241,7 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                     </button>
                 </div>
 
+                {/*TODO: Uncomment when second phase has started for new feature
                 {showRfqOption && (
                     <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                         <h3 className="text-lg font-semibold text-red-600 mb-2">
@@ -260,6 +271,18 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                                 Cancel
                             </button>
                         </div>
+                    </div>
+                )}
+                */}
+
+                {errors.general && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <h3 className="text-lg font-semibold text-red-600 mb-2">
+                            Error
+                        </h3>
+                        <p className="text-red-600">
+                            {errors.general}
+                        </p>
                     </div>
                 )}
 

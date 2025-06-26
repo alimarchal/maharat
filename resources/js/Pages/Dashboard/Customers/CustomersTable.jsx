@@ -99,7 +99,7 @@ const CustomersTable = () => {
                                         {item.vat_number}
                                     </td>
                                     <td className="py-3 px-4">
-                                        {item.account_name}
+                                        {item.representative_name || "N/A"}
                                     </td>
                                     <td className="py-3 px-4">
                                         {item.contact_number}
