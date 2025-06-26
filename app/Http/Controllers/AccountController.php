@@ -604,6 +604,14 @@ class AccountController extends Controller
     public function destroy(Account $account): JsonResponse
     {
         try {
+            // Prevent deletion of critical accounts
+            if ($account->id === 2) {
+                return response()->json([
+                    'message' => 'Cannot delete Liabilities account (ID 2). This is a critical system account.',
+                    'error' => 'Critical account deletion not allowed'
+                ], Response::HTTP_FORBIDDEN);
+            }
+
             DB::beginTransaction();
 
             $account->delete();

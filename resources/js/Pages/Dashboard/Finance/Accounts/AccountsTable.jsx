@@ -335,7 +335,8 @@ const AccountsTable = () => {
                                             'Assets', 'Liabilities', 'Equity', 'Revenue/Income', 
                                             'Cost of Purchases', 'Operating Expenses', 'Non-Operating Expenses',
                                             'VAT Paid (on purchases)', 'VAT Collected (on Maharat invoices)',
-                                            'Account Receivable', 'Revenue', 'VAT Receivables (On Maharat Invoice)'
+                                            'Account Receivable', 'Revenue', 'VAT Receivables (On Maharat Invoice)',
+                                            'Accounts Payable'
                                         ];
 
                                         // Define accounts that can only be edited (no delete)
@@ -344,7 +345,7 @@ const AccountsTable = () => {
                                         ];
 
                                         const canEdit = !nonEditable.includes(accountName);
-                                        const canDelete = isSpecialAccount ? !hasValue : !nonDeletable.includes(accountName) && !editOnly.includes(accountName);
+                                        const canDelete = account.id === 2 ? false : (isSpecialAccount ? !hasValue : !nonDeletable.includes(accountName) && !editOnly.includes(accountName));
 
                                         return (
                                             <div className="flex justify-center items-center space-x-3">
