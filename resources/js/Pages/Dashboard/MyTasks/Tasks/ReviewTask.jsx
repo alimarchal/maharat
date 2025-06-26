@@ -3,8 +3,6 @@ import SelectFloating from "../../../../Components/SelectFloating";
 import axios from "axios";
 import { router, usePage } from "@inertiajs/react";
 import { toast } from "react-hot-toast";
-import { FiClock, FiCheck, FiX, FiRefreshCw, FiFileText, FiSettings, FiUser, FiSend } from "react-icons/fi";
-import { FaTasks } from "react-icons/fa";
 
 const ReviewTask = () => {
     const { id } = usePage().props;
@@ -240,309 +238,137 @@ const ReviewTask = () => {
         }
     };
 
-    // Helper function to get status color and icon
-    const getStatusStyle = (status) => {
-        switch (status?.toLowerCase()) {
-            case "pending":
-                return {
-                    bgColor: "bg-yellow-100",
-                    textColor: "text-yellow-800",
-                    icon: <FiClock className="text-lg" />,
-                };
-            case "approved":
-                return {
-                    bgColor: "bg-green-100",
-                    textColor: "text-green-800",
-                    icon: <FiCheck className="text-lg" />,
-                };
-            case "rejected":
-                return {
-                    bgColor: "bg-red-100",
-                    textColor: "text-red-800",
-                    icon: <FiX className="text-lg" />,
-                };
-            case "in progress":
-                return {
-                    bgColor: "bg-blue-100",
-                    textColor: "text-blue-800",
-                    icon: <FiRefreshCw className="text-lg" />,
-                };
-            default:
-                return {
-                    bgColor: "bg-gray-100",
-                    textColor: "text-gray-800",
-                    icon: <FiFileText className="text-lg" />,
-                };
-        }
-    };
-
     return (
         <div className="flex flex-col items-center w-full">
-            <div className="w-full">
-                {/* Header */}
-                <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-[#2C323C] mb-2">
-                        Task Review
-                    </h1>
-                    <p className="text-gray-600">
-                        Review and take action on your assigned task
-                    </p>
-                </div>
-
-                {/* Main Content */}
-                <div className="bg-white rounded-3xl shadow-xl p-8 mb-8">
-                    {taskData ? (
-                        <div className="space-y-8">
-                            {/* Enhanced Task Overview */}
-                            <div className="relative overflow-hidden bg-gradient-to-br from-[#009FDC] via-[#0088C7] to-[#0071B2] rounded-3xl p-8 text-white">
-                                {/* Background Pattern */}
-                                <div className="absolute inset-0 opacity-10">
-                                    <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full transform translate-x-32 -translate-y-32"></div>
-                                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full transform -translate-x-24 translate-y-24"></div>
-                                </div>
-
-                                {/* Content */}
-                                <div className="relative z-10">
-                                    {/* Header with task ID */}
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div className="flex items-center space-x-3">
-                                            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                                                <FaTasks className="text-2xl text-white" />
-                                            </div>
-                                            <div>
-                                                <h2 className="text-3xl font-bold">
-                                                    Task Overview
-                                                </h2>
-                                                <p className="text-white/80 text-sm">
-                                                    ID: #{taskData.id}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-white/80 text-sm">
-                                                Assigned Date
-                                            </p>
-                                            <p className="font-semibold">
-                                                {taskData.assigned_at
-                                                    ? new Date(
-                                                          taskData.assigned_at
-                                                      ).toLocaleDateString()
-                                                    : "N/A"}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Main Info Cards */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        {/* Process Card */}
-                                        <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
-                                            <div className="flex items-center mb-3">
-                                                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
-                                                    <FiSettings className="text-lg text-white" />
-                                                </div>
-                                                <h3 className="font-bold text-lg">
-                                                    Process
-                                                </h3>
-                                            </div>
-                                            <p className="text-white/90 text-base leading-relaxed">
-                                                {taskData.process?.title ||
-                                                    "No process assigned"}
-                                            </p>
-                                        </div>
-
-                                        {/* Status Card */}
-                                        <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
-                                            <div className="flex items-center mb-3">
-                                                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
-                                                    {getStatusStyle(taskData.status).icon}
-                                                </div>
-                                                <h3 className="font-bold text-lg">
-                                                    Status
-                                                </h3>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <span
-                                                    className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                                        getStatusStyle(
-                                                            taskData.status
-                                                        ).bgColor
-                                                    } ${
-                                                        getStatusStyle(
-                                                            taskData.status
-                                                        ).textColor
-                                                    }`}
-                                                >
-                                                    {taskData.status ||
-                                                        "Pending"}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Description Card */}
-                                        <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
-                                            <div className="flex items-center mb-3">
-                                                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
-                                                    <FiFileText className="text-lg text-white" />
-                                                </div>
-                                                <h3 className="font-bold text-lg">
-                                                    Description
-                                                </h3>
-                                            </div>
-                                            <p className="text-white/90 text-base leading-relaxed">
-                                                {taskData.process_step
-                                                    ?.description ||
-                                                    "No description available"}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* User Details */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                {/* Assigned From */}
-                                <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
-                                    <div className="flex items-center mb-4">
-                                        <div className="w-10 h-10 bg-[#009FDC] rounded-full flex items-center justify-center">
-                                            <FiUser className="text-white" />
-                                        </div>
-                                        <h3 className="text-xl font-bold text-[#2C323C] ml-3">
-                                            Assigned From
-                                        </h3>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div className="flex items-center">
-                                            <span className="font-medium text-[#2C323C] w-24">
-                                                Name:
-                                            </span>
-                                            <span className="text-gray-700">
-                                                {
-                                                    taskData.assigned_from_user
-                                                        ?.name
-                                                }
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <span className="font-medium text-[#2C323C] w-24">
-                                                Role:
-                                            </span>
-                                            <span className="text-gray-700">
-                                                {
-                                                    taskData.assigned_from_user
-                                                        ?.designation
-                                                        ?.designation
-                                                }
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <span className="font-medium text-[#2C323C] w-24">
-                                                Email:
-                                            </span>
-                                            <span className="text-gray-700">
-                                                {
-                                                    taskData.assigned_from_user
-                                                        ?.email
-                                                }
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <span className="font-medium text-[#2C323C] w-24">
-                                                Mobile:
-                                            </span>
-                                            <span className="text-gray-700">
-                                                {
-                                                    taskData.assigned_from_user
-                                                        ?.mobile
-                                                }
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Assigned To */}
-                                <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
-                                    <div className="flex items-center mb-4">
-                                        <div className="w-10 h-10 bg-[#009FDC] rounded-full flex items-center justify-center">
-                                            <FiUser className="text-white" />
-                                        </div>
-                                        <h3 className="text-xl font-bold text-[#2C323C] ml-3">
-                                            Assigned To
-                                        </h3>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div className="flex items-center">
-                                            <span className="font-medium text-[#2C323C] w-24">
-                                                Name:
-                                            </span>
-                                            <span className="text-gray-700">
-                                                {
-                                                    taskData.assigned_to_user
-                                                        ?.name
-                                                }
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <span className="font-medium text-[#2C323C] w-24">
-                                                Role:
-                                            </span>
-                                            <span className="text-gray-700">
-                                                {
-                                                    taskData.assigned_to_user
-                                                        ?.designation
-                                                        ?.designation
-                                                }
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <span className="font-medium text-[#2C323C] w-24">
-                                                Email:
-                                            </span>
-                                            <span className="text-gray-700">
-                                                {
-                                                    taskData.assigned_to_user
-                                                        ?.email
-                                                }
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <span className="font-medium text-[#2C323C] w-24">
-                                                Mobile:
-                                            </span>
-                                            <span className="text-gray-700">
-                                                {
-                                                    taskData.assigned_to_user
-                                                        ?.mobile
-                                                }
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
+            <div className="w-full bg-white shadow-lg rounded-2xl p-6">
+                <h2 className="text-3xl font-bold text-[#2C323C] mb-6">
+                    Task Review Details
+                </h2>
+                {taskData ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="bg-gray-50 p-6 rounded-2xl shadow">
+                            <h3 className="text-lg font-semibold mb-4">
+                                Process Details
+                            </h3>
+                            <div className="text-[#2C323C] text-base font-medium">
+                                <p>
+                                    Title:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.process?.title}
+                                    </span>
+                                </p>
+                                <p>
+                                    Status:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.process?.status}
+                                    </span>
+                                </p>
+                                <p>
+                                    Description:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.process_step?.description}
+                                    </span>
+                                </p>
                             </div>
                         </div>
-                    ) : (
-                        <div className="flex justify-center items-center h-64">
-                            <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+
+                        <div className="bg-gray-50 p-6 rounded-2xl shadow">
+                            <h3 className="text-lg font-semibold mb-4">
+                                Status
+                            </h3>
+                            <div className="text-[#2C323C] text-base font-medium">
+                                <p>
+                                    Status:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.status}
+                                    </span>
+                                </p>
+                            </div>
                         </div>
-                    )}
-                </div>
-
-                {/* Action Form */}
-                <div className="bg-white rounded-3xl shadow-xl p-8">
-                    <h2 className="text-2xl font-bold text-[#2C323C] mb-6">
-                        Take Action
-                    </h2>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* Description */}
-                        <div className="relative w-full">
-                            <textarea
-                                name="description"
-                                value={formData.description}
-                                onChange={handleChange}
-                                className="peer border border-gray-300 p-5 rounded-2xl w-full h-36 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
-                            ></textarea>
-                            <label
-                                className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
+                        <div className="bg-gray-50 p-6 rounded-2xl shadow">
+                            <h3 className="text-lg font-semibold mb-4">
+                                Assigned From
+                            </h3>
+                            <div className="text-[#2C323C] text-base font-medium">
+                                <p>
+                                    Name:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.assigned_from_user?.name}
+                                    </span>
+                                </p>
+                                <p>
+                                    Designation:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {
+                                            taskData.assigned_from_user
+                                                ?.designation?.designation
+                                        }
+                                    </span>
+                                </p>
+                                <p>
+                                    Email:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.assigned_from_user?.email}
+                                    </span>
+                                </p>
+                                <p>
+                                    Mobile:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.assigned_from_user?.mobile}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 p-6 rounded-2xl shadow">
+                            <h3 className="text-lg font-semibold mb-4">
+                                Assigned To
+                            </h3>
+                            <div className="text-[#2C323C] text-base font-medium">
+                                <p>
+                                    Name:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.assigned_to_user?.name}
+                                    </span>
+                                </p>
+                                <p>
+                                    Designation:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {
+                                            taskData.assigned_to_user
+                                                ?.designation?.designation
+                                        }
+                                    </span>
+                                </p>
+                                <p>
+                                    Email:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.assigned_to_user?.email}
+                                    </span>
+                                </p>
+                                <p>
+                                    Mobile:
+                                    <span className="ms-4 text-gray-600 font-normal">
+                                        {taskData.assigned_to_user?.mobile}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+                )}
+            </div>
+            <div className="w-full my-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-4 w-full">
+                    <div className="relative w-full">
+                        <textarea
+                            name="description"
+                            value={formData.description}
+                            onChange={handleChange}
+                            className="peer border border-gray-300 p-5 rounded-2xl w-full h-36 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
+                        ></textarea>
+                        <label
+                            className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
                             peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400
                             peer-focus:-top-2 peer-focus:left-2 peer-focus:text-base peer-focus:text-[#009FDC] peer-focus:px-1
                             ${
@@ -550,17 +376,17 @@ const ReviewTask = () => {
                                     ? "-top-2 left-2 text-base text-[#009FDC] px-1"
                                     : "top-4 text-base text-gray-400"
                             }`}
-                            >
-                                Description
-                            </label>
-                            {errors.description && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.description}
-                                </p>
-                            )}
-                        </div>
+                        >
+                            Description
+                        </label>
+                        {errors.description && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.description}
+                            </p>
+                        )}
+                    </div>
 
-                        {/* Action */}
+                    <div className="flex flex-col md:flex-row justify-between items-start gap-4 w-full">
                         <div className="w-full">
                             <SelectFloating
                                 label="Action"
@@ -579,8 +405,6 @@ const ReviewTask = () => {
                                 </p>
                             )}
                         </div>
-
-                        {/* User Selection (if referring) */}
                         {formData.action === "Refer" && (
                             <div className="w-full">
                                 <SelectFloating
@@ -601,16 +425,15 @@ const ReviewTask = () => {
                             </div>
                         )}
                     </div>
+                </div>
 
-                    {/* Submit Button */}
-                    <div className="mt-8 flex justify-center">
-                        <button
-                            onClick={handleSubmit}
-                            className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto flex items-center justify-center"
-                        >
-                            Submit
-                        </button>
-                    </div>
+                <div className="my-6 flex justify-center md:justify-end w-full">
+                    <button
+                        onClick={handleSubmit}
+                        className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto"
+                    >
+                        Submit
+                    </button>
                 </div>
             </div>
         </div>
