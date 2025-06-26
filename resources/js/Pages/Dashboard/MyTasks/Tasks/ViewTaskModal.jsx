@@ -65,7 +65,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                 badgeClass += " bg-green-100 text-green-800";
                 break;
             default:
-                badgeClass += " bg-gray-300 text-gray-800";
+                badgeClass += " bg-gray-100 text-gray-800";
                 break;
         }
 
@@ -180,7 +180,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 </div>
                                 
                                 {/* Check if any detailed information is available */}
-                                {!task.material_request && !task.rfq && !task.purchase_order && !task.payment_order && !task.invoice && !task.budget && !task.request_budget && (
+                                {!task.material_request && !task.rfq && !task.purchase_order && !task.payment_order && !task.invoice && !task.budget && !task.request_budget && !task.request_budget && (
                                     <div className="text-center py-8">
                                         <p className="text-gray-500 text-lg">
                                             No detailed information available for this {task.process.title.toLowerCase()}.
@@ -229,7 +229,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 <h4 className="font-semibold text-gray-700 mb-2">Requested Items:</h4>
                                                 <div className="overflow-x-auto">
                                                     <table className="w-full text-sm">
-                                                        <thead className="bg-gray-200">
+                                                        <thead className="bg-[#C7E7DE] text-[#2C323C]">
                                                             <tr>
                                                                 <th className="p-3 rounded-tl-xl rounded-bl-xl text-left">Item</th>
                                                                 <th className="p-3 text-left">Category</th>
@@ -238,12 +238,12 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                                 <th className="p-3 rounded-tr-xl rounded-br-xl text-left">Priority</th>
                                                             </tr>
                                                         </thead>
-                                                        <tbody className="divide-y">
+                                                        <tbody className="divide-y divide-gray-200">
                                                             {task.material_request.items.map((item, index) => (
                                                                 <tr key={index}>
                                                                     <td className="px-3 py-2">{item.product?.name || "N/A"}</td>
                                                                     <td className="px-3 py-2">{item.category?.name || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.quantity || "N/A"}</td>
+                                                                    <td className="px-3 py-2">{Math.floor(item.quantity) || "N/A"}</td>
                                                                     <td className="px-3 py-2">{item.unit?.name || "N/A"}</td>
                                                                     <td className="px-3 py-2">
                                                                         <UrgencyBadge urgency={item.urgency_status?.name} />
@@ -263,12 +263,12 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <span className="text-gray-600">RFQ ID:</span>
-                                                <span className="font-medium ml-2">RFQ-{task.rfq.id}</span>
+                                                <span className="text-gray-600">RFQ Number:</span>
+                                                <span className="font-medium ml-2">{task.rfq.rfq_number || "N/A"}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Title:</span>
-                                                <span className="font-medium ml-2">{task.rfq.title || "N/A"}</span>
+                                                <span className="text-gray-600">Organization Name:</span>
+                                                <span className="font-medium ml-2">{task.rfq.organization_name || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Warehouse:</span>
@@ -294,21 +294,21 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 <h4 className="font-semibold text-gray-700 mb-2">RFQ Items:</h4>
                                                 <div className="overflow-x-auto">
                                                     <table className="w-full text-sm">
-                                                        <thead className="bg-gray-50">
+                                                        <thead className="bg-[#C7E7DE] text-[#2C323C]">
                                                             <tr>
-                                                                <th className="px-3 py-2 text-left">Item</th>
+                                                                <th className="px-3 py-2 text-left rounded-tl-xl rounded-bl-xl">Item</th>
                                                                 <th className="px-3 py-2 text-left">Category</th>
                                                                 <th className="px-3 py-2 text-left">Quantity</th>
                                                                 <th className="px-3 py-2 text-left">Unit</th>
-                                                                <th className="px-3 py-2 text-left">Description</th>
+                                                                <th className="px-3 py-2 text-left rounded-tr-xl rounded-br-xl">Description</th>
                                                             </tr>
                                                         </thead>
-                                                        <tbody className="divide-y">
+                                                        <tbody className="divide-y divide-gray-200">
                                                             {task.rfq.items.map((item, index) => (
                                                                 <tr key={index}>
-                                                                    <td className="px-3 py-2">{item.product?.name || "N/A"}</td>
+                                                                    <td className="px-3 py-2">{item.item_name || item.product?.name || "N/A"}</td>
                                                                     <td className="px-3 py-2">{item.category?.name || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.quantity || "N/A"}</td>
+                                                                    <td className="px-3 py-2">{item.quantity ? parseFloat(item.quantity).toFixed(1) : "N/A"}</td>
                                                                     <td className="px-3 py-2">{item.unit?.name || "N/A"}</td>
                                                                     <td className="px-3 py-2">{item.description || "N/A"}</td>
                                                                 </tr>
@@ -331,7 +331,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">PO Number:</span>
-                                                <span className="font-medium ml-2">{task.purchase_order.po_number || "N/A"}</span>
+                                                <span className="font-medium ml-2">{task.purchase_order.purchase_order_no || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Supplier:</span>
@@ -339,48 +339,24 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Total Amount:</span>
-                                                <span className="font-medium ml-2">{task.purchase_order.total_amount || "N/A"}</span>
+                                                <span className="font-medium ml-2">{task.purchase_order.amount ? parseFloat(task.purchase_order.amount).toFixed(2) : "N/A"}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Currency:</span>
-                                                <span className="font-medium ml-2">{task.purchase_order.currency?.name || "N/A"}</span>
+                                                <span className="text-gray-600">Purchase Order Date:</span>
+                                                <span className="font-medium ml-2">
+                                                    {task.purchase_order.purchase_order_date ? new Date(task.purchase_order.purchase_order_date).toLocaleDateString() : "N/A"}
+                                                </span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Created By:</span>
-                                                <span className="font-medium ml-2">{task.purchase_order.user?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">
+                                                    {task.purchase_order.created_by?.name || 
+                                                     (task.purchase_order.user_id ? `User #${task.purchase_order.user_id}` : "N/A")}
+                                                </span>
                                             </div>
                                         </div>
                                         
-                                        {/* Purchase Order Items */}
-                                        {task.purchase_order.items && task.purchase_order.items.length > 0 && (
-                                            <div className="mt-4">
-                                                <h4 className="font-semibold text-gray-700 mb-2">Purchase Order Items:</h4>
-                                                <div className="overflow-x-auto">
-                                                    <table className="w-full text-sm">
-                                                        <thead className="bg-gray-50">
-                                                            <tr>
-                                                                <th className="px-3 py-2 text-left">Item</th>
-                                                                <th className="px-3 py-2 text-left">Quantity</th>
-                                                                <th className="px-3 py-2 text-left">Unit Price</th>
-                                                                <th className="px-3 py-2 text-left">Total Price</th>
-                                                                <th className="px-3 py-2 text-left">Unit</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y">
-                                                            {task.purchase_order.items.map((item, index) => (
-                                                                <tr key={index}>
-                                                                    <td className="px-3 py-2">{item.product?.name || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.quantity || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.unit_price || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.total_price || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.unit?.name || "N/A"}</td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        )}
+                                        {/* Purchase Order Items section removed - PurchaseOrder model doesn't have items */}
                                     </div>
                                 )}
 
@@ -388,10 +364,6 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 {task.process.title === "Budget Request Approval" && task.request_budget && (
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <span className="text-gray-600">Budget Request ID:</span>
-                                                <span className="font-medium ml-2">BR-{task.request_budget.id}</span>
-                                            </div>
                                             <div>
                                                 <span className="text-gray-600">Department:</span>
                                                 <span className="font-medium ml-2">{task.request_budget.department?.name || "N/A"}</span>
@@ -426,19 +398,9 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Fiscal Period:</span>
-                                                <span className="font-medium ml-2">{task.request_budget.fiscal_period?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{task.request_budget.fiscal_period?.period_name || "N/A"}</span>
                                             </div>
                                         </div>
-                                        
-                                        {/* Budget Request Description */}
-                                        {task.request_budget.reason_for_increase && (
-                                            <div className="mt-4">
-                                                <h4 className="font-semibold text-gray-700 mb-2">Reason for Increase:</h4>
-                                                <p className="text-gray-600 bg-gray-50 p-3 rounded-lg">
-                                                    {task.request_budget.reason_for_increase}
-                                                </p>
-                                            </div>
-                                        )}
                                     </div>
                                 )}
 
@@ -446,14 +408,6 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 {task.process.title === "Total Budget Approval" && task.budget && (
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <span className="text-gray-600">Budget ID:</span>
-                                                <span className="font-medium ml-2">BUD-{task.budget.id}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-600">Description:</span>
-                                                <span className="font-medium ml-2">{task.budget.description || "N/A"}</span>
-                                            </div>
                                             <div>
                                                 <span className="text-gray-600">Department:</span>
                                                 <span className="font-medium ml-2">{task.budget.department?.name || "N/A"}</span>
@@ -484,7 +438,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Fiscal Period:</span>
-                                                <span className="font-medium ml-2">{task.budget.fiscal_period?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{task.budget.fiscal_period?.period_name || "N/A"}</span>
                                             </div>
                                         </div>
                                         
@@ -494,15 +448,15 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 <h4 className="font-semibold text-gray-700 mb-2">Budget Approval Transactions:</h4>
                                                 <div className="overflow-x-auto">
                                                     <table className="w-full text-sm">
-                                                        <thead className="bg-gray-50">
+                                                        <thead className="bg-[#C7E7DE] text-[#2C323C]">
                                                             <tr>
-                                                                <th className="px-3 py-2 text-left">Order</th>
+                                                                <th className="px-3 py-2 text-left rounded-tl-xl rounded-bl-xl">Order</th>
                                                                 <th className="px-3 py-2 text-left">Status</th>
                                                                 <th className="px-3 py-2 text-left">Description</th>
-                                                                <th className="px-3 py-2 text-left">Assigned To</th>
+                                                                <th className="px-3 py-2 text-left rounded-tr-xl rounded-br-xl">Assigned To</th>
                                                             </tr>
                                                         </thead>
-                                                        <tbody className="divide-y">
+                                                        <tbody className="divide-y divide-gray-200">
                                                             {task.budget.budget_approval_transactions.map((transaction, index) => (
                                                                 <tr key={index}>
                                                                     <td className="px-3 py-2">{transaction.order || "N/A"}</td>
@@ -528,34 +482,43 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 <span className="font-medium ml-2">PO-{task.payment_order.id}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">PO Number:</span>
-                                                <span className="font-medium ml-2">{task.payment_order.po_number || "N/A"}</span>
+                                                <span className="text-gray-600">Payment Order Number:</span>
+                                                <span className="font-medium ml-2">{task.payment_order.payment_order_number || "N/A"}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Supplier:</span>
-                                                <span className="font-medium ml-2">{task.payment_order.supplier?.name || "N/A"}</span>
+                                                <span className="text-gray-600">Purchase Order:</span>
+                                                <span className="font-medium ml-2">{task.payment_order.purchase_order?.purchase_order_no || "N/A"}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Amount:</span>
-                                                <span className="font-medium ml-2">{task.payment_order.amount || "N/A"}</span>
+                                                <span className="text-gray-600">Total Amount:</span>
+                                                <span className="font-medium ml-2">{task.payment_order.total_amount ? parseFloat(task.payment_order.total_amount).toFixed(2) : "N/A"}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Currency:</span>
-                                                <span className="font-medium ml-2">{task.payment_order.currency?.name || "N/A"}</span>
+                                                <span className="text-gray-600">Paid Amount:</span>
+                                                <span className="font-medium ml-2">{task.payment_order.paid_amount ? parseFloat(task.payment_order.paid_amount).toFixed(2) : "N/A"}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Payment Method:</span>
-                                                <span className="font-medium ml-2">{task.payment_order.payment_method || "N/A"}</span>
+                                                <span className="text-gray-600">Payment Type:</span>
+                                                <span className="font-medium ml-2">{task.payment_order.payment_type || "N/A"}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Payment Date:</span>
+                                                <span className="text-gray-600">Issue Date:</span>
                                                 <span className="font-medium ml-2">
-                                                    {task.payment_order.payment_date ? new Date(task.payment_order.payment_date).toLocaleDateString() : "N/A"}
+                                                    {task.payment_order.issue_date ? new Date(task.payment_order.issue_date).toLocaleDateString() : "N/A"}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600">Due Date:</span>
+                                                <span className="font-medium ml-2">
+                                                    {task.payment_order.due_date ? new Date(task.payment_order.due_date).toLocaleDateString() : "N/A"}
                                                 </span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Created By:</span>
-                                                <span className="font-medium ml-2">{task.payment_order.user?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">
+                                                    {task.payment_order.user?.name || 
+                                                     (task.payment_order.user_id ? `User #${task.payment_order.user_id}` : "N/A")}
+                                                </span>
                                             </div>
                                         </div>
                                         
@@ -572,13 +535,9 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 )}
 
                                 {/* Invoice Details */}
-                                {task.process.title === "Invoice Approval" && task.invoice && (
+                                {task.process.title === "Maharat Invoice Approval" && task.invoice && (
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <span className="text-gray-600">Invoice ID:</span>
-                                                <span className="font-medium ml-2">INV-{task.invoice.id}</span>
-                                            </div>
                                             <div>
                                                 <span className="text-gray-600">Invoice Number:</span>
                                                 <span className="font-medium ml-2">{task.invoice.invoice_number || "N/A"}</span>
@@ -589,7 +548,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Representative:</span>
-                                                <span className="font-medium ml-2">{task.invoice.representative?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{task.invoice.representative_name || task.invoice.representative?.name || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Status:</span>
@@ -597,23 +556,23 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Issue Date:</span>
-                                                <span className="font-medium ml-2">{task.invoice.issue_date || "N/A"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-600">Due Date:</span>
-                                                <span className="font-medium ml-2">{task.invoice.due_date || "N/A"}</span>
+                                                <span className="font-medium ml-2">{task.invoice.issue_date ? new Date(task.invoice.issue_date).toLocaleDateString() : "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Subtotal:</span>
-                                                <span className="font-medium ml-2">{task.invoice.subtotal || "N/A"}</span>
+                                                <span className="font-medium ml-2">{task.invoice.subtotal ? parseFloat(task.invoice.subtotal).toFixed(2) : "N/A"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600">Discount:</span>
+                                                <span className="font-medium ml-2">{task.invoice.discount_amount ? parseFloat(task.invoice.discount_amount).toFixed(2) : "0.00"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Tax Amount:</span>
-                                                <span className="font-medium ml-2">{task.invoice.tax_amount || "N/A"}</span>
+                                                <span className="font-medium ml-2">{task.invoice.tax_amount ? parseFloat(task.invoice.tax_amount).toFixed(2) : "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Total Amount:</span>
-                                                <span className="font-medium ml-2">{task.invoice.total_amount || "N/A"}</span>
+                                                <span className="font-medium ml-2">{task.invoice.total_amount ? parseFloat(task.invoice.total_amount).toFixed(2) : "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Currency:</span>
@@ -627,28 +586,36 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 <h4 className="font-semibold text-gray-700 mb-2">Invoice Items:</h4>
                                                 <div className="overflow-x-auto">
                                                     <table className="w-full text-sm">
-                                                        <thead className="bg-gray-50">
+                                                        <thead className="bg-[#C7E7DE] text-[#2C323C]">
                                                             <tr>
-                                                                <th className="px-3 py-2 text-left">Item</th>
+                                                                <th className="px-3 py-2 text-left rounded-tl-xl rounded-bl-xl">Item</th>
                                                                 <th className="px-3 py-2 text-left">Quantity</th>
                                                                 <th className="px-3 py-2 text-left">Unit Price</th>
                                                                 <th className="px-3 py-2 text-left">Subtotal</th>
                                                                 <th className="px-3 py-2 text-left">Tax Amount</th>
-                                                                <th className="px-3 py-2 text-left">Total</th>
+                                                                <th className="px-3 py-2 text-left rounded-tr-xl rounded-br-xl">Total</th>
                                                             </tr>
                                                         </thead>
-                                                        <tbody className="divide-y">
+                                                        <tbody className="divide-y divide-gray-200">
                                                             {task.invoice.items.map((item, index) => (
                                                                 <tr key={index}>
                                                                     <td className="px-3 py-2">{item.name || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.quantity || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.unit_price || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.subtotal || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.tax_amount || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.total || "N/A"}</td>
+                                                                    <td className="px-3 py-2">{item.quantity ? parseFloat(item.quantity).toFixed(2) : "N/A"}</td>
+                                                                    <td className="px-3 py-2">{item.unit_price ? parseFloat(item.unit_price).toFixed(2) : "N/A"}</td>
+                                                                    <td className="px-3 py-2">{item.subtotal ? parseFloat(item.subtotal).toFixed(2) : "N/A"}</td>
+                                                                    <td className="px-3 py-2">{item.tax_amount ? parseFloat(item.tax_amount).toFixed(2) : "N/A"}</td>
+                                                                    <td className="px-3 py-2">{item.total ? parseFloat(item.total).toFixed(2) : "N/A"}</td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
+                                                        <tfoot className="bg-gray-50 font-semibold">
+                                                            <tr>
+                                                                <td colSpan="3" className="px-3 py-2 text-right">Total:</td>
+                                                                <td className="px-3 py-2">{task.invoice.subtotal ? parseFloat(task.invoice.subtotal).toFixed(2) : "N/A"}</td>
+                                                                <td className="px-3 py-2">{task.invoice.tax_amount ? parseFloat(task.invoice.tax_amount).toFixed(2) : "N/A"}</td>
+                                                                <td className="px-3 py-2">{task.invoice.total_amount ? parseFloat(task.invoice.total_amount).toFixed(2) : "N/A"}</td>
+                                                            </tr>
+                                                        </tfoot>
                                                     </table>
                                                 </div>
                                             </div>

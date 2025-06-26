@@ -40,26 +40,38 @@ class BudgetValidationService
      */
     public function validateBudgetAvailability($departmentId, $costCenterId, $subCostCenterId, $fiscalPeriodId, $amount)
     {
-        // For invoices, we just need to check if any approved budget exists for the fiscal period
-        // We don't need to match specific department, cost center, or sub cost center
-        $budget = \App\Models\Budget::where('fiscal_period_id', $fiscalPeriodId)
-            ->where('status', 'Active')
+        // For purchase orders, we need to check if there's a request budget available
+        // that has been approved and has sufficient balance
+        $requestBudget = \App\Models\RequestBudget::where('fiscal_period_id', $fiscalPeriodId)
+            ->where('department_id', $departmentId)
+            ->where('cost_center_id', $costCenterId)
+            ->where('sub_cost_center', $subCostCenterId)
+            ->where('status', 'Approved')
             ->first();
 
-        if (!$budget) {
+        if (!$requestBudget) {
             return [
                 'valid' => false,
-                'message' => 'No approved budget found for the specified criteria',
+                'message' => 'No approved budget request found for the specified criteria',
                 'available_amount' => 0
             ];
         }
 
-        // For invoices, we don't need to check balance amount since we're not reserving budget
-        // We just need to confirm that a budget exists for the fiscal period
+        // Check if there's sufficient balance
+        $availableAmount = $requestBudget->balance_amount ?? 0;
+        
+        if ($availableAmount < $amount) {
+            return [
+                'valid' => false,
+                'message' => "Insufficient budget balance. Available: {$availableAmount}, Required: {$amount}",
+                'available_amount' => $availableAmount
+            ];
+        }
+
         return [
             'valid' => true,
-            'budget' => $budget,
-            'available_amount' => $budget->total_expense_planned ?? 0
+            'budget' => $requestBudget,
+            'available_amount' => $availableAmount
         ];
     }
 
