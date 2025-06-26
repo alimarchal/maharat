@@ -98,11 +98,7 @@ class TaskController extends Controller
     public function update(UpdateTaskRequest $request, Task $task): JsonResponse
     {
         try {
-            // Create a custom logger for RFQ status updates
-            $rfqLogger = new \Monolog\Logger('rfq_status');
-            $rfqLogger->pushHandler(new \Monolog\Handler\StreamHandler(storage_path('logs/rfq_status.log'), \Monolog\Logger::INFO));
-
-            $rfqLogger->info('=== TASK UPDATE STARTED ===', [
+            Log::info('=== TASK UPDATE STARTED ===', [
                 'task_id' => $task->id,
                 'rfq_id' => $task->rfq_id,
                 'status' => $request->input('status'),
@@ -115,11 +111,13 @@ class TaskController extends Controller
 
             // Check if this is an RFQ task and if it's being approved
             if ($task->rfq_id && $request->input('status') === 'Approved') {
-                $rfqLogger->info('=== RFQ TASK APPROVAL CHECK ===', [
+                Log::info('=== RFQ TASK APPROVAL CHECK ===', [
                     'task_id' => $task->id,
                     'rfq_id' => $task->rfq_id,
                     'current_order_no' => $task->order_no,
-                    'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id')
+                    'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
+                    'process_id' => $task->process_id,
+                    'assigned_to_user_id' => $task->assigned_to_user_id
                 ]);
 
                 // Get total number of required approvals for this RFQ
@@ -134,29 +132,38 @@ class TaskController extends Controller
                     ->where('process_id', $task->process_id)
                     ->get();
 
-                $rfqLogger->info('=== RFQ APPROVAL TASKS ===', [
+                Log::info('=== RFQ APPROVAL TASKS ===', [
                     'rfq_id' => $task->rfq_id,
                     'total_tasks' => $totalApprovals,
                     'current_task_order_no' => $task->order_no,
-                    'all_tasks' => $allTasks->toArray()
+                    'all_tasks' => $allTasks->toArray(),
+                    'task_order_no_type' => gettype($task->order_no),
+                    'total_approvals_type' => gettype($totalApprovals)
                 ]);
 
-                // Check if this is the final approval
-                $isFinalApproval = $task->order_no === $totalApprovals;
+                // Check if this is the final approval - use loose comparison for string/number mismatch
+                $isFinalApproval = (string)$task->order_no === (string)$totalApprovals;
 
-                $rfqLogger->info('=== FINAL APPROVAL CHECK ===', [
+                Log::info('=== FINAL APPROVAL CHECK ===', [
                     'rfq_id' => $task->rfq_id,
                     'current_order_no' => $task->order_no,
                     'total_approvals' => $totalApprovals,
                     'is_final_approval' => $isFinalApproval,
-                    'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id')
+                    'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
+                    'comparison_details' => [
+                        'order_no_string' => (string)$task->order_no,
+                        'total_approvals_string' => (string)$totalApprovals,
+                        'strict_comparison' => $task->order_no === $totalApprovals,
+                        'loose_comparison' => $task->order_no == $totalApprovals
+                    ]
                 ]);
 
                 if ($isFinalApproval) {
-                    $rfqLogger->info('=== FINAL APPROVAL DETECTED - UPDATING RFQ STATUS ===', [
+                    Log::info('=== FINAL APPROVAL DETECTED - UPDATING RFQ STATUS ===', [
                         'rfq_id' => $task->rfq_id,
                         'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
-                        'target_status_id' => 47
+                        'target_status_id' => 47,
+                        'auth_user_id' => auth()->id()
                     ]);
 
                     try {
@@ -170,23 +177,25 @@ class TaskController extends Controller
                                 'updated_at' => now()
                             ]);
 
-                        $rfqLogger->info('=== RFQ STATUS UPDATE RESULT ===', [
+                        Log::info('=== RFQ STATUS UPDATE RESULT ===', [
                             'rfq_id' => $task->rfq_id,
                             'update_success' => $updated,
-                            'rows_affected' => DB::connection()->getPdo()->lastInsertId(),
-                            'new_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id')
+                            'rows_affected' => $updated,
+                            'new_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
+                            'update_query_executed' => true
                         ]);
 
                         if (!$updated) {
-                            $rfqLogger->error('=== RFQ STATUS UPDATE FAILED ===', [
+                            Log::error('=== RFQ STATUS UPDATE FAILED ===', [
                                 'rfq_id' => $task->rfq_id,
-                                'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id')
+                                'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
+                                'update_result' => $updated
                             ]);
-                            throw new \Exception('Failed to update RFQ status');
+                            throw new \Exception('Failed to update RFQ status - no rows affected');
                         }
 
                         // Create status log entry
-                        DB::table('rfq_status_logs')->insert([
+                        $statusLogInserted = DB::table('rfq_status_logs')->insert([
                             'rfq_id' => $task->rfq_id,
                             'status_id' => 47,
                             'changed_by' => auth()->id(),
@@ -196,39 +205,47 @@ class TaskController extends Controller
                             'updated_at' => now()
                         ]);
 
+                        Log::info('=== RFQ STATUS LOG INSERTED ===', [
+                            'rfq_id' => $task->rfq_id,
+                            'status_log_inserted' => $statusLogInserted
+                        ]);
+
                         // Verify the update
                         $updatedRfq = DB::table('rfqs')->where('id', $task->rfq_id)->first();
-                        $rfqLogger->info('=== RFQ STATUS VERIFICATION ===', [
+                        Log::info('=== RFQ STATUS VERIFICATION ===', [
                             'rfq_id' => $task->rfq_id,
                             'status_id' => $updatedRfq->status_id,
                             'expected_status' => 47,
-                            'update_successful' => $updatedRfq->status_id === 47
+                            'update_successful' => $updatedRfq->status_id === 47,
+                            'rfq_data' => $updatedRfq
                         ]);
 
                         // Refresh the task's RFQ relationship to get the updated status
                         $task->load('rfq');
 
                     } catch (\Exception $e) {
-                        $rfqLogger->error('=== RFQ STATUS UPDATE ERROR ===', [
+                        Log::error('=== RFQ STATUS UPDATE ERROR ===', [
                             'rfq_id' => $task->rfq_id,
                             'error' => $e->getMessage(),
-                            'trace' => $e->getTraceAsString()
+                            'trace' => $e->getTraceAsString(),
+                            'error_code' => $e->getCode()
                         ]);
                         throw $e;
                     }
                 } else {
-                    $rfqLogger->info('=== NOT FINAL APPROVAL - SKIPPING RFQ STATUS UPDATE ===', [
+                    Log::info('=== NOT FINAL APPROVAL - SKIPPING RFQ STATUS UPDATE ===', [
                         'rfq_id' => $task->rfq_id,
                         'current_order_no' => $task->order_no,
                         'total_approvals' => $totalApprovals,
-                        'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id')
+                        'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
+                        'reason' => 'Not final approval step'
                     ]);
                 }
             }
 
             // Check if this is an RFQ task and if it's being rejected
             if ($task->rfq_id && $request->input('status') === 'Rejected') {
-                $rfqLogger->info('=== RFQ TASK REJECTION CHECK ===', [
+                Log::info('=== RFQ TASK REJECTION CHECK ===', [
                     'task_id' => $task->id,
                     'rfq_id' => $task->rfq_id,
                     'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id')
@@ -241,7 +258,7 @@ class TaskController extends Controller
                     ->first();
 
                 if ($approvalTransaction) {
-                    $rfqLogger->info('=== UPDATING RFQ APPROVAL TRANSACTION FOR REJECTION ===', [
+                    Log::info('=== UPDATING RFQ APPROVAL TRANSACTION FOR REJECTION ===', [
                         'task_id' => $task->id,
                         'rfq_id' => $task->rfq_id,
                         'approval_transaction_id' => $approvalTransaction->id
@@ -255,7 +272,7 @@ class TaskController extends Controller
                             'updated_at' => now()
                         ]);
 
-                    $rfqLogger->info('=== RFQ REJECTION TRANSACTION UPDATE RESULT ===', [
+                    Log::info('=== RFQ REJECTION TRANSACTION UPDATE RESULT ===', [
                         'task_id' => $task->id,
                         'rfq_id' => $task->rfq_id,
                         'approval_transaction_id' => $approvalTransaction->id,
@@ -271,7 +288,7 @@ class TaskController extends Controller
                                 'updated_at' => now()
                             ]);
 
-                        $rfqLogger->info('=== RFQ REJECTION STATUS UPDATE RESULT ===', [
+                        Log::info('=== RFQ REJECTION STATUS UPDATE RESULT ===', [
                             'task_id' => $task->id,
                             'rfq_id' => $task->rfq_id,
                             'update_success' => $rfqUpdated,
@@ -290,7 +307,7 @@ class TaskController extends Controller
                         ]);
                     }
                 } else {
-                    $rfqLogger->warning('=== NO RFQ APPROVAL TRANSACTION FOUND ===', [
+                    Log::warning('=== NO RFQ APPROVAL TRANSACTION FOUND ===', [
                         'task_id' => $task->id,
                         'rfq_id' => $task->rfq_id,
                         'assigned_to' => $task->assigned_to_user_id
@@ -1351,7 +1368,7 @@ class TaskController extends Controller
 
             DB::commit();
 
-            $rfqLogger->info('=== TASK UPDATE COMPLETED ===', [
+            Log::info('=== TASK UPDATE COMPLETED ===', [
                 'task_id' => $task->id,
                 'rfq_id' => $task->rfq_id,
                 'final_status_id' => $task->rfq ? $task->rfq->status_id : null
@@ -1376,7 +1393,7 @@ class TaskController extends Controller
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
-            $rfqLogger->error('=== TASK UPDATE FAILED ===', [
+            Log::error('=== TASK UPDATE FAILED ===', [
                 'task_id' => $task->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
