@@ -549,7 +549,7 @@ const AccountsModal = ({
                             disabled={isEdit && account}
                         />
                         <InputFloating
-                            label="Invoice Number"
+                            label="Reference Number"
                             name="invoice_number"
                             value={formData.invoice_number}
                             onChange={handleChange}
