@@ -490,12 +490,12 @@ export default function CreateMaharatInvoice() {
 
             const vatRate =
                 name === "vat_rate"
-                    ? parseFloat(value) || 0
-                    : parseFloat(formData.vat_rate) || 0;
+                    ? (value === "" ? 0 : parseFloat(value)) 
+                    : (formData.vat_rate === "" ? 0 : parseFloat(formData.vat_rate));
             const discount =
                 name === "discount"
-                    ? parseFloat(value) || 0
-                    : parseFloat(formData.discount) || 0;
+                    ? (value === "" ? 0 : parseFloat(value)) 
+                    : (formData.discount === "" ? 0 : parseFloat(formData.discount));
 
             // Apply discount to subtotal first
             const discountedSubtotal = Math.max(subtotal - discount, 0);
@@ -566,8 +566,8 @@ export default function CreateMaharatInvoice() {
         }, 0);
 
         // Get current VAT rate and discount from form data
-        const vatRate = parseFloat(formData.vat_rate) || 0;
-        const discount = parseFloat(formData.discount) || 0;
+        const vatRate = formData.vat_rate === "" ? 0 : parseFloat(formData.vat_rate);
+        const discount = formData.discount === "" ? 0 : parseFloat(formData.discount);
 
         // Apply discount to subtotal first
         const discountedSubtotal = Math.max(subtotal - discount, 0);
@@ -737,7 +737,7 @@ export default function CreateMaharatInvoice() {
             const formattedItems = formData.items.map((item) => {
                 const itemSubtotal = Number(item.subtotal);
                 const discount = Number(formData.discount) || 0;
-                const vatRate = Number(formData.vat_rate) || 0;
+                const vatRate = formData.vat_rate === "" ? 0 : Number(formData.vat_rate);
                 
                 // Apply discount to subtotal first (distribute discount across items)
                 const discountedSubtotal = Math.max(itemSubtotal - (discount / formData.items.length), 0);
@@ -752,7 +752,7 @@ export default function CreateMaharatInvoice() {
                     quantity: Number(item.quantity),
                     unit_price: Number(item.unit_price),
                     subtotal: discountedSubtotal,
-                    tax_rate: formData.vat_rate.toString(), // Use string to preserve precision
+                    tax_rate: formData.vat_rate,
                     tax_amount: itemTaxAmount,
                     total: itemTotal,
                 };
@@ -762,7 +762,7 @@ export default function CreateMaharatInvoice() {
                 invoice_number: invoiceNumber,
                 issue_date: formData.invoice_date,
                 payment_method: formData.payment_terms,
-                vat_rate: formData.vat_rate.toString(),
+                vat_rate: formData.vat_rate,
                 client_id: formData.client_id,
                 representative_id: formData.representative || null,
                 subtotal: (parseFloat(formData.subtotal) - parseFloat(formData.discount || 0)).toFixed(2),
@@ -873,7 +873,7 @@ export default function CreateMaharatInvoice() {
         try {
             const formattedItems = items.map((item) => {
                 // Calculate tax amount based on subtotal and vat rate
-                const vatRate = parseFloat(item.tax_rate || formData.vat_rate);
+                const vatRate = formData.vat_rate === "" ? 0 : parseFloat(formData.vat_rate);
                 const itemSubtotal = parseFloat(item.subtotal);
                 const discount = parseFloat(formData.discount) || 0;
                 
@@ -891,7 +891,7 @@ export default function CreateMaharatInvoice() {
                     quantity: parseFloat(item.quantity),
                     unit_price: parseFloat(item.unit_price),
                     subtotal: discountedSubtotal, // Use discounted subtotal
-                    tax_rate: formData.vat_rate.toString(), // Use string to preserve precision
+                    tax_rate: formData.vat_rate, // Keep as string to preserve precision
                     tax_amount: vatAmount,
                     total: total,
                     discount: discount / items.length, // Distribute discount across items

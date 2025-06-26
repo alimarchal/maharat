@@ -317,7 +317,7 @@ const AccountsTable = () => {
                                         {account.status}
                                     </span>
                                 </td>
-                                <td className="py-3 px-4 flex justify-center space-x-3">
+                                <td className="py-3 px-4">
                                     {(() => {
                                         const accountName = account.name;
                                         const isSpecialAccount = accountName === 'Special accounts';
@@ -347,7 +347,7 @@ const AccountsTable = () => {
                                         const canDelete = isSpecialAccount ? !hasValue : !nonDeletable.includes(accountName) && !editOnly.includes(accountName);
 
                                         return (
-                                            <>
+                                            <div className="flex justify-center items-center space-x-3">
                                                 {canEdit && (
                                                     <button
                                                         className="text-blue-400 hover:text-blue-500"
@@ -372,7 +372,7 @@ const AccountsTable = () => {
                                                 >
                                                     <FontAwesomeIcon icon={faChevronRight} />
                                                 </Link>
-                                            </>
+                                            </div>
                                         );
                                     })()}
                                 </td>
