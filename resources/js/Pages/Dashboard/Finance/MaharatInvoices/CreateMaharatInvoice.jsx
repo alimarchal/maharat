@@ -1455,6 +1455,23 @@ export default function CreateMaharatInvoice() {
                             </div>
                         </div>
                         <div className="flex justify-between items-center gap-2 mt-4">
+                            <strong className="w-1/2">Subtotal After Discount:</strong>
+                            <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                    {(
+                                        formData.items.reduce((sum, item) => sum + (parseFloat(item.subtotal) || 0), 0) - 
+                                        (parseFloat(formData.discount) || 0)
+                                    ).toLocaleString(undefined, {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    })}
+                                </p>
+                                <span className="font-medium">
+                                    {companyDetails.currency_code || "SAR"}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-center gap-2 mt-4">
                             <strong className="w-1/4">VAT Amount:</strong>
                             <div className="flex items-center gap-2">
                                 <p className="font-medium">
