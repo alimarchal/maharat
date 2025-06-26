@@ -137,6 +137,8 @@ class InvoiceItemController extends Controller
                 'items.*.subtotal' => 'required|numeric|min:0',
                 'items.*.tax_rate' => 'required|numeric|min:0',
                 'items.*.tax_amount' => 'required|numeric|min:0',
+                'items.*.total' => 'required|numeric|min:0',
+                'items.*.discount' => 'nullable|numeric|min:0',
             ]);
 
             // Delete existing items
@@ -151,7 +153,9 @@ class InvoiceItemController extends Controller
                     'unit_price' => $item['unit_price'],
                     'subtotal' => $item['subtotal'],
                     'tax_rate' => $item['tax_rate'],
-                    'tax_amount' => $item['tax_amount']
+                    'tax_amount' => $item['tax_amount'],
+                    'total' => $item['total'],
+                    'discount' => $item['discount'] ?? 0,
                 ]);
             }
 

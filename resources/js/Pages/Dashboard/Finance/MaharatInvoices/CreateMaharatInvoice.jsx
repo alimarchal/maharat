@@ -777,11 +777,20 @@ export default function CreateMaharatInvoice() {
             let newInvoiceId;
 
             if (isEditMode) {
+                // For edit mode, first update the invoice header (without items)
+                const invoiceDataOnly = { ...invoicePayload };
+                delete invoiceDataOnly.items;
+
                 response = await axios.put(
                     `/api/v1/invoices/${invoiceId}`,
-                    invoicePayload
+                    invoiceDataOnly
                 );
                 newInvoiceId = invoiceId;
+
+                // Then update the invoice items
+                if (formattedItems.length > 0) {
+                    await updateInvoiceItems(newInvoiceId, formattedItems);
+                }
             } else {
                 const invoiceDataOnly = { ...invoicePayload };
                 delete invoiceDataOnly.items;
@@ -904,6 +913,57 @@ export default function CreateMaharatInvoice() {
         } catch (error) {
             console.error(
                 "Error saving invoice items:",
+                error.response?.data || error
+            );
+            throw error; // Re-throw to be handled by the caller
+        }
+    };
+
+    // Helper function to update invoice items in edit mode
+    const updateInvoiceItems = async (invoiceId, items) => {
+        if (!invoiceId || !items || items.length === 0) {
+            console.warn("No invoice ID or items to update");
+            return;
+        }
+
+        try {
+            const formattedItems = items.map((item) => {
+                // Calculate tax amount based on subtotal and vat rate
+                const vatRate = formData.vat_rate === "" ? 0 : parseFloat(formData.vat_rate);
+                const itemSubtotal = parseFloat(item.subtotal);
+                const discount = parseFloat(formData.discount) || 0;
+                
+                // Apply discount to subtotal first
+                const discountedSubtotal = Math.max(itemSubtotal - (discount / items.length), 0);
+                
+                // Calculate VAT on discounted subtotal
+                const vatAmount = discountedSubtotal * (vatRate / 100);
+                const total = discountedSubtotal + vatAmount;
+
+                return {
+                    item_name: item.name, // For validation
+                    name: item.name, // Actual database field
+                    description: item.description || "",
+                    quantity: parseFloat(item.quantity),
+                    unit_price: parseFloat(item.unit_price),
+                    subtotal: discountedSubtotal, // Use discounted subtotal
+                    tax_rate: formData.vat_rate, // Keep as string to preserve precision
+                    tax_amount: vatAmount,
+                    total: total,
+                    discount: discount / items.length, // Distribute discount across items
+                };
+            });
+            
+            const response = await axios.put(
+                `/api/v1/invoices/${invoiceId}/items`,
+                {
+                    items: formattedItems,
+                }
+            );
+            return response.data;
+        } catch (error) {
+            console.error(
+                "Error updating invoice items:",
                 error.response?.data || error
             );
             throw error; // Re-throw to be handled by the caller
