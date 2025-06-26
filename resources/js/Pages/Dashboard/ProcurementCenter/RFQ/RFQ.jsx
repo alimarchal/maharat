@@ -9,10 +9,12 @@ import {
 import axios from "axios";
 import RFQPDF from "./RFQPDF";
 import RFQExcel from "./RFQExcel";
-import { useRfqRequests } from '@/Components/RfqRequestsContext';
+//TODO: Uncomment when second phase has started for new feature
+// import { useRfqRequests } from '@/Components/RfqRequestsContext';
 
 const RFQsTable = () => {
-    const { pendingCount } = useRfqRequests();
+    //TODO: Uncomment when second phase has started for new feature
+    // const { pendingCount } = useRfqRequests();
     const [rfqLogs, setRfqLogs] = useState([]);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -147,11 +149,13 @@ const RFQsTable = () => {
                         className="relative bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                     >
                         Make New RFQ
+                        {/*TODO: Uncomment when second phase has started for new feature
                         {pendingCount > 0 && (
                             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-sm h-6 w-6 rounded-full flex items-center justify-center">
                                 {pendingCount}
                             </span>
                         )}
+                        */}
                     </Link>
                 </div>
             </div>

@@ -284,7 +284,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Created By:</span>
-                                                <span className="font-medium ml-2">{task.rfq.user?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{task.rfq.requester?.name || "N/A"}</span>
                                             </div>
                                         </div>
                                         

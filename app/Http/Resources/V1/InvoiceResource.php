@@ -17,6 +17,7 @@ class InvoiceResource extends JsonResource
             'status' => $this->status,
             'payment_method' => $this->payment_method,
             'representative_id' => $this->representative_id,
+            'representative_name' => $this->representative_name,
 
             'representative' => $this->whenLoaded('representative', function () {
                 return [

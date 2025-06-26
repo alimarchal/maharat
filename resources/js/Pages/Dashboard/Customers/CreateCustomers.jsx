@@ -16,7 +16,7 @@ const CreateCustomer = () => {
         address: "",
         country_code: "SA",
         email: "",
-        account_name: "",
+        representative_name: "",
         iban: "",
     });
 
@@ -55,8 +55,8 @@ const CreateCustomer = () => {
         if (!formData.address.trim()) newErrors.address = "Address is required";
         if (!formData.country_code.trim())
             newErrors.country_code = "Country Code is required";
-        if (!formData.account_name.trim())
-            newErrors.account_name = "Representative Name is required";
+        if (!formData.representative_name.trim())
+            newErrors.representative_name = "Representative Name is required";
         if (!formData.iban.trim()) newErrors.iban = "IBAN is required";
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -204,13 +204,13 @@ const CreateCustomer = () => {
                     <div>
                         <InputFloating
                             label="Representative Name"
-                            name="account_name"
-                            value={formData.account_name}
+                            name="representative_name"
+                            value={formData.representative_name}
                             onChange={handleChange}
                         />
-                        {errors.account_name && (
+                        {errors.representative_name && (
                             <p className="text-red-500 text-sm">
-                                {errors.account_name}
+                                {errors.representative_name}
                             </p>
                         )}
                     </div>

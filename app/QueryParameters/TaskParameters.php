@@ -21,7 +21,12 @@ class TaskParameters
     {
         return [
             // Regular partial match filters
-            ...self::ALLOWED_FILTERS,
+            'urgency',
+            'assigned_at',
+            'deadline',
+            'read_status',
+            'created_at',
+            'status',
 
             // Exact match filters
             AllowedFilter::exact('process_step_id'),
@@ -85,7 +90,7 @@ class TaskParameters
         'rfq.items.product',
         'rfq.items.unit',
         'rfq.items.category',
-        'rfq.user',
+        'rfq.requester',
         'rfq.warehouse',
         'rfq.department',
         'rfq.costCenter',

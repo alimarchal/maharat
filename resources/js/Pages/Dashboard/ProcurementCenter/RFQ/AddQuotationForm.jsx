@@ -5,29 +5,33 @@ import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faEdit } from "@fortawesome/free-solid-svg-icons";
 import ItemModal from "./ItemModal";
-import { RfqRequestsProvider, useRfqRequests } from '@/Components/RfqRequestsContext';
-import RfqRequestsTable from './RfqRequestsTable';
+//TODO: Uncomment when second phase has started for new feature
+// import { RfqRequestsProvider, useRfqRequests } from '@/Components/RfqRequestsContext';
+// import RfqRequestsTable from './RfqRequestsTable';
 import SelectFloating from '@/Components/SelectFloating';
 
-function AddQuotationFormWrapper(props) {
-    return (
-        <RfqRequestsProvider>
-            <AddQuotationForm {...props} />
-        </RfqRequestsProvider>
-    );
-}
+//TODO: Uncomment when second phase has started for new feature
+// function AddQuotationFormWrapper(props) {
+//     return (
+//         <RfqRequestsProvider>
+//             <AddQuotationForm {...props} />
+//         </RfqRequestsProvider>
+//     );
+// }
 
-export default AddQuotationFormWrapper;
+// export default AddQuotationFormWrapper;
 
+// function AddQuotationForm() {
 function AddQuotationForm() {
     const { rfqId } = usePage().props;
     const user_id = usePage().props.auth.user.id;
-    const {
-        fetchRfqRequests,
-        markRfqRequestAsRequested,
-        updateRfqRequestStatus,
-    } = useRfqRequests();
-    const [selectedRfqRequest, setSelectedRfqRequest] = useState(null);
+    //TODO: Uncomment when second phase has started for new feature
+    // const {
+    //     fetchRfqRequests,
+    //     markRfqRequestAsRequested,
+    //     updateRfqRequestStatus,
+    // } = useRfqRequests();
+    // const [selectedRfqRequest, setSelectedRfqRequest] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         organization_name: "",
@@ -956,16 +960,17 @@ function AddQuotationForm() {
         // fetchRfqRequests(user_id);
     }, [user_id]);
 
+    //TODO: Uncomment when second phase has started for new feature
     // Add useEffect to ensure category is set when categories are loaded
-    useEffect(() => {
-        if (selectedRfqRequest && categories.length > 0 && formData.category_id === "") {
-            console.log('Categories loaded, updating category for selected RFQ request');
-            setFormData(prev => ({
-                ...prev,
-                category_id: selectedRfqRequest.category_id ? String(selectedRfqRequest.category_id) : ""
-            }));
-        }
-    }, [categories, selectedRfqRequest, formData.category_id]);
+    // useEffect(() => {
+    //     if (selectedRfqRequest && categories.length > 0 && formData.category_id === "") {
+    //         console.log('Categories loaded, updating category for selected RFQ request');
+    //         setFormData(prev => ({
+    //             ...prev,
+    //             category_id: selectedRfqRequest.category_id ? String(selectedRfqRequest.category_id) : ""
+    //         }));
+    //     }
+    // }, [categories, selectedRfqRequest, formData.category_id]);
 
     // Update lookup maps when data is loaded
     useEffect(() => {
@@ -1029,43 +1034,44 @@ function AddQuotationForm() {
     }, [paymentTypes]);
 
     // Handler for Make RFQ button
-    const handleSelectRfqRequest = (rfqRequest) => {
-        console.log('Selected RFQ Request:', rfqRequest);
-        console.log('Current categories:', categories);
+    //TODO: Uncomment when second phase has started for new feature
+    // const handleSelectRfqRequest = (rfqRequest) => {
+    //     console.log('Selected RFQ Request:', rfqRequest);
+    //     console.log('Current categories:', categories);
         
-        setSelectedRfqRequest(rfqRequest);
-        // Auto-fill the form with the RFQ request data
-        setFormData((prev) => {
-            const newFormData = {
-                ...prev,
-                category_id: rfqRequest.category_id ? String(rfqRequest.category_id) : "",
-                warehouse_id: rfqRequest.warehouse_id ? String(rfqRequest.warehouse_id) : "",
-                cost_center_id: rfqRequest.cost_center_id ? String(rfqRequest.cost_center_id) : "",
-                sub_cost_center_id: rfqRequest.sub_cost_center_id ? String(rfqRequest.sub_cost_center_id) : "",
-                department_id: rfqRequest.department_id ? String(rfqRequest.department_id) : "",
-                items: [
-                    {
-                        product_id: "", // No product yet
-                        item_name: rfqRequest.name,
-                        description: rfqRequest.description || "",
-                        unit_id: rfqRequest.unit_id ? String(rfqRequest.unit_id) : "",
-                        quantity: rfqRequest.quantity,
-                        brand_id: "",
-                        expected_delivery_date: "",
-                        rfq_id: rfqId || "",
-                        status_id: 48,
-                    },
-                ],
-            };
-            console.log('Updated formData:', newFormData);
-            return newFormData;
-        });
+    //     setSelectedRfqRequest(rfqRequest);
+    //     // Auto-fill the form with the RFQ request data
+    //     setFormData((prev) => {
+    //         const newFormData = {
+    //             ...prev,
+    //             category_id: rfqRequest.category_id ? String(rfqRequest.category_id) : "",
+    //             warehouse_id: rfqRequest.warehouse_id ? String(rfqRequest.warehouse_id) : "",
+    //             cost_center_id: rfqRequest.cost_center_id ? String(rfqRequest.cost_center_id) : "",
+    //             sub_cost_center_id: rfqRequest.sub_cost_center_id ? String(rfqRequest.sub_cost_center_id) : "",
+    //             department_id: rfqRequest.department_id ? String(rfqRequest.department_id) : "",
+    //             items: [
+    //                 {
+    //                     product_id: "", // No product yet
+    //                     item_name: rfqRequest.name,
+    //                     description: rfqRequest.description || "",
+    //                     unit_id: rfqRequest.unit_id ? String(rfqRequest.unit_id) : "",
+    //                     quantity: rfqRequest.quantity,
+    //                     brand_id: "",
+    //                     expected_delivery_date: "",
+    //                     rfq_id: rfqId || "",
+    //                     status_id: 48,
+    //                 },
+    //             ],
+    //         };
+    //         console.log('Updated formData:', newFormData);
+    //         return newFormData;
+    //     });
 
-        // Load sub cost centers if cost center is selected
-        if (rfqRequest.cost_center_id) {
-            updateSubCostCenter(String(rfqRequest.cost_center_id));
-        }
-    };
+    //     // Load sub cost centers if cost center is selected
+    //     if (rfqRequest.cost_center_id) {
+    //         updateSubCostCenter(String(rfqRequest.cost_center_id));
+    //     }
+    // };
 
     // After successful RFQ creation, mark the request as requested
     const handleSaveAndSubmit = async (e) => {
@@ -1303,16 +1309,17 @@ function AddQuotationForm() {
             };
             await axios.post("/api/v1/tasks", taskPayload);
 
+            //TODO: Uncomment when second phase has started for new feature
             // Mark the RFQ request as requested only after successful RFQ creation
-            if (selectedRfqRequest) {
-                try {
-                    await axios.put(`/api/v1/rfq-requests/${selectedRfqRequest.id}/mark-requested`);
-                    markRfqRequestAsRequested(selectedRfqRequest.id);
-                    setSelectedRfqRequest(null);
-                } catch (error) {
-                    console.error('Error marking RFQ request as requested:', error);
-                }
-            }
+            // if (selectedRfqRequest) {
+            //     try {
+            //         await axios.put(`/api/v1/rfq-requests/${selectedRfqRequest.id}/mark-requested`);
+            //         markRfqRequestAsRequested(selectedRfqRequest.id);
+            //         setSelectedRfqRequest(null);
+            //     } catch (error) {
+            //         console.error('Error marking RFQ request as requested:', error);
+            //     }
+            // }
 
             router.visit(route("rfq.index"));
         } catch (error) {
@@ -1424,7 +1431,7 @@ function AddQuotationForm() {
     return (
         <div className="w-full">
             {/* RFQ Requests Table at the top */}
-            <RfqRequestsTable onSelectRfqRequest={handleSelectRfqRequest} />
+            {/* <RfqRequestsTable onSelectRfqRequest={handleSelectRfqRequest} /> */}
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <div>
@@ -1941,3 +1948,5 @@ function AddQuotationForm() {
         </div>
     );
 }
+
+export default AddQuotationForm;

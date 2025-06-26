@@ -18,7 +18,7 @@ const MaharatInvoicesTable = () => {
     const [savedPdfUrl, setSavedPdfUrl] = useState(null);
 
     const [selectedFilter, setSelectedFilter] = useState("All");
-    const filters = ["All", "Draft", "Pending", "Paid", "Overdue", "Cancelled"];
+    const filters = ["All", "Draft", "Pending", "Paid", "Partially Paid", "Overdue", "Cancelled"];
 
     const fetchInvoices = async () => {
         setLoading(true);
@@ -135,6 +135,8 @@ const MaharatInvoicesTable = () => {
                 return "text-yellow-500";
             case "draft":
                 return "text-gray-500";
+            case "partially paid":
+                return "text-blue-500";
             default:
                 return "text-gray-500";
         }

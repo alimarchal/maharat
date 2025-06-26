@@ -6,12 +6,14 @@ import InputFloating from "../../../Components/InputFloating";
 import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
-import { useRequestItems } from "@/Components/RequestItemsContext";
+//TODO: Uncomment when second phase has started for new feature
+// import { useRequestItems } from "@/Components/RequestItemsContext";
 
 const MakeRequest = () => {
     const { requestId } = usePage().props;
     const user_id = usePage().props.auth.user.id;
-    const { approvedItems, approvedCount, fetchApprovedItems } = useRequestItems();
+    //TODO: Uncomment when second phase has started for new feature
+    // const { approvedItems, approvedCount, fetchApprovedItems } = useRequestItems();
 
     const [formData, setFormData] = useState({
         requester_id: user_id || "",
@@ -54,8 +56,9 @@ const MakeRequest = () => {
     const [photoPreview, setPhotoPreview] = useState(null);
     const [isAdded, setIsAdded] = useState(false);
     const [loadingProducts, setLoadingProducts] = useState(false);
-    const [showApprovedItems, setShowApprovedItems] = useState(false);
-    const [selectedApprovedItem, setSelectedApprovedItem] = useState(null);
+    //TODO: Uncomment when second phase has started for new feature
+    // const [showApprovedItems, setShowApprovedItems] = useState(false);
+    // const [selectedApprovedItem, setSelectedApprovedItem] = useState(null);
 
     // Pagination states for categories and products
     const [categoriesPage, setCategoriesPage] = useState(1);
@@ -76,7 +79,8 @@ const MakeRequest = () => {
         setPhoto(null);
         setPhotoPreview(null);
         setIsAdded(false);
-        setSelectedApprovedItem(null);
+        //TODO: Uncomment when second phase has started for new feature
+        // setSelectedApprovedItem(null);
     };
 
     const handlePhotoChange = (e) => {
@@ -327,17 +331,18 @@ const MakeRequest = () => {
                 window.location.reload();
             }
 
+            //TODO: Uncomment when second phase has started for new feature
             // Mark the approved item as requested if one was selected
-            if (selectedApprovedItem) {
-                try {
-                    await axios.put(`/api/v1/request-item/${selectedApprovedItem.id}/mark-requested`);
-                    // Refresh the approved items list to remove the requested item
-                    await fetchApprovedItems(user_id);
-                    setSelectedApprovedItem(null); // Clear the selected item
-                } catch (error) {
-                    console.error('Error marking approved item as requested:', error);
-                }
-            }
+            // if (selectedApprovedItem) {
+            //     try {
+            //         await axios.put(`/api/v1/request-item/${selectedApprovedItem.id}/mark-requested`);
+            //         // Refresh the approved items list to remove the requested item
+            //         await fetchApprovedItems(user_id);
+            //         setSelectedApprovedItem(null); // Clear the selected item
+            //     } catch (error) {
+            //         console.error('Error marking approved item as requested:', error);
+            //     }
+            // }
 
             toast.success('Request created successfully');
         } catch (error) {
@@ -568,54 +573,55 @@ const MakeRequest = () => {
         });
     };
 
-    const handleSelectApprovedItem = async (approvedItem) => {
-        try {
-            // Check if the approved item has a linked product
-            if (!approvedItem.product_id) {
-                toast.error('No product linked to this approved item');
-                return;
-            }
+    //TODO: Uncomment when second phase has started for new feature
+    // const handleSelectApprovedItem = async (approvedItem) => {
+    //     try {
+    //         // Check if the approved item has a linked product
+    //         if (!approvedItem.product_id) {
+    //             toast.error('No product linked to this approved item');
+    //             return;
+    //         }
 
-            // Get the linked product details
-            const productResponse = await axios.get(`/api/v1/products/${approvedItem.product_id}`);
-            const product = productResponse.data.data;
+    //         // Get the linked product details
+    //         const productResponse = await axios.get(`/api/v1/products/${approvedItem.product_id}`);
+    //         const product = productResponse.data.data;
             
-            // Get the category and unit details
-            const [categoryResponse, unitResponse] = await Promise.all([
-                axios.get(`/api/v1/product-categories/${product.category_id}`),
-                axios.get(`/api/v1/units/${product.unit_id}`)
-            ]);
+    //         // Get the category and unit details
+    //         const [categoryResponse, unitResponse] = await Promise.all([
+    //             axios.get(`/api/v1/product-categories/${product.category_id}`),
+    //             axios.get(`/api/v1/units/${product.unit_id}`)
+    //         ]);
             
-            const category = categoryResponse.data.data;
-            const unit = unitResponse.data.data;
+    //         const category = categoryResponse.data.data;
+    //         const unit = unitResponse.data.data;
             
-            // Auto-fill the form with the approved item details
-            setFormData(prev => ({
-                ...prev,
-                items: [{
-                    product_id: product.id,
-                    unit_id: unit.id,
-                    category_id: category.id,
-                    quantity: approvedItem.quantity,
-                    urgency: "1", // Default urgency
-                    photo: null,
-                    description: approvedItem.description || "",
-                }]
-            }));
+    //         // Auto-fill the form with the approved item details
+    //         setFormData(prev => ({
+    //             ...prev,
+    //             items: [{
+    //                 product_id: product.id,
+    //                 unit_id: unit.id,
+    //                 category_id: category.id,
+    //                 quantity: approvedItem.quantity,
+    //                 urgency: "1", // Default urgency
+    //                 photo: null,
+    //                 description: approvedItem.description || "",
+    //             }]
+    //         }));
             
-            // Store the selected approved item for later use
-            setSelectedApprovedItem(approvedItem);
+    //         // Store the selected approved item for later use
+    //         setSelectedApprovedItem(approvedItem);
             
-            // Fetch products for the category to ensure dropdown works
-            await fetchProductsForCategory(category.id);
+    //         // Fetch products for the category to ensure dropdown works
+    //         await fetchProductsForCategory(category.id);
             
-            toast.success(`Form filled with approved item: ${approvedItem.name}`);
-            setShowApprovedItems(false);
-        } catch (error) {
-            console.error('Error selecting approved item:', error);
-            toast.error('Error loading approved item details');
-        }
-    };
+    //         toast.success(`Form filled with approved item: ${approvedItem.name}`);
+    //         setShowApprovedItems(false);
+    //     } catch (error) {
+    //         console.error('Error selecting approved item:', error);
+    //         toast.error('Error loading approved item details');
+    //     }
+    // };
 
     return (
         <>
@@ -628,8 +634,9 @@ const MakeRequest = () => {
                 Employee requests for materials from the Maharat warehouse.
             </p>
 
+            {/*TODO: Uncomment when second phase has started for new feature
             {/* Approved Items Section */}
-            {!requestId && (
+            {/* {!requestId && (
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-2xl font-medium text-[#6E66AC] flex items-center">
@@ -708,6 +715,7 @@ const MakeRequest = () => {
                     )}
                 </div>
             )}
+            */}
 
             {processError && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
