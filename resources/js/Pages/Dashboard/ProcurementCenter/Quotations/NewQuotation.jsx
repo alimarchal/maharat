@@ -79,7 +79,7 @@ export default function NewQuotation() {
                             New Quotations
                         </h2>
                         <p className="text-[#7D8086] text-lg mt-1">
-                            RFQs without Quotations
+                            List of RFQs that have no Quotations
                         </p>
                     </div>
                 </div>
