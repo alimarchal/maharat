@@ -57,11 +57,11 @@ class AccountsSeeder extends Seeder
                 'deletable' => false
             ],
             [
-                'name' => 'Liabilities', 
+                'name' => 'Accounts Payable', 
                 'account_number' => '2000',
                 'description' => 'Company debts and obligations to creditors',
                 'code' => $liability, 
-                'editable' => false, 
+                'editable' => true, 
                 'deletable' => false
             ],
             [
@@ -172,6 +172,8 @@ class AccountsSeeder extends Seeder
                 'account_code_id' => $data['code']->id,
                 'cost_center_id' => $marketingCostCenter->id,
                 'status' => 'Approved',
+                'credit_amount' => 0,
+                'debit_amount' => 0,
                 // The 'editable' and 'deletable' flags are conceptual for the UI, not stored in DB
             ]);
         }

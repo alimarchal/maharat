@@ -15,6 +15,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
 use Illuminate\Support\Facades\Schema;
+use App\Services\TransactionFlowService;
 
 class ExternalInvoiceController extends Controller
 {
@@ -53,6 +54,7 @@ class ExternalInvoiceController extends Controller
             // Set default values
             $data['invoice_id'] = $this->generateInvoiceId();
             $data['type'] = $data['type'] ?? 'Cash';
+            $data['status'] = 'UnPaid'; // Always set to UnPaid on creation
             
             // Handle file upload if present
             if ($request->hasFile('attachment')) {
@@ -67,6 +69,40 @@ class ExternalInvoiceController extends Controller
             // Create the invoice
             $invoice = ExternalInvoice::create($data);
 
+            // Update account ID 2 with credit_amount = credit_amount + (amount + vat_amount)
+            $totalAmount = $data['amount'] + $data['vat_amount'];
+            
+            // Log the account update for debugging
+            \Log::info('Updating account ID 2', [
+                'invoice_id' => $invoice->id,
+                'amount' => $data['amount'],
+                'vat_amount' => $data['vat_amount'],
+                'total_amount' => $totalAmount
+            ]);
+            
+            $accountUpdate = DB::table('accounts')
+                ->where('id', 2)
+                ->increment('credit_amount', $totalAmount);
+                
+            \Log::info('Account update result', [
+                'rows_affected' => $accountUpdate,
+                'account_id' => 2
+            ]);
+
+            TransactionFlowService::recordTransactionFlow(
+                2, // account_id
+                'credit',
+                $totalAmount,
+                'external_invoice',
+                $invoice->id,
+                [],
+                'External invoice created',
+                $invoice->invoice_id,
+                now()->toDateString(),
+                $invoice->attachment_path,
+                $invoice->original_name
+            );
+
             DB::commit();
 
             return response()->json([
@@ -77,6 +113,10 @@ class ExternalInvoiceController extends Controller
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Failed to create external invoice', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'message' => 'Failed to create external invoice',
                 'error' => $e->getMessage()
@@ -108,6 +148,10 @@ class ExternalInvoiceController extends Controller
 
             $data = $request->validated();
             
+            // Store old amounts for account adjustment
+            $oldAmount = $externalInvoice->amount;
+            $oldVatAmount = $externalInvoice->vat_amount;
+            
             // Handle file upload if present
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
@@ -120,6 +164,42 @@ class ExternalInvoiceController extends Controller
 
             $externalInvoice->update($data);
 
+            // Update account ID 2 if amounts changed
+            if (isset($data['amount']) || isset($data['vat_amount'])) {
+                $newAmount = $data['amount'] ?? $externalInvoice->amount;
+                $newVatAmount = $data['vat_amount'] ?? $externalInvoice->vat_amount;
+                
+                $oldTotal = $oldAmount + $oldVatAmount;
+                $newTotal = $newAmount + $newVatAmount;
+                $difference = $newTotal - $oldTotal;
+                
+                if ($difference != 0) {
+                    \Log::info('Updating account ID 2 on invoice update', [
+                        'invoice_id' => $externalInvoice->id,
+                        'old_total' => $oldTotal,
+                        'new_total' => $newTotal,
+                        'difference' => $difference
+                    ]);
+                    
+                    DB::table('accounts')
+                        ->where('id', 2)
+                        ->increment('credit_amount', $difference);
+                    TransactionFlowService::recordTransactionFlow(
+                        2,
+                        $difference > 0 ? 'credit' : 'debit',
+                        abs($difference),
+                        'external_invoice',
+                        $externalInvoice->id,
+                        [],
+                        'External invoice updated',
+                        $externalInvoice->invoice_id,
+                        now()->toDateString(),
+                        $externalInvoice->attachment_path,
+                        $externalInvoice->original_name
+                    );
+                }
+            }
+
             DB::commit();
 
             return response()->json([
@@ -130,6 +210,10 @@ class ExternalInvoiceController extends Controller
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Failed to update external invoice', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'message' => 'Failed to update external invoice',
                 'error' => $e->getMessage()
@@ -145,8 +229,32 @@ class ExternalInvoiceController extends Controller
         try {
             DB::beginTransaction();
 
+            // Store amounts for account adjustment
+            $amount = $externalInvoice->amount;
+            $vatAmount = $externalInvoice->vat_amount;
+            $totalAmount = $amount + $vatAmount;
+
             // Use forceDelete for hard delete
             $externalInvoice->forceDelete();
+
+            // Update account ID 2 by subtracting the total amount
+            DB::table('accounts')
+                ->where('id', 2)
+                ->decrement('credit_amount', $totalAmount);
+
+            TransactionFlowService::recordTransactionFlow(
+                2,
+                'debit',
+                $totalAmount,
+                'external_invoice',
+                $externalInvoice->id,
+                [],
+                'External invoice deleted',
+                $externalInvoice->invoice_id,
+                now()->toDateString(),
+                $externalInvoice->attachment_path,
+                $externalInvoice->original_name
+            );
 
             DB::commit();
 

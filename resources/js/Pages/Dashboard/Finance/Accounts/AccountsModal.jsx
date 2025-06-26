@@ -145,6 +145,32 @@ const AccountsModal = ({
     const handleChange = (e) => {
         const { name, value } = e.target;
 
+        // Special handling for Account ID 2 (Liabilities)
+        if (isEdit && account && account.id === 2) {
+            if (name === "credit_amount") {
+                // Disable credit field for Liabilities account
+                return;
+            } else if (name === "debit_amount") {
+                // Allow debit field for Liabilities account
+                const numericValue = value.replace(/[^0-9.]/g, "");
+                const parts = numericValue.split(".");
+                const formattedValue =
+                    parts.length > 2
+                        ? parts[0] + "." + parts.slice(1).join("")
+                        : numericValue;
+                setFormData({
+                    ...formData,
+                    debit_amount: formattedValue,
+                    credit_amount: "", // Clear credit field
+                });
+                return;
+            } else if (name === "invoice_number") {
+                // Validate invoice number for Liabilities account
+                setFormData({ ...formData, [name]: value });
+                return;
+            }
+        }
+
         if (name === "credit_amount") {
             // If user enters credit, clear and disable debit
             const numericValue = value.replace(/[^0-9.]/g, "");
@@ -180,9 +206,9 @@ const AccountsModal = ({
                 });
             }
         } else if (name === "debit_amount") {
-            // Temporarily disable debit field in edit mode
-            if (isEdit && account) {
-                return; // Don't allow changes to debit field in edit mode
+            // Temporarily disable debit field in edit mode (except for Liabilities account)
+            if (isEdit && account && account.id !== 2) {
+                return; // Don't allow changes to debit field in edit mode for other accounts
             }
 
             // If user enters debit, clear and disable credit
@@ -254,12 +280,30 @@ const AccountsModal = ({
                 "Debit amount must be a valid number";
         }
 
-        // Only one of credit or debit can be filled
-        if (formData.credit_amount && formData.debit_amount) {
-            validationErrors.credit_amount =
-                "Cannot have both credit and debit amounts";
-            validationErrors.debit_amount =
-                "Cannot have both credit and debit amounts";
+        // Special validation for Account ID 2 (Liabilities)
+        if (isEdit && account && account.id === 2) {
+            // For Liabilities account, debit amount is required
+            if (!formData.debit_amount || parseFloat(formData.debit_amount) <= 0) {
+                validationErrors.debit_amount = "Debit amount is required and must be greater than 0 for Liabilities account";
+            }
+            
+            // Invoice number is required for Liabilities account
+            if (!formData.invoice_number || formData.invoice_number.trim() === '') {
+                validationErrors.invoice_number = "Invoice number is required for Liabilities account debit operations";
+            }
+            
+            // Credit amount should not be provided for Liabilities account
+            if (formData.credit_amount && parseFloat(formData.credit_amount) > 0) {
+                validationErrors.credit_amount = "Cannot credit Liabilities account. Only debit operations are allowed";
+            }
+        } else {
+            // Only one of credit or debit can be filled (for other accounts)
+            if (formData.credit_amount && formData.debit_amount) {
+                validationErrors.credit_amount =
+                    "Cannot have both credit and debit amounts";
+                validationErrors.debit_amount =
+                    "Cannot have both credit and debit amounts";
+            }
         }
 
         if (Object.keys(validationErrors).length > 0) {
@@ -529,7 +573,9 @@ const AccountsModal = ({
                         />
                         <InputFloating
                             label={
-                                isEdit && account
+                                isEdit && account && account.id === 2
+                                    ? "Credit Amount"
+                                    : isEdit && account
                                     ? "Credit Amount Increase"
                                     : "Credit Amount"
                             }
@@ -538,22 +584,32 @@ const AccountsModal = ({
                             value={formData.credit_amount}
                             onChange={handleChange}
                             error={errors.credit_amount}
+                            readOnly={isEdit && account && account.id === 2}
                         />
                         <InputFloating
-                            label="Debit Amount"
+                            label={
+                                isEdit && account && account.id === 2
+                                    ? "Debit Amount"
+                                    : "Debit Amount"
+                            }
                             name="debit_amount"
                             type="text"
                             value={formData.debit_amount}
                             onChange={handleChange}
                             error={errors.debit_amount}
-                            disabled={isEdit && account}
+                            disabled={isEdit && account && account.id !== 2}
                         />
                         <InputFloating
-                            label="Reference Number"
+                            label={
+                                isEdit && account && account.id === 2
+                                    ? "Invoice Number"
+                                    : "Reference Number"
+                            }
                             name="invoice_number"
                             value={formData.invoice_number}
                             onChange={handleChange}
                             error={errors.invoice_number}
+                            required={isEdit && account && account.id === 2}
                         />
                         {/* Attachment Section */}
                         <div className="flex justify-center">

@@ -31,6 +31,9 @@ class UpdateAccountRequest extends FormRequest
             'status' => ['nullable', 'in:Approved,Pending'],
             'credit_amount' => ['nullable', 'numeric', 'min:0'],
             'debit_amount' => ['nullable', 'numeric', 'min:0'],
+            'invoice_number' => ['nullable', 'string', 'max:255'],
+            'attachment' => ['nullable', 'string'],
+            'original_name' => ['nullable', 'string', 'max:255'],
         ];
     }
 

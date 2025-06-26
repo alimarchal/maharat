@@ -19,6 +19,7 @@ class UpdateQuotationRequest extends FormRequest
             'issue_date' => 'sometimes|required|date',
             'valid_until' => 'sometimes|required|date|after:issue_date',
             'total_amount' => 'sometimes|required|numeric|min:0',
+            'vat_amount' => 'nullable|numeric|min:0',
             'status_id' => 'sometimes|required|exists:statuses,id',
             'terms_and_conditions' => 'nullable|string',
             'notes' => 'nullable|string',

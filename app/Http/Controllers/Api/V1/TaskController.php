@@ -400,6 +400,7 @@ class TaskController extends Controller
                                         ->where('name', 'Revenue/Income')
                                         ->update([
                                             'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $invoice->subtotal),
+                                            'updated_by' => auth()->id(),
                                             'updated_at' => now()
                                         ]);
 
@@ -418,6 +419,7 @@ class TaskController extends Controller
                                         ->where('name', 'VAT Receivables (On Maharat Invoice)')
                                         ->update([
                                             'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $invoice->tax_amount),
+                                            'updated_by' => auth()->id(),
                                             'updated_at' => now()
                                         ]);
 
@@ -436,6 +438,7 @@ class TaskController extends Controller
                                         ->where('name', 'Account Receivable')
                                         ->update([
                                             'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $invoice->total_amount),
+                                            'updated_by' => auth()->id(),
                                             'updated_at' => now()
                                         ]);
 

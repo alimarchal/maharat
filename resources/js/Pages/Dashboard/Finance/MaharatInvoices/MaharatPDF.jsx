@@ -293,15 +293,16 @@ export default function MaharatPDF({ invoiceId, onGenerated }) {
             
             // Use representative name if available
             let representativeName = "N/A";
-            if (representativeDetails.name) {
+            
+            // First check if invoice has representative_name directly
+            if (invoiceData.representative_name) {
+                representativeName = invoiceData.representative_name;
+            } else if (representativeDetails.name) {
+                // Fallback to fetched representative details
                 representativeName = representativeDetails.name;
             } else if (invoiceData.representative_id) {
-                // Try to get representative info from the users array if available in state
-                if (invoiceData.representativeDetails?.name) {
-                    representativeName = invoiceData.representativeDetails.name;
-                } else {
-                    representativeName = `ID: ${invoiceData.representative_id}`;
-                }
+                // Last fallback to representative ID
+                representativeName = `ID: ${invoiceData.representative_id}`;
             }
             
             doc.setFont("helvetica", "normal");
