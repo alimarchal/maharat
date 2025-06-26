@@ -21,6 +21,7 @@ class Quotation extends Model
         'issue_date',
         'valid_until',
         'total_amount',
+        'vat_amount',
         'status_id',
         'terms_and_conditions',
         'notes'
@@ -29,7 +30,8 @@ class Quotation extends Model
     protected $casts = [
         'issue_date' => 'date',
         'valid_until' => 'date',
-        'total_amount' => 'decimal:2'
+        'total_amount' => 'decimal:2',
+        'vat_amount' => 'decimal:2'
     ];
 
     public function rfq()

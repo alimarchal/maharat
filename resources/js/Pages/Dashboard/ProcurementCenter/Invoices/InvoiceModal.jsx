@@ -20,7 +20,7 @@ const InvoiceModal = ({
         supplier_id: "",
         amount: "",
         vat_amount: "",
-        status: "Paid",
+        status: "UnPaid",
         type: "Cash",
         payable_date: new Date().toISOString().split("T")[0],
         purchase_order_id: "",
@@ -37,13 +37,8 @@ const InvoiceModal = ({
     const [tempDocument, setTempDocument] = useState(null);
     const [existingDocument, setExistingDocument] = useState(null);
     const [uploadError, setUploadError] = useState("");
+    const [selectedPO, setSelectedPO] = useState(null);
     const fileInputRef = React.useRef();
-
-    const statusOptions = [
-        { id: "Paid", label: "Paid" },
-        { id: "UnPaid", label: "Unpaid" },
-        { id: "Partially Paid", label: "Partially Paid" },
-    ];
 
     const paymentTypeOptions = [
         { id: "Cash", label: "Cash" },
@@ -80,11 +75,16 @@ const InvoiceModal = ({
                     setExistingDocument(null);
                 }
 
+                // Get the purchase order details for this invoice
+                if (invoice.purchase_order_id) {
+                    fetchPurchaseOrderDetails(invoice.purchase_order_id);
+                }
+
                 setFormData({
                     supplier_id: invoice.supplier_id || "",
                     amount: invoice.amount || "",
                     vat_amount: invoice.vat_amount || "",
-                    status: invoice.status || "Paid",
+                    status: invoice.status || "UnPaid",
                     type: invoice.type || "Cash",
                     payable_date:
                         invoice.payable_date ||
@@ -100,7 +100,7 @@ const InvoiceModal = ({
                     supplier_id: "",
                     amount: "",
                     vat_amount: "",
-                    status: "Paid",
+                    status: "UnPaid",
                     type: "Cash",
                     payable_date: new Date().toISOString().split("T")[0],
                     purchase_order_id: "",
@@ -110,6 +110,7 @@ const InvoiceModal = ({
                     attachment: null,
                 });
                 setExistingDocument(null);
+                setSelectedPO(null);
             }
             
             // Always clear tempDocument when modal opens
@@ -127,6 +128,7 @@ const InvoiceModal = ({
             setTempDocument(null);
             setExistingDocument(null);
             setUploadError("");
+            setSelectedPO(null);
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
             }
@@ -162,6 +164,8 @@ const InvoiceModal = ({
                             id: po.id,
                             label: po.purchase_order_no || `PO-${po.id}`,
                             supplier_id: po.supplier_id,
+                            amount: po.amount,
+                            vat_amount: po.vat_amount,
                         }));
                     setPurchaseOrders(availablePOs);
                 } else {
@@ -169,6 +173,8 @@ const InvoiceModal = ({
                         id: po.id,
                         label: po.purchase_order_no || `PO-${po.id}`,
                         supplier_id: po.supplier_id,
+                        amount: po.amount,
+                        vat_amount: po.vat_amount,
                     }));
                     setPurchaseOrders(availablePOs);
                 }
@@ -178,6 +184,41 @@ const InvoiceModal = ({
         } catch (error) {
             console.error("Error fetching purchase orders:", error);
             setPurchaseOrders([]);
+        }
+    };
+
+    const fetchPurchaseOrderDetails = async (poId) => {
+        try {
+            const response = await axios.get(`/api/v1/purchase-orders/${poId}`);
+            if (response.data.data) {
+                setSelectedPO(response.data.data);
+            }
+        } catch (error) {
+            console.error("Error fetching purchase order details:", error);
+        }
+    };
+
+    const calculateTotalInvoiceAmount = async (poId) => {
+        try {
+            const response = await axios.get(`/api/v1/external-invoices?filter[purchase_order_id]=${poId}`);
+            if (response.data.data) {
+                let totalAmount = 0;
+                if (isEdit && invoice) {
+                    // In edit mode, exclude the current invoice from total calculation
+                    totalAmount = response.data.data
+                        .filter(inv => inv.id !== invoice.id)
+                        .reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+                } else {
+                    // In create mode, include all invoices
+                    totalAmount = response.data.data.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+                }
+                setFormData((prev) => ({
+                    ...prev,
+                    total_amount: totalAmount.toFixed(2),
+                }));
+            }
+        } catch (error) {
+            console.error("Error calculating total invoice amount:", error);
         }
     };
 
@@ -194,11 +235,21 @@ const InvoiceModal = ({
                 [name]: processedValue,
             };
 
-            // Auto-populate supplier when purchase order is selected
+            // Auto-populate supplier, amount, and VAT when purchase order is selected
             if (name === "purchase_order_id" && value) {
                 const selectedPO = purchaseOrders.find(po => po.id === parseInt(value, 10));
                 if (selectedPO) {
                     newData.supplier_id = selectedPO.supplier_id;
+                    newData.amount = selectedPO.amount || "";
+                    
+                    // Get VAT from purchase order (if available) or calculate as 15% of amount
+                    let vatAmount = parseFloat(selectedPO.vat_amount);
+                    if (isNaN(vatAmount)) {
+                        vatAmount = parseFloat(selectedPO.amount) * 0.15;
+                    }
+                    newData.vat_amount = vatAmount.toFixed(2);
+                    
+                    setSelectedPO(selectedPO);
                 }
             }
 
@@ -261,8 +312,8 @@ const InvoiceModal = ({
             supplier_id: formData.supplier_id
                 ? parseInt(formData.supplier_id, 10)
                 : null,
-            amount: formData.amount ? parseFloat(formData.amount) : null,
-            vat_amount: formData.vat_amount ? parseFloat(formData.vat_amount) : null,
+            amount: parseFloat(formData.amount) || 0,
+            vat_amount: parseFloat(formData.vat_amount) || 0,
             status: formData.status,
             type: formData.type,
             payable_date: formData.payable_date,
@@ -274,9 +325,7 @@ const InvoiceModal = ({
         if (!submissionData.amount)
             validationErrors.amount = "Amount is required";
         if (!submissionData.vat_amount)
-            validationErrors.vat_amount = "VAT Amount is required";
-        if (!submissionData.status)
-            validationErrors.status = "Status is required";
+            validationErrors.vat_amount = "VAT amount is required";
         if (!submissionData.type)
             validationErrors.type = "Payment Type is required";
         if (!submissionData.payable_date)
@@ -446,7 +495,10 @@ const InvoiceModal = ({
                                 name="amount"
                                 type="number"
                                 value={formData.amount}
-                                onChange={handleChange}
+                                onChange={isEdit ? () => {} : handleChange}
+                                onKeyDown={isEdit ? (e) => e.preventDefault() : undefined}
+                                disabled={isEdit}
+                                readOnly={isEdit}
                                 error={errors.amount}
                             />
                         </div>
@@ -456,7 +508,10 @@ const InvoiceModal = ({
                                 name="vat_amount"
                                 type="number"
                                 value={formData.vat_amount}
-                                onChange={handleChange}
+                                onChange={isEdit ? () => {} : handleChange}
+                                onKeyDown={isEdit ? (e) => e.preventDefault() : undefined}
+                                disabled={isEdit}
+                                readOnly={isEdit}
                                 error={errors.vat_amount}
                             />
                         </div>
@@ -471,27 +526,15 @@ const InvoiceModal = ({
                             />
                         </div>
                         <div>
-                            <SelectFloating
-                                label="Status"
-                                name="status"
-                                value={formData.status}
+                            <InputFloating
+                                label="Payable Date"
+                                name="payable_date"
+                                type="date"
+                                value={formData.payable_date}
                                 onChange={handleChange}
-                                options={statusOptions}
-                                error={errors.status}
+                                error={errors.payable_date}
                             />
                         </div>
-                        {!isEdit && (
-                            <div>
-                                <InputFloating
-                                    label="Invoice Date"
-                                    name="payable_date"
-                                    type="date"
-                                    value={formData.payable_date}
-                                    onChange={handleChange}
-                                    error={errors.payable_date}
-                                />
-                            </div>
-                        )}
                     </div>
 
                     {/* Attachment Section - Only in add mode, positioned after invoice date */}

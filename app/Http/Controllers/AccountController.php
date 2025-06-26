@@ -107,8 +107,31 @@ class AccountController extends Controller
             $originalCreditAmount = $account->credit_amount;
             $originalDebitAmount = $account->debit_amount;
 
-            // Update the account
-            $account->update($request->validated());
+            // Special handling for Account ID 2 (Liabilities) - validate BEFORE updating
+            if ($account->id == 2 && $account->name === 'Accounts Payable' && 
+                $request->has('debit_amount') && 
+                $request->debit_amount > 0) {
+                $this->validateLiabilitiesAccountUpdate($request);
+            }
+
+            // Update the account (but handle special cases)
+            $data = $request->validated();
+            
+            // For Liabilities account (ID 2), don't update credit_amount
+            if ($account->id == 2 && $account->name === 'Accounts Payable') {
+                // Remove credit_amount from data to prevent it from being updated
+                unset($data['credit_amount']);
+            }
+            
+            $account->update($data);
+
+            // Special handling for Account ID 2 (Liabilities) - handle debit operations
+            if ($account->id == 2 && $account->name === 'Accounts Payable' && 
+                $request->has('debit_amount') && 
+                $request->debit_amount > 0) {
+                
+                $this->handleLiabilitiesAccountUpdate($request, $account, $originalCreditAmount);
+            }
 
             // Check if this is the Cash account (ID 12) and if credit_amount is being set
             if ($account->id == 12 && $account->name === 'Cash' && 
@@ -163,6 +186,106 @@ class AccountController extends Controller
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * Validate Liabilities account update before processing
+     */
+    private function validateLiabilitiesAccountUpdate(Request $request): void
+    {
+        $data = $request->validated();
+        
+        // For Liabilities account, only allow debit operations (reducing liabilities)
+        if (isset($data['credit_amount']) && $data['credit_amount'] > 0) {
+            throw new \Exception('Cannot credit Liabilities account. Only debit operations are allowed.');
+        }
+
+        // Check if debit amount is provided
+        if (!isset($data['debit_amount']) || $data['debit_amount'] <= 0) {
+            throw new \Exception('Debit amount is required and must be greater than 0 for Liabilities account.');
+        }
+
+        // Validate invoice number exists in external_invoices table
+        if (!isset($data['invoice_number']) || empty($data['invoice_number'])) {
+            throw new \Exception('Invoice number is required for Liabilities account debit operations.');
+        }
+
+        // Check if invoice exists in external_invoices table
+        $invoice = \App\Models\ExternalInvoice::where('invoice_id', $data['invoice_number'])->first();
+        if (!$invoice) {
+            throw new \Exception('Invoice number not found in external_invoices table.');
+        }
+
+        $debitAmount = $data['debit_amount'];
+        // Add 15% tax to the debit amount
+        $taxAmount = $debitAmount * 0.15;
+        $totalDebitAmount = $debitAmount + $taxAmount;
+
+        // Validate that paid_amount + totalDebitAmount <= amount + vat_amount
+        $invoiceTotal = $invoice->amount + $invoice->vat_amount;
+        $newPaidAmount = $invoice->paid_amount + $totalDebitAmount;
+        if ($newPaidAmount > $invoiceTotal) {
+            throw new \Exception('Amount exceeds invoice payable amount. Payment would exceed invoice total.');
+        }
+    }
+
+    /**
+     * Handle special update logic for Liabilities account (ID 2)
+     */
+    private function handleLiabilitiesAccountUpdate(Request $request, Account $account, float $originalCreditAmount): void
+    {
+        $data = $request->validated();
+        
+        $debitAmount = $data['debit_amount'];
+        // Add 15% tax to the debit amount
+        $taxAmount = $debitAmount * 0.15;
+        $totalDebitAmount = $debitAmount + $taxAmount;
+
+        // Get the invoice (already validated in validateLiabilitiesAccountUpdate)
+        $invoice = \App\Models\ExternalInvoice::where('invoice_id', $data['invoice_number'])->first();
+
+        // Update paid_amount and status
+        $invoice->paid_amount = $invoice->paid_amount + $totalDebitAmount;
+        $invoiceTotal = $invoice->amount + $invoice->vat_amount;
+        if ($invoice->paid_amount < $invoiceTotal) {
+            $invoice->status = 'Partially Paid';
+        } else {
+            $invoice->status = 'Paid';
+        }
+        $invoice->save();
+
+        // Update the account with the total debit amount (only debit_amount, not credit_amount)
+        $account->update([
+            'debit_amount' => $totalDebitAmount,
+            'invoice_number' => $data['invoice_number'],
+            'attachment' => $data['attachment'] ?? null,
+            'original_name' => $data['original_name'] ?? null,
+        ]);
+
+        // Record transaction flow
+        TransactionFlowService::recordTransactionFlow(
+            2, // account_id
+            'debit',
+            $totalDebitAmount,
+            'liabilities_payment',
+            $invoice->id,
+            [],
+            "Liabilities payment for invoice {$data['invoice_number']} (Amount: {$debitAmount}, Tax: {$taxAmount})",
+            $data['invoice_number'],
+            now()->toDateString(),
+            $data['attachment'] ?? null,
+            $data['original_name'] ?? null
+        );
+
+        Log::info('=== LIABILITIES ACCOUNT DEBIT COMPLETED ===', [
+            'account_id' => $account->id,
+            'account_name' => $account->name,
+            'debit_amount' => $debitAmount,
+            'tax_amount' => $taxAmount,
+            'total_debit_amount' => $totalDebitAmount,
+            'invoice_number' => $data['invoice_number'],
+            'invoice_id' => $invoice->id
+        ]);
     }
 
     /**

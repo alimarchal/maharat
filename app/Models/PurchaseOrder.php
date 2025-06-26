@@ -24,6 +24,7 @@ class PurchaseOrder extends Model
         'purchase_order_date',
         'expiry_date',
         'amount',
+        'vat_amount',
         'attachment',
         'original_name',
         'generated_document',
@@ -35,7 +36,8 @@ class PurchaseOrder extends Model
     protected $casts = [
         'purchase_order_date' => 'date',
         'expiry_date' => 'date',
-        'amount' => 'decimal:2'
+        'amount' => 'decimal:2',
+        'vat_amount' => 'decimal:2'
     ];
 
 

@@ -18,6 +18,7 @@ class ExternalInvoice extends Model
         'invoice_id',
         'amount',
         'vat_amount',
+        'paid_amount',
         'status',
         'type',
         'payable_date',
@@ -28,6 +29,7 @@ class ExternalInvoice extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'vat_amount' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
         'payable_date' => 'date',
     ];
 

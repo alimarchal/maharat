@@ -20,6 +20,7 @@ const QuotationModal = ({
         issue_date: "",
         valid_until: "",
         total_amount: "",
+        vat_amount: "",
         document: null,
     });
 
@@ -63,6 +64,7 @@ const QuotationModal = ({
                     valid_until:
                         formatDateForInput(quotation.valid_until) || "",
                     total_amount: quotation.total_amount || "",
+                    vat_amount: quotation.vat_amount || "",
                     id: quotation.id,
                     quotation_number: quotation.quotation_number,
                 });
@@ -74,6 +76,7 @@ const QuotationModal = ({
                     issue_date: today,
                     valid_until: "",
                     total_amount: "",
+                    vat_amount: "",
                     document: null,
                 });
                 setExistingDocument(null);
@@ -159,6 +162,10 @@ const QuotationModal = ({
             validationErrors.issue_date = "Issue date is required";
         if (!formData.total_amount)
             validationErrors.total_amount = "Amount is required";
+        if (formData.vat_amount && isNaN(formData.vat_amount))
+            validationErrors.vat_amount = "VAT amount must be a valid number";
+        if (formData.vat_amount && parseFloat(formData.vat_amount) < 0)
+            validationErrors.vat_amount = "VAT amount cannot be negative";
         
         // Make attachment required
         if (!tempDocument && !existingDocument) {
@@ -202,6 +209,7 @@ const QuotationModal = ({
                     issue_date: formData.issue_date,
                     valid_until: formData.valid_until,
                     total_amount: formData.total_amount,
+                    vat_amount: formData.vat_amount,
                     rfq_id: rfqId,
                     update_rfq: true,
                     updated_at: new Date().toISOString(),
@@ -242,6 +250,7 @@ const QuotationModal = ({
                 issue_date: formData.issue_date,
                 valid_until: formData.valid_until,
                 total_amount: formData.total_amount,
+                vat_amount: formData.vat_amount,
                 rfq_id: rfqId,
                 update_rfq: true,
                 quotation_number: "",
@@ -401,6 +410,14 @@ const QuotationModal = ({
                             value={formData.total_amount}
                             onChange={handleChange}
                             error={errors.total_amount}
+                        />
+                        <InputFloating
+                            label="VAT Amount"
+                            name="vat_amount"
+                            type="number"
+                            value={formData.vat_amount}
+                            onChange={handleChange}
+                            error={errors.vat_amount}
                         />
                     </div>
 

@@ -233,9 +233,9 @@ const InvoicesTable = () => {
                             <th className="py-3 px-4">Purchase Order ID</th>
                             <th className="py-3 px-4">Supplier</th>
                             <th className="py-3 px-4">Amount</th>
+                            <th className="py-3 px-4">VAT Amount</th>
                             <th className="py-3 px-4">Status</th>
                             <th className="py-3 px-4">Payable Date</th>
-                            <th className="py-3 px-4">Date & Time</th>
                             <th className="py-3 px-4 text-center">
                                 Attachment
                             </th>
@@ -278,6 +278,9 @@ const InvoicesTable = () => {
                                         {`${invoice.amount || 0} SAR`}
                                     </td>
                                     <td className="px-3 py-4">
+                                        {`${invoice.vat_amount || 0} SAR`}
+                                    </td>
+                                    <td className="px-3 py-4">
                                         <span
                                             className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(
                                                 invoice.status
@@ -294,9 +297,6 @@ const InvoicesTable = () => {
                                             month: "long",
                                             day: "numeric",
                                         })}
-                                    </td>
-                                    <td className="px-3 py-4">
-                                        {formatDateTime(invoice.updated_at)}
                                     </td>
                                     <td className="px-3 py-4">
                                         <div className="flex justify-center">
@@ -333,24 +333,24 @@ const InvoicesTable = () => {
                                         </div>
                                     </td>
                                     <td className="px-3 py-4 flex justify-center text-center space-x-3">
-                                        {invoice.status !== 'Paid' && invoice.status !== 'Approved' && (
+                                        {invoice.status === 'UnPaid' && (
                                             <>
-                                        <button
-                                            onClick={() =>
-                                                handleEditInvoice(invoice)
-                                            }
-                                            className="text-blue-400 hover:text-blue-500"
-                                        >
-                                            <FontAwesomeIcon icon={faEdit} />
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                handleDelete(invoice.id)
-                                            }
-                                            className="text-red-600 hover:text-red-800"
-                                        >
-                                            <FontAwesomeIcon icon={faTrash} />
-                                        </button>
+                                                <button
+                                                    onClick={() =>
+                                                        handleEditInvoice(invoice)
+                                                    }
+                                                    className="text-blue-400 hover:text-blue-500"
+                                                >
+                                                    <FontAwesomeIcon icon={faEdit} />
+                                                </button>
+                                                <button
+                                                    onClick={() =>
+                                                        handleDelete(invoice.id)
+                                                    }
+                                                    className="text-red-600 hover:text-red-800"
+                                                >
+                                                    <FontAwesomeIcon icon={faTrash} />
+                                                </button>
                                             </>
                                         )}
                                     </td>

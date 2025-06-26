@@ -84,6 +84,7 @@ class QuotationController extends Controller
             'issue_date' => 'nullable|date',
             'valid_until' => 'nullable|date',
             'total_amount' => 'nullable|numeric',
+            'vat_amount' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string'
         ]);
 
@@ -112,6 +113,7 @@ class QuotationController extends Controller
                 'issue_date' => $request->issue_date,
                 'valid_until' => $request->valid_until,
                 'total_amount' => $request->total_amount,
+                'vat_amount' => $request->vat_amount,
                 'notes' => $request->notes,
                 'status_id' => $activeStatus->id // Set the default status as Active
             ]);

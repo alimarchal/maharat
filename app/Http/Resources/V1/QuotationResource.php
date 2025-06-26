@@ -24,6 +24,7 @@ class QuotationResource extends JsonResource
             'issue_date' => $this->issue_date,
             'valid_until' => $this->valid_until,
             'total_amount' => $this->total_amount,
+            'vat_amount' => $this->vat_amount,
             'status_id' => $this->status_id,
             'terms_and_conditions' => $this->terms_and_conditions,
             'notes' => $this->notes,

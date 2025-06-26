@@ -33,6 +33,7 @@ class StorePurchaseOrderRequest extends FormRequest
             'purchase_order_date' => 'required|date',
             'expiry_date' => 'nullable|date',
             'amount' => 'required|numeric|min:0',
+            'vat_amount' => 'nullable|numeric|min:0',
             'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'original_name' => 'nullable|string',
             'status' => 'required|in:Approved,Draft,Rejected',

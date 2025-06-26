@@ -21,6 +21,7 @@ const ApproveOrder = ({
         supplier_name: "",
         purchase_order_date: "",
         amount: "",
+        vat_amount: "",
         attachment: null,
         status: "Approved",
         quotation_id: quotationId,
@@ -78,6 +79,7 @@ const ApproveOrder = ({
                         supplier_id: quotation.supplier_id,
                         supplier_name: quotation.supplier?.name || "",
                         amount: quotation.total_amount || "",
+                        vat_amount: quotation.vat_amount || "",
                     }));
                 }
 
@@ -189,6 +191,7 @@ const ApproveOrder = ({
                     supplier_name: orderData.supplier?.name || "",
                     purchase_order_date: orderData.purchase_order_date || "",
                     amount: orderData.amount || "",
+                    vat_amount: orderData.vat_amount || "",
                     attachment: orderData.attachment || null,
                     status: orderData.status || "Approved",
                     quotation_id: quotationId,
@@ -544,6 +547,19 @@ const ApproveOrder = ({
                                 disabled={true}
                                 readOnly={true}
                                 error={errors.amount}
+                            />
+                        </div>
+                        <div>
+                            <InputFloating
+                                label="VAT Amount"
+                                name="vat_amount"
+                                type="number"
+                                value={formData.vat_amount}
+                                onChange={() => {}}
+                                onKeyDown={(e) => e.preventDefault()}
+                                disabled={true}
+                                readOnly={true}
+                                error={errors.vat_amount}
                             />
                         </div>
                         {/* <div>

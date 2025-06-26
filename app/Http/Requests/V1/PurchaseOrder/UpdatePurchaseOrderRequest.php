@@ -38,6 +38,7 @@ class UpdatePurchaseOrderRequest extends FormRequest
             'supplier_id' => 'sometimes|required|exists:suppliers,id',
             'purchase_order_date' => 'sometimes|required|date',
             'amount' => 'sometimes|required|numeric|min:0',
+            'vat_amount' => 'nullable|numeric|min:0',
             'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'status' => 'sometimes|required|in:Approved,Draft,Rejected'
         ];
