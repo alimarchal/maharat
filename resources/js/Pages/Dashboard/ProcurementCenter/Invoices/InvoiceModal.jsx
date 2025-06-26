@@ -122,6 +122,14 @@ const InvoiceModal = ({
         }
     }, [isOpen, invoice, isEdit]);
 
+    // Debug useEffect to track formData changes
+    useEffect(() => {
+        console.log("FormData changed:", formData);
+        console.log("Suppliers loaded:", suppliers.length);
+        console.log("Current supplier_id:", formData.supplier_id);
+        console.log("Supplier name lookup result:", getSupplierName(formData.supplier_id));
+    }, [formData, suppliers]);
+
     // Clean up state when modal closes
     useEffect(() => {
         if (!isOpen) {
@@ -138,10 +146,27 @@ const InvoiceModal = ({
     const fetchSuppliers = async () => {
         try {
             const response = await axios.get("/api/v1/suppliers");
+            console.log("Suppliers API response:", response.data);
             setSuppliers(response.data.data || []);
-        } catch {
+        } catch (error) {
+            console.error("Error fetching suppliers:", error);
             setErrors({ fetch: "Failed to load suppliers" });
         }
+    };
+
+    // Helper function to get supplier name safely
+    const getSupplierName = (supplierId) => {
+        if (!supplierId || !suppliers.length) return "";
+        
+        // Try to find supplier by ID, handling both string and number types
+        const supplier = suppliers.find(s => 
+            s.id === supplierId || 
+            s.id === parseInt(supplierId, 10) || 
+            s.id === String(supplierId)
+        );
+        
+        console.log("Looking for supplier ID:", supplierId, "Found:", supplier);
+        return supplier?.name || "";
     };
 
     const fetchAvailablePurchaseOrders = async () => {
@@ -238,6 +263,8 @@ const InvoiceModal = ({
             // Auto-populate supplier, amount, and VAT when purchase order is selected
             if (name === "purchase_order_id" && value) {
                 const selectedPO = purchaseOrders.find(po => po.id === parseInt(value, 10));
+                console.log("Selected PO:", selectedPO, "Value:", value);
+                
                 if (selectedPO) {
                     newData.supplier_id = selectedPO.supplier_id;
                     newData.amount = selectedPO.amount || "";
@@ -248,6 +275,10 @@ const InvoiceModal = ({
                         vatAmount = parseFloat(selectedPO.amount) * 0.15;
                     }
                     newData.vat_amount = vatAmount.toFixed(2);
+                    
+                    console.log("Setting supplier_id to:", selectedPO.supplier_id);
+                    console.log("Setting amount to:", selectedPO.amount);
+                    console.log("Setting vat_amount to:", newData.vat_amount);
                     
                     setSelectedPO(selectedPO);
                 }
@@ -484,7 +515,7 @@ const InvoiceModal = ({
                                 label="Supplier"
                                 name="supplier_name"
                                 type="text"
-                                value={suppliers.find(s => s.id === formData.supplier_id)?.name || ""}
+                                value={getSupplierName(formData.supplier_id)}
                                 readOnly={true}
                                 error={errors.supplier_id}
                             />
