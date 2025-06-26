@@ -145,9 +145,6 @@ export default function CreateMaharatInvoice() {
     const validateBudget = async (fiscalPeriodId) => {
         try {
             const response = await axios.post('/api/v1/invoices/validate-budget', {
-                department_id: 1, // Default department
-                cost_center_id: 1, // Default cost center
-                sub_cost_center_id: 1, // Default sub cost center
                 fiscal_period_id: fiscalPeriodId,
                 amount: 0 // For invoices, we don't need to reserve budget, just check if budget exists
             });
@@ -1095,8 +1092,8 @@ export default function CreateMaharatInvoice() {
                                     id="invoice_date"
                                     name="invoice_date"
                                     value={formData.invoice_date}
-                                    className="block w-full rounded-lg bg-gray-100 outline-none border-none focus:outline-none focus:border-none focus:ring-0"
-                                    readOnly
+                                    onChange={handleInputChange}
+                                    className="block w-full rounded-lg border border-gray-300"
                                 />
                             </div>
                         </div>
