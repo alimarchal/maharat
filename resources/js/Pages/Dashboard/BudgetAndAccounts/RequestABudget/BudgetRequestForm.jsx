@@ -51,7 +51,7 @@ const BudgetRequestForm = () => {
     // Add a separate useEffect to handle sub cost center filtering when costCenters are loaded
     useEffect(() => {
         if (costCenters.length > 0 && formData.cost_center_id) {
-            filterSubCostCenters(formData.cost_center_id);
+            updateSubCostCenter(formData.cost_center_id);
         }
     }, [costCenters, formData.cost_center_id]);
 
@@ -101,6 +101,11 @@ const BudgetRequestForm = () => {
                 setExistingAttachment(null);
             }
 
+            // Load sub cost centers if cost center is selected
+            if (budgetRequest.cost_center_id) {
+                await updateSubCostCenter(budgetRequest.cost_center_id.toString());
+            }
+
             setDataLoaded(true);
         } catch (error) {
             console.error("Error fetching budget request", error);
@@ -113,26 +118,40 @@ const BudgetRequestForm = () => {
         }
     };
 
-    const filterSubCostCenters = async (costCenterId) => {
-        if (!costCenterId) {
+    // Function to update sub cost center when cost center changes
+    const updateSubCostCenter = async (selectedCostCenterId) => {
+        if (!selectedCostCenterId) {
+            setFormData(prev => ({ ...prev, sub_cost_center: "" }));
             setFilteredSubCostCenters([]);
             return;
         }
 
         try {
-            // Convert costCenterId to number for comparison
-            const numericCostCenterId = parseInt(costCenterId);
-            
-            // Filter cost centers that have the selected cost center as their parent
-            const filtered = costCenters.filter((cost) => {
-                return cost.parent_id === numericCostCenterId;
-            });
-            
-            console.log("Filtered sub cost centers for cost center", costCenterId, ":", filtered);
-            setFilteredSubCostCenters(filtered);
+            // Make API call to get sub cost centers for the selected cost center
+            const response = await axios.get(`/api/v1/cost-centers?filter[parent_id]=${selectedCostCenterId}`);
+            const subCostCentersData = response.data?.data || [];
+            setFilteredSubCostCenters(subCostCentersData);
+
+            // If there's only one sub cost center, auto-select it
+            if (subCostCentersData.length === 1) {
+                setFormData(prev => ({ ...prev, sub_cost_center: subCostCentersData[0].id.toString() }));
+            } else if (subCostCentersData.length > 1) {
+                // In edit mode, preserve the existing selection if it's valid
+                if (isEditMode && formData.sub_cost_center) {
+                    const existingSubCenter = subCostCentersData.find(sub => sub.id.toString() === formData.sub_cost_center);
+                    if (!existingSubCenter) {
+                        setFormData(prev => ({ ...prev, sub_cost_center: "" }));
+                    }
+                } else {
+                    setFormData(prev => ({ ...prev, sub_cost_center: "" }));
+                }
+            } else {
+                setFormData(prev => ({ ...prev, sub_cost_center: "" }));
+            }
         } catch (error) {
-            console.error("Error filtering sub cost centers", error);
+            console.error("Error fetching sub cost centers:", error);
             setFilteredSubCostCenters([]);
+            setFormData(prev => ({ ...prev, sub_cost_center: "" }));
         }
     };
 
@@ -147,7 +166,7 @@ const BudgetRequestForm = () => {
         setErrors((prev) => ({ ...prev, [name]: undefined }));
 
         if (name === "cost_center_id") {
-            filterSubCostCenters(value);
+            updateSubCostCenter(value);
         }
 
         // Clear hierarchical uniqueness error when key fields change

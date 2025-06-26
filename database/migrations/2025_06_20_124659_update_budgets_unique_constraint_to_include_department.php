@@ -34,6 +34,14 @@ return new class extends Migration
             }
         }
 
+        // Drop foreign key constraints first
+        Schema::table('budgets', function (Blueprint $table) {
+            $table->dropForeign(['fiscal_period_id']);
+            $table->dropForeign(['department_id']);
+            $table->dropForeign(['cost_center_id']);
+            $table->dropForeign(['sub_cost_center_id']);
+        });
+
         // Drop the existing unique constraint
         Schema::table('budgets', function (Blueprint $table) {
             $table->dropUnique('budgets_unique_fiscal_cost_sub_cost');
@@ -43,6 +51,14 @@ return new class extends Migration
         Schema::table('budgets', function (Blueprint $table) {
             $table->unique(['fiscal_period_id', 'department_id', 'cost_center_id', 'sub_cost_center_id'], 'budgets_unique_fiscal_dept_cost_sub_cost');
         });
+
+        // Recreate foreign key constraints
+        Schema::table('budgets', function (Blueprint $table) {
+            $table->foreign('fiscal_period_id')->references('id')->on('fiscal_periods');
+            $table->foreign('department_id')->references('id')->on('departments');
+            $table->foreign('cost_center_id')->references('id')->on('cost_centers');
+            $table->foreign('sub_cost_center_id')->references('id')->on('cost_centers');
+        });
     }
 
     /**
@@ -50,6 +66,14 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Drop foreign key constraints first
+        Schema::table('budgets', function (Blueprint $table) {
+            $table->dropForeign(['fiscal_period_id']);
+            $table->dropForeign(['department_id']);
+            $table->dropForeign(['cost_center_id']);
+            $table->dropForeign(['sub_cost_center_id']);
+        });
+
         // Drop the new unique constraint
         Schema::table('budgets', function (Blueprint $table) {
             $table->dropUnique('budgets_unique_fiscal_dept_cost_sub_cost');
@@ -58,6 +82,14 @@ return new class extends Migration
         // Restore the old unique constraint
         Schema::table('budgets', function (Blueprint $table) {
             $table->unique(['fiscal_period_id', 'cost_center_id', 'sub_cost_center_id'], 'budgets_unique_fiscal_cost_sub_cost');
+        });
+
+        // Recreate foreign key constraints
+        Schema::table('budgets', function (Blueprint $table) {
+            $table->foreign('fiscal_period_id')->references('id')->on('fiscal_periods');
+            $table->foreign('department_id')->references('id')->on('departments');
+            $table->foreign('cost_center_id')->references('id')->on('cost_centers');
+            $table->foreign('sub_cost_center_id')->references('id')->on('cost_centers');
         });
     }
 };

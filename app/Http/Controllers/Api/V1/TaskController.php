@@ -621,20 +621,25 @@ class TaskController extends Controller
                     ]);
 
                     // Check if this will be the final approval BEFORE updating the transaction
-                    // Get total number of required approvals for this budget request
-                    $totalApprovals = DB::table('budget_request_approval_transactions')
-                        ->where('request_budgets_id', $task->request_budgets_id)
-                        ->count();
+                    // Get the process steps to determine the total number of required approvals
+                    $processSteps = DB::table('process_steps')
+                        ->join('processes', 'process_steps.process_id', '=', 'processes.id')
+                        ->where('processes.title', 'Budget Request Approval')
+                        ->orderBy('process_steps.order')
+                        ->get();
 
-                    // Check if this is the final approval (current order equals total approvals)
-                    $isFinalApproval = $approvalTransaction->order == $totalApprovals;
+                    $totalRequiredApprovals = $processSteps->count();
+                    
+                    // Check if this is the final approval (current order equals total required approvals)
+                    $isFinalApproval = $approvalTransaction->order == $totalRequiredApprovals;
 
                     Log::info('=== BUDGET REQUEST FINAL APPROVAL CHECK ===', [
                         'task_id' => $task->id,
                         'request_budget_id' => $task->request_budgets_id,
                         'current_order' => $approvalTransaction->order,
-                        'total_approvals' => $totalApprovals,
-                        'is_final_approval' => $isFinalApproval
+                        'total_required_approvals' => $totalRequiredApprovals,
+                        'is_final_approval' => $isFinalApproval,
+                        'process_steps_count' => $processSteps->count()
                     ]);
 
                     // Update the approval transaction status
@@ -788,7 +793,7 @@ class TaskController extends Controller
                             Log::info('=== NOT FINAL BUDGET REQUEST APPROVAL - UPDATING TO PENDING ===', [
                                 'task_id' => $task->id,
                                 'request_budget_id' => $task->request_budgets_id,
-                                'total_approvals' => $totalApprovals
+                                'total_required_approvals' => $totalRequiredApprovals
                             ]);
 
                             // Update budget request status to Pending
