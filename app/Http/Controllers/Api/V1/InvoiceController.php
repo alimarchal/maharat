@@ -134,11 +134,12 @@ class InvoiceController extends Controller
             // For invoices, we need to validate that there's a budget available for revenue tracking
             // This is different from purchase orders - we're checking if there's a budget to track revenue
             $budgetValidation = $budgetService->validateBudgetAvailability(
-                $request->input('department_id', 1), // Default department if not provided
-                $request->input('cost_center_id', 1), // Default cost center if not provided
-                $request->input('sub_cost_center_id', 1), // Default sub cost center if not provided
+                null, // No department required for invoices
+                null, // No cost center required for invoices
+                null, // No sub cost center for invoices
                 $fiscalPeriodId,
-                0 // For invoices, we don't need to reserve budget, just check if budget exists
+                0, // For invoices, we don't need to reserve budget, just check if budget exists
+                'invoice' // Specify that this is for invoice validation
             );
 
             if (!$budgetValidation['valid']) {
@@ -238,11 +239,12 @@ class InvoiceController extends Controller
 
                 // Validate budget availability
                 $budgetValidation = $budgetService->validateBudgetAvailability(
-                    $request->input('department_id', 1),
-                    $request->input('cost_center_id', 1),
-                    $request->input('sub_cost_center_id', 1),
+                    null, // No department required for invoices
+                    null, // No cost center required for invoices
+                    null, // No sub cost center for invoices
                     $fiscalPeriodId,
-                    0
+                    0, // For invoices, we don't need to reserve budget, just check if budget exists
+                    'invoice' // Specify that this is for invoice validation
                 );
 
                 if (!$budgetValidation['valid']) {
@@ -335,9 +337,9 @@ class InvoiceController extends Controller
     {
         try {
             $request->validate([
-                'department_id' => 'required|integer',
-                'cost_center_id' => 'required|integer',
-                'sub_cost_center_id' => 'required|integer',
+                'department_id' => 'nullable|integer',
+                'cost_center_id' => 'nullable|integer',
+                'sub_cost_center_id' => 'nullable|integer',
                 'fiscal_period_id' => 'required|integer',
                 'amount' => 'required|numeric|min:0'
             ]);
@@ -348,7 +350,8 @@ class InvoiceController extends Controller
                 $request->input('cost_center_id'),
                 $request->input('sub_cost_center_id'),
                 $request->input('fiscal_period_id'),
-                $request->input('amount')
+                $request->input('amount'),
+                'invoice' // Specify that this is for invoice validation
             );
 
             return response()->json([
