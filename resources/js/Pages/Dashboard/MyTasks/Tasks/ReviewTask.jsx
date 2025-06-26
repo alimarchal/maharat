@@ -145,6 +145,18 @@ const ReviewTask = () => {
                 );
                 if (!nextStep || !nextStep.id) continue; // All steps done
 
+                // Check if a task already exists for this step to prevent duplicates
+                const existingTaskResponse = await axios.get(
+                    `/api/v1/tasks?filter[${key}]=${id}&filter[process_step_id]=${nextStep.id}&filter[status]=Pending`
+                );
+                const existingTasks = existingTaskResponse?.data?.data || [];
+                
+                // If a task already exists for this step, skip creating a new one
+                if (existingTasks.length > 0) {
+                    console.log(`Task already exists for ${processTitle} step ${nextStep.order}, skipping creation`);
+                    continue;
+                }
+
                 // Get approver for the next step
                 const stepUserResponse = await axios.get(
                     `/api/v1/process-steps/${nextStep.id}/user/${logged_user}`
