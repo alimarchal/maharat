@@ -116,6 +116,54 @@ class BudgetApprovalTransactionController extends Controller
                 $approvalService->updateBudgetStatus($budgetApprovalTransaction->budget_id, $approvalResult);
             }
 
+            // If the status is 'Approve', check if this is the final approval
+            if (isset($data['status']) && $data['status'] === 'Approve') {
+                $processSteps = DB::table('process_steps')
+                    ->join('processes', 'process_steps.process_id', '=', 'processes.id')
+                    ->where('processes.title', 'Total Budget Approval')
+                    ->orderBy('process_steps.order')
+                    ->get();
+                $totalRequiredApprovals = $processSteps->count();
+                $isFinalApproval = $budgetApprovalTransaction->order == $totalRequiredApprovals;
+                if (!$isFinalApproval) {
+                    $nextOrder = $budgetApprovalTransaction->order + 1;
+                    $nextStep = $processSteps->where('order', $nextOrder)->first();
+                    if ($nextStep) {
+                        $nextApprover = DB::table('users')
+                            ->join('process_step_user', 'users.id', '=', 'process_step_user.user_id')
+                            ->where('process_step_user.process_step_id', $nextStep->id)
+                            ->select('users.id')
+                            ->first();
+                        if ($nextApprover) {
+                            $nextTransaction = new 
+                                \App\Models\BudgetApprovalTransaction([
+                                    'budget_id' => $budgetApprovalTransaction->budget_id,
+                                    'requester_id' => $budgetApprovalTransaction->requester_id,
+                                    'assigned_to' => $nextApprover->id,
+                                    'order' => $nextOrder,
+                                    'description' => $nextStep->description,
+                                    'status' => 'Pending',
+                                    'created_by' => auth()->id(),
+                                    'updated_by' => auth()->id()
+                                ]);
+                            $nextTransaction->save();
+                            DB::table('tasks')->insert([
+                                'process_step_id' => $nextStep->id,
+                                'process_id' => $nextStep->process_id,
+                                'assigned_at' => now(),
+                                'urgency' => 'Normal',
+                                'assigned_to_user_id' => $nextApprover->id,
+                                'assigned_from_user_id' => $budgetApprovalTransaction->requester_id,
+                                'read_status' => null,
+                                'budget_id' => $budgetApprovalTransaction->budget_id,
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]);
+                        }
+                    }
+                }
+            }
+
             DB::commit();
 
             return response()->json([

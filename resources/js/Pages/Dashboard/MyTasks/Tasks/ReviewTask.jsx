@@ -69,11 +69,13 @@ const ReviewTask = () => {
                 ...formData,
                 task_id: taskData.id, // Set the task_id to the current task's ID
             };
+            console.log('=== SUBMITTING TASK APPROVAL ===', taskDescriptionData);
 
             const response = await axios.post(
                 "/api/v1/task-descriptions",
                 taskDescriptionData
             );
+            console.log('=== TASK DESCRIPTION RESPONSE ===', response.data);
             const taskDescription = response.data.data;
 
             const transactions = [
@@ -126,6 +128,7 @@ const ReviewTask = () => {
                         processTitle
                     )}`
                 );
+                console.log('=== PROCESS RESPONSE ===', processResponse.data);
                 const process = processResponse?.data?.data?.[0];
                 if (!process || !process.steps?.length) continue;
 
@@ -133,15 +136,14 @@ const ReviewTask = () => {
                 const transactionResponse = await axios.get(
                     `${url}?filter[${key}]=${id}`
                 );
+                console.log('=== EXISTING TRANSACTIONS RESPONSE ===', transactionResponse.data);
                 const existingTransactions =
                     transactionResponse?.data?.data || [];
-                const completedOrders = existingTransactions.map((t) =>
-                    Number(t.order)
-                );
+                const completedOrders = existingTransactions.map((t) => String(t.order));
 
                 // Find next unprocessed step
                 const nextStep = process.steps.find(
-                    (step) => !completedOrders.includes(step.order)
+                    (step) => !completedOrders.includes(String(step.order))
                 );
                 if (!nextStep || !nextStep.id) continue; // All steps done
 
@@ -149,6 +151,7 @@ const ReviewTask = () => {
                 const existingTaskResponse = await axios.get(
                     `/api/v1/tasks?filter[${key}]=${id}&filter[process_step_id]=${nextStep.id}&filter[status]=Pending`
                 );
+                console.log('=== EXISTING TASKS RESPONSE ===', existingTaskResponse.data);
                 const existingTasks = existingTaskResponse?.data?.data || [];
                 
                 // If a task already exists for this step, skip creating a new one
@@ -161,6 +164,7 @@ const ReviewTask = () => {
                 const stepUserResponse = await axios.get(
                     `/api/v1/process-steps/${nextStep.id}/user/${logged_user}`
                 );
+                console.log('=== STEP USER RESPONSE ===', stepUserResponse.data);
                 const assignUser = stepUserResponse?.data?.data;
 
                 const commonPayload = {
@@ -168,10 +172,11 @@ const ReviewTask = () => {
                     assigned_to: assignUser?.approver_id,
                     order: String(nextStep.order),
                     description: nextStep.description,
-                    status: taskDescription.action,
+                    status: "Pending",
                     referred_to: taskDescription?.user_id || null,
                 };
                 const payload = { ...commonPayload, [key]: id };
+                console.log('=== CREATING TRANSACTION PAYLOAD ===', payload);
                 await axios.post(url, payload);
 
                 // Show budget update notification for invoice approvals
@@ -190,6 +195,7 @@ const ReviewTask = () => {
                     order_no: String(nextStep.order),
                     [key]: id,
                 };
+                console.log('=== CREATING TASK PAYLOAD ===', taskPayload);
                 await axios.post("/api/v1/tasks", taskPayload);
 
                 // Note: The TaskController already handles updating the request_budgets table

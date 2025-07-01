@@ -100,28 +100,49 @@ class PoApprovalTransactionController extends Controller
 
             $poApprovalTransaction->update($validated);
 
-            // Update purchase order status based on approval transaction status
-            if (isset($validated['status'])) {
-                $purchaseOrder = $poApprovalTransaction->purchaseOrder;
-                if ($purchaseOrder) {
-                    $newStatus = null;
-                    
-                    if ($validated['status'] === 'Approve') {
-                        $newStatus = 'Approved';
-                    } elseif ($validated['status'] === 'Reject') {
-                        $newStatus = 'Rejected';
-                    }
-                    
-                    if ($newStatus) {
-                        $purchaseOrder->update(['status' => $newStatus]);
-                        
-                        // If rejected, release the reserved budget
-                        if ($newStatus === 'Rejected' && $purchaseOrder->request_budget_id) {
-                            $budgetService = new \App\Services\BudgetValidationService();
-                            $budget = \App\Models\RequestBudget::find($purchaseOrder->request_budget_id);
-                            if ($budget) {
-                                $budgetService->releaseBudget($budget, $purchaseOrder->amount);
-                            }
+            // If the status is 'Approve', check if this is the final approval
+            if (isset($validated['status']) && $validated['status'] === 'Approve') {
+                $processSteps = DB::table('process_steps')
+                    ->join('processes', 'process_steps.process_id', '=', 'processes.id')
+                    ->where('processes.title', 'Purchase Order Approval')
+                    ->orderBy('process_steps.order')
+                    ->get();
+                $totalRequiredApprovals = $processSteps->count();
+                $isFinalApproval = $poApprovalTransaction->order == $totalRequiredApprovals;
+                if (!$isFinalApproval) {
+                    $nextOrder = $poApprovalTransaction->order + 1;
+                    $nextStep = $processSteps->where('order', $nextOrder)->first();
+                    if ($nextStep) {
+                        $nextApprover = DB::table('users')
+                            ->join('process_step_user', 'users.id', '=', 'process_step_user.user_id')
+                            ->where('process_step_user.process_step_id', $nextStep->id)
+                            ->select('users.id')
+                            ->first();
+                        if ($nextApprover) {
+                            $nextTransaction = new 
+                                \App\Models\PoApprovalTransaction([
+                                    'purchase_order_id' => $poApprovalTransaction->purchase_order_id,
+                                    'requester_id' => $poApprovalTransaction->requester_id,
+                                    'assigned_to' => $nextApprover->id,
+                                    'order' => $nextOrder,
+                                    'description' => $nextStep->description,
+                                    'status' => 'Pending',
+                                    'created_by' => Auth::id(),
+                                    'updated_by' => Auth::id()
+                                ]);
+                            $nextTransaction->save();
+                            DB::table('tasks')->insert([
+                                'process_step_id' => $nextStep->id,
+                                'process_id' => $nextStep->process_id,
+                                'assigned_at' => now(),
+                                'urgency' => 'Normal',
+                                'assigned_to_user_id' => $nextApprover->id,
+                                'assigned_from_user_id' => $poApprovalTransaction->requester_id,
+                                'read_status' => null,
+                                'purchase_order_id' => $poApprovalTransaction->purchase_order_id,
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]);
                         }
                     }
                 }
