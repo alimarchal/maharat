@@ -33,7 +33,7 @@ class ExternalInvoiceSeeder extends Seeder
                 'amount' => 7500.00,
                 'vat_amount' => 7500.00 * 0.15,
                 'status' => 'Paid',
-                'type' => 'Credit',
+                'type' => 'Credit upto 30 days',
                 'payable_date' => Carbon::now()->addDays(15),
             ],
             [

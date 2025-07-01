@@ -47,6 +47,7 @@ class DatabaseSeeder extends Seeder
             WarehouseManagerSeeder::class,
 
             // Fiscal and budget management
+            FiscalYearSeeder::class,
             FiscalPeriodSeeder::class,
             CostCenterSeeder::class,
             BudgetSeeder::class,

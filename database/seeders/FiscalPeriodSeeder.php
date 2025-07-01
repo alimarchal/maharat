@@ -40,12 +40,18 @@ class FiscalPeriodSeeder extends Seeder
                 $this->command->warn('Could not reset AUTO_INCREMENT on fiscal_periods table. Continuing anyway.');
             }
 
+            // Get the fiscal_year_id for 2025
+            $fiscalYear = DB::table('fiscal_years')->where('fiscal_year', 2025)->first();
+            if (!$fiscalYear) {
+                $this->command->error('No fiscal_years record found for 2025.');
+                return;
+            }
+
             // Sample fiscal periods with explicit IDs
             $fiscalPeriods = [
                 [
                     'id' => 1, // Explicit ID for reference in other seeders
-                    'fiscal_year' => '2025-01-01',
-                    'period_number' => 1,
+                    'fiscal_year_id' => $fiscalYear->id,
                     'period_name' => 'January 2025',
                     'start_date' => '2025-01-01',
                     'end_date' => '2025-01-31',
@@ -58,8 +64,7 @@ class FiscalPeriodSeeder extends Seeder
                 ],
                 [
                     'id' => 2,
-                    'fiscal_year' => '2025-01-01',
-                    'period_number' => 2,
+                    'fiscal_year_id' => $fiscalYear->id,
                     'period_name' => 'February 2025',
                     'start_date' => '2025-02-01',
                     'end_date' => '2025-02-28',
@@ -72,8 +77,7 @@ class FiscalPeriodSeeder extends Seeder
                 ],
                 [
                     'id' => 3,
-                    'fiscal_year' => '2025-01-01',
-                    'period_number' => 3,
+                    'fiscal_year_id' => $fiscalYear->id,
                     'period_name' => 'March 2025',
                     'start_date' => '2025-03-01',
                     'end_date' => '2025-03-31',

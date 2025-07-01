@@ -12,11 +12,21 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('item_requests', function (Blueprint $table) {
-            $table->foreignId('status_id')->nullable()->constrained('statuses')->default(1); // 1 = Pending
-            $table->foreignId('approved_by')->nullable()->constrained('users'); // Who approved it
-            $table->foreignId('product_id')->nullable()->constrained('products'); // Link to created product
-            $table->timestamp('approved_at')->nullable(); // When it was approved
-            $table->text('rejection_reason')->nullable(); // If rejected
+            if (!Schema::hasColumn('item_requests', 'status_id')) {
+                $table->foreignId('status_id')->nullable()->constrained('statuses')->default(1); // 1 = Pending
+            }
+            if (!Schema::hasColumn('item_requests', 'approved_by')) {
+                $table->foreignId('approved_by')->nullable()->constrained('users'); // Who approved it
+            }
+            if (!Schema::hasColumn('item_requests', 'product_id')) {
+                $table->foreignId('product_id')->nullable()->constrained('products'); // Link to created product
+            }
+            if (!Schema::hasColumn('item_requests', 'approved_at')) {
+                $table->timestamp('approved_at')->nullable(); // When it was approved
+            }
+            if (!Schema::hasColumn('item_requests', 'rejection_reason')) {
+                $table->text('rejection_reason')->nullable(); // If rejected
+            }
         });
     }
 
