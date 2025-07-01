@@ -1251,49 +1251,64 @@ class TaskController extends Controller
                         ]);
 
                         if ($isFinalApproval) {
-                            Log::info('=== FINAL MATERIAL REQUEST APPROVAL - UPDATING STATUS TO PENDING ===', [
+                            Log::info('=== FINAL MATERIAL REQUEST APPROVAL - SETTING status_id = 1 (Pending) ===', [
                                 'task_id' => $task->id,
                                 'material_request_id' => $task->material_request_id,
-                                'current_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id'),
-                                'target_status_id' => 1
+                                'completed_approvals' => $completedApprovals,
+                                'total_approvals' => $totalApprovals
                             ]);
-
-                            // Update the material request status to Pending (status_id = 1)
                             $materialRequestUpdated = DB::table('material_requests')
                                 ->where('id', $task->material_request_id)
                                 ->update([
                                     'status_id' => 1, // Pending
                                     'updated_at' => now()
                                 ]);
-
-                            Log::info('=== MATERIAL REQUEST STATUS UPDATE RESULT ===', [
+                            Log::info('=== MATERIAL REQUEST STATUS UPDATED TO PENDING ===', [
                                 'task_id' => $task->id,
                                 'material_request_id' => $task->material_request_id,
-                                'update_success' => $materialRequestUpdated,
-                                'new_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id')
+                                'new_status_id' => 1,
+                                'update_success' => $materialRequestUpdated
                             ]);
                         } else {
-                            Log::info('=== NOT FINAL MATERIAL REQUEST APPROVAL - UPDATING STATUS TO REFERRED ===', [
-                                'task_id' => $task->id,
-                                'material_request_id' => $task->material_request_id,
-                                'total_approvals' => $totalApprovals,
-                                'completed_approvals' => $completedApprovals
-                            ]);
-
-                            // Update the material request status to Referred (status_id = 2)
-                            $materialRequestUpdated = DB::table('material_requests')
-                                ->where('id', $task->material_request_id)
-                                ->update([
-                                    'status_id' => 2, // Referred
-                                    'updated_at' => now()
+                            if ($completedApprovals === 1) {
+                                Log::info('=== FIRST MATERIAL REQUEST APPROVAL - SETTING status_id = 2 (Referred) ===', [
+                                    'task_id' => $task->id,
+                                    'material_request_id' => $task->material_request_id,
+                                    'completed_approvals' => $completedApprovals,
+                                    'total_approvals' => $totalApprovals
                                 ]);
-
-                            Log::info('=== MATERIAL REQUEST STATUS UPDATE TO REFERRED RESULT ===', [
-                                'task_id' => $task->id,
-                                'material_request_id' => $task->material_request_id,
-                                'update_success' => $materialRequestUpdated,
-                                'new_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id')
-                            ]);
+                                $materialRequestUpdated = DB::table('material_requests')
+                                    ->where('id', $task->material_request_id)
+                                    ->update([
+                                        'status_id' => 2, // Referred
+                                        'updated_at' => now()
+                                    ]);
+                                Log::info('=== MATERIAL REQUEST STATUS UPDATED TO REFERRED ===', [
+                                    'task_id' => $task->id,
+                                    'material_request_id' => $task->material_request_id,
+                                    'new_status_id' => 2,
+                                    'update_success' => $materialRequestUpdated
+                                ]);
+                            } else {
+                                Log::info('=== INTERMEDIATE MATERIAL REQUEST APPROVAL - SETTING status_id = 53 (Draft) ===', [
+                                    'task_id' => $task->id,
+                                    'material_request_id' => $task->material_request_id,
+                                    'completed_approvals' => $completedApprovals,
+                                    'total_approvals' => $totalApprovals
+                                ]);
+                                $materialRequestUpdated = DB::table('material_requests')
+                                    ->where('id', $task->material_request_id)
+                                    ->update([
+                                        'status_id' => 53, // Draft
+                                        'updated_at' => now()
+                                    ]);
+                                Log::info('=== MATERIAL REQUEST STATUS UPDATED TO DRAFT ===', [
+                                    'task_id' => $task->id,
+                                    'material_request_id' => $task->material_request_id,
+                                    'new_status_id' => 53,
+                                    'update_success' => $materialRequestUpdated
+                                ]);
+                            }
                         }
                     }
                 } else {

@@ -130,191 +130,49 @@ class MahratInvoiceApprovalTransactionController extends Controller
 
             // If the status is 'Approve', check if this is the final approval
             if ($validated['status'] === 'Approve') {
-                Log::info('Approval detected, checking if final approval', [
-                    'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                    'current_status' => DB::table('invoices')->where('id', $mahratInvoiceApprovalTransaction->invoice_id)->value('status'),
-                    'approval_order' => $mahratInvoiceApprovalTransaction->order
-                ]);
-
-                // Get total number of required approvals for this invoice
-                $totalApprovals = DB::table('mahrat_invoice_approval_transactions')
-                    ->where('invoice_id', $mahratInvoiceApprovalTransaction->invoice_id)
-                    ->count();
-
-                // Count how many approvals have been completed
-                $completedApprovals = DB::table('mahrat_invoice_approval_transactions')
-                    ->where('invoice_id', $mahratInvoiceApprovalTransaction->invoice_id)
-                    ->where('status', 'Approve')
-                    ->count();
-
-                // Check if this is the final approval (all transactions are approved)
-                $isFinalApproval = $completedApprovals === $totalApprovals;
-
-                Log::info('Approval status check', [
-                    'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                    'current_order' => $mahratInvoiceApprovalTransaction->order,
-                    'total_approvals' => $totalApprovals,
-                    'completed_approvals' => $completedApprovals,
-                    'is_final_approval' => $isFinalApproval
-                ]);
-
-                // Only update invoice status if this is the final approval
-                if ($isFinalApproval) {
-                    Log::info('Final approval detected, updating Invoice status to Pending', [
-                        'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                        'approval_order' => $mahratInvoiceApprovalTransaction->order,
-                        'total_approvals' => $totalApprovals,
-                        'completed_approvals' => $completedApprovals
-                    ]);
-
-                    try {
-                        // Create a new request to update the Invoice status
-                        $statusUpdateRequest = new \Illuminate\Http\Request();
-                        $statusUpdateRequest->merge(['status' => 'Pending']);
-
-                        Log::info('Created status update request', [
-                            'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                            'request_data' => $statusUpdateRequest->all()
-                        ]);
-
-                        // Use the Invoice controller to update the status
-                        $invoiceController = new \App\Http\Controllers\Api\V1\InvoiceController();
-                        
-                        Log::info('Calling Invoice status update endpoint', [
-                            'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                            'controller' => get_class($invoiceController)
-                        ]);
-
-                        $response = $invoiceController->updateStatus($statusUpdateRequest, $mahratInvoiceApprovalTransaction->invoice_id);
-
-                        Log::info('Invoice status update response received', [
-                            'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                            'response_status' => $response->status(),
-                            'response_content' => $response->getContent()
-                        ]);
-
-                        // Verify the status was actually updated
-                        $updatedInvoice = Invoice::find($mahratInvoiceApprovalTransaction->invoice_id);
-                        Log::info('Invoice status after update', [
-                            'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                            'current_status' => $updatedInvoice->status,
-                            'expected_status' => 'Pending'
-                        ]);
-
-                        // Update budget revenue after invoice is approved
-                        if ($updatedInvoice && $updatedInvoice->status === 'Pending') {
-                            Log::info('Updating budget revenue for approved invoice', [
-                                'invoice_id' => $updatedInvoice->id,
-                                'invoice_amount' => $updatedInvoice->total_amount,
-                                'invoice_date' => $updatedInvoice->issue_date
+                $processSteps = DB::table('process_steps')
+                    ->join('processes', 'process_steps.process_id', '=', 'processes.id')
+                    ->where('processes.title', 'Maharat Invoice Approval')
+                    ->orderBy('process_steps.order')
+                    ->get();
+                $totalRequiredApprovals = $processSteps->count();
+                $isFinalApproval = $mahratInvoiceApprovalTransaction->order == $totalRequiredApprovals;
+                if (!$isFinalApproval) {
+                    $nextOrder = $mahratInvoiceApprovalTransaction->order + 1;
+                    $nextStep = $processSteps->where('order', $nextOrder)->first();
+                    if ($nextStep) {
+                        $nextApprover = DB::table('users')
+                            ->join('process_step_user', 'users.id', '=', 'process_step_user.user_id')
+                            ->where('process_step_user.process_step_id', $nextStep->id)
+                            ->select('users.id')
+                            ->first();
+                        if ($nextApprover) {
+                            $nextTransaction = new 
+                                \App\Models\MahratInvoiceApprovalTransaction([
+                                    'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                                    'requester_id' => $mahratInvoiceApprovalTransaction->requester_id,
+                                    'assigned_to' => $nextApprover->id,
+                                    'order' => $nextOrder,
+                                    'description' => $nextStep->description,
+                                    'status' => 'Pending',
+                                    'created_by' => Auth::id(),
+                                    'updated_by' => Auth::id()
+                                ]);
+                            $nextTransaction->save();
+                            DB::table('tasks')->insert([
+                                'process_step_id' => $nextStep->id,
+                                'process_id' => $nextStep->process_id,
+                                'assigned_at' => now(),
+                                'urgency' => 'Normal',
+                                'assigned_to_user_id' => $nextApprover->id,
+                                'assigned_from_user_id' => $mahratInvoiceApprovalTransaction->requester_id,
+                                'read_status' => null,
+                                'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                                'created_at' => now(),
+                                'updated_at' => now()
                             ]);
-
-                            $budgetService = new BudgetRevenueUpdateService();
-                            $budgetUpdateResult = $budgetService->updateBudgetRevenue($updatedInvoice);
-
-                            if ($budgetUpdateResult['success']) {
-                                Log::info('Budget revenue updated successfully', [
-                                    'invoice_id' => $updatedInvoice->id,
-                                    'message' => $budgetUpdateResult['message'],
-                                    'budgets_updated' => $budgetUpdateResult['budgets_updated']
-                                ]);
-
-                                // Update accounts after successful budget update
-                                Log::info('=== UPDATING ACCOUNTS FOR APPROVED INVOICE ===', [
-                                    'invoice_id' => $updatedInvoice->id,
-                                    'subtotal' => $updatedInvoice->subtotal,
-                                    'tax_amount' => $updatedInvoice->tax_amount,
-                                    'total_amount' => $updatedInvoice->total_amount
-                                ]);
-
-                                // Update Revenue/Income account (ID 4) with subtotal
-                                $revenueAccountUpdated = DB::table('accounts')
-                                    ->where('id', 4)
-                                    ->where('name', 'Revenue/Income')
-                                    ->update([
-                                        'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $updatedInvoice->subtotal),
-                                        'updated_at' => now()
-                                    ]);
-
-                                Log::info('=== REVENUE ACCOUNT UPDATE RESULT ===', [
-                                    'invoice_id' => $updatedInvoice->id,
-                                    'account_id' => 4,
-                                    'account_name' => 'Revenue/Income',
-                                    'amount_added' => $updatedInvoice->subtotal,
-                                    'update_success' => $revenueAccountUpdated
-                                ]);
-
-                                // Update VAT Receivables account (ID 13) with tax_amount
-                                $vatAccountUpdated = DB::table('accounts')
-                                    ->where('id', 13)
-                                    ->where('name', 'VAT Receivables (On Maharat Invoice)')
-                                    ->update([
-                                        'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $updatedInvoice->tax_amount),
-                                        'updated_at' => now()
-                                    ]);
-
-                                Log::info('=== VAT RECEIVABLES ACCOUNT UPDATE RESULT ===', [
-                                    'invoice_id' => $updatedInvoice->id,
-                                    'account_id' => 13,
-                                    'account_name' => 'VAT Receivables (On Maharat Invoice)',
-                                    'amount_added' => $updatedInvoice->tax_amount,
-                                    'update_success' => $vatAccountUpdated
-                                ]);
-
-                                // Update Account Receivable account (ID 11) with total_amount
-                                $receivableAccountUpdated = DB::table('accounts')
-                                    ->where('id', 11)
-                                    ->where('name', 'Account Receivable')
-                                    ->update([
-                                        'credit_amount' => DB::raw('COALESCE(credit_amount, 0) + ' . $updatedInvoice->total_amount),
-                                        'updated_at' => now()
-                                    ]);
-
-                                Log::info('=== ACCOUNT RECEIVABLE UPDATE RESULT ===', [
-                                    'invoice_id' => $updatedInvoice->id,
-                                    'account_id' => 11,
-                                    'account_name' => 'Account Receivable',
-                                    'amount_added' => $updatedInvoice->total_amount,
-                                    'update_success' => $receivableAccountUpdated
-                                ]);
-
-                                if ($revenueAccountUpdated && $vatAccountUpdated && $receivableAccountUpdated) {
-                                    Log::info('=== ALL ACCOUNT UPDATES COMPLETED SUCCESSFULLY ===', [
-                                        'invoice_id' => $updatedInvoice->id,
-                                        'revenue_account_updated' => $revenueAccountUpdated,
-                                        'vat_receivables_account_updated' => $vatAccountUpdated,
-                                        'account_receivable_updated' => $receivableAccountUpdated
-                                    ]);
-                                } else {
-                                    Log::warning('=== SOME ACCOUNT UPDATES FAILED ===', [
-                                        'invoice_id' => $updatedInvoice->id,
-                                        'revenue_account_updated' => $revenueAccountUpdated,
-                                        'vat_receivables_account_updated' => $vatAccountUpdated,
-                                        'account_receivable_updated' => $receivableAccountUpdated
-                                    ]);
-                                }
-                            } else {
-                                Log::warning('Budget revenue update failed', [
-                                    'invoice_id' => $updatedInvoice->id,
-                                    'message' => $budgetUpdateResult['message']
-                                ]);
-                            }
                         }
-
-                    } catch (\Exception $e) {
-                        Log::error('Failed to update Invoice status', [
-                            'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                            'error' => $e->getMessage(),
-                            'trace' => $e->getTraceAsString()
-                        ]);
                     }
-                } else {
-                    Log::info('Not final approval yet', [
-                        'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                        'current_order' => $mahratInvoiceApprovalTransaction->order,
-                        'total_approvals' => $totalApprovals,
-                        'completed_approvals' => $completedApprovals
-                    ]);
                 }
             } elseif ($validated['status'] === 'Reject') {
                 // If rejected, immediately update invoice status to Cancelled
