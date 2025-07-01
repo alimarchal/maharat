@@ -328,21 +328,40 @@ const AccountsModal = ({
             }
 
             // Ensure only one is sent as non-null
-            const cleanFormData = {
-                ...formData,
-                credit_amount: formData.credit_amount
-                    ? isEdit && account
-                        ? formData._calculated_credit_amount
-                        : parseFloat(formData.credit_amount)
-                    : null,
-                debit_amount: formData.debit_amount
-                    ? parseFloat(formData.debit_amount)
-                    : null,
-                attachment: attachmentPath,
-                original_name: originalName,
-            };
-
-            if (cleanFormData.debit_amount) cleanFormData.credit_amount = null;
+            let cleanFormData;
+            if (isEdit && account && account.id === 1) {
+                // For id == 1, only send the field (credit or debit) that the user filled
+                cleanFormData = {
+                    ...formData,
+                    attachment: attachmentPath,
+                    original_name: originalName,
+                };
+                if (formData.credit_amount !== "" && formData.credit_amount !== null && formData.credit_amount !== undefined) {
+                    cleanFormData.credit_amount = parseFloat(formData.credit_amount);
+                    delete cleanFormData.debit_amount;
+                } else if (formData.debit_amount !== "" && formData.debit_amount !== null && formData.debit_amount !== undefined) {
+                    cleanFormData.debit_amount = parseFloat(formData.debit_amount);
+                    delete cleanFormData.credit_amount;
+                } else {
+                    delete cleanFormData.credit_amount;
+                    delete cleanFormData.debit_amount;
+                }
+            } else {
+                cleanFormData = {
+                    ...formData,
+                    credit_amount: formData.credit_amount
+                        ? isEdit && account
+                            ? formData._calculated_credit_amount
+                            : parseFloat(formData.credit_amount)
+                        : null,
+                    debit_amount: formData.debit_amount
+                        ? parseFloat(formData.debit_amount)
+                        : null,
+                    attachment: attachmentPath,
+                    original_name: originalName,
+                };
+                if (cleanFormData.debit_amount) cleanFormData.credit_amount = null;
+            }
 
             if (isEdit && account) {
                 // Simplified Edit: Just update the account and its associated chart of account
@@ -571,53 +590,93 @@ const AccountsModal = ({
                             onChange={handleChange}
                             error={errors.description}
                         />
-                        <InputFloating
-                            label={
-                                isEdit && account && account.id === 2
-                                    ? "Credit Amount"
-                                    : isEdit && account
-                                    ? "Credit Amount Increase"
-                                    : "Credit Amount"
-                            }
-                            name="credit_amount"
-                            type="text"
-                            value={formData.credit_amount}
-                            onChange={handleChange}
-                            error={errors.credit_amount}
-                            readOnly={isEdit && account && account.id === 2}
-                        />
-                        <InputFloating
-                            label={
-                                isEdit && account && account.id === 2
-                                    ? "Debit Amount"
-                                    : "Debit Amount"
-                            }
-                            name="debit_amount"
-                            type="text"
-                            value={formData.debit_amount}
-                            onChange={handleChange}
-                            error={errors.debit_amount}
-                            disabled={isEdit && account && account.id !== 2}
-                        />
-                        <InputFloating
-                            label={
-                                isEdit && account && account.id === 2
-                                    ? "Invoice Number"
-                                    : "Reference Number"
-                            }
-                            name="invoice_number"
-                            value={formData.invoice_number}
-                            onChange={handleChange}
-                            error={errors.invoice_number}
-                            required={isEdit && account && account.id === 2}
-                        />
-                        {/* Attachment Section */}
-                        <div className="flex justify-center">
+                        {/* Reference Number: Hide in edit mode for id == 1 */}
+                        {!(isEdit && account && account.id === 1) && (
+                            <InputFloating
+                                label={"Reference Number"}
+                                name="invoice_number"
+                                value={formData.invoice_number}
+                                onChange={handleChange}
+                                error={errors.invoice_number}
+                                required={isEdit && account && account.id === 2}
+                            />
+                        )}
+                        {/* Credit and Debit Amount: Show both for id == 1 in edit mode, mutual exclusion logic */}
+                        {(isEdit && account && account.id === 1) ? (
+                            <>
+                                <InputFloating
+                                    label="Credit Amount"
+                                    name="credit_amount"
+                                    type="text"
+                                    value={formData.credit_amount}
+                                    onChange={e => {
+                                        const value = e.target.value.replace(/[^0-9.]/g, "");
+                                        setFormData({
+                                            ...formData,
+                                            credit_amount: value,
+                                            debit_amount: ""
+                                        });
+                                    }}
+                                    error={errors.credit_amount}
+                                />
+                                <InputFloating
+                                    label="Debit Amount"
+                                    name="debit_amount"
+                                    type="text"
+                                    value={formData.debit_amount}
+                                    onChange={e => {
+                                        const value = e.target.value.replace(/[^0-9.]/g, "");
+                                        setFormData({
+                                            ...formData,
+                                            debit_amount: value,
+                                            credit_amount: ""
+                                        });
+                                    }}
+                                    error={errors.debit_amount}
+                                />
+                            </>
+                        ) : (
+                            <>
+                                {/* Credit Amount: Only show if not Liabilities (id !== 2) */}
+                                {!(isEdit && account && account.id === 2) && (
+                                    <InputFloating
+                                        label={
+                                            isEdit && account
+                                                ? "Credit Amount Increase"
+                                                : "Credit Amount"
+                                        }
+                                        name="credit_amount"
+                                        type="text"
+                                        value={formData.credit_amount}
+                                        onChange={handleChange}
+                                        error={errors.credit_amount}
+                                        readOnly={isEdit && account && account.id === 2}
+                                    />
+                                )}
+                                {/* Debit Amount: Only show if not Cash (id !== 12) in edit mode */}
+                                {!(isEdit && account && account.id === 12) && (
+                                    <InputFloating
+                                        label={
+                                            isEdit && account && account.id === 2
+                                                ? "Debit Amount"
+                                                : "Debit Amount"
+                                        }
+                                        name="debit_amount"
+                                        type="text"
+                                        value={formData.debit_amount}
+                                        onChange={handleChange}
+                                        error={errors.debit_amount}
+                                        disabled={isEdit && account && account.id !== 2}
+                                    />
+                                )}
+                            </>
+                        )}
+                        {/* Attachment Section - always centered visually, file input right-aligned */}
+                        <div className="flex justify-center w-full col-span-1 md:col-span-2">
                             <div className="space-y-2 w-full max-w-sm">
                                 <label className="block text-sm font-medium text-gray-700 mb-1 text-center">
                                     Attachment <span className="text-red-500">*</span>
                                 </label>
-
                                 {tempFile && (
                                     <div className="flex justify-center">
                                         <div
@@ -628,7 +687,6 @@ const AccountsModal = ({
                                         </div>
                                     </div>
                                 )}
-
                                 <div className="flex justify-end">
                                     <input
                                         type="file"
@@ -643,7 +701,6 @@ const AccountsModal = ({
                                         ref={fileInputRef}
                                     />
                                 </div>
-
                                 {errors.attachment && (
                                     <div className="text-red-500 text-xs mt-1 text-center">
                                         {errors.attachment}

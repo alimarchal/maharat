@@ -232,7 +232,73 @@ class TransactionFlowService
         string $originalName = null
     ): array {
         $flows = [];
-        $vatAmount = $cashAmount * 0.15; // 15% VAT
+        $vatAmount = null;
+        $netAmount = null;
+        $invoice = null;
+        if ($invoiceNumber && str_starts_with($invoiceNumber, 'INV')) {
+            $invoice = \App\Models\Invoice::where('invoice_number', $invoiceNumber)->first();
+            if ($invoice) {
+                $base = $invoice->subtotal;
+                $vat = $invoice->tax_amount;
+                $invoiceTotal = $invoice->total_amount;
+                if ($invoiceTotal == 0) {
+                    throw new \Exception('Cannot process payment: Invoice total (subtotal + tax) is zero.');
+                }
+                // Calculate cumulative net and VAT paid so far for this invoice
+                $allCashPayments = \App\Models\TransactionFlow::where('reference_number', $invoiceNumber)
+                    ->where('account_id', 12) // Cash account
+                    ->where('transaction_type', 'credit')
+                    ->get();
+                $totalNetPaid = 0;
+                $totalVatPaid = 0;
+                foreach ($allCashPayments as $payment) {
+                    // Use the same proportional split as below
+                    $prevVat = round($payment->amount * ($vat / $invoiceTotal), 2);
+                    $prevNet = round($payment->amount * ($base / $invoiceTotal), 2);
+                    $totalNetPaid += $prevNet;
+                    $totalVatPaid += $prevVat;
+                }
+                // Calculate this payment's split proportionally
+                $vatRatio = $vat / $invoiceTotal;
+                $netRatio = $base / $invoiceTotal;
+                $vatPart = round($cashAmount * $vatRatio, 2);
+                $netPart = round($cashAmount * $netRatio, 2);
+                $remainingNet = $base - $totalNetPaid;
+                $remainingVat = $vat - $totalVatPaid;
+                // If this is the last payment (covers all remaining), true up to exact remaining
+                if (abs($cashAmount - ($remainingNet + $remainingVat)) < 0.01 || ($netPart > $remainingNet && $vatPart > $remainingVat)) {
+                    $netPart = $remainingNet;
+                    $vatPart = $remainingVat;
+                } else {
+                    // Cap net and VAT to remaining due
+                    if ($netPart > $remainingNet) {
+                        $netPart = $remainingNet;
+                    }
+                    if ($vatPart > $remainingVat) {
+                        $vatPart = $remainingVat;
+                    }
+                }
+                // If payment would overpay either, throw error
+                if ($netPart < 0 || $vatPart < 0 || $netPart > $remainingNet || $vatPart > $remainingVat || ($netPart + $vatPart) > ($remainingNet + $remainingVat)) {
+                    throw new \Exception('You are overpaying this invoice!');
+                }
+                $vatAmount = $vatPart;
+                $netAmount = $netPart;
+                // If both net and vat are zero, nothing to process
+                if ($vatAmount <= 0 && $netAmount <= 0) {
+                    return $flows;
+                }
+            }
+        }
+        if ($vatAmount === null || $netAmount === null) {
+            // fallback to old logic if no invoice or zero total
+            $vatAmount = round($cashAmount * 0.15, 2);
+            $netAmount = round($cashAmount - $vatAmount, 2);
+        }
+        if ($cashAmount <= 0) {
+            // No payment to process (overpayment or zero)
+            return $flows;
+        }
 
         try {
             DB::beginTransaction();
@@ -290,12 +356,12 @@ class TransactionFlowService
                 $flows[] = $cashFlow;
             }
 
-            // 2. Debit Account Receivable (ID 11) by the same amount
+            // 2. Debit Account Receivable (ID 11) by the net amount
             $accountReceivable = Account::find(11);
             if ($accountReceivable) {
-                $newReceivableCredit = ($accountReceivable->credit_amount ?? 0) - $cashAmount;
+                $newReceivableDebit = ($accountReceivable->debit_amount ?? 0) + $netAmount;
                 $accountReceivable->update([
-                    'credit_amount' => max(0, $newReceivableCredit), // Ensure it doesn't go negative
+                    'debit_amount' => $newReceivableDebit,
                     'updated_by' => auth()->id()
                 ]);
 
@@ -303,7 +369,7 @@ class TransactionFlowService
                 $receivableFlow = self::recordTransactionFlow(
                     $accountReceivable->id,
                     'Debit',
-                    $cashAmount,
+                    $netAmount,
                     $relatedEntityType,
                     $relatedEntityId,
                     ['cash' => 12],
@@ -316,7 +382,7 @@ class TransactionFlowService
                 $flows[] = $receivableFlow;
             }
 
-            // 3. Credit VAT Collected (ID 9) by 15% of the cash amount
+            // 3. Credit VAT Collected (ID 9) by the VAT amount
             $vatCollected = Account::find(9);
             if ($vatCollected) {
                 $newVatCredit = ($vatCollected->credit_amount ?? 0) + $vatAmount;
@@ -333,7 +399,7 @@ class TransactionFlowService
                     $relatedEntityType,
                     $relatedEntityId,
                     ['cash' => 12],
-                    $description ?? 'VAT collected credit',
+                    'VAT collected credit for cash payment (allocated: ' . $vatAmount . ' SAR)',
                     $referenceNumber,
                     now()->toDateString(),
                     $attachment,
@@ -345,9 +411,9 @@ class TransactionFlowService
             // 4. Debit VAT Receivables (ID 13) by the same VAT amount
             $vatReceivables = Account::find(13);
             if ($vatReceivables) {
-                $newVatReceivablesCredit = ($vatReceivables->credit_amount ?? 0) - $vatAmount;
+                $newVatReceivablesDebit = ($vatReceivables->debit_amount ?? 0) + $vatAmount;
                 $vatReceivables->update([
-                    'credit_amount' => max(0, $newVatReceivablesCredit), // Ensure it doesn't go negative
+                    'debit_amount' => $newVatReceivablesDebit,
                     'updated_by' => auth()->id()
                 ]);
 
@@ -377,6 +443,18 @@ class TransactionFlowService
                 'reference_number' => $referenceNumber,
                 'flows_count' => count($flows)
             ]);
+
+            if ($invoice && isset($vatAmount, $netAmount)) {
+                // Log or return the allocation for user feedback
+                \Log::info('Cash payment allocation for invoice', [
+                    'invoice_number' => $invoiceNumber,
+                    'cash_paid' => $cashAmount,
+                    'allocated_to_base' => $netAmount,
+                    'allocated_to_vat' => $vatAmount,
+                    'base_remaining' => $invoice->amount - ($totalNetPaid + $netAmount),
+                    'vat_remaining' => $invoice->vat_amount - ($totalVatPaid + $vatAmount),
+                ]);
+            }
 
             return $flows;
         } catch (\Exception $e) {
@@ -558,5 +636,18 @@ class TransactionFlowService
             DB::rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Sum all debit transactions for a specific account.
+     *
+     * @param int $accountId
+     * @return float
+     */
+    public static function sumDebitsForAccount(int $accountId): float
+    {
+        return TransactionFlow::where('account_id', $accountId)
+            ->where('transaction_type', 'debit')
+            ->sum('amount');
     }
 } 

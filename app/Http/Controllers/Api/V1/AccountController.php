@@ -132,9 +132,12 @@ class AccountController extends Controller
 
         $debitAmount = $data['debit_amount'];
         
-        // Add 15% tax to the debit amount
-        $taxAmount = $debitAmount * 0.15;
-        $totalDebitAmount = $debitAmount + $taxAmount;
+        // Instead, use TransactionFlowService to get proportional split
+        $total = $invoice->amount + $invoice->vat_amount;
+        $proportion = $debitAmount / $total;
+        $basePaid = round($invoice->amount * $proportion, 2);
+        $vatPaid = round($invoice->vat_amount * $proportion, 2);
+        $totalDebitAmount = $basePaid + $vatPaid;
 
         // Update the account with the total debit amount
         $account->update([
@@ -152,7 +155,7 @@ class AccountController extends Controller
             'liabilities_payment',
             $invoice->id,
             [],
-            "Liabilities payment for invoice {$data['invoice_number']} (Amount: {$debitAmount}, Tax: {$taxAmount})",
+            "Liabilities payment for invoice {$data['invoice_number']} (Amount: {$debitAmount}, Tax: {$vatPaid})",
             $data['invoice_number'],
             now()->toDateString(),
             $data['attachment'] ?? null,
@@ -163,7 +166,7 @@ class AccountController extends Controller
             'account_id' => $account->id,
             'account_name' => $account->name,
             'debit_amount' => $debitAmount,
-            'tax_amount' => $taxAmount,
+            'vat_amount' => $vatPaid,
             'total_debit_amount' => $totalDebitAmount,
             'invoice_number' => $data['invoice_number'],
             'invoice_id' => $invoice->id
@@ -172,7 +175,7 @@ class AccountController extends Controller
         DB::commit();
 
         return response()->json([
-            'message' => 'Liabilities account updated successfully. Debit amount: ' . $debitAmount . ', Tax (15%): ' . $taxAmount . ', Total: ' . $totalDebitAmount,
+            'message' => 'Liabilities account updated successfully. Debit amount: ' . $debitAmount . ', VAT (15%): ' . $vatPaid . ', Total: ' . $totalDebitAmount,
             'data' => new AccountResource($account->load(['costCenter', 'creator', 'updater']))
         ], Response::HTTP_OK);
     }

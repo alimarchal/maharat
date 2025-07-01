@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEdit, faTrash, faEye } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import InvoiceModal from "./InvoiceModal";
+import ViewExternalInvoiceModal from "./ViewExternalInvoiceModal";
 import { usePage } from "@inertiajs/react";
 import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 
@@ -80,6 +81,8 @@ const InvoicesTable = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [isEdit, setIsEdit] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [viewInvoice, setViewInvoice] = useState(null);
 
     const fetchInvoices = async () => {
         setLoading(true);
@@ -149,6 +152,11 @@ const InvoicesTable = () => {
                     (error.response?.data?.message || error.message)
             );
         }
+    };
+
+    const handleViewInvoice = (invoice) => {
+        setViewInvoice(invoice);
+        setIsViewModalOpen(true);
     };
 
     const formatDateTime = (dateString) => {
@@ -333,26 +341,13 @@ const InvoicesTable = () => {
                                         </div>
                                     </td>
                                     <td className="px-3 py-4 flex justify-center text-center space-x-3">
-                                        {invoice.status === 'UnPaid' && (
-                                            <>
-                                                <button
-                                                    onClick={() =>
-                                                        handleEditInvoice(invoice)
-                                                    }
-                                                    className="text-blue-400 hover:text-blue-500"
-                                                >
-                                                    <FontAwesomeIcon icon={faEdit} />
-                                                </button>
-                                                <button
-                                                    onClick={() =>
-                                                        handleDelete(invoice.id)
-                                                    }
-                                                    className="text-red-600 hover:text-red-800"
-                                                >
-                                                    <FontAwesomeIcon icon={faTrash} />
-                                                </button>
-                                            </>
-                                        )}
+                                        <button
+                                            onClick={() => handleViewInvoice(invoice)}
+                                            className="text-gray-400 hover:text-blue-600 transition"
+                                            title="View Invoice Details"
+                                        >
+                                            <FontAwesomeIcon icon={faEye} />
+                                        </button>
                                     </td>
                                 </tr>
                             ))
@@ -410,6 +405,12 @@ const InvoicesTable = () => {
                 onSave={handleSaveInvoice}
                 invoice={selectedInvoice}
                 isEdit={isEdit}
+            />
+            {/* View Invoice Modal (simple) */}
+            <ViewExternalInvoiceModal
+                isOpen={isViewModalOpen}
+                onClose={() => setIsViewModalOpen(false)}
+                invoice={viewInvoice}
             />
         </div>
     );
