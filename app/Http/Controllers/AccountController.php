@@ -123,6 +123,49 @@ class AccountController extends Controller
                 unset($data['credit_amount']);
             }
             
+            // For Cash account (ID 12), don't update credit_amount directly
+            if ($account->id == 12 && $account->name === 'Cash') {
+                unset($data['credit_amount']);
+            }
+            
+            // For Asset account (ID 1), increment credit or debit amount instead of overwriting
+            if ($account->id == 1) {
+                if (isset($data['credit_amount']) && $data['credit_amount'] !== null && $data['credit_amount'] !== "") {
+                    $increment = floatval($data['credit_amount']);
+                    $data['credit_amount'] = $account->credit_amount + $increment;
+                    \App\Services\TransactionFlowService::recordTransactionFlow(
+                        $account->id,
+                        'credit',
+                        $increment,
+                        'account_update',
+                        $account->id,
+                        [],
+                        'Asset account credited',
+                        null,
+                        now()->toDateString(),
+                        $data['attachment'] ?? null,
+                        $data['original_name'] ?? null
+                    );
+                }
+                if (isset($data['debit_amount']) && $data['debit_amount'] !== null && $data['debit_amount'] !== "") {
+                    $increment = floatval($data['debit_amount']);
+                    $data['debit_amount'] = $account->debit_amount + $increment;
+                    \App\Services\TransactionFlowService::recordTransactionFlow(
+                        $account->id,
+                        'debit',
+                        $increment,
+                        'account_update',
+                        $account->id,
+                        [],
+                        'Asset account debited',
+                        null,
+                        now()->toDateString(),
+                        $data['attachment'] ?? null,
+                        $data['original_name'] ?? null
+                    );
+                }
+            }
+            
             $account->update($data);
 
             // Special handling for Account ID 2 (Liabilities) - handle debit operations
@@ -217,9 +260,11 @@ class AccountController extends Controller
         }
 
         $debitAmount = $data['debit_amount'];
-        // Add 15% tax to the debit amount
-        $taxAmount = $debitAmount * 0.15;
-        $totalDebitAmount = $debitAmount + $taxAmount;
+        $total = $invoice->amount + $invoice->vat_amount;
+        $proportion = $debitAmount / $total;
+        $basePaid = round($invoice->amount * $proportion, 2);
+        $vatPaid = round($invoice->vat_amount * $proportion, 2);
+        $totalDebitAmount = $basePaid + $vatPaid;
 
         // Validate that paid_amount + totalDebitAmount <= amount + vat_amount
         $invoiceTotal = $invoice->amount + $invoice->vat_amount;
@@ -237,12 +282,15 @@ class AccountController extends Controller
         $data = $request->validated();
         
         $debitAmount = $data['debit_amount'];
-        // Add 15% tax to the debit amount
-        $taxAmount = $debitAmount * 0.15;
-        $totalDebitAmount = $debitAmount + $taxAmount;
-
-        // Get the invoice (already validated in validateLiabilitiesAccountUpdate)
         $invoice = \App\Models\ExternalInvoice::where('invoice_id', $data['invoice_number'])->first();
+        if (!$invoice) {
+            throw new \Exception('Invoice number not found in external_invoices table.');
+        }
+        $total = $invoice->amount + $invoice->vat_amount;
+        $proportion = $debitAmount / $total;
+        $basePaid = round($invoice->amount * $proportion, 2);
+        $vatPaid = round($invoice->vat_amount * $proportion, 2);
+        $totalDebitAmount = $basePaid + $vatPaid;
 
         // Update paid_amount and status
         $invoice->paid_amount = $invoice->paid_amount + $totalDebitAmount;
@@ -270,21 +318,28 @@ class AccountController extends Controller
             'liabilities_payment',
             $invoice->id,
             [],
-            "Liabilities payment for invoice {$data['invoice_number']} (Amount: {$debitAmount}, Tax: {$taxAmount})",
+            "Liabilities payment for invoice {$data['invoice_number']} (Amount: {$debitAmount}, Tax: {$vatPaid})",
             $data['invoice_number'],
             now()->toDateString(),
             $data['attachment'] ?? null,
             $data['original_name'] ?? null
         );
 
+        // Recalculate total debits for the account and update the field
+        $totalDebits = \App\Services\TransactionFlowService::sumDebitsForAccount($account->id);
+        $account->update([
+            'debit_amount' => $totalDebits,
+        ]);
+
         Log::info('=== LIABILITIES ACCOUNT DEBIT COMPLETED ===', [
             'account_id' => $account->id,
             'account_name' => $account->name,
             'debit_amount' => $debitAmount,
-            'tax_amount' => $taxAmount,
+            'vat_amount' => $vatPaid,
             'total_debit_amount' => $totalDebitAmount,
             'invoice_number' => $data['invoice_number'],
-            'invoice_id' => $invoice->id
+            'invoice_id' => $invoice->id,
+            'new_total_debit_amount' => $totalDebits
         ]);
     }
 
@@ -321,12 +376,12 @@ class AccountController extends Controller
                 ]);
                 $this->updateReferencePaidAmount($invoiceNumber, $transactionAmount);
 
-                // Record transaction flow (without updating account balances since they're already updated)
+                // Record transaction flow (should update account balances)
                 Log::info('=== CALLING TRANSACTION FLOW SERVICE ===', [
-                    'method' => 'recordCashTransactionFlowsWithoutBalanceUpdate'
+                    'method' => 'recordCashTransactionFlows'
                 ]);
 
-                TransactionFlowService::recordCashTransactionFlowsWithoutBalanceUpdate(
+                TransactionFlowService::recordCashTransactionFlows(
                     $transactionAmount,
                     $description,
                     $invoiceNumber,
@@ -411,9 +466,6 @@ class AccountController extends Controller
             $invoice->updated_by = auth()->id();
             $invoice->save();
 
-            // Update related account balances for cash credit
-            $this->updateRelatedAccountBalances($transactionAmount, $invoiceNumber);
-
             Log::info('Invoice paid amount updated', [
                 'invoice_number' => $invoiceNumber,
                 'previous_paid_amount' => $currentPaidAmount,
@@ -476,9 +528,6 @@ class AccountController extends Controller
             $paymentOrder->status = $newStatus;
             $paymentOrder->save();
 
-            // Update related account balances for cash credit
-            $this->updateRelatedAccountBalances($transactionAmount, $invoiceNumber);
-
             Log::info('Payment order paid amount updated', [
                 'payment_order_number' => $invoiceNumber,
                 'previous_paid_amount' => $currentPaidAmount,
@@ -498,104 +547,9 @@ class AccountController extends Controller
      */
     private function updateRelatedAccountBalances(float $transactionAmount, string $referenceNumber): void
     {
-        $vatAmount = $transactionAmount * 0.15; // 15% VAT
-
-        try {
-            // Get attachment and original_name from the request
-            $attachment = request()->input('attachment');
-            $originalName = request()->input('original_name');
-
-            // 1. Update Account Receivable (ID 11) - Debit (decrease)
-            $accountReceivable = Account::find(11);
-            if ($accountReceivable) {
-                $accountReceivable->debit_amount += $transactionAmount;
-                $accountReceivable->save();
-                
-                // Create transaction flow for Account Receivable
-                \App\Services\TransactionFlowService::recordTransactionFlow(
-                    $accountReceivable->id,
-                    'debit',
-                    $transactionAmount,
-                    'cash_transaction',
-                    null,
-                    ['cash' => 12],
-                    'Account receivable debit for cash payment',
-                    $referenceNumber,
-                    now()->toDateString(),
-                    $attachment,
-                    $originalName
-                );
-                
-                Log::info('Account Receivable updated', [
-                    'account_id' => 11,
-                    'debit_amount_increase' => $transactionAmount,
-                    'new_debit_amount' => $accountReceivable->debit_amount
-                ]);
-            }
-
-            // 2. Update VAT Collected (ID 9) - Credit (increase)
-            $vatCollected = Account::find(9);
-            if ($vatCollected) {
-                $vatCollected->credit_amount += $vatAmount;
-                $vatCollected->save();
-                
-                // Create transaction flow for VAT Collected
-                \App\Services\TransactionFlowService::recordTransactionFlow(
-                    $vatCollected->id,
-                    'credit',
-                    $vatAmount,
-                    'cash_transaction',
-                    null,
-                    ['cash' => 12],
-                    'VAT collected credit for cash payment',
-                    $referenceNumber,
-                    now()->toDateString(),
-                    $attachment,
-                    $originalName
-                );
-                
-                Log::info('VAT Collected updated', [
-                    'account_id' => 9,
-                    'credit_amount_increase' => $vatAmount,
-                    'new_credit_amount' => $vatCollected->credit_amount
-                ]);
-            }
-
-            // 3. Update VAT Receivables (ID 13) - Debit (decrease)
-            $vatReceivables = Account::find(13);
-            if ($vatReceivables) {
-                $vatReceivables->debit_amount += $vatAmount;
-                $vatReceivables->save();
-                
-                // Create transaction flow for VAT Receivables
-                \App\Services\TransactionFlowService::recordTransactionFlow(
-                    $vatReceivables->id,
-                    'debit',
-                    $vatAmount,
-                    'cash_transaction',
-                    null,
-                    ['cash' => 12],
-                    'VAT receivables debit for cash payment',
-                    $referenceNumber,
-                    now()->toDateString(),
-                    $attachment,
-                    $originalName
-                );
-                
-                Log::info('VAT Receivables updated', [
-                    'account_id' => 13,
-                    'debit_amount_increase' => $vatAmount,
-                    'new_debit_amount' => $vatReceivables->debit_amount
-                ]);
-            }
-
-        } catch (\Exception $e) {
-            Log::error('Failed to update related account balances', [
-                'error' => $e->getMessage(),
-                'transaction_amount' => $transactionAmount
-            ]);
-            throw $e;
-        }
+        // DEPRECATED: This method is no longer used. All VAT/base allocation is handled by TransactionFlowService.
+        \Log::warning('updateRelatedAccountBalances is deprecated. Use TransactionFlowService for all VAT/base allocation.');
+        return;
     }
 
     /**

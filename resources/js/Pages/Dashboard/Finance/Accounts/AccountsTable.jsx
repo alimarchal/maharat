@@ -126,7 +126,7 @@ const AccountsTable = () => {
                     
                     setSuccessModal({
                         isOpen: true,
-                        message: `Account updated successfully! Automatic balancing applied: Account Receivable debited by ${increase.toFixed(2)} and VAT Collected credited by ${vatAmount.toFixed(2)} (15%).`,
+                        message: `Account updated successfully! Automatic balancing applied.`,
                         title: "Success!"
                     });
                 } else {

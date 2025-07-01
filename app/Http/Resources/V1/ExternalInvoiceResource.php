@@ -40,6 +40,7 @@ class ExternalInvoiceResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,
+            'paid_amount' => $this->paid_amount,
 
             // Include related resources when loaded
             'user' => new UserResource($this->whenLoaded('user')),
