@@ -173,6 +173,36 @@ const MaharatInvoicesTable = () => {
         setCurrentPage(1);
     };
 
+    // Status badge component for invoices
+    const StatusBadge = ({ status }) => {
+        let badgeClass = "px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ";
+        let label = status || "N/A";
+        switch ((status || "").toLowerCase()) {
+            case "partially paid":
+                badgeClass += "bg-purple-100 text-purple-800";
+                break;
+            case "paid":
+                badgeClass += "bg-green-100 text-green-800";
+                break;
+            case "pending":
+                badgeClass += "bg-yellow-100 text-yellow-800";
+                break;
+            case "draft":
+                badgeClass += "bg-gray-100 text-gray-800";
+                break;
+            case "overdue":
+                badgeClass += "bg-blue-100 text-blue-800";
+                break;
+            case "cancelled":
+                badgeClass += "bg-red-100 text-red-800";
+                break;
+            default:
+                badgeClass += "bg-gray-100 text-gray-800";
+                break;
+        }
+        return <span className={badgeClass}>{label}</span>;
+    };
+
     return (
         <div className="w-full overflow-hidden">
             <div className="flex justify-between items-center text-center mb-6">
@@ -329,11 +359,9 @@ const MaharatInvoicesTable = () => {
                                         : "N/A"}
                                 </td>
                                 <td
-                                    className={`py-3 px-4 font-semibold ${getStatusClass(
-                                        invoice.status
-                                    )}`}
+                                    className="py-3 px-4"
                                 >
-                                    {invoice.status}
+                                    <StatusBadge status={invoice.status} />
                                 </td>
                                 <td className="py-3 px-4 text-center">
                                     {formatDateTime(invoice.updated_at)}

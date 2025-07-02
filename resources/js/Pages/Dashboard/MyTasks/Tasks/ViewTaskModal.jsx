@@ -478,10 +478,6 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <span className="text-gray-600">Payment Order ID:</span>
-                                                <span className="font-medium ml-2">PO-{task.payment_order.id}</span>
-                                            </div>
-                                            <div>
                                                 <span className="text-gray-600">Payment Order Number:</span>
                                                 <span className="font-medium ml-2">{task.payment_order.payment_order_number || "N/A"}</span>
                                             </div>

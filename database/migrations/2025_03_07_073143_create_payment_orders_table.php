@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('payment_order_number')->unique();
             $table->date('issue_date')->nullable();
             $table->date('due_date')->nullable();
-            $table->enum('payment_type', ['Cash', 'Card', 'Bank Transfer', 'Cheque'])->nullable();
+            $table->enum('payment_type', ['Cash', 'Credit upto 30 days', 'Credit upto 60 days', 'Credit upto 90 days', 'Credit upto 120 days'])->nullable();
             $table->string('attachment')->nullable();
             $table->string('uploaded_attachment')->nullable()->comment('Path to uploaded PDF document');
             $table->decimal('total_amount',15,2)->default(0);

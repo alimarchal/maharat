@@ -88,6 +88,36 @@ const PaymentOrderTable = () => {
         return `$${parseFloat(value).toFixed(2)}`;
     };
 
+    // Status badge component for payment orders
+    const StatusBadge = ({ status }) => {
+        let badgeClass = "px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ";
+        let label = status || "N/A";
+        switch ((status || "").toLowerCase()) {
+            case "partially paid":
+                badgeClass += "bg-purple-100 text-purple-800";
+                break;
+            case "paid":
+                badgeClass += "bg-green-100 text-green-800";
+                break;
+            case "pending":
+                badgeClass += "bg-yellow-100 text-yellow-800";
+                break;
+            case "overdue":
+                badgeClass += "bg-blue-100 text-blue-800";
+                break;
+            case "cancelled":
+                badgeClass += "bg-red-100 text-red-800";
+                break;
+            case "draft":
+                badgeClass += "bg-gray-100 text-gray-800";
+                break;
+            default:
+                badgeClass += "bg-gray-100 text-gray-800";
+                break;
+        }
+        return <span className={badgeClass}>{label}</span>;
+    };
+
     return (
         <div className="w-full">
             <div className="flex justify-between items-center mb-4">
@@ -182,6 +212,7 @@ const PaymentOrderTable = () => {
                         <th className="py-3 px-4">Quotation #</th>
                         <th className="py-3 px-4">Supplier</th>
                         <th className="py-3 px-4">Amount</th>
+                        <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 text-center">Attachment</th>
                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                             Actions
@@ -215,8 +246,7 @@ const PaymentOrderTable = () => {
                                         "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {order.purchase_order.quotation
-                                        ?.quotation_number || "N/A"}
+                                    {order.purchase_order?.quotation?.quotation_number || "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
                                     {order.purchase_order?.supplier?.name ||
@@ -224,6 +254,9 @@ const PaymentOrderTable = () => {
                                 </td>
                                 <td className="py-3 px-4">
                                     {order.total_amount}
+                                </td>
+                                <td className="py-3 px-4">
+                                    <StatusBadge status={order.status} />
                                 </td>
                                 <td className="py-3 px-4 text-center text-[#009FDC] hover:text-blue-800 cursor-pointer">
                                     {order.uploaded_attachment ? (

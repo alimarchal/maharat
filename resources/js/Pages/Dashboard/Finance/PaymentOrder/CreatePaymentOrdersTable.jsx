@@ -20,7 +20,7 @@ const CreatePaymentOrdersTable = () => {
     useEffect(() => {
         const fetchPurchaseOrdersList = async () => {
             try {
-                const response = await fetch("/api/v1/purchase-orders?has_payment_order=false");
+                const response = await fetch("/api/v1/purchase-orders?has_payment_order=false&filter[status]=Approved");
                 const res = await response.json();
                 if (response.ok) {
                     setPurchaseOrders(res.data || []);
@@ -109,7 +109,7 @@ const CreatePaymentOrdersTable = () => {
                             Purchase Order #
                         </th>
                         <th className="py-3 px-4">Quotation #</th>
-                        <th className="py-3 px-4">Company</th>
+                        <th className="py-3 px-4">Supplier</th>
                         <th className="py-3 px-4">Amount</th>
                         <th className="py-3 px-4 text-center">Attachment</th>
                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
@@ -150,26 +150,37 @@ const CreatePaymentOrdersTable = () => {
                                         "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {order?.quotation?.company_name || order?.supplier?.name || "N/A"}
+                                    {order?.supplier?.name || "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
                                     {order?.amount || "0.00"}
                                 </td>
-                                <td className="py-3 px-4 text-center text-[#009FDC] hover:text-blue-700 cursor-pointer">
+                                <td className="py-3 px-4 text-center">
                                     {order.attachment ? (
-                                        <a
-                                            href={`/storage/${order.attachment}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
+                                        <button
+                                            className="w-8 h-8"
+                                            onClick={() => {
+                                                const filePath = order.attachment;
+                                                const fixedPath = filePath.startsWith("http")
+                                                    ? filePath
+                                                    : filePath.startsWith("/storage/")
+                                                        ? filePath
+                                                        : filePath.startsWith("invoices/")
+                                                            ? `/storage/${filePath}`
+                                                            : `/storage/${filePath}`;
+                                                window.open(fixedPath, "_blank");
+                                            }}
+                                            title="View Document"
                                         >
-                                            <FontAwesomeIcon
-                                                icon={faPaperclip}
-                                                className="text-xl"
+                                            <img
+                                                src="/images/pdf-file.png"
+                                                alt="PDF"
+                                                className="w-full h-full"
                                             />
-                                        </a>
+                                        </button>
                                     ) : (
-                                        <span className="text-gray-400">
-                                            No Attachment
+                                        <span className="text-gray-500">
+                                            No document attached
                                         </span>
                                     )}
                                 </td>

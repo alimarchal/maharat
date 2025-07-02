@@ -16,7 +16,7 @@ const PayablesTable = () => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedPayableId, setSelectedPayableId] = useState(null);
 
-    const filters = ["All", "Pending", "Partially Paid", "Overdue"];
+    const filters = ["All", "Partially Paid", "Overdue"];
 
     const fetchPayables = async () => {
         setLoading(true);
@@ -25,18 +25,12 @@ const PayablesTable = () => {
             let url = `/api/v1/payment-orders?include=user&page=${currentPage}&sort=payment_order_number`;
 
             if (selectedFilter !== "All") {
-                const status = selectedFilter.toLowerCase().replace(" ", "_");
-                url += `&filter[status]=${status}`;
+                url += `&filter[status]=${encodeURIComponent(selectedFilter)}`;
             }
             const response = await axios.get(url);
 
             if (response.data && response.data.data) {
-                // Filter out records with "paid" status
-                const filteredPayables = response.data.data.filter(
-                    (payable) => payable.status?.toLowerCase() !== "paid"
-                );
-                
-                const parsedPayables = filteredPayables.map((payable) => ({
+                const parsedPayables = response.data.data.map((payable) => ({
                     ...payable,
                     total_amount: parseFloat(payable.total_amount || 0),
                     paid_amount: parseFloat(payable.paid_amount || 0),
@@ -93,6 +87,8 @@ const PayablesTable = () => {
             case "partially paid":
                 return "bg-purple-100 text-purple-800";
             case "overdue":
+                return "bg-blue-100 text-blue-800";
+            case "cancelled":
                 return "bg-red-100 text-red-800";
             case "pending":
                 return "bg-yellow-100 text-yellow-800";
@@ -144,9 +140,9 @@ const PayablesTable = () => {
                             Payment Order #
                         </th>
                         <th className="py-3 px-4">Supplier</th>
-                        <th className="py-3 px-4">Contact</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">Amount</th>
+                        <th className="py-3 px-4">Paid Amount</th>
                         <th className="py-3 px-4">Balance</th>
                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                             Actions
@@ -182,9 +178,6 @@ const PayablesTable = () => {
                                         {data.user?.name || "N/A"}
                                     </td>
                                     <td className="py-3 px-4">
-                                        {data.user?.mobile || "N/A"}
-                                    </td>
-                                    <td className="py-3 px-4">
                                         <span
                                             className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(
                                                 data.status
@@ -200,15 +193,19 @@ const PayablesTable = () => {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
                                             }
-                                        )}{" "}
-                                        SAR
+                                        )} SAR
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {data.paid_amount.toLocaleString(undefined, {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                        })} SAR
                                     </td>
                                     <td className="py-3 px-4">
                                         {balance.toLocaleString(undefined, {
                                             minimumFractionDigits: 2,
                                             maximumFractionDigits: 2,
-                                        })}{" "}
-                                        SAR
+                                        })} SAR
                                     </td>
                                     <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
                                         <button

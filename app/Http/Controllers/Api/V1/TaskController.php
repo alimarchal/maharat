@@ -1381,6 +1381,85 @@ class TaskController extends Controller
                 }
             }
 
+            // === PAYMENT ORDER APPROVAL LOGIC ===
+            if ($task->payment_order_id && $request->input('status') === 'Approved') {
+                Log::info('=== PAYMENT ORDER TASK APPROVAL CHECK ===', [
+                    'task_id' => $task->id,
+                    'payment_order_id' => $task->payment_order_id,
+                    'current_order_no' => $task->order_no,
+                    'process_id' => $task->process_id,
+                    'assigned_to_user_id' => $task->assigned_to_user_id
+                ]);
+
+                // Get total number of required approvals for this payment order
+                $totalApprovals = DB::table('tasks')
+                    ->where('payment_order_id', $task->payment_order_id)
+                    ->where('process_id', $task->process_id)
+                    ->count();
+
+                // Get all tasks for this payment order to verify
+                $allTasks = DB::table('tasks')
+                    ->where('payment_order_id', $task->payment_order_id)
+                    ->where('process_id', $task->process_id)
+                    ->get();
+
+                // Check if this is the final approval
+                $isFinalApproval = (string)$task->order_no === (string)$totalApprovals;
+
+                $paymentOrder = \App\Models\PaymentOrder::find($task->payment_order_id);
+                if (!$paymentOrder) {
+                    Log::error('=== PAYMENT ORDER NOT FOUND FOR APPROVAL ===', [
+                        'payment_order_id' => $task->payment_order_id
+                    ]);
+                } else {
+                    if ($isFinalApproval) {
+                        // Final approver logic
+                        $status = 'Pending';
+                        $paidAmount = floatval($paymentOrder->paid_amount);
+                        $totalAmount = floatval($paymentOrder->total_amount);
+                        $today = now();
+                        $dueDate = $paymentOrder->due_date;
+                        $issueDate = $paymentOrder->issue_date;
+                        if ($totalAmount == $paidAmount) {
+                            $status = 'Paid';
+                        } elseif ($totalAmount > $paidAmount) {
+                            $status = 'Partially Paid';
+                        }
+                        // Overdue logic (but paid/partially paid override overdue)
+                        if ($dueDate && $dueDate->lt($today)) {
+                            if ($status !== 'Paid' && $status !== 'Partially Paid') {
+                                $status = 'Overdue';
+                            }
+                        }
+                        $paymentOrder->status = $status;
+                        $paymentOrder->save();
+                        Log::info('=== FINAL PAYMENT ORDER APPROVAL - STATUS UPDATED ===', [
+                            'payment_order_id' => $paymentOrder->id,
+                            'new_status' => $status
+                        ]);
+                    } else {
+                        // First approver (not final)
+                        $paymentOrder->status = 'Pending';
+                        $paymentOrder->save();
+                        Log::info('=== INTERMEDIATE PAYMENT ORDER APPROVAL - STATUS SET TO PENDING ===', [
+                            'payment_order_id' => $paymentOrder->id
+                        ]);
+                    }
+                }
+            }
+
+            // If any approver rejects, set status to Cancelled
+            if ($task->payment_order_id && $request->input('status') === 'Rejected') {
+                $paymentOrder = \App\Models\PaymentOrder::find($task->payment_order_id);
+                if ($paymentOrder) {
+                    $paymentOrder->status = 'Cancelled';
+                    $paymentOrder->save();
+                    Log::info('=== PAYMENT ORDER REJECTED - STATUS SET TO CANCELLED ===', [
+                        'payment_order_id' => $paymentOrder->id
+                    ]);
+                }
+            }
+
             DB::commit();
 
             Log::info('=== TASK UPDATE COMPLETED ===', [

@@ -21,7 +21,7 @@ class UpdatePaymentOrderRequest extends FormRequest
             'date' => ['nullable', 'date'],
             'issue_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
-            'payment_type' => ['nullable', 'string', 'in:Cash,Card,Bank Transfer,Cheque'],
+            'payment_type' => ['nullable', 'string', 'in:Cash,Credit upto 30 days,Credit upto 60 days,Credit upto 90 days,Credit upto 120 days'],
             'attachment' => ['nullable', 'string'],
             'total_amount' => ['nullable', 'string'],
             'paid_amount' => ['nullable', 'string'],
