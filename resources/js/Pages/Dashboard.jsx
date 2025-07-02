@@ -78,6 +78,8 @@ import NewQuotation from "./Dashboard/ProcurementCenter/Quotations/NewQuotation"
 import QuotationRFQ from "./Dashboard/ProcurementCenter/Quotations/QuotationRFQ";
 import AddQuotationForm from "./Dashboard/ProcurementCenter/RFQ/AddQuotationForm";
 import AccountDetailsTable from "./Dashboard/Finance/Accounts/AccountDetailsTable";
+import ViewReceivableDetails from "./Dashboard/Finance/AccountReceivables/ViewReceivableDetails";
+import ViewPayableDetails from "./Dashboard/Finance/AccountPayables/ViewPayableDetails";
 
 export default function Dashboard({ auth, page }) {
     const renderComponent = () => {
@@ -124,7 +126,10 @@ export default function Dashboard({ auth, page }) {
             return <CreatePaymentOrdersTable />;
         if (page === "AccountReceivables/ReceivableTable")
             return <ReceivableTable />;
+        if (page === "AccountReceivables/ViewReceivableDetails")
+            return <ViewReceivableDetails />;
         if (page === "AccountPayables/PayablesTable") return <PayablesTable />;
+        if (page === "AccountPayables/ViewPayableDetails") return <ViewPayableDetails />;
         if (page === "BudgetAndAccounts/CostCenter/CostCenterTable")
             return <CostCenterTable />;
         if (page === "BudgetAndAccounts/SubCostCenter/SubCostCenterTable")
