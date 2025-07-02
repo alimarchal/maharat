@@ -255,9 +255,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account-receivables', function () {
         return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ReceivableTable']);
     })->name('receivable.index');
+    Route::get('/account-receivables/{id}/details', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ViewReceivableDetails', 'receivableId' => $id]);
+    })->name('receivable.index');
 
     Route::get('/account-payables', function () {
         return Inertia::render('Dashboard', ['page' => 'AccountPayables/PayablesTable']);
+    })->name('payables.index');
+    Route::get('/account-payables/{id}/details', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'AccountPayables/ViewPayableDetails', 'payableId' => $id]);
     })->name('payables.index');
 
     Route::get('/cost-centers', function () {

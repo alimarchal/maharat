@@ -1,114 +1,161 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faEdit } from "@fortawesome/free-solid-svg-icons";
+import {
+    faChevronRight,
+    faChevronDown,
+    faChevronUp,
+} from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
-import ViewPayableModal from "./ViewPayableModal";
-import EditPayableModal from "./EditPayableModal";
+import { Link } from "@inertiajs/react";
 
 const PayablesTable = () => {
+    const [allAccounts, setAllAccounts] = useState([]);
     const [payables, setPayables] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
-    const [selectedFilter, setSelectedFilter] = useState("All");
-    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [selectedPayableId, setSelectedPayableId] = useState(null);
 
-    const filters = ["All", "Partially Paid", "Overdue"];
+    // Dropdown state
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [selectedAccounts, setSelectedAccounts] = useState([]);
+    const dropdownRef = useRef(null);
+
+    // Get payable accounts
+    const getPayableAccounts = (accounts) => {
+        return accounts.filter(account => account.name.toLowerCase().includes("payable"));
+    };
+
+    // Calculate totals from selected payables
+    const calculateTotals = () => {
+        return payables.reduce(
+            (totals, account) => {
+                totals.debit += Number(account.debit_amount) || 0;
+                totals.credit += Number(account.credit_amount) || 0;
+                return totals;
+            },
+            { debit: 0, credit: 0 }
+        );
+    };
+
+    // Fetch all accounts initially
+    const fetchAllAccounts = async () => {
+        try {
+            const response = await axios.get(`/api/v1/accounts`);
+            if (response.data && response.data.data) {
+                const payableAccounts = getPayableAccounts(response.data.data);
+                setAllAccounts(payableAccounts);
+            }
+        } catch (error) {
+            console.error("Error fetching accounts:", error);
+            setError(
+                "Failed to load accounts. " +
+                    (error.response?.data?.message || error.message)
+            );
+        }
+    };
 
     const fetchPayables = async () => {
         setLoading(true);
-
         try {
-            let url = `/api/v1/payment-orders?include=user&page=${currentPage}&sort=payment_order_number`;
-
-            if (selectedFilter !== "All") {
-                url += `&filter[status]=${encodeURIComponent(selectedFilter)}`;
-            }
+            let url = `/api/v1/accounts`;
             const response = await axios.get(url);
-
             if (response.data && response.data.data) {
-                const parsedPayables = response.data.data.map((payable) => ({
-                    ...payable,
-                    total_amount: parseFloat(payable.total_amount || 0),
-                    paid_amount: parseFloat(payable.paid_amount || 0),
-                }));
-                setPayables(parsedPayables);
+                // Filter to get only payable accounts
+                const allPayableAccounts = getPayableAccounts(
+                    response.data.data
+                );
+
+                // Filter by selected accounts
+                let filteredPayables = allPayableAccounts.filter((account) =>
+                    selectedAccounts.includes(account.id)
+                );
+
+                setPayables(filteredPayables);
                 setLastPage(response.data.meta?.last_page || 1);
                 setError("");
-            } else {
-                setError("No data received from server");
             }
         } catch (error) {
-            const errorMessage = error.response?.data?.message || error.message;
-            setError(`Failed to load payables: ${errorMessage}`);
-            setPayables([]);
+            console.error("Error fetching payables:", error);
+            setError(
+                "Failed to load payables. " +
+                    (error.response?.data?.message || error.message)
+            );
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchPayables();
-    }, [currentPage, selectedFilter]);
+        fetchAllAccounts();
+    }, []);
 
-    const handleFilterChange = (filter) => {
-        setSelectedFilter(filter);
-        setCurrentPage(1);
+    useEffect(() => {
+        if (selectedAccounts.length > 0) {
+            fetchPayables();
+        } else {
+            setPayables([]);
+            setLoading(false);
+        }
+    }, [currentPage, selectedAccounts]);
+
+    // Handle clicking outside dropdown to close it
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(event.target)
+            ) {
+                setIsDropdownOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    const handleAccountSelect = (accountId) => {
+        setSelectedAccounts((prev) => {
+            if (prev.includes(accountId)) {
+                return prev.filter((id) => id !== accountId);
+            } else {
+                return [...prev, accountId];
+            }
+        });
     };
 
-    const handleViewPayable = (payableId) => {
-        setSelectedPayableId(payableId);
-        setIsViewModalOpen(true);
-    };
-
-    const handleEditPayable = (payableId) => {
-        setSelectedPayableId(payableId);
-        setIsEditModalOpen(true);
-    };
-
-    const handleModalClose = () => {
-        setIsViewModalOpen(false);
-        setIsEditModalOpen(false);
-    };
-
-    const handleEditModalSave = async () => {
-        setIsEditModalOpen(false);
-        await fetchPayables();
-    };
-
-    const getStatusClass = (status) => {
-        switch (status?.toLowerCase()) {
-            case "paid":
-                return "bg-green-100 text-green-800";
-            case "partially_paid":
-            case "partially paid":
-                return "bg-purple-100 text-purple-800";
-            case "overdue":
-                return "bg-blue-100 text-blue-800";
-            case "cancelled":
-                return "bg-red-100 text-red-800";
-            case "pending":
-                return "bg-yellow-100 text-yellow-800";
-            default:
-                return "bg-gray-100 text-gray-800";
+    const handleSelectAll = () => {
+        if (selectedAccounts.length === allAccounts.length) {
+            setSelectedAccounts([]);
+        } else {
+            setSelectedAccounts(allAccounts.map((account) => account.id));
         }
     };
 
-    const formatStatus = (status) => {
-        if (!status) return "Pending";
-
-        // Check for draft status specifically
-        if (status.toLowerCase() === "draft") {
-            return "Draft";
+    const getSelectedAccountNames = () => {
+        if (selectedAccounts.length === 0) return "No accounts selected";
+        if (selectedAccounts.length === allAccounts.length)
+            return "All accounts selected";
+        if (selectedAccounts.length === 1) {
+            const account = allAccounts.find(
+                (acc) => acc.id === selectedAccounts[0]
+            );
+            return account?.name;
         }
-
-        return status
-            .replace(/_/g, " ") // Replace all underscores, not just the first one
-            .replace(/\b\w/g, (l) => l.toUpperCase());
+        return `${selectedAccounts.length} accounts selected`;
     };
+
+    const formatAmount = (amount) => {
+        const numAmount = Number(amount) || 0;
+        return numAmount.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+    };
+
+    const totals = calculateTotals();
 
     return (
         <div className="w-full">
@@ -116,20 +163,75 @@ const PayablesTable = () => {
                 <h2 className="text-3xl font-bold text-[#2C323C]">
                     Account Payables
                 </h2>
-                <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
-                    {filters.map((filter) => (
+                {/* Account Selection Dropdown */}
+                <div className="w-72">
+                    <div className="relative" ref={dropdownRef}>
                         <button
-                            key={filter}
-                            className={`px-6 py-2 rounded-full text-xl transition ${
-                                selectedFilter === filter
-                                    ? "bg-[#009FDC] text-white"
-                                    : "text-[#9B9DA2]"
-                            }`}
-                            onClick={() => handleFilterChange(filter)}
+                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            className="w-full px-4 py-3 text-left bg-white border border-[#B9BBBD] rounded-full focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC] flex justify-between items-center"
                         >
-                            {filter}
+                            <span className="text-[#2C323C]">
+                                {getSelectedAccountNames()}
+                            </span>
+                            <FontAwesomeIcon
+                                icon={
+                                    isDropdownOpen ? faChevronUp : faChevronDown
+                                }
+                                className="text-[#9B9DA2]"
+                            />
                         </button>
-                    ))}
+
+                        {isDropdownOpen && (
+                            <div className="absolute z-10 w-full max-w-md mt-1 bg-white border border-[#B9BBBD] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                {/* Select All Option */}
+                                <div className="px-4 py-3 hover:bg-gray-50 border-b border-gray-200">
+                                    <label className="flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={
+                                                selectedAccounts.length ===
+                                                    allAccounts.length &&
+                                                allAccounts.length > 0
+                                            }
+                                            onChange={handleSelectAll}
+                                            className="mr-3 h-4 w-4 text-[#009FDC] focus:ring-[#009FDC] border-gray-300 rounded flex-shrink-0"
+                                        />
+                                        <div>
+                                            <span className="text-[#2C323C] font-semibold">
+                                                Select All
+                                            </span>
+                                        </div>
+                                    </label>
+                                </div>
+                                {allAccounts.map((account) => (
+                                    <div
+                                        key={account.id}
+                                        className="px-4 py-3 hover:bg-gray-50"
+                                    >
+                                        <label className="flex items-start cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedAccounts.includes(
+                                                    account.id
+                                                )}
+                                                onChange={() =>
+                                                    handleAccountSelect(
+                                                        account.id
+                                                    )
+                                                }
+                                                className="mr-3 mt-1 h-4 w-4 text-[#009FDC] focus:ring-[#009FDC] border-gray-300 rounded flex-shrink-0"
+                                            />
+                                            <div className="min-w-0 flex-1">
+                                                <span className="text-[#2C323C] break-words leading-tight">
+                                                    {account.name}
+                                                </span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -137,111 +239,129 @@ const PayablesTable = () => {
                 <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                     <tr>
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
-                            Payment Order #
+                            Account Code
                         </th>
-                        <th className="py-3 px-4">Supplier</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4">Amount</th>
-                        <th className="py-3 px-4">Paid Amount</th>
-                        <th className="py-3 px-4">Balance</th>
+                        <th className="py-3 px-4">Account Name</th>
+                        <th className="py-3 px-4">Description</th>
+                        <th className="py-3 px-4">Debit Amount</th>
+                        <th className="py-3 px-4">Credit Amount</th>
                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
-                            Actions
+                            Action
                         </th>
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="7" className="text-center py-12">
+                            <td colSpan="6" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="7"
+                                colSpan="6"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
                             </td>
                         </tr>
                     ) : payables.length > 0 ? (
-                        payables.map((data) => {
-                            const balance =
-                                data.total_amount - (data.paid_amount || 0);
-                            return (
-                                <tr key={data.id}>
+                        <>
+                            {payables.map((account) => (
+                                <tr key={account.id}>
                                     <td className="py-3 px-4">
-                                        {data.payment_order_number}
+                                        {account.account_number}
                                     </td>
                                     <td className="py-3 px-4">
-                                        {data.user?.name || "N/A"}
+                                        {account.name}
+                                    </td>
+                                    <td
+                                        className="py-3 px-4 max-w-xs truncate"
+                                        title={account.description}
+                                    >
+                                        {account.description}
                                     </td>
                                     <td className="py-3 px-4">
-                                        <span
-                                            className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(
-                                                data.status
-                                            )}`}
-                                        >
-                                            {formatStatus(data.status)}
-                                        </span>
+                                        {formatAmount(account.debit_amount)} SAR
                                     </td>
                                     <td className="py-3 px-4">
-                                        {data.total_amount.toLocaleString(
-                                            undefined,
-                                            {
-                                                minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2,
-                                            }
-                                        )} SAR
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {data.paid_amount.toLocaleString(undefined, {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                        })} SAR
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {balance.toLocaleString(undefined, {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                        })} SAR
+                                        {formatAmount(account.credit_amount)}{" "}
+                                        SAR
                                     </td>
                                     <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
-                                        <button
-                                            onClick={() =>
-                                                handleViewPayable(data.id)
-                                            }
+                                        <Link
+                                            href={`/account-payables/${account.id}/details`}
                                             className="text-[#9B9DA2] hover:text-gray-500"
-                                            title="View Payable"
+                                            title="View Payable Details"
                                         >
-                                            <FontAwesomeIcon icon={faEye} />
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                handleEditPayable(data.id)
-                                            }
-                                            className="text-blue-400 hover:text-blue-500"
-                                            title="Edit Payable"
-                                        >
-                                            <FontAwesomeIcon icon={faEdit} />
-                                        </button>
+                                            <FontAwesomeIcon
+                                                icon={faChevronRight}
+                                            />
+                                        </Link>
                                     </td>
                                 </tr>
-                            );
-                        })
+                            ))}
+                        </>
+                    ) : selectedAccounts.length === 0 ? (
+                        <tr>
+                            <td
+                                colSpan="6"
+                                className="text-center text-[#2C323C] font-medium py-4"
+                            >
+                                Please select at least one account to view data.
+                            </td>
+                        </tr>
                     ) : (
                         <tr>
                             <td
-                                colSpan="7"
+                                colSpan="6"
                                 className="text-center text-[#2C323C] font-medium py-4"
                             >
-                                No Accounts Payables found.
+                                No Account Payables found for selected accounts.
                             </td>
                         </tr>
                     )}
                 </tbody>
             </table>
+
+            {/* Totals Summary - Only show when there are payables */}
+            {!loading && !error && payables.length > 0 && (
+                <div className="mt-6 pt-4 border-t-2 border-[#D7D8D9]">
+                    <div className="flex justify-end space-x-4">
+                        <div className="bg-[#C7E7DE] px-6 py-3 rounded-lg">
+                            <span className="text-[#2C323C] text-xl font-medium mr-4">
+                                Total Debit:
+                            </span>
+                            <span className="text-lg font-bold text-[#009FDC]">
+                                {formatAmount(totals.debit)} SAR
+                            </span>
+                        </div>
+                        <div className="bg-[#C7E7DE] px-6 py-3 rounded-lg">
+                            <span className="text-[#2C323C] text-xl font-medium mr-4">
+                                Total Credit:
+                            </span>
+                            <span className="text-lg font-bold text-[#009FDC]">
+                                {formatAmount(totals.credit)} SAR
+                            </span>
+                        </div>
+                        <div className="bg-[#C7E7DE] px-6 py-3 rounded-lg">
+                            <span className="text-[#2C323C] text-xl font-medium mr-4">
+                                Net Balance:
+                            </span>
+                            <span
+                                className={`text-lg font-bold ${
+                                    totals.credit - totals.debit >= 0
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                }`}
+                            >
+                                {formatAmount(totals.credit - totals.debit)} SAR
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Pagination */}
             {!loading && !error && payables.length > 0 && (
@@ -274,26 +394,6 @@ const PayablesTable = () => {
                         Next
                     </button>
                 </div>
-            )}
-
-            {/* View Modal */}
-            {isViewModalOpen && (
-                <ViewPayableModal
-                    id={selectedPayableId}
-                    isOpen={isViewModalOpen}
-                    onClose={handleModalClose}
-                />
-            )}
-
-            {/* Edit Modal */}
-            {isEditModalOpen && (
-                <EditPayableModal
-                    isOpen={isEditModalOpen}
-                    onClose={handleModalClose}
-                    onSave={handleEditModalSave}
-                    paymentOrderId={selectedPayableId}
-                    isEdit={true}
-                />
             )}
         </div>
     );
