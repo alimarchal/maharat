@@ -1,79 +1,80 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faEdit } from "@fortawesome/free-solid-svg-icons";
+import {
+    faChevronRight,
+    faChevronDown,
+    faChevronUp,
+} from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
-import ViewReceivableModal from "./ViewReceivableModal";
-import EditReceivableModal from "./EditReceivableModal";
+import { Link } from "@inertiajs/react";
 
 const ReceivableTable = () => {
+    const [allAccounts, setAllAccounts] = useState([]);
     const [receivables, setReceivables] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-    const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
 
-    const [selectedFilter, setSelectedFilter] = useState("All");
-    const filters = [
-        "All",
-        "Pending",
-        "Partially Paid",
-        "Overdue",
-        "Cancelled",
-    ];
+    // Dropdown state
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [selectedAccounts, setSelectedAccounts] = useState([]);
+    const dropdownRef = useRef(null);
+
+    // Get receivable accounts
+    const getReceivableAccounts = (accounts) => {
+        return accounts.filter((account) =>
+            account.name.toLowerCase().includes("receivable")
+        );
+    };
+
+    // Calculate totals from selected receivables
+    const calculateTotals = () => {
+        return receivables.reduce(
+            (totals, account) => {
+                totals.debit += Number(account.debit_amount) || 0;
+                totals.credit += Number(account.credit_amount) || 0;
+                return totals;
+            },
+            { debit: 0, credit: 0 }
+        );
+    };
+
+    // Fetch all accounts initially
+    const fetchAllAccounts = async () => {
+        try {
+            const response = await axios.get(`/api/v1/accounts`);
+            if (response.data && response.data.data) {
+                const receivableAccounts = getReceivableAccounts(
+                    response.data.data
+                );
+                setAllAccounts(receivableAccounts);
+            }
+        } catch (error) {
+            console.error("Error fetching accounts:", error);
+            setError(
+                "Failed to load accounts. " +
+                    (error.response?.data?.message || error.message)
+            );
+        }
+    };
 
     const fetchReceivables = async () => {
         setLoading(true);
-
         try {
-            let status = selectedFilter.toLowerCase();
-            // Map the filter status to match the backend status
-            if (status === "partially paid") {
-                status = "partially_paid";
-            }
-            
-            let url = `/api/v1/invoices?include=client`;
-
-            if (selectedFilter !== "All") {
-                url += `&filter[status]=${status}`;
-            }
+            let url = `/api/v1/accounts`;
             const response = await axios.get(url);
             if (response.data && response.data.data) {
-                const mappedData = response.data.data.map((invoice) => {
-                    const balance =
-                        (invoice.total_amount || 0) -
-                        (invoice.paid_amount || 0);
-                    return {
-                        id: invoice.id,
-                        invoice_no:
-                            invoice.invoice_number ||
-                            `INV-${invoice.id.toString().padStart(5, "0")}`,
-                        customer: invoice.client?.name || "N/A",
-                        contact: invoice.client?.contact_number || "N/A",
-                        status: invoice.status || "Pending",
-                        amount: invoice.total_amount || 0,
-                        balance: balance,
-                    };
-                });
-                let finalData;
+                // Filter to get only receivable accounts
+                const allReceivableAccounts = getReceivableAccounts(
+                    response.data.data
+                );
 
-                if (selectedFilter === "All") {
-                    finalData = mappedData.filter(
-                        (invoice) =>
-                            invoice.status.toLowerCase() !== "paid" &&
-                            invoice.status.toLowerCase() !== "draft"
-                    );
-                } else {
-                    finalData = mappedData.filter(
-                        (invoice) => 
-                            invoice.status.toLowerCase() === status ||
-                            (status === "partially_paid" && invoice.status.toLowerCase() === "partially_paid")
-                    );
-                }
-
-                setReceivables(finalData);
+                // Filter by selected accounts
+                let filteredReceivables = allReceivableAccounts.filter(
+                    (account) => selectedAccounts.includes(account.id)
+                );
+                setReceivables(filteredReceivables);
                 setLastPage(response.data.meta?.last_page || 1);
                 setError("");
             }
@@ -89,57 +90,75 @@ const ReceivableTable = () => {
     };
 
     useEffect(() => {
-        fetchReceivables();
-    }, [selectedFilter, currentPage]);
+        fetchAllAccounts();
+    }, []);
 
-    const handleViewInvoice = (invoiceId) => {
-        setSelectedInvoiceId(invoiceId);
-        setIsViewModalOpen(true);
+    useEffect(() => {
+        if (selectedAccounts.length > 0) {
+            fetchReceivables();
+        } else {
+            setReceivables([]);
+            setLoading(false);
+        }
+    }, [currentPage, selectedAccounts]);
+
+    // Handle clicking outside dropdown to close it
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(event.target)
+            ) {
+                setIsDropdownOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    const handleAccountSelect = (accountId) => {
+        setSelectedAccounts((prev) => {
+            if (prev.includes(accountId)) {
+                return prev.filter((id) => id !== accountId);
+            } else {
+                return [...prev, accountId];
+            }
+        });
     };
 
-    const handleEditInvoice = (invoiceId) => {
-        setSelectedInvoiceId(invoiceId);
-        setIsEditModalOpen(true);
-    };
-
-    const handleModalClose = () => {
-        setIsViewModalOpen(false);
-        setIsEditModalOpen(false);
-    };
-
-    const handleEditModalSave = async () => {
-        setIsEditModalOpen(false);
-        await fetchReceivables();
-    };
-
-    const getStatusClass = (status) => {
-        switch (status?.toLowerCase()) {
-            case "approved":
-                return "bg-green-100 text-green-800";
-            case "partially_paid":
-            case "partially paid":
-                return "bg-green-100 text-green-800";
-            case "overdue":
-                return "bg-purple-100 text-purple-800";
-            case "pending":
-                return "bg-yellow-100 text-yellow-800";
-            case "cancelled":
-                return "bg-red-100 text-red-800";
-            default:
-                return "bg-gray-300 text-gray-800";
+    const handleSelectAll = () => {
+        if (selectedAccounts.length === allAccounts.length) {
+            setSelectedAccounts([]);
+        } else {
+            setSelectedAccounts(allAccounts.map((account) => account.id));
         }
     };
 
-    const formatStatus = (status) => {
-        if (!status) return "Pending";
-        
-        // Replace underscores with spaces and capitalize each word
-        return status
-            .replace(/_/g, ' ')
-            .split(' ')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-            .join(' ');
+    const getSelectedAccountNames = () => {
+        if (selectedAccounts.length === 0) return "No accounts selected";
+        if (selectedAccounts.length === allAccounts.length)
+            return "All accounts selected";
+        if (selectedAccounts.length === 1) {
+            const account = allAccounts.find(
+                (acc) => acc.id === selectedAccounts[0]
+            );
+            return account?.name || "1 account selected";
+        }
+        return `${selectedAccounts.length} accounts selected`;
     };
+
+    const formatAmount = (amount) => {
+        const numAmount = Number(amount) || 0;
+        return numAmount.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+    };
+
+    const totals = calculateTotals();
 
     return (
         <div className="w-full">
@@ -147,20 +166,81 @@ const ReceivableTable = () => {
                 <h2 className="text-3xl font-bold text-[#2C323C]">
                     Account Receivables
                 </h2>
-                <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
-                    {filters.map((filter) => (
-                        <button
-                            key={filter}
-                            className={`px-6 py-2 rounded-full text-xl transition ${
-                                selectedFilter === filter
-                                    ? "bg-[#009FDC] text-white"
-                                    : "text-[#9B9DA2]"
-                            }`}
-                            onClick={() => setSelectedFilter(filter)}
-                        >
-                            {filter}
-                        </button>
-                    ))}
+                <div className="flex justify-start items-center gap-4">
+                    {/* Account Selection Dropdown */}
+                    <div className="w-72">
+                        <div className="relative" ref={dropdownRef}>
+                            <button
+                                onClick={() =>
+                                    setIsDropdownOpen(!isDropdownOpen)
+                                }
+                                className="w-full px-4 py-3 text-left bg-white border border-[#B9BBBD] rounded-full focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC] flex justify-between items-center"
+                            >
+                                <span className="text-[#2C323C]">
+                                    {getSelectedAccountNames()}
+                                </span>
+                                <FontAwesomeIcon
+                                    icon={
+                                        isDropdownOpen
+                                            ? faChevronUp
+                                            : faChevronDown
+                                    }
+                                    className="text-[#9B9DA2]"
+                                />
+                            </button>
+
+                            {isDropdownOpen && (
+                                <div className="absolute z-10 w-full max-w-md mt-1 bg-white border border-[#B9BBBD] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                    {/* Select All Option */}
+                                    <div className="px-4 py-3 hover:bg-gray-50 border-b border-gray-200">
+                                        <label className="flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={
+                                                    selectedAccounts.length ===
+                                                        allAccounts.length &&
+                                                    allAccounts.length > 0
+                                                }
+                                                onChange={handleSelectAll}
+                                                className="mr-3 h-4 w-4 text-[#009FDC] focus:ring-[#009FDC] border-gray-300 rounded flex-shrink-0"
+                                            />
+                                            <div>
+                                                <span className="text-[#2C323C] font-semibold">
+                                                    Select All
+                                                </span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    {allAccounts.map((account) => (
+                                        <div
+                                            key={account.id}
+                                            className="px-4 py-3 hover:bg-gray-50"
+                                        >
+                                            <label className="flex items-start cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedAccounts.includes(
+                                                        account.id
+                                                    )}
+                                                    onChange={() =>
+                                                        handleAccountSelect(
+                                                            account.id
+                                                        )
+                                                    }
+                                                    className="mr-3 mt-1 h-4 w-4 text-[#009FDC] focus:ring-[#009FDC] border-gray-300 rounded flex-shrink-0"
+                                                />
+                                                <div className="min-w-0 flex-1">
+                                                    <span className="text-[#2C323C] break-words leading-tight">
+                                                        {account.name}
+                                                    </span>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -168,103 +248,130 @@ const ReceivableTable = () => {
                 <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                     <tr>
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
-                            Invoice #
+                            Account Code
                         </th>
-                        <th className="py-3 px-4">Customer</th>
-                        <th className="py-3 px-4">Contact</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4">Amount</th>
-                        <th className="py-3 px-4">Balance</th>
+                        <th className="py-3 px-4">Account Name</th>
+                        <th className="py-3 px-4">Description</th>
+                        <th className="py-3 px-4">Debit Amount</th>
+                        <th className="py-3 px-4">Credit Amount</th>
                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
-                            Actions
+                            Action
                         </th>
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="7" className="text-center py-12">
+                            <td colSpan="6" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="7"
+                                colSpan="6"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
                             </td>
                         </tr>
                     ) : receivables.length > 0 ? (
-                        receivables.map((data) => (
-                            <tr key={data.id}>
-                                <td className="py-3 px-4">{data.invoice_no}</td>
-                                <td className="py-3 px-4">{data.customer}</td>
-                                <td className="py-3 px-4">{data.contact}</td>
-                                <td className="py-3 px-4">
-                                    <span
-                                        className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(
-                                            data.status
-                                        )}`}
+                        <>
+                            {receivables.map((account) => (
+                                <tr key={account.id}>
+                                    <td className="py-3 px-4">
+                                        {account.account_number}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {account.name}
+                                    </td>
+                                    <td
+                                        className="py-3 px-4 max-w-xs truncate"
+                                        title={account.description}
                                     >
-                                        {formatStatus(data.status)}
-                                    </span>
-                                </td>
-                                <td className="py-3 px-4">
-                                    {Number(data.amount).toLocaleString(
-                                        undefined,
-                                        {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                        }
-                                    )}{" "}
-                                    SAR
-                                </td>
-                                <td className="py-3 px-4">
-                                    {Number(data.balance).toLocaleString(
-                                        undefined,
-                                        {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                        }
-                                    )}{" "}
-                                    SAR
-                                </td>
-                                <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
-                                    <button
-                                        onClick={() =>
-                                            handleViewInvoice(data.id)
-                                        }
-                                        className="text-[#9B9DA2] hover:text-gray-500"
-                                        title="View Receivable"
-                                    >
-                                        <FontAwesomeIcon icon={faEye} />
-                                    </button>
-                                    <button
-                                        onClick={() =>
-                                            handleEditInvoice(data.id)
-                                        }
-                                        className="text-blue-400 hover:text-blue-500"
-                                        title="Edit Receivable"
-                                    >
-                                        <FontAwesomeIcon icon={faEdit} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))
+                                        {account.description}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {formatAmount(account.debit_amount)} SAR
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {formatAmount(account.credit_amount)}{" "}
+                                        SAR
+                                    </td>
+                                    <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
+                                        <Link
+                                            href={`/account-receivables/${account.id}/details`}
+                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            title="View Receivable Details"
+                                        >
+                                            <FontAwesomeIcon
+                                                icon={faChevronRight}
+                                            />
+                                        </Link>
+                                    </td>
+                                </tr>
+                            ))}
+                        </>
+                    ) : selectedAccounts.length === 0 ? (
+                        <tr>
+                            <td
+                                colSpan="6"
+                                className="text-center text-[#2C323C] font-medium py-4"
+                            >
+                                Please select at least one account to view data.
+                            </td>
+                        </tr>
                     ) : (
                         <tr>
                             <td
-                                colSpan="7"
+                                colSpan="6"
                                 className="text-center text-[#2C323C] font-medium py-4"
                             >
-                                No Account Receivables found.
+                                No Account Receivables found for selected
+                                accounts.
                             </td>
                         </tr>
                     )}
                 </tbody>
             </table>
+
+            {/* Totals Summary - Only show when there are receivables */}
+            {!loading && !error && receivables.length > 0 && (
+                <div className="mt-6 pt-4 border-t-2 border-[#D7D8D9]">
+                    <div className="flex justify-end space-x-4">
+                        <div className="bg-[#C7E7DE] px-6 py-3 rounded-lg">
+                            <span className="text-[#2C323C] text-xl font-medium mr-4">
+                                Total Debit:
+                            </span>
+                            <span className="text-lg font-bold text-[#009FDC]">
+                                {formatAmount(totals.debit)} SAR
+                            </span>
+                        </div>
+                        <div className="bg-[#C7E7DE] px-6 py-3 rounded-lg">
+                            <span className="text-[#2C323C] text-xl font-medium mr-4">
+                                Total Credit:
+                            </span>
+                            <span className="text-lg font-bold text-[#009FDC]">
+                                {formatAmount(totals.credit)} SAR
+                            </span>
+                        </div>
+                        <div className="bg-[#C7E7DE] px-6 py-3 rounded-lg">
+                            <span className="text-[#2C323C] text-xl font-medium mr-4">
+                                Net Balance:
+                            </span>
+                            <span
+                                className={`text-lg font-bold ${
+                                    totals.debit - totals.credit >= 0
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                }`}
+                            >
+                                {formatAmount(totals.debit - totals.credit)} SAR
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Pagination */}
             {!loading && !error && receivables.length > 0 && (
@@ -297,26 +404,6 @@ const ReceivableTable = () => {
                         Next
                     </button>
                 </div>
-            )}
-
-            {/* View Modal */}
-            {isViewModalOpen && (
-                <ViewReceivableModal
-                    id={selectedInvoiceId}
-                    isOpen={isViewModalOpen}
-                    onClose={handleModalClose}
-                />
-            )}
-
-            {/* Edit Modal */}
-            {isEditModalOpen && (
-                <EditReceivableModal
-                    isOpen={isEditModalOpen}
-                    onClose={handleModalClose}
-                    onSave={handleEditModalSave}
-                    invoiceId={selectedInvoiceId}
-                    isEdit={true}
-                />
             )}
         </div>
     );
