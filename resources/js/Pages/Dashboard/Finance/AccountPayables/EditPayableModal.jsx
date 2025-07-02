@@ -182,15 +182,37 @@ const EditPayableModal = ({ isOpen, onClose, onSave, paymentOrderId }) => {
 
     const paymentTermsOptions = [
         { id: "Cash", label: "Cash" },
-        { id: "Credit", label: "Credit" },
-        { id: "Bank Transfer", label: "Bank Transfer" },
-        { id: "Cheque", label: "Cheque" },
+        { id: "Credit upto 30 days", label: "Credit upto 30 days" },
+        { id: "Credit upto 60 days", label: "Credit upto 60 days" },
+        { id: "Credit upto 90 days", label: "Credit upto 90 days" },
+        { id: "Credit upto 120 days", label: "Credit upto 120 days" },
     ];
 
     const supplierOptions = suppliers.map((s) => ({
         id: s.id.toString(),
         label: s.name,
     }));
+
+    // Status badge component for payment orders
+    const StatusBadge = ({ status }) => {
+        let badgeClass = "px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ";
+        let label = status || "N/A";
+        switch ((status || "").toLowerCase()) {
+            case "partially paid":
+                badgeClass += "bg-purple-100 text-purple-800";
+                break;
+            case "paid":
+                badgeClass += "bg-green-100 text-green-800";
+                break;
+            case "overdue":
+                badgeClass += "bg-red-100 text-red-800";
+                break;
+            default:
+                badgeClass += "bg-gray-100 text-gray-800";
+                break;
+        }
+        return <span className={badgeClass}>{label}</span>;
+    };
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-20">
@@ -199,19 +221,27 @@ const EditPayableModal = ({ isOpen, onClose, onSave, paymentOrderId }) => {
                     <h2 className="text-3xl font-bold text-[#2C323C]">
                         Edit Account Payable
                     </h2>
-                    <button
-                        onClick={onClose}
-                        className="text-red-500 hover:text-red-800"
-                    >
-                        <FontAwesomeIcon icon={faTimes} />
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <span className="text-lg">
+                            <span className="font-bold">Issue Date:</span> {formData.issue_date ? new Date(formData.issue_date).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                            }) : "N/A"}
+                        </span>
+                        <button
+                            onClick={onClose}
+                            className="text-red-500 hover:text-red-800"
+                        >
+                            <FontAwesomeIcon icon={faTimes} />
+                        </button>
+                    </div>
                 </div>
 
                 {errors.submit && (
                     <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
                         <strong className="font-bold">Error!</strong>
                         <span className="block sm:inline">
-                            {" "}
                             {errors.submit}
                         </span>
                     </div>
@@ -224,30 +254,6 @@ const EditPayableModal = ({ isOpen, onClose, onSave, paymentOrderId }) => {
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <SelectFloating
-                                label="Supplier"
-                                name="supplier_id"
-                                value={formData.supplier_id}
-                                onChange={handleChange}
-                                options={supplierOptions}
-                                error={errors.supplier_id}
-                            />
-                            <SelectFloating
-                                label="Status"
-                                name="status"
-                                value={formData.status}
-                                onChange={handleChange}
-                                options={statusOptions}
-                                error={errors.status}
-                            />
-                            <InputFloating
-                                label="Select Issue Date"
-                                name="issue_date"
-                                type="date"
-                                value={formData.issue_date}
-                                onChange={handleChange}
-                                error={errors.issue_date}
-                            />
                             <InputFloating
                                 label="Select Due Date"
                                 name="due_date"
@@ -256,9 +262,6 @@ const EditPayableModal = ({ isOpen, onClose, onSave, paymentOrderId }) => {
                                 onChange={handleChange}
                                 error={errors.due_date}
                             />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <SelectFloating
                                 label="Payment Terms"
                                 name="payment_method"
@@ -267,6 +270,8 @@ const EditPayableModal = ({ isOpen, onClose, onSave, paymentOrderId }) => {
                                 options={paymentTermsOptions}
                                 error={errors.payment_method}
                             />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <InputFloating
                                 label="Amount"
                                 name="total_amount"
@@ -275,6 +280,7 @@ const EditPayableModal = ({ isOpen, onClose, onSave, paymentOrderId }) => {
                                 value={formData.total_amount}
                                 onChange={handleChange}
                                 error={errors.total_amount}
+                                readOnly
                             />
                             <InputFloating
                                 label="Paid Amount"
@@ -286,16 +292,11 @@ const EditPayableModal = ({ isOpen, onClose, onSave, paymentOrderId }) => {
                                 error={errors.paid_amount}
                             />
                         </div>
-
                         <div className="text-center mt-6">
                             <div className="text-xl font-semibold text-gray-700">
-                                Balance:{" "}
-                                <span className="text-[#009FDC]">
-                                    {formData.balance} SAR
-                                </span>
+                                Balance: <span className="text-[#009FDC]">{formData.balance} SAR</span>
                             </div>
                         </div>
-
                         <div className="my-6 flex justify-center w-full">
                             <button
                                 type="submit"

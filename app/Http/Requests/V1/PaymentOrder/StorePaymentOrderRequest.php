@@ -21,7 +21,7 @@ class StorePaymentOrderRequest extends FormRequest
             'issue_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
             'payment_type' => ['nullable', 'string'],
-            'attachment' => ['nullable', 'string'],
+            'attachment' => ['required', 'string'],
             'total_amount' => ['nullable', 'numeric'],
             'paid_amount' => ['nullable', 'numeric'],
             'status' => ['nullable', 'string'],

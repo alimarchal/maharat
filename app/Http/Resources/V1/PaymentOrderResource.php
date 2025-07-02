@@ -30,20 +30,20 @@ class PaymentOrderResource extends JsonResource
 
             // Related resources
             'user' => new UserResource($this->whenLoaded('user')),
-            'purchase_order' => new PurchaseOrderResource($this->whenLoaded('purchaseOrder')),
+            'purchase_order' => new PurchaseOrderResource($this->whenLoaded('purchase_order')),
             'logs' => PaymentOrderLogResource::collection($this->whenLoaded('logs')),
 
             // Supplier information through the purchase order relation
-            'supplier' => $this->whenLoaded('purchaseOrder', function () {
-                return $this->purchaseOrder->supplier ?
-                    new SupplierResource($this->purchaseOrder->supplier) :
+            'supplier' => $this->whenLoaded('purchase_order', function () {
+                return $this->purchase_order->supplier ?
+                    new SupplierResource($this->purchase_order->supplier) :
                     null;
             }),
 
             // Quotation information through the purchase order relation
-            'quotation' => $this->whenLoaded('purchaseOrder', function () {
-                return $this->purchaseOrder->quotation ?
-                    new QuotationResource($this->purchaseOrder->quotation) :
+            'quotation' => $this->whenLoaded('purchase_order', function () {
+                return $this->purchase_order->quotation ?
+                    new QuotationResource($this->purchase_order->quotation) :
                     null;
             }),
         ];

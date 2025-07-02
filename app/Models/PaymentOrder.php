@@ -43,9 +43,9 @@ class PaymentOrder extends Model
     /**
      * Get the purchase order this payment order belongs to
      */
-    public function purchaseOrder(): BelongsTo
+    public function purchase_order(): BelongsTo
     {
-        return $this->belongsTo(PurchaseOrder::class);
+        return $this->belongsTo(PurchaseOrder::class, 'purchase_order_id');
     }
 
     /**
@@ -54,5 +54,18 @@ class PaymentOrder extends Model
     public function logs(): HasMany
     {
         return $this->hasMany(PaymentOrderLog::class);
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(\App\Models\Supplier::class, 'supplier_id');
+    }
+
+    /**
+     * Support camelCase relationship for Spatie QueryBuilder includes
+     */
+    public function purchaseOrder()
+    {
+        return $this->purchase_order();
     }
 }
