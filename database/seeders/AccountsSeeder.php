@@ -126,7 +126,7 @@ class AccountsSeeder extends Seeder
                 'description' => 'Special purpose accounts for specific transactions',
                 'code' => $special, 
                 'editable' => true, 
-                'deletable' => true
+                'deletable' => false
             ],
             [
                 'name' => 'Account Receivable', 

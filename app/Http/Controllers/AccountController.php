@@ -23,6 +23,10 @@ use Spatie\QueryBuilder\QueryBuilder;
 
 class AccountController extends Controller
 {
+    private function isSpecialAccountId($id) {
+        return in_array((int)$id, [1, 3, 6, 7, 10], true);
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -129,7 +133,7 @@ class AccountController extends Controller
             }
             
             // For Asset account (ID 1), increment credit or debit amount instead of overwriting
-            if ($account->id == 1) {
+            if ($this->isSpecialAccountId($account->id)) {
                 if (isset($data['credit_amount']) && $data['credit_amount'] !== null && $data['credit_amount'] !== "") {
                     $increment = floatval($data['credit_amount']);
                     $data['credit_amount'] = $account->credit_amount + $increment;

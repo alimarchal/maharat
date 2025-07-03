@@ -71,12 +71,14 @@ class ExternalInvoiceController extends Controller
 
             // Update account ID 2 with credit_amount = credit_amount + (amount + vat_amount)
             $totalAmount = $data['amount'] + $data['vat_amount'];
+            $amount = $data['amount'];
+            $vatAmount = $data['vat_amount'];
             
             // Log the account update for debugging
             \Log::info('Updating account ID 2', [
                 'invoice_id' => $invoice->id,
-                'amount' => $data['amount'],
-                'vat_amount' => $data['vat_amount'],
+                'amount' => $amount,
+                'vat_amount' => $vatAmount,
                 'total_amount' => $totalAmount
             ]);
             
@@ -97,6 +99,24 @@ class ExternalInvoiceController extends Controller
                 $invoice->id,
                 [],
                 'External invoice created',
+                $invoice->invoice_id,
+                now()->toDateString(),
+                $invoice->attachment_path,
+                $invoice->original_name
+            );
+
+            // === NEW: Credit account ID 5 (Cost of Purchases) with just the amount (excluding VAT) ===
+            DB::table('accounts')
+                ->where('id', 5)
+                ->increment('credit_amount', $amount);
+            TransactionFlowService::recordTransactionFlow(
+                5, // account_id
+                'credit',
+                $amount,
+                'external_invoice',
+                $invoice->id,
+                [],
+                'Cost of Purchases credited for external invoice',
                 $invoice->invoice_id,
                 now()->toDateString(),
                 $invoice->attachment_path,
