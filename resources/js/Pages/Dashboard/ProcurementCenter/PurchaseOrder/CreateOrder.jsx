@@ -369,7 +369,7 @@ export default function CreatePurchaseOrder() {
 
                                                 return rfqHasPO ? (
                                                     <span className="text-gray-400">
-                                                        PO Requested
+                                                        Rejected
                                                     </span>
                                                 ) : (
                                                     <button

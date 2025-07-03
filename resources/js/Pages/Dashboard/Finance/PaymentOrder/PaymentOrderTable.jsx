@@ -215,9 +215,7 @@ const PaymentOrderTable = () => {
                         <th className="py-3 px-4">Amount</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 text-center">Attachment</th>
-                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
-                            Actions
-                        </th>
+                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">Payment Order</th>
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
