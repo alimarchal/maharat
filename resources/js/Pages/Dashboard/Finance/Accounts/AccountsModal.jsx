@@ -5,6 +5,9 @@ import axios from "axios";
 import InputFloating from "../../../../Components/InputFloating";
 import SelectFloating from "../../../../Components/SelectFloating";
 
+const SPECIAL_ACCOUNT_IDS = [1, 3, 6, 7, 10];
+const isSpecialAccountId = (id) => SPECIAL_ACCOUNT_IDS.includes(Number(id));
+
 const AccountsModal = ({
     isOpen,
     onClose,
@@ -410,8 +413,8 @@ const AccountsModal = ({
 
             // Ensure only one is sent as non-null
             let cleanFormData;
-            if (isEdit && account && account.id === 1) {
-                // For id == 1, only send the field (credit or debit) that the user filled
+            if (isSpecialAccountId(account.id)) {
+                // For special accounts, only send the field (credit or debit) that the user filled
                 cleanFormData = {
                     ...formData,
                     attachment: attachmentPath,
@@ -672,7 +675,7 @@ const AccountsModal = ({
                             error={errors.description}
                         />
                         {/* Reference Number: Hide in edit mode for id == 1 */}
-                        {!(isEdit && account && account.id === 1) && (
+                        {!(isEdit && account && isSpecialAccountId(account.id)) && (
                             isEdit && account && account.id === 2 ? (
                                 <SelectFloating
                                     label="Reference Number"
@@ -709,7 +712,7 @@ const AccountsModal = ({
                             )
                         )}
                         {/* Credit and Debit Amount: Show both for id == 1 in edit mode, mutual exclusion logic */}
-                        {(isEdit && account && account.id === 1) ? (
+                        {(isEdit && account && isSpecialAccountId(account.id)) ? (
                             <>
                                 <InputFloating
                                     label="Credit Amount"

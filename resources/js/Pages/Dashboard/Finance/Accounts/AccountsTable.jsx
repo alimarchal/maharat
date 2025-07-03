@@ -6,6 +6,9 @@ import AccountsModal from "./AccountsModal";
 import SuccessModal from "../../../../Components/SuccessModal";
 import { Link } from "@inertiajs/react";
 
+const SPECIAL_ACCOUNT_IDS = [1, 3, 6, 7, 10];
+const isSpecialAccountId = (id) => SPECIAL_ACCOUNT_IDS.includes(Number(id));
+
 const AccountsTable = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -345,7 +348,7 @@ const AccountsTable = () => {
                                         ];
 
                                         const canEdit = !nonEditable.includes(accountName);
-                                        const canDelete = account.id === 2 ? false : (isSpecialAccount ? !hasValue : !nonDeletable.includes(accountName) && !editOnly.includes(accountName));
+                                        const canDelete = isSpecialAccountId(account.id) ? false : (isSpecialAccount ? !hasValue : !nonDeletable.includes(accountName) && !editOnly.includes(accountName));
 
                                         return (
                                             <div className="flex justify-center items-center space-x-3">
