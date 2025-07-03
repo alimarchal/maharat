@@ -18,6 +18,7 @@ use Spatie\QueryBuilder\AllowedFilter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use setasign\Fpdi\Fpdi;
 
 class PaymentOrderController extends Controller
 {
@@ -342,15 +343,50 @@ class PaymentOrderController extends Controller
             ->whereNotNull('attachment')
             ->pluck('attachment');
 
-        // TODO: Merge all PDF files in $flows into a single PDF and return its URL
-        // For now, just return the list of found attachments
         $files = $flows->map(function($path) {
-            return Storage::disk('public')->url($path);
-        });
+            return Storage::disk('public')->path($path);
+        })->filter(function($path) {
+            return file_exists($path) && strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'pdf';
+        })->values();
+
+        if ($files->isEmpty()) {
+            return response()->json([
+                'attachments' => [],
+                'message' => 'No PDF attachments found.'
+            ], 404);
+        }
+
+        // Merge PDFs using FPDI
+        $pdf = new Fpdi();
+        foreach ($files as $file) {
+            $pageCount = $pdf->setSourceFile($file);
+            for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
+                $tplIdx = $pdf->importPage($pageNo);
+                $size = $pdf->getTemplateSize($tplIdx);
+                $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                $pdf->useTemplate($tplIdx);
+            }
+        }
+
+        // Store merged PDF
+        $mergedFileName = 'combined_' . $payment_order_number . '_' . time() . '.pdf';
+        $mergedPath = 'payment-orders/combined/' . $mergedFileName;
+        $output = $pdf->Output('S'); // Output as string
+        Storage::disk('public')->put($mergedPath, $output);
+        $mergedUrl = Storage::disk('public')->url($mergedPath);
+
+        // Save the relative path in the payment_orders table under uploaded_attachment
+        $paymentOrder = \App\Models\PaymentOrder::where('payment_order_number', $payment_order_number)->first();
+        if ($paymentOrder) {
+            $paymentOrder->uploaded_attachment = $mergedPath;
+            $paymentOrder->save();
+        }
 
         return response()->json([
+            'merged_pdf_url' => $mergedUrl,
+            'uploaded_attachment' => $mergedPath,
             'attachments' => $files,
-            'message' => 'TODO: Merge these PDFs and return a single file.'
+            'message' => 'Merged PDF created successfully.'
         ]);
     }
 }
