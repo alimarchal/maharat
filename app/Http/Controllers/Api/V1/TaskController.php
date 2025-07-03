@@ -380,14 +380,14 @@ class TaskController extends Controller
                                 'task_id' => $task->id,
                                 'invoice_id' => $task->invoice_id,
                                 'current_status' => DB::table('invoices')->where('id', $task->invoice_id)->value('status'),
-                                'target_status' => 'Pending'
+                                'target_status' => 'Approved'
                             ]);
 
-                            // Update invoice status to Pending
+                            // Update invoice status to Approved
                             $invoiceUpdated = DB::table('invoices')
                                 ->where('id', $task->invoice_id)
                                 ->update([
-                                    'status' => 'Pending',
+                                    'status' => 'Approved',
                                     'updated_at' => now()
                                 ]);
 
@@ -547,6 +547,13 @@ class TaskController extends Controller
                                 'total_approvals' => $totalApprovals,
                                 'completed_approvals' => $completedApprovals
                             ]);
+                            // Update invoice status to Pending for non-final approver
+                            DB::table('invoices')
+                                ->where('id', $task->invoice_id)
+                                ->update([
+                                    'status' => 'Pending',
+                                    'updated_at' => now()
+                                ]);
                         }
                     }
                 } else {
@@ -1414,28 +1421,17 @@ class TaskController extends Controller
                 } else {
                     if ($isFinalApproval) {
                         // Final approver logic
-                        $status = 'Pending';
-                        $paidAmount = floatval($paymentOrder->paid_amount);
-                        $totalAmount = floatval($paymentOrder->total_amount);
                         $today = now();
                         $dueDate = $paymentOrder->due_date;
-                        $issueDate = $paymentOrder->issue_date;
-                        if ($totalAmount == $paidAmount) {
-                            $status = 'Paid';
-                        } elseif ($totalAmount > $paidAmount) {
-                            $status = 'Partially Paid';
-                        }
-                        // Overdue logic (but paid/partially paid override overdue)
                         if ($dueDate && $dueDate->lt($today)) {
-                            if ($status !== 'Paid' && $status !== 'Partially Paid') {
-                                $status = 'Overdue';
-                            }
+                            $paymentOrder->status = 'Overdue';
+                        } else {
+                            $paymentOrder->status = 'Approved';
                         }
-                        $paymentOrder->status = $status;
                         $paymentOrder->save();
-                        Log::info('=== FINAL PAYMENT ORDER APPROVAL - STATUS UPDATED ===', [
+                        Log::info('=== FINAL PAYMENT ORDER APPROVAL - STATUS UPDATED (NEW LOGIC) ===', [
                             'payment_order_id' => $paymentOrder->id,
-                            'new_status' => $status
+                            'new_status' => $paymentOrder->status
                         ]);
                     } else {
                         // First approver (not final)

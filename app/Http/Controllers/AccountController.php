@@ -237,40 +237,45 @@ class AccountController extends Controller
     private function validateLiabilitiesAccountUpdate(Request $request): void
     {
         $data = $request->validated();
-        
         // For Liabilities account, only allow debit operations (reducing liabilities)
         if (isset($data['credit_amount']) && $data['credit_amount'] > 0) {
             throw new \Exception('Cannot credit Liabilities account. Only debit operations are allowed.');
         }
-
         // Check if debit amount is provided
         if (!isset($data['debit_amount']) || $data['debit_amount'] <= 0) {
             throw new \Exception('Debit amount is required and must be greater than 0 for Liabilities account.');
         }
-
-        // Validate invoice number exists in external_invoices table
+        // Validate payment order number exists in payment_orders table
         if (!isset($data['invoice_number']) || empty($data['invoice_number'])) {
-            throw new \Exception('Invoice number is required for Liabilities account debit operations.');
+            throw new \Exception('Payment order number is required for Liabilities account debit operations.');
         }
-
-        // Check if invoice exists in external_invoices table
-        $invoice = \App\Models\ExternalInvoice::where('invoice_id', $data['invoice_number'])->first();
-        if (!$invoice) {
-            throw new \Exception('Invoice number not found in external_invoices table.');
+        // Check if payment order exists
+        $paymentOrder = \App\Models\PaymentOrder::whereRaw('LOWER(TRIM(payment_order_number)) = ?', [strtolower(trim($data['invoice_number']))])->first();
+        if (!$paymentOrder) {
+            throw new \Exception('Payment order number not found in payment_orders table.');
         }
-
+        $purchaseOrderId = (int) $paymentOrder->purchase_order_id;
+        if (!$purchaseOrderId) {
+            throw new \Exception('Payment order is not linked to any purchase order.');
+        }
+        // Check if external invoice exists for this purchase order
+        $externalInvoice = \App\Models\ExternalInvoice::where('purchase_order_id', $purchaseOrderId)
+            ->whereNull('deleted_at')
+            ->first();
+        if (!$externalInvoice) {
+            throw new \Exception('No external invoice found for this payment order.');
+        }
         $debitAmount = $data['debit_amount'];
-        $total = $invoice->amount + $invoice->vat_amount;
+        $total = $externalInvoice->amount + $externalInvoice->vat_amount;
         $proportion = $debitAmount / $total;
-        $basePaid = round($invoice->amount * $proportion, 2);
-        $vatPaid = round($invoice->vat_amount * $proportion, 2);
+        $basePaid = round($externalInvoice->amount * $proportion, 2);
+        $vatPaid = round($externalInvoice->vat_amount * $proportion, 2);
         $totalDebitAmount = $basePaid + $vatPaid;
-
         // Validate that paid_amount + totalDebitAmount <= amount + vat_amount
-        $invoiceTotal = $invoice->amount + $invoice->vat_amount;
-        $newPaidAmount = $invoice->paid_amount + $totalDebitAmount;
+        $invoiceTotal = $externalInvoice->amount + $externalInvoice->vat_amount;
+        $newPaidAmount = $externalInvoice->paid_amount + $totalDebitAmount;
         if ($newPaidAmount > $invoiceTotal) {
-            throw new \Exception('Amount exceeds invoice payable amount. Payment would exceed invoice total.');
+            throw new \Exception('Amount exceeds invoice payable amount.');
         }
     }
 
@@ -280,67 +285,90 @@ class AccountController extends Controller
     private function handleLiabilitiesAccountUpdate(Request $request, Account $account, float $originalCreditAmount): void
     {
         $data = $request->validated();
-        
+        $paymentOrderNumber = trim($data['invoice_number']);
+        $paymentOrder = \App\Models\PaymentOrder::whereRaw('LOWER(TRIM(payment_order_number)) = ?', [strtolower($paymentOrderNumber)])->first();
+        if (!$paymentOrder) {
+            throw new \Exception('Payment order number not found in payment_orders table.');
+        }
+        $purchaseOrderId = (int) $paymentOrder->purchase_order_id;
+        if (!$purchaseOrderId) {
+            throw new \Exception('Payment order is not linked to any purchase order.');
+        }
+        $externalInvoice = \App\Models\ExternalInvoice::where('purchase_order_id', $purchaseOrderId)
+            ->whereNull('deleted_at')
+            ->first();
+        if (!$externalInvoice) {
+            throw new \Exception('No external invoice found for this payment order.');
+        }
         $debitAmount = $data['debit_amount'];
-        $invoice = \App\Models\ExternalInvoice::where('invoice_id', $data['invoice_number'])->first();
-        if (!$invoice) {
-            throw new \Exception('Invoice number not found in external_invoices table.');
-        }
-        $total = $invoice->amount + $invoice->vat_amount;
+        $total = $externalInvoice->amount + $externalInvoice->vat_amount;
         $proportion = $debitAmount / $total;
-        $basePaid = round($invoice->amount * $proportion, 2);
-        $vatPaid = round($invoice->vat_amount * $proportion, 2);
+        $basePaid = round($externalInvoice->amount * $proportion, 2);
+        $vatPaid = round($externalInvoice->vat_amount * $proportion, 2);
         $totalDebitAmount = $basePaid + $vatPaid;
-
         // Update paid_amount and status
-        $invoice->paid_amount = $invoice->paid_amount + $totalDebitAmount;
-        $invoiceTotal = $invoice->amount + $invoice->vat_amount;
-        if ($invoice->paid_amount < $invoiceTotal) {
-            $invoice->status = 'Partially Paid';
+        $externalInvoice->paid_amount = $externalInvoice->paid_amount + $totalDebitAmount;
+        $invoiceTotal = $externalInvoice->amount + $externalInvoice->vat_amount;
+        if ($externalInvoice->paid_amount < $invoiceTotal) {
+            $externalInvoice->status = 'Partially Paid';
         } else {
-            $invoice->status = 'Paid';
+            $externalInvoice->status = 'Paid';
         }
-        $invoice->save();
+        $externalInvoice->save();
+        // Optionally, update payment order status as well
+        if ($paymentOrder->paid_amount + $debitAmount < $paymentOrder->total_amount + $paymentOrder->vat_amount) {
+            $paymentOrder->status = 'Partially Paid';
+        } else {
+            $paymentOrder->status = 'Paid';
+        }
+        $paymentOrder->paid_amount += $debitAmount;
+        $paymentOrder->save();
 
-        // Update the account with the total debit amount (only debit_amount, not credit_amount)
-        $account->update([
-            'debit_amount' => $totalDebitAmount,
-            'invoice_number' => $data['invoice_number'],
-            'attachment' => $data['attachment'] ?? null,
-            'original_name' => $data['original_name'] ?? null,
-        ]);
-
-        // Record transaction flow
-        TransactionFlowService::recordTransactionFlow(
+        // Record transaction flow for Liabilities (id 2)
+        \App\Services\TransactionFlowService::recordTransactionFlow(
             2, // account_id
             'debit',
-            $totalDebitAmount,
+            $debitAmount,
             'liabilities_payment',
-            $invoice->id,
+            $externalInvoice->id,
             [],
-            "Liabilities payment for invoice {$data['invoice_number']} (Amount: {$debitAmount}, Tax: {$vatPaid})",
-            $data['invoice_number'],
+            "Liabilities payment for payment order {$paymentOrderNumber} (Amount: {$basePaid}, Tax: {$vatPaid})",
+            $paymentOrderNumber,
             now()->toDateString(),
             $data['attachment'] ?? null,
             $data['original_name'] ?? null
         );
 
-        // Recalculate total debits for the account and update the field
-        $totalDebits = \App\Services\TransactionFlowService::sumDebitsForAccount($account->id);
-        $account->update([
-            'debit_amount' => $totalDebits,
-        ]);
+        // Record transaction flow for VAT Paid (id 8)
+        if ($vatPaid > 0) {
+            \App\Services\TransactionFlowService::recordTransactionFlow(
+                8, // VAT Paid (on purchases)
+                'credit',
+                $vatPaid,
+                'vat_paid',
+                $externalInvoice->id,
+                [],
+                "VAT paid for payment order {$paymentOrderNumber} (Tax: {$vatPaid})",
+                $paymentOrderNumber,
+                now()->toDateString(),
+                $data['attachment'] ?? null,
+                $data['original_name'] ?? null
+            );
+            // Update VAT Paid account's credit_amount
+            $vatAccount = \App\Models\Account::find(8);
+            if ($vatAccount) {
+                $vatAccount->credit_amount += $vatPaid;
+                $vatAccount->save();
+            }
+        }
 
-        Log::info('=== LIABILITIES ACCOUNT DEBIT COMPLETED ===', [
-            'account_id' => $account->id,
-            'account_name' => $account->name,
-            'debit_amount' => $debitAmount,
-            'vat_amount' => $vatPaid,
-            'total_debit_amount' => $totalDebitAmount,
-            'invoice_number' => $data['invoice_number'],
-            'invoice_id' => $invoice->id,
-            'new_total_debit_amount' => $totalDebits
-        ]);
+        // Update total debit for Liabilities account (id 2)
+        $liabilitiesAccount = \App\Models\Account::find(2);
+        if ($liabilitiesAccount) {
+            $totalDebits = \App\Services\TransactionFlowService::sumDebitsForAccount(2);
+            $liabilitiesAccount->debit_amount = $totalDebits;
+            $liabilitiesAccount->save();
+        }
     }
 
     /**
@@ -420,10 +448,10 @@ class AccountController extends Controller
                 throw new \Exception("Invoice with number '{$invoiceNumber}' not found.");
             }
 
-            // Validate invoice status - only allow payment for Pending or Partially Paid invoices
-            $allowedStatuses = ['Pending', 'Partially Paid'];
+            // Validate invoice status - only allow payment for Approved, Partially Paid, or Overdue invoices
+            $allowedStatuses = ['Approved', 'Partially Paid', 'Overdue'];
             if (!in_array($invoice->status, $allowedStatuses)) {
-                throw new \Exception("Invoice '{$invoiceNumber}' has status '{$invoice->status}'. Only invoices with status 'Pending' or 'Partially Paid' can receive payments.");
+                throw new \Exception("Invoice '{$invoiceNumber}' has status '{$invoice->status}'. Only invoices with status 'Approved', 'Partially Paid', or 'Overdue' can receive payments.");
             }
 
             // Calculate new paid amount

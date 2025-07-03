@@ -7,6 +7,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import PaymentOrderPDF from "./PaymentOrderPDF";
+import PaymentOrderSumAttachment from "./PaymentOrderSumAttachment";
 
 const PaymentOrderTable = () => {
     const [orders, setOrders] = useState([]);
@@ -214,9 +215,7 @@ const PaymentOrderTable = () => {
                         <th className="py-3 px-4">Amount</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 text-center">Attachment</th>
-                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
-                            Actions
-                        </th>
+                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">Payment Order</th>
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
@@ -253,27 +252,18 @@ const PaymentOrderTable = () => {
                                         "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {order.total_amount}
+                                    {(() => {
+                                        const amount = Number(order.total_amount) || 0;
+                                        const vat = Number(order.vat_amount) || 0;
+                                        const sum = amount + vat;
+                                        return sum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                    })()}
                                 </td>
                                 <td className="py-3 px-4">
                                     <StatusBadge status={order.status} />
                                 </td>
                                 <td className="py-3 px-4 text-center text-[#009FDC] hover:text-blue-800 cursor-pointer">
-                                    {order.uploaded_attachment ? (
-                                        <a
-                                            href="#"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                viewAttachment(order.uploaded_attachment);
-                                                console.log("Opening uploaded attachment:", order.uploaded_attachment);
-                                            }}
-                                            title="Uploaded Document"
-                                        >
-                                            <FontAwesomeIcon icon={faPaperclip} />
-                                        </a>
-                                    ) : (
-                                        "N/A"
-                                    )}
+                                    <PaymentOrderSumAttachment paymentOrderNumber={order.payment_order_number} />
                                 </td>
                                 <td className="py-3 px-4 flex justify-center items-center text-center space-x-3">
                                     {/* <Link className="text-[#9B9DA2] hover:text-gray-500">

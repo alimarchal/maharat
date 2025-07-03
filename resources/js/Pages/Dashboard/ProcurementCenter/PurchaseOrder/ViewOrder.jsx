@@ -326,9 +326,12 @@ export default function PurchaseOrdersTable() {
                                             )}
                                         </td>
                                         <td className="px-3 py-4">
-                                            {Number(
-                                                order.amount || 0
-                                            ).toLocaleString()}
+                                            {(() => {
+                                                const amount = Number(order.amount) || 0;
+                                                const vat = Number(order.vat_amount) || 0;
+                                                const sum = amount + vat;
+                                                return sum.toLocaleString();
+                                            })()}
                                         </td>
                                         {/* <td className="px-3 py-4 text-center">
                                             <div className="flex justify-center">

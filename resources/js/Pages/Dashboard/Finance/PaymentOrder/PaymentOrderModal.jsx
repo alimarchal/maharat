@@ -14,6 +14,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
         due_date: "",
         payment_type: "",
         total_amount: selectedOrder?.amount,
+        vat_amount: selectedOrder?.vat_amount || 0,
         paid_amount: 0,
         status: "Draft",
         attachment: null,
@@ -216,6 +217,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                     due_date: dueDate,
                     payment_type: formData.payment_type,
                     total_amount: parseFloat(formData.total_amount).toFixed(2),
+                    vat_amount: parseFloat(formData.vat_amount).toFixed(2),
                     paid_amount: parseFloat(formData.paid_amount).toFixed(2),
                     status: 'Draft', // Always set to Draft on creation
                 };
@@ -398,6 +400,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                 ...prev,
                 issue_date: today,
                 total_amount: selectedOrder?.amount || 0,
+                vat_amount: selectedOrder?.vat_amount || 0,
             }));
         }
     }, [isOpen, selectedOrder]);
@@ -439,30 +442,34 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                             />
                         </div>
 
-                        {/* Payment Type */}
+                        {/* Payment Type (scrollable dropdown) */}
                         <div className="w-full">
-                            <SelectFloating
-                                label="Payment Type"
-                                name="payment_type"
-                                value={formData.payment_type}
-                                onChange={handleChange}
-                                options={[
-                                    { id: "Cash", label: "Cash" },
-                                    { id: "Credit upto 30 days", label: "Credit upto 30 days" },
-                                    { id: "Credit upto 60 days", label: "Credit upto 60 days" },
-                                    { id: "Credit upto 90 days", label: "Credit upto 90 days" },
-                                    { id: "Credit upto 120 days", label: "Credit upto 120 days" },
-                                ]}
-                                error={errors.payment_type}
-                            />
-                            {errors.payment_type && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.payment_type}
-                                </p>
-                            )}
+                            <div className="relative w-full">
+                                <SelectFloating
+                                    label="Payment Type"
+                                    name="payment_type"
+                                    value={formData.payment_type}
+                                    onChange={handleChange}
+                                    options={[
+                                        { id: "Cash", label: "Cash" },
+                                        { id: "Credit upto 30 days", label: "Credit upto 30 days" },
+                                        { id: "Credit upto 60 days", label: "Credit upto 60 days" },
+                                        { id: "Credit upto 90 days", label: "Credit upto 90 days" },
+                                        { id: "Credit upto 120 days", label: "Credit upto 120 days" },
+                                        // Add more options here if needed
+                                    ]}
+                                    error={errors.payment_type}
+                                    dropdownClassName="max-h-40 overflow-y-auto"
+                                />
+                                {errors.payment_type && (
+                                    <p className="text-red-500 text-sm mt-1">
+                                        {errors.payment_type}
+                                    </p>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Total Amount */}
+                        {/* Amount (readOnly, white background) */}
                         <div className="w-full">
                             <div className="relative w-full">
                                 <input
@@ -471,14 +478,14 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                     name="total_amount"
                                     value={formData.total_amount}
                                     onChange={handleChange}
-                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-gray-100 appearance-none focus:outline-none"
+                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none"
                                     readOnly
                                 />
                                 <label
                                     className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
-                                        ${"-top-2 left-2 text-base text-[#009FDC] px-1"}`}
+                                        {"-top-2 left-2 text-base text-[#009FDC] px-1"}`}
                                 >
-                                    Total Amount
+                                    Amount
                                 </label>
                                 {errors.total_amount && (
                                     <p className="text-red-500 text-sm mt-1">
@@ -488,60 +495,27 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                             </div>
                         </div>
 
-                        {/* Paid Amount */}
+                        {/* VAT Amount (readOnly, white background) */}
                         <div className="w-full">
                             <div className="relative w-full">
                                 <input
                                     type="number"
-                                    min="0"
-                                    max={formData.total_amount}
-                                    name="paid_amount"
-                                    value={formData.paid_amount}
-                                    onChange={handleChange}
-                                    className={`peer border p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC] ${
-                                        errors.paid_amount
-                                            ? "border-red-500"
-                                            : "border-gray-300"
-                                    }`}
-                                />
-                                <label
-                                    className={`absolute left-3 px-1 bg-white text-base transition-all
-                                        ${"-top-2 left-2 text-base px-1"} ${
-                                        errors.paid_amount
-                                            ? "text-red-500"
-                                            : "text-[#009FDC]"
-                                    }`}
-                                >
-                                    Paid Amount
-                                </label>
-                                {errors.paid_amount && (
-                                    <p className="text-red-500 text-sm mt-1">
-                                        {errors.paid_amount}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Balance Amount */}
-                        <div className="w-full">
-                            <div className="relative w-full">
-                                <input
-                                    type="number"
-                                    name="balance"
-                                    value={balance.toFixed(2)}
-                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-gray-100 appearance-none focus:outline-none"
+                                    name="vat_amount"
+                                    value={formData.vat_amount}
+                                    className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none"
                                     readOnly
                                 />
                                 <label
                                     className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
-                                        ${"-top-2 left-2 text-base text-[#009FDC] px-1"}`}
+                                        {"-top-2 left-2 text-base text-[#009FDC] px-1"}`}
                                 >
-                                    Balance
+                                    VAT Amount
                                 </label>
                             </div>
                         </div>
 
-                        {/* Attachment */}
+                        {/* Attachment (commented out) */}
+                        {/**
                         <div className="w-full">
                             <label className="block text-sm font-medium text-gray-700 mb-1 text-center">
                                 Attachment
@@ -576,6 +550,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                 </p>
                             )}
                         </div>
+                        */}
                     </div>
 
                     {/* Error Messages */}

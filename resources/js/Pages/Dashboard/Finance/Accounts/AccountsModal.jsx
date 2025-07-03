@@ -32,6 +32,10 @@ const AccountsModal = ({
     const [tempFile, setTempFile] = useState(null);
     const [uploadError, setUploadError] = useState("");
     const fileInputRef = useRef(null);
+    const [eligiblePaymentOrders, setEligiblePaymentOrders] = useState([]);
+    const [loadingPaymentOrders, setLoadingPaymentOrders] = useState(false);
+    const [eligibleMaharatInvoices, setEligibleMaharatInvoices] = useState([]);
+    const [loadingMaharatInvoices, setLoadingMaharatInvoices] = useState(false);
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -51,6 +55,77 @@ const AccountsModal = ({
                         invoice_number: account.invoice_number || "",
                     };
                     setFormData(newFormData);
+                    // Fetch eligible payment orders for liabilities
+                    if (account.id === 2) {
+                        setLoadingPaymentOrders(true);
+                        try {
+                            const res = await axios.get("/api/v1/payment-orders?status=Approved,Partially Paid,Overdue");
+                            const paymentOrders = (res.data.data || []).filter(po =>
+                                ["Approved", "Partially Paid", "Overdue"].includes(po.status) && po.purchase_order_id !== null
+                            );
+                            // For each payment order, fetch the external invoice and calculate unpaid amount
+                            const paymentOrderOptions = [];
+                            for (const po of paymentOrders) {
+                                let unpaid = 0;
+                                let hasInvoice = false;
+                                try {
+                                    const invRes = await axios.get(`/api/v1/external-invoices?purchase_order_id=${po.purchase_order_id}`);
+                                    const invoice = invRes.data.data && invRes.data.data.length > 0 ? invRes.data.data[0] : null;
+                                    if (invoice) {
+                                        hasInvoice = true;
+                                        const amount = Number(invoice.amount) || 0;
+                                        const vat = Number(invoice.vat_amount) || 0;
+                                        const paid = Number(invoice.paid_amount) || 0;
+                                        unpaid = amount + vat - paid;
+                                    }
+                                } catch (e) {
+                                    hasInvoice = false;
+                                }
+                                if (hasInvoice) {
+                                    paymentOrderOptions.push({
+                                        id: po.payment_order_number,
+                                        label: (
+                                            <span>
+                                                {po.payment_order_number} <span className="text-xs font-bold text-red-600">(UnPaid Amount: {unpaid.toFixed(2)})</span>
+                                            </span>
+                                        ),
+                                        value: po.payment_order_number,
+                                    });
+                                }
+                            }
+                            setEligiblePaymentOrders(paymentOrderOptions);
+                        } catch (e) {
+                            setEligiblePaymentOrders([]);
+                        }
+                        setLoadingPaymentOrders(false);
+                    }
+                    // Fetch eligible Maharat invoices for Cash (id 12)
+                    if (account.id === 12) {
+                        setLoadingMaharatInvoices(true);
+                        try {
+                            const res = await axios.get("/api/v1/invoices?status=Approved,Partially Paid,Overdue");
+                            const invoices = (res.data.data || [])
+                                .filter(inv => ["Approved", "Partially Paid", "Overdue"].includes(inv.status))
+                                .map(inv => {
+                                    const amount = Number(inv.total_amount || inv.amount || 0);
+                                    const paid = Number(inv.paid_amount || 0);
+                                    const unpaid = amount - paid;
+                                    return {
+                                        id: inv.invoice_number,
+                                        label: (
+                                            <span>
+                                                {inv.invoice_number} <span className="text-xs font-bold text-red-600">(UnPaid Amount: {unpaid.toFixed(2)})</span>
+                                            </span>
+                                        ),
+                                        value: inv.invoice_number
+                                    };
+                                });
+                            setEligibleMaharatInvoices(invoices);
+                        } catch (e) {
+                            setEligibleMaharatInvoices([]);
+                        }
+                        setLoadingMaharatInvoices(false);
+                    }
                 } else {
                     setFormData({
                         name: "",
@@ -63,6 +138,8 @@ const AccountsModal = ({
                         debit_amount: "",
                         invoice_number: "",
                     });
+                    setEligiblePaymentOrders([]);
+                    setEligibleMaharatInvoices([]);
                 }
                 setTempFile(null); // Reset file on modal open
                 setIsLoading(false);
@@ -257,6 +334,10 @@ const AccountsModal = ({
         setIsSaving(true);
         setErrors({});
         setUploadError("");
+        // Debug log for invoice_number value
+        if (isEdit && account && account.id === 2) {
+            console.log("Submitting invoice_number value:", formData.invoice_number);
+        }
 
         const validationErrors = {};
         if (!formData.name) validationErrors.name = "Name is required";
@@ -592,14 +673,40 @@ const AccountsModal = ({
                         />
                         {/* Reference Number: Hide in edit mode for id == 1 */}
                         {!(isEdit && account && account.id === 1) && (
-                            <InputFloating
-                                label={"Reference Number"}
-                                name="invoice_number"
-                                value={formData.invoice_number}
-                                onChange={handleChange}
-                                error={errors.invoice_number}
-                                required={isEdit && account && account.id === 2}
-                            />
+                            isEdit && account && account.id === 2 ? (
+                                <SelectFloating
+                                    label="Reference Number"
+                                    name="invoice_number"
+                                    value={formData.invoice_number}
+                                    onChange={handleChange}
+                                    options={eligiblePaymentOrders.length > 0 ? eligiblePaymentOrders : [{ id: '', label: 'No payment orders available', value: '', disabled: true }]}
+                                    loading={loadingPaymentOrders}
+                                    placeholder="Select Payment Order"
+                                    disabled={eligiblePaymentOrders.length === 0}
+                                    allowCustomValue={false} // Enforce dropdown-only
+                                />
+                            ) : isEdit && account && account.id === 12 ? (
+                                <SelectFloating
+                                    label="Reference Number"
+                                    name="invoice_number"
+                                    value={formData.invoice_number}
+                                    onChange={handleChange}
+                                    options={eligibleMaharatInvoices.length > 0 ? eligibleMaharatInvoices : [{ id: '', label: 'No Maharat invoices available', value: '', disabled: true }]}
+                                    loading={loadingMaharatInvoices}
+                                    placeholder="Select Maharat Invoice"
+                                    disabled={eligibleMaharatInvoices.length === 0}
+                                    allowCustomValue={false}
+                                />
+                            ) : (
+                                <InputFloating
+                                    label={"Reference Number"}
+                                    name="invoice_number"
+                                    value={formData.invoice_number}
+                                    onChange={handleChange}
+                                    error={errors.invoice_number}
+                                    required={isEdit && account && account.id === 2}
+                                />
+                            )
                         )}
                         {/* Credit and Debit Amount: Show both for id == 1 in edit mode, mutual exclusion logic */}
                         {(isEdit && account && account.id === 1) ? (

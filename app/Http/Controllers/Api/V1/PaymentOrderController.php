@@ -17,6 +17,7 @@ use Spatie\QueryBuilder\QueryBuilder;
 use Spatie\QueryBuilder\AllowedFilter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class PaymentOrderController extends Controller
 {
@@ -327,5 +328,29 @@ class PaymentOrderController extends Controller
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * Return a combined PDF of all attachments for a payment order (account_id == 2, reference_number == payment_order_number)
+     */
+    public function combinedAttachment($payment_order_number)
+    {
+        // Find all transaction_flow records with account_id == 2 and reference_number == payment_order_number
+        $flows = DB::table('transactions_flow')
+            ->where('account_id', 2)
+            ->where('reference_number', $payment_order_number)
+            ->whereNotNull('attachment')
+            ->pluck('attachment');
+
+        // TODO: Merge all PDF files in $flows into a single PDF and return its URL
+        // For now, just return the list of found attachments
+        $files = $flows->map(function($path) {
+            return Storage::disk('public')->url($path);
+        });
+
+        return response()->json([
+            'attachments' => $files,
+            'message' => 'TODO: Merge these PDFs and return a single file.'
+        ]);
     }
 }

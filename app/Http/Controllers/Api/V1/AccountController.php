@@ -95,87 +95,162 @@ class AccountController extends Controller
      */
     private function handleLiabilitiesAccountUpdate(Request $request, Account $account, float $originalCreditAmount): JsonResponse
     {
+        \Log::info('Entered handleLiabilitiesAccountUpdate');
         $data = $request->validated();
-        
-        // For Liabilities account, only allow debit operations (reducing liabilities)
-        if (isset($data['credit_amount']) && $data['credit_amount'] > 0) {
+        \Log::info('LiabilitiesAccountUpdate request data', $data);
+        try {
+            // Ensure invoice_number is trimmed and treat as payment_order_number
+            $paymentOrderNumber = trim($data['invoice_number']);
+            // Debug log: incoming payment_order_number and all payment_order_numbers
+            \Log::info('Looking up payment order', [
+                'incoming_payment_order_number' => $paymentOrderNumber,
+                'all_payment_order_numbers' => \App\Models\PaymentOrder::pluck('payment_order_number','id')->toArray()
+            ]);
+            // Find payment order by payment_order_number (trimmed, case-insensitive)
+            $paymentOrder = \App\Models\PaymentOrder::whereRaw('LOWER(TRIM(payment_order_number)) = ?', [strtolower($paymentOrderNumber)])->first();
+            if (!$paymentOrder) {
+                \Log::error('Payment order not found', ['payment_order_number' => $paymentOrderNumber]);
+                \Log::info('Flushing logs after payment order not found error');
+                return response()->json([
+                    'message' => 'Payment order number not found.',
+                    'error' => 'Invalid payment order number',
+                    'searched_payment_order_number' => $paymentOrderNumber,
+                    'all_payment_orders' => \App\Models\PaymentOrder::pluck('payment_order_number','id')
+                ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+            $purchaseOrderId = (int) $paymentOrder->purchase_order_id;
+            if (!$purchaseOrderId) {
+                \Log::error('Payment order not linked to any purchase order', [
+                    'payment_order_number' => $paymentOrderNumber,
+                    'payment_order_id' => $paymentOrder->id
+                ]);
+                \Log::info('Flushing logs after purchase_order_id null error');
+                return response()->json([
+                    'message' => 'This payment order is not linked to any purchase order.',
+                    'error' => 'purchase_order_id is NULL for payment order: ' . $paymentOrderNumber,
+                    'payment_order_id' => $paymentOrder->id,
+                    'payment_order_number' => $paymentOrderNumber
+                ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+            \Log::info('Selected payment order', [
+                'payment_order_number' => $paymentOrderNumber,
+                'purchase_order_id' => $purchaseOrderId,
+                'payment_order_id' => $paymentOrder->id
+            ]);
+            // Find external invoice by purchase_order_id (only non-deleted, force int)
+            $externalInvoice = \App\Models\ExternalInvoice::where('purchase_order_id', $purchaseOrderId)
+                ->whereNull('deleted_at')
+                ->first();
+            \Log::info('External invoice lookup result', [
+                'found' => $externalInvoice ? true : false,
+                'purchase_order_id' => $purchaseOrderId,
+                'all_external_invoices' => \App\Models\ExternalInvoice::pluck('purchase_order_id','id')
+            ]);
+            if (!$externalInvoice) {
+                \Log::error('No external invoice found for payment order', [
+                    'payment_order_number' => $paymentOrderNumber,
+                    'purchase_order_id' => $purchaseOrderId
+                ]);
+                \Log::info('Flushing logs after no external invoice found error');
+                return response()->json([
+                    'message' => 'No external invoice found for this payment order.',
+                    'error' => 'No external invoice found for purchase_order_id: ' . $purchaseOrderId,
+                    'searched_purchase_order_id' => $purchaseOrderId,
+                    'all_external_invoices' => \App\Models\ExternalInvoice::pluck('purchase_order_id','id')
+                ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+        } catch (\Throwable $e) {
+            \Log::error('Exception in handleLiabilitiesAccountUpdate', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $data
+            ]);
+            \Log::info('Flushing logs after exception');
             return response()->json([
-                'message' => 'Cannot credit Liabilities account. Only debit operations are allowed.',
-                'error' => 'Credit operations are disabled for Liabilities account'
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+                'message' => 'Exception occurred in handleLiabilitiesAccountUpdate',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        // Check if debit amount is provided
-        if (!isset($data['debit_amount']) || $data['debit_amount'] <= 0) {
-            return response()->json([
-                'message' => 'Debit amount is required and must be greater than 0 for Liabilities account.',
-                'error' => 'Invalid debit amount'
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        // Validate invoice number exists in invoices table
-        if (!isset($data['invoice_number']) || empty($data['invoice_number'])) {
-            return response()->json([
-                'message' => 'Invoice number is required for Liabilities account debit operations.',
-                'error' => 'Invoice number required'
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        // Check if invoice exists in invoices table
-        $invoice = \App\Models\Invoice::where('invoice_number', $data['invoice_number'])->first();
-        if (!$invoice) {
-            return response()->json([
-                'message' => 'Invoice number not found in invoices table.',
-                'error' => 'Invalid invoice number'
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
         $debitAmount = $data['debit_amount'];
-        
-        // Instead, use TransactionFlowService to get proportional split
-        $total = $invoice->amount + $invoice->vat_amount;
+        $amount = floatval($externalInvoice->amount);
+        $vat = floatval($externalInvoice->vat_amount);
+        $paid = floatval($externalInvoice->paid_amount);
+        $unpaid = $amount + $vat - $paid;
+        if ($debitAmount > $unpaid) {
+            return response()->json([
+                'message' => 'Debit amount cannot exceed unpaid amount for this invoice.',
+                'error' => 'Debit exceeds unpaid amount'
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        // Proportional split
+        $total = $amount + $vat;
         $proportion = $debitAmount / $total;
-        $basePaid = round($invoice->amount * $proportion, 2);
-        $vatPaid = round($invoice->vat_amount * $proportion, 2);
-        $totalDebitAmount = $basePaid + $vatPaid;
-
+        $taxPaid = round($vat * $proportion, 2);
+        $netPaid = round($debitAmount - $taxPaid, 2);
         // Update the account with the total debit amount
         $account->update([
-            'debit_amount' => $totalDebitAmount,
+            'debit_amount' => $account->debit_amount + $debitAmount,
             'invoice_number' => $data['invoice_number'],
             'attachment' => $data['attachment'] ?? null,
             'original_name' => $data['original_name'] ?? null,
         ]);
-
-        // Record transaction flow
-        TransactionFlowService::recordTransactionFlow(
+        // Record transaction flow for Liabilities (id 2)
+        \App\Services\TransactionFlowService::recordTransactionFlow(
             2, // account_id
             'debit',
-            $totalDebitAmount,
+            $debitAmount,
             'liabilities_payment',
-            $invoice->id,
+            $externalInvoice->id,
             [],
-            "Liabilities payment for invoice {$data['invoice_number']} (Amount: {$debitAmount}, Tax: {$vatPaid})",
+            "Liabilities payment for invoice {$externalInvoice->invoice_id} (Amount: {$netPaid}, Tax: {$taxPaid})",
             $data['invoice_number'],
             now()->toDateString(),
             $data['attachment'] ?? null,
             $data['original_name'] ?? null
         );
-
-        Log::info('=== LIABILITIES ACCOUNT DEBIT COMPLETED ===', [
+        // Record transaction flow for VAT Paid (id 8)
+        if ($taxPaid > 0) {
+            \App\Services\TransactionFlowService::recordTransactionFlow(
+                8, // VAT Paid (on purchases)
+                'credit',
+                $taxPaid,
+                'vat_paid',
+                $externalInvoice->id,
+                [],
+                "VAT paid for invoice {$externalInvoice->invoice_id} (Tax: {$taxPaid})",
+                $data['invoice_number'],
+                now()->toDateString(),
+                $data['attachment'] ?? null,
+                $data['original_name'] ?? null
+            );
+        }
+        // Update paid_amount in payment_order and external_invoice
+        $paymentOrder->paid_amount += $debitAmount;
+        $paymentOrder->save();
+        $externalInvoice->paid_amount += $debitAmount;
+        $externalInvoice->save();
+        // Update status in payment_order
+        $newPaid = $paymentOrder->paid_amount;
+        $totalDue = floatval($paymentOrder->total_amount) + floatval($paymentOrder->vat_amount);
+        if ($newPaid >= $totalDue) {
+            $paymentOrder->status = 'Paid';
+        } else {
+            $paymentOrder->status = 'Partially Paid';
+        }
+        $paymentOrder->save();
+        \Log::info('=== LIABILITIES ACCOUNT DEBIT COMPLETED (ENHANCED) ===', [
             'account_id' => $account->id,
             'account_name' => $account->name,
             'debit_amount' => $debitAmount,
-            'vat_amount' => $vatPaid,
-            'total_debit_amount' => $totalDebitAmount,
+            'tax_paid' => $taxPaid,
+            'net_paid' => $netPaid,
             'invoice_number' => $data['invoice_number'],
-            'invoice_id' => $invoice->id
+            'external_invoice_id' => $externalInvoice->id,
+            'payment_order_id' => $paymentOrder->id
         ]);
-
         DB::commit();
-
         return response()->json([
-            'message' => 'Liabilities account updated successfully. Debit amount: ' . $debitAmount . ', VAT (15%): ' . $vatPaid . ', Total: ' . $totalDebitAmount,
+            'message' => 'Liabilities account updated successfully. Debit amount: ' . $debitAmount . ', Tax: ' . $taxPaid . ', Net: ' . $netPaid,
             'data' => new AccountResource($account->load(['costCenter', 'creator', 'updater']))
         ], Response::HTTP_OK);
     }

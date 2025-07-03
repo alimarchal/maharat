@@ -80,7 +80,7 @@ const SelectFloating = ({ label, name, value, onChange, options, onScroll, loadi
             
             {isOpen && (
                 <div 
-                    className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                    className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-[120px] overflow-y-auto"
                     onScroll={handleScroll}
                 >
                     <div className="py-1">
