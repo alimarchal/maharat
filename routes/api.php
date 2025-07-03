@@ -335,6 +335,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/payment-orders/{id}/upload-document', [PaymentOrderController::class, 'uploadDocument']);
     Route::post('/payment-orders/{id}/save-attachment', [PaymentOrderController::class, 'saveAttachment']);
     Route::get('/payment-orders/{id}/raw-data', [PaymentOrderController::class, 'rawData']);
+    Route::get('payment-orders/{payment_order_number}/combined-attachment', [\App\Http\Controllers\Api\V1\PaymentOrderController::class, 'combinedAttachment']);
     // Payment Order Logs routes
     Route::apiResource('payment-order-logs', PaymentOrderLogController::class);
 

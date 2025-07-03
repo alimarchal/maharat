@@ -172,11 +172,14 @@ const Quotations = () => {
                                         {quotation.company_name || "N/A"}
                                     </td>
                                     <td className="px-3 py-4">
-                                        {Number(
-                                            quotation.total_amount || 0
-                                        ).toLocaleString("en-US", {
-                                            maximumFractionDigits: 0,
-                                        })}
+                                        {(() => {
+                                            const total = Number(quotation.total_amount) || 0;
+                                            const vat = Number(quotation.vat_amount) || 0;
+                                            const sum = total + vat;
+                                            return sum.toLocaleString("en-US", {
+                                                maximumFractionDigits: 0,
+                                            });
+                                        })()}
                                     </td>
                                     <td className="px-3 py-4">
                                         {typeof quotation.status?.name === "object" ? (

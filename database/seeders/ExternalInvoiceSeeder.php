@@ -16,7 +16,7 @@ class ExternalInvoiceSeeder extends Seeder
         $invoices = [
             [
                 'user_id' => 1,
-                'purchase_order_id' => 201,
+                'purchase_order_id' => 1,
                 'supplier_id' => 1,
                 'invoice_id' => 'EXT-INV-0001',
                 'amount' => 5000.00,
@@ -27,7 +27,7 @@ class ExternalInvoiceSeeder extends Seeder
             ],
             [
                 'user_id' => 2,
-                'purchase_order_id' => 202,
+                'purchase_order_id' => 2,
                 'supplier_id' => 2,
                 'invoice_id' => 'EXT-INV-0002',
                 'amount' => 7500.00,
@@ -38,7 +38,7 @@ class ExternalInvoiceSeeder extends Seeder
             ],
             [
                 'user_id' => 3,
-                'purchase_order_id' => 203,
+                'purchase_order_id' => 3,
                 'supplier_id' => 3,
                 'invoice_id' => 'EXT-INV-0003',
                 'amount' => 3200.00,

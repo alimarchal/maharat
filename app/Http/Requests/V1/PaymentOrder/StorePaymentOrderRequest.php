@@ -23,6 +23,7 @@ class StorePaymentOrderRequest extends FormRequest
             'payment_type' => ['nullable', 'string'],
             'attachment' => ['required', 'string'],
             'total_amount' => ['nullable', 'numeric'],
+            'vat_amount' => ['nullable', 'numeric'],
             'paid_amount' => ['nullable', 'numeric'],
             'status' => ['nullable', 'string'],
         ];

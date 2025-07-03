@@ -17,18 +17,28 @@ const CreatePaymentOrdersTable = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
 
+    const [externalInvoicePOIds, setExternalInvoicePOIds] = useState([]);
+
     useEffect(() => {
         const fetchPurchaseOrdersList = async () => {
             try {
-                const response = await fetch("/api/v1/purchase-orders?has_payment_order=false&filter[status]=Approved");
-                const res = await response.json();
-                if (response.ok) {
-                    setPurchaseOrders(res.data || []);
+                const [poRes, extInvRes] = await Promise.all([
+                    fetch("/api/v1/purchase-orders?has_payment_order=false&filter[status]=Approved"),
+                    fetch("/api/v1/external-invoices")
+                ]);
+                const poData = await poRes.json();
+                const extInvData = await extInvRes.json();
+
+                if (poRes.ok && extInvRes.ok) {
+                    setPurchaseOrders(poData.data || []);
+                    // Extract purchase_order_id from each external invoice
+                    const poIds = (extInvData.data || []).map(inv => inv.purchase_order_id);
+                    setExternalInvoicePOIds(poIds);
                 } else {
-                    throw new Error("Failed to fetch purchase orders list");
+                    throw new Error("Failed to fetch purchase orders or external invoices");
                 }
             } catch (err) {
-                console.error("Error loading purchase orders list:", err);
+                console.error("Error loading purchase orders or external invoices:", err);
             }
         };
 
@@ -94,10 +104,13 @@ const CreatePaymentOrdersTable = () => {
                         name="purchaseOrder"
                         value={selectedPurchaseOrder}
                         onChange={handlePurchaseOrderChange}
-                        options={purchaseOrders.map((order) => ({
-                            id: order.id,
-                            label: order.purchase_order_no || `PO #${order.id}`,
-                        }))}
+                        options={purchaseOrders
+                            .filter(order => externalInvoicePOIds.includes(order.id))
+                            .map((order) => ({
+                                id: order.id,
+                                label: order.purchase_order_no || `PO #${order.id}`,
+                            }))
+                        }
                     />
                 </div>
             </div>
@@ -153,7 +166,12 @@ const CreatePaymentOrdersTable = () => {
                                     {order?.supplier?.name || "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {order?.amount || "0.00"}
+                                    {(() => {
+                                        const amount = Number(order?.amount) || 0;
+                                        const vat = Number(order?.vat_amount) || 0;
+                                        const sum = amount + vat;
+                                        return sum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                    })()}
                                 </td>
                                 <td className="py-3 px-4 text-center">
                                     {order.attachment ? (

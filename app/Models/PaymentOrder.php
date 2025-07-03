@@ -23,6 +23,7 @@ class PaymentOrder extends Model
         'attachment',
         'uploaded_attachment',
         'total_amount',
+        'vat_amount',
         'paid_amount',
         'status'
     ];
