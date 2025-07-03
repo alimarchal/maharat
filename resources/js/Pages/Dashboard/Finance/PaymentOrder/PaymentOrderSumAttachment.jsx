@@ -14,8 +14,21 @@ const PaymentOrderSumAttachment = ({ paymentOrderNumber }) => {
             const res = await fetch(`/api/v1/payment-orders/${paymentOrderNumber}/combined-attachment`);
             if (!res.ok) throw new Error("Failed to fetch combined attachment");
             const data = await res.json();
-            if (data && data.url) {
-                window.open(data.url, "_blank");
+            if (data && data.merged_pdf_url) {
+                // Extract the relative path from the merged_pdf_url or from the backend (preferably from uploaded_attachment if returned)
+                let relativePath = null;
+                if (data.uploaded_attachment) {
+                    relativePath = data.uploaded_attachment;
+                } else if (data.merged_pdf_url) {
+                    // Fallback: extract after /storage/
+                    const match = data.merged_pdf_url.match(/\/storage\/(.+)$/);
+                    if (match) relativePath = match[1];
+                }
+                if (relativePath) {
+                    window.open(`/storage/${relativePath}`, "_blank");
+                } else {
+                    setError("No combined PDF available");
+                }
             } else {
                 setError("No combined PDF available");
             }
