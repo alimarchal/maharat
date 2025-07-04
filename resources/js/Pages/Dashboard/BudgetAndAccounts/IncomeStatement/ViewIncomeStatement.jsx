@@ -87,9 +87,9 @@ const IncomeStatementTable = (props) => {
                 const fromDateObj = new Date(fromDate);
                 const toDateObj = new Date(toDate);
                 const formattedDateRange = `${fromDateObj.toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
                 })} - ${toDateObj.toLocaleDateString("en-US", {
                     month: "long",
                     day: "numeric",
@@ -291,7 +291,7 @@ const IncomeStatementTable = (props) => {
                             <th className="py-3 pl-10 w-1/4 rounded-tl-2xl rounded-bl-2xl text-center">Reference</th>
                             <th className="py-3 w-1/2 text-center">Account Name</th>
                             <th className="py-3 pr-16 w-1/4 rounded-tr-2xl rounded-br-2xl text-center">Total Amount</th>
-                        </tr>
+                                </tr>
                     </thead>
                     <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                         {expensesBreakdown.length > 0 ? expensesBreakdown.map((t, i) => (
@@ -383,7 +383,7 @@ const IncomeStatementTable = (props) => {
                             <th className="py-3 pl-10 w-1/4 rounded-tl-2xl rounded-bl-2xl text-center">Reference</th>
                             <th className="py-3 w-1/2 text-center">Account Name</th>
                             <th className="py-3 pr-16 w-1/4 rounded-tr-2xl rounded-br-2xl text-center">Total Amount</th>
-                        </tr>
+                                </tr>
                     </thead>
                     <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                         {vatPaidBreakdown.length > 0 ? vatPaidBreakdown.map((t, i) => (
@@ -424,80 +424,80 @@ const IncomeStatementTable = (props) => {
                 </h3>
                 {showNetAssetsSummary && (
                     <>
-                        <table className="w-full border-collapse">
-                            <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
-                                <tr>
+                <table className="w-full border-collapse">
+                    <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
+                        <tr>
                                     <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl w-[30%] text-center">
-                                        Net Assets Summary
-                                    </th>
-                                    <th className="py-3 px-4 w-[20%]">Regular Funds</th>
+                                Net Assets Summary
+                            </th>
+                            <th className="py-3 px-4 w-[20%]">Regular Funds</th>
                                     <th className="py-3 px-4 w-[20%]">Restricted Funds</th>
                                     <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl w-[30%]">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                                <tr className="border-none">
+                        </tr>
+                    </thead>
+                    <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
+                        <tr className="border-none">
                                     <td className="py-3 px-4 text-center align-middle">
-                                        Change in Net Assets
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
+                                Change in Net Assets
+                            </td>
+                            <td className="py-3 px-4 text-center">
                                         {formatNumber(netAssets.changeInNetAssets.unrestricted)}
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
+                            </td>
+                            <td className="py-3 px-4 text-center">
                                         {formatNumber(netAssets.changeInNetAssets.restricted)}
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
-                                        {formatNumber(
-                                            netAssets.changeInNetAssets.unrestricted +
-                                            netAssets.changeInNetAssets.restricted
-                                        )}
-                                    </td>
-                                </tr>
-                                <tr>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                                {formatNumber(
+                                    netAssets.changeInNetAssets.unrestricted +
+                                        netAssets.changeInNetAssets.restricted
+                                )}
+                            </td>
+                        </tr>
+                        <tr>
                                     <td className="py-3 px-4 text-center align-middle">
-                                        Net Assets, Beginning of Year
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
+                                Net Assets, Beginning of Year
+                            </td>
+                            <td className="py-3 px-4 text-center">
                                         {formatNumber(netAssets.beginningOfYear.unrestricted)}
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
+                            </td>
+                            <td className="py-3 px-4 text-center">
                                         {formatNumber(netAssets.beginningOfYear.restricted)}
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
-                                        {formatNumber(
-                                            netAssets.beginningOfYear.unrestricted +
-                                            netAssets.beginningOfYear.restricted
-                                        )}
-                                    </td>
-                                </tr>
-                                <tr className="font-bold text-xl bg-[#DCECF2] border-none">
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                                {formatNumber(
+                                    netAssets.beginningOfYear.unrestricted +
+                                        netAssets.beginningOfYear.restricted
+                                )}
+                            </td>
+                        </tr>
+                        <tr className="font-bold text-xl bg-[#DCECF2] border-none">
                                     <td className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center align-middle">
-                                        Net Assets, End of Period
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
-                                        {formatNumber(netAssets.endOfYear.unrestricted)}
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
-                                        {formatNumber(netAssets.endOfYear.restricted)}
-                                    </td>
-                                    <td className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
-                                        {netAssets.endOfYear.total !== undefined
-                                            ? formatNumber(netAssets.endOfYear.total)
-                                            : formatNumber(
-                                                netAssets.endOfYear.unrestricted +
-                                                netAssets.endOfYear.restricted
-                                            )}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div className="mt-3 text-sm text-gray-600">
+                                Net Assets, End of Period
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                                {formatNumber(netAssets.endOfYear.unrestricted)}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                                {formatNumber(netAssets.endOfYear.restricted)}
+                            </td>
+                            <td className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
+                                {netAssets.endOfYear.total !== undefined
+                                    ? formatNumber(netAssets.endOfYear.total)
+                                    : formatNumber(
+                                          netAssets.endOfYear.unrestricted +
+                                              netAssets.endOfYear.restricted
+                                      )}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div className="mt-3 text-sm text-gray-600">
                             <p><strong>Note:</strong></p>
                             <ul className="list-disc ml-6">
                                 <li><strong>Regular Funds</strong> reflects <em>paid revenue (sum of debit for Account Receivable minus expenses)</em>.</li>
                                 <li><strong>Restricted Funds</strong> reflect <em>unpaid revenue (sum of credit for Revenue/Income minus paid revenue)</em>.</li>
                             </ul>
-                        </div>
+                </div>
                     </>
                 )}
             </div>
