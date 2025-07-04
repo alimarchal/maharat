@@ -407,6 +407,15 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
         Route::get('/income-statement/revenue', 'getRevenue');
         Route::get('/income-statement/expenses', 'getExpenses');
         Route::get('/income-statement/transactions', 'getTransactions');
+        Route::get('/income-statement/vat-paid', 'getVatPaid');
+        Route::get('/income-statement/current-net-assets', 'getCurrentNetAssets');
+        Route::get('/income-statement/revenue-breakdown', 'getRevenueBreakdown');
+        Route::get('/income-statement/expenses-breakdown', 'getExpensesBreakdown');
+        Route::get('/income-statement/vat-paid-breakdown', 'getVatPaidBreakdown');
+        Route::get('/income-statement/assets-breakdown', 'getAssetsBreakdown');
+        Route::get('/income-statement/opening-net-assets', 'getOpeningNetAssets');
+        Route::get('/income-statement/paid-revenue', 'getPaidRevenue');
+        Route::get('/income-statement/total-revenue', 'getTotalRevenue');
     });
 
     Route::apiResource('assets', AssetController::class);

@@ -22,6 +22,9 @@ const IncomeStatementTable = () => {
     const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
     const [selectedExcelIncomeId, setSelectedExcelIncomeId] = useState(null);
 
+    const [vatPaid, setVatPaid] = useState(0);
+    const [currentNetAssets, setCurrentNetAssets] = useState(0);
+
     const fetchIncomeStatementData = async () => {
         if (!formData.from_date || !formData.to_date) return;
         setLoading(true);
@@ -44,8 +47,8 @@ const IncomeStatementTable = () => {
                     },
                 }
             );
-            const transactionsResponse = await axios.get(
-                "/api/v1/income-statement/transactions",
+            const vatPaidResponse = await axios.get(
+                "/api/v1/income-statement/vat-paid",
                 {
                     params: {
                         from_date: formData.from_date,
@@ -53,15 +56,25 @@ const IncomeStatementTable = () => {
                     },
                 }
             );
-            const totalRevenue =
-                parseFloat(revenueResponse.data.data.total_revenue) || 0;
-            const totalExpenses =
-                parseFloat(expensesResponse.data.data.total_expenses) || 0;
-            const previousTransactions =
-                parseFloat(transactionsResponse.data.data.total_amount) || 0;
+            const currentNetAssetsResponse = await axios.get(
+                "/api/v1/income-statement/current-net-assets",
+                {
+                    params: {
+                        from_date: formData.from_date,
+                        to_date: formData.to_date,
+                    },
+                }
+            );
+            const totalRevenue = parseFloat(revenueResponse.data.data.total_revenue) || 0;
+            const totalExpenses = parseFloat(expensesResponse.data.data.total_expenses) || 0;
+            const vatPaidValue = parseFloat(vatPaidResponse.data.data.vat_paid) || 0;
+            const currentNetAssetsValue = parseFloat(currentNetAssetsResponse.data.data.current_net_assets) || 0;
 
-            const change = totalExpenses - totalRevenue;
-            const finalNetAssets = change + previousTransactions;
+            setVatPaid(vatPaidValue);
+            setCurrentNetAssets(currentNetAssetsValue);
+
+            const netIncome = totalRevenue - totalExpenses;
+            const finalNetAssets = currentNetAssetsValue + netIncome;
 
             const fromDate = new Date(formData.from_date);
             const toDate = new Date(formData.to_date);
@@ -81,9 +94,10 @@ const IncomeStatementTable = () => {
                     month: monthPeriod,
                     total_revenue: totalRevenue.toFixed(2),
                     total_expenses: totalExpenses.toFixed(2),
-                    change: change.toFixed(2),
-                    previous: previousTransactions.toFixed(2),
+                    net_income: netIncome.toFixed(2),
+                    current_net_assets: currentNetAssetsValue.toFixed(2),
                     final_net_assets: finalNetAssets.toFixed(2),
+                    vat_paid: vatPaidValue.toFixed(2),
                 },
             ]);
             setError("");
@@ -236,9 +250,10 @@ const IncomeStatementTable = () => {
                         </th>
                         <th className="py-3 px-4">Total Revenue</th>
                         <th className="py-3 px-4">Total Expenses</th>
-                        <th className="py-3 px-4">Change</th>
-                        <th className="py-3 px-4">Previous</th>
+                        <th className="py-3 px-4">Net Income</th>
+                        <th className="py-3 px-4">Current Net Assets</th>
                         <th className="py-3 px-4">Final Net Assets</th>
+                        <th className="py-3 px-4">VAT Paid</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                             Actions
                         </th>
@@ -277,18 +292,24 @@ const IncomeStatementTable = () => {
                                     SAR
                                 </td>
                                 <td className="py-3 px-4">
-                                    {Number(statement.change).toLocaleString()}{" "}
+                                    {Number(statement.net_income).toLocaleString()}{" "}
                                     SAR
                                 </td>
                                 <td className="py-3 px-4">
                                     {Number(
-                                        statement.previous
+                                        statement.current_net_assets
                                     ).toLocaleString()}{" "}
                                     SAR
                                 </td>
                                 <td className="py-3 px-4">
                                     {Number(
                                         statement.final_net_assets
+                                    ).toLocaleString()}{" "}
+                                    SAR
+                                </td>
+                                <td className="py-3 px-4">
+                                    {Number(
+                                        statement.vat_paid
                                     ).toLocaleString()}{" "}
                                     SAR
                                 </td>
