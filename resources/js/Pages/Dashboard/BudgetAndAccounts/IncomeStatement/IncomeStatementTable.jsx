@@ -246,7 +246,7 @@ const IncomeStatementTable = () => {
                 <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                     <tr>
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
-                            Month Period
+                            Period
                         </th>
                         <th className="py-3 px-4">Total Revenue</th>
                         <th className="py-3 px-4">Total Expenses</th>
@@ -262,14 +262,14 @@ const IncomeStatementTable = () => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="7" className="text-center py-12">
+                            <td colSpan="8" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="7"
+                                colSpan="8"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -352,7 +352,7 @@ const IncomeStatementTable = () => {
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="7" className="text-center py-4">
+                            <td colSpan="8" className="text-center py-4">
                                 {formData.from_date && formData.to_date
                                     ? "No data found for selected date range"
                                     : "Please select date range"}
