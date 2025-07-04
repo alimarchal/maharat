@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Response;
 use Carbon\Carbon;
+use App\Models\TransactionFlow;
 
 class IncomeStatementController extends Controller
 {
@@ -28,12 +29,10 @@ class IncomeStatementController extends Controller
                 'to' => $request->to_date
             ]);
 
-            $revenue = Invoice::whereBetween('issue_date', [
-                    $request->from_date,
-                    $request->to_date
-                ])
-                ->where('status', '!=', 'Cancelled')
-                ->sum(DB::raw('COALESCE(subtotal, 0)'));
+            $revenue = TransactionFlow::where('account_id', 4)
+                ->where('transaction_type', 'credit')
+                ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+                ->sum('amount');
 
             return response()->json([
                 'success' => true,
@@ -63,12 +62,10 @@ class IncomeStatementController extends Controller
                 'to_date' => 'required|date|after_or_equal:from_date'
             ]);
 
-            $expenses = Invoice::whereBetween('issue_date', [
-                    $request->from_date,
-                    $request->to_date
-                ])
-                ->where('status', '!=', 'Cancelled')
-                ->sum(DB::raw('COALESCE(total_amount, 0)'));
+            $expenses = TransactionFlow::whereIn('account_id', [5,6,7])
+                ->where('transaction_type', 'credit')
+                ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+                ->sum('amount');
 
             return response()->json([
                 'success' => true,
@@ -122,5 +119,209 @@ class IncomeStatementController extends Controller
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    public function getVatPaid(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'from_date' => 'required|date',
+                'to_date' => 'required|date|after_or_equal:from_date'
+            ]);
+
+            $vatPaid = TransactionFlow::whereIn('account_id', [8, 9])
+                ->where('transaction_type', 'credit')
+                ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+                ->sum('amount');
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'vat_paid' => (float)$vatPaid ?? 0
+                ]
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch VAT paid data',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function getCurrentNetAssets(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'from_date' => 'required|date',
+                'to_date' => 'required|date|after_or_equal:from_date'
+            ]);
+
+            $netAssets = TransactionFlow::whereIn('account_id', [1,10])
+                ->where('transaction_type', 'debit')
+                ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+                ->sum('amount');
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'current_net_assets' => (float)$netAssets ?? 0
+                ]
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch net assets data',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function getOpeningNetAssets(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'from_date' => 'required|date',
+            ]);
+
+            // Calculate the day before the selected start date
+            $openingDate = date('Y-m-d', strtotime($request->from_date . ' -1 day'));
+
+            $openingNetAssets = TransactionFlow::whereIn('account_id', [1,10])
+                ->where('transaction_type', 'debit')
+                ->where('transaction_date', '<=', $openingDate)
+                ->sum('amount');
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'opening_net_assets' => (float)$openingNetAssets ?? 0
+                ]
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch opening net assets',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function getRevenueBreakdown(Request $request): JsonResponse
+    {
+        $request->validate([
+            'from_date' => 'required|date',
+            'to_date' => 'required|date|after_or_equal:from_date'
+        ]);
+        $transactions = TransactionFlow::with('account')
+            ->where('account_id', 4)
+            ->where('transaction_type', 'credit')
+            ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+            ->orderBy('transaction_date')
+            ->get()
+            ->map(function($t) {
+                return [
+                    'reference_number' => $t->reference_number,
+                    'account_name' => $t->account->name ?? '',
+                    'amount' => $t->amount,
+                    'description' => $t->description,
+                ];
+            });
+        return response()->json(['data' => $transactions]);
+    }
+
+    public function getExpensesBreakdown(Request $request): JsonResponse
+    {
+        $request->validate([
+            'from_date' => 'required|date',
+            'to_date' => 'required|date|after_or_equal:from_date'
+        ]);
+        $transactions = TransactionFlow::with('account')
+            ->whereIn('account_id', [5,6,7])
+            ->where('transaction_type', 'credit')
+            ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+            ->orderBy('transaction_date')
+            ->get()
+            ->map(function($t) {
+                return [
+                    'reference_number' => $t->reference_number,
+                    'account_name' => $t->account->name ?? '',
+                    'amount' => $t->amount,
+                    'description' => $t->description,
+                ];
+            });
+        return response()->json(['data' => $transactions]);
+    }
+
+    public function getVatPaidBreakdown(Request $request): JsonResponse
+    {
+        $request->validate([
+            'from_date' => 'required|date',
+            'to_date' => 'required|date|after_or_equal:from_date'
+        ]);
+        $transactions = TransactionFlow::with('account')
+            ->whereIn('account_id', [8,9])
+            ->where('transaction_type', 'credit')
+            ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+            ->orderBy('transaction_date')
+            ->get()
+            ->map(function($t) {
+                return [
+                    'reference_number' => $t->reference_number,
+                    'account_name' => $t->account->name ?? '',
+                    'amount' => $t->amount,
+                    'description' => $t->description,
+                ];
+            });
+        return response()->json(['data' => $transactions]);
+    }
+
+    public function getAssetsBreakdown(Request $request): JsonResponse
+    {
+        $request->validate([
+            'from_date' => 'required|date',
+            'to_date' => 'required|date|after_or_equal:from_date'
+        ]);
+        $transactions = TransactionFlow::with('account')
+            ->whereIn('account_id', [1,10])
+            ->where('transaction_type', 'debit')
+            ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+            ->orderBy('transaction_date')
+            ->get()
+            ->map(function($t) {
+                return [
+                    'reference_number' => $t->reference_number,
+                    'account_name' => $t->account->name ?? '',
+                    'amount' => $t->amount,
+                    'description' => $t->description,
+                ];
+            });
+        return response()->json(['data' => $transactions]);
+    }
+
+    public function getPaidRevenue(Request $request): JsonResponse
+    {
+        $request->validate([
+            'from_date' => 'required|date',
+            'to_date' => 'required|date|after_or_equal:from_date',
+        ]);
+        $paidRevenue = TransactionFlow::where('account_id', 11)
+            ->where('transaction_type', 'debit')
+            ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+            ->sum('amount');
+        return response()->json(['success' => true, 'data' => ['paid_revenue' => (float)$paidRevenue]], 200);
+    }
+
+    public function getTotalRevenue(Request $request): JsonResponse
+    {
+        $request->validate([
+            'from_date' => 'required|date',
+            'to_date' => 'required|date|after_or_equal:from_date',
+        ]);
+        $totalRevenue = TransactionFlow::where('account_id', 4)
+            ->where('transaction_type', 'credit')
+            ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+            ->sum('amount');
+        return response()->json(['success' => true, 'data' => ['total_revenue' => (float)$totalRevenue]], 200);
     }
 }

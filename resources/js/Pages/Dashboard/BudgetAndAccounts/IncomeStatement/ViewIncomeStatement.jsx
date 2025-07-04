@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { usePage } from "@inertiajs/react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
 const IncomeStatementTable = (props) => {
     const { props: pageProps } = usePage();
@@ -19,6 +21,16 @@ const IncomeStatementTable = (props) => {
     const [error, setError] = useState("");
     const [dateRange, setDateRange] = useState("");
     const [expenseTransactions, setExpenseTransactions] = useState([]);
+    const [revenueBreakdown, setRevenueBreakdown] = useState([]);
+    const [expensesBreakdown, setExpensesBreakdown] = useState([]);
+    const [vatPaidBreakdown, setVatPaidBreakdown] = useState([]);
+    const [assetsBreakdown, setAssetsBreakdown] = useState([]);
+    // Collapsible state for each table
+    const [showRevenue, setShowRevenue] = useState(true);
+    const [showExpenses, setShowExpenses] = useState(true);
+    const [showVatPaid, setShowVatPaid] = useState(true);
+    const [showAssets, setShowAssets] = useState(true);
+    const [showNetAssetsSummary, setShowNetAssetsSummary] = useState(true);
 
     // Helper function to format numbers
     const formatNumber = (num) => {
@@ -26,6 +38,14 @@ const IncomeStatementTable = (props) => {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         });
+    };
+
+    // Helper to get reference or description
+    const getReferenceOrDescription = (t) => {
+        if (!t.reference_number || t.reference_number === '-' || t.reference_number === 'N/A') {
+            return t.description || '-';
+        }
+        return t.reference_number;
     };
 
     useEffect(() => {
@@ -109,54 +129,59 @@ const IncomeStatementTable = (props) => {
                 })}`;
                 setDateRange(formattedDateRange);
 
-                // Get official financial data from the same APIs as IncomeStatementTable.jsx
+                // Fetch opening net assets as of the day before fromDate
+                const openingNetAssetsRes = await axios.get("/api/v1/income-statement/opening-net-assets", {
+                    params: { from_date: fromDate }
+                });
+                const openingNetAssets = parseFloat(openingNetAssetsRes.data.data.opening_net_assets) || 0;
+
+                // Fetch paid revenue, total revenue, and expenses
                 const [
-                    revenueResponse,
-                    expensesResponse,
-                    transactionsResponse,
-                    invoicesResponse,
+                    paidRevenueRes,
+                    totalRevenueRes,
+                    expensesResApi
                 ] = await Promise.all([
-                    axios.get("/api/v1/income-statement/revenue", {
-                        params: {
-                            from_date: fromDate,
-                            to_date: toDate,
-                        },
+                    axios.get("/api/v1/income-statement/paid-revenue", {
+                        params: { from_date: fromDate, to_date: toDate }
+                    }),
+                    axios.get("/api/v1/income-statement/total-revenue", {
+                        params: { from_date: fromDate, to_date: toDate }
                     }),
                     axios.get("/api/v1/income-statement/expenses", {
-                        params: {
-                            from_date: fromDate,
-                            to_date: toDate,
-                        },
-                    }),
-                    axios.get("/api/v1/income-statement/transactions", {
-                        params: {
-                            from_date: fromDate,
-                            to_date: toDate,
-                        },
-                    }),
-                    // Still fetch invoices for detailed breakdown
-                    axios.get("/api/v1/invoices", {
-                        params: {
-                            from_date: fromDate,
-                            to_date: toDate,
-                            include: "items",
-                        },
-                    }),
+                        params: { from_date: fromDate, to_date: toDate }
+                    })
                 ]);
+                const paidRevenue = parseFloat(paidRevenueRes.data.data.paid_revenue) || 0;
+                const totalRevenue = parseFloat(totalRevenueRes.data.data.total_revenue) || 0;
+                const totalExpenses = parseFloat(expensesResApi.data.data.total_expenses) || 0;
 
-                // Get totals from the API responses (same as IncomeStatementTable.jsx)
-                const officialTotalRevenue =
-                    parseFloat(revenueResponse.data.data.total_revenue) || 0;
-                const officialTotalExpenses =
-                    parseFloat(expensesResponse.data.data.total_expenses) || 0;
-                const previousTransactions =
-                    parseFloat(transactionsResponse.data.data.total_amount) ||
-                    0;
+                // Calculate unpaid revenue and changes
+                const unpaidRevenue = totalRevenue - paidRevenue;
+                const changeRegular = paidRevenue - totalExpenses;
+                const changeRestricted = unpaidRevenue;
+                const endRegular = openingNetAssets + changeRegular;
+                const endRestricted = changeRestricted; // Opening is 0
+                const endTotal = endRegular + endRestricted;
 
-                // IMPORTANT: Match the exact logic in IncomeStatementTable.jsx
-                // In that file, the change is calculated as expenses MINUS revenue (not revenue minus expenses)
-                const change = officialTotalExpenses - officialTotalRevenue;
-                const finalNetAssets = change + previousTransactions;
+                // Set the income data state
+                setIncomeData((prev) => ({
+                    ...prev,
+                    netAssets: {
+                        changeInNetAssets: {
+                            unrestricted: changeRegular,
+                            restricted: changeRestricted,
+                        },
+                        beginningOfYear: {
+                            unrestricted: openingNetAssets,
+                            restricted: 0,
+                        },
+                        endOfYear: {
+                            unrestricted: endRegular,
+                            restricted: endRestricted,
+                            total: endTotal,
+                        },
+                    },
+                }));
 
                 // Fetch expense transactions from cash_flow_transactions table
                 try {
@@ -241,33 +266,28 @@ const IncomeStatementTable = (props) => {
                     Other: { unrestricted: 0, restricted: 0 },
                 };
 
-                // Calculate change in net assets to exactly match IncomeStatementTable.jsx
+                // Calculate change in net assets for summary
                 const changeInNetAssets = {
-                    // The unrestricted change is the negative of the total change (not just expenses)
-                    // This represents the net change in Regular Funds
-                    unrestricted: -change, // Should match the "Change" column in the main table but negative
-                    // All revenue is shown in restricted
-                    restricted: officialTotalRevenue,
+                    unrestricted: changeRegular,
+                    restricted: changeRestricted,
                 };
 
-                // Net assets at beginning of year
+                // Net assets at beginning of year (period)
                 const beginningOfYear = {
-                    unrestricted: previousTransactions,
+                    unrestricted: openingNetAssets,
                     restricted: 0,
                 };
 
                 // Calculate end of year to exactly match the Final Net Assets in the main table
                 const endOfYear = {
-                    // Final balance for unrestricted should be previousTransactions minus change
-                    unrestricted: previousTransactions - change,
-                    restricted: officialTotalRevenue,
-                    // Total should match the Final Net Assets column
-                    total: finalNetAssets,
+                    unrestricted: endRegular,
+                    restricted: endRestricted,
+                    total: endTotal,
                 };
 
                 // Still process invoice items for detailed breakdown
-                if (invoicesResponse.data && invoicesResponse.data.data) {
-                    const invoices = invoicesResponse.data.data;
+                if (invoiceItems && invoiceItems.length > 0) {
+                    const invoices = invoiceItems;
 
                     // Process each invoice to extract items
                     invoices.forEach((invoice) => {
@@ -381,8 +401,7 @@ const IncomeStatementTable = (props) => {
                 }
 
                 // Use the official totals, not the detailed ones for consistency
-                const totalRevenue = officialTotalRevenue;
-                const totalExpenses = officialTotalExpenses;
+                // (Removed redeclaration of totalRevenue and totalExpenses to fix linter errors)
 
                 // Set the income data state using the official numbers
                 setIncomeData({
@@ -396,17 +415,34 @@ const IncomeStatementTable = (props) => {
                     totals: {
                         revenue: {
                             unrestricted: 0, // All revenue is considered restricted per our visual approach
-                            restricted: officialTotalRevenue,
-                            total: officialTotalRevenue,
+                            restricted: totalRevenue,
+                            total: totalRevenue,
                         },
                         expenses: {
-                            unrestricted: officialTotalExpenses, // All expenses are from unrestricted funds
+                            unrestricted: totalExpenses, // All expenses are from unrestricted funds
                             restricted: 0,
-                            total: officialTotalExpenses,
+                            total: totalExpenses,
                         },
                     },
                     invoiceItems: invoiceItems,
                 });
+
+                // Fetch breakdowns
+                const [
+                    revenueRes,
+                    expensesBreakdownRes,
+                    vatPaidRes,
+                    assetsRes
+                ] = await Promise.all([
+                    axios.get("/api/v1/income-statement/revenue-breakdown", { params: { from_date: fromDate, to_date: toDate } }),
+                    axios.get("/api/v1/income-statement/expenses-breakdown", { params: { from_date: fromDate, to_date: toDate } }),
+                    axios.get("/api/v1/income-statement/vat-paid-breakdown", { params: { from_date: fromDate, to_date: toDate } }),
+                    axios.get("/api/v1/income-statement/assets-breakdown", { params: { from_date: fromDate, to_date: toDate } }),
+                ]);
+                setRevenueBreakdown(revenueRes.data.data || []);
+                setExpensesBreakdown(expensesBreakdownRes.data.data || []);
+                setVatPaidBreakdown(vatPaidRes.data.data || []);
+                setAssetsBreakdown(assetsRes.data.data || []);
 
                 setError("");
             } catch (err) {
@@ -626,278 +662,287 @@ const IncomeStatementTable = (props) => {
                 </div>
             )}
 
-            {/* Invoice Items Table */}
+            {/* Revenue Breakdown Table */}
             <div className="my-8 overflow-x-auto">
-                <h3 className="text-xl font-semibold text-[#2C323C] mb-4">
+                <h3
+                    className="text-xl font-semibold text-[#2C323C] mb-4 cursor-pointer select-none flex items-center"
+                    onClick={() => setShowRevenue((prev) => !prev)}
+                >
+                    <button
+                        className="text-[#009FDC] hover:text-[#0077B6] transition-colors focus:outline-none mr-2"
+                        tabIndex={-1}
+                        type="button"
+                        style={{ background: 'none', border: 'none', padding: 0 }}
+                    >
+                        <FontAwesomeIcon
+                            icon={showRevenue ? faChevronDown : faChevronRight}
+                            className="text-lg transition-transform"
+                        />
+                    </button>
                     Revenue Summary
                 </h3>
-                <table className="w-full border-collapse">
+                {showRevenue && (
+                <table className="w-full table-fixed border-collapse">
                     <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
                         <tr>
-                            <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl w-[35%] text-left">
-                                Revenues
-                            </th>
-                            <th className="py-3 px-4 w-[15%]">Fund Type</th>
-                            <th className="py-3 px-4 w-[15%]">Subtotal</th>
-                            <th className="py-3 px-4 w-[15%]">Tax Amount</th>
-                            <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl w-[20%]">
-                                Total
-                            </th>
+                            <th className="py-3 pl-10 w-1/4 rounded-tl-2xl rounded-bl-2xl text-center">Reference</th>
+                            <th className="py-3 w-1/2 text-center">Account Name</th>
+                            <th className="py-3 pr-16 w-1/4 rounded-tr-2xl rounded-br-2xl text-center">Total Amount</th>
                         </tr>
                     </thead>
                     <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                        {invoiceItems.length > 0 ? (
-                            invoiceItems.map((item, index) => (
-                                <tr
-                                    key={index}
-                                    className={
-                                        item.restricted ? "bg-gray-50" : ""
-                                    }
-                                >
-                                    <td className="py-3 px-4 text-left">
-                                        {item.name}
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
-                                        <span
-                                            className={`px-2 py-1 rounded-full text-xs ${
-                                                item.restricted
-                                                    ? "bg-yellow-100 text-yellow-800"
-                                                    : "bg-green-100 text-green-800"
-                                            }`}
-                                        >
-                                            {item.fundType}
-                                        </span>
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
-                                        {formatNumber(item.subtotal)}
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
-                                        {formatNumber(item.tax_amount)}
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
-                                        {formatNumber(item.total)}
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td
-                                    colSpan="5"
-                                    className="py-3 px-4 text-center"
-                                >
-                                    No invoice items found for this date range
-                                </td>
+                        {revenueBreakdown.length > 0 ? revenueBreakdown.map((t, i) => (
+                            <tr key={i}>
+                                <td className="py-3 pl-10 w-1/4 text-center align-middle">{getReferenceOrDescription(t)}</td>
+                                <td className="py-3 w-1/2 text-center align-middle">{t.account_name}</td>
+                                <td className="py-3 pr-16 w-1/4 text-center align-middle">{formatNumber(t.amount)}</td>
                             </tr>
-                        )}
+                        )) : <tr><td colSpan="3" className="text-center py-4">No revenue transactions found</td></tr>}
                         <tr className="font-bold text-xl bg-[#DCECF2] border-none">
-                            <td className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-left">
-                                Total
-                            </td>
-                            <td className="py-3 px-4 text-center"></td>
-                            <td className="py-3 px-4 text-center">
-                                {formatNumber(
-                                    invoiceItems.reduce(
-                                        (sum, item) => sum + item.subtotal,
-                                        0
-                                    )
-                                )}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                                {formatNumber(
-                                    invoiceItems.reduce(
-                                        (sum, item) => sum + item.tax_amount,
-                                        0
-                                    )
-                                )}
-                            </td>
-                            <td className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
-                                {formatNumber(
-                                    invoiceItems.reduce(
-                                        (sum, item) => sum + item.total,
-                                        0
-                                    )
-                                )}
-                            </td>
+                            <td className="py-3 pl-10 w-1/4 rounded-tl-2xl rounded-bl-2xl text-center">Sub Total</td>
+                            <td className="w-1/2"></td>
+                            <td className="py-3 pr-16 w-1/4 rounded-tr-2xl rounded-br-2xl text-center">{formatNumber(revenueBreakdown.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0))}</td>
                         </tr>
                     </tbody>
                 </table>
+                )}
             </div>
 
-            {/* Expense Transactions Table */}
+            {/* Expenses Breakdown Table */}
             <div className="my-8 overflow-x-auto">
-                <h3 className="text-xl font-semibold text-[#2C323C] mb-4">
-                    Expense Summary
+                <h3
+                    className="text-xl font-semibold text-[#2C323C] mb-4 cursor-pointer select-none flex items-center"
+                    onClick={() => setShowExpenses((prev) => !prev)}
+                >
+                    <button
+                        className="text-[#009FDC] hover:text-[#0077B6] transition-colors focus:outline-none mr-2"
+                        tabIndex={-1}
+                        type="button"
+                        style={{ background: 'none', border: 'none', padding: 0 }}
+                    >
+                        <FontAwesomeIcon
+                            icon={showExpenses ? faChevronDown : faChevronRight}
+                            className="text-lg transition-transform"
+                        />
+                    </button>
+                    Expenses Summary
                 </h3>
-                <table className="w-full border-collapse">
+                {showExpenses && (
+                <table className="w-full table-fixed border-collapse">
                     <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
                         <tr>
-                            <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl w-[40%] text-left">
-                                Expense Account
-                            </th>
-                            <th className="py-3 px-4 w-[30%]">
-                                Transaction Amount
-                            </th>
-                            <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl w-[30%]">
-                                Total Balance
-                            </th>
+                            <th className="py-3 pl-10 w-1/4 rounded-tl-2xl rounded-bl-2xl text-center">Reference</th>
+                            <th className="py-3 w-1/2 text-center">Account Name</th>
+                            <th className="py-3 pr-16 w-1/4 rounded-tr-2xl rounded-br-2xl text-center">Total Amount</th>
                         </tr>
                     </thead>
                     <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                        {expenseTransactions.length > 0 ? (
-                            expenseTransactions.map((transaction, index) => (
-                                <tr key={index}>
-                                    <td className="py-3 px-4 text-left">
-                                        {transaction.chart_of_account
-                                            ?.description ||
-                                            transaction.chart_of_account
-                                                ?.account_name ||
-                                            "Unknown Account"}
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
-                                        {formatNumber(transaction.amount)}
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
-                                        {formatNumber(
-                                            transaction.balance_amount
-                                        )}
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td
-                                    colSpan="3"
-                                    className="py-3 px-4 text-center"
-                                >
-                                    No expense transactions found for this date
-                                    range
-                                </td>
+                        {expensesBreakdown.length > 0 ? expensesBreakdown.map((t, i) => (
+                            <tr key={i}>
+                                <td className="py-3 pl-10 w-1/4 text-center align-middle">{getReferenceOrDescription(t)}</td>
+                                <td className="py-3 w-1/2 text-center align-middle">{t.account_name}</td>
+                                <td className="py-3 pr-16 w-1/4 text-center align-middle">{formatNumber(t.amount)}</td>
                             </tr>
-                        )}
+                        )) : <tr><td colSpan="3" className="text-center py-4">No expense transactions found</td></tr>}
                         <tr className="font-bold text-xl bg-[#DCECF2] border-none">
-                            <td className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-left">
-                                Total Expenses
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                                {formatNumber(
-                                    expenseTransactions.reduce(
-                                        (sum, transaction) =>
-                                            sum +
-                                            parseFloat(transaction.amount || 0),
-                                        0
-                                    )
-                                )}
-                            </td>
-                            <td className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
-                                {formatNumber(
-                                    expenseTransactions.reduce(
-                                        (sum, transaction) =>
-                                            sum +
-                                            parseFloat(
-                                                transaction.balance_amount || 0
-                                            ),
-                                        0
-                                    )
-                                )}
-                            </td>
+                            <td className="py-3 pl-10 w-1/4 rounded-tl-2xl rounded-bl-2xl text-center">Sub Total</td>
+                            <td className="w-1/2"></td>
+                            <td className="py-3 pr-16 w-1/4 rounded-tr-2xl rounded-br-2xl text-center">{formatNumber(expensesBreakdown.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0))}</td>
                         </tr>
                     </tbody>
                 </table>
+                )}
+            </div>
+
+            {/* Assets Breakdown Table */}
+            <div className="my-8 overflow-x-auto">
+                <h3
+                    className="text-xl font-semibold text-[#2C323C] mb-4 cursor-pointer select-none flex items-center"
+                    onClick={() => setShowAssets((prev) => !prev)}
+                >
+                    <button
+                        className="text-[#009FDC] hover:text-[#0077B6] transition-colors focus:outline-none mr-2"
+                        tabIndex={-1}
+                        type="button"
+                        style={{ background: 'none', border: 'none', padding: 0 }}
+                    >
+                        <FontAwesomeIcon
+                            icon={showAssets ? faChevronDown : faChevronRight}
+                            className="text-lg transition-transform"
+                        />
+                    </button>
+                    Assets Summary
+                </h3>
+                {showAssets && (
+                <table className="w-full table-fixed border-collapse">
+                    <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
+                        <tr>
+                            <th className="py-3 pl-10 w-1/4 rounded-tl-2xl rounded-bl-2xl text-center">Reference</th>
+                            <th className="py-3 w-1/2 text-center">Account Name</th>
+                            <th className="py-3 pr-16 w-1/4 rounded-tr-2xl rounded-br-2xl text-center">Total Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
+                        {assetsBreakdown.length > 0 ? assetsBreakdown.map((t, i) => (
+                            <tr key={i}>
+                                <td className="py-3 pl-10 w-1/4 text-center align-middle">{getReferenceOrDescription(t)}</td>
+                                <td className="py-3 w-1/2 text-center align-middle">{t.account_name}</td>
+                                <td className="py-3 pr-16 w-1/4 text-center align-middle">{formatNumber(t.amount)}</td>
+                            </tr>
+                        )) : <tr><td colSpan="3" className="text-center py-4">No asset transactions found</td></tr>}
+                        <tr className="font-bold text-xl bg-[#DCECF2] border-none">
+                            <td className="py-3 pl-10 w-1/4 rounded-tl-2xl rounded-bl-2xl text-center">Sub Total</td>
+                            <td className="w-1/2"></td>
+                            <td className="py-3 pr-16 w-1/4 rounded-tr-2xl rounded-br-2xl text-center">{formatNumber(assetsBreakdown.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0))}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                )}
+            </div>
+
+            {/* VAT Paid Summary Table */}
+            <div className="my-8 overflow-x-auto">
+                <h3
+                    className="text-xl font-semibold text-[#2C323C] mb-4 cursor-pointer select-none flex items-center"
+                    onClick={() => setShowVatPaid((prev) => !prev)}
+                >
+                    <button
+                        className="text-[#009FDC] hover:text-[#0077B6] transition-colors focus:outline-none mr-2"
+                        tabIndex={-1}
+                        type="button"
+                        style={{ background: 'none', border: 'none', padding: 0 }}
+                    >
+                        <FontAwesomeIcon
+                            icon={showVatPaid ? faChevronDown : faChevronRight}
+                            className="text-lg transition-transform"
+                        />
+                    </button>
+                    VAT Paid Summary
+                </h3>
+                {showVatPaid && (
+                <table className="w-full table-fixed border-collapse">
+                    <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
+                        <tr>
+                            <th className="py-3 pl-10 w-1/4 rounded-tl-2xl rounded-bl-2xl text-center">Reference</th>
+                            <th className="py-3 w-1/2 text-center">Account Name</th>
+                            <th className="py-3 pr-16 w-1/4 rounded-tr-2xl rounded-br-2xl text-center">Total Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
+                        {vatPaidBreakdown.length > 0 ? vatPaidBreakdown.map((t, i) => (
+                            <tr key={i}>
+                                <td className="py-3 pl-10 w-1/4 text-center align-middle">{getReferenceOrDescription(t)}</td>
+                                <td className="py-3 w-1/2 text-center align-middle">{t.account_name}</td>
+                                <td className="py-3 pr-16 w-1/4 text-center align-middle">{formatNumber(t.amount)}</td>
+                            </tr>
+                        )) : <tr><td colSpan="3" className="text-center py-4">No VAT paid transactions found</td></tr>}
+                        <tr className="font-bold text-xl bg-[#DCECF2] border-none">
+                            <td className="py-3 pl-10 w-1/4 rounded-tl-2xl rounded-bl-2xl text-center">Sub Total</td>
+                            <td className="w-1/2"></td>
+                            <td className="py-3 pr-16 w-1/4 rounded-tr-2xl rounded-br-2xl text-center">{formatNumber(vatPaidBreakdown.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0))}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                )}
             </div>
 
             {/* Net Assets Summary Table */}
             <div className="my-8 overflow-x-auto">
-                <h3 className="text-xl font-semibold text-[#2C323C] mb-4">
+                <h3
+                    className="text-xl font-semibold text-[#2C323C] mb-4 cursor-pointer select-none flex items-center"
+                    onClick={() => setShowNetAssetsSummary((prev) => !prev)}
+                >
+                    <button
+                        className="text-[#009FDC] hover:text-[#0077B6] transition-colors focus:outline-none mr-2"
+                        tabIndex={-1}
+                        type="button"
+                        style={{ background: 'none', border: 'none', padding: 0 }}
+                    >
+                        <FontAwesomeIcon
+                            icon={showNetAssetsSummary ? faChevronDown : faChevronRight}
+                            className="text-lg transition-transform"
+                        />
+                    </button>
                     Net Assets Summary
                 </h3>
-                <table className="w-full border-collapse">
-                    <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
-                        <tr>
-                            <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl w-[30%] text-left">
-                                Net Assets Summary
-                            </th>
-                            <th className="py-3 px-4 w-[20%]">Regular Funds</th>
-                            <th className="py-3 px-4 w-[20%]">
-                                Restricted Funds
-                            </th>
-                            <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl w-[30%]">
-                                Total
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                        <tr className="border-none">
-                            <td className="py-3 px-4 text-left">
-                                Change in Net Assets
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                                {formatNumber(
-                                    netAssets.changeInNetAssets.unrestricted
-                                )}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                                {formatNumber(
-                                    netAssets.changeInNetAssets.restricted
-                                )}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                                {formatNumber(
-                                    netAssets.changeInNetAssets.unrestricted +
-                                        netAssets.changeInNetAssets.restricted
-                                )}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td className="py-3 px-4 text-left">
-                                Net Assets, Beginning of Year
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                                {formatNumber(
-                                    netAssets.beginningOfYear.unrestricted
-                                )}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                                {formatNumber(
-                                    netAssets.beginningOfYear.restricted
-                                )}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                                {formatNumber(
-                                    netAssets.beginningOfYear.unrestricted +
-                                        netAssets.beginningOfYear.restricted
-                                )}
-                            </td>
-                        </tr>
-                        <tr className="font-bold text-xl bg-[#DCECF2] border-none">
-                            <td className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-left">
-                                Net Assets, End of Period
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                                {formatNumber(netAssets.endOfYear.unrestricted)}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                                {formatNumber(netAssets.endOfYear.restricted)}
-                            </td>
-                            <td className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
-                                {netAssets.endOfYear.total !== undefined
-                                    ? formatNumber(netAssets.endOfYear.total)
-                                    : formatNumber(
-                                          netAssets.endOfYear.unrestricted +
-                                              netAssets.endOfYear.restricted
-                                      )}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div className="mt-3 text-sm text-gray-600">
-                    <p>
-                        <strong>Note:</strong> "Regular Funds" represent
-                        unrestricted resources from paid invoices minus
-                        expenses. "Restricted Funds" reflect revenue from
-                        pending or incomplete invoices. All expenses are
-                        allocated to Regular Funds.
-                    </p>
-                </div>
+                {showNetAssetsSummary && (
+                    <>
+                        <table className="w-full border-collapse">
+                            <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium">
+                                <tr>
+                                    <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl w-[30%] text-center">
+                                        Net Assets Summary
+                                    </th>
+                                    <th className="py-3 px-4 w-[20%]">Regular Funds</th>
+                                    <th className="py-3 px-4 w-[20%]">Restricted Funds</th>
+                                    <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl w-[30%]">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
+                                <tr className="border-none">
+                                    <td className="py-3 px-4 text-center align-middle">
+                                        Change in Net Assets
+                                    </td>
+                                    <td className="py-3 px-4 text-center">
+                                        {formatNumber(netAssets.changeInNetAssets.unrestricted)}
+                                    </td>
+                                    <td className="py-3 px-4 text-center">
+                                        {formatNumber(netAssets.changeInNetAssets.restricted)}
+                                    </td>
+                                    <td className="py-3 px-4 text-center">
+                                        {formatNumber(
+                                            netAssets.changeInNetAssets.unrestricted +
+                                            netAssets.changeInNetAssets.restricted
+                                        )}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td className="py-3 px-4 text-center align-middle">
+                                        Net Assets, Beginning of Year
+                                    </td>
+                                    <td className="py-3 px-4 text-center">
+                                        {formatNumber(netAssets.beginningOfYear.unrestricted)}
+                                    </td>
+                                    <td className="py-3 px-4 text-center">
+                                        {formatNumber(netAssets.beginningOfYear.restricted)}
+                                    </td>
+                                    <td className="py-3 px-4 text-center">
+                                        {formatNumber(
+                                            netAssets.beginningOfYear.unrestricted +
+                                            netAssets.beginningOfYear.restricted
+                                        )}
+                                    </td>
+                                </tr>
+                                <tr className="font-bold text-xl bg-[#DCECF2] border-none">
+                                    <td className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl text-center align-middle">
+                                        Net Assets, End of Period
+                                    </td>
+                                    <td className="py-3 px-4 text-center">
+                                        {formatNumber(netAssets.endOfYear.unrestricted)}
+                                    </td>
+                                    <td className="py-3 px-4 text-center">
+                                        {formatNumber(netAssets.endOfYear.restricted)}
+                                    </td>
+                                    <td className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
+                                        {netAssets.endOfYear.total !== undefined
+                                            ? formatNumber(netAssets.endOfYear.total)
+                                            : formatNumber(
+                                                netAssets.endOfYear.unrestricted +
+                                                netAssets.endOfYear.restricted
+                                            )}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div className="mt-3 text-sm text-gray-600">
+                            <p><strong>Note:</strong></p>
+                            <ul className="list-disc ml-6">
+                                <li><strong>Regular Funds</strong> reflects <em>paid revenue (sum of debit for Account Receivable  minus expenses)</em>.</li>
+                                <li><strong>Restricted Funds</strong> reflect <em>unpaid revenue (sum of credit for Revenue/Income minus paid revenue)</em>.</li>
+                            </ul>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );
