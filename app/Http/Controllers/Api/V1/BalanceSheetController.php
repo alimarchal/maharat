@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
+use App\Models\TransactionFlow;
 
 class BalanceSheetController extends Controller
 {
@@ -84,29 +85,19 @@ class BalanceSheetController extends Controller
     public function getFiscalYears()
     {
         try {
-            if (!$this->checkRequiredTables()) {
-                return response()->json(['error' => 'Required tables are missing'], 500);
-            }
-
-            if (!$this->checkTableColumns()) {
-                return response()->json(['error' => 'Required columns are missing'], 500);
-            }
-
-            $years = FiscalPeriod::select(DB::raw('DISTINCT YEAR(fiscal_year) as year'))
-                ->orderBy('year', 'desc')
-                ->pluck('year')
-                ->map(function ($year) {
+            $years = \App\Models\FiscalYear::orderBy('fiscal_year', 'desc')
+                ->get()
+                ->map(function ($fy) {
                     return [
-                        'id' => $year,
-                        'label' => $year
+                        'id' => $fy->id,
+                        'label' => $fy->fiscal_year
                     ];
                 });
 
             return response()->json($years);
         } catch (\Exception $e) {
-            Log::error('Error fetching fiscal years: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
-            return response()->json(['error' => 'Failed to fetch fiscal years: ' . $e->getMessage()], 500);
+            \Log::error('Error fetching fiscal years: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch fiscal years'], 500);
         }
     }
 
@@ -120,54 +111,90 @@ class BalanceSheetController extends Controller
     public function getAssets(Request $request)
     {
         try {
-            if (!$this->checkRequiredTables()) {
-                return response()->json(['error' => 'Required tables are missing'], 500);
-            }
-
-            if (!$this->checkTableColumns()) {
-                return response()->json(['error' => 'Required columns are missing'], 500);
-            }
-
             $year = $request->input('year', date('Y'));
-            [$startDate, $endDate] = $this->getYearDateRange($year);
+            $fromDate = Carbon::createFromDate($year, 1, 1)->toDateString();
+            $toDate = Carbon::createFromDate($year, 12, 31)->toDateString();
 
-            // Get current assets (cash transactions)
-            $currentAssets = CashFlowTransaction::whereBetween('transaction_date', [$startDate, $endDate])
-                ->where('transaction_type', 'Credit')
-                ->where('payment_method', 'Cash')
-                ->join('chart_of_accounts', 'cash_flow_transactions.chart_of_account_id', '=', 'chart_of_accounts.id')
-                ->join('account_codes', 'chart_of_accounts.account_code_id', '=', 'account_codes.id')
-                ->where('account_codes.account_type', 'Asset')
-                ->select(
-                    'account_codes.account_code',
-                    'chart_of_accounts.description as category',
-                    DB::raw('SUM(cash_flow_transactions.amount) as total')
-                )
-                ->groupBy('account_codes.account_code', 'chart_of_accounts.description')
-                ->get();
+            // Current Assets: Assets (1), Account Receivable (11), Cash (12)
+            $currentAssets = [];
+            // Assets (id 1): sum of debits - sum of credits
+            $debits = TransactionFlow::where('account_id', 1)
+                ->where('transaction_type', 'debit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount');
+            $credits = TransactionFlow::where('account_id', 1)
+                ->where('transaction_type', 'credit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount');
+            $balance = $debits - $credits;
+            $account = \App\Models\Account::find(1);
+            $label = $account ? $account->name : 'Account 1';
+            $currentAssets[] = [
+                'account_id' => 1,
+                'category' => $label,
+                'total' => $balance
+            ];
+            // Account Receivable (id 11): sum of debits for 11 - sum of credits for 4
+            $debits = TransactionFlow::where('account_id', 11)
+                ->where('transaction_type', 'debit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount');
+            $credits = TransactionFlow::where('account_id', 4)
+                ->where('transaction_type', 'credit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount');
+            $balance = $debits - $credits;
+            $account = \App\Models\Account::find(11);
+            $label = $account ? $account->name : 'Account 11';
+            $currentAssets[] = [
+                'account_id' => 11,
+                'category' => $label,
+                'total' => $balance
+            ];
+            // Cash (id 12): sum of debits - sum of credits
+            $debits = TransactionFlow::where('account_id', 12)
+                ->where('transaction_type', 'debit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount');
+            $credits = TransactionFlow::where('account_id', 12)
+                ->where('transaction_type', 'credit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount');
+            $balance = $debits - $credits;
+            $account = \App\Models\Account::find(12);
+            $label = $account ? $account->name : 'Account 12';
+            $currentAssets[] = [
+                'account_id' => 12,
+                'category' => $label,
+                'total' => $balance
+            ];
 
-            // Get non-current assets (non-cash transactions)
-            $nonCurrentAssets = CashFlowTransaction::whereBetween('transaction_date', [$startDate, $endDate])
-                ->where('transaction_type', 'Credit')
-                ->where('payment_method', '!=', 'Cash')
-                ->join('chart_of_accounts', 'cash_flow_transactions.chart_of_account_id', '=', 'chart_of_accounts.id')
-                ->join('account_codes', 'chart_of_accounts.account_code_id', '=', 'account_codes.id')
-                ->where('account_codes.account_type', 'Asset')
-                ->select(
-                    'account_codes.account_code',
-                    'chart_of_accounts.description as category',
-                    DB::raw('SUM(cash_flow_transactions.amount) as total')
-                )
-                ->groupBy('account_codes.account_code', 'chart_of_accounts.description')
-                ->get();
+            // Non-Current Assets: Special Accounts (10)
+            $nonCurrentAssets = [];
+            $accountId = 10;
+            $debits = TransactionFlow::where('account_id', $accountId)
+                ->where('transaction_type', 'debit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount');
+            $credits = TransactionFlow::where('account_id', $accountId)
+                ->where('transaction_type', 'credit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount');
+            $balance = $debits - $credits;
+            $account = \App\Models\Account::find($accountId);
+            $label = $account ? $account->name : 'Account ' . $accountId;
+            $nonCurrentAssets[] = [
+                'account_id' => $accountId,
+                'category' => $label,
+                'total' => $balance
+            ];
 
             return response()->json([
                 'current' => $currentAssets,
                 'nonCurrent' => $nonCurrentAssets
             ]);
         } catch (\Exception $e) {
-            Log::error('Error fetching assets: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
+            \Log::error('Error fetching assets: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to fetch assets data: ' . $e->getMessage()], 500);
         }
     }
@@ -175,54 +202,45 @@ class BalanceSheetController extends Controller
     public function getLiabilities(Request $request)
     {
         try {
-            if (!$this->checkRequiredTables()) {
-                return response()->json(['error' => 'Required tables are missing'], 500);
-            }
-
-            if (!$this->checkTableColumns()) {
-                return response()->json(['error' => 'Required columns are missing'], 500);
-            }
-
             $year = $request->input('year', date('Y'));
-            [$startDate, $endDate] = $this->getYearDateRange($year);
+            $fromDate = Carbon::createFromDate($year, 1, 1)->toDateString();
+            $toDate = Carbon::createFromDate($year, 12, 31)->toDateString();
 
-            // Get current liabilities (cash transactions)
-            $currentLiabilities = CashFlowTransaction::whereBetween('transaction_date', [$startDate, $endDate])
-                ->where('transaction_type', 'Debit')
-                ->where('payment_method', 'Cash')
-                ->join('chart_of_accounts', 'cash_flow_transactions.chart_of_account_id', '=', 'chart_of_accounts.id')
-                ->join('account_codes', 'chart_of_accounts.account_code_id', '=', 'account_codes.id')
-                ->where('account_codes.account_type', 'Liability')
-                ->select(
-                    'account_codes.account_code',
-                    'chart_of_accounts.description as category',
-                    DB::raw('SUM(cash_flow_transactions.amount) as total')
-                )
-                ->groupBy('account_codes.account_code', 'chart_of_accounts.description')
-                ->get();
+            // Current Liabilities: Accounts Payable (2)
+            $currentLiabilities = [];
+            $accountId = 2;
+            $credits = TransactionFlow::where('account_id', $accountId)
+                ->where('transaction_type', 'credit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount');
+            $debits = TransactionFlow::where('account_id', $accountId)
+                ->where('transaction_type', 'debit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount');
+            $balance = $credits - $debits;
+            $account = \App\Models\Account::find($accountId);
+            $label = $account ? $account->name : 'Account ' . $accountId;
+            $currentLiabilities[] = [
+                'account_id' => $accountId,
+                'category' => $label,
+                'total' => $balance
+            ];
 
-            // Get non-current liabilities (non-cash transactions)
-            $nonCurrentLiabilities = CashFlowTransaction::whereBetween('transaction_date', [$startDate, $endDate])
-                ->where('transaction_type', 'Debit')
-                ->where('payment_method', '!=', 'Cash')
-                ->join('chart_of_accounts', 'cash_flow_transactions.chart_of_account_id', '=', 'chart_of_accounts.id')
-                ->join('account_codes', 'chart_of_accounts.account_code_id', '=', 'account_codes.id')
-                ->where('account_codes.account_type', 'Liability')
-                ->select(
-                    'account_codes.account_code',
-                    'chart_of_accounts.description as category',
-                    DB::raw('SUM(cash_flow_transactions.amount) as total')
-                )
-                ->groupBy('account_codes.account_code', 'chart_of_accounts.description')
-                ->get();
+            // Non-Current Liabilities: None (show 0)
+            $nonCurrentLiabilities = [
+                [
+                    'account_id' => null,
+                    'category' => 'None',
+                    'total' => 0
+                ]
+            ];
 
             return response()->json([
                 'current' => $currentLiabilities,
                 'nonCurrent' => $nonCurrentLiabilities
             ]);
         } catch (\Exception $e) {
-            Log::error('Error fetching liabilities: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
+            \Log::error('Error fetching liabilities: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to fetch liabilities data: ' . $e->getMessage()], 500);
         }
     }
@@ -230,24 +248,58 @@ class BalanceSheetController extends Controller
     public function getEquity(Request $request)
     {
         try {
-            // Get current assets (without donor restrictions)
-            $withoutDonorRestrictions = Asset::where('type', 'current')
-                ->where('status', 'active')
-                ->select('name', 'current_value as total')
-                ->get();
+            $year = $request->input('year', date('Y'));
+            $fromDate = Carbon::createFromDate($year, 1, 1)->toDateString();
+            $toDate = Carbon::createFromDate($year, 12, 31)->toDateString();
 
-            // Get fixed/tangible assets (with donor restrictions)
-            $withDonorRestrictions = Asset::whereIn('type', ['fixed', 'intangible'])
-                ->where('status', 'active')
-                ->select('name', 'current_value as total')
-                ->get();
+            // Paid Revenue: sum of debit for Account Receivable (11)
+            $paidRevenue = (float) (TransactionFlow::where('account_id', 11)
+                ->where('transaction_type', 'debit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount') ?? 0);
+
+            // Expenses: sum of credit for [5,6,7]
+            $expenses = (float) (TransactionFlow::whereIn('account_id', [5,6,7])
+                ->where('transaction_type', 'credit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount') ?? 0);
+
+            // Regular Funds: paid revenue - expenses
+            $regularFunds = $paidRevenue - $expenses;
+
+            // Total Revenue: sum of credit for Revenue/Income (4)
+            $totalRevenue = (float) (TransactionFlow::where('account_id', 4)
+                ->where('transaction_type', 'credit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount') ?? 0);
+
+            // Restricted Funds: total revenue - paid revenue
+            $restrictedFunds = $totalRevenue - $paidRevenue;
+
+            $withoutDonorRestrictions = [
+                [
+                    'name' => 'Regular Funds',
+                    'change' => (float) $regularFunds,
+                    'beginning' => 0.0,
+                    'end' => (float) $regularFunds
+                ]
+            ];
+            $withDonorRestrictions = [
+                [
+                    'name' => 'Restricted Funds',
+                    'change' => (float) $restrictedFunds,
+                    'beginning' => 0.0,
+                    'end' => (float) $restrictedFunds
+                ]
+            ];
 
             return response()->json([
                 'withoutDonorRestrictions' => $withoutDonorRestrictions,
-                'withDonorRestrictions' => $withDonorRestrictions
+                'withDonorRestrictions' => $withDonorRestrictions,
+                'totalEnd' => (float) ($regularFunds + $restrictedFunds)
             ]);
         } catch (\Exception $e) {
-            Log::error('Error fetching equity: ' . $e->getMessage());
+            \Log::error('Error fetching equity: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to fetch equity data'], 500);
         }
     }
@@ -255,14 +307,6 @@ class BalanceSheetController extends Controller
     public function getSummary(Request $request)
     {
         try {
-            if (!$this->checkRequiredTables()) {
-                return response()->json(['error' => 'Required tables are missing'], 500);
-            }
-
-            if (!$this->checkTableColumns()) {
-                return response()->json(['error' => 'Required columns are missing'], 500);
-            }
-
             $year = $request->input('year', date('Y'));
             [$startDate, $endDate] = $this->getYearDateRange($year);
 
@@ -281,8 +325,7 @@ class BalanceSheetController extends Controller
                 'balance' => $totalAssets - ($totalLiabilities + $totalEquity)
             ]);
         } catch (\Exception $e) {
-            Log::error('Error fetching summary: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
+            \Log::error('Error fetching summary: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to fetch summary data: ' . $e->getMessage()], 500);
         }
     }

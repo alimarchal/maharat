@@ -8,6 +8,10 @@ import axios from "axios";
 import { toast } from "react-hot-toast";
 import ViewSavedPDFs from "./ViewSavedPDFs";
 
+const safe = v => typeof v === 'number' && !isNaN(v) ? v : 0;
+
+const formatNumber = (num) => parseFloat(num || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 const BalanceSheetReport = () => {
     const [formData, setFormData] = useState({
         year: new Date().getFullYear().toString(),
@@ -35,18 +39,21 @@ const BalanceSheetReport = () => {
         withDonorRestrictions: false,
     });
 
+    const [fiscalYears, setFiscalYears] = useState([]);
+
     useEffect(() => {
         fetchBalanceSheetData();
+        fetchFiscalYears();
     }, [formData.year]);
 
     const fetchBalanceSheetData = async () => {
         try {
             setLoading(true);
             const [assetsRes, liabilitiesRes, equityRes, summaryRes] = await Promise.all([
-                axios.get('/api/v1/balance-sheet/assets'),
-                axios.get('/api/v1/balance-sheet/liabilities'),
-                axios.get('/api/v1/balance-sheet/equity'),
-                axios.get('/api/v1/balance-sheet/summary')
+                axios.get('/api/v1/balance-sheet/assets', { params: { year: formData.year } }),
+                axios.get('/api/v1/balance-sheet/liabilities', { params: { year: formData.year } }),
+                axios.get('/api/v1/balance-sheet/equity', { params: { year: formData.year } }),
+                axios.get('/api/v1/balance-sheet/summary', { params: { year: formData.year } })
             ]);
 
             setBalanceSheetData({
@@ -59,6 +66,20 @@ const BalanceSheetReport = () => {
             console.error('Error fetching balance sheet data:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchFiscalYears = async () => {
+        try {
+            const res = await axios.get('/api/v1/balance-sheet/fiscal-years');
+            if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+                setFiscalYears(res.data);
+                if (!formData.year || !res.data.some(y => y.label === formData.year)) {
+                    setFormData(f => ({ ...f, year: res.data[0].label }));
+                }
+            }
+        } catch (err) {
+            console.error('Failed to fetch fiscal years', err);
         }
     };
 
@@ -160,6 +181,9 @@ const BalanceSheetReport = () => {
         );
     }
 
+    const regular = balanceSheetData.netAssets.withoutDonorRestrictions[0] || {};
+    const restricted = balanceSheetData.netAssets.withDonorRestrictions[0] || {};
+
     return (
         <div className="w-full">
             <div className="flex justify-between items-center text-center mb-8">
@@ -172,17 +196,14 @@ const BalanceSheetReport = () => {
                         name="year"
                         value={formData.year}
                         onChange={handleChange}
-                        options={[
-                            { id: 1, label: "2023" },
-                            { id: 2, label: "2024" },
-                            { id: 3, label: "2025" },
-                        ]}
+                        options={fiscalYears.map(y => ({ id: y.label, label: y.label }))}
                     />
                 </div>
             </div>
 
             <div className="space-y-8">
-                <div className="bg-white rounded-2xl p-8 shadow-md">
+                {/* Assets Section */}
+                <div>
                     <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#009FDC] pb-3 mb-6">
                         Assets
                     </h2>
@@ -204,7 +225,8 @@ const BalanceSheetReport = () => {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-8 shadow-md">
+                {/* Liabilities Section */}
+                <div>
                     <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#009FDC] pb-3 mb-6">
                         Liabilities
                     </h2>
@@ -226,25 +248,79 @@ const BalanceSheetReport = () => {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-8 shadow-md">
+                {/* Equity Section (was Net Assets) */}
+                <div>
                     <h2 className="text-2xl font-bold text-[#2C323C] border-b-2 border-[#009FDC] pb-3 mb-6">
-                        Net Assets
+                        Equity
                     </h2>
-                    {renderTable(
-                        "Without Donor Restrictions",
-                        balanceSheetData.netAssets.withoutDonorRestrictions,
-                        openSections.withoutDonorRestrictions,
-                        "withoutDonorRestrictions"
-                    )}
-                    {renderTable(
-                        "With Donor Restrictions",
-                        balanceSheetData.netAssets.withDonorRestrictions,
-                        openSections.withDonorRestrictions,
-                        "withDonorRestrictions"
-                    )}
+                    {/* Without Donor Restrictions (Regular Funds) */}
+                    <div className="border rounded-lg shadow-md mb-4 bg-white">
+                        <div
+                            className="flex justify-between items-center p-4 cursor-pointer bg-[#C7E7DE] hover:bg-[#D0E8E0] transition duration-200"
+                            onClick={() => toggleSection('withoutDonorRestrictions')}
+                        >
+                            <h2 className="text-xl font-bold text-[#2C323C]">
+                                Without Donor Restrictions
+                            </h2>
+                            {openSections.withoutDonorRestrictions ? (
+                                <FaChevronUp className="text-[#2C323C]" />
+                            ) : (
+                                <FaChevronDown className="text-[#2C323C]" />
+                            )}
+                        </div>
+                        {openSections.withoutDonorRestrictions && (
+                            <div className="px-8 pb-4 pt-2 bg-transparent">
+                                <table className="w-full border-collapse">
+                                    <tbody className="text-[#2C323C] divide-y divide-[#D7D8D9]">
+                                        <tr>
+                                            <td className="p-3">Regular Funds</td>
+                                            <td className="p-3 text-right">{formatNumber(regular.change)}</td>
+                                        </tr>
+                                        <tr className="bg-gray-100 font-bold">
+                                            <td className="p-3">Total Without Donor Restrictions</td>
+                                            <td className="p-3 text-right">{formatNumber(regular.change)}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                    {/* With Donor Restrictions (Restricted Funds) */}
+                    <div className="border rounded-lg shadow-md mb-4 bg-white">
+                        <div
+                            className="flex justify-between items-center p-4 cursor-pointer bg-[#C7E7DE] hover:bg-[#D0E8E0] transition duration-200"
+                            onClick={() => toggleSection('withDonorRestrictions')}
+                        >
+                            <h2 className="text-xl font-bold text-[#2C323C]">
+                                With Donor Restrictions
+                            </h2>
+                            {openSections.withDonorRestrictions ? (
+                                <FaChevronUp className="text-[#2C323C]" />
+                            ) : (
+                                <FaChevronDown className="text-[#2C323C]" />
+                            )}
+                        </div>
+                        {openSections.withDonorRestrictions && (
+                            <div className="px-8 pb-4 pt-2 bg-transparent">
+                                <table className="w-full border-collapse">
+                                    <tbody className="text-[#2C323C] divide-y divide-[#D7D8D9]">
+                                        <tr>
+                                            <td className="p-3">Restricted Funds</td>
+                                            <td className="p-3 text-right">{formatNumber(restricted.change)}</td>
+                                        </tr>
+                                        <tr className="bg-gray-100 font-bold">
+                                            <td className="p-3">Total With Donor Restrictions</td>
+                                            <td className="p-3 text-right">{formatNumber(restricted.change)}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                    {/* Blue Total Equity row */}
                     <div className="bg-[#DCECF2] p-4 text-lg font-bold text-[#2C323C] rounded-lg mt-4 flex justify-between text-center">
-                        <h3>Total Net Assets:</h3>
-                        <p>{summary.totalEquity.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</p>
+                        <h3>Total Equity:</h3>
+                        <p>{formatNumber((regular.change || 0) + (restricted.change || 0))}</p>
                     </div>
                 </div>
             </div>
@@ -254,11 +330,22 @@ const BalanceSheetReport = () => {
                     onClick={() => {
                         // Show loading UI
                         toast.loading("Generating PDF...");
-                        // Generate PDF directly
+                        // Prepare netAssets for PDF: map 'change' to 'total' and add a name
+                        const pdfNetAssets = {
+                            withoutDonorRestrictions: [
+                                { name: 'Regular Funds', total: safe(regular.change) }
+                            ],
+                            withDonorRestrictions: [
+                                { name: 'Restricted Funds', total: safe(restricted.change) }
+                            ]
+                        };
                         axios.post("/api/v1/balance-sheet/generate-pdf", {
-                            balanceSheetData,
+                            balanceSheetData: {
+                                ...balanceSheetData,
+                                netAssets: pdfNetAssets
+                            },
                             summary,
-                            year: formData.year
+                            year: String(formData.year)
                         })
                         .then(response => {
                             if (response.data && response.data.pdf_url) {
@@ -271,7 +358,7 @@ const BalanceSheetReport = () => {
                                 // Also save the PDF to the system
                                 return axios.post("/api/v1/balance-sheet/save-pdf", {
                                     pdf_url: response.data.pdf_url,
-                                    year: formData.year
+                                    year: String(formData.year)
                                 });
                             }
                         })
