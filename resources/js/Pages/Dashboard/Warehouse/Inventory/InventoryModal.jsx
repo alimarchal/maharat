@@ -23,6 +23,7 @@ const InventoryModal = ({
     const [errors, setErrors] = useState({});
     const [warehouses, setWarehouses] = useState([]);
     const [products, setProducts] = useState([]);
+    const [inventories, setInventories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isExistingProduct, setIsExistingProduct] = useState(false);
 
@@ -48,6 +49,20 @@ const InventoryModal = ({
         fetchWarehouses();
         fetchProducts();
     }, []);
+
+    useEffect(() => {
+        const fetchAllInventories = async () => {
+            try {
+                const response = await axios.get("/api/v1/inventories");
+                setInventories(response.data.data);
+            } catch (error) {
+                console.error("Error fetching inventories:", error);
+            }
+        };
+        if (isOpen) {
+            fetchAllInventories();
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         if (isOpen) {
@@ -83,6 +98,22 @@ const InventoryModal = ({
         }
     }, [isOpen, inventoryData, products]);
 
+    const checkExistingInventory = (warehouseId, productId) => {
+        return inventories.some(
+            (inv) =>
+                inv.warehouse_id?.toString() === warehouseId?.toString() &&
+                inv.product_id?.toString() === productId?.toString()
+        );
+    };
+
+    useEffect(() => {
+        if (formData.warehouse_id && formData.product_id) {
+            setIsExistingProduct(checkExistingInventory(formData.warehouse_id, formData.product_id));
+        } else {
+            setIsExistingProduct(false);
+        }
+    }, [formData.warehouse_id, formData.product_id, inventories]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
@@ -115,6 +146,27 @@ const InventoryModal = ({
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
+
+        // Prevent negative quantity on stock out
+        if (
+            isExistingProduct &&
+            formData.transaction_type === "stock_out"
+        ) {
+            const existingInventory = inventories.find(
+                (inv) =>
+                    inv.warehouse_id?.toString() === formData.warehouse_id?.toString() &&
+                    inv.product_id?.toString() === formData.product_id?.toString()
+            );
+            const currentQty = parseFloat(existingInventory?.quantity || 0);
+            const outQty = parseFloat(formData.quantity || 0);
+            if (outQty > currentQty) {
+                setErrors({
+                    ...errors,
+                    quantity: `Cannot stock out more than available (${currentQty})`,
+                });
+                return;
+            }
+        }
 
         setLoading(true);
         try {
@@ -161,13 +213,7 @@ const InventoryModal = ({
                     </button>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div
-                        className={`grid grid-cols-1 ${
-                            isExistingProduct
-                                ? "md:grid-cols-3"
-                                : "md:grid-cols-2"
-                        } gap-6`}
-                    >
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                             <SelectFloating
                                 label="Warehouse"
@@ -202,25 +248,29 @@ const InventoryModal = ({
                                 </p>
                             )}
                         </div>
-                        {isExistingProduct && (
-                            <div>
-                                <SelectFloating
-                                    label="Transaction Type"
-                                    name="transaction_type"
-                                    value={formData.transaction_type}
-                                    onChange={handleChange}
-                                    options={[
-                                        { id: "stock_in", label: "Stock In" },
-                                        { id: "stock_out", label: "Stock Out" },
-                                    ]}
-                                />
-                                {errors.transaction_type && (
-                                    <p className="text-red-500 text-sm">
-                                        {errors.transaction_type}
-                                    </p>
-                                )}
-                            </div>
-                        )}
+                        <div>
+                            <SelectFloating
+                                label="Transaction Type"
+                                name="transaction_type"
+                                value={formData.transaction_type}
+                                onChange={handleChange}
+                                options={
+                                    isExistingProduct
+                                        ? [
+                                            { id: "stock_in", label: "Stock In" },
+                                            { id: "stock_out", label: "Stock Out" },
+                                        ]
+                                        : [
+                                            { id: "stock_in", label: "Stock In" },
+                                        ]
+                                }
+                            />
+                            {errors.transaction_type && (
+                                <p className="text-red-500 text-sm">
+                                    {errors.transaction_type}
+                                </p>
+                            )}
+                        </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
