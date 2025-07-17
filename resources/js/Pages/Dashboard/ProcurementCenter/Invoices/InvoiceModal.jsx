@@ -182,10 +182,10 @@ const InvoiceModal = ({
                 if (allInvoicesResponse.data.data) {
                     const usedPOIds = allInvoicesResponse.data.data
                         .filter((invoice) => invoice.purchase_order_id)
-                        .map((invoice) => invoice.purchase_order_id);
+                        .map((invoice) => String(invoice.purchase_order_id));
 
                     const availablePOs = allPOs
-                        .filter((po) => !usedPOIds.includes(po.id))
+                        .filter((po) => !usedPOIds.includes(String(po.id)))
                         .map((po) => ({
                             id: po.id,
                             label: po.purchase_order_no || `PO-${po.id}`,

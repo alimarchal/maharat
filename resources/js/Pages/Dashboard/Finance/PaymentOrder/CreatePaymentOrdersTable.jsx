@@ -4,7 +4,6 @@ import { faPaperclip, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import PaymentOrderModal from "./PaymentOrderModal";
 import SelectFloating from "@/Components/SelectFloating";
-import InvoiceModal from "../../ProcurementCenter/Invoices/InvoiceModal";
 
 const CreatePaymentOrdersTable = () => {
     const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -106,7 +105,7 @@ const CreatePaymentOrdersTable = () => {
                         value={selectedPurchaseOrder}
                         onChange={handlePurchaseOrderChange}
                         options={purchaseOrders
-                            .filter(order => externalInvoicePOIds.includes(order.id))
+                            .filter(order => externalInvoicePOIds.map(String).includes(String(order.id)))
                             .map((order) => ({
                                 id: order.id,
                                 label: order.purchase_order_no || `PO #${order.id}`,
@@ -228,10 +227,9 @@ const CreatePaymentOrdersTable = () => {
 
             {/* Render the modal */}
             {isModalOpen && (
-                <InvoiceModal
+                <PaymentOrderModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
-                    onExternalInvoiceCreated={fetchPurchaseOrdersList}
                     selectedOrder={selectedOrder}
                 />
             )}
