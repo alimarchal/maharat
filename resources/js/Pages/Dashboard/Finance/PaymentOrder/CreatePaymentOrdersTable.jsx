@@ -19,29 +19,29 @@ const CreatePaymentOrdersTable = () => {
 
     const [externalInvoicePOIds, setExternalInvoicePOIds] = useState([]);
 
-    useEffect(() => {
-        const fetchPurchaseOrdersList = async () => {
-            try {
-                const [poRes, extInvRes] = await Promise.all([
-                    fetch("/api/v1/purchase-orders?has_payment_order=false&filter[status]=Approved"),
-                    fetch("/api/v1/external-invoices")
-                ]);
-                const poData = await poRes.json();
-                const extInvData = await extInvRes.json();
+    const fetchPurchaseOrdersList = async () => {
+        try {
+            const [poRes, extInvRes] = await Promise.all([
+                fetch("/api/v1/purchase-orders?has_payment_order=false&filter[status]=Approved"),
+                fetch("/api/v1/external-invoices")
+            ]);
+            const poData = await poRes.json();
+            const extInvData = await extInvRes.json();
 
-                if (poRes.ok && extInvRes.ok) {
-                    setPurchaseOrders(poData.data || []);
-                    // Extract purchase_order_id from each external invoice
-                    const poIds = (extInvData.data || []).map(inv => inv.purchase_order_id);
-                    setExternalInvoicePOIds(poIds);
-                } else {
-                    throw new Error("Failed to fetch purchase orders or external invoices");
-                }
-            } catch (err) {
-                console.error("Error loading purchase orders or external invoices:", err);
+            if (poRes.ok && extInvRes.ok) {
+                setPurchaseOrders(poData.data || []);
+                // Extract purchase_order_id from each external invoice
+                const poIds = (extInvData.data || []).map(inv => inv.purchase_order_id);
+                setExternalInvoicePOIds(poIds);
+            } else {
+                throw new Error("Failed to fetch purchase orders or external invoices");
             }
-        };
+        } catch (err) {
+            console.error("Error loading purchase orders or external invoices:", err);
+        }
+    };
 
+    useEffect(() => {
         fetchPurchaseOrdersList();
     }, []);
 
@@ -105,7 +105,7 @@ const CreatePaymentOrdersTable = () => {
                         value={selectedPurchaseOrder}
                         onChange={handlePurchaseOrderChange}
                         options={purchaseOrders
-                            .filter(order => externalInvoicePOIds.includes(order.id))
+                            .filter(order => externalInvoicePOIds.map(String).includes(String(order.id)))
                             .map((order) => ({
                                 id: order.id,
                                 label: order.purchase_order_no || `PO #${order.id}`,
