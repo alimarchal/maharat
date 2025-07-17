@@ -13,6 +13,7 @@ const InvoiceModal = ({
     onSave,
     invoice = null,
     isEdit = false,
+    onExternalInvoiceCreated,
 }) => {
     const user_id = usePage().props.auth.user.id;
     
@@ -436,6 +437,9 @@ const InvoiceModal = ({
 
                 onSave(submissionData);
                 onClose();
+                if (typeof onExternalInvoiceCreated === 'function') {
+                    onExternalInvoiceCreated();
+                }
             }
         } catch (error) {
             if (error.response?.data?.errors) {

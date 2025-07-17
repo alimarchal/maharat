@@ -4,6 +4,7 @@ import { faPaperclip, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import PaymentOrderModal from "./PaymentOrderModal";
 import SelectFloating from "@/Components/SelectFloating";
+import InvoiceModal from "../../ProcurementCenter/Invoices/InvoiceModal";
 
 const CreatePaymentOrdersTable = () => {
     const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -19,29 +20,29 @@ const CreatePaymentOrdersTable = () => {
 
     const [externalInvoicePOIds, setExternalInvoicePOIds] = useState([]);
 
-    useEffect(() => {
-        const fetchPurchaseOrdersList = async () => {
-            try {
-                const [poRes, extInvRes] = await Promise.all([
-                    fetch("/api/v1/purchase-orders?has_payment_order=false&filter[status]=Approved"),
-                    fetch("/api/v1/external-invoices")
-                ]);
-                const poData = await poRes.json();
-                const extInvData = await extInvRes.json();
+    const fetchPurchaseOrdersList = async () => {
+        try {
+            const [poRes, extInvRes] = await Promise.all([
+                fetch("/api/v1/purchase-orders?has_payment_order=false&filter[status]=Approved"),
+                fetch("/api/v1/external-invoices")
+            ]);
+            const poData = await poRes.json();
+            const extInvData = await extInvRes.json();
 
-                if (poRes.ok && extInvRes.ok) {
-                    setPurchaseOrders(poData.data || []);
-                    // Extract purchase_order_id from each external invoice
-                    const poIds = (extInvData.data || []).map(inv => inv.purchase_order_id);
-                    setExternalInvoicePOIds(poIds);
-                } else {
-                    throw new Error("Failed to fetch purchase orders or external invoices");
-                }
-            } catch (err) {
-                console.error("Error loading purchase orders or external invoices:", err);
+            if (poRes.ok && extInvRes.ok) {
+                setPurchaseOrders(poData.data || []);
+                // Extract purchase_order_id from each external invoice
+                const poIds = (extInvData.data || []).map(inv => inv.purchase_order_id);
+                setExternalInvoicePOIds(poIds);
+            } else {
+                throw new Error("Failed to fetch purchase orders or external invoices");
             }
-        };
+        } catch (err) {
+            console.error("Error loading purchase orders or external invoices:", err);
+        }
+    };
 
+    useEffect(() => {
         fetchPurchaseOrdersList();
     }, []);
 
@@ -227,9 +228,10 @@ const CreatePaymentOrdersTable = () => {
 
             {/* Render the modal */}
             {isModalOpen && (
-                <PaymentOrderModal
+                <InvoiceModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
+                    onExternalInvoiceCreated={fetchPurchaseOrdersList}
                     selectedOrder={selectedOrder}
                 />
             )}
