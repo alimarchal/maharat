@@ -14,34 +14,36 @@ const SubCostCenterTable = () => {
     const [selectedSubCostCenter, setSelectedSubCostCenter] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
-    const [parentCostCenters, setParentCostCenters] = useState([]);
-    const [parentLoading, setParentLoading] = useState(true);
-
     const filters = ["All", "Approved", "Pending"];
-
-    const fetchParentCostCenters = async () => {
-        try {
-            setParentLoading(true);
-            const response = await axios.get("/api/v1/cost-centers?is_main=true&per_page=1000");
-            setParentCostCenters(response.data.data || []);
-        } catch (error) {
-            console.error("Error fetching parent cost centers:", error);
-        } finally {
-            setParentLoading(false);
-        }
-    };
 
     const fetchSubCostCenters = async () => {
         try {
             setLoading(true);
+            console.log("Fetching sub cost centers...");
             const response = await axios.get(
                 `/api/v1/cost-centers?include=parent,children,department,manager,budgetOwner&page=${currentPage}&per_page=15&is_main=false&status_filter=${selectedFilter}`
             );
+            console.log("Sub cost centers API response:", response.data);
+            console.log("Sub cost centers data:", response.data.data);
+            
+            // Log each sub cost center to check parent data
+            if (response.data.data) {
+                response.data.data.forEach((center, index) => {
+                    console.log(`Sub cost center ${index + 1}:`, {
+                        id: center.id,
+                        name: center.name,
+                        parent_id: center.parent_id,
+                        parent: center.parent
+                    });
+                });
+            }
+            
             setSubCostCenters(response.data.data || []);
             setLastPage(response.data.meta?.last_page || 1);
             setError(null);
         } catch (error) {
             console.error("Error fetching sub-cost centers:", error);
+            console.error("Error details:", error.response?.data);
             setError(
                 "Failed to load sub-cost centers. Please try again later."
             );
@@ -49,10 +51,6 @@ const SubCostCenterTable = () => {
             setLoading(false);
         }
     };
-
-    useEffect(() => {
-        fetchParentCostCenters();
-    }, []);
 
     useEffect(() => {
         fetchSubCostCenters();
@@ -74,13 +72,21 @@ const SubCostCenterTable = () => {
     };
 
     // Function to get parent name
-    const getParentName = (parentId) => {
-        if (!parentId) return "No Parent";
+    const getParentName = (center) => {
+        console.log("getParentName called with center:", center);
+        console.log("center.parent_id:", center.parent_id);
+        console.log("center.parent:", center.parent);
         
-        const parent = parentCostCenters.find(p => p.id === parentId);
-        if (!parent) return "N/A";
+        if (!center.parent_id) return "No Parent";
         
-        return parent.name; // Return the parent name instead of display ID
+        // Use the included parent data directly
+        if (center.parent) {
+            console.log("Found parent, returning name:", center.parent.name);
+            return center.parent.name;
+        }
+        
+        console.log("No parent found, returning N/A");
+        return "N/A";
     };
 
     return (
@@ -127,7 +133,7 @@ const SubCostCenterTable = () => {
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                    {loading || parentLoading ? (
+                    {loading ? (
                         <tr>
                             <td colSpan="9" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
@@ -153,7 +159,7 @@ const SubCostCenterTable = () => {
                                     <tr key={center.id}>
                                         <td className="py-3 px-4">{displayId}</td>
                                         <td className="py-3 px-4">
-                                            {getParentName(center.parent_id)}
+                                            {getParentName(center)}
                                         </td>
                                         <td className="py-3 px-4">{center.name}</td>
                                         <td className="py-3 px-4">
