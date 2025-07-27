@@ -13,6 +13,8 @@ const CostCenterTable = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedCostCenter, setSelectedCostCenter] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [lastPage, setLastPage] = useState(1);
 
     const filters = ["All", "Approved", "Pending"];
 
@@ -20,9 +22,10 @@ const CostCenterTable = () => {
         try {
             setLoading(true);
             const response = await axios.get(
-                "/api/v1/cost-centers?include=parent,children,department,manager,budgetOwner"
+                `/api/v1/cost-centers?include=parent,children,department,manager,budgetOwner&page=${currentPage}&per_page=15&is_main=true&status_filter=${selectedFilter}`
             );
-            setCostCenters(response.data.data);
+            setCostCenters(response.data.data || []);
+            setLastPage(response.data.meta?.last_page || 1);
             setError(null);
         } catch (error) {
             console.error("Error fetching cost centers:", error);
@@ -34,17 +37,29 @@ const CostCenterTable = () => {
 
     useEffect(() => {
         fetchCostCenters();
-    }, []);
+    }, [currentPage, selectedFilter]); // Added selectedFilter to dependency array
 
     const handleDelete = async (id) => {
         if (
             window.confirm("Are you sure you want to delete this Cost Center?")
         ) {
             try {
+                // First check if there are any sub cost centers using this as parent
+                const subCostCentersResponse = await axios.get(`/api/v1/cost-centers?is_main=false&per_page=1000`);
+                const subCostCenters = subCostCentersResponse.data.data || [];
+                const hasSubCostCenters = subCostCenters.some(sub => sub.parent_id === id);
+                
+                if (hasSubCostCenters) {
+                    const costCenterName = costCenters.find(cc => cc.id === id)?.name || 'this cost center';
+                    alert(`Cannot delete ${costCenterName} because it has sub cost centers. Please delete all sub cost centers first before deleting this cost center.`);
+                    return;
+                }
+                
                 await axios.delete(`/api/v1/cost-centers/${id}`);
                 fetchCostCenters();
             } catch (error) {
                 console.error("Error deleting cost center:", error);
+                alert("An error occurred while deleting the cost center. Please try again.");
             }
         }
     };
@@ -86,7 +101,7 @@ const CostCenterTable = () => {
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             ID
                         </th>
-                        <th className="py-3 px-4">Name</th>
+                        <th className="py-3 px-4">Cost Center Name</th>
                         <th className="py-3 px-4">Type</th>
                         <th className="py-3 px-4">Department/Unit</th>
                         <th className="py-3 px-4">Manager</th>
@@ -115,53 +130,54 @@ const CostCenterTable = () => {
                         </tr>
                     ) : costCenters.length > 0 ? (
                         costCenters
-                            .filter(
-                                (center) =>
-                                    selectedFilter === "All" ||
-                                    center.status === selectedFilter
-                            )
-                            .map((center) => (
-                                <tr key={center.id}>
-                                    <td className="py-3 px-4">{center.id}</td>
-                                    <td className="py-3 px-4">{center.name}</td>
-                                    <td className="py-3 px-4">
-                                        {center.cost_center_type || "N/A"}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {center.department?.name || "N/A"}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {center.manager?.name || "N/A"}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {center.status}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {center.description}
-                                    </td>
-                                    <td className="py-3 px-4 flex justify-center text-center space-x-3">
-                                        <button
-                                            onClick={() => {
-                                                setSelectedCostCenter(center);
-                                                setIsModalOpen(true);
-                                            }}
-                                            className="text-blue-400 hover:text-blue-500"
-                                            title="Edit Cost Center"
-                                        >
-                                            <FontAwesomeIcon icon={faEdit} />
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                handleDelete(center.id)
-                                            }
-                                            className="text-red-600 hover:text-red-800"
-                                            title="Delete Cost Center"
-                                        >
-                                            <FontAwesomeIcon icon={faTrash} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
+                            .map((center, index) => {
+                                // Calculate display ID based on current page and items per page
+                                const itemsPerPage = 15; // Default Laravel pagination
+                                const displayId = (currentPage - 1) * itemsPerPage + index + 1;
+                                
+                                return (
+                                    <tr key={center.id}>
+                                        <td className="py-3 px-4">{displayId}</td>
+                                        <td className="py-3 px-4">{center.name}</td>
+                                        <td className="py-3 px-4">
+                                            {center.cost_center_type || "N/A"}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            {center.department?.name || "N/A"}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            {center.manager?.name || "N/A"}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            {center.status}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            {center.description}
+                                        </td>
+                                        <td className="py-3 px-4 flex justify-center text-center space-x-3">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedCostCenter(center);
+                                                    setIsModalOpen(true);
+                                                }}
+                                                className="text-blue-400 hover:text-blue-500"
+                                                title="Edit Cost Center"
+                                            >
+                                                <FontAwesomeIcon icon={faEdit} />
+                                            </button>
+                                            <button
+                                                onClick={() =>
+                                                    handleDelete(center.id)
+                                                }
+                                                className="text-red-600 hover:text-red-800"
+                                                title="Delete Cost Center"
+                                            >
+                                                <FontAwesomeIcon icon={faTrash} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })
                     ) : (
                         <tr>
                             <td
@@ -174,6 +190,39 @@ const CostCenterTable = () => {
                     )}
                 </tbody>
             </table>
+
+            {/* Pagination */}
+            {!loading && !error && costCenters.length > 0 && (
+                <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    {Array.from(
+                        { length: lastPage },
+                        (_, index) => index + 1
+                    ).map((page) => (
+                        <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-1 ${
+                                currentPage === page
+                                    ? "bg-[#009FDC] text-white"
+                                    : "border border-[#B9BBBD] bg-white"
+                            } rounded-full hover:bg-[#0077B6] hover:text-white transition`}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className={`px-3 py-1 rounded-full transition ${
+                            currentPage >= lastPage || costCenters.length < 15
+                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                : "bg-[#009FDC] text-white hover:bg-[#0077B6]"
+                        }`}
+                        disabled={currentPage >= lastPage || costCenters.length < 15}
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
 
             <div className="flex justify-center items-center relative w-full my-8">
                 <div

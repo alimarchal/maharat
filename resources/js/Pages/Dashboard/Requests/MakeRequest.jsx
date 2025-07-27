@@ -371,26 +371,27 @@ const MakeRequest = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [unitsRes, warehousesRes, costCentersRes, departmentsRes] = await Promise.all([
+                const [unitsRes, warehousesRes, costCentersRes, subCostCentersRes, departmentsRes] = await Promise.all([
                     axios.get("/api/v1/units"),
                     axios.get("/api/v1/warehouses"),
-                    axios.get("/api/v1/cost-centers"),
+                    axios.get("/api/v1/cost-centers?is_main=true&per_page=1000"),
+                    axios.get("/api/v1/cost-centers?is_main=false&per_page=1000"),
                     axios.get("/api/v1/departments"),
                 ]);
 
                 setUnits(unitsRes.data.data);
                 setWarehouses(warehousesRes.data.data);
                 setCostCenters(costCentersRes.data.data);
-                setSubCostCenters(costCentersRes.data.data);
+                setSubCostCenters(subCostCentersRes.data.data);
                 setDepartments(departmentsRes.data.data);
                 fetchAllStatuses();
 
                 // Fetch categories with pagination
                 fetchCategories();
 
-                // Process cost centers
-                const costCenterData = costCentersRes.data.data;
-                processSubCostCenters(costCenterData);
+                // Process sub cost centers
+                const subCostCenterData = subCostCentersRes.data.data;
+                processSubCostCenters(subCostCenterData);
 
             } catch (error) {
                 console.error("Error in fetchData:", error);
@@ -536,7 +537,12 @@ const MakeRequest = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        setFormData((prev) => ({ 
+            ...prev, 
+            [name]: value,
+            // Reset sub_cost_center_id when cost_center_id changes
+            ...(name === 'cost_center_id' && { sub_cost_center_id: '' })
+        }));
     };
 
     const handleFileChange = async (index, e) => {

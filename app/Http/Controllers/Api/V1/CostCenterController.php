@@ -20,11 +20,23 @@ class CostCenterController extends Controller
 {
     public function index(): JsonResponse|ResourceCollection
     {
-        $costCenters = QueryBuilder::for(CostCenter::class)
+        $query = QueryBuilder::for(CostCenter::class)
             ->allowedFilters(CostCenterParameters::ALLOWED_FILTERS)
             ->allowedSorts(CostCenterParameters::ALLOWED_SORTS)
-            ->allowedIncludes(CostCenterParameters::ALLOWED_INCLUDES)
-            ->paginate()
+            ->allowedIncludes(CostCenterParameters::ALLOWED_INCLUDES);
+
+        // Add custom filtering for main vs sub cost centers
+        if (request()->has('is_main')) {
+            if (request()->boolean('is_main')) {
+                // Show only main cost centers (parent_id = null)
+                $query->whereNull('parent_id');
+            } else {
+                // Show only sub cost centers (parent_id != null)
+                $query->whereNotNull('parent_id');
+            }
+        }
+
+        $costCenters = $query->paginate()
             ->appends(request()->query());
 
         if ($costCenters->isEmpty()) {
