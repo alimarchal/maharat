@@ -12,16 +12,33 @@ const SubCostCenterTable = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedSubCostCenter, setSelectedSubCostCenter] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [lastPage, setLastPage] = useState(1);
+    const [parentCostCenters, setParentCostCenters] = useState([]);
+    const [parentLoading, setParentLoading] = useState(true);
 
     const filters = ["All", "Approved", "Pending"];
+
+    const fetchParentCostCenters = async () => {
+        try {
+            setParentLoading(true);
+            const response = await axios.get("/api/v1/cost-centers?is_main=true&per_page=1000");
+            setParentCostCenters(response.data.data || []);
+        } catch (error) {
+            console.error("Error fetching parent cost centers:", error);
+        } finally {
+            setParentLoading(false);
+        }
+    };
 
     const fetchSubCostCenters = async () => {
         try {
             setLoading(true);
             const response = await axios.get(
-                "/api/v1/cost-centers?include=parent,children,department,manager,budgetOwner"
+                `/api/v1/cost-centers?include=parent,children,department,manager,budgetOwner&page=${currentPage}&per_page=15&is_main=false&status_filter=${selectedFilter}`
             );
-            setSubCostCenters(response.data.data);
+            setSubCostCenters(response.data.data || []);
+            setLastPage(response.data.meta?.last_page || 1);
             setError(null);
         } catch (error) {
             console.error("Error fetching sub-cost centers:", error);
@@ -34,8 +51,12 @@ const SubCostCenterTable = () => {
     };
 
     useEffect(() => {
-        fetchSubCostCenters();
+        fetchParentCostCenters();
     }, []);
+
+    useEffect(() => {
+        fetchSubCostCenters();
+    }, [currentPage, selectedFilter]); // Added selectedFilter to dependency array
 
     const handleDelete = async (id) => {
         if (
@@ -50,6 +71,16 @@ const SubCostCenterTable = () => {
                 console.error("Error deleting sub cost center:", error);
             }
         }
+    };
+
+    // Function to get parent name
+    const getParentName = (parentId) => {
+        if (!parentId) return "No Parent";
+        
+        const parent = parentCostCenters.find(p => p.id === parentId);
+        if (!parent) return "N/A";
+        
+        return parent.name; // Return the parent name instead of display ID
     };
 
     return (
@@ -83,8 +114,8 @@ const SubCostCenterTable = () => {
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             ID
                         </th>
-                        <th className="py-3 px-4">Parent ID</th>
-                        <th className="py-3 px-4">Name</th>
+                        <th className="py-3 px-4">Cost Center Name</th>
+                        <th className="py-3 px-4">Sub Cost Center Name</th>
                         <th className="py-3 px-4">Type</th>
                         <th className="py-3 px-4">Department/Unit</th>
                         <th className="py-3 px-4">Manager</th>
@@ -96,7 +127,7 @@ const SubCostCenterTable = () => {
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                    {loading ? (
+                    {loading || parentLoading ? (
                         <tr>
                             <td colSpan="9" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
@@ -113,58 +144,59 @@ const SubCostCenterTable = () => {
                         </tr>
                     ) : subCostCenters.length > 0 ? (
                         subCostCenters
-                            .filter(
-                                (center) =>
-                                    selectedFilter === "All" ||
-                                    center.status === selectedFilter
-                            )
-                            .map((center) => (
-                                <tr key={center.id}>
-                                    <td className="py-3 px-4">{center.id}</td>
-                                    <td className="py-3 px-4">
-                                        {center.parent_id || "No Parent"}
-                                    </td>
-                                    <td className="py-3 px-4">{center.name}</td>
-                                    <td className="py-3 px-4">
-                                        {center.cost_center_type || "N/A"}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {center.department?.name || "N/A"}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {center.manager?.name || "N/A"}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {center.status}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {center.description}
-                                    </td>
-                                    <td className="py-3 px-4 flex justify-center text-center space-x-3">
-                                        <button
-                                            onClick={() => {
-                                                setSelectedSubCostCenter(
-                                                    center
-                                                );
-                                                setIsModalOpen(true);
-                                            }}
-                                            className="text-blue-400 hover:text-blue-500"
-                                            title="Edit Sub Cost Center"
-                                        >
-                                            <FontAwesomeIcon icon={faEdit} />
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                handleDelete(center.id)
-                                            }
-                                            className="text-red-600 hover:text-red-800"
-                                            title="Delete Sub Cost Center"
-                                        >
-                                            <FontAwesomeIcon icon={faTrash} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
+                            .map((center, index) => {
+                                // Calculate display ID based on current page and items per page
+                                const itemsPerPage = 15; // Default Laravel pagination
+                                const displayId = (currentPage - 1) * itemsPerPage + index + 1;
+                                
+                                return (
+                                    <tr key={center.id}>
+                                        <td className="py-3 px-4">{displayId}</td>
+                                        <td className="py-3 px-4">
+                                            {getParentName(center.parent_id)}
+                                        </td>
+                                        <td className="py-3 px-4">{center.name}</td>
+                                        <td className="py-3 px-4">
+                                            {center.cost_center_type || "N/A"}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            {center.department?.name || "N/A"}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            {center.manager?.name || "N/A"}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            {center.status}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            {center.description}
+                                        </td>
+                                        <td className="py-3 px-4 flex justify-center text-center space-x-3">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedSubCostCenter(
+                                                        center
+                                                    );
+                                                    setIsModalOpen(true);
+                                                }}
+                                                className="text-blue-400 hover:text-blue-500"
+                                                title="Edit Sub Cost Center"
+                                            >
+                                                <FontAwesomeIcon icon={faEdit} />
+                                            </button>
+                                            <button
+                                                onClick={() =>
+                                                    handleDelete(center.id)
+                                                }
+                                                className="text-red-600 hover:text-red-800"
+                                                title="Delete Sub Cost Center"
+                                            >
+                                                <FontAwesomeIcon icon={faTrash} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })
                     ) : (
                         <tr>
                             <td
@@ -177,6 +209,39 @@ const SubCostCenterTable = () => {
                     )}
                 </tbody>
             </table>
+
+            {/* Pagination */}
+            {!loading && !error && subCostCenters.length > 0 && (
+                <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    {Array.from(
+                        { length: lastPage },
+                        (_, index) => index + 1
+                    ).map((page) => (
+                        <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-1 ${
+                                currentPage === page
+                                    ? "bg-[#009FDC] text-white"
+                                    : "border border-[#B9BBBD] bg-white"
+                            } rounded-full hover:bg-[#0077B6] hover:text-white transition`}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className={`px-3 py-1 rounded-full transition ${
+                            currentPage >= lastPage || subCostCenters.length < 15
+                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                : "bg-[#009FDC] text-white hover:bg-[#0077B6]"
+                        }`}
+                        disabled={currentPage >= lastPage || subCostCenters.length < 15}
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
 
             <div className="flex justify-center items-center relative w-full my-8">
                 <div
