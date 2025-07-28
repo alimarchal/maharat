@@ -282,6 +282,7 @@ export default function CreateMaharatInvoice() {
     const generateFallbackInvoiceNumber = async () => {
         try {
             // Attempt to determine the next invoice number based on existing invoices
+            // The API should already exclude soft-deleted records, but we'll filter again for safety
             const response = await axios.get("/api/v1/invoices");
 
             if (
@@ -290,7 +291,10 @@ export default function CreateMaharatInvoice() {
                 response.data.data.length > 0
             ) {
                 // Find the pattern INV-XXXXX that matches the backend format
-                const invoiceNumbers = response.data.data
+                // Filter out any soft-deleted records (those with deleted_at field)
+                const activeInvoices = response.data.data.filter(invoice => !invoice.deleted_at);
+                
+                const invoiceNumbers = activeInvoices
                     .map((invoice) => {
                         // Extract the numeric part, matching the backend format exactly
                         const match =

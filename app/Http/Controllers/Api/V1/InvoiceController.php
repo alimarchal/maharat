@@ -545,20 +545,21 @@ class InvoiceController extends Controller
      */
     private function generateInvoiceNumber(): string
     {
-        // Get the latest invoice number
-        $latestInvoice = Invoice::orderBy('id', 'desc')->first();
+        // Get all invoices (including soft-deleted records) to find the highest number
+        $allInvoices = Invoice::withTrashed()->get();
+        $highestNumber = 0;
         
-        if ($latestInvoice) {
-            // Extract the numeric part from the latest invoice number
-            $match = preg_match('/INV-(\d+)/', $latestInvoice->invoice_number, $matches);
-            if ($match && isset($matches[1])) {
-                $nextNumber = intval($matches[1]) + 1;
-            } else {
-                $nextNumber = 1;
+        foreach ($allInvoices as $invoice) {
+            if (preg_match('/INV-(\d+)/', $invoice->invoice_number, $matches)) {
+                $number = intval($matches[1]);
+                if ($number > $highestNumber) {
+                    $highestNumber = $number;
+                }
             }
-        } else {
-            $nextNumber = 1;
         }
+        
+        // Use the highest number found + 1
+        $nextNumber = $highestNumber + 1;
         
         // Format as INV-XXXXX (5 digits with leading zeros)
         return 'INV-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
