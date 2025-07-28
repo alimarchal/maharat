@@ -170,17 +170,28 @@ export default function MaharatPDF({ invoiceId, onGenerated }) {
             
             // Reposition QR code to be at the same level as the company name but right-aligned
             try {
-                // Generate QR code content similar to CreateMaharatInvoice.jsx
-                const qrCodeData = JSON.stringify({
-                    seller: companyDetails?.name || "",
-                    seller_vat: companyDetails?.vat_no || "",
-                    invoice_no: invoiceData.invoice_number || "",
-                    date: invoiceData.issue_date || new Date().toISOString(),
-                    total_amount: invoiceData.total_amount || "",
-                    currency: companyDetails?.currency?.name || "",
-                    buyer_vat: invoiceData.clientDetails?.vat_number || invoiceData.client?.vat_number || "",
-                });
-                const qrCodeText = btoa(qrCodeData);
+                // QR Code content using TLV format
+                function toTLV(tag, value) {
+                    const textEncoder = new TextEncoder();
+                    const valueBytes = textEncoder.encode(value);
+                    return new Uint8Array([tag, valueBytes.length, ...valueBytes]);
+                }
+
+                const tlvArray = [
+                    toTLV(1, companyDetails?.name || ""),
+                    toTLV(2, companyDetails?.vat_no || ""),
+                    toTLV(3, invoiceData.issue_date || new Date().toISOString()),
+                    toTLV(4, parseFloat(invoiceData.total_amount || 0).toFixed(2)),
+                    toTLV(5, parseFloat(invoiceData.tax_amount || 0).toFixed(2)),
+                ];
+
+                const qrCodeText = btoa(
+                    String.fromCharCode(
+                        ...new Uint8Array(
+                            tlvArray.reduce((acc, curr) => acc.concat(Array.from(curr)), [])
+                        )
+                    )
+                );
                 
                 // Create a simple canvas element
                 const qrCanvas = document.createElement('canvas');
