@@ -3,6 +3,8 @@
 namespace App\Http\Requests\V1\Invoice;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreInvoiceRequest extends FormRequest
 {
@@ -14,7 +16,7 @@ class StoreInvoiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'invoice_number' => ['nullable', 'string', 'unique:invoices'],
+            'invoice_number' => ['nullable', 'string'],
             'client_id' => ['nullable', 'exists:customers,id'],
             'status' => ['required', 'string', 'in:Draft,Pending,Paid,Overdue,Cancelled'],
             'payment_method' => ['nullable', 'string'],
@@ -42,5 +44,26 @@ class StoreInvoiceRequest extends FormRequest
             'items.*.tax_amount' => ['nullable', 'numeric', 'min:0'],
             'items.*.total' => ['required_with:items', 'numeric', 'min:0'],
         ];
+    }
+
+    /**
+     * Configure the validator instance.
+     */
+    public function withValidator(Validator $validator)
+    {
+        $validator->after(function ($validator) {
+            $invoiceNumber = $this->input('invoice_number');
+            
+            if ($invoiceNumber) {
+                // Check if invoice number already exists among active records
+                $exists = \App\Models\Invoice::where('invoice_number', $invoiceNumber)
+                    ->whereNull('deleted_at')
+                    ->exists();
+                
+                if ($exists) {
+                    $validator->errors()->add('invoice_number', 'The invoice number has already been taken.');
+                }
+            }
+        });
     }
 }
