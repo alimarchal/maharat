@@ -137,7 +137,9 @@ function AddQuotationForm() {
     };
 
     // Function to update sub cost center when cost center changes
-    const updateSubCostCenter = async (selectedCostCenterId) => {
+    const updateSubCostCenter = async (selectedCostCenterId, currentSubCostCenterId = null) => {
+        console.log("updateSubCostCenter called with:", { selectedCostCenterId, currentSubCostCenterId });
+        
         if (!selectedCostCenterId) {
             handleFormInputChange("sub_cost_center_id", "");
             setSubCostCenters([]);
@@ -146,14 +148,31 @@ function AddQuotationForm() {
 
         try {
             // Make API call to get sub cost centers for the selected cost center
-            const response = await axios.get(`/api/v1/cost-centers?filter[parent_id]=${selectedCostCenterId}`);
+            const response = await axios.get(`/api/v1/cost-centers?is_main=false&filter[parent_id]=${selectedCostCenterId}`);
             const subCostCentersData = response.data?.data || [];
             setSubCostCenters(subCostCentersData);
 
+            console.log("Sub cost centers fetched:", subCostCentersData.map(sub => ({ id: sub.id, name: sub.name })));
+
             // If there's only one sub cost center, auto-select it
             if (subCostCentersData.length === 1) {
+                console.log("Only one sub cost center, auto-selecting:", subCostCentersData[0].id);
                 handleFormInputChange("sub_cost_center_id", subCostCentersData[0].id.toString());
+            } else if (currentSubCostCenterId) {
+                // If we have a current sub cost center ID, check if it's still valid
+                const isValidSubCostCenter = subCostCentersData.some(sub => sub.id.toString() === currentSubCostCenterId.toString());
+                console.log("Checking if current sub cost center is valid:", { currentSubCostCenterId, isValidSubCostCenter });
+                if (!isValidSubCostCenter) {
+                    // If the current sub cost center is not valid for the new cost center, clear it
+                    console.log("Current sub cost center is not valid, clearing it");
+                    handleFormInputChange("sub_cost_center_id", "");
+                } else {
+                    console.log("Current sub cost center is valid, keeping it");
+                }
+                // If it's valid, keep the current value (don't change it)
             } else {
+                // No current sub cost center, clear it
+                console.log("No current sub cost center, clearing it");
                 handleFormInputChange("sub_cost_center_id", "");
             }
         } catch (error) {
@@ -166,8 +185,9 @@ function AddQuotationForm() {
     // Handle cost center change
     const handleCostCenterChange = async (e) => {
         const value = e.target.value;
+        const currentSubCostCenterId = formData.sub_cost_center_id;
         handleFormInputChange("cost_center_id", value);
-        await updateSubCostCenter(value);
+        await updateSubCostCenter(value, currentSubCostCenterId);
     };
 
     // Pagination functions for dropdowns
@@ -270,7 +290,7 @@ function AddQuotationForm() {
         setLoadingCostCenters(true);
         setCostCentersRequestInProgress(true);
         try {
-            const response = await axios.get(`/api/v1/cost-centers?page=${page}&per_page=10`);
+            const response = await axios.get(`/api/v1/cost-centers?page=${page}&per_page=10&is_main=true`);
             const { data, meta } = response.data;
             
             if (append) {
@@ -438,7 +458,7 @@ function AddQuotationForm() {
                 }
 
                 const costCentersResponse = await axios.get(
-                    "/api/v1/cost-centers"
+                    "/api/v1/cost-centers?is_main=true"
                 );
                 const costCentersData = costCentersResponse.data?.data || [];
                 setCostCenters(costCentersData);
@@ -591,7 +611,7 @@ function AddQuotationForm() {
 
                     // Fetch sub cost centers if cost center is selected
                     if (formattedData.cost_center_id) {
-                        await updateSubCostCenter(formattedData.cost_center_id);
+                        await updateSubCostCenter(formattedData.cost_center_id, formattedData.sub_cost_center_id);
                     }
 
                     setLoading(false);
@@ -1125,6 +1145,16 @@ function AddQuotationForm() {
                 status_id: formData.status_id || "48",
                 updated_at: new Date().toISOString(),
             };
+
+            // Convert empty string to null for sub_cost_center_id
+            if (rfqData.sub_cost_center_id === "") {
+                rfqData.sub_cost_center_id = null;
+            }
+
+            // Debug log to check if sub_cost_center_id is being set
+            console.log("Form data sub_cost_center_id:", formData.sub_cost_center_id);
+            console.log("RFQ data sub_cost_center_id:", rfqData.sub_cost_center_id);
+            console.log("Full RFQ data being sent:", rfqData);
 
             let response;
             if (rfqId) {
