@@ -166,6 +166,9 @@ class RfqController extends Controller
             // Generate a unique RFQ number
             $rfq_number = $this->getNewRFQNumber();
 
+            // Debug log to see what's being received
+            \Log::info("RFQ Store - Received sub_cost_center_id: " . $request->input('sub_cost_center_id'));
+
             // Create base RFQ data array
             $rfqData = [
                 'organization_name' => $request->input('organization_name'),
@@ -318,6 +321,9 @@ class RfqController extends Controller
         try {
             $oldStatus = $rfq->status_id;
 
+            // Debug log to see what's being received
+            \Log::info("RFQ Update - Received sub_cost_center_id: " . $request->input('sub_cost_center_id'));
+
             // Prepare data for updating
             $updateData = [
                 'organization_name' => $request->input('organization_name'),
@@ -335,8 +341,13 @@ class RfqController extends Controller
                 'status_id' => $request->input('status_id', 47),
             ];
 
-            // Remove null/empty values
-            $updateData = array_filter($updateData, fn($value) => $value !== null && $value !== '');
+            // Remove null values but allow empty strings for sub_cost_center_id
+            $updateData = array_filter($updateData, function($value, $key) {
+                if ($key === 'sub_cost_center_id') {
+                    return $value !== null; // Allow empty string for sub_cost_center_id
+                }
+                return $value !== null && $value !== '';
+            }, ARRAY_FILTER_USE_BOTH);
 
 
             // Update RFQ record
