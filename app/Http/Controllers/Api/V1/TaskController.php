@@ -1465,6 +1465,39 @@ class TaskController extends Controller
                 }
             }
 
+            // Send status notification to requester if task status changed
+            if ($request->has('status') && in_array($request->input('status'), ['Approved', 'Rejected'])) {
+                try {
+                    $notificationService = new TaskNotificationService();
+                    $taskType = $notificationService->getTaskTypeFromProcess($task->process->title ?? '');
+                    $requester = $notificationService->getRequesterFromTask($task);
+                    
+                    if ($requester) {
+                        $comment = $request->input('comment') ?? null;
+                        $notificationService->sendFinalStatusNotification($task, $taskType, $request->input('status'), $requester, $comment);
+                        
+                        Log::info('Status notification sent to requester', [
+                            'task_id' => $task->id,
+                            'task_type' => $taskType,
+                            'status' => $request->input('status'),
+                            'requester_id' => $requester->id,
+                            'requester_email' => $requester->email
+                        ]);
+                    } else {
+                        Log::warning('Could not find requester for task status notification', [
+                            'task_id' => $task->id,
+                            'task_type' => $taskType,
+                            'status' => $request->input('status')
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to send status notification', [
+                        'task_id' => $task->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
             DB::commit();
 
             Log::info('=== TASK UPDATE COMPLETED ===', [
