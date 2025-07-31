@@ -168,6 +168,20 @@ class BudgetApprovalTransactionController extends Controller
                                 $notificationService = new TaskNotificationService();
                                 $notificationService->sendTaskAssignmentNotification($task, 'Total Budget Approval');
                             }
+                            
+                            // Send intermediate status notification to requester
+                            $requesterTask = Task::where('budget_id', $budgetApprovalTransaction->budget_id)
+                                ->with(['budget.requester', 'process'])
+                                ->first();
+                            
+                            if ($requesterTask) {
+                                $notificationService = new TaskNotificationService();
+                                $requester = $notificationService->getRequesterFromTask($requesterTask);
+                                if ($requester) {
+                                    $comment = "Approved by " . auth()->user()->name . " (Step " . $budgetApprovalTransaction->order . ")";
+                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Total Budget Approval', 'In Progress', $requester, $comment);
+                                }
+                            }
                         }
                     }
                 } else {
