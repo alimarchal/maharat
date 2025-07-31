@@ -158,6 +158,20 @@ class RfqApprovalTransactionController extends Controller
                                 $notificationService = new TaskNotificationService();
                                 $notificationService->sendTaskAssignmentNotification($task, 'RFQ Approval');
                             }
+                            
+                            // Send intermediate status notification to requester
+                            $requesterTask = Task::where('rfq_id', $rfqApprovalTransaction->rfq_id)
+                                ->with(['rfq.requester', 'process'])
+                                ->first();
+                            
+                            if ($requesterTask) {
+                                $notificationService = new TaskNotificationService();
+                                $requester = $notificationService->getRequesterFromTask($requesterTask);
+                                if ($requester) {
+                                    $comment = "Approved by " . auth()->user()->name . " (Step " . $rfqApprovalTransaction->order . ")";
+                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'RFQ Approval', 'In Progress', $requester, $comment);
+                                }
+                            }
                         }
                     }
                 } else {

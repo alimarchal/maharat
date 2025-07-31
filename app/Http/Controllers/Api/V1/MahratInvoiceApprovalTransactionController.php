@@ -180,6 +180,20 @@ class MahratInvoiceApprovalTransactionController extends Controller
                                 $notificationService = new TaskNotificationService();
                                 $notificationService->sendTaskAssignmentNotification($task, 'Maharat Invoice Approval');
                             }
+                            
+                            // Send intermediate status notification to requester
+                            $requesterTask = Task::where('invoice_id', $mahratInvoiceApprovalTransaction->invoice_id)
+                                ->with(['invoice.client', 'process'])
+                                ->first();
+                            
+                            if ($requesterTask) {
+                                $notificationService = new TaskNotificationService();
+                                $requester = $notificationService->getRequesterFromTask($requesterTask);
+                                if ($requester) {
+                                    $comment = "Approved by " . auth()->user()->name . " (Step " . $mahratInvoiceApprovalTransaction->order . ")";
+                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Maharat Invoice Approval', 'In Progress', $requester, $comment);
+                                }
+                            }
                         }
                     }
                 } else {

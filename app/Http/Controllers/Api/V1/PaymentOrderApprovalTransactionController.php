@@ -159,6 +159,20 @@ class PaymentOrderApprovalTransactionController extends Controller
                                 $notificationService = new TaskNotificationService();
                                 $notificationService->sendTaskAssignmentNotification($task, 'Payment Order Approval');
                             }
+                            
+                            // Send intermediate status notification to requester
+                            $requesterTask = Task::where('payment_order_id', $paymentOrderApprovalTransaction->payment_order_id)
+                                ->with(['payment_order.user', 'process'])
+                                ->first();
+                            
+                            if ($requesterTask) {
+                                $notificationService = new TaskNotificationService();
+                                $requester = $notificationService->getRequesterFromTask($requesterTask);
+                                if ($requester) {
+                                    $comment = "Approved by " . auth()->user()->name . " (Step " . $paymentOrderApprovalTransaction->order . ")";
+                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Payment Order Approval', 'In Progress', $requester, $comment);
+                                }
+                            }
                         }
                     }
                 } else {

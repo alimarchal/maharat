@@ -149,6 +149,20 @@ class MaterialRequestTransactionController extends Controller
                                 $notificationService = new TaskNotificationService();
                                 $notificationService->sendTaskAssignmentNotification($task, 'Material Request');
                             }
+                            
+                            // Send intermediate status notification to requester
+                            $requesterTask = Task::where('material_request_id', $materialRequestTransaction->material_request_id)
+                                ->with(['material_request.requester', 'process'])
+                                ->first();
+                            
+                            if ($requesterTask) {
+                                $notificationService = new TaskNotificationService();
+                                $requester = $notificationService->getRequesterFromTask($requesterTask);
+                                if ($requester) {
+                                    $comment = "Approved by " . auth()->user()->name . " (Step " . $materialRequestTransaction->order . ")";
+                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Material Request', 'In Progress', $requester, $comment);
+                                }
+                            }
                         }
                     }
                 } else {

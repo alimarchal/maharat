@@ -54,9 +54,15 @@ class TaskStatusNotification extends Notification
         $relatedData = $this->getRelatedData();
         $contentSummary = "Task status update notification for {$this->taskType} - Status: {$this->status}";
         
+        // Determine if this is an intermediate step or final status
+        $isIntermediate = in_array(strtolower($this->status), ['in_progress', 'pending']);
+        $logSubject = $isIntermediate 
+            ? "Progress Update: {$this->taskType} - {$documentName}"
+            : "Status Update: {$this->taskType} - {$documentName}";
+        
         $emailLog = $emailLogService->logEmail(
             'task_status_update',
-            "Status Update: {$this->taskType} - {$documentName}",
+            $logSubject,
             $notifiable->email,
             $notifiable,
             $contentSummary,
@@ -64,14 +70,25 @@ class TaskStatusNotification extends Notification
             "Status updated by {$approver->name}"
         );
 
+        // Determine if this is an intermediate step or final status
+        $isIntermediate = in_array(strtolower($this->status), ['in_progress', 'pending']);
+        
+        $subject = $isIntermediate 
+            ? "Progress Update: {$this->taskType} - {$documentName}"
+            : "Status Update: {$this->taskType} - {$documentName}";
+            
+        $greeting = $isIntermediate
+            ? "Your request is progressing through the approval process."
+            : "Your request has been reviewed and the status has been updated.";
+            
         $mailMessage = (new MailMessage)
-            ->subject("Status Update: {$this->taskType} - {$documentName}")
+            ->subject($subject)
             ->greeting("Dear {$notifiable->name},")
-            ->line("Your request has been reviewed and the status has been updated.")
+            ->line($greeting)
             ->line("")
             ->line("**To:** {$notifiable->name}/{$requesterDepartment}")
             ->line("**From:** {$approver->name}/{$approverDepartment}")
-            ->line("**Subject:** Status Update: {$this->taskType} - {$documentName}")
+            ->line("**Subject:** {$subject}")
             ->line("**Status:** {$statusMessage}")
             ->line("**Updated By:** {$approver->name} ({$approverDesignation})")
             ->line("**Updated Date:** " . now()->format('M d, Y H:i'));

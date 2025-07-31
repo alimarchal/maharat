@@ -44,6 +44,40 @@ class TaskNotificationService
     }
 
     /**
+     * Send intermediate status notification to requester
+     */
+    public function sendIntermediateStatusNotification(Task $task, string $taskType, string $status, $requester, string $comment = null): void
+    {
+        try {
+            if (!$requester || !$requester->email) {
+                Log::warning('Cannot send intermediate status notification: Requester or email not found', [
+                    'task_id' => $task->id,
+                    'task_type' => $taskType,
+                    'status' => $status
+                ]);
+                return;
+            }
+
+            $requester->notify(new TaskStatusNotification($task, $taskType, $status, $comment));
+            
+            Log::info('Intermediate status notification sent successfully', [
+                'task_id' => $task->id,
+                'task_type' => $taskType,
+                'status' => $status,
+                'requester_id' => $requester->id,
+                'requester_email' => $requester->email
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to send intermediate status notification', [
+                'task_id' => $task->id,
+                'task_type' => $taskType,
+                'status' => $status,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Send final status notification to requester
      */
     public function sendFinalStatusNotification(Task $task, string $taskType, string $status, $requester, string $comment = null): void
