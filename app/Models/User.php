@@ -194,6 +194,20 @@ class User extends Authenticatable
     }
 
     /**
+     * Send the password reset notification.
+     */
+    public function sendPasswordResetNotification($token)
+    {
+        \Log::info('User sendPasswordResetNotification called', [
+            'user_id' => $this->id,
+            'user_email' => $this->email,
+            'token' => $token
+        ]);
+        
+        $this->notify(new \App\Notifications\ResetPasswordNotification($token));
+    }
+
+    /**
      * Boot the model.
      */
     protected static function boot()

@@ -23,18 +23,10 @@ Route::get('/', function () {
 });
 
 // Email check route for forgot password
-Route::post('/check-email', function (Request $request) {
-    $email = $request->input('email');
-    
-    $user = \App\Models\User::where('email', $email)
-        ->whereNotNull('email_verified_at')
-        ->first();
-    
-    return response()->json([
-        'exists' => $user ? true : false,
-        'verified' => $user ? true : false,
-    ]);
-})->name('check.email');
+Route::post('/check-email', [App\Http\Controllers\AuthController::class, 'checkEmail'])->name('check.email');
+
+// Alternative route using Inertia's CSRF protection
+Route::post('/api/check-email', [App\Http\Controllers\AuthController::class, 'checkEmail'])->name('api.check.email');
 
 // Dashboard Routes (Protected by Auth & Email Verification)
 Route::middleware(['auth', 'verified'])->group(function () {

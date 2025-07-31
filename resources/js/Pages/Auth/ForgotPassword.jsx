@@ -143,14 +143,29 @@ const ForgotPasswordPage = () => {
       // Get CSRF token from meta tag
       const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
       
+      if (!token) {
+        console.error("CSRF token not found");
+        setError("Security token not found. Please refresh the page.");
+        return false;
+      }
+
+      console.log("CSRF Token:", token); // Debug: Log the token
+
+      // Use URLSearchParams for form data
+      const formData = new URLSearchParams();
+      formData.append('email', email);
+      formData.append('_token', token);
+
       const response = await fetch("/check-email", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
           "X-CSRF-TOKEN": token,
           "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
         },
-        body: JSON.stringify({ email }),
+        credentials: "same-origin",
+        body: formData.toString(),
       });
 
       if (!response.ok) {
