@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Models\Task;
+use App\Services\EmailLogService;
 
 class TaskAssignmentNotification extends Notification implements ShouldQueue
 {
@@ -42,7 +43,22 @@ class TaskAssignmentNotification extends Notification implements ShouldQueue
         $assignedFrom = $this->task->assignedFromUser;
         $taskDetails = $this->getTaskDetails();
 
-        return (new MailMessage)
+        // Log the email
+        $emailLogService = new EmailLogService();
+        $relatedData = $this->getRelatedData();
+        $contentSummary = "Task assignment notification for {$this->taskType} - Task ID: #{$this->task->id}";
+        
+        $emailLog = $emailLogService->logEmail(
+            'task_assignment',
+            "New Task Assigned: {$this->taskType}",
+            $notifiable->email,
+            $notifiable,
+            $contentSummary,
+            $relatedData,
+            "Task assigned by {$assignedFrom->name}"
+        );
+
+        $mailMessage = (new MailMessage)
             ->subject("New Task Assigned: {$this->taskType}")
             ->greeting("Hello {$notifiable->name},")
             ->line("A new task has been assigned to you.")
@@ -61,6 +77,11 @@ class TaskAssignmentNotification extends Notification implements ShouldQueue
             ->line("")
             ->line("Thank you for your attention to this matter.")
             ->salutation("Best regards,");
+
+        // Mark as sent
+        $emailLogService->markAsSent($emailLog);
+
+        return $mailMessage;
     }
 
     /**
@@ -162,5 +183,54 @@ class TaskAssignmentNotification extends Notification implements ShouldQueue
         }
 
         return implode("\n", $details);
+    }
+
+    /**
+     * Get related data for email logging
+     */
+    private function getRelatedData(): array
+    {
+        $relatedData = ['task_id' => $this->task->id];
+
+        // Add specific related record based on task type
+        switch ($this->taskType) {
+            case 'Material Request':
+                if ($this->task->material_request_id) {
+                    $relatedData['material_request_id'] = $this->task->material_request_id;
+                }
+                break;
+            case 'RFQ Approval':
+                if ($this->task->rfq_id) {
+                    $relatedData['rfq_id'] = $this->task->rfq_id;
+                }
+                break;
+            case 'Purchase Order Approval':
+                if ($this->task->purchase_order_id) {
+                    $relatedData['purchase_order_id'] = $this->task->purchase_order_id;
+                }
+                break;
+            case 'Payment Order Approval':
+                if ($this->task->payment_order_id) {
+                    $relatedData['payment_order_id'] = $this->task->payment_order_id;
+                }
+                break;
+            case 'Budget Request Approval':
+                if ($this->task->request_budgets_id) {
+                    $relatedData['request_budget_id'] = $this->task->request_budgets_id;
+                }
+                break;
+            case 'Total Budget Approval':
+                if ($this->task->budget_id) {
+                    $relatedData['budget_id'] = $this->task->budget_id;
+                }
+                break;
+            case 'Maharat Invoice Approval':
+                if ($this->task->invoice_id) {
+                    $relatedData['invoice_id'] = $this->task->invoice_id;
+                }
+                break;
+        }
+
+        return $relatedData;
     }
 } 
