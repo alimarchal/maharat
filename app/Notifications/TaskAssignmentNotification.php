@@ -2,16 +2,13 @@
 
 namespace App\Notifications;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Models\Task;
 use App\Services\EmailLogService;
 
-class TaskAssignmentNotification extends Notification implements ShouldQueue
+class TaskAssignmentNotification extends Notification
 {
-    use Queueable;
 
     protected $task;
     protected $taskType;
