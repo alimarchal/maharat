@@ -2,16 +2,13 @@
 
 namespace App\Notifications;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Models\User;
 use App\Services\EmailLogService;
 
-class WelcomeNotification extends Notification implements ShouldQueue
+class WelcomeNotification extends Notification
 {
-    use Queueable;
 
     protected $user;
     protected $temporaryPassword;

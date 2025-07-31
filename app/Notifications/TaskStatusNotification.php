@@ -2,31 +2,27 @@
 
 namespace App\Notifications;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Models\Task;
 use App\Services\EmailLogService;
 
-class TaskStatusNotification extends Notification implements ShouldQueue
+class TaskStatusNotification extends Notification
 {
-    use Queueable;
-
     protected $task;
     protected $taskType;
     protected $status;
-    protected $requester;
+    protected $comment;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct(Task $task, string $taskType, string $status, $requester)
+    public function __construct(Task $task, string $taskType, string $status, string $comment = null)
     {
         $this->task = $task;
         $this->taskType = $taskType;
         $this->status = $status;
-        $this->requester = $requester;
+        $this->comment = $comment;
     }
 
     /**
@@ -44,43 +40,57 @@ class TaskStatusNotification extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
-        $taskDetails = $this->getTaskDetails();
-        $statusText = $this->status === 'Approve' ? 'APPROVED' : 'REJECTED';
-        $statusColor = $this->status === 'Approve' ? 'green' : 'red';
+        $approver = $this->task->assignedToUser;
+        $documentName = $this->getDocumentName();
+        $statusMessage = $this->getStatusMessage();
+
+        // Get proper names from relationships
+        $requesterDepartment = $notifiable->department->name ?? 'N/A';
+        $approverDepartment = $approver->department->name ?? 'N/A';
+        $approverDesignation = $approver->designation->designation ?? 'N/A';
 
         // Log the email
         $emailLogService = new EmailLogService();
         $relatedData = $this->getRelatedData();
-        $contentSummary = "Task status notification for {$this->taskType} - Task ID: #{$this->task->id} - Status: {$statusText}";
+        $contentSummary = "Task status update notification for {$this->taskType} - Status: {$this->status}";
         
         $emailLog = $emailLogService->logEmail(
-            'task_status',
-            "Your {$this->taskType} has been {$statusText}",
+            'task_status_update',
+            "Status Update: {$this->taskType} - {$documentName}",
             $notifiable->email,
             $notifiable,
             $contentSummary,
             $relatedData,
-            "Final status: {$statusText}"
+            "Status updated by {$approver->name}"
         );
 
         $mailMessage = (new MailMessage)
-            ->subject("Your {$this->taskType} has been {$statusText}")
-            ->greeting("Hello {$notifiable->name},")
-            ->line("Your {$this->taskType} has been {$statusText}.")
+            ->subject("Status Update: {$this->taskType} - {$documentName}")
+            ->greeting("Dear {$notifiable->name},")
+            ->line("Your request has been reviewed and the status has been updated.")
             ->line("")
-            ->line("**Request Details:**")
-            ->line("Task Type: {$this->taskType}")
-            ->line("Task ID: #{$this->task->id}")
-            ->line("Status: {$statusText}")
-            ->line("Final Decision Date: " . now()->format('M d, Y H:i'))
-            ->line("")
-            ->line("**Request Information:**")
-            ->line($taskDetails)
-            ->line("")
-            ->line("You can log into the system to view the complete details and any additional comments.")
-            ->line("")
-            ->line("Thank you for using our system.")
-            ->salutation("Best regards,");
+            ->line("**To:** {$notifiable->name}/{$requesterDepartment}")
+            ->line("**From:** {$approver->name}/{$approverDepartment}")
+            ->line("**Subject:** Status Update: {$this->taskType} - {$documentName}")
+            ->line("**Status:** {$statusMessage}")
+            ->line("**Updated By:** {$approver->name} ({$approverDesignation})")
+            ->line("**Updated Date:** " . now()->format('M d, Y H:i'));
+
+        if ($this->comment) {
+            $mailMessage->line("")
+                       ->line("**Comments:**")
+                       ->line($this->comment);
+        }
+
+        $mailMessage->line("")
+                   ->line("Please log into the system to view the complete details.")
+                   ->line("")
+                   ->line("Thank you for using our system.")
+                   ->line("")
+                   ->line("Best regards,")
+                   ->line("{$approver->name}")
+                   ->line("{$approverDesignation}")
+                   ->line("{$approverDepartment}");
 
         // Mark as sent
         $emailLogService->markAsSent($emailLog);
@@ -89,105 +99,81 @@ class TaskStatusNotification extends Notification implements ShouldQueue
     }
 
     /**
-     * Get task-specific details based on the task type
+     * Get document/file name based on task type
      */
-    private function getTaskDetails(): string
+    private function getDocumentName(): string
     {
-        $details = [];
-
         switch ($this->taskType) {
             case 'Material Request':
                 if ($this->task->material_request) {
-                    $mr = $this->task->material_request;
-                    $details[] = "Request ID: MR-{$mr->id}";
-                    $details[] = "Requester: " . ($mr->requester->name ?? 'N/A');
-                    $details[] = "Department: " . ($mr->department->name ?? 'N/A');
-                    $details[] = "Warehouse: " . ($mr->warehouse->name ?? 'N/A');
-                    if ($mr->expected_delivery_date) {
-                        $details[] = "Expected Delivery: " . date('M d, Y', strtotime($mr->expected_delivery_date));
-                    }
+                    return "MR-{$this->task->material_request->id}";
                 }
                 break;
 
             case 'RFQ Approval':
                 if ($this->task->rfq) {
-                    $rfq = $this->task->rfq;
-                    $details[] = "RFQ Number: {$rfq->rfq_number}";
-                    $details[] = "Organization: {$rfq->organization_name}";
-                    $details[] = "Department: " . ($rfq->department->name ?? 'N/A');
-                    $details[] = "Warehouse: " . ($rfq->warehouse->name ?? 'N/A');
-                    $details[] = "Created By: " . ($rfq->requester->name ?? 'N/A');
+                    return $this->task->rfq->rfq_number;
                 }
                 break;
 
             case 'Purchase Order Approval':
                 if ($this->task->purchase_order) {
-                    $po = $this->task->purchase_order;
-                    $details[] = "PO ID: PO-{$po->id}";
-                    $details[] = "PO Number: {$po->purchase_order_no}";
-                    $details[] = "Supplier: " . ($po->supplier->name ?? 'N/A');
-                    $details[] = "Total Amount: " . number_format($po->amount, 2);
-                    if ($po->purchase_order_date) {
-                        $details[] = "PO Date: " . date('M d, Y', strtotime($po->purchase_order_date));
-                    }
+                    return $this->task->purchase_order->purchase_order_no;
                 }
                 break;
 
             case 'Budget Request Approval':
                 if ($this->task->request_budget) {
-                    $budget = $this->task->request_budget;
-                    $details[] = "Department: " . ($budget->department->name ?? 'N/A');
-                    $details[] = "Cost Center: " . ($budget->cost_center->name ?? 'N/A');
-                    $details[] = "Requested Amount: " . number_format($budget->requested_amount, 2);
-                    $details[] = "Approved Amount: " . number_format($budget->approved_amount ?? 0, 2);
-                    $details[] = "Urgency: {$budget->urgency}";
-                    $details[] = "Status: {$budget->status}";
+                    return "Budget Request - {$this->task->request_budget->id}";
                 }
                 break;
 
             case 'Total Budget Approval':
                 if ($this->task->budget) {
-                    $budget = $this->task->budget;
-                    $details[] = "Department: " . ($budget->department->name ?? 'N/A');
-                    $details[] = "Cost Center: " . ($budget->cost_center->name ?? 'N/A');
-                    $details[] = "Total Revenue Planned: " . number_format($budget->total_revenue_planned, 2);
-                    $details[] = "Total Expense Planned: " . number_format($budget->total_expense_planned, 2);
-                    $details[] = "Status: {$budget->status}";
+                    return "Budget - {$this->task->budget->id}";
                 }
                 break;
 
             case 'Payment Order Approval':
                 if ($this->task->payment_order) {
-                    $po = $this->task->payment_order;
-                    $details[] = "Payment Order Number: {$po->payment_order_number}";
-                    $details[] = "Purchase Order: " . ($po->purchase_order->purchase_order_no ?? 'N/A');
-                    $details[] = "Total Amount: " . number_format($po->total_amount, 2);
-                    $details[] = "Payment Type: {$po->payment_type}";
-                    if ($po->due_date) {
-                        $details[] = "Due Date: " . date('M d, Y', strtotime($po->due_date));
-                    }
+                    return $this->task->payment_order->payment_order_number;
                 }
                 break;
 
             case 'Maharat Invoice Approval':
                 if ($this->task->invoice) {
-                    $invoice = $this->task->invoice;
-                    $details[] = "Invoice Number: {$invoice->invoice_number}";
-                    $details[] = "Client: " . ($invoice->client->name ?? 'N/A');
-                    $details[] = "Total Amount: " . number_format($invoice->total_amount, 2);
-                    $details[] = "Status: {$invoice->status}";
-                    if ($invoice->issue_date) {
-                        $details[] = "Issue Date: " . date('M d, Y', strtotime($invoice->issue_date));
-                    }
+                    return $this->task->invoice->invoice_number;
                 }
                 break;
 
             default:
-                $details[] = "Task Type: {$this->taskType}";
-                break;
+                return "Task #{$this->task->id}";
         }
 
-        return implode("\n", $details);
+        return "Task #{$this->task->id}";
+    }
+
+    /**
+     * Get status message based on status
+     */
+    private function getStatusMessage(): string
+    {
+        switch (strtolower($this->status)) {
+            case 'approved':
+                return '✅ Approved';
+            case 'rejected':
+                return '❌ Rejected';
+            case 'pending':
+                return '⏳ Pending Review';
+            case 'in_progress':
+                return '🔄 In Progress';
+            case 'completed':
+                return '✅ Completed';
+            case 'cancelled':
+                return '🚫 Cancelled';
+            default:
+                return ucfirst($this->status);
+        }
     }
 
     /**

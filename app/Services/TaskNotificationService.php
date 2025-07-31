@@ -46,7 +46,7 @@ class TaskNotificationService
     /**
      * Send final status notification to requester
      */
-    public function sendFinalStatusNotification(Task $task, string $taskType, string $status, $requester): void
+    public function sendFinalStatusNotification(Task $task, string $taskType, string $status, $requester, string $comment = null): void
     {
         try {
             if (!$requester || !$requester->email) {
@@ -58,7 +58,7 @@ class TaskNotificationService
                 return;
             }
 
-            $requester->notify(new TaskStatusNotification($task, $taskType, $status, $requester));
+            $requester->notify(new TaskStatusNotification($task, $taskType, $status, $comment));
             
             Log::info('Final status notification sent successfully', [
                 'task_id' => $task->id,
