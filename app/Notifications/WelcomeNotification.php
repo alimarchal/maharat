@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Models\User;
+use App\Services\EmailLogService;
 
 class WelcomeNotification extends Notification implements ShouldQueue
 {
@@ -39,6 +40,20 @@ class WelcomeNotification extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
+        // Log the email
+        $emailLogService = new EmailLogService();
+        $contentSummary = "Welcome email sent to new user: {$notifiable->name} ({$notifiable->email})";
+        
+        $emailLog = $emailLogService->logEmail(
+            'welcome',
+            'Welcome to ' . config('app.name'),
+            $notifiable->email,
+            $notifiable,
+            $contentSummary,
+            [],
+            "New user account created"
+        );
+
         $mailMessage = (new MailMessage)
             ->subject('Welcome to ' . config('app.name'))
             ->greeting("Hello {$notifiable->name},")
@@ -62,6 +77,9 @@ class WelcomeNotification extends Notification implements ShouldQueue
             ->line("")
             ->line("Thank you for joining us!")
             ->salutation("Best regards,");
+
+        // Mark as sent
+        $emailLogService->markAsSent($emailLog);
 
         return $mailMessage;
     }

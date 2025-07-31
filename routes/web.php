@@ -15,6 +15,7 @@ use App\Models\Quotation;
 use App\Http\Controllers\QuotationPDFController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\FAQController;
+use App\Http\Controllers\EmailLogController;
 
 // Redirect root to login
 Route::get('/', function () {
@@ -582,6 +583,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/faqs/view', function () {
         return Inertia::render('Dashboard', ['page' => 'FAQs/ViewFAQ']);
     })->name('faqs.view');    
+
+    // Email Logs Routes
+    Route::get('/email-logs', [EmailLogController::class, 'index'])->name('email-logs.index');
+    Route::get('/email-logs/statistics', [EmailLogController::class, 'statistics'])->name('email-logs.statistics');
+    Route::get('/email-logs/failed', [EmailLogController::class, 'failed'])->name('email-logs.failed');
+    Route::get('/email-logs/recent', [EmailLogController::class, 'recent'])->name('email-logs.recent');
+    Route::get('/email-logs/{emailLog}', [EmailLogController::class, 'show'])->name('email-logs.show');
+    Route::post('/email-logs/{emailLog}/retry', [EmailLogController::class, 'retry'])->name('email-logs.retry');
 });
 
 // Forgot Password Route (Guest Only)
