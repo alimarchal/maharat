@@ -8,8 +8,10 @@ use App\Http\Requests\V1\MahratInvoiceApprovalTransaction\UpdateMahratInvoiceApp
 use App\Http\Resources\V1\MahratInvoiceApprovalTransactionResource;
 use App\Models\MahratInvoiceApprovalTransaction;
 use App\Models\Invoice;
+use App\Models\Task;
 use App\QueryParameters\MahratInvoiceApprovalTransactionParameters;
 use App\Services\BudgetRevenueUpdateService;
+use App\Services\TaskNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
@@ -159,7 +161,7 @@ class MahratInvoiceApprovalTransactionController extends Controller
                                     'updated_by' => Auth::id()
                                 ]);
                             $nextTransaction->save();
-                            DB::table('tasks')->insert([
+                            $taskId = DB::table('tasks')->insertGetId([
                                 'process_step_id' => $nextStep->id,
                                 'process_id' => $nextStep->process_id,
                                 'assigned_at' => now(),
@@ -171,10 +173,43 @@ class MahratInvoiceApprovalTransactionController extends Controller
                                 'created_at' => now(),
                                 'updated_at' => now()
                             ]);
+
+                            // Send task assignment notification
+                            $task = Task::with(['assignedToUser', 'process'])->find($taskId);
+                            if ($task) {
+                                $notificationService = new TaskNotificationService();
+                                $notificationService->sendTaskAssignmentNotification($task, 'Maharat Invoice Approval');
+                            }
+                        }
+                    }
+                } else {
+                    // This is the final approval - send notification to requester
+                    $task = Task::where('invoice_id', $mahratInvoiceApprovalTransaction->invoice_id)
+                        ->with(['invoice.client', 'process'])
+                        ->first();
+                    
+                    if ($task) {
+                        $notificationService = new TaskNotificationService();
+                        $requester = $notificationService->getRequesterFromTask($task);
+                        if ($requester) {
+                            $notificationService->sendFinalStatusNotification($task, 'Maharat Invoice Approval', 'Approve', $requester);
                         }
                     }
                 }
             } elseif ($validated['status'] === 'Reject') {
+                // Send rejection notification to requester
+                $task = Task::where('invoice_id', $mahratInvoiceApprovalTransaction->invoice_id)
+                    ->with(['invoice.client', 'process'])
+                    ->first();
+                
+                if ($task) {
+                    $notificationService = new TaskNotificationService();
+                    $requester = $notificationService->getRequesterFromTask($task);
+                    if ($requester) {
+                        $notificationService->sendFinalStatusNotification($task, 'Maharat Invoice Approval', 'Reject', $requester);
+                    }
+                }
+
                 // If rejected, immediately update invoice status to Cancelled
                 Log::info('Rejection detected, updating Invoice status to Cancelled', [
                     'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,

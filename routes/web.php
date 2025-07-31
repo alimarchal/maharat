@@ -21,6 +21,20 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// Email check route for forgot password
+Route::post('/check-email', function (Request $request) {
+    $email = $request->input('email');
+    
+    $user = \App\Models\User::where('email', $email)
+        ->whereNotNull('email_verified_at')
+        ->first();
+    
+    return response()->json([
+        'exists' => $user ? true : false,
+        'verified' => $user ? true : false,
+    ]);
+})->name('check.email');
+
 // Dashboard Routes (Protected by Auth & Email Verification)
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () {

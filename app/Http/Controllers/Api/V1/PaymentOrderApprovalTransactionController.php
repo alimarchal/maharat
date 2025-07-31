@@ -7,7 +7,9 @@ use App\Http\Requests\V1\PaymentOrderApprovalTransaction\StorePaymentOrderApprov
 use App\Http\Requests\V1\PaymentOrderApprovalTransaction\UpdatePaymentOrderApprovalTransactionRequest;
 use App\Http\Resources\V1\PaymentOrderApprovalTransactionResource;
 use App\Models\PaymentOrderApprovalTransaction;
+use App\Models\Task;
 use App\QueryParameters\PaymentOrderApprovalTransactionParameters;
+use App\Services\TaskNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
@@ -138,7 +140,7 @@ class PaymentOrderApprovalTransactionController extends Controller
                                     'updated_by' => auth()->id()
                                 ]);
                             $nextTransaction->save();
-                            DB::table('tasks')->insert([
+                            $taskId = DB::table('tasks')->insertGetId([
                                 'process_step_id' => $nextStep->id,
                                 'process_id' => $nextStep->process_id,
                                 'assigned_at' => now(),
@@ -150,7 +152,40 @@ class PaymentOrderApprovalTransactionController extends Controller
                                 'created_at' => now(),
                                 'updated_at' => now()
                             ]);
+
+                            // Send task assignment notification
+                            $task = Task::with(['assignedToUser', 'process'])->find($taskId);
+                            if ($task) {
+                                $notificationService = new TaskNotificationService();
+                                $notificationService->sendTaskAssignmentNotification($task, 'Payment Order Approval');
+                            }
                         }
+                    }
+                } else {
+                    // This is the final approval - send notification to requester
+                    $task = Task::where('payment_order_id', $paymentOrderApprovalTransaction->payment_order_id)
+                        ->with(['payment_order.user', 'process'])
+                        ->first();
+                    
+                    if ($task) {
+                        $notificationService = new TaskNotificationService();
+                        $requester = $notificationService->getRequesterFromTask($task);
+                        if ($requester) {
+                            $notificationService->sendFinalStatusNotification($task, 'Payment Order Approval', 'Approve', $requester);
+                        }
+                    }
+                }
+            } elseif (isset($data['status']) && $data['status'] === 'Reject') {
+                // Send rejection notification to requester
+                $task = Task::where('payment_order_id', $paymentOrderApprovalTransaction->payment_order_id)
+                    ->with(['payment_order.user', 'process'])
+                    ->first();
+                
+                if ($task) {
+                    $notificationService = new TaskNotificationService();
+                    $requester = $notificationService->getRequesterFromTask($task);
+                    if ($requester) {
+                        $notificationService->sendFinalStatusNotification($task, 'Payment Order Approval', 'Reject', $requester);
                     }
                 }
             }

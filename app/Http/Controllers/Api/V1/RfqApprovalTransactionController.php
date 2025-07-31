@@ -7,7 +7,9 @@ use App\Http\Requests\V1\RfqApprovalTransaction\StoreRfqApprovalTransactionReque
 use App\Http\Requests\V1\RfqApprovalTransaction\UpdateRfqApprovalTransactionRequest;
 use App\Http\Resources\V1\RfqApprovalTransactionResource;
 use App\Models\RfqApprovalTransaction;
+use App\Models\Task;
 use App\QueryParameters\RfqApprovalTransactionParameters;
+use App\Services\TaskNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
@@ -137,7 +139,7 @@ class RfqApprovalTransactionController extends Controller
                                     'updated_by' => Auth::id()
                                 ]);
                             $nextTransaction->save();
-                            DB::table('tasks')->insert([
+                            $taskId = DB::table('tasks')->insertGetId([
                                 'process_step_id' => $nextStep->id,
                                 'process_id' => $nextStep->process_id,
                                 'assigned_at' => now(),
@@ -149,10 +151,43 @@ class RfqApprovalTransactionController extends Controller
                                 'created_at' => now(),
                                 'updated_at' => now()
                             ]);
+
+                            // Send task assignment notification
+                            $task = Task::with(['assignedToUser', 'process'])->find($taskId);
+                            if ($task) {
+                                $notificationService = new TaskNotificationService();
+                                $notificationService->sendTaskAssignmentNotification($task, 'RFQ Approval');
+                            }
+                        }
+                    }
+                } else {
+                    // This is the final approval - send notification to requester
+                    $task = Task::where('rfq_id', $rfqApprovalTransaction->rfq_id)
+                        ->with(['rfq.requester', 'process'])
+                        ->first();
+                    
+                    if ($task) {
+                        $notificationService = new TaskNotificationService();
+                        $requester = $notificationService->getRequesterFromTask($task);
+                        if ($requester) {
+                            $notificationService->sendFinalStatusNotification($task, 'RFQ Approval', 'Approve', $requester);
                         }
                     }
                 }
             } elseif ($validated['status'] === 'Reject') {
+                // Send rejection notification to requester
+                $task = Task::where('rfq_id', $rfqApprovalTransaction->rfq_id)
+                    ->with(['rfq.requester', 'process'])
+                    ->first();
+                
+                if ($task) {
+                    $notificationService = new TaskNotificationService();
+                    $requester = $notificationService->getRequesterFromTask($task);
+                    if ($requester) {
+                        $notificationService->sendFinalStatusNotification($task, 'RFQ Approval', 'Reject', $requester);
+                    }
+                }
+
                 // If rejected, immediately update RFQ status to Rejected (49)
                 Log::info('Rejection detected, updating RFQ status to Rejected', [
                     'rfq_id' => $rfqApprovalTransaction->rfq_id,

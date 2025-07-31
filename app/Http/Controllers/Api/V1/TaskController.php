@@ -11,6 +11,7 @@ use App\Models\Task;
 use App\Models\TaskDescription;
 use App\QueryParameters\TaskParameters;
 use App\Services\TransactionFlowService;
+use App\Services\TaskNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,14 @@ class TaskController extends Controller
                 foreach ($request->input('descriptions') as $description) {
                     $task->descriptions()->create($description);
                 }
+            }
+
+            // Send task assignment notification
+            $task->load(['assignedToUser', 'process']);
+            if ($task->assignedToUser && $task->process) {
+                $notificationService = new TaskNotificationService();
+                $taskType = $notificationService->getTaskTypeFromProcess($task->process->title);
+                $notificationService->sendTaskAssignmentNotification($task, $taskType);
             }
 
             DB::commit();

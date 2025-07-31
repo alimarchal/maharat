@@ -7,7 +7,9 @@ use App\Http\Requests\V1\PoApprovalTransaction\StorePoApprovalTransactionRequest
 use App\Http\Requests\V1\PoApprovalTransaction\UpdatePoApprovalTransactionRequest;
 use App\Http\Resources\V1\PoApprovalTransactionResource;
 use App\Models\PoApprovalTransaction;
+use App\Models\Task;
 use App\QueryParameters\PoApprovalTransactionParameters;
+use App\Services\TaskNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
@@ -131,7 +133,7 @@ class PoApprovalTransactionController extends Controller
                                     'updated_by' => Auth::id()
                                 ]);
                             $nextTransaction->save();
-                            DB::table('tasks')->insert([
+                            $taskId = DB::table('tasks')->insertGetId([
                                 'process_step_id' => $nextStep->id,
                                 'process_id' => $nextStep->process_id,
                                 'assigned_at' => now(),
@@ -143,7 +145,40 @@ class PoApprovalTransactionController extends Controller
                                 'created_at' => now(),
                                 'updated_at' => now()
                             ]);
+
+                            // Send task assignment notification
+                            $task = Task::with(['assignedToUser', 'process'])->find($taskId);
+                            if ($task) {
+                                $notificationService = new TaskNotificationService();
+                                $notificationService->sendTaskAssignmentNotification($task, 'Purchase Order Approval');
+                            }
                         }
+                    }
+                } else {
+                    // This is the final approval - send notification to requester
+                    $task = Task::where('purchase_order_id', $poApprovalTransaction->purchase_order_id)
+                        ->with(['purchase_order.created_by', 'process'])
+                        ->first();
+                    
+                    if ($task) {
+                        $notificationService = new TaskNotificationService();
+                        $requester = $notificationService->getRequesterFromTask($task);
+                        if ($requester) {
+                            $notificationService->sendFinalStatusNotification($task, 'Purchase Order Approval', 'Approve', $requester);
+                        }
+                    }
+                }
+            } elseif (isset($validated['status']) && $validated['status'] === 'Reject') {
+                // Send rejection notification to requester
+                $task = Task::where('purchase_order_id', $poApprovalTransaction->purchase_order_id)
+                    ->with(['purchase_order.created_by', 'process'])
+                    ->first();
+                
+                if ($task) {
+                    $notificationService = new TaskNotificationService();
+                    $requester = $notificationService->getRequesterFromTask($task);
+                    if ($requester) {
+                        $notificationService->sendFinalStatusNotification($task, 'Purchase Order Approval', 'Reject', $requester);
                     }
                 }
             }
