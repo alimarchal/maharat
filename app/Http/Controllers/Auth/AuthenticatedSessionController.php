@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,6 +34,24 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user()->load(['roles', 'permissions']);
+        
+        // Auto-verify email on login if not already verified
+        if (!$user->email_verified_at) {
+            Log::info('Auto-verifying email for user', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'current_email_verified_at' => $user->email_verified_at
+            ]);
+            
+            $user->update(['email_verified_at' => now()]);
+            // Refresh the user object to get the updated data
+            $user->refresh();
+            
+            Log::info('Email verification completed', [
+                'user_id' => $user->id,
+                'new_email_verified_at' => $user->email_verified_at
+            ]);
+        }
         
         // Transform roles and permissions to match API format
         $roles = $user->roles->pluck('name')->toArray();

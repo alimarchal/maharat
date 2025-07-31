@@ -3,6 +3,8 @@
 namespace App\Observers;
 
 use App\Models\User;
+use App\Notifications\WelcomeNotification;
+use Illuminate\Support\Facades\Log;
 
 class UserObserver
 {
@@ -22,6 +24,31 @@ class UserObserver
         // else {
         //     $user->hierarchy_level = null; // Top level
         // }
+    }
+
+    /**
+     * Handle the User "created" event.
+     */
+    public function created(User $user): void
+    {
+        try {
+            // Send welcome email to the new user
+            if ($user->email) {
+                $user->notify(new WelcomeNotification($user));
+                
+                Log::info('Welcome email sent to new user', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'name' => $user->name
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to send welcome email to new user', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     /**
