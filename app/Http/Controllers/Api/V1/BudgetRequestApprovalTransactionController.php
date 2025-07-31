@@ -9,7 +9,9 @@ use App\Http\Resources\V1\BudgetRequestApprovalTransactionResource;
 use App\Models\BudgetRequestApprovalTransaction;
 use App\Models\RequestBudget;
 use App\Models\Budget;
+use App\Models\Task;
 use App\QueryParameters\BudgetRequestApprovalTransactionParameters;
+use App\Services\TaskNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
@@ -173,7 +175,7 @@ class BudgetRequestApprovalTransactionController extends Controller
                                 ]);
                             $nextTransaction->save();
                             // Create next task (assume a Task model exists)
-                            DB::table('tasks')->insert([
+                            $taskId = DB::table('tasks')->insertGetId([
                                 'process_step_id' => $nextStep->id,
                                 'process_id' => $nextStep->process_id,
                                 'assigned_at' => now(),
@@ -186,6 +188,13 @@ class BudgetRequestApprovalTransactionController extends Controller
                                 'created_at' => now(),
                                 'updated_at' => now()
                             ]);
+
+                            // Send task assignment notification
+                            $task = Task::with(['assignedToUser', 'process'])->find($taskId);
+                            if ($task) {
+                                $notificationService = new TaskNotificationService();
+                                $notificationService->sendTaskAssignmentNotification($task, 'Budget Request Approval');
+                            }
                             Log::info('Created next approval transaction and task for next approver', [
                                 'request_budget_id' => $budgetRequestApprovalTransaction->request_budgets_id,
                                 'next_order' => $nextOrder,
@@ -203,9 +212,35 @@ class BudgetRequestApprovalTransactionController extends Controller
                             'next_order' => $nextOrder
                         ]);
                     }
+                } else {
+                    // This is the final approval - send notification to requester
+                    $task = Task::where('request_budgets_id', $budgetRequestApprovalTransaction->request_budgets_id)
+                        ->with(['request_budget.requester', 'process'])
+                        ->first();
+                    
+                    if ($task) {
+                        $notificationService = new TaskNotificationService();
+                        $requester = $notificationService->getRequesterFromTask($task);
+                        if ($requester) {
+                            $notificationService->sendFinalStatusNotification($task, 'Budget Request Approval', 'Approve', $requester);
+                        }
+                    }
                 }
                 // === END NEW LOGIC ===
             } elseif ($validated['status'] === 'Reject') {
+                // Send rejection notification to requester
+                $task = Task::where('request_budgets_id', $budgetRequestApprovalTransaction->request_budgets_id)
+                    ->with(['request_budget.requester', 'process'])
+                    ->first();
+                
+                if ($task) {
+                    $notificationService = new TaskNotificationService();
+                    $requester = $notificationService->getRequesterFromTask($task);
+                    if ($requester) {
+                        $notificationService->sendFinalStatusNotification($task, 'Budget Request Approval', 'Reject', $requester);
+                    }
+                }
+
                 // If rejected, immediately update budget request status to Rejected
                 Log::info('Rejection detected, updating Budget Request status to Rejected', [
                     'request_budget_id' => $budgetRequestApprovalTransaction->request_budgets_id,

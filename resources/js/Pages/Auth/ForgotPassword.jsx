@@ -140,18 +140,32 @@ const ForgotPasswordPage = () => {
 
   const checkEmailExists = async (email) => {
     try {
-      const response = await fetch("/api/check-email", {
+      // Get CSRF token from meta tag
+      const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+      
+      const response = await fetch("/check-email", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-CSRF-TOKEN": token,
+          "Accept": "application/json",
         },
         body: JSON.stringify({ email }),
       });
 
+      if (!response.ok) {
+        console.error("HTTP Error:", response.status, response.statusText);
+        if (response.status === 419) {
+          setError("Session expired. Please refresh the page and try again.");
+          return false;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       console.log("API Response:", data); // Log API response
 
-      if (response.ok && data.exists && data.verified) {
+      if (data.exists && data.verified) {
         return true;
       } else {
         setError("Email does not exist or is not verified.");

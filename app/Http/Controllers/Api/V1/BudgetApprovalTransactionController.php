@@ -7,8 +7,10 @@ use App\Http\Requests\V1\BudgetApprovalTransaction\StoreBudgetApprovalTransactio
 use App\Http\Requests\V1\BudgetApprovalTransaction\UpdateBudgetApprovalTransactionRequest;
 use App\Http\Resources\V1\BudgetApprovalTransactionResource;
 use App\Models\BudgetApprovalTransaction;
+use App\Models\Task;
 use App\QueryParameters\BudgetApprovalTransactionParameters;
 use App\Services\BudgetApprovalService;
+use App\Services\TaskNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
@@ -147,7 +149,7 @@ class BudgetApprovalTransactionController extends Controller
                                     'updated_by' => auth()->id()
                                 ]);
                             $nextTransaction->save();
-                            DB::table('tasks')->insert([
+                            $taskId = DB::table('tasks')->insertGetId([
                                 'process_step_id' => $nextStep->id,
                                 'process_id' => $nextStep->process_id,
                                 'assigned_at' => now(),
@@ -159,7 +161,40 @@ class BudgetApprovalTransactionController extends Controller
                                 'created_at' => now(),
                                 'updated_at' => now()
                             ]);
+
+                            // Send task assignment notification
+                            $task = Task::with(['assignedToUser', 'process'])->find($taskId);
+                            if ($task) {
+                                $notificationService = new TaskNotificationService();
+                                $notificationService->sendTaskAssignmentNotification($task, 'Total Budget Approval');
+                            }
                         }
+                    }
+                } else {
+                    // This is the final approval - send notification to requester
+                    $task = Task::where('budget_id', $budgetApprovalTransaction->budget_id)
+                        ->with(['budget.requester', 'process'])
+                        ->first();
+                    
+                    if ($task) {
+                        $notificationService = new TaskNotificationService();
+                        $requester = $notificationService->getRequesterFromTask($task);
+                        if ($requester) {
+                            $notificationService->sendFinalStatusNotification($task, 'Total Budget Approval', 'Approve', $requester);
+                        }
+                    }
+                }
+            } elseif (isset($data['status']) && $data['status'] === 'Reject') {
+                // Send rejection notification to requester
+                $task = Task::where('budget_id', $budgetApprovalTransaction->budget_id)
+                    ->with(['budget.requester', 'process'])
+                    ->first();
+                
+                if ($task) {
+                    $notificationService = new TaskNotificationService();
+                    $requester = $notificationService->getRequesterFromTask($task);
+                    if ($requester) {
+                        $notificationService->sendFinalStatusNotification($task, 'Total Budget Approval', 'Reject', $requester);
                     }
                 }
             }

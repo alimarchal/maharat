@@ -7,7 +7,9 @@ use App\Http\Requests\V1\MaterialRequestTransaction\StoreMaterialRequestTransact
 use App\Http\Requests\V1\MaterialRequestTransaction\UpdateMaterialRequestTransactionRequest;
 use App\Http\Resources\V1\MaterialRequestTransactionResource;
 use App\Models\MaterialRequestTransaction;
+use App\Models\Task;
 use App\QueryParameters\MaterialRequestTransactionParameters;
+use App\Services\TaskNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
@@ -128,7 +130,7 @@ class MaterialRequestTransactionController extends Controller
                                     'updated_by' => auth()->id()
                                 ]);
                             $nextTransaction->save();
-                            DB::table('tasks')->insert([
+                            $taskId = DB::table('tasks')->insertGetId([
                                 'process_step_id' => $nextStep->id,
                                 'process_id' => $nextStep->process_id,
                                 'assigned_at' => now(),
@@ -140,7 +142,40 @@ class MaterialRequestTransactionController extends Controller
                                 'created_at' => now(),
                                 'updated_at' => now()
                             ]);
+
+                            // Send task assignment notification
+                            $task = Task::with(['assignedToUser', 'process'])->find($taskId);
+                            if ($task) {
+                                $notificationService = new TaskNotificationService();
+                                $notificationService->sendTaskAssignmentNotification($task, 'Material Request');
+                            }
                         }
+                    }
+                } else {
+                    // This is the final approval - send notification to requester
+                    $task = Task::where('material_request_id', $materialRequestTransaction->material_request_id)
+                        ->with(['material_request.requester', 'process'])
+                        ->first();
+                    
+                    if ($task) {
+                        $notificationService = new TaskNotificationService();
+                        $requester = $notificationService->getRequesterFromTask($task);
+                        if ($requester) {
+                            $notificationService->sendFinalStatusNotification($task, 'Material Request', 'Approve', $requester);
+                        }
+                    }
+                }
+            } elseif ($request->input('status') === 'Reject') {
+                // Send rejection notification to requester
+                $task = Task::where('material_request_id', $materialRequestTransaction->material_request_id)
+                    ->with(['material_request.requester', 'process'])
+                    ->first();
+                
+                if ($task) {
+                    $notificationService = new TaskNotificationService();
+                    $requester = $notificationService->getRequesterFromTask($task);
+                    if ($requester) {
+                        $notificationService->sendFinalStatusNotification($task, 'Material Request', 'Reject', $requester);
                     }
                 }
             }
