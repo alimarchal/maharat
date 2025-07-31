@@ -28,6 +28,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { router } from "@inertiajs/react";
+import { usePage } from "@inertiajs/react";
 
 const DropdownItem = ({ text, icon, onClick }) => {
     return (
@@ -73,6 +74,7 @@ const DashboardCard = ({
     bgColor,
     iconColor,
     onClick,
+    notificationCount = 0,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [dropdownPosition, setDropdownPosition] = useState("bottom");
@@ -166,12 +168,18 @@ const DashboardCard = ({
             >
                 <div className="flex justify-between items-center">
                     <div
-                        className={`${bgColor} flex justify-center items-center p-3 rounded-full w-14 h-14`}
+                        className={`${bgColor} flex justify-center items-center p-3 rounded-full w-14 h-14 relative`}
                     >
                         <FontAwesomeIcon
                             icon={icon}
                             className={`text-2xl ${iconColor}`}
                         />
+                        {/* Notification Badge */}
+                        {notificationCount > 0 && (
+                            <div className="absolute -top-2 -right-2 bg-red-500 text-white text-base font-bold rounded-full w-7 h-7 flex items-center justify-center border-2 border-white">
+                                {notificationCount > 99 ? '99+' : notificationCount}
+                            </div>
+                        )}
                     </div>
                     {dropdownItems && dropdownItems.length > 0 && (
                         <button
@@ -231,6 +239,30 @@ const DashboardCard = ({
 };
 
 export default function MainDashboard({ roles, permissions }) {
+    const user_id = usePage().props.auth.user.id;
+    const [pendingTasksCount, setPendingTasksCount] = useState(0);
+    const [loading, setLoading] = useState(true);
+
+    // Fetch pending tasks count
+    useEffect(() => {
+        const fetchPendingTasks = async () => {
+            try {
+                const response = await fetch(
+                    `/api/v1/tasks?filter[assigned_to_user_id]=${user_id}&filter[status]=Pending&per_page=1`
+                );
+                const data = await response.json();
+                if (response.ok) {
+                    setPendingTasksCount(data.meta?.total || 0);
+                }
+            } catch (err) {
+                console.error("Error fetching pending tasks:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchPendingTasks();
+    }, [user_id]);
+
     const hasPermission = (permission) => {
         const permissionMap = {
             "My Requests": "view_requests",
@@ -478,6 +510,7 @@ export default function MainDashboard({ roles, permissions }) {
                         bgColor="bg-[#F7EBBA]"
                         iconColor="text-[#665200]"
                         onClick={() => router.visit("/tasks")}
+                        notificationCount={pendingTasksCount}
                     />
                 )}
                 {showProcurementCard && (
