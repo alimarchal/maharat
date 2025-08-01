@@ -17,6 +17,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
 use Illuminate\Support\Facades\Log;
+use App\Models\User;
 
 class BudgetApprovalTransactionController extends Controller
 {
@@ -171,45 +172,113 @@ class BudgetApprovalTransactionController extends Controller
                             }
                             
                             // Send intermediate status notification to requester
-                            $requesterTask = Task::where('budget_id', $budgetApprovalTransaction->budget_id)
-                                ->with(['budget.creator', 'process'])
+                            // Get the original initiator from the first budget approval transaction
+                            $originalInitiator = BudgetApprovalTransaction::where('budget_id', $budgetApprovalTransaction->budget_id)
+                                ->orderBy('order', 'asc')
                                 ->first();
                             
-                            if ($requesterTask) {
-                                $notificationService = new TaskNotificationService();
-                                $requester = $notificationService->getRequesterFromTask($requesterTask);
+                            \Log::info('BudgetApprovalTransaction: Original initiator found', [
+                                'originalInitiatorId' => $originalInitiator ? $originalInitiator->id : null,
+                                'originalInitiatorCreatedBy' => $originalInitiator ? $originalInitiator->created_by : null,
+                                'currentTransactionId' => $budgetApprovalTransaction->id,
+                                'currentTransactionOrder' => $budgetApprovalTransaction->order
+                            ]);
+                            
+                            if ($originalInitiator && $originalInitiator->created_by) {
+                                $requester = User::find($originalInitiator->created_by);
+                                \Log::info('BudgetApprovalTransaction: Requester found', [
+                                    'requesterId' => $requester ? $requester->id : null,
+                                    'requesterEmail' => $requester ? $requester->email : null
+                                ]);
+                                
                                 if ($requester) {
-                                    $comment = "Approved by " . auth()->user()->name . " (Step " . $budgetApprovalTransaction->order . ")";
-                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Total Budget Approval', 'Approved', $requester, $comment);
+                                    // Get the first task for this budget to use for notification
+                                    $firstTask = Task::where('budget_id', $budgetApprovalTransaction->budget_id)
+                                        ->orderBy('created_at', 'asc')
+                                        ->first();
+                                    
+                                    if ($firstTask) {
+                                        $notificationService = new TaskNotificationService();
+                                        $comment = "Approved by " . auth()->user()->name . " (Step " . $budgetApprovalTransaction->order . ")";
+                                        $notificationService->sendIntermediateStatusNotification($firstTask, 'Total Budget Approval', 'Approved', $requester, $comment);
+                                        \Log::info('BudgetApprovalTransaction: Intermediate notification sent to original initiator', [
+                                            'requesterId' => $requester->id,
+                                            'requesterEmail' => $requester->email
+                                        ]);
+                                    }
                                 }
                             }
                         }
                     }
                 } else {
                     // This is the final approval - send final notification to requester
-                    $task = Task::where('budget_id', $budgetApprovalTransaction->budget_id)
-                        ->with(['budget.creator', 'process'])
+                    // Get the original initiator from the first budget approval transaction
+                    $originalInitiator = BudgetApprovalTransaction::where('budget_id', $budgetApprovalTransaction->budget_id)
+                        ->orderBy('order', 'asc')
                         ->first();
                     
-                    if ($task) {
-                        $notificationService = new TaskNotificationService();
-                        $requester = $notificationService->getRequesterFromTask($task);
+                    \Log::info('BudgetApprovalTransaction: Final approval - Original initiator found', [
+                        'originalInitiatorId' => $originalInitiator ? $originalInitiator->id : null,
+                        'originalInitiatorCreatedBy' => $originalInitiator ? $originalInitiator->created_by : null
+                    ]);
+                    
+                    if ($originalInitiator && $originalInitiator->created_by) {
+                        $requester = User::find($originalInitiator->created_by);
+                        \Log::info('BudgetApprovalTransaction: Final approval - Requester found', [
+                            'requesterId' => $requester ? $requester->id : null,
+                            'requesterEmail' => $requester ? $requester->email : null
+                        ]);
+                        
                         if ($requester) {
-                            $notificationService->sendFinalStatusNotification($task, 'Total Budget Approval', 'Approved', $requester);
+                            // Get the first task for this budget to use for notification
+                            $firstTask = Task::where('budget_id', $budgetApprovalTransaction->budget_id)
+                                ->orderBy('created_at', 'asc')
+                                ->first();
+                            
+                            if ($firstTask) {
+                                $notificationService = new TaskNotificationService();
+                                $notificationService->sendFinalStatusNotification($firstTask, 'Total Budget Approval', 'Approved', $requester);
+                                \Log::info('BudgetApprovalTransaction: Final approval notification sent to original initiator', [
+                                    'requesterId' => $requester->id,
+                                    'requesterEmail' => $requester->email
+                                ]);
+                            }
                         }
                     }
                 }
             } elseif ($request->input('status') === 'Reject') {
                 // Send rejection notification to requester
-                $task = Task::where('budget_id', $budgetApprovalTransaction->budget_id)
-                    ->with(['budget.creator', 'process'])
+                // Get the original initiator from the first budget approval transaction
+                $originalInitiator = BudgetApprovalTransaction::where('budget_id', $budgetApprovalTransaction->budget_id)
+                    ->orderBy('order', 'asc')
                     ->first();
                 
-                if ($task) {
-                    $notificationService = new TaskNotificationService();
-                    $requester = $notificationService->getRequesterFromTask($task);
+                \Log::info('BudgetApprovalTransaction: Rejection - Original initiator found', [
+                    'originalInitiatorId' => $originalInitiator ? $originalInitiator->id : null,
+                    'originalInitiatorCreatedBy' => $originalInitiator ? $originalInitiator->created_by : null
+                ]);
+                
+                if ($originalInitiator && $originalInitiator->created_by) {
+                    $requester = User::find($originalInitiator->created_by);
+                    \Log::info('BudgetApprovalTransaction: Rejection - Requester found', [
+                        'requesterId' => $requester ? $requester->id : null,
+                        'requesterEmail' => $requester ? $requester->email : null
+                    ]);
+                    
                     if ($requester) {
-                        $notificationService->sendFinalStatusNotification($task, 'Total Budget Approval', 'Rejected', $requester);
+                        // Get the first task for this budget to use for notification
+                        $firstTask = Task::where('budget_id', $budgetApprovalTransaction->budget_id)
+                            ->orderBy('created_at', 'asc')
+                            ->first();
+                        
+                        if ($firstTask) {
+                            $notificationService = new TaskNotificationService();
+                            $notificationService->sendFinalStatusNotification($firstTask, 'Total Budget Approval', 'Rejected', $requester);
+                            \Log::info('BudgetApprovalTransaction: Rejection notification sent to original initiator', [
+                                'requesterId' => $requester->id,
+                                'requesterEmail' => $requester->email
+                            ]);
+                        }
                     }
                 }
             }

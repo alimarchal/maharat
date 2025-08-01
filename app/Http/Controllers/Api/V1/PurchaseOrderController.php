@@ -106,16 +106,22 @@ class PurchaseOrderController extends Controller
     public function store(StorePurchaseOrderRequest $request): JsonResponse
     {
         try {
+            \Log::info('PurchaseOrder Store - Starting creation process');
+            \Log::info('PurchaseOrder Store - Request data: ' . json_encode($request->all()));
+            
             DB::beginTransaction();
 
             // Get validated data except the attachment
             $validatedData = $request->safe()->except(['attachment']);
+            \Log::info('PurchaseOrder Store - Validated data: ' . json_encode($validatedData));
 
             // Add the authenticated user's ID as creator
             $validatedData['user_id'] = auth()->id();
+            \Log::info('PurchaseOrder Store - User ID: ' . auth()->id());
 
             // Generate unique purchase order number
             $validatedData['purchase_order_no'] = $this->generatePurchaseOrderNumber();
+            \Log::info('PurchaseOrder Store - Generated PO number: ' . $validatedData['purchase_order_no']);
 
             // Budget validation
             $budgetService = new BudgetValidationService();
@@ -127,9 +133,17 @@ class PurchaseOrderController extends Controller
             }
 
             $rfq = $quotation->rfq;
+            \Log::info('PurchaseOrder Store - RFQ data: ' . json_encode([
+                'rfq_id' => $rfq->id,
+                'department_id' => $rfq->department_id,
+                'cost_center_id' => $rfq->cost_center_id,
+                'sub_cost_center_id' => $rfq->sub_cost_center_id,
+                'request_date' => $rfq->request_date
+            ]));
             
             // Get applicable fiscal periods for RFQ issue date
             $fiscalPeriods = $budgetService->getApplicableFiscalPeriods($rfq->request_date);
+            \Log::info('PurchaseOrder Store - Found fiscal periods: ' . $fiscalPeriods->count());
             
             if ($fiscalPeriods->isEmpty()) {
                 throw new \Exception('RFQ date is not within any fiscal period range');
@@ -153,6 +167,8 @@ class PurchaseOrderController extends Controller
                 $fiscalPeriodId = $fiscalPeriods->first()->id;
             }
 
+            \Log::info('PurchaseOrder Store - Selected fiscal period ID: ' . $fiscalPeriodId);
+
             // Validate budget availability
             $budgetValidation = $budgetService->validateBudgetAvailability(
                 $rfq->department_id,
@@ -162,19 +178,31 @@ class PurchaseOrderController extends Controller
                 $validatedData['amount']
             );
 
+            \Log::info('PurchaseOrder Store - Budget validation result: ' . json_encode($budgetValidation));
+
             if (!$budgetValidation['valid']) {
                 throw new \Exception($budgetValidation['message']);
             }
 
             // Reserve budget
             $budgetService->reserveBudget($budgetValidation['budget'], $validatedData['amount']);
+            \Log::info('PurchaseOrder Store - Budget reserved successfully');
 
             // Add fiscal period and budget info to purchase order
             $validatedData['fiscal_period_id'] = $fiscalPeriodId;
             $validatedData['request_budget_id'] = $budgetValidation['budget']->id;
 
+            \Log::info('PurchaseOrder Store - Final validated data before creation: ' . json_encode($validatedData));
+
             // Create purchase order
-            $purchaseOrder = PurchaseOrder::create($validatedData);
+            try {
+                $purchaseOrder = PurchaseOrder::create($validatedData);
+                \Log::info('PurchaseOrder Store - Purchase order created with ID: ' . $purchaseOrder->id);
+            } catch (\Exception $e) {
+                \Log::error('PurchaseOrder Store - Failed to create purchase order: ' . $e->getMessage());
+                \Log::error('PurchaseOrder Store - Stack trace: ' . $e->getTraceAsString());
+                throw $e;
+            }
 
             // Handle file upload if provided
             if ($request->hasFile('attachment')) {
