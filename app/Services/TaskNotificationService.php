@@ -141,7 +141,7 @@ class TaskNotificationService
             'rfq.requester',
             'purchase_order.user',
             'payment_order.user',
-            'invoice.client',
+            'invoice.creator',
             'request_budget.creator',
             'budget.creator'
         ]);
@@ -166,9 +166,7 @@ class TaskNotificationService
                 return $task->budget->creator ?? null;
             
             case 'Maharat Invoice Approval':
-                // For invoices, we might need to get the user who created it
-                // This depends on your invoice model structure
-                return null; // You may need to adjust this based on your invoice model
+                return $task->invoice->creator ?? null;
             
             default:
                 return null;
