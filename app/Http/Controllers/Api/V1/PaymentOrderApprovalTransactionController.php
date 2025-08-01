@@ -15,6 +15,7 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
+use Illuminate\Support\Facades\Log;
 
 class PaymentOrderApprovalTransactionController extends Controller
 {
@@ -170,13 +171,13 @@ class PaymentOrderApprovalTransactionController extends Controller
                                 $requester = $notificationService->getRequesterFromTask($requesterTask);
                                 if ($requester) {
                                     $comment = "Approved by " . auth()->user()->name . " (Step " . $paymentOrderApprovalTransaction->order . ")";
-                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Payment Order Approval', 'In Progress', $requester, $comment);
+                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Payment Order Approval', 'Approved', $requester, $comment);
                                 }
                             }
                         }
                     }
                 } else {
-                    // This is the final approval - send notification to requester
+                    // This is the final approval - send final notification to requester
                     $task = Task::where('payment_order_id', $paymentOrderApprovalTransaction->payment_order_id)
                         ->with(['payment_order.user', 'process'])
                         ->first();
@@ -185,11 +186,11 @@ class PaymentOrderApprovalTransactionController extends Controller
                         $notificationService = new TaskNotificationService();
                         $requester = $notificationService->getRequesterFromTask($task);
                         if ($requester) {
-                            $notificationService->sendFinalStatusNotification($task, 'Payment Order Approval', 'Approve', $requester);
+                            $notificationService->sendFinalStatusNotification($task, 'Payment Order Approval', 'Approved', $requester);
                         }
                     }
                 }
-            } elseif (isset($data['status']) && $data['status'] === 'Reject') {
+            } elseif ($request->input('status') === 'Reject') {
                 // Send rejection notification to requester
                 $task = Task::where('payment_order_id', $paymentOrderApprovalTransaction->payment_order_id)
                     ->with(['payment_order.user', 'process'])
@@ -199,7 +200,7 @@ class PaymentOrderApprovalTransactionController extends Controller
                     $notificationService = new TaskNotificationService();
                     $requester = $notificationService->getRequesterFromTask($task);
                     if ($requester) {
-                        $notificationService->sendFinalStatusNotification($task, 'Payment Order Approval', 'Reject', $requester);
+                        $notificationService->sendFinalStatusNotification($task, 'Payment Order Approval', 'Rejected', $requester);
                     }
                 }
             }

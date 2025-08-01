@@ -1474,15 +1474,43 @@ class TaskController extends Controller
                     
                     if ($requester) {
                         $comment = $request->input('comment') ?? null;
-                        $notificationService->sendFinalStatusNotification($task, $taskType, $request->input('status'), $requester, $comment);
                         
-                        Log::info('Status notification sent to requester', [
-                            'task_id' => $task->id,
-                            'task_type' => $taskType,
-                            'status' => $request->input('status'),
-                            'requester_id' => $requester->id,
-                            'requester_email' => $requester->email
-                        ]);
+                        // For rejections, always send notification immediately
+                        if ($request->input('status') === 'Rejected') {
+                            $notificationService->sendFinalStatusNotification($task, $taskType, 'Rejected', $requester, $comment);
+                            
+                            Log::info('Rejection notification sent to requester', [
+                                'task_id' => $task->id,
+                                'task_type' => $taskType,
+                                'requester_id' => $requester->id,
+                                'requester_email' => $requester->email
+                            ]);
+                        } else {
+                            // For approvals, check if this is the final approval
+                            $isFinalApproval = $this->isFinalApproval($task);
+                            
+                            if ($isFinalApproval) {
+                                // Send final approval notification only on final approval
+                                $notificationService->sendFinalStatusNotification($task, $taskType, 'Approved', $requester, $comment);
+                                
+                                Log::info('Final approval notification sent to requester', [
+                                    'task_id' => $task->id,
+                                    'task_type' => $taskType,
+                                    'requester_id' => $requester->id,
+                                    'requester_email' => $requester->email
+                                ]);
+                            } else {
+                                // Send intermediate status notification for non-final approvals
+                                $notificationService->sendIntermediateStatusNotification($task, $taskType, 'Approved', $requester, $comment);
+                                
+                                Log::info('Intermediate approval notification sent to requester', [
+                                    'task_id' => $task->id,
+                                    'task_type' => $taskType,
+                                    'requester_id' => $requester->id,
+                                    'requester_email' => $requester->email
+                                ]);
+                            }
+                        }
                     } else {
                         Log::warning('Could not find requester for task status notification', [
                             'task_id' => $task->id,
@@ -1536,6 +1564,71 @@ class TaskController extends Controller
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * Check if this is the final approval for the task
+     */
+    private function isFinalApproval(Task $task): bool
+    {
+        // Get the process title to determine the correct process
+        $processTitle = $task->process->title ?? '';
+        
+        // Get total number of required approvals from process steps
+        $totalRequiredApprovals = DB::table('process_steps')
+            ->join('processes', 'process_steps.process_id', '=', 'processes.id')
+            ->where('processes.title', $processTitle)
+            ->count();
+
+        // Check if current task order equals total required approvals
+        $isFinal = (string)$task->order_no === (string)$totalRequiredApprovals;
+        
+        Log::info('=== FINAL APPROVAL CHECK ===', [
+            'task_id' => $task->id,
+            'process_title' => $processTitle,
+            'current_order_no' => $task->order_no,
+            'total_required_approvals' => $totalRequiredApprovals,
+            'is_final_approval' => $isFinal,
+            'comparison' => [
+                'order_no_string' => (string)$task->order_no,
+                'total_approvals_string' => (string)$totalRequiredApprovals,
+                'strict_comparison' => $task->order_no === $totalRequiredApprovals,
+                'loose_comparison' => $task->order_no == $totalRequiredApprovals
+            ]
+        ]);
+
+        return $isFinal;
+    }
+
+    /**
+     * Get the foreign key name for the task
+     */
+    private function getTaskForeignKey(Task $task): string
+    {
+        if ($task->material_request_id) return 'material_request_id';
+        if ($task->rfq_id) return 'rfq_id';
+        if ($task->purchase_order_id) return 'purchase_order_id';
+        if ($task->payment_order_id) return 'payment_order_id';
+        if ($task->invoice_id) return 'invoice_id';
+        if ($task->request_budgets_id) return 'request_budgets_id';
+        if ($task->budget_id) return 'budget_id';
+        
+        return 'id'; // fallback
+    }
+
+    /**
+     * Get the foreign key value for the task
+     */
+    private function getTaskForeignKeyValue(Task $task): int
+    {
+        return $task->material_request_id ?? 
+               $task->rfq_id ?? 
+               $task->purchase_order_id ?? 
+               $task->payment_order_id ?? 
+               $task->invoice_id ?? 
+               $task->request_budgets_id ?? 
+               $task->budget_id ?? 
+               $task->id;
     }
 
     public function destroy(Task $task): JsonResponse

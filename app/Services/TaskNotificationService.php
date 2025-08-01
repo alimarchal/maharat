@@ -139,11 +139,11 @@ class TaskNotificationService
         $task->load([
             'material_request.requester',
             'rfq.requester',
-            'purchase_order.created_by',
+            'purchase_order.user',
             'payment_order.user',
             'invoice.client',
-            'request_budget.requester',
-            'budget.requester'
+            'request_budget.creator',
+            'budget.creator'
         ]);
 
         switch ($task->process->title ?? '') {
@@ -154,16 +154,16 @@ class TaskNotificationService
                 return $task->rfq->requester ?? null;
             
             case 'Purchase Order Approval':
-                return $task->purchase_order->created_by ?? null;
+                return $task->purchase_order->user ?? null;
             
             case 'Payment Order Approval':
                 return $task->payment_order->user ?? null;
             
             case 'Budget Request Approval':
-                return $task->request_budget->requester ?? null;
+                return $task->request_budget->creator ?? null;
             
             case 'Total Budget Approval':
-                return $task->budget->requester ?? null;
+                return $task->budget->creator ?? null;
             
             case 'Maharat Invoice Approval':
                 // For invoices, we might need to get the user who created it

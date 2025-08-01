@@ -16,6 +16,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
+use Illuminate\Support\Facades\Log;
 
 class PoApprovalTransactionController extends Controller
 {
@@ -111,6 +112,15 @@ class PoApprovalTransactionController extends Controller
                     ->get();
                 $totalRequiredApprovals = $processSteps->count();
                 $isFinalApproval = $poApprovalTransaction->order == $totalRequiredApprovals;
+                
+                Log::info('=== PURCHASE ORDER APPROVAL CHECK ===', [
+                    'purchase_order_id' => $poApprovalTransaction->purchase_order_id,
+                    'current_order' => $poApprovalTransaction->order,
+                    'total_required_approvals' => $totalRequiredApprovals,
+                    'is_final_approval' => $isFinalApproval,
+                    'process_steps_count' => $processSteps->count()
+                ]);
+                
                 if (!$isFinalApproval) {
                     $nextOrder = $poApprovalTransaction->order + 1;
                     $nextStep = $processSteps->where('order', $nextOrder)->first();
@@ -155,44 +165,64 @@ class PoApprovalTransactionController extends Controller
                             
                             // Send intermediate status notification to requester
                             $requesterTask = Task::where('purchase_order_id', $poApprovalTransaction->purchase_order_id)
-                                ->with(['purchase_order.created_by', 'process'])
+                                ->with(['purchase_order.user', 'process'])
                                 ->first();
                             
                             if ($requesterTask) {
                                 $notificationService = new TaskNotificationService();
                                 $requester = $notificationService->getRequesterFromTask($requesterTask);
+                                Log::info('=== INTERMEDIATE APPROVAL - REQUESTER CHECK ===', [
+                                    'purchase_order_id' => $poApprovalTransaction->purchase_order_id,
+                                    'requester_task_found' => $requesterTask ? true : false,
+                                    'requester_found' => $requester ? true : false,
+                                    'requester_id' => $requester ? $requester->id : null,
+                                    'requester_email' => $requester ? $requester->email : null
+                                ]);
                                 if ($requester) {
                                     $comment = "Approved by " . auth()->user()->name . " (Step " . $poApprovalTransaction->order . ")";
-                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Purchase Order Approval', 'In Progress', $requester, $comment);
+                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Purchase Order Approval', 'Approved', $requester, $comment);
                                 }
                             }
                         }
                     }
                 } else {
-                    // This is the final approval - send notification to requester
+                    // This is the final approval - send final notification to requester
                     $task = Task::where('purchase_order_id', $poApprovalTransaction->purchase_order_id)
-                        ->with(['purchase_order.created_by', 'process'])
+                        ->with(['purchase_order.user', 'process'])
                         ->first();
+                    
+                    Log::info('=== FINAL APPROVAL - REQUESTER CHECK ===', [
+                        'purchase_order_id' => $poApprovalTransaction->purchase_order_id,
+                        'task_found' => $task ? true : false,
+                        'task_id' => $task ? $task->id : null
+                    ]);
                     
                     if ($task) {
                         $notificationService = new TaskNotificationService();
                         $requester = $notificationService->getRequesterFromTask($task);
+                        Log::info('=== FINAL APPROVAL - REQUESTER DETAILS ===', [
+                            'purchase_order_id' => $poApprovalTransaction->purchase_order_id,
+                            'requester_found' => $requester ? true : false,
+                            'requester_id' => $requester ? $requester->id : null,
+                            'requester_email' => $requester ? $requester->email : null,
+                            'purchase_order_user_id' => $task->purchase_order ? $task->purchase_order->user_id : null
+                        ]);
                         if ($requester) {
-                            $notificationService->sendFinalStatusNotification($task, 'Purchase Order Approval', 'Approve', $requester);
+                            $notificationService->sendFinalStatusNotification($task, 'Purchase Order Approval', 'Approved', $requester);
                         }
                     }
                 }
-            } elseif (isset($validated['status']) && $validated['status'] === 'Reject') {
+            } elseif ($request->input('status') === 'Reject') {
                 // Send rejection notification to requester
                 $task = Task::where('purchase_order_id', $poApprovalTransaction->purchase_order_id)
-                    ->with(['purchase_order.created_by', 'process'])
+                    ->with(['purchase_order.user', 'process'])
                     ->first();
                 
                 if ($task) {
                     $notificationService = new TaskNotificationService();
                     $requester = $notificationService->getRequesterFromTask($task);
                     if ($requester) {
-                        $notificationService->sendFinalStatusNotification($task, 'Purchase Order Approval', 'Reject', $requester);
+                        $notificationService->sendFinalStatusNotification($task, 'Purchase Order Approval', 'Rejected', $requester);
                     }
                 }
             }

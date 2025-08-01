@@ -18,6 +18,7 @@ const ReviewTask = () => {
     const [taskData, setTaskData] = useState(null);
     const [employees, setEmployees] = useState([]);
     const [errors, setErrors] = useState({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -54,6 +55,11 @@ const ReviewTask = () => {
     };
 
     const handleSubmit = async () => {
+        // Prevent multiple submissions
+        if (isSubmitting) {
+            return;
+        }
+
         let newErrors = {};
         if (!formData.description) newErrors.description = "Description is required";
         if (!formData.action) newErrors.action = "Action is required";
@@ -62,6 +68,8 @@ const ReviewTask = () => {
 
         setErrors(newErrors);
         if (Object.keys(newErrors).length > 0) return;
+
+        setIsSubmitting(true);
 
         try {
             // Ensure task_id is set to the current task's ID
@@ -253,6 +261,8 @@ const ReviewTask = () => {
                 const errorMessage = "Failed to process task. Please try again.";
                 toast.error(errorMessage, { id: "budget-error-toast" });
             }
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -448,9 +458,21 @@ const ReviewTask = () => {
                 <div className="my-6 flex justify-center md:justify-end w-full">
                     <button
                         onClick={handleSubmit}
-                        className="px-8 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5] w-full md:w-auto"
+                        disabled={isSubmitting}
+                        className={`px-8 py-3 text-xl font-medium rounded-full transition duration-300 w-full md:w-auto ${
+                            isSubmitting 
+                                ? 'bg-gray-400 text-white cursor-not-allowed' 
+                                : 'bg-[#009FDC] text-white hover:bg-[#007BB5]'
+                        }`}
                     >
-                        Submit
+                        {isSubmitting ? (
+                            <div className="flex items-center justify-center">
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                Processing...
+                            </div>
+                        ) : (
+                            'Submit'
+                        )}
                     </button>
                 </div>
             </div>
