@@ -59,7 +59,7 @@ const BudgetRequestForm = () => {
         try {
             const [deptRes, costRes, yearRes] = await Promise.all([
                 axios.get("/api/v1/departments"),
-                axios.get("/api/v1/cost-centers"),
+                axios.get("/api/v1/cost-centers?is_main=true"),
                 axios.get("/api/v1/fiscal-periods?filter[status]=open"),
             ]);
             
@@ -189,13 +189,17 @@ const BudgetRequestForm = () => {
             fiscal_period_id: "Year is required",
             department_id: "Department is required",
             cost_center_id: "Cost Center is required",
-            sub_cost_center: "Sub Cost Center is required",
             previous_year_budget_amount: "Previous Budget is required",
             requested_amount: "Requested Amount is required",
             revenue_planned: "Revenue Planned is required",
             urgency: "Urgency is required",
             reason_for_increase: "Reason is required",
         };
+
+        // Only require sub_cost_center if there are sub cost centers available
+        if (filteredSubCostCenters.length > 0) {
+            requiredFields.sub_cost_center = "Sub Cost Center is required";
+        }
 
         const newErrors = {};
         Object.entries(requiredFields).forEach(([field, message]) => {
@@ -219,15 +223,19 @@ const BudgetRequestForm = () => {
         }
 
         try {
-            const response = await axios.get('/api/v1/request-budgets', {
-                params: {
-                    'filter[fiscal_period_id]': formData.fiscal_period_id,
-                    'filter[department_id]': formData.department_id,
-                    'filter[cost_center_id]': formData.cost_center_id,
-                    'filter[sub_cost_center]': formData.sub_cost_center || '',
-                    'include': 'fiscalPeriod,department,costCenter,subCostCenter'
-                }
-            });
+            const params = {
+                'filter[fiscal_period_id]': formData.fiscal_period_id,
+                'filter[department_id]': formData.department_id,
+                'filter[cost_center_id]': formData.cost_center_id,
+                'include': 'fiscalPeriod,department,costCenter,subCostCenter'
+            };
+
+            // Only add sub_cost_center filter if it has a value
+            if (formData.sub_cost_center) {
+                params['filter[sub_cost_center]'] = formData.sub_cost_center;
+            }
+
+            const response = await axios.get('/api/v1/request-budgets', { params });
 
             const existingRequests = response.data.data || [];
             
@@ -315,11 +323,19 @@ const BudgetRequestForm = () => {
             return;
         }
 
-        // Create budget request
-        const response = await axios.post("/api/v1/request-budgets", {
+        // Prepare data for submission - convert empty string to null for sub_cost_center
+        const submitData = {
             ...formData,
             status: "Draft"
-        });
+        };
+        
+        // Convert empty string to null for sub_cost_center if no sub cost centers are available
+        if (submitData.sub_cost_center === "" && filteredSubCostCenters.length === 0) {
+            submitData.sub_cost_center = null;
+        }
+        
+        // Create budget request
+        const response = await axios.post("/api/v1/request-budgets", submitData);
         const budgetRequestId = response.data.data?.id;
         if (!budgetRequestId) {
             setErrors({
@@ -611,11 +627,14 @@ const BudgetRequestForm = () => {
                                 name="sub_cost_center"
                                 value={formData.sub_cost_center}
                                 onChange={handleChange}
-                                options={filteredSubCostCenters.map((sub) => ({
-                                    id: sub.id,
-                                    label: sub.name,
-                                }))}
-                                disabled={!formData.cost_center_id}
+                                options={filteredSubCostCenters.length > 0 
+                                    ? filteredSubCostCenters.map((sub) => ({
+                                        id: sub.id,
+                                        label: sub.name,
+                                    }))
+                                    : [{ id: "", label: "No sub cost centers available" }]
+                                }
+                                disabled={!formData.cost_center_id || filteredSubCostCenters.length === 0}
                             />
                         )}
                         <ErrorMessage error={errors.sub_cost_center} />
