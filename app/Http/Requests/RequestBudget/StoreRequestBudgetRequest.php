@@ -24,7 +24,7 @@ class StoreRequestBudgetRequest extends FormRequest
             'fiscal_period_id' => 'required|exists:fiscal_periods,id',
             'department_id' => 'required|exists:departments,id',
             'cost_center_id' => 'required|exists:cost_centers,id',
-            'sub_cost_center' => 'required|exists:cost_centers,id',
+            'sub_cost_center' => 'nullable|exists:cost_centers,id',
             'previous_year_revenue' => 'nullable|numeric|min:0',
             'current_year_revenue' => 'nullable|numeric|min:0',
             'previous_year_budget_amount' => 'required|numeric|min:0',
@@ -62,21 +62,33 @@ class StoreRequestBudgetRequest extends FormRequest
         $costCenterId = $this->cost_center_id;
         $subCostCenter = $this->sub_cost_center;
         
-        $subCostCenterConverted = is_numeric($subCostCenter) ? (int)$subCostCenter : $subCostCenter;
-        
-        $exists = \App\Models\RequestBudget::where('fiscal_period_id', $fiscalPeriodId)
+        $query = \App\Models\RequestBudget::where('fiscal_period_id', $fiscalPeriodId)
             ->where('department_id', $departmentId)
-            ->where('cost_center_id', $costCenterId)
-            ->where('sub_cost_center', $subCostCenterConverted)
-            ->exists();
+            ->where('cost_center_id', $costCenterId);
+        
+        // Handle sub_cost_center - if null/empty, use whereNull, otherwise use where
+        if (empty($subCostCenter)) {
+            $query->whereNull('sub_cost_center');
+        } else {
+            $subCostCenterConverted = is_numeric($subCostCenter) ? (int)$subCostCenter : $subCostCenter;
+            $query->where('sub_cost_center', $subCostCenterConverted);
+        }
+        
+        $exists = $query->exists();
         
         if ($exists) {
             $fiscalPeriod = \App\Models\FiscalPeriod::find($fiscalPeriodId);
             $department = \App\Models\Department::find($departmentId);
             $costCenter = \App\Models\CostCenter::find($costCenterId);
-            $subCostCenterModel = \App\Models\CostCenter::find($subCostCenterConverted);
             
-            $validator->errors()->add('hierarchical_uniqueness', "Budget request already exists for Fiscal Year: {$fiscalPeriod->fiscal_year}, Department: {$department->name}, Cost Center: {$costCenter->name}, Sub Cost Center: {$subCostCenterModel->name}");
+            $errorMessage = "Budget request already exists for Fiscal Year: {$fiscalPeriod->fiscal_year}, Department: {$department->name}, Cost Center: {$costCenter->name}";
+            
+            if (!empty($subCostCenter)) {
+                $subCostCenterModel = \App\Models\CostCenter::find($subCostCenterConverted);
+                $errorMessage .= ", Sub Cost Center: {$subCostCenterModel->name}";
+            }
+            
+            $validator->errors()->add('hierarchical_uniqueness', $errorMessage);
         }
     }
 }
