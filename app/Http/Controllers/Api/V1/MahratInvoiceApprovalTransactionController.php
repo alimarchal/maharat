@@ -183,7 +183,7 @@ class MahratInvoiceApprovalTransactionController extends Controller
                             
                             // Send intermediate status notification to requester
                             $requesterTask = Task::where('invoice_id', $mahratInvoiceApprovalTransaction->invoice_id)
-                                ->with(['invoice.client', 'process'])
+                                ->with(['invoice.creator', 'process'])
                                 ->first();
                             
                             if ($requesterTask) {
@@ -199,7 +199,7 @@ class MahratInvoiceApprovalTransactionController extends Controller
                 } else {
                     // This is the final approval - send final notification to requester
                     $task = Task::where('invoice_id', $mahratInvoiceApprovalTransaction->invoice_id)
-                        ->with(['invoice.client', 'process'])
+                        ->with(['invoice.creator', 'process'])
                         ->first();
                     
                     if ($task) {
@@ -213,7 +213,7 @@ class MahratInvoiceApprovalTransactionController extends Controller
             } elseif ($request->input('status') === 'Reject') {
                 // Send rejection notification to requester
                 $task = Task::where('invoice_id', $mahratInvoiceApprovalTransaction->invoice_id)
-                    ->with(['invoice.client', 'process'])
+                    ->with(['invoice.creator', 'process'])
                     ->first();
                 
                 if ($task) {

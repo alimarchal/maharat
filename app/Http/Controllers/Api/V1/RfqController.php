@@ -168,6 +168,7 @@ class RfqController extends Controller
 
             // Debug log to see what's being received
             \Log::info("RFQ Store - Received sub_cost_center_id: " . $request->input('sub_cost_center_id'));
+            \Log::info("RFQ Store - Full request data: " . json_encode($request->all()));
 
             // Create base RFQ data array
             $rfqData = [
@@ -192,12 +193,30 @@ class RfqController extends Controller
                 'updated_at' => now()
             ];
 
-            // Insert RFQ directly with query builder
-            $rfqId = DB::table('rfqs')->insertGetId($rfqData);
+            // Debug log the RFQ data being inserted
+            \Log::info("RFQ Store - RFQ data to be inserted: " . json_encode($rfqData));
+
+            // Create RFQ using Eloquent model instead of direct DB query
+            try {
+                $rfq = new Rfq($rfqData);
+                $rfq->save();
+                $rfqId = $rfq->id;
+                \Log::info("RFQ Store - Eloquent model creation successful");
+            } catch (\Exception $e) {
+                \Log::error("RFQ Store - Eloquent model creation failed: " . $e->getMessage());
+                \Log::error("RFQ Store - Stack trace: " . $e->getTraceAsString());
+                throw $e;
+            }
 
             if (!$rfqId) {
                 throw new \Exception("Failed to create RFQ record");
             }
+
+            \Log::info("RFQ Store - Successfully created RFQ with ID: " . $rfqId);
+
+            // Verify the RFQ was created with correct data
+            $createdRfq = Rfq::find($rfqId);
+            \Log::info("RFQ Store - Created RFQ data: " . json_encode($createdRfq));
 
 
             // Only attach category if it's a valid ID

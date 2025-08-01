@@ -968,6 +968,69 @@ class TaskController extends Controller
                                 'new_status' => DB::table('budgets')->where('id', $task->budget_id)->value('status')
                             ]);
                         }
+
+                        // Send notifications for Total Budget Approval
+                        $notificationService = new \App\Services\TaskNotificationService();
+                        
+                        // Get the original initiator from the first budget approval transaction
+                        $originalInitiator = DB::table('budget_approval_transactions')
+                            ->where('budget_id', $task->budget_id)
+                            ->orderBy('order', 'asc')
+                            ->first();
+                        
+                        Log::info('=== TOTAL BUDGET APPROVAL NOTIFICATION CHECK ===', [
+                            'task_id' => $task->id,
+                            'budget_id' => $task->budget_id,
+                            'originalInitiatorId' => $originalInitiator ? $originalInitiator->id : null,
+                            'originalInitiatorCreatedBy' => $originalInitiator ? $originalInitiator->created_by : null,
+                            'currentTransactionOrder' => $approvalTransaction->order,
+                            'approvalResult' => $approvalResult
+                        ]);
+                        
+                        if ($originalInitiator && $originalInitiator->created_by) {
+                            $requester = \App\Models\User::find($originalInitiator->created_by);
+                            
+                            if ($requester) {
+                                if ($approvalResult === 'Approve') {
+                                    // Check if this is the final approval
+                                    $processSteps = DB::table('process_steps')
+                                        ->join('processes', 'process_steps.process_id', '=', 'processes.id')
+                                        ->where('processes.title', 'Total Budget Approval')
+                                        ->orderBy('process_steps.order')
+                                        ->get();
+                                    $totalRequiredApprovals = $processSteps->count();
+                                    $isFinalApproval = $approvalTransaction->order == $totalRequiredApprovals;
+                                    
+                                    if ($isFinalApproval) {
+                                        // Send final approval notification
+                                        $notificationService->sendFinalStatusNotification($task, 'Total Budget Approval', 'Approved', $requester);
+                                        Log::info('=== TOTAL BUDGET FINAL APPROVAL NOTIFICATION SENT ===', [
+                                            'task_id' => $task->id,
+                                            'requester_id' => $requester->id,
+                                            'requester_email' => $requester->email
+                                        ]);
+                                    } else {
+                                        // Send intermediate approval notification
+                                        $comment = "Approved by " . auth()->user()->name . " (Step " . $approvalTransaction->order . ")";
+                                        $notificationService->sendIntermediateStatusNotification($task, 'Total Budget Approval', 'Approved', $requester, $comment);
+                                        Log::info('=== TOTAL BUDGET INTERMEDIATE APPROVAL NOTIFICATION SENT ===', [
+                                            'task_id' => $task->id,
+                                            'requester_id' => $requester->id,
+                                            'requester_email' => $requester->email,
+                                            'step' => $approvalTransaction->order
+                                        ]);
+                                    }
+                                } elseif ($approvalResult === 'Reject') {
+                                    // Send rejection notification
+                                    $notificationService->sendFinalStatusNotification($task, 'Total Budget Approval', 'Rejected', $requester);
+                                    Log::info('=== TOTAL BUDGET REJECTION NOTIFICATION SENT ===', [
+                                        'task_id' => $task->id,
+                                        'requester_id' => $requester->id,
+                                        'requester_email' => $requester->email
+                                    ]);
+                                }
+                            }
+                        }
                     }
                 } else {
                     Log::warning('=== NO BUDGET APPROVAL TRANSACTION FOUND ===', [
