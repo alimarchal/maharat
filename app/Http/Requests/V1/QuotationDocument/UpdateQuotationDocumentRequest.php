@@ -14,7 +14,7 @@ class UpdateQuotationDocumentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'document' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
+            'document' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
             'type' => 'sometimes|required|string|in:quotation,terms_and_conditions'
         ];
     }

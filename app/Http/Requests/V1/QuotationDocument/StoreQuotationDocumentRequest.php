@@ -15,7 +15,7 @@ class StoreQuotationDocumentRequest extends FormRequest
     {
         return [
             'quotation_id' => 'required|exists:quotations,id',
-            'document' => 'required|file|mimes:pdf,doc,docx|max:10240',
+            'document' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
             'type' => 'required|string|in:quotation,terms_and_conditions'
         ];
     }

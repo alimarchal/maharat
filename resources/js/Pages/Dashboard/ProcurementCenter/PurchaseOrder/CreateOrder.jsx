@@ -115,9 +115,9 @@ export default function CreatePurchaseOrder() {
                 quotationsData = [];
             }
 
-            // First, fetch all purchase orders to check which quotations have POs
+            // Always fetch fresh purchase orders data to check which quotations have POs
             const purchaseOrdersResponse = await axios.get(
-                "/api/v1/purchase-orders"
+                "/api/v1/purchase-orders?per_page=1000"
             );
             const purchaseOrdersData = purchaseOrdersResponse.data.data || [];
             const quotationIdsWithPO = new Set(
@@ -211,7 +211,12 @@ export default function CreatePurchaseOrder() {
     const handleModalClose = () => {
         setIsModalOpen(false);
         setSelectedQuotation(null);
-        fetchQuotations();
+        // Add a small delay to ensure backend has processed the purchase order creation
+        setTimeout(() => {
+            // Refresh both RFQs and quotations to get updated data
+            fetchRfqs();
+            fetchQuotations();
+        }, 500);
     };
 
     const formatDate = (dateString) => {

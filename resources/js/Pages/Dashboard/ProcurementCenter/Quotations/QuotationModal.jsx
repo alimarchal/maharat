@@ -178,6 +178,16 @@ const QuotationModal = ({
             return;
         }
 
+        // Validate document before creating quotation
+        if (tempDocument) {
+            const documentValidation = await validateDocument(tempDocument);
+            if (!documentValidation.isValid) {
+                setUploadError(documentValidation.error);
+                setIsSaving(false);
+                return;
+            }
+        }
+
         try {
             // Hardcode company to Maharat
             const companyId = 1; // Assuming Maharat has ID 1
@@ -271,16 +281,48 @@ const QuotationModal = ({
             }
 
             // Create new quotation
-            const response = await axios.post(
-                "/api/v1/quotations",
-                formDataToSend
-            );
+            let response;
+            try {
+                response = await axios.post(
+                    "/api/v1/quotations",
+                    formDataToSend
+                );
+                
+                // Check if quotation creation was successful
+                if (!response.data || !response.data.success || !response.data.data || !response.data.data.id) {
+                    setErrors({
+                        submit: "Failed to create quotation. Please try again."
+                    });
+                    setIsSaving(false);
+                    return;
+                }
+            } catch (error) {
+                console.error("Quotation creation error:", error);
+                if (error.response?.data?.message) {
+                    setErrors({
+                        submit: error.response.data.message
+                    });
+                } else {
+                    setErrors({
+                        submit: "Failed to create quotation. Please try again."
+                    });
+                }
+                setIsSaving(false);
+                return;
+            }
+            
             if (tempDocument && response.data.data && response.data.data.id) {
                 const uploadSuccess = await uploadDocumentToServer(
                     response.data.data.id,
                     tempDocument
                 );
                 if (!uploadSuccess) {
+                    // If document upload fails, delete the created quotation
+                    try {
+                        await axios.delete(`/api/v1/quotations/${response.data.data.id}`);
+                    } catch (deleteError) {
+                        console.error("Failed to delete quotation after document upload failure:", deleteError);
+                    }
                     setUploadError("Failed to upload document. Please try again.");
                     setIsSaving(false);
                     return;
@@ -315,21 +357,67 @@ const QuotationModal = ({
         }
     };
 
+    const validateDocument = async (file) => {
+        if (!file) return { isValid: true };
+        
+        // Validate file type - match backend validation exactly
+        const allowedTypes = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'image/jpeg',
+            'image/jpg',
+            'image/png'
+        ];
+        
+        if (!allowedTypes.includes(file.type)) {
+            return {
+                isValid: false,
+                error: "Invalid file type. Please upload PDF, Word, or image files only."
+            };
+        }
+        
+        // Validate file size (10MB limit)
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            return {
+                isValid: false,
+                error: "File size too large. Please upload files smaller than 10MB."
+            };
+        }
+        
+        return { isValid: true };
+    };
+
     const uploadDocumentToServer = async (quotationId, file) => {
         if (!file) return true;
+        
         const formData = new FormData();
         formData.append("document", file);
         formData.append("quotation_id", quotationId);
         formData.append("type", "quotation");
+        
         try {
-            await axios.post("/api/v1/quotation-documents", formData, {
+            const response = await axios.post("/api/v1/quotation-documents", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
+                timeout: 30000, // 30 second timeout
             });
-            return true;
+            
+            if (response.data && response.data.success) {
+                return true;
+            } else {
+                setUploadError(response.data?.message || "Document upload failed. Please try again.");
+                return false;
+            }
         } catch (error) {
-            setUploadError(
-                error.response?.data?.message || "Failed to upload document."
-            );
+            console.error("Document upload error:", error);
+            if (error.response?.data?.message) {
+                setUploadError(error.response.data.message);
+            } else if (error.code === 'ECONNABORTED') {
+                setUploadError("Upload timeout. Please try again.");
+            } else {
+                setUploadError("Failed to upload document. Please try again.");
+            }
             return false;
         }
     };
@@ -478,7 +566,7 @@ const QuotationModal = ({
                                         file:text-sm file:font-semibold
                                         file:bg-[#009FDC] file:text-white
                                         hover:file:bg-[#007BB5]"
-                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                     onChange={handleFileChange}
                                     ref={fileInputRef}
                                 />
