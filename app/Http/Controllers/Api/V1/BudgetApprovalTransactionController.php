@@ -172,13 +172,15 @@ class BudgetApprovalTransactionController extends Controller
                             }
                             
                             // Send intermediate status notification to requester
-                            // Get the original initiator from the first budget approval transaction
+                            // Get the original initiator from the first budget approval transaction (order = 1)
                             $originalInitiator = BudgetApprovalTransaction::where('budget_id', $budgetApprovalTransaction->budget_id)
-                                ->orderBy('order', 'asc')
+                                ->where('order', 1)
                                 ->first();
                             
                             \Log::info('BudgetApprovalTransaction: Original initiator found', [
+                                'budget_id' => $budgetApprovalTransaction->budget_id,
                                 'originalInitiatorId' => $originalInitiator ? $originalInitiator->id : null,
+                                'originalInitiatorOrder' => $originalInitiator ? $originalInitiator->order : null,
                                 'originalInitiatorCreatedBy' => $originalInitiator ? $originalInitiator->created_by : null,
                                 'currentTransactionId' => $budgetApprovalTransaction->id,
                                 'currentTransactionOrder' => $budgetApprovalTransaction->order
@@ -212,13 +214,15 @@ class BudgetApprovalTransactionController extends Controller
                     }
                 } else {
                     // This is the final approval - send final notification to requester
-                    // Get the original initiator from the first budget approval transaction
+                    // Get the original initiator from the first budget approval transaction (order = 1)
                     $originalInitiator = BudgetApprovalTransaction::where('budget_id', $budgetApprovalTransaction->budget_id)
-                        ->orderBy('order', 'asc')
+                        ->where('order', 1)
                         ->first();
                     
                     \Log::info('BudgetApprovalTransaction: Final approval - Original initiator found', [
+                        'budget_id' => $budgetApprovalTransaction->budget_id,
                         'originalInitiatorId' => $originalInitiator ? $originalInitiator->id : null,
+                        'originalInitiatorOrder' => $originalInitiator ? $originalInitiator->order : null,
                         'originalInitiatorCreatedBy' => $originalInitiator ? $originalInitiator->created_by : null
                     ]);
                     
@@ -248,13 +252,15 @@ class BudgetApprovalTransactionController extends Controller
                 }
             } elseif ($request->input('status') === 'Reject') {
                 // Send rejection notification to requester
-                // Get the original initiator from the first budget approval transaction
+                // Get the original initiator from the first budget approval transaction (order = 1)
                 $originalInitiator = BudgetApprovalTransaction::where('budget_id', $budgetApprovalTransaction->budget_id)
-                    ->orderBy('order', 'asc')
+                    ->where('order', 1)
                     ->first();
                 
                 \Log::info('BudgetApprovalTransaction: Rejection - Original initiator found', [
+                    'budget_id' => $budgetApprovalTransaction->budget_id,
                     'originalInitiatorId' => $originalInitiator ? $originalInitiator->id : null,
+                    'originalInitiatorOrder' => $originalInitiator ? $originalInitiator->order : null,
                     'originalInitiatorCreatedBy' => $originalInitiator ? $originalInitiator->created_by : null
                 ]);
                 

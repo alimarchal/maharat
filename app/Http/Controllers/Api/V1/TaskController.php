@@ -972,16 +972,17 @@ class TaskController extends Controller
                         // Send notifications for Total Budget Approval
                         $notificationService = new \App\Services\TaskNotificationService();
                         
-                        // Get the original initiator from the first budget approval transaction
+                        // Get the original initiator from the first budget approval transaction (order = 1)
                         $originalInitiator = DB::table('budget_approval_transactions')
                             ->where('budget_id', $task->budget_id)
-                            ->orderBy('order', 'asc')
+                            ->where('order', 1)
                             ->first();
                         
                         Log::info('=== TOTAL BUDGET APPROVAL NOTIFICATION CHECK ===', [
                             'task_id' => $task->id,
                             'budget_id' => $task->budget_id,
                             'originalInitiatorId' => $originalInitiator ? $originalInitiator->id : null,
+                            'originalInitiatorOrder' => $originalInitiator ? $originalInitiator->order : null,
                             'originalInitiatorCreatedBy' => $originalInitiator ? $originalInitiator->created_by : null,
                             'currentTransactionOrder' => $approvalTransaction->order,
                             'approvalResult' => $approvalResult
@@ -991,7 +992,7 @@ class TaskController extends Controller
                             $requester = \App\Models\User::find($originalInitiator->created_by);
                             
                             if ($requester) {
-                                if ($approvalResult === 'Approve') {
+                                if ($approvalResult === 'Approve' || $approvalResult === 'Pending') {
                                     // Check if this is the final approval
                                     $processSteps = DB::table('process_steps')
                                         ->join('processes', 'process_steps.process_id', '=', 'processes.id')
@@ -1529,7 +1530,8 @@ class TaskController extends Controller
             }
 
             // Send status notification to requester if task status changed
-            if ($request->has('status') && in_array($request->input('status'), ['Approved', 'Rejected'])) {
+            // Skip general notification logic for budget approval tasks since we have specific logic for them
+            if ($request->has('status') && in_array($request->input('status'), ['Approved', 'Rejected']) && !$task->budget_id) {
                 try {
                     $notificationService = new TaskNotificationService();
                     $taskType = $notificationService->getTaskTypeFromProcess($task->process->title ?? '');
