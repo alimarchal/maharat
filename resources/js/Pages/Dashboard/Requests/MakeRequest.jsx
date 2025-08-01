@@ -241,8 +241,8 @@ const MakeRequest = () => {
                 : "/api/v1/material-requests";
             const method = requestId ? "put" : "post";
 
-            // Add user_id and is_added to each item
-            const formDataWithUser = {
+            // Prepare data for submission - convert empty string to null for sub_cost_center_id
+            const submitData = {
                 ...formData,
                 items: formData.items.map(item => ({
                     ...item,
@@ -250,8 +250,14 @@ const MakeRequest = () => {
                     is_added: false
                 }))
             };
+            
+            // Convert empty string to null for sub_cost_center_id if no sub cost centers are available
+            const availableSubCostCenters = getAvailableSubCostCenters(formData.cost_center_id);
+            if (submitData.sub_cost_center_id === "" && availableSubCostCenters.length === 0) {
+                submitData.sub_cost_center_id = null;
+            }
 
-            const materialRequest = await axios[method](url, formDataWithUser);
+            const materialRequest = await axios[method](url, submitData);
             const materialRequestId = materialRequest.data.data.id;
 
             // Fetch the Material Request process
@@ -504,8 +510,13 @@ const MakeRequest = () => {
         let newErrors = {};
         if (!formData.cost_center_id)
             newErrors.cost_center_id = "Cost Center is required";
-        if (!formData.sub_cost_center_id)
+        
+        // Only require sub_cost_center_id if there are sub cost centers available
+        const availableSubCostCenters = getAvailableSubCostCenters(formData.cost_center_id);
+        if (availableSubCostCenters.length > 0 && !formData.sub_cost_center_id) {
             newErrors.sub_cost_center_id = "Sub Cost Center is required";
+        }
+        
         if (!formData.department_id)
             newErrors.department_id = "Department is required";
         if (!formData.warehouse_id)
@@ -977,12 +988,18 @@ const MakeRequest = () => {
                             name="sub_cost_center_id"
                             value={formData.sub_cost_center_id}
                             onChange={handleChange}
-                            options={getAvailableSubCostCenters(
-                                formData.cost_center_id
-                            ).map((scc) => ({
-                                id: scc.id,
-                                label: scc.name,
-                            }))}
+                            options={(() => {
+                                const availableSubCostCenters = getAvailableSubCostCenters(formData.cost_center_id);
+                                if (availableSubCostCenters.length > 0) {
+                                    return availableSubCostCenters.map((scc) => ({
+                                        id: scc.id,
+                                        label: scc.name,
+                                    }));
+                                } else {
+                                    return [{ id: "", label: "No sub cost centers available" }];
+                                }
+                            })()}
+                            disabled={!formData.cost_center_id || getAvailableSubCostCenters(formData.cost_center_id).length === 0}
                         />
                         {errors.sub_cost_center_id && (
                             <p className="text-red-500 text-sm">
