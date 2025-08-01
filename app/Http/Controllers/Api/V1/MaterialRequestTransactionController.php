@@ -160,13 +160,13 @@ class MaterialRequestTransactionController extends Controller
                                 $requester = $notificationService->getRequesterFromTask($requesterTask);
                                 if ($requester) {
                                     $comment = "Approved by " . auth()->user()->name . " (Step " . $materialRequestTransaction->order . ")";
-                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Material Request', 'In Progress', $requester, $comment);
+                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Material Request', 'Approved', $requester, $comment);
                                 }
                             }
                         }
                     }
                 } else {
-                    // This is the final approval - send notification to requester
+                    // This is the final approval - send final notification to requester
                     $task = Task::where('material_request_id', $materialRequestTransaction->material_request_id)
                         ->with(['material_request.requester', 'process'])
                         ->first();
@@ -175,7 +175,7 @@ class MaterialRequestTransactionController extends Controller
                         $notificationService = new TaskNotificationService();
                         $requester = $notificationService->getRequesterFromTask($task);
                         if ($requester) {
-                            $notificationService->sendFinalStatusNotification($task, 'Material Request', 'Approve', $requester);
+                            $notificationService->sendFinalStatusNotification($task, 'Material Request', 'Approved', $requester);
                         }
                     }
                 }
@@ -189,7 +189,7 @@ class MaterialRequestTransactionController extends Controller
                     $notificationService = new TaskNotificationService();
                     $requester = $notificationService->getRequesterFromTask($task);
                     if ($requester) {
-                        $notificationService->sendFinalStatusNotification($task, 'Material Request', 'Reject', $requester);
+                        $notificationService->sendFinalStatusNotification($task, 'Material Request', 'Rejected', $requester);
                     }
                 }
             }

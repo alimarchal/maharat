@@ -191,13 +191,13 @@ class MahratInvoiceApprovalTransactionController extends Controller
                                 $requester = $notificationService->getRequesterFromTask($requesterTask);
                                 if ($requester) {
                                     $comment = "Approved by " . auth()->user()->name . " (Step " . $mahratInvoiceApprovalTransaction->order . ")";
-                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Maharat Invoice Approval', 'In Progress', $requester, $comment);
+                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Maharat Invoice Approval', 'Approved', $requester, $comment);
                                 }
                             }
                         }
                     }
                 } else {
-                    // This is the final approval - send notification to requester
+                    // This is the final approval - send final notification to requester
                     $task = Task::where('invoice_id', $mahratInvoiceApprovalTransaction->invoice_id)
                         ->with(['invoice.client', 'process'])
                         ->first();
@@ -206,11 +206,11 @@ class MahratInvoiceApprovalTransactionController extends Controller
                         $notificationService = new TaskNotificationService();
                         $requester = $notificationService->getRequesterFromTask($task);
                         if ($requester) {
-                            $notificationService->sendFinalStatusNotification($task, 'Maharat Invoice Approval', 'Approve', $requester);
+                            $notificationService->sendFinalStatusNotification($task, 'Maharat Invoice Approval', 'Approved', $requester);
                         }
                     }
                 }
-            } elseif ($validated['status'] === 'Reject') {
+            } elseif ($request->input('status') === 'Reject') {
                 // Send rejection notification to requester
                 $task = Task::where('invoice_id', $mahratInvoiceApprovalTransaction->invoice_id)
                     ->with(['invoice.client', 'process'])
@@ -220,62 +220,9 @@ class MahratInvoiceApprovalTransactionController extends Controller
                     $notificationService = new TaskNotificationService();
                     $requester = $notificationService->getRequesterFromTask($task);
                     if ($requester) {
-                        $notificationService->sendFinalStatusNotification($task, 'Maharat Invoice Approval', 'Reject', $requester);
+                        $notificationService->sendFinalStatusNotification($task, 'Maharat Invoice Approval', 'Rejected', $requester);
                     }
                 }
-
-                // If rejected, immediately update invoice status to Cancelled
-                Log::info('Rejection detected, updating Invoice status to Cancelled', [
-                    'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                    'approval_order' => $mahratInvoiceApprovalTransaction->order
-                ]);
-
-                try {
-                    // Create a new request to update the Invoice status
-                    $statusUpdateRequest = new \Illuminate\Http\Request();
-                    $statusUpdateRequest->merge(['status' => 'Cancelled']);
-
-                    Log::info('Created rejection status update request', [
-                        'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                        'request_data' => $statusUpdateRequest->all()
-                    ]);
-
-                    // Use the Invoice controller to update the status
-                    $invoiceController = new \App\Http\Controllers\Api\V1\InvoiceController();
-                    
-                    Log::info('Calling Invoice status update endpoint for rejection', [
-                        'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                        'controller' => get_class($invoiceController)
-                    ]);
-
-                    $response = $invoiceController->updateStatus($statusUpdateRequest, $mahratInvoiceApprovalTransaction->invoice_id);
-
-                    Log::info('Invoice rejection status update response received', [
-                        'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                        'response_status' => $response->status(),
-                        'response_content' => $response->getContent()
-                    ]);
-
-                    // Verify the status was actually updated
-                    $updatedInvoice = Invoice::find($mahratInvoiceApprovalTransaction->invoice_id);
-                    Log::info('Invoice status after rejection update', [
-                        'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                        'current_status' => $updatedInvoice->status,
-                        'expected_status' => 'Cancelled'
-                    ]);
-
-                } catch (\Exception $e) {
-                    Log::error('Failed to update Invoice status for rejection', [
-                        'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
-                    ]);
-                }
-            } else {
-                Log::info('Not an approval or rejection status', [
-                    'status' => $validated['status'],
-                    'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id
-                ]);
             }
 
             DB::commit();

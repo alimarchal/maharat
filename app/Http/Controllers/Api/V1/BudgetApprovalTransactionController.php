@@ -16,6 +16,7 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
+use Illuminate\Support\Facades\Log;
 
 class BudgetApprovalTransactionController extends Controller
 {
@@ -171,7 +172,7 @@ class BudgetApprovalTransactionController extends Controller
                             
                             // Send intermediate status notification to requester
                             $requesterTask = Task::where('budget_id', $budgetApprovalTransaction->budget_id)
-                                ->with(['budget.requester', 'process'])
+                                ->with(['budget.creator', 'process'])
                                 ->first();
                             
                             if ($requesterTask) {
@@ -179,36 +180,36 @@ class BudgetApprovalTransactionController extends Controller
                                 $requester = $notificationService->getRequesterFromTask($requesterTask);
                                 if ($requester) {
                                     $comment = "Approved by " . auth()->user()->name . " (Step " . $budgetApprovalTransaction->order . ")";
-                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Total Budget Approval', 'In Progress', $requester, $comment);
+                                    $notificationService->sendIntermediateStatusNotification($requesterTask, 'Total Budget Approval', 'Approved', $requester, $comment);
                                 }
                             }
                         }
                     }
                 } else {
-                    // This is the final approval - send notification to requester
+                    // This is the final approval - send final notification to requester
                     $task = Task::where('budget_id', $budgetApprovalTransaction->budget_id)
-                        ->with(['budget.requester', 'process'])
+                        ->with(['budget.creator', 'process'])
                         ->first();
                     
                     if ($task) {
                         $notificationService = new TaskNotificationService();
                         $requester = $notificationService->getRequesterFromTask($task);
                         if ($requester) {
-                            $notificationService->sendFinalStatusNotification($task, 'Total Budget Approval', 'Approve', $requester);
+                            $notificationService->sendFinalStatusNotification($task, 'Total Budget Approval', 'Approved', $requester);
                         }
                     }
                 }
-            } elseif (isset($data['status']) && $data['status'] === 'Reject') {
+            } elseif ($request->input('status') === 'Reject') {
                 // Send rejection notification to requester
                 $task = Task::where('budget_id', $budgetApprovalTransaction->budget_id)
-                    ->with(['budget.requester', 'process'])
+                    ->with(['budget.creator', 'process'])
                     ->first();
                 
                 if ($task) {
                     $notificationService = new TaskNotificationService();
                     $requester = $notificationService->getRequesterFromTask($task);
                     if ($requester) {
-                        $notificationService->sendFinalStatusNotification($task, 'Total Budget Approval', 'Reject', $requester);
+                        $notificationService->sendFinalStatusNotification($task, 'Total Budget Approval', 'Rejected', $requester);
                     }
                 }
             }

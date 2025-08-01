@@ -55,10 +55,15 @@ class TaskStatusNotification extends Notification
         $contentSummary = "Task status update notification for {$this->taskType} - Status: {$this->status}";
         
         // Determine if this is an intermediate step or final status
-        $isIntermediate = in_array(strtolower($this->status), ['in_progress', 'pending']);
+        $isIntermediate = strtolower($this->status) === 'approved' && $this->isIntermediateApproval();
+        $isFinalApproval = strtolower($this->status) === 'approved' && !$this->isIntermediateApproval();
+        $isRejection = strtolower($this->status) === 'rejected';
+        
         $logSubject = $isIntermediate 
             ? "Progress Update: {$this->taskType} - {$documentName}"
-            : "Status Update: {$this->taskType} - {$documentName}";
+            : ($isFinalApproval 
+                ? "Final Approval: {$this->taskType} - {$documentName}"
+                : "Status Update: {$this->taskType} - {$documentName}");
         
         $emailLog = $emailLogService->logEmail(
             'task_status_update',
@@ -70,21 +75,29 @@ class TaskStatusNotification extends Notification
             "Status updated by {$approver->name}"
         );
 
-        // Determine if this is an intermediate step or final status
-        $isIntermediate = in_array(strtolower($this->status), ['in_progress', 'pending']);
+        $subject = $logSubject;
         
-        $subject = $isIntermediate 
-            ? "Progress Update: {$this->taskType} - {$documentName}"
-            : "Status Update: {$this->taskType} - {$documentName}";
-            
-        $greeting = $isIntermediate
-            ? "Your request is progressing through the approval process."
-            : "Your request has been reviewed and the status has been updated.";
+        // Customize greeting and message based on status type
+        if ($isIntermediate) {
+            $greeting = "Your request is progressing through the approval process.";
+            $statusDescription = "Your request has been approved by this approver and is now being forwarded to the next level for final review.";
+        } elseif ($isFinalApproval) {
+            $greeting = "Congratulations! Your request has been fully approved.";
+            $statusDescription = "Your request has been approved by all required approvers and is now complete.";
+        } elseif ($isRejection) {
+            $greeting = "Your request has been reviewed and requires attention.";
+            $statusDescription = "Your request has been rejected. Please review the comments below and take necessary action.";
+        } else {
+            $greeting = "Your request has been reviewed and the status has been updated.";
+            $statusDescription = "The status of your request has been updated.";
+        }
             
         $mailMessage = (new MailMessage)
             ->subject($subject)
             ->greeting("Dear {$notifiable->name},")
             ->line($greeting)
+            ->line("")
+            ->line($statusDescription)
             ->line("")
             ->line("**To:** {$notifiable->name}/{$requesterDepartment}")
             ->line("**From:** {$approver->name}/{$approverDepartment}")
@@ -100,8 +113,17 @@ class TaskStatusNotification extends Notification
         }
 
         $mailMessage->line("")
-                   ->line("Please log into the system to view the complete details.")
-                   ->line("")
+                   ->line("Please log into the system to view the complete details.");
+
+        if ($isFinalApproval) {
+            $mailMessage->line("")
+                       ->line("Your request is now complete and ready for processing.");
+        } elseif ($isRejection) {
+            $mailMessage->line("")
+                       ->line("Please review the rejection reason and resubmit if necessary.");
+        }
+
+        $mailMessage->line("")
                    ->line("Thank you for using our system.")
                    ->line("")
                    ->line("Best regards,")
@@ -240,5 +262,64 @@ class TaskStatusNotification extends Notification
         }
 
         return $relatedData;
+    }
+
+    /**
+     * Check if this is an intermediate approval (not the final one)
+     */
+    private function isIntermediateApproval(): bool
+    {
+        // Get the process title to determine the correct process
+        $processTitle = $this->task->process->title ?? '';
+        
+        // Get total number of required approvals from process steps
+        $totalRequiredApprovals = \DB::table('process_steps')
+            ->join('processes', 'process_steps.process_id', '=', 'processes.id')
+            ->where('processes.title', $processTitle)
+            ->count();
+
+        // If current task order is less than total required approvals, it's intermediate
+        $isIntermediate = (int)$this->task->order_no < $totalRequiredApprovals;
+        
+        \Log::info('=== INTERMEDIATE APPROVAL CHECK IN NOTIFICATION ===', [
+            'task_id' => $this->task->id,
+            'process_title' => $processTitle,
+            'current_order_no' => $this->task->order_no,
+            'total_required_approvals' => $totalRequiredApprovals,
+            'is_intermediate' => $isIntermediate
+        ]);
+
+        return $isIntermediate;
+    }
+
+    /**
+     * Get the foreign key name for the task
+     */
+    private function getTaskForeignKey(): string
+    {
+        if ($this->task->material_request_id) return 'material_request_id';
+        if ($this->task->rfq_id) return 'rfq_id';
+        if ($this->task->purchase_order_id) return 'purchase_order_id';
+        if ($this->task->payment_order_id) return 'payment_order_id';
+        if ($this->task->invoice_id) return 'invoice_id';
+        if ($this->task->request_budgets_id) return 'request_budgets_id';
+        if ($this->task->budget_id) return 'budget_id';
+        
+        return 'id'; // fallback
+    }
+
+    /**
+     * Get the foreign key value for the task
+     */
+    private function getTaskForeignKeyValue(): int
+    {
+        return $this->task->material_request_id ?? 
+               $this->task->rfq_id ?? 
+               $this->task->purchase_order_id ?? 
+               $this->task->payment_order_id ?? 
+               $this->task->invoice_id ?? 
+               $this->task->request_budgets_id ?? 
+               $this->task->budget_id ?? 
+               $this->task->id;
     }
 } 
