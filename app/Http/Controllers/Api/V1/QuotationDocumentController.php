@@ -38,14 +38,14 @@ class QuotationDocumentController extends Controller
         return QuotationDocumentResource::collection($documents);
     }
 
-    public function store(Request $request)
+    public function store(StoreQuotationDocumentRequest $request)
     {
         Log::info('File upload request received', $request->all());
-
-        $request->validate([
-            'quotation_id' => 'required|exists:quotations,id',
-            'document' => 'required|file|mimes:pdf,doc,docx',
-            'type' => 'required|string'
+        Log::info('File details:', [
+            'file_name' => $request->file('document')->getClientOriginalName(),
+            'file_size' => $request->file('document')->getSize(),
+            'file_mime' => $request->file('document')->getMimeType(),
+            'file_extension' => $request->file('document')->getClientOriginalExtension()
         ]);
 
         // Ensure the directory exists directly in storage/app/public/quotations
@@ -61,9 +61,25 @@ class QuotationDocumentController extends Controller
         $existingDocument = QuotationDocument::where('quotation_id', $request->quotation_id)->first();
         
         // Store the file directly in storage/app/public/quotations using the public disk
-        $fileName = time() . '_' . $request->file('document')->getClientOriginalName();
-        $path = $request->file('document')->storeAs($storageDir, $fileName, 'public');
-        Log::info('File stored at: ' . $path);
+        try {
+            $fileName = time() . '_' . $request->file('document')->getClientOriginalName();
+            $path = $request->file('document')->storeAs($storageDir, $fileName, 'public');
+            Log::info('File stored at: ' . $path);
+            
+            if (!$path) {
+                Log::error('Failed to store file');
+                return response()->json([
+                    'message' => 'Failed to store file',
+                    'success' => false
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            Log::error('File storage error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to store file: ' . $e->getMessage(),
+                'success' => false
+            ], 500);
+        }
 
         // Store the relative path as 'quotations/filename.pdf'
         $relativePath = 'quotations/' . $fileName;
@@ -93,20 +109,33 @@ class QuotationDocumentController extends Controller
             ], 200);
         } else {
             // Create new record
-            $document = QuotationDocument::create([
-                'quotation_id' => $request->quotation_id,
-                'file_path' => $relativePath,
-                'original_name' => $request->file('document')->getClientOriginalName(),
-                'type' => $request->type
-            ]);
-            
-            Log::info('Database entry created:', $document->toArray());
-            
-            return response()->json([
-                'message' => 'File uploaded successfully',
-                'file_path' => asset('storage/' . $relativePath),
-                'document' => new QuotationDocumentResource($document)
-            ], 201);
+            try {
+                $document = QuotationDocument::create([
+                    'quotation_id' => $request->quotation_id,
+                    'file_path' => $relativePath,
+                    'original_name' => $request->file('document')->getClientOriginalName(),
+                    'type' => $request->type
+                ]);
+                
+                Log::info('Database entry created:', $document->toArray());
+                
+                return response()->json([
+                    'message' => 'File uploaded successfully',
+                    'file_path' => asset('storage/' . $relativePath),
+                    'document' => new QuotationDocumentResource($document),
+                    'success' => true
+                ], 201);
+            } catch (\Exception $e) {
+                Log::error('Database creation error: ' . $e->getMessage());
+                // Delete the uploaded file if database creation fails
+                if (Storage::disk('public')->exists($relativePath)) {
+                    Storage::disk('public')->delete($relativePath);
+                }
+                return response()->json([
+                    'message' => 'Failed to create database record: ' . $e->getMessage(),
+                    'success' => false
+                ], 500);
+            }
         }
     }
 
@@ -121,12 +150,8 @@ class QuotationDocumentController extends Controller
         ], Response::HTTP_OK);
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateQuotationDocumentRequest $request, $id)
     {
-        $request->validate([
-            'document' => 'required|file|mimes:pdf,doc,docx',
-            'type' => 'required|string'
-        ]);
 
         $quotationDocument = QuotationDocument::findOrFail($id);
 
