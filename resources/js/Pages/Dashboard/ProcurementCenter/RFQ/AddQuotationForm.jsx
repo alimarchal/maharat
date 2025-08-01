@@ -171,9 +171,9 @@ function AddQuotationForm() {
                 }
                 // If it's valid, keep the current value (don't change it)
             } else {
-                // No current sub cost center, clear it
-                console.log("No current sub cost center, clearing it");
-                handleFormInputChange("sub_cost_center_id", "");
+                // No current sub cost center, but don't clear it if we're in edit mode and it was previously set
+                console.log("No current sub cost center, but keeping existing value");
+                // Don't clear the value here, let it remain as is
             }
         } catch (error) {
             console.error("Error fetching sub cost centers:", error);
@@ -607,10 +607,12 @@ function AddQuotationForm() {
                         items: formattedItems,
                     };
 
+                    console.log("Setting form data in edit mode:", formattedData);
                     setFormData(formattedData);
 
                     // Fetch sub cost centers if cost center is selected
                     if (formattedData.cost_center_id) {
+                        console.log("Fetching sub cost centers for cost center:", formattedData.cost_center_id);
                         await updateSubCostCenter(formattedData.cost_center_id, formattedData.sub_cost_center_id);
                     }
 
@@ -965,6 +967,11 @@ function AddQuotationForm() {
     };
 
     const handleFormInputChange = (field, value) => {
+        // Debug log for sub_cost_center_id changes
+        if (field === 'sub_cost_center_id') {
+            console.log('handleFormInputChange - sub_cost_center_id:', { oldValue: formData.sub_cost_center_id, newValue: value, type: typeof value });
+        }
+        
         setFormData((prev) => ({
             ...prev,
             [field]: value,
@@ -1147,17 +1154,20 @@ function AddQuotationForm() {
             };
 
             // Convert empty string to null for sub_cost_center_id
-            if (rfqData.sub_cost_center_id === "") {
+            if (rfqData.sub_cost_center_id === "" || rfqData.sub_cost_center_id === null) {
                 rfqData.sub_cost_center_id = null;
             }
 
             // Debug log to check if sub_cost_center_id is being set
             console.log("Form data sub_cost_center_id:", formData.sub_cost_center_id);
+            console.log("Form data sub_cost_center_id type:", typeof formData.sub_cost_center_id);
             console.log("RFQ data sub_cost_center_id:", rfqData.sub_cost_center_id);
+            console.log("RFQ data sub_cost_center_id type:", typeof rfqData.sub_cost_center_id);
             console.log("Full RFQ data being sent:", rfqData);
 
             let response;
             if (rfqId) {
+                console.log("Sending PUT request for RFQ update:", rfqData);
                 response = await axios.put(`/api/v1/rfqs/${rfqId}`, rfqData, {
                     headers: {
                         "Content-Type": "application/json",
@@ -1167,10 +1177,14 @@ function AddQuotationForm() {
             } else {
                 const formDataObj = new FormData();
                 Object.entries(rfqData).forEach(([key, value]) => {
-                    if (value !== null) {
-                        formDataObj.append(key, value);
-                    }
+                    // Always include the field, even if null, so the backend knows it was explicitly set
+                    formDataObj.append(key, value !== null ? value : "");
                 });
+
+                console.log("Sending POST request for RFQ creation. FormData entries:");
+                for (let [key, value] of formDataObj.entries()) {
+                    console.log(`${key}: ${value}`);
+                }
 
                 response = await axios.post("/api/v1/rfqs", formDataObj, {
                     headers: {
@@ -1180,6 +1194,7 @@ function AddQuotationForm() {
                 });
             }
 
+            console.log("Response from RFQ save:", response.data);
             if (!response.data?.data?.id) {
                 throw new Error("Failed to get RFQ ID");
             }
@@ -1781,14 +1796,16 @@ function AddQuotationForm() {
                                 <div className="relative">
                                     <select
                                         value={formData.sub_cost_center_id || ""}
-                                        onChange={(e) =>
+                                        onChange={(e) => {
+                                            console.log("Sub cost center changed:", { oldValue: formData.sub_cost_center_id, newValue: e.target.value });
                                             handleFormInputChange(
                                                 "sub_cost_center_id",
                                                 e.target.value
-                                            )
-                                        }
+                                            );
+                                        }}
                                         className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
                                     >
+                                        <option value="">Select Sub Cost Center</option>
                                         {subCostCenters.map((subCenter) => (
                                             <option
                                                 key={subCenter.id}

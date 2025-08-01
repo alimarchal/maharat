@@ -363,7 +363,7 @@ class RfqController extends Controller
             // Remove null values but allow empty strings for sub_cost_center_id
             $updateData = array_filter($updateData, function($value, $key) {
                 if ($key === 'sub_cost_center_id') {
-                    return $value !== null; // Allow empty string for sub_cost_center_id
+                    return true; // Always include sub_cost_center_id, even if null
                 }
                 return $value !== null && $value !== '';
             }, ARRAY_FILTER_USE_BOTH);
