@@ -35,6 +35,7 @@
         "@mui/material": "^6.4.7",
         "@mui/styles": "^6.4.7",
         "date-fns": "^4.1.0",
+        "exceljs": "^4.4.0",
         "js-yaml": "^4.1.0",
         "jspdf": "^3.0.1",
         "jspdf-autotable": "^5.0.2",
@@ -48,7 +49,6 @@
         "react-organizational-chart": "^2.2.1",
         "react-router-dom": "^7.2.0",
         "uglify-js": "^3.19.3",
-        "xlsx": "^0.18.5",
         "ziggy-js": "^2.5.1"
     }
 }
