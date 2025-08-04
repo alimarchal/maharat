@@ -60,14 +60,25 @@ class QuotationController extends Controller
     {
         // Get query parameters
         $rfqId = request()->get('rfq_id');
+        
+        \Log::info('QuotationController::index called with rfq_id: ' . $rfqId);
+        
         $query = Quotation::withTrashed()->with(['rfq.company', 'documents', 'status', 'supplier']);
         // Filter by RFQ ID if provided
         if ($rfqId) {
             $query->where('rfq_id', $rfqId);
+            \Log::info('Filtering quotations by RFQ ID: ' . $rfqId);
         }
         
         // Get the results
         $quotations = $query->get();
+        
+        \Log::info('Found ' . $quotations->count() . ' quotations for RFQ ID: ' . $rfqId);
+        
+        // Log each quotation for debugging
+        foreach ($quotations as $quotation) {
+            \Log::info('Quotation ID: ' . $quotation->id . ', Supplier ID: ' . $quotation->supplier_id . ', RFQ ID: ' . $quotation->rfq_id);
+        }
         
         // Return consistent JSON response structure
         return response()->json([

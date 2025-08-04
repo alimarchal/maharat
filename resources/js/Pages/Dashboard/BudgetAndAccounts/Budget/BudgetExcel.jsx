@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 export default function BudgetExcel({ budgetId, onGenerated }) {
     const [budget, setBudget] = useState(null);
@@ -91,18 +91,17 @@ export default function BudgetExcel({ budgetId, onGenerated }) {
 
     const generateExcel = async () => {
         try {
-            // Create workbook and worksheet
-            const wb = XLSX.utils.book_new();
+            // Create workbook
+            const workbook = new ExcelJS.Workbook();
 
             // Add document properties
-            wb.Props = {
-                Title: `Budget Report - ID: ${budget.id}`,
-                Subject: "Budget Report",
-                Author: "Maharat MCTC",
-                CreatedDate: new Date(),
-                Company: "Maharat MCTC",
-                Category: "Financial Documents",
-            };
+            workbook.creator = "Maharat MCTC";
+            workbook.lastModifiedBy = "Maharat MCTC";
+            workbook.created = new Date();
+            workbook.modified = new Date();
+            workbook.title = `Budget Report - ID: ${budget.id}`;
+            workbook.subject = "Budget Report";
+            workbook.category = "Financial Documents";
 
             // Summary Sheet
             const summaryData = [
@@ -292,34 +291,29 @@ export default function BudgetExcel({ budgetId, onGenerated }) {
                 "Maharat MCTC Financial System",
             ]);
 
-            // Create worksheet
-            const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+            // Create summary worksheet
+            const summaryWorksheet = workbook.addWorksheet("Budget Summary");
+
+            // Add rows to the worksheet
+            summaryData.forEach(row => {
+                summaryWorksheet.addRow(row);
+            });
 
             // Set column widths
-            wsSummary["!cols"] = [
-                { wch: 20 }, // Column A width
-                { wch: 25 }, // Column B width
-                { wch: 25 }, // Column C width
-                { wch: 20 }, // Column D width
-                { wch: 15 }, // Column E width
-            ];
+            summaryWorksheet.getColumn(1).width = 20;
+            summaryWorksheet.getColumn(2).width = 25;
+            summaryWorksheet.getColumn(3).width = 25;
+            summaryWorksheet.getColumn(4).width = 20;
+            summaryWorksheet.getColumn(5).width = 15;
 
-            // Apply cell merges for headers
-            wsSummary["!merges"] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }, // Merge title cells
-                { s: { r: 2, c: 0 }, e: { r: 2, c: 4 } }, // Merge Budget ID cells
-                { s: { r: 3, c: 0 }, e: { r: 3, c: 4 } }, // Merge Description cells
-                { s: { r: 4, c: 0 }, e: { r: 4, c: 4 } }, // Merge Status cells
-                { s: { r: 6, c: 0 }, e: { r: 6, c: 4 } }, // Merge Budget Details heading
-                { s: { r: 18, c: 0 }, e: { r: 18, c: 4 } }, // Merge Budget Summary heading
-                {
-                    s: { r: summaryData.length - 10, c: 0 },
-                    e: { r: summaryData.length - 10, c: 4 },
-                }, // Merge Performance Analysis heading
-            ];
-
-            // Add summary worksheet to workbook
-            XLSX.utils.book_append_sheet(wb, wsSummary, "Budget Summary");
+            // Merge cells for headers
+            summaryWorksheet.mergeCells('A1:E1'); // Title
+            summaryWorksheet.mergeCells('A3:E3'); // Budget ID
+            summaryWorksheet.mergeCells('A4:E4'); // Description
+            summaryWorksheet.mergeCells('A5:E5'); // Status
+            summaryWorksheet.mergeCells('A7:E7'); // Budget Details heading
+            summaryWorksheet.mergeCells('A19:E19'); // Budget Summary heading
+            summaryWorksheet.mergeCells(`A${summaryData.length - 9}:E${summaryData.length - 9}`); // Performance Analysis heading
 
             // Performance Metrics Sheet
             const performanceData = [
@@ -376,31 +370,25 @@ export default function BudgetExcel({ budgetId, onGenerated }) {
                 ]);
             }
 
-            // Create worksheet
-            const wsPerformance = XLSX.utils.aoa_to_sheet(performanceData);
+            // Create performance worksheet
+            const performanceWorksheet = workbook.addWorksheet("Performance Metrics");
+
+            // Add rows to the worksheet
+            performanceData.forEach(row => {
+                performanceWorksheet.addRow(row);
+            });
 
             // Set column widths
-            wsPerformance["!cols"] = [
-                { wch: 20 }, // Indicator column
-                { wch: 15 }, // Value column
-                { wch: 15 }, // Target column
-                { wch: 20 }, // Performance column
-                { wch: 15 }, // Status column
-            ];
+            performanceWorksheet.getColumn(1).width = 20; // Indicator column
+            performanceWorksheet.getColumn(2).width = 15; // Value column
+            performanceWorksheet.getColumn(3).width = 15; // Target column
+            performanceWorksheet.getColumn(4).width = 20; // Performance column
+            performanceWorksheet.getColumn(5).width = 15; // Status column
 
-            // Apply cell merges
-            wsPerformance["!merges"] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }, // Merge title cells
-                { s: { r: 2, c: 0 }, e: { r: 2, c: 4 } }, // Merge Budget ID cells
-                { s: { r: 4, c: 0 }, e: { r: 4, c: 4 } }, // Merge Performance Indicators heading
-            ];
-
-            // Add performance worksheet to workbook
-            XLSX.utils.book_append_sheet(
-                wb,
-                wsPerformance,
-                "Performance Metrics"
-            );
+            // Merge cells
+            performanceWorksheet.mergeCells('A1:E1'); // Title
+            performanceWorksheet.mergeCells('A3:E3'); // Budget ID
+            performanceWorksheet.mergeCells('A5:E5'); // Performance Indicators heading
 
             // Detailed Figures Sheet
             const detailData = [
@@ -446,33 +434,28 @@ export default function BudgetExcel({ budgetId, onGenerated }) {
                 profitVariance.numericPercentage,
             ]);
 
-            // Create worksheet
-            const wsDetails = XLSX.utils.aoa_to_sheet(detailData);
+            // Create detailed figures worksheet
+            const detailsWorksheet = workbook.addWorksheet("Detailed Figures");
+
+            // Add rows to the worksheet
+            detailData.forEach(row => {
+                detailsWorksheet.addRow(row);
+            });
 
             // Set column widths
-            wsDetails["!cols"] = [
-                { wch: 20 }, // Category column
-                { wch: 15 }, // Type column
-                { wch: 15 }, // Planned column
-                { wch: 15 }, // Actual column
-                { wch: 15 }, // Variance column
-                { wch: 15 }, // Variance % column
-            ];
+            detailsWorksheet.getColumn(1).width = 20; // Category column
+            detailsWorksheet.getColumn(2).width = 15; // Type column
+            detailsWorksheet.getColumn(3).width = 15; // Planned column
+            detailsWorksheet.getColumn(4).width = 15; // Actual column
+            detailsWorksheet.getColumn(5).width = 15; // Variance column
+            detailsWorksheet.getColumn(6).width = 15; // Variance % column
 
-            // Apply cell merges
-            wsDetails["!merges"] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, // Merge title cells
-                { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } }, // Merge Budget ID cells
-            ];
-
-            // Add details worksheet to workbook
-            XLSX.utils.book_append_sheet(wb, wsDetails, "Detailed Figures");
+            // Merge cells
+            detailsWorksheet.mergeCells('A1:F1'); // Title
+            detailsWorksheet.mergeCells('A3:F3'); // Budget ID
 
             // Generate Excel file
-            const excelBuffer = XLSX.write(wb, {
-                bookType: "xlsx",
-                type: "array",
-            });
+            const excelBuffer = await workbook.xlsx.writeBuffer();
             const excelBlob = new Blob([excelBuffer], {
                 type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             });
