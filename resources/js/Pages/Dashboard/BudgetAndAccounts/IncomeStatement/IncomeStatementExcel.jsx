@@ -59,22 +59,26 @@ export default function IncomeStatementExcel({
                     revenueResponse.data.data.categories || [];
 
                 // Set all data in state
+                const revenueTotal = parseFloat(revenueResponse.data.data.total_revenue) || 0;
+                const expensesTotal = parseFloat(expensesResponse.data.data.total_expenses) || 0;
+                const transactionsTotal = parseFloat(transactionsResponse.data.data.total_amount) || 0;
+                
+                console.log('Income Statement Data:', {
+                    revenueTotal: revenueTotal,
+                    expensesTotal: expensesTotal,
+                    transactionsTotal: transactionsTotal,
+                    revenueResponse: revenueResponse.data.data,
+                    expensesResponse: expensesResponse.data.data,
+                    transactionsResponse: transactionsResponse.data.data
+                });
+                
                 setData({
                     expenses: expenseCategories,
                     invoices: revenueCategories,
                     totals: {
-                        revenue:
-                            parseFloat(
-                                revenueResponse.data.data.total_revenue
-                            ) || 0,
-                        expenses:
-                            parseFloat(
-                                expensesResponse.data.data.total_expenses
-                            ) || 0,
-                        transactions:
-                            parseFloat(
-                                transactionsResponse.data.data.total_amount
-                            ) || 0,
+                        revenue: revenueTotal,
+                        expenses: expensesTotal,
+                        transactions: transactionsTotal,
                     },
                 });
             } catch (error) {
@@ -183,12 +187,40 @@ export default function IncomeStatementExcel({
         if (revenue === 0) return 0;
 
         const netIncome = calculateNetIncome();
-        return (netIncome / revenue) * 100;
+        const profitMargin = (netIncome / revenue) * 100;
+        
+        // Add debugging
+        console.log('Profit Margin Calculation:', {
+            revenue: revenue,
+            expenses: data.totals.expenses,
+            netIncome: netIncome,
+            profitMargin: profitMargin
+        });
+        
+        return profitMargin;
     };
 
     // Calculate revenue to expense ratio
     const calculateRevToExpRatio = () => {
-        return data.totals.revenue / (data.totals.expenses || 1);
+        const revenue = data.totals.revenue;
+        const expenses = data.totals.expenses;
+        
+        // Handle edge cases
+        if (expenses === 0) {
+            console.log('Revenue to Expense Ratio: Expenses is 0, returning revenue value');
+            return revenue; // If no expenses, ratio is just the revenue amount
+        }
+        
+        const ratio = revenue / expenses;
+        
+        // Add debugging
+        console.log('Revenue to Expense Ratio Calculation:', {
+            revenue: revenue,
+            expenses: expenses,
+            ratio: ratio
+        });
+        
+        return ratio;
     };
 
     // Generate performance rating based on profit margin

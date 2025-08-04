@@ -63,91 +63,49 @@ const AccountsModal = ({
                         setLoadingPaymentOrders(true);
                         try {
                             const res = await axios.get("/api/v1/payment-orders?status=Approved,Partially Paid,Overdue");
-                            const paymentOrders = (res.data.data || []).filter(po =>
-                                ["Approved", "Partially Paid", "Overdue"].includes(po.status) && po.purchase_order_id !== null
-                            );
                             
-                            console.log("Found payment orders:", paymentOrders.length);
+                            const allPaymentOrders = res.data.data || [];
+                            const paymentOrders = allPaymentOrders.filter(po => {
+                                const hasValidStatus = ["Approved", "Partially Paid", "Overdue"].includes(po.status);
+                                const hasPurchaseOrder = po.purchase_order_id !== null;
+                                return hasValidStatus && hasPurchaseOrder;
+                            });
                             
-                            // For each payment order, fetch the external invoice and calculate unpaid amount
+                            // For each payment order, calculate unpaid amount directly from payment order data
                             const paymentOrderOptions = [];
                             const processedPOs = new Set(); // Track processed payment orders to avoid duplicates
                             
                             for (const po of paymentOrders) {
                                 // Skip if we've already processed this payment order
                                 if (processedPOs.has(po.payment_order_number)) {
-                                    console.log(`Skipping duplicate PO: ${po.payment_order_number}`);
                                     continue;
                                 }
                                 processedPOs.add(po.payment_order_number);
-                                let unpaid = 0;
-                                let hasInvoice = false;
-                                let invoiceDetails = null;
                                 
-                                try {
-                                    console.log(`Fetching invoice for PO: ${po.payment_order_number}, Purchase Order ID: ${po.purchase_order_id}`);
-                                    const invRes = await axios.get(`/api/v1/external-invoices?purchase_order_id=${po.purchase_order_id}`);
-                                    console.log(`Raw invoice response for PO ${po.payment_order_number}:`, invRes.data);
-                                    
-                                    const invoices = invRes.data.data || [];
-                                    console.log(`Found ${invoices.length} invoices for PO ${po.payment_order_number}`);
-                                    
-                                    if (invoices.length > 0) {
-                                        // Use the first invoice (or you might want to sum all invoices for this PO)
-                                        const invoice = invoices[0];
-                                        invoiceDetails = invoice;
-                                        hasInvoice = true;
-                                        
-                                        // Ensure we're getting the correct values from the invoice
-                                        const amount = parseFloat(invoice.amount) || 0;
-                                        const vat = parseFloat(invoice.vat_amount) || 0;
-                                        const paid = parseFloat(invoice.paid_amount) || 0;
-                                        unpaid = amount + vat - paid;
-                                        
-                                        console.log(`PO ${po.payment_order_number} calculation:`, {
-                                            invoice_id: invoice.id,
-                                            invoice_number: invoice.invoice_id,
-                                            amount: amount,
-                                            vat: vat,
-                                            paid: paid,
-                                            unpaid: unpaid,
-                                            total_amount: amount + vat
-                                        });
-                                        
-                                        // Additional validation to ensure we have valid data
-                                        if (isNaN(unpaid) || unpaid < 0) {
-                                            console.warn(`Invalid unpaid amount for PO ${po.payment_order_number}: ${unpaid}`);
-                                            unpaid = 0;
-                                        }
-                                    }
-                                } catch (e) {
-                                    console.error(`Error fetching invoice for PO ${po.payment_order_number}:`, e);
-                                    console.error(`Error details:`, e.response?.data);
-                                    hasInvoice = false;
-                                }
+                                // Calculate unpaid amount from payment order data directly
+                                const poTotalAmount = parseFloat(po.total_amount) || 0;
+                                const poVatAmount = parseFloat(po.vat_amount) || 0;
+                                const poPaidAmount = parseFloat(po.paid_amount) || 0;
+                                const poUnpaid = poTotalAmount + poVatAmount - poPaidAmount;
                                 
-                                if (hasInvoice && unpaid > 0) {
+                                // Show payment order if it has any unpaid amount
+                                if (poUnpaid > 0) {
                                     const option = {
                                         id: po.payment_order_number,
                                         label: (
                                             <span>
-                                                {po.payment_order_number} <span className="text-xs font-bold text-red-600">(UnPaid Amount: {unpaid.toFixed(2)})</span>
+                                                {po.payment_order_number} <span className="text-xs font-bold text-red-600">(UnPaid Amount: {poUnpaid.toFixed(2)})</span>
                                             </span>
                                         ),
                                         value: po.payment_order_number,
-                                        unpaid: unpaid, // Store the unpaid amount for reference
-                                        invoice_id: invoiceDetails?.id,
+                                        unpaid: poUnpaid,
                                         purchase_order_id: po.purchase_order_id
                                     };
                                     
-                                    console.log(`Adding payment order option:`, option);
                                     paymentOrderOptions.push(option);
-                                } else {
-                                    console.log(`Skipping PO ${po.payment_order_number}: hasInvoice=${hasInvoice}, unpaid=${unpaid}`);
                                 }
                             }
                             
-                            console.log("Final payment order options:", paymentOrderOptions);
                             setEligiblePaymentOrders(paymentOrderOptions);
                         } catch (e) {
                             console.error("Error fetching payment orders:", e);
