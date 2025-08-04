@@ -60,19 +60,20 @@ class QuotationController extends Controller
     {
         // Get query parameters
         $rfqId = request()->get('rfq_id');
-        $query = Quotation::with(['rfq.company', 'documents', 'status', 'supplier']);
+        $query = Quotation::withTrashed()->with(['rfq.company', 'documents', 'status', 'supplier']);
         // Filter by RFQ ID if provided
         if ($rfqId) {
             $query->where('rfq_id', $rfqId);
         }
         
-        // Paginate the results
-        $quotations = $query->get(); // Fetch all records instead of paginating
-        return QuotationResource::collection($quotations);
+        // Get the results
+        $quotations = $query->get();
         
-        return $quotations->isEmpty()
-            ? response()->json(['message' => 'No quotations found', 'data' => []], Response::HTTP_OK)
-            : QuotationResource::collection($quotations);
+        // Return consistent JSON response structure
+        return response()->json([
+            'success' => true,
+            'data' => QuotationResource::collection($quotations)
+        ], Response::HTTP_OK);
     }
 
     public function store(Request $request)

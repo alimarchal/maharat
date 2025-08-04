@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import InputFloating from "../../../../Components/InputFloating";
-import { usePage } from "@inertiajs/react";
+import { usePage, router } from "@inertiajs/react";
 
 const ApproveOrder = ({
     isOpen,
@@ -401,9 +401,12 @@ const ApproveOrder = ({
 
                 await axios.post("/api/v1/tasks", taskPayload);
 
-                // Successfully completed workflow
+                // Successfully completed workflow - navigate to ViewOrder page
                 onSave();
                 onClose();
+                
+                // Navigate to the purchase orders view page
+                router.visit('/purchase-orders');
             }
         } catch (error) {
             console.error("Purchase order creation error:", error.response?.data);
