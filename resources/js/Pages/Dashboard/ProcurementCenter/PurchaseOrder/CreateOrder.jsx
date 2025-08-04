@@ -363,29 +363,30 @@ export default function CreatePurchaseOrder() {
                                             <span className="text-gray-400">Created</span>
                                         ) : (
                                             (() => {
-                                                const rfqHasPO =
-                                                    quotations.some(
-                                                        (q) =>
-                                                            q.rfq?.id ===
-                                                                quotation.rfq
-                                                                    ?.id &&
-                                                            q.has_purchase_order
-                                                    );
-
-                                                return rfqHasPO ? (
-                                                    <span className="text-gray-400">
-                                                        Rejected
-                                                    </span>
-                                                ) : (
-                                                    <button
-                                                        onClick={() =>
-                                                            handleCreatePO(quotation)
-                                                        }
-                                                        className="text-gray-400 hover:text-gray-600"
-                                                    >
-                                                        <PlusCircleIcon className="h-6 w-6" />
-                                                    </button>
+                                                // Check if any quotation in this RFQ has a purchase order
+                                                const rfqHasPO = quotations.some(
+                                                    (q) =>
+                                                        q.rfq?.id === quotation.rfq?.id &&
+                                                        q.has_purchase_order
                                                 );
+
+                                                // If this RFQ has any purchase order, show "Created" for all quotations
+                                                // This ensures that once a PO is created for any quotation in the RFQ,
+                                                // all quotations show "Created" instead of the plus icon
+                                                if (rfqHasPO) {
+                                                    return <span className="text-gray-400">Created</span>;
+                                                } else {
+                                                    return (
+                                                        <button
+                                                            onClick={() =>
+                                                                handleCreatePO(quotation)
+                                                            }
+                                                            className="text-gray-400 hover:text-gray-600"
+                                                        >
+                                                            <PlusCircleIcon className="h-6 w-6" />
+                                                        </button>
+                                                    );
+                                                }
                                             })()
                                         )}
                                     </td>

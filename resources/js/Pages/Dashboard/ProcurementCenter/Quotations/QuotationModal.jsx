@@ -96,9 +96,26 @@ const QuotationModal = ({
             if (rfqId) {
                 try {
                     const quotationsResponse = await axios.get(`/api/v1/quotations?rfq_id=${rfqId}`);
-                    const existingQuotations = quotationsResponse.data.data || [];
+                    console.log("Full quotations response:", quotationsResponse.data);
+                    
+                    // Handle different possible response structures
+                    let existingQuotations = [];
+                    if (quotationsResponse.data && Array.isArray(quotationsResponse.data)) {
+                        // Direct array response
+                        existingQuotations = quotationsResponse.data;
+                    } else if (quotationsResponse.data && Array.isArray(quotationsResponse.data.data)) {
+                        // Wrapped in data property
+                        existingQuotations = quotationsResponse.data.data;
+                    }
+                    
                     console.log("Existing quotations for RFQ:", existingQuotations);
-                    usedSupplierIds = new Set(existingQuotations.map(q => q.supplier_id));
+                    
+                    // Filter out null/undefined supplier_ids and create the set
+                    const validSupplierIds = existingQuotations
+                        .map(q => q.supplier_id)
+                        .filter(id => id !== null && id !== undefined);
+                    
+                    usedSupplierIds = new Set(validSupplierIds);
                     console.log("Used supplier IDs:", Array.from(usedSupplierIds));
                     
                     // In edit mode, remove the current quotation's supplier from the used list
