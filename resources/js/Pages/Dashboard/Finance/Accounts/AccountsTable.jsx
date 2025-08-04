@@ -300,7 +300,7 @@ const AccountsTable = () => {
                                 <td className="py-3 px-4 truncate">
                                     {account.account_code?.account_type || "N/A"}
                                 </td>
-                                <td className="py-3 px-4 truncate">
+                                <td className="py-3 px-4">
                                     {account.cost_center
                                         ? account.cost_center.name
                                         : "N/A"}
