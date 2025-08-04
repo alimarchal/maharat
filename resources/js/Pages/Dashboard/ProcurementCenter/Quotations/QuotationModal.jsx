@@ -93,6 +93,7 @@ const QuotationModal = ({
             
             // Fetch existing quotations for this RFQ to filter out used suppliers
             let usedSupplierIds = new Set();
+            let existingQuotations = []; // Declare the variable here
             if (rfqId) {
                 try {
                     console.log("Fetching quotations for RFQ ID:", rfqId);
