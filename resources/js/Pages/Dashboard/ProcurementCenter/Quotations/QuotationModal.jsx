@@ -138,7 +138,8 @@ const QuotationModal = ({
                     // Filter out null/undefined supplier_ids and create the set
                     const validSupplierIds = existingQuotations
                         .map(q => q.supplier_id)
-                        .filter(id => id !== null && id !== undefined && id !== '');
+                        .filter(id => id !== null && id !== undefined && id !== '')
+                        .map(id => Number(id)); // Convert to number for consistent comparison
                     
                     console.log("All supplier IDs from quotations:", existingQuotations.map(q => q.supplier_id));
                     console.log("Valid supplier IDs after filtering:", validSupplierIds);
@@ -169,8 +170,9 @@ const QuotationModal = ({
             console.log("Used supplier IDs types:", Array.from(usedSupplierIds).map(id => typeof id));
             
             const availableSuppliers = allSuppliers.filter(supplier => {
-                const isExcluded = usedSupplierIds.has(supplier.id);
-                console.log(`Supplier ${supplier.name} (ID: ${supplier.id}, type: ${typeof supplier.id}) - Excluded: ${isExcluded}`);
+                const supplierId = Number(supplier.id); // Ensure supplier ID is a number
+                const isExcluded = usedSupplierIds.has(supplierId);
+                console.log(`Supplier ${supplier.name} (ID: ${supplierId}, type: ${typeof supplierId}) - Excluded: ${isExcluded}`);
                 return !isExcluded;
             });
             
