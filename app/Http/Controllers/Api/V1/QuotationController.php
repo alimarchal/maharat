@@ -24,7 +24,8 @@ class QuotationController extends Controller
     private function generateQuotationNumber(): string
     {
         $year = date('Y');
-        $lastQuotation = Quotation::whereYear('created_at', $year)
+        $lastQuotation = Quotation::withTrashed()
+            ->whereYear('created_at', $year)
             ->orderBy('quotation_number', 'desc')
             ->first();
 
