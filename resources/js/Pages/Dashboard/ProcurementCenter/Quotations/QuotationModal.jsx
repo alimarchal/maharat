@@ -97,42 +97,27 @@ const QuotationModal = ({
                 try {
                     console.log("Fetching quotations for RFQ ID:", rfqId);
                     
-                    // Try multiple approaches to get quotations data
-                    let existingQuotations = [];
-                    
-                    // Approach 1: Try the main API endpoint
+                    // Get quotations data for this RFQ
                     try {
                         const quotationsResponse = await axios.get(`/api/v1/quotations?rfq_id=${rfqId}`);
-                        console.log("Main API response:", quotationsResponse.data);
+                        console.log("Quotations API response:", quotationsResponse.data);
                         
-                        if (quotationsResponse.data && Array.isArray(quotationsResponse.data)) {
+                        // Handle the response structure: { success: true, data: [...] }
+                        if (quotationsResponse.data && quotationsResponse.data.success && Array.isArray(quotationsResponse.data.data)) {
+                            existingQuotations = quotationsResponse.data.data;
+                            console.log("Using success.data response structure");
+                        } else if (quotationsResponse.data && Array.isArray(quotationsResponse.data)) {
                             existingQuotations = quotationsResponse.data;
-                            console.log("Using direct array response from main API");
+                            console.log("Using direct array response");
                         } else if (quotationsResponse.data && Array.isArray(quotationsResponse.data.data)) {
                             existingQuotations = quotationsResponse.data.data;
-                            console.log("Using wrapped data response from main API");
+                            console.log("Using wrapped data response");
+                        } else {
+                            console.warn("Unexpected response structure:", quotationsResponse.data);
                         }
-                    } catch (mainApiError) {
-                        console.error("Main API failed:", mainApiError);
-                    }
-                    
-                    // Approach 2: If main API failed or returned no data, try a direct query
-                    if (existingQuotations.length === 0) {
-                        try {
-                            console.log("Trying direct quotations query...");
-                            const directResponse = await axios.get(`/api/v1/quotations`, {
-                                params: { rfq_id: rfqId, include: 'supplier' }
-                            });
-                            console.log("Direct query response:", directResponse.data);
-                            
-                            if (directResponse.data && Array.isArray(directResponse.data)) {
-                                existingQuotations = directResponse.data;
-                            } else if (directResponse.data && Array.isArray(directResponse.data.data)) {
-                                existingQuotations = directResponse.data.data;
-                            }
-                        } catch (directError) {
-                            console.error("Direct query failed:", directError);
-                        }
+                    } catch (error) {
+                        console.error("Error fetching quotations:", error);
+                        console.error("Error response:", error.response?.data);
                     }
                     
                     console.log("Final existing quotations:", existingQuotations);
@@ -144,20 +129,23 @@ const QuotationModal = ({
                             id: q.id,
                             supplier_id: q.supplier_id,
                             supplier: q.supplier,
-                            rfq_id: q.rfq_id
+                            rfq_id: q.rfq_id,
+                            type: typeof q.supplier_id
                         });
                     });
                     
                     // Filter out null/undefined supplier_ids and create the set
                     const validSupplierIds = existingQuotations
                         .map(q => q.supplier_id)
-                        .filter(id => id !== null && id !== undefined);
+                        .filter(id => id !== null && id !== undefined && id !== '');
                     
-                    console.log("Valid supplier IDs before filtering:", existingQuotations.map(q => q.supplier_id));
+                    console.log("All supplier IDs from quotations:", existingQuotations.map(q => q.supplier_id));
                     console.log("Valid supplier IDs after filtering:", validSupplierIds);
+                    console.log("Valid supplier IDs types:", validSupplierIds.map(id => typeof id));
                     
                     usedSupplierIds = new Set(validSupplierIds);
                     console.log("Used supplier IDs set:", Array.from(usedSupplierIds));
+                    console.log("Used supplier IDs set size:", usedSupplierIds.size);
                     
                     // In edit mode, remove the current quotation's supplier from the used list
                     // so it can still be selected
@@ -174,12 +162,14 @@ const QuotationModal = ({
             
             // Filter suppliers to exclude those already used for this RFQ
             console.log("Filtering suppliers...");
-            console.log("All suppliers:", allSuppliers.map(s => ({ id: s.id, name: s.name })));
+            console.log("All suppliers count:", allSuppliers.length);
+            console.log("All suppliers:", allSuppliers.map(s => ({ id: s.id, name: s.name, type: typeof s.id })));
             console.log("Used supplier IDs to exclude:", Array.from(usedSupplierIds));
+            console.log("Used supplier IDs types:", Array.from(usedSupplierIds).map(id => typeof id));
             
             const availableSuppliers = allSuppliers.filter(supplier => {
                 const isExcluded = usedSupplierIds.has(supplier.id);
-                console.log(`Supplier ${supplier.name} (ID: ${supplier.id}) - Excluded: ${isExcluded}`);
+                console.log(`Supplier ${supplier.name} (ID: ${supplier.id}, type: ${typeof supplier.id}) - Excluded: ${isExcluded}`);
                 return !isExcluded;
             });
             
