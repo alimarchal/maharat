@@ -78,19 +78,55 @@ const Notification = () => {
             );
 
             const settings = settingsResponse.data.settings || {};
-            const newPermissions = processTypes.map((processType) => {
-                const processKey = processTypeKeys[processType];
-                const processSettings = settings[processKey] || {};
+            
+            // Check if user has any notification settings
+            const hasAnySettings = Object.keys(settings).length > 0;
+            
+            // If no settings exist, create default settings for all process types
+            if (!hasAnySettings) {
+                await createDefaultNotificationSettings(userId);
+                
+                // Reload settings after creating defaults
+                const updatedSettingsResponse = await axios.get(
+                    `/api/v1/users/${userId}/notification-settings`
+                );
+                const updatedSettings = updatedSettingsResponse.data.settings || {};
+                
+                const newPermissions = processTypes.map((processType) => {
+                    const processKey = processTypeKeys[processType];
+                    const processSettings = updatedSettings[processKey] || {};
 
-                return {
-                    systems: true, // Always ON, non-toggleable
-                    email: processSettings.email ?? true, // Preserve email setting, default to true
-                    sms: false, // Always OFF, non-toggleable
-                };
-            });
-            setPermissions(newPermissions);
+                    return {
+                        systems: true, // Always ON, non-toggleable
+                        email: processSettings.email !== undefined ? processSettings.email : true,
+                        sms: false, // Always OFF, non-toggleable
+                    };
+                });
+                setPermissions(newPermissions);
+            } else {
+                const newPermissions = processTypes.map((processType) => {
+                    const processKey = processTypeKeys[processType];
+                    const processSettings = settings[processKey] || {};
+
+                    return {
+                        systems: true, // Always ON, non-toggleable
+                        email: processSettings.email !== undefined ? processSettings.email : true,
+                        sms: false, // Always OFF, non-toggleable
+                    };
+                });
+                setPermissions(newPermissions);
+            }
         } catch (error) {
             console.error("Error loading notification settings:", error);
+        }
+    };
+
+    const createDefaultNotificationSettings = async (userId) => {
+        try {
+            // Use the correct API endpoint that exists
+            await axios.post(`/api/v1/users/${userId}/notification-settings/setup-defaults`);
+        } catch (error) {
+            console.error("Error creating default notification settings:", error);
         }
     };
 
@@ -137,23 +173,19 @@ const Notification = () => {
                 );
             }
 
+            // Use the correct PUT endpoint that accepts an array of settings
             const response = await axios.put(
                 `/api/v1/users/${selectedUser.id}/notification-settings`,
                 {
-                    settings: [
-                        {
-                            type_id: notificationType.id,
-                            channel_id: notificationChannel.id,
-                            enabled: newEnabled,
-                        },
-                    ],
+                    settings: [{
+                        type_id: notificationType.id,
+                        channel_id: notificationChannel.id,
+                        enabled: newEnabled,
+                    }]
                 }
             );
 
-            if (
-                response.data.message !==
-                "Notification settings updated successfully"
-            ) {
+            if (response.data.message !== "Notification settings updated successfully") {
                 newPermissions[index][type] = !newEnabled;
                 setPermissions(newPermissions);
             }
