@@ -40,7 +40,7 @@ const RFQsTable = () => {
                     })
                 );
                 logsWithRequesterNames.sort(
-                    (a, b) => new Date(a.created_at) - new Date(b.created_at)
+                    (a, b) => new Date(b.created_at) - new Date(a.created_at)
                 );
 
                 setRfqLogs(logsWithRequesterNames);

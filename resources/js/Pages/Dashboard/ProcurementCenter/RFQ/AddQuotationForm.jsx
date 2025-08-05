@@ -79,24 +79,50 @@ function AddQuotationForm() {
     const [selectedItem, setSelectedItem] = useState(null);
     const [isEditingItem, setIsEditingItem] = useState(false);
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+    const [isDepartmentOpen, setIsDepartmentOpen] = useState(false);
+    const [isCostCenterOpen, setIsCostCenterOpen] = useState(false);
+    const [isSubCostCenterOpen, setIsSubCostCenterOpen] = useState(false);
+    const [isWarehouseOpen, setIsWarehouseOpen] = useState(false);
+    const [isPaymentTypeOpen, setIsPaymentTypeOpen] = useState(false);
 
-    // Handle click outside to close dropdown
+    // Handle click outside to close dropdowns
     useEffect(() => {
         const handleClickOutside = (event) => {
-            const dropdown = document.querySelector('[data-dropdown="category"]');
-            if (dropdown && !dropdown.contains(event.target)) {
+            const categoryDropdown = document.querySelector('[data-dropdown="category"]');
+            const departmentDropdown = document.querySelector('[data-dropdown="department"]');
+            const costCenterDropdown = document.querySelector('[data-dropdown="costcenter"]');
+            const subCostCenterDropdown = document.querySelector('[data-dropdown="subcostcenter"]');
+            const warehouseDropdown = document.querySelector('[data-dropdown="warehouse"]');
+            const paymentTypeDropdown = document.querySelector('[data-dropdown="paymenttype"]');
+            
+            if (categoryDropdown && !categoryDropdown.contains(event.target)) {
                 setIsCategoryOpen(false);
+            }
+            if (departmentDropdown && !departmentDropdown.contains(event.target)) {
+                setIsDepartmentOpen(false);
+            }
+            if (costCenterDropdown && !costCenterDropdown.contains(event.target)) {
+                setIsCostCenterOpen(false);
+            }
+            if (subCostCenterDropdown && !subCostCenterDropdown.contains(event.target)) {
+                setIsSubCostCenterOpen(false);
+            }
+            if (warehouseDropdown && !warehouseDropdown.contains(event.target)) {
+                setIsWarehouseOpen(false);
+            }
+            if (paymentTypeDropdown && !paymentTypeDropdown.contains(event.target)) {
+                setIsPaymentTypeOpen(false);
             }
         };
 
-        if (isCategoryOpen) {
+        if (isCategoryOpen || isDepartmentOpen || isCostCenterOpen || isSubCostCenterOpen || isWarehouseOpen || isPaymentTypeOpen) {
             document.addEventListener('mousedown', handleClickOutside);
         }
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [isCategoryOpen]);
+    }, [isCategoryOpen, isDepartmentOpen, isCostCenterOpen, isSubCostCenterOpen, isWarehouseOpen, isPaymentTypeOpen]);
 
     // Pagination states for dropdowns
     const [categoriesPage, setCategoriesPage] = useState(1);
@@ -1567,24 +1593,61 @@ function AddQuotationForm() {
 
                         <span className="font-medium text-gray-600">Department:</span>
                         <div className="relative w-[55%]">
-                            <select
-                                value={formData.department_id || ""}
-                                onChange={(e) =>
-                                    handleFormInputChange("department_id", e.target.value)
-                                }
-                                className="w-full bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                            >
-                                <option value="">Select Department</option>
-                                {departments.map((department) => (
-                                    <option
-                                        key={department.id}
-                                        value={department.id.toString()}
-                                        className="text-[#009FDC] bg-blue-50"
-                                    >
-                                        {department.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="relative" data-dropdown="department">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsDepartmentOpen(!isDepartmentOpen)}
+                                    className="w-full bg-blue-50 border border-gray-400 rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base"
+                                >
+                                    <span className={formData.department_id ? "text-black" : "text-black"}>
+                                        {formData.department_id 
+                                            ? departments.find(d => d.id.toString() === formData.department_id)?.name || "Select Department"
+                                            : "Select Department"
+                                        }
+                                    </span>
+                                    <svg className={`w-4 h-4 transition-transform ${isDepartmentOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                
+                                {isDepartmentOpen && (
+                                    <div className="absolute z-50 w-full mt-1 bg-blue-50 border border-gray-400 rounded-xl shadow-lg max-h-32 overflow-hidden">
+                                        <style>
+                                            {`
+                                                .custom-scrollbar::-webkit-scrollbar {
+                                                    width: 4px;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-track {
+                                                    background: transparent;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-thumb {
+                                                    background: #009FDC;
+                                                    border-radius: 2px;
+                                                    min-height: 20px;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                                                    background: #007CB8;
+                                                }
+                                            `}
+                                        </style>
+                                        <div className="py-1 custom-scrollbar overflow-y-auto max-h-32 pr-2" onScroll={handleDepartmentScroll}>
+                                            {departments.map((department) => (
+                                                <button
+                                                    key={department.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        handleFormInputChange("department_id", department.id.toString());
+                                                        setIsDepartmentOpen(false);
+                                                    }}
+                                                    className="w-full px-3 py-2 text-left text-[#009FDC] hover:bg-blue-100 focus:bg-blue-100 focus:outline-none text-base"
+                                                >
+                                                    {department.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <span className="font-medium text-gray-600">
@@ -1652,49 +1715,124 @@ function AddQuotationForm() {
                             Warehouse:
                         </span>
                         <div className="relative w-[55%]">
-                            <select
-                                value={formData.warehouse_id || ""}
-                                onChange={(e) =>
-                                    handleFormInputChange(
-                                        "warehouse_id",
-                                        e.target.value
-                                    )
-                                }
-                                className="w-full bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                            >
-                                <option value="">Select Warehouse</option>
-                                {warehouses.map((warehouse) => (
-                                    <option
-                                        key={warehouse.id}
-                                        value={warehouse.id.toString()}
-                                        className="text-[#009FDC] bg-blue-50"
-                                    >
-                                        {warehouse.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="relative" data-dropdown="warehouse">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsWarehouseOpen(!isWarehouseOpen)}
+                                    className="w-full bg-blue-50 border border-gray-400 rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base"
+                                >
+                                    <span className={formData.warehouse_id ? "text-black" : "text-black"}>
+                                        {formData.warehouse_id 
+                                            ? warehouses.find(w => w.id.toString() === formData.warehouse_id)?.name || "Select Warehouse"
+                                            : "Select Warehouse"
+                                        }
+                                    </span>
+                                    <svg className={`w-4 h-4 transition-transform ${isWarehouseOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                
+                                {isWarehouseOpen && (
+                                    <div className="absolute z-50 w-full mt-1 bg-blue-50 border border-gray-400 rounded-xl shadow-lg max-h-32 overflow-hidden">
+                                        <style>
+                                            {`
+                                                .custom-scrollbar::-webkit-scrollbar {
+                                                    width: 4px;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-track {
+                                                    background: transparent;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-thumb {
+                                                    background: #009FDC;
+                                                    border-radius: 2px;
+                                                    min-height: 20px;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                                                    background: #007CB8;
+                                                }
+                                            `}
+                                        </style>
+                                        <div className="py-1 custom-scrollbar overflow-y-auto max-h-32 pr-2" onScroll={handleWarehouseScroll}>
+                                            {warehouses.map((warehouse) => (
+                                                <button
+                                                    key={warehouse.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        handleFormInputChange("warehouse_id", warehouse.id.toString());
+                                                        setIsWarehouseOpen(false);
+                                                    }}
+                                                    className="w-full px-3 py-2 text-left text-[#009FDC] hover:bg-blue-100 focus:bg-blue-100 focus:outline-none text-base"
+                                                >
+                                                    {warehouse.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <span className="font-medium text-gray-600">
                             Cost Center:
                         </span>
                         <div className="relative w-[55%]">
-                            <select
-                                value={formData.cost_center_id || ""}
-                                onChange={handleCostCenterChange}
-                                className="w-full bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                            >
-                                <option value="">Select Cost Center</option>
-                                {costCenters.map((costCenter) => (
-                                    <option
-                                        key={costCenter.id}
-                                        value={costCenter.id.toString()}
-                                        className="text-[#009FDC] bg-blue-50"
-                                    >
-                                        {costCenter.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="relative" data-dropdown="costcenter">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCostCenterOpen(!isCostCenterOpen)}
+                                    className="w-full bg-blue-50 border border-gray-400 rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base"
+                                >
+                                    <span className={formData.cost_center_id ? "text-black" : "text-black"}>
+                                        {formData.cost_center_id 
+                                            ? costCenters.find(c => c.id.toString() === formData.cost_center_id)?.name || "Select Cost Center"
+                                            : "Select Cost Center"
+                                        }
+                                    </span>
+                                    <svg className={`w-4 h-4 transition-transform ${isCostCenterOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                
+                                {isCostCenterOpen && (
+                                    <div className="absolute z-50 w-full mt-1 bg-blue-50 border border-gray-400 rounded-xl shadow-lg max-h-32 overflow-hidden">
+                                        <style>
+                                            {`
+                                                .custom-scrollbar::-webkit-scrollbar {
+                                                    width: 4px;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-track {
+                                                    background: transparent;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-thumb {
+                                                    background: #009FDC;
+                                                    border-radius: 2px;
+                                                    min-height: 20px;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                                                    background: #007CB8;
+                                                }
+                                            `}
+                                        </style>
+                                        <div className="py-1 custom-scrollbar overflow-y-auto max-h-32 pr-2" onScroll={handleCostCenterScroll}>
+                                            {costCenters.map((costCenter) => (
+                                                <button
+                                                    key={costCenter.id}
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        const currentSubCostCenterId = formData.sub_cost_center_id;
+                                                        handleFormInputChange("cost_center_id", costCenter.id.toString());
+                                                        await updateSubCostCenter(costCenter.id.toString(), currentSubCostCenterId);
+                                                        setIsCostCenterOpen(false);
+                                                    }}
+                                                    className="w-full px-3 py-2 text-left text-[#009FDC] hover:bg-blue-100 focus:bg-blue-100 focus:outline-none text-base"
+                                                >
+                                                    {costCenter.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -1748,27 +1886,61 @@ function AddQuotationForm() {
                             Payment Type:
                         </span>
                         <div className="relative w-[55%]">
-                            <select
-                                value={formData.payment_type || ""}
-                                onChange={(e) =>
-                                    handleFormInputChange(
-                                        "payment_type",
-                                        e.target.value
-                                    )
-                                }
-                                className="w-full bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                            >
-                                <option value="">Select Payment Type</option>
-                                {paymentTypes.map((paymentType) => (
-                                    <option
-                                        key={paymentType.id}
-                                        value={paymentType.id.toString()}
-                                        className="text-[#009FDC] bg-blue-50"
-                                    >
-                                        {paymentType.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="relative" data-dropdown="paymenttype">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPaymentTypeOpen(!isPaymentTypeOpen)}
+                                    className="w-full bg-blue-50 border border-gray-400 rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base"
+                                >
+                                    <span className={formData.payment_type ? "text-black" : "text-black"}>
+                                        {formData.payment_type 
+                                            ? paymentTypes.find(p => p.id.toString() === formData.payment_type)?.name || "Select Payment Type"
+                                            : "Select Payment Type"
+                                        }
+                                    </span>
+                                    <svg className={`w-4 h-4 transition-transform ${isPaymentTypeOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                
+                                {isPaymentTypeOpen && (
+                                    <div className="absolute z-50 w-full mt-1 bg-blue-50 border border-gray-400 rounded-xl shadow-lg max-h-32 overflow-hidden">
+                                        <style>
+                                            {`
+                                                .custom-scrollbar::-webkit-scrollbar {
+                                                    width: 4px;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-track {
+                                                    background: transparent;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-thumb {
+                                                    background: #009FDC;
+                                                    border-radius: 2px;
+                                                    min-height: 20px;
+                                                }
+                                                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                                                    background: #007CB8;
+                                                }
+                                            `}
+                                        </style>
+                                        <div className="py-1 custom-scrollbar overflow-y-auto max-h-32 pr-2" onScroll={handlePaymentTypeScroll}>
+                                            {paymentTypes.map((paymentType) => (
+                                                <button
+                                                    key={paymentType.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        handleFormInputChange("payment_type", paymentType.id.toString());
+                                                        setIsPaymentTypeOpen(false);
+                                                    }}
+                                                    className="w-full px-3 py-2 text-left text-[#009FDC] hover:bg-blue-100 focus:bg-blue-100 focus:outline-none text-base"
+                                                >
+                                                    {paymentType.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <span className="font-medium text-gray-600">
@@ -1793,29 +1965,63 @@ function AddQuotationForm() {
                                 <span className="font-medium text-gray-600">
                                     Sub Cost Center:
                                 </span>
-                                <div className="relative">
-                                    <select
-                                        value={formData.sub_cost_center_id || ""}
-                                        onChange={(e) => {
-                                            console.log("Sub cost center changed:", { oldValue: formData.sub_cost_center_id, newValue: e.target.value });
-                                            handleFormInputChange(
-                                                "sub_cost_center_id",
-                                                e.target.value
-                                            );
-                                        }}
-                                        className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
-                                    >
-                                        <option value="">Select Sub Cost Center</option>
-                                        {subCostCenters.map((subCenter) => (
-                                            <option
-                                                key={subCenter.id}
-                                                value={subCenter.id.toString()}
-                                                className="text-[#009FDC] bg-blue-50"
-                                            >
-                                                {subCenter.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                <div className="relative w-[55%]">
+                                    <div className="relative" data-dropdown="subcostcenter">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsSubCostCenterOpen(!isSubCostCenterOpen)}
+                                            className="w-full bg-blue-50 border border-gray-400 rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base"
+                                        >
+                                            <span className={formData.sub_cost_center_id ? "text-black" : "text-black"}>
+                                                {formData.sub_cost_center_id 
+                                                    ? subCostCenters.find(s => s.id.toString() === formData.sub_cost_center_id)?.name || "Select Sub Cost Center"
+                                                    : "Select Sub Cost Center"
+                                                }
+                                            </span>
+                                            <svg className={`w-4 h-4 transition-transform ${isSubCostCenterOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+                                        
+                                        {isSubCostCenterOpen && (
+                                            <div className="absolute z-50 w-full mt-1 bg-blue-50 border border-gray-400 rounded-xl shadow-lg max-h-32 overflow-hidden">
+                                                <style>
+                                                    {`
+                                                        .custom-scrollbar::-webkit-scrollbar {
+                                                            width: 4px;
+                                                        }
+                                                        .custom-scrollbar::-webkit-scrollbar-track {
+                                                            background: transparent;
+                                                        }
+                                                        .custom-scrollbar::-webkit-scrollbar-thumb {
+                                                            background: #009FDC;
+                                                            border-radius: 2px;
+                                                            min-height: 20px;
+                                                        }
+                                                        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                                                            background: #007CB8;
+                                                        }
+                                                    `}
+                                                </style>
+                                                <div className="py-1 custom-scrollbar overflow-y-auto max-h-32 pr-2">
+                                                    {subCostCenters.map((subCenter) => (
+                                                        <button
+                                                            key={subCenter.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                console.log("Sub cost center changed:", { oldValue: formData.sub_cost_center_id, newValue: subCenter.id.toString() });
+                                                                handleFormInputChange("sub_cost_center_id", subCenter.id.toString());
+                                                                setIsSubCostCenterOpen(false);
+                                                            }}
+                                                            className="w-full px-3 py-2 text-left text-[#009FDC] hover:bg-blue-100 focus:bg-blue-100 focus:outline-none text-base"
+                                                        >
+                                                            {subCenter.name}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </>
                         )}
@@ -1889,6 +2095,7 @@ function AddQuotationForm() {
                                             {item.attachment ? (
                                                 <div className="flex justify-center">
                                                     <button
+                                                        type="button"
                                                         className="w-8 h-8"
                                                         onClick={() => handleFileClick(item.attachment)}
                                                         title="View Document"
@@ -1991,6 +2198,7 @@ function AddQuotationForm() {
                 brands={brands}
                 rfqId={formData.id || formData.rfq_id}
                 selectedCategoryId={formData.category_id}
+                existingItems={formData.items}
             />
         </div>
     );
