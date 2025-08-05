@@ -4,12 +4,91 @@ namespace App\Services;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Models\NotificationType;
+use App\Models\NotificationChannel;
+use App\Models\UserNotificationSetting;
 use App\Notifications\TaskAssignmentNotification;
 use App\Notifications\TaskStatusNotification;
 use Illuminate\Support\Facades\Log;
 
 class TaskNotificationService
 {
+    /**
+     * Check if user has email notifications enabled for a specific process type
+     */
+    private function isEmailNotificationEnabled(User $user, string $processTitle): bool
+    {
+        try {
+            // Map process title to notification type key
+            $notificationTypeKey = $this->getNotificationTypeKeyFromProcess($processTitle);
+            
+            if (!$notificationTypeKey) {
+                Log::warning('No notification type key found for process', [
+                    'process_title' => $processTitle,
+                    'user_id' => $user->id
+                ]);
+                return false;
+            }
+
+            // Get notification type and email channel
+            $notificationType = NotificationType::where('key', $notificationTypeKey)->first();
+            $emailChannel = NotificationChannel::where('key', 'email')->first();
+
+            if (!$notificationType || !$emailChannel) {
+                Log::warning('Notification type or email channel not found', [
+                    'notification_type_key' => $notificationTypeKey,
+                    'user_id' => $user->id
+                ]);
+                return false;
+            }
+
+            // Check if user has email notifications enabled for this process type
+            $setting = UserNotificationSetting::where([
+                'user_id' => $user->id,
+                'notification_type_id' => $notificationType->id,
+                'notification_channel_id' => $emailChannel->id,
+            ])->first();
+
+            $isEnabled = $setting ? $setting->is_enabled : false;
+
+            Log::info('Email notification check result', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'process_title' => $processTitle,
+                'notification_type_key' => $notificationTypeKey,
+                'is_enabled' => $isEnabled
+            ]);
+
+            return $isEnabled;
+
+        } catch (\Exception $e) {
+            Log::error('Error checking email notification settings', [
+                'user_id' => $user->id,
+                'process_title' => $processTitle,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Map process title to notification type key
+     */
+    private function getNotificationTypeKeyFromProcess(string $processTitle): ?string
+    {
+        $processToNotificationKeyMap = [
+            'Material Request' => 'material_request',
+            'RFQ Approval' => 'rfq_approval',
+            'Purchase Order Approval' => 'purchase_order_approval',
+            'Maharat Invoice Approval' => 'maharat_invoice_approval',
+            'Payment Order Approval' => 'payment_order_approval',
+            'Budget Request Approval' => 'budget_request_approval',
+            'Total Budget Approval' => 'total_budget_approval',
+        ];
+
+        return $processToNotificationKeyMap[$processTitle] ?? null;
+    }
+
     /**
      * Send task assignment notification
      */
@@ -22,6 +101,19 @@ class TaskNotificationService
                 Log::warning('Cannot send task assignment notification: User or email not found', [
                     'task_id' => $task->id,
                     'assigned_to_user_id' => $task->assigned_to_user_id
+                ]);
+                return;
+            }
+
+            // Check if user has email notifications enabled for this process type
+            $processTitle = $task->process->title ?? $taskType;
+            if (!$this->isEmailNotificationEnabled($assignedToUser, $processTitle)) {
+                Log::info('Email notification disabled for user, skipping task assignment notification', [
+                    'task_id' => $task->id,
+                    'task_type' => $taskType,
+                    'assigned_to_user_id' => $task->assigned_to_user_id,
+                    'assigned_to_email' => $assignedToUser->email,
+                    'process_title' => $processTitle
                 ]);
                 return;
             }
@@ -58,6 +150,20 @@ class TaskNotificationService
                 return;
             }
 
+            // Check if requester has email notifications enabled for this process type
+            $processTitle = $task->process->title ?? $taskType;
+            if (!$this->isEmailNotificationEnabled($requester, $processTitle)) {
+                Log::info('Email notification disabled for requester, skipping intermediate status notification', [
+                    'task_id' => $task->id,
+                    'task_type' => $taskType,
+                    'status' => $status,
+                    'requester_id' => $requester->id,
+                    'requester_email' => $requester->email,
+                    'process_title' => $processTitle
+                ]);
+                return;
+            }
+
             $requester->notify(new TaskStatusNotification($task, $taskType, $status, $comment));
             
             Log::info('Intermediate status notification sent successfully', [
@@ -88,6 +194,20 @@ class TaskNotificationService
                     'task_id' => $task->id,
                     'task_type' => $taskType,
                     'status' => $status
+                ]);
+                return;
+            }
+
+            // Check if requester has email notifications enabled for this process type
+            $processTitle = $task->process->title ?? $taskType;
+            if (!$this->isEmailNotificationEnabled($requester, $processTitle)) {
+                Log::info('Email notification disabled for requester, skipping final status notification', [
+                    'task_id' => $task->id,
+                    'task_type' => $taskType,
+                    'status' => $status,
+                    'requester_id' => $requester->id,
+                    'requester_email' => $requester->email,
+                    'process_title' => $processTitle
                 ]);
                 return;
             }
