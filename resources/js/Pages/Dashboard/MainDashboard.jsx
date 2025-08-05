@@ -30,7 +30,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { router } from "@inertiajs/react";
 import { usePage } from "@inertiajs/react";
 
-const DropdownItem = ({ text, icon, onClick }) => {
+const DropdownItem = ({ text, icon, onClick, notificationCount = 0 }) => {
     return (
         <div
             className="p-3 cursor-pointer flex items-center justify-between transition-all duration-300 hover:bg-[#009FDC] group"
@@ -48,11 +48,17 @@ const DropdownItem = ({ text, icon, onClick }) => {
             }}
         >
             <div className="flex items-center gap-3">
-                <div className="p-2 w-12 h-12 flex justify-center items-center border border-[#B9BBBD] rounded-full transition-all duration-300 group-hover:border-[#009FDC] group-hover:bg-white">
+                <div className="p-2 w-12 h-12 flex justify-center items-center border border-[#B9BBBD] rounded-full transition-all duration-300 group-hover:border-[#009FDC] group-hover:bg-white relative">
                     <FontAwesomeIcon
                         icon={icon}
                         className="text-[#9B9DA2] w-5 transition-all duration-300 group-hover:text-[#009FDC]"
                     />
+                    {/* Notification Badge for dropdown items */}
+                    {notificationCount > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border border-white">
+                            {notificationCount > 99 ? '99+' : notificationCount}
+                        </div>
+                    )}
                 </div>
                 <span className="text-lg text-[#9B9DA2] transition-all duration-300 group-hover:text-white">
                     {text}
@@ -230,6 +236,7 @@ const DashboardCard = ({
                             text={item.text}
                             icon={item.icon}
                             onClick={item.onClick}
+                            notificationCount={item.notificationCount || 0}
                         />
                     ))}
                 </div>
@@ -241,6 +248,7 @@ const DashboardCard = ({
 export default function MainDashboard({ roles, permissions }) {
     const user_id = usePage().props.auth.user.id;
     const [pendingTasksCount, setPendingTasksCount] = useState(0);
+    const [requestedItemsCount, setRequestedItemsCount] = useState(0);
     const [loading, setLoading] = useState(true);
 
     // Fetch pending tasks count
@@ -262,6 +270,24 @@ export default function MainDashboard({ roles, permissions }) {
         };
         fetchPendingTasks();
     }, [user_id]);
+
+    // Fetch requested items count for warehouse notifications
+    useEffect(() => {
+        const fetchRequestedItems = async () => {
+            try {
+                const response = await fetch(
+                    `api/v1/request-item?filter[status]=Pending&filter[is_requested]=false&filter[user_id]=${user_id}`
+                );
+                const data = await response.json();
+                if (response.ok) {
+                    setRequestedItemsCount(data.data?.total || 0);
+                }
+            } catch (err) {
+                console.error("Error fetching requested items:", err);
+            }
+        };
+        fetchRequestedItems();
+    }, []);
 
     const hasPermission = (permission) => {
         const permissionMap = {
@@ -378,6 +404,7 @@ export default function MainDashboard({ roles, permissions }) {
             icon: faClipboardList,
             onClick: () => router.visit("/items"),
             //requiredPermission: "view_warehouse",
+            notificationCount: requestedItemsCount,
         },
         {
             text: "Goods Receiving Notes",
@@ -542,6 +569,7 @@ export default function MainDashboard({ roles, permissions }) {
                         iconColor="text-[#665200]"
                         dropdownItems={warehouseDropdownItems.length > 0 ? warehouseDropdownItems : null}
                         onClick={() => router.visit("/warehouse-management")}
+                        notificationCount={requestedItemsCount}
                     />
                 )}
                 {showBudgetCard && (
