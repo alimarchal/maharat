@@ -10,12 +10,13 @@ class NotificationTypesSeeder extends Seeder
     public function run(): void
     {
         $types = [
-            ['name' => 'RFQ document', 'key' => 'rfq_document', 'description' => 'Request for quotation documents'],
-            ['name' => 'Quotations document', 'key' => 'quotations_document', 'description' => 'Quotation documents'],
-            ['name' => 'Goods Receiving Notes documents', 'key' => 'goods_receiving_notes', 'description' => 'Goods receiving notes'],
-            ['name' => 'MRs documents', 'key' => 'mrs_documents', 'description' => 'Material requisition documents'],
-            ['name' => 'Invoices documents', 'key' => 'invoices_documents', 'description' => 'Invoice documents'],
-            ['name' => 'PMNTOs documents', 'key' => 'pmntos_documents', 'description' => 'Payment documents'],
+            ['name' => 'Material Request', 'key' => 'material_request', 'description' => 'Material request process notifications'],
+            ['name' => 'RFQ Approval', 'key' => 'rfq_approval', 'description' => 'Request for quotation approval process notifications'],
+            ['name' => 'Purchase Order Approval', 'key' => 'purchase_order_approval', 'description' => 'Purchase order approval process notifications'],
+            ['name' => 'Maharat Invoice Approval', 'key' => 'maharat_invoice_approval', 'description' => 'Maharat invoice approval process notifications'],
+            ['name' => 'Payment Order Approval', 'key' => 'payment_order_approval', 'description' => 'Payment order approval process notifications'],
+            ['name' => 'Budget Request Approval', 'key' => 'budget_request_approval', 'description' => 'Budget request approval process notifications'],
+            ['name' => 'Total Budget Approval', 'key' => 'total_budget_approval', 'description' => 'Total budget approval process notifications'],
         ];
 
         foreach ($types as $type) {
