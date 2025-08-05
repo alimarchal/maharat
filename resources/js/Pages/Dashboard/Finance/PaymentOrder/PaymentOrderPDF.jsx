@@ -616,9 +616,22 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
                 { type: "application/pdf" }
             );
 
-            // Open the PDF in a new tab
+            // Open the PDF in a new tab and trigger download
             const fileUrl = URL.createObjectURL(pdfBlob);
             window.open(fileUrl, "_blank");
+            
+            // Automatically download the PDF
+            const downloadLink = document.createElement('a');
+            downloadLink.href = fileUrl;
+            downloadLink.download = `payment_order_${paymentOrder.payment_order_number}.pdf`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            // Clean up the URL object after a short delay
+            setTimeout(() => {
+                URL.revokeObjectURL(fileUrl);
+            }, 1000);
 
             console.log("PDF Generated:", {
                 fileName: pdfFileName,

@@ -246,7 +246,8 @@ const DashboardCard = ({
 };
 
 export default function MainDashboard({ roles, permissions }) {
-    const user_id = usePage().props.auth.user.id;
+    const user = usePage().props.auth.user;
+    const user_id = user.id;
     const [pendingTasksCount, setPendingTasksCount] = useState(0);
     const [requestedItemsCount, setRequestedItemsCount] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -468,12 +469,13 @@ export default function MainDashboard({ roles, permissions }) {
             onClick: () => router.visit("/process-flow"),
             //requiredPermission: "view_process_flow",
         },
-        {
+        // Only show Notification Settings for users without parent_id (top-level users)
+        ...(user.parent_id === null ? [{
             text: "Notification Settings",
             icon: faBell,
             onClick: () => router.visit("/notification-settings"),
             //requiredPermission: "manage_settings",
-        },
+        }] : []),
         {
             text: "Roles & Permission",
             icon: faUserPen,

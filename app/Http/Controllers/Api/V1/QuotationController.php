@@ -60,8 +60,9 @@ class QuotationController extends Controller
     {
         // Get query parameters
         $rfqId = request()->get('rfq_id');
+        $perPage = request()->get('per_page', 15); // Default to 15 records per page
         
-        \Log::info('QuotationController::index called with rfq_id: ' . $rfqId);
+        \Log::info('QuotationController::index called with rfq_id: ' . $rfqId . ', per_page: ' . $perPage);
         
         $query = Quotation::withTrashed()->with(['rfq.company', 'documents', 'status', 'supplier']);
         // Filter by RFQ ID if provided
@@ -70,8 +71,8 @@ class QuotationController extends Controller
             \Log::info('Filtering quotations by RFQ ID: ' . $rfqId);
         }
         
-        // Get the results
-        $quotations = $query->get();
+        // Get the results with pagination
+        $quotations = $query->orderBy('created_at', 'desc')->paginate($perPage);
         
         \Log::info('Found ' . $quotations->count() . ' quotations for RFQ ID: ' . $rfqId);
         
@@ -80,11 +81,8 @@ class QuotationController extends Controller
             \Log::info('Quotation ID: ' . $quotation->id . ', Supplier ID: ' . $quotation->supplier_id . ', RFQ ID: ' . $quotation->rfq_id);
         }
         
-        // Return consistent JSON response structure
-        return response()->json([
-            'success' => true,
-            'data' => QuotationResource::collection($quotations)
-        ], Response::HTTP_OK);
+        // Return paginated response
+        return QuotationResource::collection($quotations);
     }
 
     public function store(Request $request)

@@ -469,9 +469,22 @@ export default function InventoryPDF({ inventoryId, onGenerated }) {
             const pdfBlob = doc.output('blob');
             const pdfFile = new File([pdfBlob], `Inventory_${inventoryId}.pdf`, { type: 'application/pdf' });
             
-            // Open the PDF in a new tab immediately
+            // Open the PDF in a new tab and trigger download
             const fileUrl = URL.createObjectURL(pdfBlob);
             window.open(fileUrl, '_blank');
+            
+            // Automatically download the PDF
+            const downloadLink = document.createElement('a');
+            downloadLink.href = fileUrl;
+            downloadLink.download = `Inventory_${inventoryId}.pdf`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            // Clean up the URL object after a short delay
+            setTimeout(() => {
+                URL.revokeObjectURL(fileUrl);
+            }, 1000);
             
             // Save PDF to server using FormData
             try {
