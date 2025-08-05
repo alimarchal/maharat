@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
+import InputFloating from "@/Components/InputFloating";
+import SelectFloating from "@/Components/SelectFloating";
 
 const ItemModal = ({
     isOpen,
@@ -14,6 +16,7 @@ const ItemModal = ({
     brands,
     rfqId,
     selectedCategoryId,
+    existingItems = [], // Add this prop to receive existing items
 }) => {
     const [formData, setFormData] = useState({
         product_id: "",
@@ -30,6 +33,9 @@ const ItemModal = ({
     const [errors, setErrors] = useState({});
     const [tempFile, setTempFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [selectedUnit, setSelectedUnit] = useState(null);
+    const [selectedBrand, setSelectedBrand] = useState(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -61,6 +67,20 @@ const ItemModal = ({
                 };
                 console.log('Setting formData for edit:', newFormData);
                 setFormData(newFormData);
+                
+                // Set selected items for dropdowns
+                if (productId) {
+                    const product = products.find(p => String(p.id) === productId);
+                    setSelectedProduct(product);
+                }
+                if (item.unit_id) {
+                    const unit = units.find(u => String(u.id) === String(item.unit_id));
+                    setSelectedUnit(unit);
+                }
+                if (item.brand_id) {
+                    const brand = brands.find(b => String(b.id) === String(item.brand_id));
+                    setSelectedBrand(brand);
+                }
             } else {
                 const today = new Date();
                 const nextMonth = new Date(today);
@@ -79,11 +99,18 @@ const ItemModal = ({
                     attachment: null,
                     rfq_id: rfqId,
                 });
+                
+                // Reset selected items
+                setSelectedProduct(null);
+                setSelectedUnit(null);
+                setSelectedBrand(null);
             }
             setTempFile(null);
             setErrors({});
         }
-    }, [isOpen, item, isEdit, rfqId, products]);
+    }, [isOpen, item, isEdit, rfqId, products, units, brands]);
+
+
 
     // Additional useEffect to handle product selection when products are loaded
     useEffect(() => {
@@ -104,30 +131,63 @@ const ItemModal = ({
     const handleChange = (e) => {
         const { name, value } = e.target;
 
-        if (name === "product_id") {
-            const selectedProduct = products.find(
-                (p) => String(p.id) === value
-            );
-            if (selectedProduct) {
-                setFormData({
-                    ...formData,
-                    product_id: String(selectedProduct.id),
-                    item_name: selectedProduct.name,
-                    description: selectedProduct.description || "",
-                });
-            } else {
-                setFormData({
-                    ...formData,
-                    product_id: "",
-                    item_name: "",
-                    description: "",
-                });
-            }
-        } else if (name === "quantity") {
+        if (name === "quantity") {
             setFormData({ ...formData, quantity: value });
+        } else if (name === "expected_delivery_date") {
+            setFormData({ ...formData, expected_delivery_date: value });
         } else {
             setFormData({ ...formData, [name]: value });
         }
+    };
+
+    const handleProductSelect = (product) => {
+        setSelectedProduct(product);
+        setFormData({
+            ...formData,
+            product_id: String(product.id),
+            item_name: product.name,
+            description: product.description || "",
+        });
+    };
+
+    const handleUnitSelect = (unit) => {
+        setSelectedUnit(unit);
+        setFormData({
+            ...formData,
+            unit_id: String(unit.id),
+        });
+    };
+
+    const handleBrandSelect = (brand) => {
+        setSelectedBrand(brand);
+        setFormData({
+            ...formData,
+            brand_id: String(brand.id),
+        });
+    };
+
+    // Function to get available brands (filter out already selected brands for the same product)
+    const getAvailableBrands = () => {
+        if (!selectedProduct) return brands;
+        
+        // Get all items with the same product (excluding current item being edited)
+        const sameProductItems = existingItems.filter(existingItem => {
+            // Skip the current item being edited
+            if (isEdit && item && existingItem.id === item.id) return false;
+            
+            // Check if it's the same product
+            return existingItem.product_id === selectedProduct.id || 
+                   existingItem.item_name === selectedProduct.name;
+        });
+        
+        // Get brand IDs that are already selected for this product
+        const usedBrandIds = sameProductItems
+            .map(item => item.brand_id)
+            .filter(brandId => brandId && brandId !== "")
+            .map(brandId => String(brandId));
+        
+        // Filter out brands that are already used
+        return brands.filter(brand => !usedBrandIds.includes(String(brand.id)));
     };
 
     const handleFileChange = (e) => {
@@ -270,123 +330,80 @@ const ItemModal = ({
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Product
-                            </label>
-                            <select
-                                name="product_id"
-                                value={formData.product_id || ""}
-                                onChange={handleChange}
-                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            >
-                                <option value="">Select Product</option>
-                                {products
-                                    .filter(product => !selectedCategoryId || product.category_id == selectedCategoryId)
-                                    .map((product) => (
-                                        <option key={product.id} value={String(product.id)}>
-                                            {product.name}
-                                        </option>
-                                    ))}
-                            </select>
-                            {errors.product_id && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.product_id}
-                                </p>
-                            )}
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Description
-                            </label>
-                            <textarea
-                                name="description"
-                                value={formData.description || ""}
-                                readOnly
-                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-gray-50"
-                                rows="2"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Unit
-                            </label>
-                            <select
-                                name="unit_id"
-                                value={formData.unit_id || ""}
-                                onChange={handleChange}
-                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            >
-                                <option value="">Select Unit</option>
-                                {units.map((unit) => (
-                                    <option key={unit.id} value={String(unit.id)}>
-                                        {unit.name}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors.unit_id && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.unit_id}
-                                </p>
-                            )}
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Quantity
-                            </label>
-                            <input
-                                type="text"
-                                name="quantity"
-                                value={formData.quantity || ""}
-                                onChange={handleChange}
-                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            />
-                            {errors.quantity && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.quantity}
-                                </p>
-                            )}
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Brand
-                            </label>
-                            <select
-                                name="brand_id"
-                                value={formData.brand_id || ""}
-                                onChange={handleChange}
-                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            >
-                                <option value="">Select Brand</option>
-                                {brands.map((brand) => (
-                                    <option key={brand.id} value={String(brand.id)}>
-                                        {brand.name}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors.brand_id && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.brand_id}
-                                </p>
-                            )}
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Expected Delivery Date
-                            </label>
-                            <input
-                                type="date"
-                                name="expected_delivery_date"
-                                value={formData.expected_delivery_date || ""}
-                                onChange={handleChange}
-                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            />
-                            {errors.expected_delivery_date && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.expected_delivery_date}
-                                </p>
-                            )}
-                        </div>
+                        <SelectFloating
+                            label="Product"
+                            name="product_id"
+                            value={selectedProduct ? selectedProduct.name : ""}
+                            onChange={(e) => {
+                                const product = products.find(p => p.name === e.target.value);
+                                if (product) {
+                                    handleProductSelect(product);
+                                }
+                            }}
+                            options={products
+                                .filter(product => !selectedCategoryId || product.category_id == selectedCategoryId)
+                                .map((product) => ({
+                                    id: product.name,
+                                    label: product.name,
+                                }))}
+                            error={errors.product_id}
+                        />
+                        <InputFloating
+                            label="Description"
+                            name="description"
+                            value={formData.description || ""}
+                            onChange={handleChange}
+                            readOnly
+                            className="bg-gray-50"
+                        />
+                        <SelectFloating
+                            label="Unit"
+                            name="unit_id"
+                            value={selectedUnit ? selectedUnit.name : ""}
+                            onChange={(e) => {
+                                const unit = units.find(u => u.name === e.target.value);
+                                if (unit) {
+                                    handleUnitSelect(unit);
+                                }
+                            }}
+                            options={units.map((unit) => ({
+                                id: unit.name,
+                                label: unit.name,
+                            }))}
+                            error={errors.unit_id}
+                        />
+                        <InputFloating
+                            label="Quantity"
+                            name="quantity"
+                            type="text"
+                            value={formData.quantity || ""}
+                            onChange={handleChange}
+                            error={errors.quantity}
+                        />
+                        <SelectFloating
+                            label="Brand"
+                            name="brand_id"
+                            value={selectedBrand ? selectedBrand.name : ""}
+                            onChange={(e) => {
+                                const brand = getAvailableBrands().find(b => b.name === e.target.value);
+                                if (brand) {
+                                    handleBrandSelect(brand);
+                                }
+                            }}
+                            options={getAvailableBrands().map((brand) => ({
+                                id: brand.name,
+                                label: brand.name,
+                            }))}
+                            error={errors.brand_id}
+                        />
+                        <InputFloating
+                            label="Expected Delivery Date"
+                            name="expected_delivery_date"
+                            type="date"
+                            value={formData.expected_delivery_date || ""}
+                            onChange={handleChange}
+                            error={errors.expected_delivery_date}
+                        />
                     </div>
                     <div className="flex justify-center">
                         <div className="space-y-2 w-full max-w-sm">
