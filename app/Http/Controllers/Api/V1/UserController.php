@@ -390,14 +390,15 @@ class UserController extends Controller
         $notificationTypes = NotificationType::all();
         $channels = NotificationChannel::all();
 
-        // Default configuration similar to your UI
+        // Default configuration for process flow notifications
         $defaultSettings = [
-            'rfq_document' => ['email' => true, 'system' => false, 'sms' => false],
-            'quotations_document' => ['email' => false, 'system' => true, 'sms' => true],
-            'goods_receiving_notes' => ['email' => false, 'system' => true, 'sms' => false],
-            'mrs_documents' => ['email' => true, 'system' => false, 'sms' => false],
-            'invoices_documents' => ['email' => false, 'system' => false, 'sms' => false],
-            'pmntos_documents' => ['email' => false, 'system' => false, 'sms' => false],
+            'material_request' => ['email' => true, 'system' => true, 'sms' => false],
+            'rfq_approval' => ['email' => true, 'system' => true, 'sms' => false],
+            'purchase_order_approval' => ['email' => true, 'system' => true, 'sms' => false],
+            'maharat_invoice_approval' => ['email' => true, 'system' => true, 'sms' => false],
+            'payment_order_approval' => ['email' => true, 'system' => true, 'sms' => false],
+            'budget_request_approval' => ['email' => true, 'system' => true, 'sms' => false],
+            'total_budget_approval' => ['email' => true, 'system' => true, 'sms' => false],
         ];
 
         foreach ($notificationTypes as $type) {
