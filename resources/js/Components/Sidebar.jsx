@@ -4,14 +4,11 @@ import {
     faHome,
     faBell,
     faCog,
-    faCommentDots,
     faQuestionCircle,
     faRightFromBracket,
     faBookOpen,
 } from "@fortawesome/free-solid-svg-icons";
 import { router, usePage } from "@inertiajs/react";
-import { useRequestItems } from "./RequestItemsContext";
-import { useRfqRequests } from "./RfqRequestsContext";
 
 const SidebarButton = ({
     icon,
@@ -19,8 +16,6 @@ const SidebarButton = ({
     isActive,
     isLogout,
     title,
-    showBadge,
-    badgeCount,
 }) => {
     const handleLogout = (e) => {
         if (isLogout) {
@@ -43,11 +38,6 @@ const SidebarButton = ({
     const ButtonContent = () => (
         <div className="relative">
             <FontAwesomeIcon icon={icon} size="xl" />
-            {showBadge && badgeCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-sm h-5 w-5 rounded-full flex items-center justify-center font-medium">
-                    {badgeCount > 99 ? "99+" : badgeCount}
-                </span>
-            )}
         </div>
     );
 
@@ -76,17 +66,12 @@ const SidebarButton = ({
 
 const Sidebar = ({ isOpen }) => {
     const { url } = usePage();
-    const { pendingCount, approvedCount } = useRequestItems();
-    const { pendingCount: rfqPendingCount } = useRfqRequests();
     const user = usePage().props.auth.user;
     const permissions = user?.permissions || [];
     
     const hasPermission = (perm) => {
         return permissions.includes(perm);
     };
-
-    // Calculate total notifications (pending + approved + RFQ pending)
-    const totalNotifications = pendingCount + approvedCount + rfqPendingCount;
 
     return (
         <>
@@ -108,8 +93,6 @@ const Sidebar = ({ isOpen }) => {
                             link="/notification-settings"
                             title="Notifications"
                             isActive={url === "/notification-settings"}
-                            showBadge={true}
-                            badgeCount={totalNotifications}
                         />
                     )}
                     {/* <SidebarButton
