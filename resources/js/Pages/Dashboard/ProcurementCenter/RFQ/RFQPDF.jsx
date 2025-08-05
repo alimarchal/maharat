@@ -543,9 +543,22 @@ export default function RFQPDF({ rfqId, onGenerated }) {
                 { type: "application/pdf" }
             );
 
-            // Open the PDF in a new tab immediately
+            // Open the PDF in a new tab and trigger download
             const fileUrl = URL.createObjectURL(pdfBlob);
             window.open(fileUrl, "_blank");
+            
+            // Automatically download the PDF
+            const downloadLink = document.createElement('a');
+            downloadLink.href = fileUrl;
+            downloadLink.download = `RFQ_${rfqData.rfq_number || rfqId}.pdf`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            // Clean up the URL object after a short delay
+            setTimeout(() => {
+                URL.revokeObjectURL(fileUrl);
+            }, 1000);
 
             // Save to server
             const formData = new FormData();

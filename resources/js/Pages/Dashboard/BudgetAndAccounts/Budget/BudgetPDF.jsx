@@ -736,9 +736,22 @@ export default function BudgetPDF({ budgetId, onGenerated }) {
                 onGenerated(pdfFile);
             }
 
-            // Open the PDF in a new tab
+            // Open the PDF in a new tab and trigger download
             const fileUrl = URL.createObjectURL(pdfBlob);
             window.open(fileUrl, "_blank");
+            
+            // Automatically download the PDF
+            const downloadLink = document.createElement('a');
+            downloadLink.href = fileUrl;
+            downloadLink.download = `budget_report_${budget.id}.pdf`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            // Clean up the URL object after a short delay
+            setTimeout(() => {
+                URL.revokeObjectURL(fileUrl);
+            }, 1000);
         } catch (error) {
             console.error("Error generating PDF:", error);
             alert("Failed to generate PDF. Please try again.");

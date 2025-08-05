@@ -16,7 +16,7 @@ const Quotations = () => {
         setLoading(true);
         try {
             const response = await axios.get(
-                `/api/v1/quotations?page=${currentPage}`
+                `/api/v1/quotations?page=${currentPage}&per_page=15`
             );
             const quotationsData = response.data.data || [];
             const meta = response.data.meta || {};

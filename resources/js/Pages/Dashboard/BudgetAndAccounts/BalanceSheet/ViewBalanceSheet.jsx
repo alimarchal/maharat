@@ -352,8 +352,17 @@ const BalanceSheetReport = () => {
                                 // Dismiss loading toast
                                 toast.dismiss();
                                 toast.success("PDF generated successfully");
+                                
                                 // Open PDF in new tab
                                 window.open(response.data.pdf_url, '_blank');
+                                
+                                // Automatically download the PDF
+                                const downloadLink = document.createElement('a');
+                                downloadLink.href = response.data.pdf_url;
+                                downloadLink.download = `balance_sheet_${formData.year}.pdf`;
+                                document.body.appendChild(downloadLink);
+                                downloadLink.click();
+                                document.body.removeChild(downloadLink);
                                 
                                 // Also save the PDF to the system
                                 return axios.post("/api/v1/balance-sheet/save-pdf", {
