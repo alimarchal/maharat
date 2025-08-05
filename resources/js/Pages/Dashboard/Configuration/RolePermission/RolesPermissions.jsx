@@ -41,17 +41,29 @@ const RolesPermissions = () => {
     const [users, setUsers] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
 
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                const userResponse = await axios.get(
-                    "/api/v1/user/current-role"
-                );
+                const [userResponse, usersResponse] = await Promise.all([
+                    axios.get("/api/v1/user/current-role"),
+                    axios.get("/api/v1/users?per_page=1000")
+                ]);
+                
                 setCurrentUserRole(userResponse.data.role);
-
-                const usersResponse = await axios.get("/api/v1/users");
                 setUsers(usersResponse.data.data);
+                
+                // Set current user as default selected user
+                const currentUserResponse = await axios.get("/api/v1/user/current");
+                const currentUser = currentUserResponse.data.data;
+                setSelectedUser(currentUser);
+                
+                // Load current user's permissions
+                if (currentUser) {
+                    await fetchUserPermissions(currentUser.id);
+                }
+                
                 setLoading(false);
             } catch (error) {
                 setLoading(false);
@@ -86,6 +98,14 @@ const RolesPermissions = () => {
         }
     };
 
+    const handleUserSelect = async (user) => {
+        setSelectedUser(user);
+        setDropdownOpen(false);
+        if (user) {
+            await fetchUserPermissions(user.id);
+        }
+    };
+
     const togglePermission = async (index, type) => {
         if (!selectedUser || !canManageUser(selectedUser)) return;
         try {
@@ -106,7 +126,7 @@ const RolesPermissions = () => {
             setPermissions(newPermissions);
 
             const response = await axios.post(
-                `/api/v1/users/${selectedUser}/toggle-permission`,
+                `/api/v1/users/${selectedUser.id}/toggle-permission`,
                 {
                     permission: permissionName,
                     value: !currentValue,
@@ -114,7 +134,7 @@ const RolesPermissions = () => {
             );
 
             if (response.data.success) {
-                fetchUserPermissions(selectedUser);
+                fetchUserPermissions(selectedUser.id);
             }
         } catch (error) {
             const newPermissions = [...permissions];
@@ -137,105 +157,127 @@ const RolesPermissions = () => {
 
     return (
         <div className="w-full mx-auto p-4">
-            <h2 className="text-2xl md:text-3xl font-bold text-[#2C323C]">
-                User Permissions
-            </h2>
-            <p className="text-lg md:text-xl text-[#7D8086]">
-                Manage permissions for individual users
-            </p>
-
-            <div className="mb-6">
-                <select
-                    value={selectedUser || ""}
-                    onChange={(e) => setSelectedUser(e.target.value)}
-                    className="mt-4 p-2 border rounded-md bg-white text-[#2C323C] w-1/3"
-                >
-                    <option value="">Select a user</option>
-                    {users.map((user) => (
-                        <option
-                            key={user.id}
-                            value={user.id}
-                            disabled={!canManageUser(user.id)}
-                        >
-                            {user.name}
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            <div className="bg-[#DCECF2] p-4 md:p-6 my-6 rounded-2xl grid grid-cols-2 md:grid-cols-5 items-center text-lg md:text-xl font-medium text-[#2C323C]">
-                <span className="text-xl md:text-2xl font-bold">CRUD :</span>
-                <span className="flex items-center justify-center">Read</span>
-                <span className="flex items-center justify-center">Create</span>
-                <span className="flex items-center justify-center">Modify</span>
-                <span className="flex items-center justify-center">Delete</span>
-            </div>
-
-            <div className="p-2 grid grid-cols-2 md:grid-cols-5 gap-4 items-center text-lg md:text-xl font-medium text-[#0086B9]">
-                <span className="text-[#6E66AC] text-xl md:text-2xl">
-                    Document Types
-                </span>
-                <span className="flex items-center justify-center">
-                    Turn On/Off
-                </span>
-                <span className="flex items-center justify-center">
-                    Turn On/Off
-                </span>
-                <span className="flex items-center justify-center">
-                    Turn On/Off
-                </span>
-                <span className="flex items-center justify-center">
-                    Turn On/Off
-                </span>
-            </div>
-
-            <div className="bg-white p-4 mt-4 rounded-2xl shadow-md">
-                {documentTypes.map((doc, index) => (
-                    <div
-                        key={index}
-                        className="grid grid-cols-2 md:grid-cols-5 gap-4 items-center py-4"
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h2 className="text-2xl md:text-3xl font-bold text-[#2C323C]">
+                        User Permissions
+                    </h2>
+                    <p className="text-lg md:text-xl text-[#7D8086]">
+                        Manage permissions for individual users
+                    </p>
+                </div>
+                
+                {/* User Selection Dropdown */}
+                <div className="relative">
+                    <button 
+                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        className="bg-white text-[#2C323C] border border-gray-300 px-6 py-3 rounded-lg text-lg font-medium hover:bg-gray-50 transition-colors duration-200 flex items-center gap-2 min-w-[200px] justify-between"
                     >
-                        <span className="text-lg md:text-xl font-medium text-[#000000]">
-                            {doc}
+                        <span className="truncate">{selectedUser ? selectedUser.name : 'Select User'}</span>
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+
+                    {dropdownOpen && (
+                        <>
+                            <div 
+                                className="fixed inset-0 z-40" 
+                                onClick={() => setDropdownOpen(false)}
+                            />
+                            <div className="absolute z-50 right-0 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                                {users.map((user) => (
+                                    <button
+                                        key={user.id}
+                                        onClick={() => handleUserSelect(user)}
+                                        className="w-full px-4 py-3 text-left text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                                    >
+                                        <span className="font-medium text-[#2C323C]">{user.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {selectedUser && (
+                <>
+                    <div className="bg-[#DCECF2] p-4 md:p-6 my-6 rounded-2xl grid grid-cols-2 md:grid-cols-5 items-center text-lg md:text-xl font-medium text-[#2C323C]">
+                        <span className="text-xl md:text-2xl font-bold">CRUD :</span>
+                        <span className="flex items-center justify-center">Read</span>
+                        <span className="flex items-center justify-center">Create</span>
+                        <span className="flex items-center justify-center">Modify</span>
+                        <span className="flex items-center justify-center">Delete</span>
+                    </div>
+
+                    <div className="p-2 grid grid-cols-2 md:grid-cols-5 gap-4 items-center text-lg md:text-xl font-medium text-[#0086B9]">
+                        <span className="text-[#6E66AC] text-xl md:text-2xl">
+                            Document Types
                         </span>
-                        {["read", "create", "modify", "delete"].map((type) => (
-                            <label
-                                key={type}
-                                className={`flex items-center cursor-pointer justify-center ${
-                                    !selectedUser ||
-                                    !canManageUser(selectedUser)
-                                        ? "opacity-50 cursor-not-allowed"
-                                        : ""
-                                }`}
+                        <span className="flex items-center justify-center">
+                            Turn On/Off
+                        </span>
+                        <span className="flex items-center justify-center">
+                            Turn On/Off
+                        </span>
+                        <span className="flex items-center justify-center">
+                            Turn On/Off
+                        </span>
+                        <span className="flex items-center justify-center">
+                            Turn On/Off
+                        </span>
+                    </div>
+
+                    <div className="bg-white p-4 mt-4 rounded-2xl shadow-md">
+                        {documentTypes.map((doc, index) => (
+                            <div
+                                key={index}
+                                className="grid grid-cols-2 md:grid-cols-5 gap-4 items-center py-4"
                             >
-                                <input
-                                    type="checkbox"
-                                    className="hidden"
-                                    checked={permissions[index][type]}
-                                    onChange={() =>
-                                        togglePermission(index, type)
-                                    }
-                                    disabled={
-                                        !selectedUser ||
-                                        !canManageUser(selectedUser)
-                                    }
-                                />
-                                <div
-                                    className={`w-14 h-7 flex items-center rounded-full border border-[#2C323C33] p-1 shadow-md transition duration-300`}
-                                >
-                                    <div
-                                        className={`w-5 h-5 rounded-full shadow-md transform transition duration-300 ${
-                                            permissions[index][type]
-                                                ? "translate-x-6 bg-[#009FDC]"
-                                                : "bg-[#D7D8D9]"
+                                <span className="text-lg md:text-xl font-medium text-[#000000]">
+                                    {doc}
+                                </span>
+                                {["read", "create", "modify", "delete"].map((type) => (
+                                    <label
+                                        key={type}
+                                        className={`flex items-center cursor-pointer justify-center ${
+                                            !selectedUser ||
+                                            !canManageUser(selectedUser.id)
+                                                ? "opacity-50 cursor-not-allowed"
+                                                : ""
                                         }`}
-                                    ></div>
-                                </div>
-                            </label>
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            className="hidden"
+                                            checked={permissions[index][type]}
+                                            onChange={() =>
+                                                togglePermission(index, type)
+                                            }
+                                            disabled={
+                                                !selectedUser ||
+                                                !canManageUser(selectedUser.id)
+                                            }
+                                        />
+                                        <div
+                                            className={`w-14 h-7 flex items-center rounded-full border border-[#2C323C33] p-1 shadow-md transition duration-300`}
+                                        >
+                                            <div
+                                                className={`w-5 h-5 rounded-full shadow-md transform transition duration-300 ${
+                                                    permissions[index][type]
+                                                        ? "translate-x-6 bg-[#009FDC]"
+                                                        : "bg-[#D7D8D9]"
+                                                }`}
+                                            ></div>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
                         ))}
                     </div>
-                ))}
-            </div>
+                </>
+            )}
         </div>
     );
 };

@@ -73,6 +73,9 @@ const Sidebar = ({ isOpen }) => {
         return permissions.includes(perm);
     };
 
+    // Check if user is a top-level user (parent_id is NULL)
+    const isTopLevelUser = user?.parent_id === null;
+
     return (
         <>
             <aside
@@ -87,7 +90,7 @@ const Sidebar = ({ isOpen }) => {
                         title="Dashboard"
                         isActive={url === "/dashboard"}
                     />
-                    {(hasPermission("view_notifications") || hasPermission("manage_notifications")) && (
+                    {isTopLevelUser && (hasPermission("view_notifications") || hasPermission("manage_notifications")) && (
                         <SidebarButton
                             icon={faBell}
                             link="/notification-settings"
