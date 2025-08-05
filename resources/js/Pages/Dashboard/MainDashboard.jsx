@@ -276,7 +276,7 @@ export default function MainDashboard({ roles, permissions }) {
         const fetchRequestedItems = async () => {
             try {
                 const response = await fetch(
-                    `api/v1/request-item?filter[status]=Pending&filter[is_requested]=false&filter[user_id]=${user_id}`
+                    `api/v1/request-item?filter[status]=Pending&filter[is_requested]=false`
                 );
                 const data = await response.json();
                 if (response.ok) {
