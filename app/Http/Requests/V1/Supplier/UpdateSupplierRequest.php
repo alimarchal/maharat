@@ -21,13 +21,13 @@ class UpdateSupplierRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('suppliers', 'code')->ignore($this->supplier)
+                Rule::unique('suppliers', 'code')->whereNull('deleted_at')->ignore($this->supplier)
             ],
             'email' => [
                 'nullable',
                 'email',
                 'max:255',
-                Rule::unique('suppliers', 'email')->ignore($this->supplier)
+                Rule::unique('suppliers', 'email')->whereNull('deleted_at')->ignore($this->supplier)
             ],
             'phone' => 'nullable|string|max:255',
             'website' => 'nullable|string|max:255',
