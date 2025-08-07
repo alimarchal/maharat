@@ -48,7 +48,7 @@ function AddQuotationForm() {
         payment_type: "",
         contact_no: "",
         items: [],
-        status_id: 48,
+        status_id: 24, // Always set to 24 (Draft) for both creation and editing
     });
 
     const [warehouses, setWarehouses] = useState([]);
@@ -594,9 +594,7 @@ function AddQuotationForm() {
                                 item.expected_delivery_date?.split("T")[0] ||
                                 "",
                             rfq_id: rfqId,
-                            status_id: item.status_id
-                                ? String(item.status_id)
-                                : "48",
+                            status_id: 24, // Always set to 24 (Draft) for both creation and editing
                         };
                     });
 
@@ -627,9 +625,7 @@ function AddQuotationForm() {
                             ? String(rfqData.payment_type.id)
                             : "",
                         contact_no: rfqData.contact_number || "",
-                        status_id: rfqData.status?.id
-                            ? String(rfqData.status.id)
-                            : "48",
+                        status_id: 24, // Always set to 24 (Draft) for both creation and editing
                         items: formattedItems,
                     };
 
@@ -924,7 +920,7 @@ function AddQuotationForm() {
                 ...itemData,
                 id: tempId,
                 rfq_id: formData.id || formData.rfq_id || null,
-                status_id: 48,
+                status_id: 24, // Always set to 24 (Draft) for both creation and editing
             });
             setFormData({ ...formData, items: newItems });
         }
@@ -1131,6 +1127,48 @@ function AddQuotationForm() {
         e.preventDefault();
         setIsSaving(true);
         setErrors({});
+
+        // Validation checks
+        const validationErrors = {};
+
+        // Check required fields
+        if (!formData.department_id || formData.department_id === "") {
+            validationErrors.department_id = "Department is required";
+        }
+
+        if (!formData.category_id || formData.category_id === "") {
+            validationErrors.category_id = "Category is required";
+        }
+
+        if (!formData.warehouse_id || formData.warehouse_id === "") {
+            validationErrors.warehouse_id = "Warehouse is required";
+        }
+
+        if (!formData.cost_center_id || formData.cost_center_id === "") {
+            validationErrors.cost_center_id = "Cost Center is required";
+        }
+
+        // Check sub cost center if options are shown
+        if (subCostCenters.length > 0 && (!formData.sub_cost_center_id || formData.sub_cost_center_id === "")) {
+            validationErrors.sub_cost_center_id = "Sub Cost Center is required";
+        }
+
+        if (!formData.payment_type || formData.payment_type === "") {
+            validationErrors.payment_type = "Payment Type is required";
+        }
+
+        // Check if at least one item is added
+        if (!formData.items || formData.items.length === 0) {
+            validationErrors.items = "At least one item is required";
+        }
+
+        // If there are validation errors, display them and stop
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            setIsSaving(false);
+            return;
+        }
+
         try {
             const processResponse = await axios.get(
                 "/api/v1/processes?include=steps,creator,updater&filter[title]=RFQ Approval"
@@ -1175,7 +1213,7 @@ function AddQuotationForm() {
                 rfq_number: formData.rfq_id || "",
                 payment_type: formData.payment_type || "",
                 contact_number: formData.contact_no || "",
-                status_id: formData.status_id || "48",
+                status_id: 24, // Always set to 24 (Draft) for both creation and editing
                 updated_at: new Date().toISOString(),
             };
 
@@ -1247,7 +1285,7 @@ function AddQuotationForm() {
                             brand_id: item.brand_id,
                             expected_delivery_date: item.expected_delivery_date,
                             rfq_id: newRfqId,
-                            status_id: item.status_id || "48",
+                            status_id: 24, // Always set to 24 (Draft) for both creation and editing
                         });
                     } else {
                         // This is a new item, don't include ID
@@ -1260,7 +1298,7 @@ function AddQuotationForm() {
                             brand_id: item.brand_id,
                             expected_delivery_date: item.expected_delivery_date,
                             rfq_id: newRfqId,
-                            status_id: item.status_id || "48",
+                            status_id: 24, // Always set to 24 (Draft) for both creation and editing
                         });
                     }
                 });
@@ -1541,6 +1579,43 @@ function AddQuotationForm() {
                 </div>
             )}
 
+            {/* Validation Errors */}
+            {errors.department_id && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                    {errors.department_id}
+                </div>
+            )}
+
+            {errors.category_id && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                    {errors.category_id}
+                </div>
+            )}
+
+            {errors.warehouse_id && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                    {errors.warehouse_id}
+                </div>
+            )}
+
+            {errors.cost_center_id && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                    {errors.cost_center_id}
+                </div>
+            )}
+
+            {errors.sub_cost_center_id && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                    {errors.sub_cost_center_id}
+                </div>
+            )}
+
+            {errors.payment_type && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                    {errors.payment_type}
+                </div>
+            )}
+
             <form onSubmit={handleSaveAndSubmit}>
                 <div className="bg-blue-50 rounded-lg px-12 py-6 grid grid-cols-2 gap-6 shadow-md text-lg">
                     {/* Left Column */}
@@ -1591,13 +1666,17 @@ function AddQuotationForm() {
                             readOnly
                         />
 
-                        <span className="font-medium text-gray-600">Department:</span>
+                        <span className="font-medium text-gray-600">
+                            Department:
+                        </span>
                         <div className="relative w-[55%]">
                             <div className="relative" data-dropdown="department">
                                 <button
                                     type="button"
                                     onClick={() => setIsDepartmentOpen(!isDepartmentOpen)}
-                                    className="w-full bg-blue-50 border border-gray-400 rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base"
+                                    className={`w-full bg-blue-50 border rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base ${
+                                        errors.department_id ? 'border-red-500' : 'border-gray-400'
+                                    }`}
                                 >
                                     <span className={formData.department_id ? "text-black" : "text-black"}>
                                         {formData.department_id 
@@ -1658,7 +1737,9 @@ function AddQuotationForm() {
                                 <button
                                     type="button"
                                     onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-                                    className="w-full bg-blue-50 border border-gray-400 rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base"
+                                    className={`w-full bg-blue-50 border rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base ${
+                                        errors.category_id ? 'border-red-500' : 'border-gray-400'
+                                    }`}
                                 >
                                     <span className={formData.category_id ? "text-black" : "text-black"}>
                                         {formData.category_id 
@@ -1719,7 +1800,9 @@ function AddQuotationForm() {
                                 <button
                                     type="button"
                                     onClick={() => setIsWarehouseOpen(!isWarehouseOpen)}
-                                    className="w-full bg-blue-50 border border-gray-400 rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base"
+                                    className={`w-full bg-blue-50 border rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base ${
+                                        errors.warehouse_id ? 'border-red-500' : 'border-gray-400'
+                                    }`}
                                 >
                                     <span className={formData.warehouse_id ? "text-black" : "text-black"}>
                                         {formData.warehouse_id 
@@ -1780,7 +1863,9 @@ function AddQuotationForm() {
                                 <button
                                     type="button"
                                     onClick={() => setIsCostCenterOpen(!isCostCenterOpen)}
-                                    className="w-full bg-blue-50 border border-gray-400 rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base"
+                                    className={`w-full bg-blue-50 border rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base ${
+                                        errors.cost_center_id ? 'border-red-500' : 'border-gray-400'
+                                    }`}
                                 >
                                     <span className={formData.cost_center_id ? "text-black" : "text-black"}>
                                         {formData.cost_center_id 
@@ -1890,7 +1975,9 @@ function AddQuotationForm() {
                                 <button
                                     type="button"
                                     onClick={() => setIsPaymentTypeOpen(!isPaymentTypeOpen)}
-                                    className="w-full bg-blue-50 border border-gray-400 rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base"
+                                    className={`w-full bg-blue-50 border rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base ${
+                                        errors.payment_type ? 'border-red-500' : 'border-gray-400'
+                                    }`}
                                 >
                                     <span className={formData.payment_type ? "text-black" : "text-black"}>
                                         {formData.payment_type 
@@ -1970,7 +2057,9 @@ function AddQuotationForm() {
                                         <button
                                             type="button"
                                             onClick={() => setIsSubCostCenterOpen(!isSubCostCenterOpen)}
-                                            className="w-full bg-blue-50 border border-gray-400 rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base"
+                                            className={`w-full bg-blue-50 border rounded-xl focus:ring-0 px-3 py-2 text-left flex justify-between items-center text-base ${
+                                                errors.sub_cost_center_id ? 'border-red-500' : 'border-gray-400'
+                                            }`}
                                         >
                                             <span className={formData.sub_cost_center_id ? "text-black" : "text-black"}>
                                                 {formData.sub_cost_center_id 

@@ -257,6 +257,9 @@ const RFQsTable = () => {
                                                         : log.status?.name ===
                                                           "Expired"
                                                         ? "bg-gray-100 text-gray-800"
+                                                        : log.status?.name ===
+                                                          "Draft"
+                                                        ? "bg-gray-100 text-gray-800"
                                                         : "bg-yellow-100 text-yellow-800"
                                                 }`}
                                             >
@@ -268,7 +271,7 @@ const RFQsTable = () => {
                                         {formatDateTime(log.created_at)}
                                     </td>
                                     <td className="px-3 py-4 flex justify-center items-center text-center space-x-3">
-                                        {log.status?.name === "Pending" ? (
+                                        {log.status?.name === "Draft" ? (
                                         <button
                                             className="text-blue-400 hover:text-blue-500"
                                             title="Edit RFQ"
@@ -306,12 +309,16 @@ const RFQsTable = () => {
                                                 icon={faFileExcel}
                                             />
                                         </button>
+                                        {log.status?.name === "Draft" ? (
                                         <button
                                             onClick={() => handleDelete(log.id)}
                                             className="text-red-500 hover:text-red-800"
                                         >
                                             <FontAwesomeIcon icon={faTrash} />
                                         </button>
+                                        ) : (
+                                            <div className="w-4 h-4"></div>
+                                        )}
                                     </td>
                                 </tr>
                             ))
