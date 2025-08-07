@@ -55,6 +55,13 @@ const BudgetRequestForm = () => {
         }
     }, [costCenters, formData.cost_center_id]);
 
+    // Add a useEffect to handle sub cost center loading in edit mode
+    useEffect(() => {
+        if (isEditMode && formData.cost_center_id && costCenters.length > 0) {
+            updateSubCostCenter(formData.cost_center_id);
+        }
+    }, [isEditMode, formData.cost_center_id, costCenters]);
+
     const fetchInitialData = async () => {
         try {
             const [deptRes, costRes, yearRes] = await Promise.all([
@@ -101,11 +108,6 @@ const BudgetRequestForm = () => {
                 setExistingAttachment(null);
             }
 
-            // Load sub cost centers if cost center is selected
-            if (budgetRequest.cost_center_id) {
-                await updateSubCostCenter(budgetRequest.cost_center_id.toString());
-            }
-
             setDataLoaded(true);
         } catch (error) {
             console.error("Error fetching budget request", error);
@@ -138,7 +140,7 @@ const BudgetRequestForm = () => {
             } else if (subCostCentersData.length > 1) {
                 // In edit mode, preserve the existing selection if it's valid
                 if (isEditMode && formData.sub_cost_center) {
-                    const existingSubCenter = subCostCentersData.find(sub => sub.id.toString() === formData.sub_cost_center);
+                    const existingSubCenter = subCostCentersData.find(sub => sub.id.toString() === formData.sub_cost_center.toString());
                     if (!existingSubCenter) {
                         setFormData(prev => ({ ...prev, sub_cost_center: "" }));
                     }
@@ -514,9 +516,12 @@ const BudgetRequestForm = () => {
                             label="Budget"
                             name="fiscal_period_id"
                             value={
-                                fiscalYears.find((year) => year.id === formData.fiscal_period_id)
-                                    ? `${fiscalYears.find((year) => year.id === formData.fiscal_period_id).budget_name} (${fiscalYears.find((year) => year.id === formData.fiscal_period_id).period_name})`
-                                    : ''
+                                fiscalYears.length > 0 && formData.fiscal_period_id
+                                    ? (() => {
+                                        const year = fiscalYears.find((year) => year.id.toString() === formData.fiscal_period_id.toString());
+                                        return year ? `${year.budget_name} (${year.period_name})` : 'Loading...';
+                                    })()
+                                    : formData.fiscal_period_id ? 'Loading...' : ''
                             }
                             onChange={() => {}}
                             onKeyDown={(e) => e.preventDefault()}
@@ -565,7 +570,14 @@ const BudgetRequestForm = () => {
                             <InputFloating
                                 label="Department Name"
                                 name="department_id"
-                                value={departments.find(dept => dept.id === formData.department_id)?.name || ''}
+                                value={
+                                    departments.length > 0 && formData.department_id
+                                        ? (() => {
+                                            const dept = departments.find(dept => dept.id.toString() === formData.department_id.toString());
+                                            return dept ? dept.name : 'Loading...';
+                                        })()
+                                        : formData.department_id ? 'Loading...' : ''
+                                }
                                 onChange={() => {}}
                                 onKeyDown={(e) => e.preventDefault()}
                                 disabled={true}
@@ -590,7 +602,14 @@ const BudgetRequestForm = () => {
                             <InputFloating
                                 label="Cost Center"
                                 name="cost_center_id"
-                                value={costCenters.find(cost => cost.id === formData.cost_center_id)?.name || ''}
+                                value={
+                                    costCenters.length > 0 && formData.cost_center_id
+                                        ? (() => {
+                                            const cost = costCenters.find(cost => cost.id.toString() === formData.cost_center_id.toString());
+                                            return cost ? cost.name : 'Loading...';
+                                        })()
+                                        : formData.cost_center_id ? 'Loading...' : ''
+                                }
                                 onChange={() => {}}
                                 onKeyDown={(e) => e.preventDefault()}
                                 disabled={true}
@@ -615,7 +634,14 @@ const BudgetRequestForm = () => {
                             <InputFloating
                                 label="Sub Cost Center"
                                 name="sub_cost_center"
-                                value={filteredSubCostCenters.find(sub => sub.id === formData.sub_cost_center)?.name || ''}
+                                value={
+                                    filteredSubCostCenters.length > 0 && formData.sub_cost_center
+                                        ? (() => {
+                                            const sub = filteredSubCostCenters.find(sub => sub.id.toString() === formData.sub_cost_center.toString());
+                                            return sub ? sub.name : 'Loading...';
+                                        })()
+                                        : formData.sub_cost_center ? 'Loading...' : 'No sub cost center'
+                                }
                                 onChange={() => {}}
                                 onKeyDown={(e) => e.preventDefault()}
                                 disabled={true}
