@@ -242,13 +242,78 @@ class TaskController extends Controller
                         throw $e;
                     }
                 } else {
-                    Log::info('=== NOT FINAL APPROVAL - SKIPPING RFQ STATUS UPDATE ===', [
+                    // This is the first approval (not final) - set status to Pending
+                    Log::info('=== FIRST APPROVAL DETECTED - UPDATING RFQ STATUS TO PENDING ===', [
                         'rfq_id' => $task->rfq_id,
-                        'current_order_no' => $task->order_no,
-                        'total_approvals' => $totalApprovals,
                         'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
-                        'reason' => 'Not final approval step'
+                        'target_status_id' => 48,
+                        'auth_user_id' => auth()->id()
                     ]);
+
+                    try {
+                        // Update the RFQ status to Pending (status_id: 48)
+                        $updated = DB::table('rfqs')
+                            ->where('id', $task->rfq_id)
+                            ->update([
+                                'status_id' => 48, // Pending status
+                                'updated_at' => now()
+                            ]);
+
+                        Log::info('=== RFQ STATUS UPDATE TO PENDING RESULT ===', [
+                            'rfq_id' => $task->rfq_id,
+                            'update_success' => $updated,
+                            'rows_affected' => $updated,
+                            'new_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
+                            'update_query_executed' => true
+                        ]);
+
+                        if (!$updated) {
+                            Log::error('=== RFQ STATUS UPDATE TO PENDING FAILED ===', [
+                                'rfq_id' => $task->rfq_id,
+                                'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
+                                'update_result' => $updated
+                            ]);
+                            throw new \Exception('Failed to update RFQ status to Pending - no rows affected');
+                        }
+
+                        // Create status log entry for Pending status
+                        $statusLogInserted = DB::table('rfq_status_logs')->insert([
+                            'rfq_id' => $task->rfq_id,
+                            'status_id' => 48,
+                            'changed_by' => auth()->id(),
+                            'remarks' => 'RFQ moved to Pending status by first approver',
+                            'approved_by' => auth()->id(),
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+
+                        Log::info('=== RFQ STATUS LOG INSERTED FOR PENDING ===', [
+                            'rfq_id' => $task->rfq_id,
+                            'status_log_inserted' => $statusLogInserted
+                        ]);
+
+                        // Verify the update
+                        $updatedRfq = DB::table('rfqs')->where('id', $task->rfq_id)->first();
+                        Log::info('=== RFQ STATUS VERIFICATION FOR PENDING ===', [
+                            'rfq_id' => $task->rfq_id,
+                            'status_id' => $updatedRfq->status_id,
+                            'expected_status' => 48,
+                            'update_successful' => $updatedRfq->status_id === 48,
+                            'rfq_data' => $updatedRfq
+                        ]);
+
+                        // Refresh the task's RFQ relationship to get the updated status
+                        $task->load('rfq');
+
+                    } catch (\Exception $e) {
+                        Log::error('=== RFQ STATUS UPDATE TO PENDING ERROR ===', [
+                            'rfq_id' => $task->rfq_id,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                            'error_code' => $e->getCode()
+                        ]);
+                        throw $e;
+                    }
                 }
             }
 

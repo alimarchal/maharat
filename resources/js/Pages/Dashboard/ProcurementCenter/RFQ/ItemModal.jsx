@@ -464,7 +464,7 @@ const ItemModal = ({
                             className="w-full px-6 py-3 text-xl font-medium bg-[#009FDC] text-white rounded-full transition duration-300 hover:bg-[#007BB5]"
                             disabled={isSubmitting}
                         >
-                            {isSubmitting ? "Saving..." : "Save Item"}
+                            {isSubmitting ? "Saving..." : "Add Item"}
                         </button>
                     </div>
                 </form>

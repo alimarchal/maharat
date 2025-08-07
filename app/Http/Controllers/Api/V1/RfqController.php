@@ -179,10 +179,7 @@ class RfqController extends Controller
                 'closing_date' => $request->input('closing_date'),
                 'payment_type' => $request->input('payment_type'),
                 'contact_number' => $request->input('contact_number'),
-                'status_id' => DB::table('statuses')
-                    ->where('type', 'Purchase RFQ Status')
-                    ->where('name', 'Pending')
-                    ->value('id'),
+                'status_id' => $request->input('status_id', 24), // Use the status_id from frontend, default to 24 (Draft)
                 'rfq_number' => $rfq_number,
                 'warehouse_id' => $request->input('warehouse_id'),
                 'department_id' => $request->input('department_id'),
@@ -254,7 +251,7 @@ class RfqController extends Controller
                             'quantity' => $item['quantity'] ?? null,
                             'brand_id' => $item['brand_id'] ?? null,
                             'expected_delivery_date' => $item['expected_delivery_date'] ?? null,
-                            'status_id' => $item['status_id'] ?? 47,
+                            'status_id' => $item['status_id'] ?? 24, // Changed from 47 to 24 (Draft)
                             'created_at' => now(),
                             'updated_at' => now()
                         ];
@@ -293,7 +290,7 @@ class RfqController extends Controller
             try {
                 DB::table('rfq_status_logs')->insert([
                     'rfq_id' => $rfqId,
-                    'status_id' => $request->input('status_id', 47),
+                    'status_id' => $request->input('status_id', 24), // Changed from 47 to 24 (Draft)
                     'changed_by' => auth()->id() ?? 1,
                     'remarks' => 'RFQ Created',
                     'created_at' => now(),
@@ -357,7 +354,7 @@ class RfqController extends Controller
                 'sub_cost_center_id' => $request->input('sub_cost_center_id'),
                 'payment_type' => $request->input('payment_type'),
                 'contact_number' => $request->input('contact_number'),
-                'status_id' => $request->input('status_id', 47),
+                'status_id' => $request->input('status_id', 24), // Use the status_id from frontend, default to 24 (Draft)
             ];
 
             // Remove null values but allow empty strings for sub_cost_center_id
@@ -403,7 +400,7 @@ class RfqController extends Controller
                             'quantity' => $item['quantity'] ?? null,
                             'brand_id' => $item['brand_id'] ?? null,
                             'expected_delivery_date' => $item['expected_delivery_date'] ?? null,
-                            'status_id' => $item['status_id'] ?? 47,
+                            'status_id' => $item['status_id'] ?? 24, // Changed from 47 to 24 (Draft)
                             'updated_at' => now()
                         ];
 
