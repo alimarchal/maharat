@@ -146,11 +146,21 @@ const CreateSupplier = () => {
             }
             router.visit("/suppliers");
         } catch (error) {
-            setErrors(
-                error.response?.data?.errors || {
-                    general: "An error occurred while saving the supplier",
+            const errorData = error.response?.data?.errors || {
+                general: "An error occurred while saving the supplier",
+            };
+            
+            // Handle both string and array error formats
+            const processedErrors = {};
+            Object.keys(errorData).forEach(key => {
+                if (Array.isArray(errorData[key])) {
+                    processedErrors[key] = errorData[key][0]; // Take the first error message
+                } else {
+                    processedErrors[key] = errorData[key];
                 }
-            );
+            });
+            
+            setErrors(processedErrors);
         } finally {
             setLoading(false);
         }
@@ -170,19 +180,18 @@ const CreateSupplier = () => {
                             name="name"
                             value={formData.name}
                             onChange={handleChange}
+                            error={Array.isArray(errors.name) ? errors.name[0] : errors.name}
                         />
-                        {errors.name && (
-                            <p className="text-red-500 text-sm">
-                                {errors.name}
-                            </p>
-                        )}
                     </div>
-                    <InputFloating
-                        label="Supplier Code"
-                        name="code"
-                        value={formData.code}
-                        onChange={handleChange}
-                    />
+                    <div>
+                        <InputFloating
+                            label="Supplier Code"
+                            name="code"
+                            value={formData.code}
+                            onChange={handleChange}
+                            error={Array.isArray(errors.code) ? errors.code[0] : errors.code}
+                        />
+                    </div>
                     <div>
                         <InputFloating
                             label="Email"
@@ -192,7 +201,7 @@ const CreateSupplier = () => {
                         />
                         {errors.email && (
                             <p className="text-red-500 text-sm">
-                                {errors.email}
+                                {Array.isArray(errors.email) ? errors.email[0] : errors.email}
                             </p>
                         )}
                     </div>
