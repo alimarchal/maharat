@@ -61,10 +61,17 @@ class QuotationController extends Controller
         // Get query parameters
         $rfqId = request()->get('rfq_id');
         $perPage = request()->get('per_page', 15); // Default to 15 records per page
+        $includeTrashed = request()->get('include_trashed', false); // Only include trashed if specifically requested
         
         \Log::info('QuotationController::index called with rfq_id: ' . $rfqId . ', per_page: ' . $perPage);
         
-        $query = Quotation::withTrashed()->with(['rfq.company', 'documents', 'status', 'supplier']);
+        $query = Quotation::with(['rfq.company', 'documents', 'status', 'supplier']);
+        
+        // Only include trashed records if specifically requested
+        if ($includeTrashed) {
+            $query->withTrashed();
+        }
+        
         // Filter by RFQ ID if provided
         if ($rfqId) {
             $query->where('rfq_id', $rfqId);
@@ -215,7 +222,7 @@ class QuotationController extends Controller
     public function destroy($id)
     {
         try {
-            $quotation = Quotation::findOrFail($id);
+            $quotation = Quotation::withTrashed()->findOrFail($id);
             
             // Delete associated documents
             foreach ($quotation->documents as $document) {
@@ -225,7 +232,7 @@ class QuotationController extends Controller
                 $document->delete();
             }
             
-            // Delete the quotation
+            // Soft delete the quotation (mark as deleted but keep in database)
             $quotation->delete();
             
             return response()->json([

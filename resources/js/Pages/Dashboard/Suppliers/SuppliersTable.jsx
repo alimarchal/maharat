@@ -10,6 +10,7 @@ const SuppliersTable = () => {
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
+    const [supplierQuotations, setSupplierQuotations] = useState({});
 
     useEffect(() => {
         fetchSuppliers();
@@ -21,13 +22,32 @@ const SuppliersTable = () => {
             const response = await axios.get(
                 `/api/v1/suppliers?page=${currentPage}`
             );
-            setSuppliers(response.data.data || []);
+            const suppliersData = response.data.data || [];
+            setSuppliers(suppliersData);
             setLastPage(response.data.meta?.last_page || 1);
+            
+            // Check quotations for each supplier
+            await checkSupplierQuotations(suppliersData);
         } catch (err) {
             setError("Error loading suppliers.");
         } finally {
             setLoading(false);
         }
+    };
+
+    const checkSupplierQuotations = async (suppliersData) => {
+        const quotationsData = {};
+        
+        for (const supplier of suppliersData) {
+            try {
+                const response = await axios.get(`/api/v1/suppliers/${supplier.id}/has-quotations`);
+                quotationsData[supplier.id] = response.data.has_quotations;
+            } catch (err) {
+                quotationsData[supplier.id] = false;
+            }
+        }
+        
+        setSupplierQuotations(quotationsData);
     };
 
     const handleDelete = async (id) => {
@@ -103,31 +123,35 @@ const SuppliersTable = () => {
                                         {item.payment_terms}
                                     </td>
                                     <td className="py-3 px-4">
-                                        {item.is_approved ? (
-                                            <span className="text-green-500 font-semibold">
-                                                Approved
-                                            </span>
-                                        ) : (
-                                            <span className="text-red-500 font-semibold">
-                                                Pending
-                                            </span>
-                                        )}
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                            item.status === 'Active' ? 'bg-green-100 text-green-800' :
+                                            item.status === 'Inactive' ? 'bg-red-100 text-red-800' :
+                                            'bg-gray-100 text-gray-800'
+                                        }`}>
+                                            {item.status || 'Unknown'}
+                                        </span>
                                     </td>
                                     <td className="py-3 px-4 flex space-x-3">
-                                        <Link
-                                            href={`/suppliers/${item.id}/edit`}
-                                            className="text-blue-500"
-                                        >
-                                            <FontAwesomeIcon icon={faEdit} />
-                                        </Link>
-                                        <button
-                                            onClick={() =>
-                                                handleDelete(item.id)
-                                            }
-                                            className="text-red-500"
-                                        >
-                                            <FontAwesomeIcon icon={faTrash} />
-                                        </button>
+                                        {!supplierQuotations[item.id] && (
+                                            <>
+                                                <Link
+                                                    href={`/suppliers/${item.id}/edit`}
+                                                    className="text-blue-500 hover:text-blue-700 transition-colors"
+                                                    title="Edit Supplier"
+                                                >
+                                                    <FontAwesomeIcon icon={faEdit} />
+                                                </Link>
+                                                <button
+                                                    onClick={() =>
+                                                        handleDelete(item.id)
+                                                    }
+                                                    className="text-red-500 hover:text-red-700 transition-colors"
+                                                    title="Delete Supplier"
+                                                >
+                                                    <FontAwesomeIcon icon={faTrash} />
+                                                </button>
+                                            </>
+                                        )}
                                     </td>
                                 </tr>
                             ))

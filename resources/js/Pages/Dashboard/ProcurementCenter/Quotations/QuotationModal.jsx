@@ -162,32 +162,27 @@ const QuotationModal = ({
                 console.log("No RFQ ID provided, skipping quotation filtering");
             }
             
-            // Filter suppliers to exclude those already used for this RFQ
+            // Filter suppliers to exclude those already used for this RFQ and only show Active suppliers
             console.log("Filtering suppliers...");
             console.log("All suppliers count:", allSuppliers.length);
-            console.log("All suppliers:", allSuppliers.map(s => ({ id: s.id, name: s.name, type: typeof s.id })));
+            console.log("All suppliers:", allSuppliers.map(s => ({ id: s.id, name: s.name, type: typeof s.id, status: s.status })));
             console.log("Used supplier IDs to exclude:", Array.from(usedSupplierIds));
             console.log("Used supplier IDs types:", Array.from(usedSupplierIds).map(id => typeof id));
             
             const availableSuppliers = allSuppliers.filter(supplier => {
                 const supplierId = Number(supplier.id); // Ensure supplier ID is a number
                 const isExcluded = usedSupplierIds.has(supplierId);
-                console.log(`Supplier ${supplier.name} (ID: ${supplierId}, type: ${typeof supplierId}) - Excluded: ${isExcluded}`);
-                return !isExcluded;
+                const isActive = supplier.status === 'Active' || supplier.status === 'active';
+                console.log(`Supplier ${supplier.name} (ID: ${supplierId}, type: ${typeof supplierId}, status: ${supplier.status}) - Excluded: ${isExcluded}, Active: ${isActive}`);
+                return !isExcluded && isActive;
             });
             
             console.log("All suppliers count:", allSuppliers.length);
             console.log("Available suppliers count:", availableSuppliers.length);
-            console.log("Available suppliers:", availableSuppliers.map(s => ({ id: s.id, name: s.name })));
+            console.log("Available suppliers:", availableSuppliers.map(s => ({ id: s.id, name: s.name, status: s.status })));
             
-            // If no suppliers are available after filtering, show all suppliers as fallback
-            // This prevents the dropdown from being empty if there's an API issue
-            const finalSuppliers = availableSuppliers.length > 0 ? availableSuppliers : allSuppliers;
-            if (availableSuppliers.length === 0 && allSuppliers.length > 0) {
-                console.warn("No suppliers available after filtering, showing all suppliers as fallback");
-            }
-            
-            setSuppliers(finalSuppliers);
+            // Only show filtered suppliers - no fallback to all suppliers
+            setSuppliers(availableSuppliers);
         } catch (error) {
             setErrors({ fetch: "Failed to load form data" });
         }

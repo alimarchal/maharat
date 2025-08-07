@@ -61,7 +61,7 @@ class SupplierController extends Controller
             return response()->json([
                 'message' => 'Supplier created successfully',
                 'data' => new SupplierResource(
-                    $supplier->load(['contacts', 'addresses', 'currency', 'status'])
+                    $supplier->load(['contacts', 'addresses', 'currency'])
                 )
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
@@ -112,7 +112,7 @@ class SupplierController extends Controller
             return response()->json([
                 'message' => 'Supplier updated successfully',
                 'data' => new SupplierResource(
-                    $supplier->load(['contacts', 'addresses', 'currency', 'status'])
+                    $supplier->load(['contacts', 'addresses', 'currency'])
                 )
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
@@ -145,6 +145,24 @@ class SupplierController extends Controller
             DB::rollBack();
             return response()->json([
                 'message' => 'Failed to delete supplier',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function hasQuotations($id): JsonResponse
+    {
+        try {
+            $supplier = Supplier::findOrFail($id);
+            $hasQuotations = $supplier->quotations()->exists();
+            
+            return response()->json([
+                'has_quotations' => $hasQuotations,
+                'quotation_count' => $supplier->quotations()->count()
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to check supplier quotations',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }

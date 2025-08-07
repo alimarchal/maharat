@@ -17,7 +17,7 @@ const CreateSupplier = () => {
         payment_terms: "",
         is_approved: false,
         currency_id: "",
-        status_id: "",
+        status: "",
         contacts: [
             {
                 contact_name: "",
@@ -47,7 +47,7 @@ const CreateSupplier = () => {
             const fetchSupplierData = async () => {
                 try {
                     const response = await axios.get(
-                        `/api/v1/suppliers/${supplierId}?include=contacts,addresses,currency,status`
+                        `/api/v1/suppliers/${supplierId}?include=contacts,addresses,currency`
                     );
 
                     setFormData({
@@ -58,7 +58,7 @@ const CreateSupplier = () => {
                             response.data.data.addresses || formData.addresses,
                         currency:
                             response.data.data.currency || formData.currency,
-                        status: response.data.data.status || formData.status,
+                        status: response.data.data.status || 'Active',
                     });
                 } catch (error) {
                     console.error("Error fetching supplier data:", error);
@@ -73,10 +73,10 @@ const CreateSupplier = () => {
         const { name, value } = e.target;
         
         // Handle status mapping
-        if (name === 'status_id') {
+        if (name === 'status') {
             // For Active (1), set is_approved to true
             // For Inactive (2), set is_approved to false
-            const isApproved = value === '1';
+            const isApproved = value === 'Active';
             setFormData({ 
                 ...formData, 
                 [name]: value,
@@ -85,7 +85,7 @@ const CreateSupplier = () => {
         }
         // Handle payment terms to store the actual text value
         else if (name === 'payment_terms') {
-            const paymentTermText = value === '1' ? 'Cash' : 'Credit';
+            const paymentTermText = value === '1' ? 'Cash' : value === '2' ? 'Credit' : value;
             setFormData({ 
                 ...formData, 
                 [name]: paymentTermText 
@@ -114,7 +114,7 @@ const CreateSupplier = () => {
             newErrors.tax_number = "Tax Number is required";
         if (!formData.currency_id)
             newErrors.currency_id = "Currency is required";
-        if (!formData.status_id) newErrors.status_id = "Status is required";
+        if (!formData.status) newErrors.status = "Status is required";
         if (!formData.payment_terms)
             newErrors.payment_terms = "Payment Terms is required";
         if (!formData.contacts[0].contact_name.trim())
@@ -136,7 +136,7 @@ const CreateSupplier = () => {
             const payload = {
                 ...formData,
                 // Ensure is_approved is set based on status_id
-                is_approved: formData.status_id === '1'
+                is_approved: formData.status === 'Active'
             };
 
             if (supplierId) {
@@ -250,17 +250,17 @@ const CreateSupplier = () => {
                     <div>
                         <SelectFloating
                             label="Status"
-                            name="status_id"
-                            value={formData.status_id}
+                            name="status"
+                            value={formData.status}
                             onChange={handleChange}
                             options={[
-                                { id: "1", label: "Active" },
-                                { id: "2", label: "Inactive" },
+                                { id: "Active", label: "Active" },
+                                { id: "Inactive", label: "Inactive" },
                             ]}
                         />
-                        {errors.status_id && (
+                        {errors.status && (
                             <p className="text-red-500 text-sm">
-                                {errors.status_id}
+                                {errors.status}
                             </p>
                         )}
                     </div>

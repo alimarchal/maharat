@@ -20,7 +20,7 @@ class SupplierResource extends JsonResource
             'payment_terms' => $this->payment_terms,
             'is_approved' => $this->is_approved,
             'currency_id' => $this->currency_id,
-            'status_id' => $this->status_id,
+            'status' => $this->status,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
 
@@ -28,7 +28,6 @@ class SupplierResource extends JsonResource
             'contacts' => SupplierContactResource::collection($this->whenLoaded('contacts')),
             'addresses' => SupplierAddressResource::collection($this->whenLoaded('addresses')),
 //            'currency' => new CurrencyResource($this->whenLoaded('currency')),
-            'status' => new StatusResource($this->whenLoaded('status'))
         ];
     }
 }

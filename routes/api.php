@@ -193,6 +193,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('rfq-items', RfqItemController::class);
 
     Route::apiResource('suppliers', SupplierController::class);
+    Route::get('suppliers/{id}/has-quotations', [SupplierController::class, 'hasQuotations']);
     Route::apiResource('supplier-contacts', SupplierContactController::class);
     Route::apiResource('supplier-addresses', SupplierAddressController::class);
 
