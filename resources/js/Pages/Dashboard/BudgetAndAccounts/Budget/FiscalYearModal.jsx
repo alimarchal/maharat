@@ -71,8 +71,13 @@ const FiscalYearModal = ({ isOpen, onClose, onSave, fiscalYear, fetchFiscalYears
             newErrors.fiscal_year = "Fiscal Year is required.";
         else {
             const year = parseInt(formData.fiscal_year);
+            const currentYear = new Date().getFullYear();
+            
             if (isNaN(year) || year < 1900 || year > 2100) {
                 newErrors.fiscal_year = "Fiscal Year must be a valid year between 1900 and 2100.";
+            } else if (!fiscalYear && year < currentYear) {
+                // Only check for current year restriction when creating new fiscal years
+                newErrors.fiscal_year = `Fiscal Year cannot be before the current year (${currentYear}).`;
             } else if (existingFiscalYears.includes(year) && (!fiscalYear || fiscalYear.fiscal_year !== year)) {
                 newErrors.fiscal_year = `Fiscal Year ${year} is already added.`;
             }
@@ -135,6 +140,7 @@ const FiscalYearModal = ({ isOpen, onClose, onSave, fiscalYear, fetchFiscalYears
                             onChange={handleChange}
                             type="date"
                             placeholder="Select Year"
+                            min={!fiscalYear ? `${new Date().getFullYear()}-01-01` : undefined}
                         />
                         {errors.fiscal_year && (
                             <p className="text-red-500 text-sm">

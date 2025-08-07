@@ -27,6 +27,16 @@ const FiscalPeriodModal = ({ isOpen, onClose, onSave, fiscalPeriod, fetchFiscalP
         }
     }, [isOpen]);
 
+    // Set selected fiscal year when fiscalYears are loaded and we're editing
+    React.useEffect(() => {
+        if (fiscalYears.length > 0 && fiscalPeriod && fiscalPeriod.fiscal_year_id) {
+            const selected = fiscalYears.find(fy => fy.id == fiscalPeriod.fiscal_year_id);
+            if (selected) {
+                setSelectedFiscalYear(selected);
+            }
+        }
+    }, [fiscalYears, fiscalPeriod]);
+
     const fetchFiscalYears = async () => {
         try {
             const response = await axios.get('/api/v1/fiscal-years');
@@ -49,6 +59,11 @@ const FiscalPeriodModal = ({ isOpen, onClose, onSave, fiscalPeriod, fetchFiscalP
                 end_date: fiscalPeriod.end_date || "",
                 status: fiscalPeriod.status || "",
             });
+            // Set selected fiscal year for date validation when editing
+            if (fiscalPeriod.fiscal_year_id) {
+                const selected = fiscalYears.find(fy => fy.id == fiscalPeriod.fiscal_year_id);
+                setSelectedFiscalYear(selected);
+            }
         } else {
             // Reset form for new creation
             setFormData({
@@ -59,9 +74,10 @@ const FiscalPeriodModal = ({ isOpen, onClose, onSave, fiscalPeriod, fetchFiscalP
                 end_date: "",
                 status: "",
             });
+            setSelectedFiscalYear(null);
         }
         setErrors({});
-    }, [fiscalPeriod, isOpen]);
+    }, [fiscalPeriod, isOpen, fiscalYears]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -184,9 +200,19 @@ const FiscalPeriodModal = ({ isOpen, onClose, onSave, fiscalPeriod, fetchFiscalP
         try {
             let dataToSend = formData;
             
-            // If editing a fiscal period with budgets, only send status
+            // If editing a fiscal period with budgets, only send status to avoid conflicts
             if (fiscalPeriod && fiscalPeriod.budgets_count > 0) {
                 dataToSend = { status: formData.status };
+            } else if (fiscalPeriod) {
+                // When editing without budgets, send all the form data
+                dataToSend = {
+                    fiscal_year_id: formData.fiscal_year_id,
+                    budget_name: formData.budget_name,
+                    period_name: formData.period_name,
+                    start_date: formData.start_date,
+                    end_date: formData.end_date,
+                    status: formData.status,
+                };
             }
             
             if (fiscalPeriod) {
@@ -239,7 +265,7 @@ const FiscalPeriodModal = ({ isOpen, onClose, onSave, fiscalPeriod, fetchFiscalP
                 )}
                 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Show all fields for new fiscal periods or fiscal periods without budgets */}
+                    {/* Show all fields for new fiscal periods and edit mode when no budgets exist */}
                     {(!fiscalPeriod || fiscalPeriod.budgets_count === 0) && (
                         <>
                             {/* Force Fiscal Year and Status side by side */}
