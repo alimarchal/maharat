@@ -134,7 +134,7 @@ const RequestBudgetTable = () => {
                                 </td>
                                 <td className="py-3 px-4">
                                     <div className="flex items-start justify-center gap-4">
-                                        {request.status !== 'Approved' && (
+                                        {request.status === 'Draft' && (
                                             <Link
                                                 href={`/request-budgets/${request.id}/edit`}
                                                 className="text-blue-400 hover:text-blue-500"
@@ -166,7 +166,7 @@ const RequestBudgetTable = () => {
                                                 />
                                             </button>
                                         )}
-                                        {request.status !== 'Approved' && (
+                                        {request.status === 'Draft' && (
                                             <button
                                                 className={`text-red-500 hover:text-red-800 ${
                                                     deletingId === request.id ? 'opacity-50 cursor-not-allowed' : ''
