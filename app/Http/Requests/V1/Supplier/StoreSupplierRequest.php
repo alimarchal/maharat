@@ -3,6 +3,8 @@
 namespace App\Http\Requests\V1\Supplier;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use App\Models\Supplier;
 
 class StoreSupplierRequest extends FormRequest
 {
@@ -15,8 +17,18 @@ class StoreSupplierRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:255|unique:suppliers,code',
-            'email' => 'nullable|email|max:255|unique:suppliers,email',
+            'code' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('suppliers', 'code')->whereNull('deleted_at')
+            ],
+            'email' => [
+                'nullable',
+                'email',
+                'max:255',
+                Rule::unique('suppliers', 'email')->whereNull('deleted_at')
+            ],
             'phone' => 'nullable|string|max:255',
             'website' => 'nullable|string|max:255',
             'tax_number' => 'nullable|string|max:255',
