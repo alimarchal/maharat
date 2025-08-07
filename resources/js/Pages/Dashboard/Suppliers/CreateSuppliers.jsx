@@ -198,12 +198,8 @@ const CreateSupplier = () => {
                             name="email"
                             value={formData.email}
                             onChange={handleChange}
+                            error={Array.isArray(errors.email) ? errors.email[0] : errors.email}
                         />
-                        {errors.email && (
-                            <p className="text-red-500 text-sm">
-                                {Array.isArray(errors.email) ? errors.email[0] : errors.email}
-                            </p>
-                        )}
                     </div>
                     <div>
                         <InputFloating
@@ -211,12 +207,8 @@ const CreateSupplier = () => {
                             name="phone"
                             value={formData.phone}
                             onChange={handleChange}
+                            error={Array.isArray(errors.phone) ? errors.phone[0] : errors.phone}
                         />
-                        {errors.phone && (
-                            <p className="text-red-500 text-sm">
-                                {errors.phone}
-                            </p>
-                        )}
                     </div>
                     <InputFloating
                         label="Website"
@@ -230,12 +222,8 @@ const CreateSupplier = () => {
                             name="tax_number"
                             value={formData.tax_number}
                             onChange={handleChange}
+                            error={Array.isArray(errors.tax_number) ? errors.tax_number[0] : errors.tax_number}
                         />
-                        {errors.tax_number && (
-                            <p className="text-red-500 text-sm">
-                                {errors.tax_number}
-                            </p>
-                        )}
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
