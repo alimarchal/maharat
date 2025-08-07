@@ -23,7 +23,7 @@ class Supplier extends Model
         'payment_terms',
         'is_approved',
         'currency_id',
-        'status_id'
+        'status'
     ];
 
     protected $casts = [
@@ -43,11 +43,6 @@ class Supplier extends Model
     public function currency(): BelongsTo
     {
         return $this->belongsTo(Currency::class);
-    }
-
-    public function status(): BelongsTo
-    {
-        return $this->belongsTo(Status::class);
     }
 
     public function quotations(): HasMany

@@ -11,7 +11,7 @@ class SupplierParameters
         'phone',
         'is_approved',
         'currency_id',
-        'status_id'
+        'status'
     ];
 
     public const ALLOWED_SORTS = [
@@ -24,7 +24,6 @@ class SupplierParameters
     public const ALLOWED_INCLUDES = [
         'contacts',
         'addresses',
-        'currency',
-        'status'
+        'currency'
     ];
 }

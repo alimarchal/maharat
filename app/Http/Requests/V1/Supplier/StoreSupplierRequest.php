@@ -18,12 +18,12 @@ class StoreSupplierRequest extends FormRequest
             'code' => 'required|string|max:255|unique:suppliers,code',
             'email' => 'nullable|email|max:255|unique:suppliers,email',
             'phone' => 'nullable|string|max:255',
-            'website' => 'nullable|url|max:255',
+            'website' => 'nullable|string|max:255',
             'tax_number' => 'nullable|string|max:255',
             'payment_terms' => 'nullable|string',
             'is_approved' => 'boolean',
             'currency_id' => 'nullable|exists:currencies,id',
-            'status_id' => 'nullable|exists:statuses,id',
+            'status' => 'nullable|string|in:Active,Inactive',
 
             // Nested contacts validation
             'contacts' => 'nullable|array',
