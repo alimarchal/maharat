@@ -146,11 +146,21 @@ const CreateSupplier = () => {
             }
             router.visit("/suppliers");
         } catch (error) {
-            setErrors(
-                error.response?.data?.errors || {
-                    general: "An error occurred while saving the supplier",
+            const errorData = error.response?.data?.errors || {
+                general: "An error occurred while saving the supplier",
+            };
+            
+            // Handle both string and array error formats
+            const processedErrors = {};
+            Object.keys(errorData).forEach(key => {
+                if (Array.isArray(errorData[key])) {
+                    processedErrors[key] = errorData[key][0]; // Take the first error message
+                } else {
+                    processedErrors[key] = errorData[key];
                 }
-            );
+            });
+            
+            setErrors(processedErrors);
         } finally {
             setLoading(false);
         }
@@ -170,31 +180,26 @@ const CreateSupplier = () => {
                             name="name"
                             value={formData.name}
                             onChange={handleChange}
+                            error={Array.isArray(errors.name) ? errors.name[0] : errors.name}
                         />
-                        {errors.name && (
-                            <p className="text-red-500 text-sm">
-                                {errors.name}
-                            </p>
-                        )}
                     </div>
-                    <InputFloating
-                        label="Supplier Code"
-                        name="code"
-                        value={formData.code}
-                        onChange={handleChange}
-                    />
+                    <div>
+                        <InputFloating
+                            label="Supplier Code"
+                            name="code"
+                            value={formData.code}
+                            onChange={handleChange}
+                            error={Array.isArray(errors.code) ? errors.code[0] : errors.code}
+                        />
+                    </div>
                     <div>
                         <InputFloating
                             label="Email"
                             name="email"
                             value={formData.email}
                             onChange={handleChange}
+                            error={Array.isArray(errors.email) ? errors.email[0] : errors.email}
                         />
-                        {errors.email && (
-                            <p className="text-red-500 text-sm">
-                                {errors.email}
-                            </p>
-                        )}
                     </div>
                     <div>
                         <InputFloating
@@ -202,12 +207,8 @@ const CreateSupplier = () => {
                             name="phone"
                             value={formData.phone}
                             onChange={handleChange}
+                            error={Array.isArray(errors.phone) ? errors.phone[0] : errors.phone}
                         />
-                        {errors.phone && (
-                            <p className="text-red-500 text-sm">
-                                {errors.phone}
-                            </p>
-                        )}
                     </div>
                     <InputFloating
                         label="Website"
@@ -221,12 +222,8 @@ const CreateSupplier = () => {
                             name="tax_number"
                             value={formData.tax_number}
                             onChange={handleChange}
+                            error={Array.isArray(errors.tax_number) ? errors.tax_number[0] : errors.tax_number}
                         />
-                        {errors.tax_number && (
-                            <p className="text-red-500 text-sm">
-                                {errors.tax_number}
-                            </p>
-                        )}
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
