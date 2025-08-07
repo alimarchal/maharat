@@ -25,19 +25,17 @@ const EditFiscalPeriod = () => {
 
         try {
             const response = await axios.get(`/api/v1/fiscal-periods?page=${currentPage}&include=fiscalYear,creator,updater`);
-            console.log('API Response:', response.data); // Debug log
+            
             if (response.data && response.data.data) {
                 setFiscalPeriods(response.data.data);
                 // Fix: Handle last_page as array or single value
                 const lastPageValue = response.data.meta?.last_page;
                 const lastPage = Array.isArray(lastPageValue) ? lastPageValue[0] : (lastPageValue || 1);
                 setLastPage(lastPage);
-                console.log('Current Page:', currentPage, 'Last Page:', lastPage); // Debug log
             } else {
                 setError("Invalid response format. Please try again.");
             }
         } catch (error) {
-            console.error("Error fetching fiscal periods:", error);
             setError(
                 error.response?.data?.message ||
                     "Failed to fetch fiscal periods. Please try again."
@@ -65,7 +63,6 @@ const EditFiscalPeriod = () => {
             grouped[fiscalYear].fiscalPeriods.push(fiscalPeriod);
             grouped[fiscalYear].totalPeriods += 1;
         });
-        
         return Object.values(grouped);
     };
 
@@ -80,17 +77,31 @@ const EditFiscalPeriod = () => {
     };
 
     const handleEdit = (fiscalPeriod) => {
-        setEditingFiscalPeriod(fiscalPeriod);
+        
+        // Ensure all required fields are present and convert types properly
+        const fiscalPeriodToEdit = {
+            id: fiscalPeriod.id,
+            fiscal_year_id: fiscalPeriod.fiscal_year_id,
+            budget_name: fiscalPeriod.budget_name || "",
+            period_name: fiscalPeriod.period_name || "",
+            start_date: fiscalPeriod.start_date || "",
+            end_date: fiscalPeriod.end_date || "",
+            status: fiscalPeriod.status || "",
+            budgets_count: parseInt(fiscalPeriod.budgets_count) || 0, // Convert to number
+            fiscal_year: fiscalPeriod.fiscal_year || null
+        };
+        
+        setEditingFiscalPeriod(fiscalPeriodToEdit);
         setIsModalOpen(true);
     };
 
     const handleDelete = async (fiscalPeriodId) => {
+        
         if (window.confirm("Are you sure you want to delete this fiscal period? This action cannot be undone.")) {
             try {
                 await axios.delete(`/api/v1/fiscal-periods/${fiscalPeriodId}`);
                 fetchFiscalPeriods(); // Refresh the list
             } catch (error) {
-                console.error("Error deleting fiscal period:", error);
                 const errorMessage = error.response?.data?.message || "Failed to delete fiscal period. Please try again.";
                 alert(errorMessage);
             }
@@ -118,7 +129,10 @@ const EditFiscalPeriod = () => {
             <div className="flex justify-between items-center mb-8">
                 <h2 className="text-3xl font-bold text-[#2C323C]">Fiscal Years</h2>
                 <button
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={() => {
+                        setEditingFiscalPeriod(null); // Ensure no editing state
+                        setIsModalOpen(true);
+                    }}
                     className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                     type="button"
                 >
@@ -221,12 +235,17 @@ const EditFiscalPeriod = () => {
                                                 <button
                                                     onClick={() => handleEdit(fiscalPeriod)}
                                                     className="text-blue-400 hover:text-blue-500"
-                                                    title={fiscalPeriod.budgets_count > 0 ? "Edit Status Only (Budget Allocated)" : "Edit Fiscal Period"}
+                                                    title={parseInt(fiscalPeriod.budgets_count) > 0 ? "Edit Status Only (Budget Allocated)" : "Edit Fiscal Period"}
                                                 >
                                                     <FontAwesomeIcon icon={faEdit} />
                                                 </button>
                                                 <button
-                                                    onClick={() => fiscalPeriod.budgets_count === 0 && handleDelete(fiscalPeriod.id)}
+                                                    onClick={() => {
+                                                        const budgetsCount = parseInt(fiscalPeriod.budgets_count);
+                                                        if (budgetsCount === 0) {
+                                                            handleDelete(fiscalPeriod.id);
+                                                        }
+                                                    }}
                                                     className={`${
                                                         fiscalPeriod.budgets_count === 0 
                                                             ? 'text-red-500 hover:text-red-800' 

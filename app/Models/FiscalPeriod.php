@@ -63,6 +63,14 @@ class FiscalPeriod extends Model
     }
 
     /**
+     * Get the request budgets associated with this fiscal period.
+     */
+    public function requestBudgets(): HasMany
+    {
+        return $this->hasMany(RequestBudget::class);
+    }
+
+    /**
      * Check if the fiscal period has any budgets.
      */
     public function hasBudgets(): bool

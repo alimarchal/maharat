@@ -26,7 +26,7 @@ class FiscalPeriodController extends Controller
             ->allowedFilters(FiscalPeriodParameters::ALLOWED_FILTERS)
             ->allowedSorts(FiscalPeriodParameters::ALLOWED_SORTS)
             ->allowedIncludes(FiscalPeriodParameters::ALLOWED_INCLUDES)
-            ->withCount('budgets')
+            ->withCount('requestBudgets')
             ->paginate()
             ->appends(request()->query());
 
