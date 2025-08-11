@@ -13,7 +13,7 @@ import {
 import { toast } from "react-hot-toast";
 import InputFloating from "@/Components/InputFloating";
 import SelectFloating from "@/Components/SelectFloating";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Step component for adding multiple steps
 const Step = ({

@@ -8,7 +8,7 @@ import {
 import SelectFloating from "@/Components/SelectFloating";
 import { Link } from "@inertiajs/react";
 import axios from "axios";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 const ProcessFlow = () => {
     const [rows, setRows] = useState([]);

@@ -14,7 +14,7 @@ import {
     faTimes,
     faTrash,
 } from "@fortawesome/free-solid-svg-icons";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 const FAQModal = ({ isOpen, onClose, onSave, faq = null, isEdit = false }) => {
     const [formData, setFormData] = useState({

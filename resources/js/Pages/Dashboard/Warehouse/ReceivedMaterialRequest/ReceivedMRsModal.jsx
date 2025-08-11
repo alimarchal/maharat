@@ -19,6 +19,7 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
     });
 
     const [costCenters, setCostCenters] = useState([]);
+    const [subCostCenters, setSubCostCenters] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [errors, setErrors] = useState({});
     //TODO: Uncomment when second phase has started for new feature
@@ -28,7 +29,7 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
 
     useEffect(() => {
         axios
-            .get("/api/v1/cost-centers")
+            .get("/api/v1/cost-centers?is_main=true")
             .then((res) => setCostCenters(res.data.data))
             .catch((err) => console.error("Error fetching cost centers:", err));
 
@@ -46,15 +47,21 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                     requestData.items
                         ?.map((item) => item.product?.name)
                         .join(", ") || "",
-                cost_center_id: requestData.cost_center_id || "",
-                sub_cost_center_id: requestData.sub_cost_center_id || "",
-                department_id: requestData.department_id || "",
+                cost_center_id: requestData.cost_center_id?.toString() || "",
+                sub_cost_center_id: requestData.sub_cost_center_id?.toString() || "",
+                department_id: requestData.department_id?.toString() || "",
                 priority: "",
                 status: "",
                 description: "",
                 rejection_reason: "",
             });
             setErrors({});
+            
+            // Fetch sub-cost centers if cost center is selected
+            if (requestData.cost_center_id) {
+                fetchSubCostCenters(requestData.cost_center_id);
+            }
+            
             //TODO: Uncomment when second phase has started for new feature
             // setShowRfqOption(false);
             // setRfqError("");
@@ -93,9 +100,29 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
     //     checkRfqRequest();
     // }, [isOpen, requestData]);
 
+    const fetchSubCostCenters = async (costCenterId) => {
+        try {
+            const response = await axios.get(`/api/v1/cost-centers?is_main=false&filter[parent_id]=${costCenterId}`);
+            setSubCostCenters(response.data.data || []);
+        } catch (error) {
+            console.error("Error fetching sub-cost centers:", error);
+            setSubCostCenters([]);
+        }
+    };
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
+        
+        // If cost center changes, fetch sub-cost centers and reset sub_cost_center_id
+        if (name === 'cost_center_id') {
+            if (value) {
+                fetchSubCostCenters(value);
+            } else {
+                setSubCostCenters([]);
+            }
+            setFormData(prev => ({ ...prev, sub_cost_center_id: "" }));
+        }
     };
 
     const validateForm = () => {
@@ -339,10 +366,14 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                                 name="sub_cost_center_id"
                                 value={formData.sub_cost_center_id}
                                 onChange={handleChange}
-                                options={costCenters.map((c) => ({
-                                    id: c.id,
-                                    label: c.name,
-                                }))}
+                                options={[
+                                    { id: "", label: "Select Sub Cost Center" },
+                                    ...subCostCenters.map((c) => ({
+                                        id: c.id.toString(),
+                                        label: c.name,
+                                    }))
+                                ]}
+                                disabled={!formData.cost_center_id}
                             />
                         </div>
                         <div>
