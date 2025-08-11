@@ -269,10 +269,12 @@ const SubCostCenterModal = ({
                                 name="manager_id"
                                 value={formData.manager_id}
                                 onChange={handleChange}
-                                options={users.map((user) => ({
-                                    id: user.id,
-                                    label: user.name,
-                                }))}
+                                options={users
+                                    .filter(user => ![2, 3, 4].includes(user.id))
+                                    .map((user) => ({
+                                        id: user.id,
+                                        label: user.name,
+                                    }))}
                                 disabled
                             />
                         </div>

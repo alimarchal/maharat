@@ -62,16 +62,52 @@ const BudgetRequestForm = () => {
         }
     }, [isEditMode, formData.cost_center_id, costCenters]);
 
+    // Function to fetch all pages of data
+    const fetchAllPages = async (endpoint, params = {}) => {
+        let allData = [];
+        let currentPage = 1;
+        let hasMorePages = true;
+
+        while (hasMorePages) {
+            try {
+                const response = await axios.get(endpoint, {
+                    params: {
+                        ...params,
+                        page: currentPage,
+                        per_page: 100
+                    }
+                });
+
+                if (response.data.data && response.data.data.length > 0) {
+                    allData = [...allData, ...response.data.data];
+                    currentPage++;
+                    
+                    // Check if there are more pages
+                    if (response.data.meta && response.data.meta.current_page >= response.data.meta.last_page) {
+                        hasMorePages = false;
+                    }
+                } else {
+                    hasMorePages = false;
+                }
+            } catch (error) {
+                console.error(`Error fetching page ${currentPage} from ${endpoint}:`, error);
+                hasMorePages = false;
+            }
+        }
+
+        return allData;
+    };
+
     const fetchInitialData = async () => {
         try {
             const [deptRes, costRes, yearRes] = await Promise.all([
-                axios.get("/api/v1/departments"),
-                axios.get("/api/v1/cost-centers?is_main=true"),
+                fetchAllPages("/api/v1/departments"),
+                fetchAllPages("/api/v1/cost-centers", { is_main: true }),
                 axios.get("/api/v1/fiscal-periods?filter[status]=open"),
             ]);
             
-            setDepartments(deptRes.data.data);
-            setCostCenters(costRes.data.data);
+            setDepartments(deptRes);
+            setCostCenters(costRes);
             setFiscalYears(yearRes.data.data);
             setDataLoaded(true);
         } catch (error) {

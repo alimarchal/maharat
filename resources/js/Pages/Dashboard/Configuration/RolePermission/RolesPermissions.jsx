@@ -186,7 +186,9 @@ const RolesPermissions = () => {
                                 onClick={() => setDropdownOpen(false)}
                             />
                             <div className="absolute z-50 right-0 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
-                                {users.map((user) => (
+                                {users
+                                    .filter(user => ![2, 3, 4].includes(user.id))
+                                    .map((user) => (
                                     <button
                                         key={user.id}
                                         onClick={() => handleUserSelect(user)}
