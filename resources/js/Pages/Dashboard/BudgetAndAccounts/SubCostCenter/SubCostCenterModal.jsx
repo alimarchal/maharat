@@ -33,18 +33,54 @@ const SubCostCenterModal = ({
     const [costCenters, setCostCenters] = useState([]);
     const [loading, setLoading] = useState(false);
 
+    // Function to fetch all pages of data
+    const fetchAllPages = async (endpoint, params = {}) => {
+        let allData = [];
+        let currentPage = 1;
+        let hasMorePages = true;
+
+        while (hasMorePages) {
+            try {
+                const response = await axios.get(endpoint, {
+                    params: {
+                        ...params,
+                        page: currentPage,
+                        per_page: 100
+                    }
+                });
+
+                if (response.data.data && response.data.data.length > 0) {
+                    allData = [...allData, ...response.data.data];
+                    currentPage++;
+                    
+                    // Check if there are more pages
+                    if (response.data.meta && response.data.meta.current_page >= response.data.meta.last_page) {
+                        hasMorePages = false;
+                    }
+                } else {
+                    hasMorePages = false;
+                }
+            } catch (error) {
+                console.error(`Error fetching page ${currentPage} from ${endpoint}:`, error);
+                hasMorePages = false;
+            }
+        }
+
+        return allData;
+    };
+
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [usersRes, departmentsRes, costCentersRes] =
-                    await Promise.all([
-                        axios.get("/api/v1/users"),
-                        axios.get("/api/v1/departments"),
-                        axios.get("/api/v1/cost-centers?is_main=true&per_page=1000000000"),
-                    ]);
-                setUsers(usersRes.data.data);
-                setDepartments(departmentsRes.data.data);
-                setCostCenters(costCentersRes.data.data);
+                const [users, departments, costCenters] = await Promise.all([
+                    fetchAllPages("/api/v1/users"),
+                    fetchAllPages("/api/v1/departments"),
+                    fetchAllPages("/api/v1/cost-centers", { is_main: true })
+                ]);
+                
+                setUsers(users);
+                setDepartments(departments);
+                setCostCenters(costCenters);
             } catch (error) {
                 console.error("Error fetching data:", error);
             }
