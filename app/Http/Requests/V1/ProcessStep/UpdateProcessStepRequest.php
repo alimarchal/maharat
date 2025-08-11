@@ -24,13 +24,10 @@ class UpdateProcessStepRequest extends FormRequest
     {
         return [
             'process_id' => ['sometimes', 'exists:processes,id'],
-            'approver_id' => ['sometimes', 'exists:users,id'],
+            'approver_id' => ['nullable', 'exists:users,id'],
+            'designation_id' => ['nullable', 'exists:designations,id'],
             'order' => ['sometimes', 'integer', 'min:0'],
-            'name' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'conditions' => ['nullable', 'string'],
-            'status' => ['sometimes', 'string', Rule::in(['Pending', 'In Progress', 'Approved', 'Rejected', 'Skipped'])],
-            'required_fields' => ['nullable', 'json'],
             'is_active' => ['sometimes', 'boolean'],
             'timeout_days' => ['nullable', 'integer', 'min:1'],
         ];

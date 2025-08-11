@@ -86,13 +86,22 @@ const SelectFloating = ({ label, name, value, onChange, options, onScroll, loadi
                     <div className="py-1">
                         {options && options.length > 0 ? (
                             options.map((option, index) => (
-                                <div
-                                    key={index}
-                                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-gray-900"
-                                    onClick={() => handleSelect(option)}
-                                >
-                        {option.label}
-                                </div>
+                                option.isSeparator ? (
+                                    <div
+                                        key={index}
+                                        className="px-4 py-2 text-gray-500 text-sm font-medium border-t border-gray-300 my-1 text-center cursor-default"
+                                    >
+                                        {option.label}
+                                    </div>
+                                ) : (
+                                    <div
+                                        key={index}
+                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-gray-900"
+                                        onClick={() => handleSelect(option)}
+                                    >
+                                        {option.label}
+                                    </div>
+                                )
                             ))
                         ) : (
                             <div className="px-4 py-2 text-gray-500 text-center">
