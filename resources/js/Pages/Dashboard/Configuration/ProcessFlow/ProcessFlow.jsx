@@ -23,8 +23,8 @@ const ProcessFlow = () => {
                 const [processRes, usersRes, designationsRes] =
                     await Promise.all([
                         axios.get("/api/v1/processes"),
-                        axios.get("/api/v1/users"),
-                        axios.get("/api/v1/designations"),
+                        axios.get("/api/v1/users?per_page=1000000000"), // Fetch all users
+                        axios.get("/api/v1/designations?per_page=1000000000"), // Fetch all designations
                     ]);
                 setProcesses(processRes.data.data);
                 setUsers(usersRes.data.data);
@@ -59,8 +59,8 @@ const ProcessFlow = () => {
                     setRows(
                         sortedSteps.map((step) => ({
                             id: step.order, // Use the actual order from the database
-                            approver_id: step.approver_id || "",
-                            designation_id: step.designation_id || "",
+                            approver_id: step.approver_id || null,
+                            designation_id: step.designation_id || null,
                             taskDescription: step.description || "",
                             step_id: step.id,
                         }))
@@ -69,8 +69,8 @@ const ProcessFlow = () => {
                     setRows([
                         {
                             id: 1,
-                            approver_id: "",
-                            designation_id: "",
+                            approver_id: null,
+                            designation_id: null,
                             taskDescription: "",
                         },
                     ]);
@@ -80,8 +80,8 @@ const ProcessFlow = () => {
                 setRows([
                     {
                         id: 1,
-                        approver_id: "",
-                        designation_id: "",
+                        approver_id: null,
+                        designation_id: null,
                         taskDescription: "",
                     },
                 ]);
@@ -128,8 +128,8 @@ const ProcessFlow = () => {
             ...rows,
             {
                 id: rows.length + 1,
-                approver_id: "",
-                designation_id: "",
+                approver_id: null,
+                designation_id: null,
                 taskDescription: "",
             },
         ]);
@@ -146,8 +146,8 @@ const ProcessFlow = () => {
                 : [
                       {
                           id: 1,
-                          approver_id: "",
-                          designation_id: "",
+                          approver_id: null,
+                          designation_id: null,
                           taskDescription: "",
                       },
                   ]
@@ -228,8 +228,8 @@ const ProcessFlow = () => {
                         setRows(
                             sortedSteps.map((step) => ({
                                 id: step.order, // Use the actual order from the database
-                                approver_id: step.approver_id || "",
-                                designation_id: step.designation_id || "",
+                                approver_id: step.approver_id || null,
+                                designation_id: step.designation_id || null,
                                 taskDescription: step.description || "",
                                 step_id: step.id,
                             }))
@@ -283,8 +283,13 @@ const ProcessFlow = () => {
 
                 if (row.approver_id) {
                     payload.approver_id = row.approver_id;
+                    payload.designation_id = null; // Explicitly clear designation_id
                 } else if (row.designation_id) {
                     payload.designation_id = row.designation_id;
+                    payload.approver_id = null; // Explicitly clear approver_id
+                } else {
+                    payload.approver_id = null;
+                    payload.designation_id = null;
                 }
 
                 console.log(`Preparing ${row.step_id ? 'update' : 'create'} payload for row ${index}:`, payload);
@@ -444,11 +449,9 @@ const ProcessFlow = () => {
                                                                         label="Approver"
                                                                         name="approver"
                                                                         value={
-                                                                            row.approver_id !== "" &&
-                                                                            row.approver_id !== null
+                                                                            row.approver_id
                                                                                 ? `user-${row.approver_id}`
-                                                                                : row.designation_id !== "" &&
-                                                                                  row.designation_id !== null
+                                                                                : row.designation_id
                                                                                 ? `designation-${row.designation_id}`
                                                                                 : ""
                                                                         }
@@ -459,16 +462,26 @@ const ProcessFlow = () => {
                                                                             )
                                                                         }
                                                                         options={[
-                                                                            {
-                                                                                id: "",
-                                                                                label: "Select an approver",
-                                                                            },
-                                                                            ...users.map(
-                                                                                (user) => ({
+                                                                            ...(users.length > 0 ? [{
+                                                                                id: "users-separator",
+                                                                                label: "USERS",
+                                                                                disabled: true,
+                                                                                isSeparator: true,
+                                                                                className: "border-t border-gray-300 my-1 py-1 text-center text-gray-500 text-sm font-medium"
+                                                                            }] : []),
+                                                                            ...users
+                                                                                .filter(user => ![2, 3, 4].includes(user.id))
+                                                                                .map((user) => ({
                                                                                     id: `user-${user.id}`,
                                                                                     label: user.name,
-                                                                                })
-                                                                            ),
+                                                                                })),
+                                                                            ...(users.length > 0 && designations.length > 0 ? [{
+                                                                                id: "separator-divider",
+                                                                                label: "DESIGNATIONS",
+                                                                                disabled: true,
+                                                                                isSeparator: true,
+                                                                                className: "border-t border-gray-300 my-1 py-1 text-center text-gray-500 text-sm font-medium"
+                                                                            }] : []),
                                                                             ...designations.map(
                                                                                 (des) => ({
                                                                                     id: `designation-${des.id}`,

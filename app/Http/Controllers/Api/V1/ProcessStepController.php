@@ -112,6 +112,14 @@ class ProcessStepController extends Controller
             $stepData = $request->validated();
             $stepData['updated_by'] = $user->id;
 
+            // Handle explicit null values for approver_id and designation_id
+            if ($request->has('approver_id')) {
+                $stepData['approver_id'] = $request->input('approver_id');
+            }
+            if ($request->has('designation_id')) {
+                $stepData['designation_id'] = $request->input('designation_id');
+            }
+
             $processStep->update($stepData);
 
             DB::commit();
