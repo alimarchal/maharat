@@ -93,93 +93,51 @@ const QuotationModal = ({
             
             // Fetch existing quotations for this RFQ to filter out used suppliers
             let usedSupplierIds = new Set();
-            let existingQuotations = []; // Declare the variable here
+            let existingQuotations = [];
             if (rfqId) {
                 try {
-                    console.log("Fetching quotations for RFQ ID:", rfqId);
-                    
                     // Get quotations data for this RFQ
                     try {
                         const quotationsResponse = await axios.get(`/api/v1/quotations?rfq_id=${rfqId}`);
-                        console.log("Quotations API response:", quotationsResponse.data);
                         
-                        // Handle the response structure: { success: true, data: [...] }
+                        // Handle the response structure
                         if (quotationsResponse.data && quotationsResponse.data.success && Array.isArray(quotationsResponse.data.data)) {
                             existingQuotations = quotationsResponse.data.data;
-                            console.log("Using success.data response structure");
                         } else if (quotationsResponse.data && Array.isArray(quotationsResponse.data)) {
                             existingQuotations = quotationsResponse.data;
-                            console.log("Using direct array response");
                         } else if (quotationsResponse.data && Array.isArray(quotationsResponse.data.data)) {
                             existingQuotations = quotationsResponse.data.data;
-                            console.log("Using wrapped data response");
-                        } else {
-                            console.warn("Unexpected response structure:", quotationsResponse.data);
                         }
                     } catch (error) {
                         console.error("Error fetching quotations:", error);
-                        console.error("Error response:", error.response?.data);
                     }
-                    
-                    console.log("Final existing quotations:", existingQuotations);
-                    console.log("Number of quotations found:", existingQuotations.length);
-                    
-                    // Log each quotation to see its structure
-                    existingQuotations.forEach((q, index) => {
-                        console.log(`Quotation ${index}:`, {
-                            id: q.id,
-                            supplier_id: q.supplier_id,
-                            supplier: q.supplier,
-                            rfq_id: q.rfq_id,
-                            type: typeof q.supplier_id
-                        });
-                    });
                     
                     // Filter out null/undefined supplier_ids and create the set
                     const validSupplierIds = existingQuotations
                         .map(q => q.supplier_id)
                         .filter(id => id !== null && id !== undefined && id !== '')
-                        .map(id => Number(id)); // Convert to number for consistent comparison
-                    
-                    console.log("All supplier IDs from quotations:", existingQuotations.map(q => q.supplier_id));
-                    console.log("Valid supplier IDs after filtering:", validSupplierIds);
-                    console.log("Valid supplier IDs types:", validSupplierIds.map(id => typeof id));
+                        .map(id => Number(id));
                     
                     usedSupplierIds = new Set(validSupplierIds);
-                    console.log("Used supplier IDs set:", Array.from(usedSupplierIds));
-                    console.log("Used supplier IDs set size:", usedSupplierIds.size);
                     
                     // In edit mode, remove the current quotation's supplier from the used list
                     // so it can still be selected
                     if (isEdit && quotation && quotation.supplier_id) {
-                        usedSupplierIds.delete(quotation.supplier_id);
-                        console.log("Removed current supplier from used list:", quotation.supplier_id);
+                        const currentSupplierId = Number(quotation.supplier_id);
+                        usedSupplierIds.delete(currentSupplierId);
                     }
                 } catch (error) {
                     console.error("Error in quotation filtering logic:", error);
                 }
-            } else {
-                console.log("No RFQ ID provided, skipping quotation filtering");
             }
             
             // Filter suppliers to exclude those already used for this RFQ and only show Active suppliers
-            console.log("Filtering suppliers...");
-            console.log("All suppliers count:", allSuppliers.length);
-            console.log("All suppliers:", allSuppliers.map(s => ({ id: s.id, name: s.name, type: typeof s.id, status: s.status })));
-            console.log("Used supplier IDs to exclude:", Array.from(usedSupplierIds));
-            console.log("Used supplier IDs types:", Array.from(usedSupplierIds).map(id => typeof id));
-            
             const availableSuppliers = allSuppliers.filter(supplier => {
-                const supplierId = Number(supplier.id); // Ensure supplier ID is a number
+                const supplierId = Number(supplier.id);
                 const isExcluded = usedSupplierIds.has(supplierId);
                 const isActive = supplier.status === 'Active' || supplier.status === 'active';
-                console.log(`Supplier ${supplier.name} (ID: ${supplierId}, type: ${typeof supplierId}, status: ${supplier.status}) - Excluded: ${isExcluded}, Active: ${isActive}`);
                 return !isExcluded && isActive;
             });
-            
-            console.log("All suppliers count:", allSuppliers.length);
-            console.log("Available suppliers count:", availableSuppliers.length);
-            console.log("Available suppliers:", availableSuppliers.map(s => ({ id: s.id, name: s.name, status: s.status })));
             
             // Only show filtered suppliers - no fallback to all suppliers
             setSuppliers(availableSuppliers);
