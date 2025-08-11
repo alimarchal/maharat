@@ -40,7 +40,7 @@ const SubCostCenterModal = ({
                     await Promise.all([
                         axios.get("/api/v1/users"),
                         axios.get("/api/v1/departments"),
-                        axios.get("/api/v1/cost-centers?is_main=true&per_page=1000"),
+                        axios.get("/api/v1/cost-centers?is_main=true&per_page=1000000000"),
                     ]);
                 setUsers(usersRes.data.data);
                 setDepartments(departmentsRes.data.data);

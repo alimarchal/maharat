@@ -380,8 +380,8 @@ const MakeRequest = () => {
                 const [unitsRes, warehousesRes, costCentersRes, subCostCentersRes, departmentsRes] = await Promise.all([
                     axios.get("/api/v1/units"),
                     axios.get("/api/v1/warehouses"),
-                    axios.get("/api/v1/cost-centers?is_main=true&per_page=1000"),
-                    axios.get("/api/v1/cost-centers?is_main=false&per_page=1000"),
+                    axios.get("/api/v1/cost-centers?is_main=true&per_page=1000000000"),
+                    axios.get("/api/v1/cost-centers?is_main=false&per_page=1000000000"),
                     axios.get("/api/v1/departments"),
                 ]);
 

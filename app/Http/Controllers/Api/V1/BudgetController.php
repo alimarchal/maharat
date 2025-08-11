@@ -23,14 +23,58 @@ class BudgetController extends Controller
      */
     public function index(): JsonResponse|ResourceCollection
     {
+        // Get the current page and per_page from request
+        $perPage = request('per_page', 15);
+        $currentPage = request('page', 1);
+
+        // First, get the total count of unique fiscal periods
+        $totalFiscalPeriods = QueryBuilder::for(Budget::class)
+            ->allowedFilters([
+                ...BudgetParameters::ALLOWED_FILTERS,
+            ])
+            ->distinct('fiscal_period_id')
+            ->count('fiscal_period_id');
+
+        // Calculate the offset
+        $offset = ($currentPage - 1) * $perPage;
+
+        // Get unique fiscal period IDs for pagination
+        $fiscalPeriodIds = QueryBuilder::for(Budget::class)
+            ->allowedFilters([
+                ...BudgetParameters::ALLOWED_FILTERS,
+            ])
+            ->distinct('fiscal_period_id')
+            ->orderBy('fiscal_period_id', 'desc')
+            ->skip($offset)
+            ->take($perPage)
+            ->pluck('fiscal_period_id');
+
+        // Then, get all budgets for the selected fiscal periods with includes
         $budgets = QueryBuilder::for(Budget::class)
             ->allowedFilters([
                 ...BudgetParameters::ALLOWED_FILTERS,
             ])
             ->allowedSorts(BudgetParameters::ALLOWED_SORTS)
             ->allowedIncludes(BudgetParameters::ALLOWED_INCLUDES)
-            ->paginate()
-            ->appends(request()->query());
+            ->whereIn('fiscal_period_id', $fiscalPeriodIds)
+            ->orderBy('fiscal_period_id', 'desc')
+            ->orderBy('id', 'desc')
+            ->get();
+
+        // Create a custom paginator instance based on fiscal periods
+        $budgets = new \Illuminate\Pagination\LengthAwarePaginator(
+            $budgets,
+            $totalFiscalPeriods,
+            $perPage,
+            $currentPage,
+            [
+                'path' => request()->url(),
+                'pageName' => 'page',
+            ]
+        );
+
+        // Add query parameters to pagination links
+        $budgets->appends(request()->query());
 
         if ($budgets->isEmpty()) {
             return response()->json([

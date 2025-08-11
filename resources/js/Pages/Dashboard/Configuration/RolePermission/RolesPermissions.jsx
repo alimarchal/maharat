@@ -48,7 +48,7 @@ const RolesPermissions = () => {
             try {
                 const [userResponse, usersResponse] = await Promise.all([
                     axios.get("/api/v1/user/current-role"),
-                    axios.get("/api/v1/users?per_page=1000")
+                    axios.get("/api/v1/users?per_page=1000000000")
                 ]);
                 
                 setCurrentUserRole(userResponse.data.role);

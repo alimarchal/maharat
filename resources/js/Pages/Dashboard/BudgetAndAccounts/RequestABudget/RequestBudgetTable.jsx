@@ -10,15 +10,18 @@ const RequestBudgetTable = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [deletingId, setDeletingId] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [lastPage, setLastPage] = useState(1);
 
     useEffect(() => {
         const fetchBudgetRequests = async () => {
             setLoading(true);
             try {
                 const response = await axios.get(
-                    `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator`
+                    `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator&page=${currentPage}&per_page=15`
                 );
                 setBudgetRequests(response.data.data);
+                setLastPage(response.data.meta?.last_page || 1);
             } catch (err) {
                 setError("Failed to fetch budget requests.");
             } finally {
@@ -27,7 +30,7 @@ const RequestBudgetTable = () => {
         };
 
         fetchBudgetRequests();
-    }, []);
+    }, [currentPage]);
 
     const handleDelete = async (id) => {
         if (!window.confirm("Are you sure you want to delete this budget request? This will also delete any associated tasks and approval transactions.")) {
@@ -198,6 +201,39 @@ const RequestBudgetTable = () => {
                     )}
                 </tbody>
             </table>
+
+            {/* Pagination */}
+            {!loading && !error && budgetRequests.length > 0 && (
+                <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    {Array.from(
+                        { length: lastPage },
+                        (_, index) => index + 1
+                    ).map((page) => (
+                        <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-1 ${
+                                currentPage === page
+                                    ? "bg-[#009FDC] text-white"
+                                    : "border border-[#B9BBBD] bg-white"
+                            } rounded-full hover:bg-[#0077B6] hover:text-white transition`}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className={`px-3 py-1 rounded-full transition ${
+                            currentPage >= lastPage || budgetRequests.length < 15
+                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                : "bg-[#009FDC] text-white hover:bg-[#0077B6]"
+                        }`}
+                        disabled={currentPage >= lastPage || budgetRequests.length < 15}
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
