@@ -116,7 +116,7 @@ const TasksTable = () => {
                             )
                             .map((req) => (
                                 <tr
-                                    key={req}
+                                    key={req.id}
                                     className="border-b border-gray-200"
                                 >
                                     <td className="py-3 px-4">

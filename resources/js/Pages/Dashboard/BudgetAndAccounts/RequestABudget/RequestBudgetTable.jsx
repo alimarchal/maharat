@@ -18,7 +18,7 @@ const RequestBudgetTable = () => {
             setLoading(true);
             try {
                 const response = await axios.get(
-                    `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator&page=${currentPage}&per_page=15`
+                    `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator&page=${currentPage}&per_page=15&sort=-created_at`
                 );
                 setBudgetRequests(response.data.data);
                 setLastPage(response.data.meta?.last_page || 1);

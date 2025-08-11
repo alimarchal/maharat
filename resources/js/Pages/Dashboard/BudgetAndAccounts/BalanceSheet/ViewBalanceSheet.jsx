@@ -392,9 +392,9 @@ const BalanceSheetReport = () => {
                 </button>
             </div>
             
-            <div className="mt-8">
+            {/* <div className="mt-8">
                 <ViewSavedPDFs year={formData.year} />
-            </div>
+            </div> */}
         </div>
     );
 };

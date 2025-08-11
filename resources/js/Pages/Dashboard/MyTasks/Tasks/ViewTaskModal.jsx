@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faTimes,
@@ -13,6 +14,53 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 const ViewTaskModal = ({ isOpen, onClose, task }) => {
+    const [fiscalPeriodName, setFiscalPeriodName] = useState("");
+    const [rfqCategoryName, setRfqCategoryName] = useState("");
+    const [rfqDescription, setRfqDescription] = useState("");
+
+    useEffect(() => {
+        if (isOpen && task && task.budget && task.budget.fiscal_period_id) {
+            // Fetch fiscal period name from API
+            axios.get(`/api/v1/fiscal-periods/${task.budget.fiscal_period_id}`)
+                .then(response => {
+                    setFiscalPeriodName(response.data.data.period_name);
+                })
+                .catch(error => {
+                    console.error("Error fetching fiscal period:", error);
+                    setFiscalPeriodName(`Fiscal Period ID: ${task.budget.fiscal_period_id}`);
+                });
+        }
+        
+        if (isOpen && task && task.rfq && task.rfq.items && task.rfq.items.length > 0) {
+            // Get the product_id from the first RFQ item
+            const firstItem = task.rfq.items[0];
+            if (firstItem.product_id) {
+                // Fetch the product details from products table using product_id
+                axios.get(`/api/v1/products/${firstItem.product_id}`)
+                    .then(response => {
+                        if (response.data.data) {
+                            const product = response.data.data;
+                            // Set the description from the products table
+                            setRfqDescription(product.description);
+                            
+                            // Also fetch the category name using the product's category_id
+                            if (product.category_id) {
+                                return axios.get(`/api/v1/product-categories/${product.category_id}`);
+                            }
+                        }
+                    })
+                    .then(categoryResponse => {
+                        if (categoryResponse && categoryResponse.data.data) {
+                            setRfqCategoryName(categoryResponse.data.data.name);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error fetching product or category:", error);
+                    });
+            }
+        }
+    }, [isOpen, task]);
+
     if (!isOpen || !task) return null;
 
     // Status badge component
@@ -307,10 +355,14 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                             {task.rfq.items.map((item, index) => (
                                                                 <tr key={index}>
                                                                     <td className="px-3 py-2">{item.item_name || item.product?.name || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.category?.name || "N/A"}</td>
+                                                                    <td className="px-3 py-2">
+                                                                        {rfqCategoryName || "Loading..."}
+                                                                    </td>
                                                                     <td className="px-3 py-2">{item.quantity ? parseFloat(item.quantity).toFixed(1) : "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.unit?.name || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.description || "N/A"}</td>
+                                                                    <td className="px-3 py-2">{item.unit?.name || item.product?.unit?.name || "N/A"}</td>
+                                                                    <td className="px-3 py-2">
+                                                                        {rfqDescription || "Loading..."}
+                                                                    </td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
@@ -438,7 +490,9 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Fiscal Period:</span>
-                                                <span className="font-medium ml-2">{task.budget.fiscal_period?.period_name || "N/A"}</span>
+                                                <span className="font-medium ml-2">
+                                                    {fiscalPeriodName || "Loading..."}
+                                                </span>
                                             </div>
                                         </div>
                                         
@@ -621,8 +675,8 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                             </div>
                         )}
 
-                        {/* Approval Workflow Information */}
-                        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm md:col-span-2">
+                        {/* Approval Workflow Information - Commented out as not needed */}
+                        {/* <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm md:col-span-2">
                             <div className="flex items-center text-indigo-600 mb-4">
                                 <FontAwesomeIcon icon={faListCheck} className="mr-3" />
                                 <h3 className="text-lg font-semibold">
@@ -630,7 +684,6 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 </h3>
                             </div>
                             <div className="space-y-4">
-                                {/* Current Step */}
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                                     <div className="flex items-center mb-2">
                                         <FontAwesomeIcon icon={faCircleExclamation} className="text-blue-600 mr-2" />
@@ -654,7 +707,6 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                     </div>
                                 </div>
 
-                                {/* Previous Approvals */}
                                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                                     <div className="flex items-center mb-3">
                                         <FontAwesomeIcon icon={faCircleCheck} className="text-green-600 mr-2" />
@@ -717,7 +769,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>
