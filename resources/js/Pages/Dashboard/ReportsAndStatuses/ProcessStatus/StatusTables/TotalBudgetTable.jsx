@@ -21,7 +21,7 @@ const TotalBudgetTable = () => {
 
         try {
             const response = await axios.get(
-                `/api/v1/budgets?include=fiscalPeriod,department,costCenter,creator,updater&page=${currentPage}`
+                `/api/v1/budgets?include=fiscalPeriod,creator,updater&page=${currentPage}&per_page=15&sort=id&order=desc`
             );
             if (response.data && response.data.data) {
                 setBudgets(response.data.data);

@@ -54,7 +54,7 @@ const Notification = () => {
                 const [typesResponse, channelsResponse, usersResponse] = await Promise.all([
                     axios.get("/api/v1/notification-types"),
                     axios.get("/api/v1/notification-channels"),
-                    axios.get("/api/v1/users?per_page=1000")
+                    axios.get("/api/v1/users?per_page=1000000000")
                 ]);
 
                 setNotificationTypes(typesResponse.data.data);

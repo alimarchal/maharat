@@ -59,8 +59,8 @@ useEffect(() => {
     const fetchData = async () => {
         try {
             const [designationsResponse, departmentsResponse] = await Promise.all([
-                axios.get('/api/v1/designations?per_page=1000'),
-                axios.get('/api/v1/departments?per_page=1000'),
+                axios.get('/api/v1/designations?per_page=1000000000'),
+                axios.get('/api/v1/departments?per_page=1000000000'),
             ]);
 
             setDesignations(designationsResponse.data.data);

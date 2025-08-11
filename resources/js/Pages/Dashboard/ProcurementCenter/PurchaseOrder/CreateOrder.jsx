@@ -117,7 +117,7 @@ export default function CreatePurchaseOrder() {
 
             // Always fetch fresh purchase orders data to check which quotations have POs
             const purchaseOrdersResponse = await axios.get(
-                "/api/v1/purchase-orders?per_page=1000"
+                "/api/v1/purchase-orders?per_page=1000000000"
             );
             const purchaseOrdersData = purchaseOrdersResponse.data.data || [];
             const quotationIdsWithPO = new Set(

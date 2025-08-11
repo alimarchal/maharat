@@ -45,7 +45,7 @@ const CostCenterTable = () => {
         ) {
             try {
                 // First check if there are any sub cost centers using this as parent
-                const subCostCentersResponse = await axios.get(`/api/v1/cost-centers?is_main=false&per_page=1000`);
+                const subCostCentersResponse = await axios.get(`/api/v1/cost-centers?is_main=false&per_page=1000000000`);
                 const subCostCenters = subCostCentersResponse.data.data || [];
                 const hasSubCostCenters = subCostCenters.some(sub => sub.parent_id === id);
                 

@@ -38,7 +38,7 @@ const CreateProduct = () => {
             try {
                 const [categoriesRes, unitsRes] = await Promise.all([
                     axios.get("/api/v1/product-categories", {
-                        params: { per_page: 1000, sort: "name" },
+                        params: { per_page: 1000000000, sort: "name" },
                     }),
                     axios.get("/api/v1/units"),
                 ]);
