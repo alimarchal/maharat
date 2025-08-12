@@ -260,75 +260,78 @@ const MakeRequest = () => {
             const materialRequest = await axios[method](url, submitData);
             const materialRequestId = materialRequest.data.data.id;
 
-            // Fetch the Material Request process
-            const processResponse = await axios.get(
-                "/api/v1/processes?include=steps,creator,updater&filter[title]=Material Request"
-            );
-            const processList = processResponse.data.data;
-
-            // Check if process exists
-            if (!processList?.length) {
-                setProcessError(
-                    "No Material Request process found. Please create a process first."
+            // Only create workflow (transaction and task) if this is a new request, not an edit
+            if (!requestId) {
+                // Fetch the Material Request process
+                const processResponse = await axios.get(
+                    "/api/v1/processes?include=steps,creator,updater&filter[title]=Material Request"
                 );
-                setLoading(false);
-                return;
-            }
+                const processList = processResponse.data.data;
 
-            const process = processList[0];
+                // Check if process exists
+                if (!processList?.length) {
+                    setProcessError(
+                        "No Material Request process found. Please create a process first."
+                    );
+                    setLoading(false);
+                    return;
+                }
 
-            // Check if process has steps
-            if (!process?.steps?.length) {
-                setProcessError(
-                    "No process steps found for Material Request. Please create process steps first."
+                const process = processList[0];
+
+                // Check if process has steps
+                if (!process?.steps?.length) {
+                    setProcessError(
+                        "No process steps found for Material Request. Please create process steps first."
+                    );
+                    setLoading(false);
+                    return;
+                }
+
+                const processStep = process.steps[0];
+
+                // Get approver for the user
+                const processResponseViaUser = await axios.get(
+                    `/api/v1/process-steps/${processStep?.id}/user/${user_id}`
                 );
-                setLoading(false);
-                return;
-            }
+                const assignUser = processResponseViaUser?.data?.data;
 
-            const processStep = process.steps[0];
+                // Check if approver exists
+                if (!assignUser?.approver_id) {
+                    setProcessError(
+                        "No approver found for your user. Please set up approver relationships first."
+                    );
+                    setLoading(false);
+                    return;
+                }
 
-            // Get approver for the user
-            const processResponseViaUser = await axios.get(
-                `/api/v1/process-steps/${processStep?.id}/user/${user_id}`
-            );
-            const assignUser = processResponseViaUser?.data?.data;
-
-            // Check if approver exists
-            if (!assignUser?.approver_id) {
-                setProcessError(
-                    "No approver found for your user. Please set up approver relationships first."
+                // Create transaction
+                const transactionPayload = {
+                    material_request_id: materialRequestId,
+                    requester_id: user_id,
+                    assigned_to: assignUser.approver_id,
+                    order: String(processStep.order),
+                    description: processStep.description,
+                    status: "Pending",
+                };
+                await axios.post(
+                    "/api/v1/material-request-transactions",
+                    transactionPayload
                 );
-                setLoading(false);
-                return;
+
+                // Create task
+                const taskPayload = {
+                    process_step_id: processStep.id,
+                    process_id: processStep.process_id,
+                    assigned_at: new Date().toISOString(),
+                    urgency: "Normal",
+                    assigned_to_user_id: assignUser.approver_id,
+                    assigned_from_user_id: user_id,
+                    read_status: null,
+                    material_request_id: materialRequestId,
+                };
+                await axios.post("/api/v1/tasks", taskPayload);
             }
-
-            // Create transaction
-            const transactionPayload = {
-                material_request_id: materialRequestId,
-                requester_id: user_id,
-                assigned_to: assignUser.approver_id,
-                order: String(processStep.order),
-                description: processStep.description,
-                status: "Pending",
-            };
-            await axios.post(
-                "/api/v1/material-request-transactions",
-                transactionPayload
-            );
-
-            // Create task
-            const taskPayload = {
-                process_step_id: processStep.id,
-                process_id: processStep.process_id,
-                assigned_at: new Date().toISOString(),
-                urgency: "Normal",
-                assigned_to_user_id: assignUser.approver_id,
-                assigned_from_user_id: user_id,
-                read_status: null,
-                material_request_id: materialRequestId,
-            };
-            await axios.post("/api/v1/tasks", taskPayload);
 
             // Navigate to my-requests page
             router.visit("/my-requests");
@@ -473,7 +476,7 @@ const MakeRequest = () => {
                         warehouse_id: requestData.warehouse?.id || "",
                         expected_delivery_date:
                             requestData.expected_delivery_date || "",
-                        status_id: "1",
+                        status_id: requestData.status?.id || "1",
                         cost_center_id: requestData.costCenter?.id || "",
                         sub_cost_center_id: requestData.subCostCenter?.id || "",
                         department_id: requestData.department?.id || "",

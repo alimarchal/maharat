@@ -1394,29 +1394,32 @@ function AddQuotationForm() {
                 }
             }
 
-            const RFQTransactionPayload = {
-                rfq_id: newRfqId,
-                requester_id: user_id,
-                assigned_to: assignUser?.approver_id,
-                order: processStep.order,
-                description: processStep.description,
-                status: "Pending",
-            };
-            await axios.post(
-                "/api/v1/rfq-approval-transactions",
-                RFQTransactionPayload
-            );
+            // Only create workflow (transaction and task) if this is a new RFQ, not an edit
+            if (!rfqId) {
+                const RFQTransactionPayload = {
+                    rfq_id: newRfqId,
+                    requester_id: user_id,
+                    assigned_to: assignUser?.approver_id,
+                    order: processStep.order,
+                    description: processStep.description,
+                    status: "Pending",
+                };
+                await axios.post(
+                    "/api/v1/rfq-approval-transactions",
+                    RFQTransactionPayload
+                );
 
-            const taskPayload = {
-                process_step_id: processStep.id,
-                process_id: processStep.process_id,
-                assigned_at: new Date().toISOString(),
-                urgency: "Normal",
-                assigned_to_user_id: assignUser?.approver_id,
-                assigned_from_user_id: user_id,
-                rfq_id: newRfqId,
-            };
-            await axios.post("/api/v1/tasks", taskPayload);
+                const taskPayload = {
+                    process_step_id: processStep.id,
+                    process_id: processStep.process_id,
+                    assigned_at: new Date().toISOString(),
+                    urgency: "Normal",
+                    assigned_to_user_id: assignUser?.approver_id,
+                    assigned_from_user_id: user_id,
+                    rfq_id: newRfqId,
+                };
+                await axios.post("/api/v1/tasks", taskPayload);
+            }
 
             //TODO: Uncomment when second phase has started for new feature
             // Mark the RFQ request as requested only after successful RFQ creation

@@ -16,7 +16,7 @@ const TasksTable = () => {
     const [selectedTask, setSelectedTask] = useState(null);
 
     const [selectedFilter, setSelectedFilter] = useState("All");
-    const filters = ["All", "Pending", "Approved", "Referred", "Rejected"];
+    const filters = ["All", "Pending", "Approved", "Rejected"];
 
     useEffect(() => {
         const fetchTasks = async () => {
@@ -107,14 +107,15 @@ const TasksTable = () => {
                                 {error}
                             </td>
                         </tr>
-                    ) : tasks.length > 0 ? (
-                        tasks
-                            .filter(
-                                (req) =>
-                                    selectedFilter === "All" ||
-                                    req.status === selectedFilter
-                            )
-                            .map((req) => (
+                    ) : (() => {
+                        const filteredTasks = tasks.filter(
+                            (req) =>
+                                selectedFilter === "All" ||
+                                req.status === selectedFilter
+                        );
+                        
+                        if (filteredTasks.length > 0) {
+                            return filteredTasks.map((req) => (
                                 <tr
                                     key={req.id}
                                     className="border-b border-gray-200"
@@ -171,22 +172,30 @@ const TasksTable = () => {
                                         )}
                                     </td>
                                 </tr>
-                            ))
-                    ) : (
-                        <tr>
-                            <td
-                                colSpan="7"
-                                className="text-center text-gray-700 font-medium py-4"
-                            >
-                                No tasks found.
-                            </td>
-                        </tr>
-                    )}
+                            ));
+                        } else {
+                            return (
+                                <tr>
+                                    <td
+                                        colSpan="7"
+                                        className="text-center text-gray-700 font-medium py-4"
+                                    >
+                                        {selectedFilter === "All" 
+                                            ? "No tasks found." 
+                                            : `No tasks ${selectedFilter.toLowerCase()}.`
+                                        }
+                                    </td>
+                                </tr>
+                            );
+                        }
+                    })()}
                 </tbody>
             </table>
 
             {/* Pagination */}
-            {!loading && !error && tasks.length > 0 && (
+            {!loading && !error && tasks.filter(req => 
+                selectedFilter === "All" || req.status === selectedFilter
+            ).length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                     {Array.from(
                         { length: lastPage },
