@@ -811,34 +811,37 @@ export default function CreateMaharatInvoice() {
                 }
             }
 
-            // Create transaction record
-            const transactionPayload = {
-                invoice_id: newInvoiceId,
-                requester_id: user_id,
-                assigned_to: assignUser?.approver_id,
-                order: String(processStep.order),
-                description: processStep.description,
-                status: "Pending",
-            };
+            // Only create workflow (transaction and task) if this is a new invoice, not an edit
+            if (!isEditMode) {
+                // Create transaction record
+                const transactionPayload = {
+                    invoice_id: newInvoiceId,
+                    requester_id: user_id,
+                    assigned_to: assignUser?.approver_id,
+                    order: String(processStep.order),
+                    description: processStep.description,
+                    status: "Pending",
+                };
 
-            await axios.post(
-                "/api/v1/mahrat-invoice-approval-trans",
-                transactionPayload
-            );
+                await axios.post(
+                    "/api/v1/mahrat-invoice-approval-trans",
+                    transactionPayload
+                );
 
-            // Create task
-            const taskPayload = {
-                process_step_id: processStep.id,
-                process_id: processStep.process_id,
-                assigned_at: new Date().toISOString(),
-                urgency: "Normal",
-                assigned_to_user_id: assignUser?.approver_id,
-                assigned_from_user_id: user_id,
-                read_status: null,
-                invoice_id: newInvoiceId,
-            };
+                // Create task
+                const taskPayload = {
+                    process_step_id: processStep.id,
+                    process_id: processStep.process_id,
+                    assigned_at: new Date().toISOString(),
+                    urgency: "Normal",
+                    assigned_to_user_id: assignUser?.approver_id,
+                    assigned_from_user_id: user_id,
+                    read_status: null,
+                    invoice_id: newInvoiceId,
+                };
 
-            await axios.post("/api/v1/tasks", taskPayload);
+                await axios.post("/api/v1/tasks", taskPayload);
+            }
 
             // Navigate to invoices page regardless of approval process success
             router.visit("/maharat-invoices");

@@ -373,33 +373,36 @@ const ApproveOrder = ({
             const newPOId = response.data.data?.id;
 
             if (newPOId) {
-                // Create approval transaction
-                const POTransactionPayload = {
-                    purchase_order_id: newPOId,
-                    requester_id: user_id,
-                    assigned_to: assignUser?.approver_id,
-                    order: processStep.order,
-                    description: processStep.description,
-                    status: "Pending",
-                };
+                // Only create workflow (transaction and task) if this is a new purchase order, not an edit
+                if (!isEdit) {
+                    // Create approval transaction
+                    const POTransactionPayload = {
+                        purchase_order_id: newPOId,
+                        requester_id: user_id,
+                        assigned_to: assignUser?.approver_id,
+                        order: processStep.order,
+                        description: processStep.description,
+                        status: "Pending",
+                    };
 
-                await axios.post(
-                    "/api/v1/po-approval-transactions",
-                    POTransactionPayload
-                );
+                    await axios.post(
+                        "/api/v1/po-approval-transactions",
+                        POTransactionPayload
+                    );
 
-                // Create task
-                const taskPayload = {
-                    process_step_id: processStep.id,
-                    process_id: processStep.process_id,
-                    assigned_at: new Date().toISOString(),
-                    urgency: "Normal",
-                    assigned_to_user_id: assignUser?.approver_id,
-                    assigned_from_user_id: user_id,
-                    purchase_order_id: newPOId,
-                };
+                    // Create task
+                    const taskPayload = {
+                        process_step_id: processStep.id,
+                        process_id: processStep.process_id,
+                        assigned_at: new Date().toISOString(),
+                        urgency: "Normal",
+                        assigned_to_user_id: assignUser?.approver_id,
+                        assigned_from_user_id: user_id,
+                        purchase_order_id: newPOId,
+                    };
 
-                await axios.post("/api/v1/tasks", taskPayload);
+                    await axios.post("/api/v1/tasks", taskPayload);
+                }
 
                 // Successfully completed workflow - navigate to ViewOrder page
                 onSave();
