@@ -162,6 +162,32 @@ function AddQuotationForm() {
         return children;
     };
 
+    // Function to fetch all sub cost centers for a specific cost center
+    const fetchAllSubCostCenters = async (selectedCostCenterId) => {
+        let allSubCostCenters = [];
+        let page = 1;
+        let lastPage = false;
+
+        try {
+            while (!lastPage) {
+                const response = await axios.get(
+                    `/api/v1/cost-centers?is_main=false&filter[parent_id]=${selectedCostCenterId}&page=${page}`
+                );
+                const { data, meta } = response.data;
+                allSubCostCenters = [...allSubCostCenters, ...data];
+                if (meta?.last_page && page >= meta.last_page) {
+                    lastPage = true;
+                } else {
+                    page++;
+                }
+            }
+            return allSubCostCenters;
+        } catch (error) {
+            console.error("Error fetching all sub cost centers:", error);
+            return [];
+        }
+    };
+
     // Function to update sub cost center when cost center changes
     const updateSubCostCenter = async (selectedCostCenterId, currentSubCostCenterId = null) => {
         console.log("updateSubCostCenter called with:", { selectedCostCenterId, currentSubCostCenterId });
@@ -173,9 +199,8 @@ function AddQuotationForm() {
         }
 
         try {
-            // Make API call to get sub cost centers for the selected cost center
-            const response = await axios.get(`/api/v1/cost-centers?is_main=false&filter[parent_id]=${selectedCostCenterId}`);
-            const subCostCentersData = response.data?.data || [];
+            // Fetch all sub cost centers for the selected cost center using pagination
+            const subCostCentersData = await fetchAllSubCostCenters(selectedCostCenterId);
             setSubCostCenters(subCostCentersData);
 
             console.log("Sub cost centers fetched:", subCostCentersData.map(sub => ({ id: sub.id, name: sub.name })));
@@ -341,6 +366,30 @@ function AddQuotationForm() {
         }
     };
 
+    const fetchAllCostCenters = async () => {
+        let allCostCenters = [];
+        let page = 1;
+        let lastPage = false;
+
+        try {
+            while (!lastPage) {
+                const response = await axios.get(
+                    `/api/v1/cost-centers?is_main=true&page=${page}`
+                );
+                const { data, meta } = response.data;
+                allCostCenters = [...allCostCenters, ...data];
+                if (meta?.last_page && page >= meta.last_page) {
+                    lastPage = true;
+                } else {
+                    page++;
+                }
+            }
+            setCostCenters(allCostCenters);
+        } catch (error) {
+            console.error("Error fetching all cost centers:", error);
+        }
+    };
+
     const fetchPaymentTypes = async (page = 1, append = false) => {
         if (loadingPaymentTypes || paymentTypesRequestInProgress) return;
         
@@ -483,19 +532,8 @@ function AddQuotationForm() {
                     }));
                 }
 
-                const costCentersResponse = await axios.get(
-                    "/api/v1/cost-centers?is_main=true"
-                );
-                const costCentersData = costCentersResponse.data?.data || [];
-                setCostCenters(costCentersData);
-
-                const costCenterLookup = {};
-                costCentersData.forEach((center) => {
-                    if (center && center.id) {
-                        costCenterLookup[String(center.id)] = center.name;
-                    }
-                });
-                setCostCenterNames(costCenterLookup);
+                // Fetch all cost centers using pagination
+                await fetchAllCostCenters();
 
                 if (rfqId) {
                     setLoading(true);
@@ -713,7 +751,7 @@ function AddQuotationForm() {
                     fetchCategories(),
                     fetchWarehouses(),
                     fetchDepartments(),
-                    fetchCostCenters(),
+                    fetchAllCostCenters(),
                     fetchPaymentTypes(),
                 ]);
 

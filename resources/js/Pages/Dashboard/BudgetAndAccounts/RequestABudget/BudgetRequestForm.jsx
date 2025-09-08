@@ -100,15 +100,18 @@ const BudgetRequestForm = () => {
 
     const fetchInitialData = async () => {
         try {
-            const [deptRes, costRes, yearRes] = await Promise.all([
+            const [deptRes, yearRes] = await Promise.all([
                 fetchAllPages("/api/v1/departments"),
-                fetchAllPages("/api/v1/cost-centers", { is_main: true }),
                 axios.get("/api/v1/fiscal-periods?filter[status]=open"),
             ]);
             
             setDepartments(deptRes);
-            setCostCenters(costRes);
             setFiscalYears(yearRes.data.data);
+            
+            // Fetch all cost centers using pagination
+            const costRes = await fetchAllPages("/api/v1/cost-centers", { is_main: true });
+            setCostCenters(costRes);
+            
             setDataLoaded(true);
         } catch (error) {
             console.error("Error fetching initial data", error);
@@ -156,6 +159,32 @@ const BudgetRequestForm = () => {
         }
     };
 
+    // Function to fetch all sub cost centers for a specific cost center
+    const fetchAllSubCostCenters = async (selectedCostCenterId) => {
+        let allSubCostCenters = [];
+        let page = 1;
+        let lastPage = false;
+
+        try {
+            while (!lastPage) {
+                const response = await axios.get(
+                    `/api/v1/cost-centers?is_main=false&filter[parent_id]=${selectedCostCenterId}&page=${page}`
+                );
+                const { data, meta } = response.data;
+                allSubCostCenters = [...allSubCostCenters, ...data];
+                if (meta?.last_page && page >= meta.last_page) {
+                    lastPage = true;
+                } else {
+                    page++;
+                }
+            }
+            return allSubCostCenters;
+        } catch (error) {
+            console.error("Error fetching all sub cost centers:", error);
+            return [];
+        }
+    };
+
     // Function to update sub cost center when cost center changes
     const updateSubCostCenter = async (selectedCostCenterId) => {
         if (!selectedCostCenterId) {
@@ -165,9 +194,8 @@ const BudgetRequestForm = () => {
         }
 
         try {
-            // Make API call to get sub cost centers for the selected cost center
-            const response = await axios.get(`/api/v1/cost-centers?filter[parent_id]=${selectedCostCenterId}`);
-            const subCostCentersData = response.data?.data || [];
+            // Fetch all sub cost centers for the selected cost center using pagination
+            const subCostCentersData = await fetchAllSubCostCenters(selectedCostCenterId);
             setFilteredSubCostCenters(subCostCentersData);
 
             // If there's only one sub cost center, auto-select it
