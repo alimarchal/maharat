@@ -72,14 +72,16 @@ const SubCostCenterModal = ({
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [users, departments, costCenters] = await Promise.all([
+                const [users, departments] = await Promise.all([
                     fetchAllPages("/api/v1/users"),
-                    fetchAllPages("/api/v1/departments"),
-                    fetchAllPages("/api/v1/cost-centers", { is_main: true })
+                    fetchAllPages("/api/v1/departments")
                 ]);
                 
                 setUsers(users);
                 setDepartments(departments);
+                
+                // Fetch all cost centers using pagination
+                const costCenters = await fetchAllPages("/api/v1/cost-centers", { is_main: true });
                 setCostCenters(costCenters);
             } catch (error) {
                 console.error("Error fetching data:", error);

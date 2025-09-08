@@ -380,27 +380,25 @@ const MakeRequest = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [unitsRes, warehousesRes, costCentersRes, subCostCentersRes, departmentsRes] = await Promise.all([
+                const [unitsRes, warehousesRes, departmentsRes] = await Promise.all([
                     axios.get("/api/v1/units"),
                     axios.get("/api/v1/warehouses"),
-                    axios.get("/api/v1/cost-centers?is_main=true&per_page=1000000000"),
-                    axios.get("/api/v1/cost-centers?is_main=false&per_page=1000000000"),
                     axios.get("/api/v1/departments"),
                 ]);
 
                 setUnits(unitsRes.data.data);
                 setWarehouses(warehousesRes.data.data);
-                setCostCenters(costCentersRes.data.data);
-                setSubCostCenters(subCostCentersRes.data.data);
                 setDepartments(departmentsRes.data.data);
-                fetchAllStatuses();
+                
+                // Fetch all cost centers and sub cost centers with pagination
+                await Promise.all([
+                    fetchAllCostCenters(),
+                    fetchAllSubCostCenters(),
+                    fetchAllStatuses()
+                ]);
 
                 // Fetch categories with pagination
                 fetchCategories();
-
-                // Process sub cost centers
-                const subCostCenterData = subCostCentersRes.data.data;
-                processSubCostCenters(subCostCenterData);
 
             } catch (error) {
                 console.error("Error in fetchData:", error);
@@ -454,6 +452,56 @@ const MakeRequest = () => {
             setStatuses(urgencyStatuses);
         } catch (error) {
             console.error("Error fetching all statuses:", error);
+        }
+    };
+
+    const fetchAllCostCenters = async () => {
+        let allCostCenters = [];
+        let page = 1;
+        let lastPage = false;
+
+        try {
+            while (!lastPage) {
+                const response = await axios.get(
+                    `/api/v1/cost-centers?is_main=true&page=${page}`
+                );
+                const { data, meta } = response.data;
+                allCostCenters = [...allCostCenters, ...data];
+                if (meta?.last_page && page >= meta.last_page) {
+                    lastPage = true;
+                } else {
+                    page++;
+                }
+            }
+            setCostCenters(allCostCenters);
+        } catch (error) {
+            console.error("Error fetching all cost centers:", error);
+        }
+    };
+
+    const fetchAllSubCostCenters = async () => {
+        let allSubCostCenters = [];
+        let page = 1;
+        let lastPage = false;
+
+        try {
+            while (!lastPage) {
+                const response = await axios.get(
+                    `/api/v1/cost-centers?is_main=false&page=${page}`
+                );
+                const { data, meta } = response.data;
+                allSubCostCenters = [...allSubCostCenters, ...data];
+                if (meta?.last_page && page >= meta.last_page) {
+                    lastPage = true;
+                } else {
+                    page++;
+                }
+            }
+            setSubCostCenters(allSubCostCenters);
+            // Process sub cost centers after fetching all
+            processSubCostCenters(allSubCostCenters);
+        } catch (error) {
+            console.error("Error fetching all sub cost centers:", error);
         }
     };
 

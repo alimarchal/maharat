@@ -169,10 +169,34 @@ const AccountsModal = ({
         }
     }, [formData, isEdit, account]);
 
+    const fetchAllCostCenters = async () => {
+        let allCostCenters = [];
+        let page = 1;
+        let lastPage = false;
+
+        try {
+            while (!lastPage) {
+                const response = await axios.get(
+                    `/api/v1/cost-centers?page=${page}`
+                );
+                const { data, meta } = response.data;
+                allCostCenters = [...allCostCenters, ...data];
+                if (meta?.last_page && page >= meta.last_page) {
+                    lastPage = true;
+                } else {
+                    page++;
+                }
+            }
+            setCostCenters(allCostCenters);
+        } catch (error) {
+            console.error("Error fetching all cost centers:", error);
+        }
+    };
+
     const fetchFormData = async () => {
         try {
-            const costCentersResponse = await axios.get("/api/v1/cost-centers");
-            setCostCenters(costCentersResponse.data.data || []);
+            // Fetch all cost centers using pagination
+            await fetchAllCostCenters();
 
             // Fetch account types directly from account_codes table
             const accountCodesResponse = await axios.get(
