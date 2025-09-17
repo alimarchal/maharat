@@ -15,6 +15,7 @@ import axios from "axios";
 
 const ViewRequestModal = ({ isOpen, onClose, request }) => {
     const [issueMaterial, setIssueMaterial] = useState(null);
+    const [currentApprover, setCurrentApprover] = useState(null);
 
     useEffect(() => {
         const fetchIssueMaterial = async () => {
@@ -34,7 +35,27 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
             }
         };
 
+        const fetchCurrentApprover = async () => {
+            if (request?.id) {
+                try {
+                    const response = await axios.get(`/api/v1/material-request-transactions`, {
+                        params: {
+                            'filter[material_request_id]': request.id,
+                            include: 'materialRequest,requester,assignedUser,referredUser',
+                            'sort': 'order'
+                        }
+                    });
+                    const transactions = response.data?.data || [];
+                    const pending = transactions.find(t => (t.status || '').toLowerCase() === 'pending');
+                    setCurrentApprover(pending?.assigned_user || null);
+                } catch (error) {
+                    console.error('Error fetching current approver:', error);
+                }
+            }
+        };
+
         fetchIssueMaterial();
+        fetchCurrentApprover();
     }, [request?.id]);
 
     if (!isOpen || !request) return null;
@@ -174,6 +195,14 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
                                         {request.department?.name || "N/A"}
                                     </span>
                                 </div>
+                                {currentApprover && request.status?.name !== 'Approved' && (
+                                    <div className="flex justify-between border-b border-gray-100 pb-2">
+                                        <span className="text-gray-600">Approver:</span>
+                                        <span className="font-medium">
+                                            {currentApprover.name}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

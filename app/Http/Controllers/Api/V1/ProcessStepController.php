@@ -380,10 +380,23 @@ class ProcessStepController extends Controller
             ], Response::HTTP_OK);
         }
 
-        // Check if process step has designation_id set
-        if (empty($processStep->designation_id) || $processStep->designation_id == 14) {
+        // Check Direct Manager by designation name if designation present
+        if (!empty($processStep->designation_id)) {
+            $designation = $processStep->designation;
+            if ($designation && strcasecmp(trim($designation->designation), 'Direct Manager') === 0) {
+                $parentUser = User::find($user->parent_id);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Approver is a direct manager.',
+                    'data' => [
+                        'approver_id' => $user->parent_id,
+                        'approver' => $parentUser
+                    ]
+                ], Response::HTTP_OK);
+            }
+        } else {
+            // Empty designation means default to direct manager
             $parentUser = User::find($user->parent_id);
-
             return response()->json([
                 'success' => true,
                 'message' => 'Approver is a direct manager.',

@@ -331,14 +331,15 @@ const MakeRequest = () => {
                     material_request_id: materialRequestId,
                 };
                 await axios.post("/api/v1/tasks", taskPayload);
+
+                // Optionally reload if process requests it (guarded to avoid transient errors)
+                if (process?.should_reload) {
+                    window.location.reload();
+                }
             }
 
-            // Navigate to my-requests page
+            // Navigate to my-requests page (after guarded reload above)
             router.visit("/my-requests");
-
-            if (process.should_reload) {
-                window.location.reload();
-            }
 
             //TODO: Uncomment when second phase has started for new feature
             // Mark the approved item as requested if one was selected

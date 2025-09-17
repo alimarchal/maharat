@@ -1375,6 +1375,52 @@ class TaskController extends Controller
                     ]);
 
                     if ($transactionUpdated) {
+                        // If this step is "Direct Manager", create the next transaction for the current approver's parent
+                        $currentStep = DB::table('process_steps')->where('id', $task->process_step_id)->first();
+                        if ($currentStep && $currentStep->designation_id) {
+                            $designationName = DB::table('designations')->where('id', $currentStep->designation_id)->value('designation');
+                            if ($designationName && strcasecmp(trim($designationName), 'Direct Manager') === 0) {
+                                $parentId = DB::table('users')->where('id', $task->assigned_to_user_id)->value('parent_id');
+                                if ($parentId) {
+                                    // Determine next step id: use real next step if exists, otherwise reuse current step id
+                                    $nextStep = DB::table('process_steps')
+                                        ->where('process_id', $task->process_id)
+                                        ->where('order', ($currentStep->order ?? 0) + 1)
+                                        ->first();
+                                    $nextStepId = $nextStep->id ?? $currentStep->id;
+                                    $nextProcessId = $nextStep->process_id ?? $currentStep->process_id;
+
+                                    // Compute next order for transaction
+                                    $nextOrder = (int) (($approvalTransaction->order ?? 0) + 1);
+
+                                    // Create next approval transaction
+                                    DB::table('material_request_transactions')->insert([
+                                        'material_request_id' => $task->material_request_id,
+                                        'requester_id' => $approvalTransaction->requester_id,
+                                        'assigned_to' => $parentId,
+                                        'order' => $nextOrder,
+                                        'description' => $nextStep->description ?? $currentStep->description,
+                                        'status' => 'Pending',
+                                        'created_at' => now(),
+                                        'updated_at' => now(),
+                                    ]);
+
+                                    // Create next task assigned to parent's user id
+                                    DB::table('tasks')->insert([
+                                        'process_step_id' => $nextStepId,
+                                        'process_id' => $nextProcessId,
+                                        'assigned_at' => now(),
+                                        'urgency' => 'Normal',
+                                        'assigned_to_user_id' => $parentId,
+                                        'assigned_from_user_id' => $approvalTransaction->requester_id,
+                                        'read_status' => null,
+                                        'material_request_id' => $task->material_request_id,
+                                        'created_at' => now(),
+                                        'updated_at' => now()
+                                    ]);
+                                }
+                            }
+                        }
                         // Check if this is the final approval
                         $totalApprovals = DB::table('material_request_transactions')
                             ->where('material_request_id', $task->material_request_id)
@@ -1396,7 +1442,7 @@ class TaskController extends Controller
                         ]);
 
                         if ($isFinalApproval) {
-                            Log::info('=== FINAL MATERIAL REQUEST APPROVAL - SETTING status_id = 1 (Pending) ===', [
+                            Log::info('=== FINAL MATERIAL REQUEST APPROVAL - SETTING status_id = 4 (Approved) ===', [
                                 'task_id' => $task->id,
                                 'material_request_id' => $task->material_request_id,
                                 'completed_approvals' => $completedApprovals,
@@ -1405,18 +1451,18 @@ class TaskController extends Controller
                             $materialRequestUpdated = DB::table('material_requests')
                                 ->where('id', $task->material_request_id)
                                 ->update([
-                                    'status_id' => 1, // Pending
+                                    'status_id' => 4, // Approved
                                     'updated_at' => now()
                                 ]);
-                            Log::info('=== MATERIAL REQUEST STATUS UPDATED TO PENDING ===', [
+                            Log::info('=== MATERIAL REQUEST STATUS UPDATED TO APPROVED ===', [
                                 'task_id' => $task->id,
                                 'material_request_id' => $task->material_request_id,
-                                'new_status_id' => 1,
+                                'new_status_id' => 4,
                                 'update_success' => $materialRequestUpdated
                             ]);
                         } else {
-                            if ($completedApprovals === 1) {
-                                Log::info('=== FIRST MATERIAL REQUEST APPROVAL - SETTING status_id = 2 (Referred) ===', [
+                            if ($completedApprovals >= 1) {
+                                Log::info('=== INTERMEDIATE MATERIAL REQUEST APPROVAL - KEEPING status_id = 1 (Pending) ===', [
                                     'task_id' => $task->id,
                                     'material_request_id' => $task->material_request_id,
                                     'completed_approvals' => $completedApprovals,
@@ -1425,32 +1471,13 @@ class TaskController extends Controller
                                 $materialRequestUpdated = DB::table('material_requests')
                                     ->where('id', $task->material_request_id)
                                     ->update([
-                                        'status_id' => 2, // Referred
+                                        'status_id' => 1, // Pending
                                         'updated_at' => now()
                                     ]);
-                                Log::info('=== MATERIAL REQUEST STATUS UPDATED TO REFERRED ===', [
+                                Log::info('=== MATERIAL REQUEST STATUS KEPT AS PENDING ===', [
                                     'task_id' => $task->id,
                                     'material_request_id' => $task->material_request_id,
-                                    'new_status_id' => 2,
-                                    'update_success' => $materialRequestUpdated
-                                ]);
-                            } else {
-                                Log::info('=== INTERMEDIATE MATERIAL REQUEST APPROVAL - SETTING status_id = 53 (Draft) ===', [
-                                    'task_id' => $task->id,
-                                    'material_request_id' => $task->material_request_id,
-                                    'completed_approvals' => $completedApprovals,
-                                    'total_approvals' => $totalApprovals
-                                ]);
-                                $materialRequestUpdated = DB::table('material_requests')
-                                    ->where('id', $task->material_request_id)
-                                    ->update([
-                                        'status_id' => 53, // Draft
-                                        'updated_at' => now()
-                                    ]);
-                                Log::info('=== MATERIAL REQUEST STATUS UPDATED TO DRAFT ===', [
-                                    'task_id' => $task->id,
-                                    'material_request_id' => $task->material_request_id,
-                                    'new_status_id' => 53,
+                                    'new_status_id' => 1,
                                     'update_success' => $materialRequestUpdated
                                 ]);
                             }
