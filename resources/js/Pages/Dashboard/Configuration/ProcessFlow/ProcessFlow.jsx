@@ -482,7 +482,24 @@ const ProcessFlow = () => {
                                                                                 isSeparator: true,
                                                                                 className: "border-t border-gray-300 my-1 py-1 text-center text-gray-500 text-sm font-medium"
                                                                             }] : []),
-                                                                            ...designations.map(
+                                                                            ...(() => {
+                                                                                const weight = (name) => {
+                                                                                    if (!name) return 99;
+                                                                                    const n = name.trim();
+                                                                                    if (n === 'Managing Director') return 0;
+                                                                                    if (n === 'Department Director') return 1;
+                                                                                    if (n === 'Direct Manager') return 2;
+                                                                                    return 3;
+                                                                                };
+                                                                                const sorted = [...designations].sort((a, b) => {
+                                                                                    const wa = weight(a.designation);
+                                                                                    const wb = weight(b.designation);
+                                                                                    if (wa !== wb) return wa - wb;
+                                                                                    // stable-ish secondary by name
+                                                                                    return (a.designation || '').localeCompare(b.designation || '');
+                                                                                });
+                                                                                return sorted;
+                                                                            })().map(
                                                                                 (des) => ({
                                                                                     id: `designation-${des.id}`,
                                                                                     label: des.designation,

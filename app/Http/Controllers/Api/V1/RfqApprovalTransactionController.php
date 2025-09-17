@@ -18,6 +18,9 @@ use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
 use Illuminate\Support\Facades\Log;
 use App\Models\Rfq;
+use App\Models\ProcessStep as EloquentProcessStep;
+use App\Models\User;
+use App\Services\ApproverResolver;
 
 class RfqApprovalTransactionController extends Controller
 {
@@ -116,22 +119,64 @@ class RfqApprovalTransactionController extends Controller
                     ->orderBy('process_steps.order')
                     ->get();
                 $totalRequiredApprovals = $processSteps->count();
-                $isFinalApproval = $rfqApprovalTransaction->order == $totalRequiredApprovals;
+                $currentStep = $processSteps->where('order', $rfqApprovalTransaction->order)->first();
+                $eloquentCurrentStep = $currentStep ? EloquentProcessStep::find($currentStep->id) : null;
+                $isDirectManagerFlow = $eloquentCurrentStep && $eloquentCurrentStep->designation && strcasecmp(trim($eloquentCurrentStep->designation->designation), 'Direct Manager') === 0;
+                $currentApprover = User::find($rfqApprovalTransaction->assigned_to);
+                $isFinalApproval = $isDirectManagerFlow
+                    ? ($currentApprover?->parent_id ? false : true)
+                    : ($rfqApprovalTransaction->order == $totalRequiredApprovals);
                 if (!$isFinalApproval) {
                     $nextOrder = $rfqApprovalTransaction->order + 1;
                     $nextStep = $processSteps->where('order', $nextOrder)->first();
-                    if ($nextStep) {
-                        $nextApprover = DB::table('users')
-                            ->join('process_step_user', 'users.id', '=', 'process_step_user.user_id')
-                            ->where('process_step_user.process_step_id', $nextStep->id)
-                            ->select('users.id')
-                            ->first();
-                        if ($nextApprover) {
+                    if ($isDirectManagerFlow) {
+                        $stepIdForTask = $nextStep->id ?? ($currentStep->id ?? null);
+                        $resolvedApproverId = $currentApprover?->parent_id;
+                        if ($resolvedApproverId && $stepIdForTask) {
                             $nextTransaction = new 
                                 \App\Models\RfqApprovalTransaction([
                                     'rfq_id' => $rfqApprovalTransaction->rfq_id,
                                     'requester_id' => $rfqApprovalTransaction->requester_id,
-                                    'assigned_to' => $nextApprover->id,
+                                    'assigned_to' => $resolvedApproverId,
+                                    'order' => $nextOrder,
+                                    'description' => $nextStep->description ?? ($eloquentCurrentStep?->description),
+                                    'status' => 'Pending',
+                                    'created_by' => Auth::id(),
+                                    'updated_by' => Auth::id()
+                                ]);
+                            $nextTransaction->save();
+                            $taskId = DB::table('tasks')->insertGetId([
+                                'process_step_id' => $stepIdForTask,
+                                'process_id' => $nextStep->process_id ?? ($eloquentCurrentStep?->process_id),
+                                'assigned_at' => now(),
+                                'urgency' => 'Normal',
+                                'assigned_to_user_id' => $resolvedApproverId,
+                                'assigned_from_user_id' => $rfqApprovalTransaction->requester_id,
+                                'read_status' => null,
+                                'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]);
+                        }
+                    } elseif ($nextStep) {
+                        $resolver = new ApproverResolver();
+                        $eloquentStep = EloquentProcessStep::find($nextStep->id);
+                        $requester = User::find($rfqApprovalTransaction->requester_id);
+                        $resolvedApproverId = null;
+                        if ($eloquentStep && $eloquentStep->designation && strcasecmp(trim($eloquentStep->designation->designation), 'Direct Manager') === 0) {
+                            $currentApprover = User::find($rfqApprovalTransaction->assigned_to);
+                            $resolvedApproverId = $currentApprover?->parent_id;
+                        } else {
+                            $resolvedApproverId = $eloquentStep && $requester
+                                ? $resolver->resolveApproverId($eloquentStep, $requester)
+                                : null;
+                        }
+                        if ($resolvedApproverId) {
+                            $nextTransaction = new 
+                                \App\Models\RfqApprovalTransaction([
+                                    'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                                    'requester_id' => $rfqApprovalTransaction->requester_id,
+                                    'assigned_to' => $resolvedApproverId,
                                     'order' => $nextOrder,
                                     'description' => $nextStep->description,
                                     'status' => 'Pending',
@@ -144,7 +189,7 @@ class RfqApprovalTransactionController extends Controller
                                 'process_id' => $nextStep->process_id,
                                 'assigned_at' => now(),
                                 'urgency' => 'Normal',
-                                'assigned_to_user_id' => $nextApprover->id,
+                                'assigned_to_user_id' => $resolvedApproverId,
                                 'assigned_from_user_id' => $rfqApprovalTransaction->requester_id,
                                 'read_status' => null,
                                 'rfq_id' => $rfqApprovalTransaction->rfq_id,

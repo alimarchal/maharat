@@ -16,6 +16,9 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\QueryBuilder;
 use Illuminate\Support\Facades\Log;
+use App\Models\ProcessStep as EloquentProcessStep;
+use App\Models\User;
+use App\Services\ApproverResolver;
 
 class PaymentOrderApprovalTransactionController extends Controller
 {
@@ -118,22 +121,64 @@ class PaymentOrderApprovalTransactionController extends Controller
                     ->orderBy('process_steps.order')
                     ->get();
                 $totalRequiredApprovals = $processSteps->count();
-                $isFinalApproval = $paymentOrderApprovalTransaction->order == $totalRequiredApprovals;
+                $currentStep = $processSteps->where('order', $paymentOrderApprovalTransaction->order)->first();
+                $eloquentCurrentStep = $currentStep ? EloquentProcessStep::find($currentStep->id) : null;
+                $isDirectManagerFlow = $eloquentCurrentStep && $eloquentCurrentStep->designation && strcasecmp(trim($eloquentCurrentStep->designation->designation), 'Direct Manager') === 0;
+                $currentApprover = User::find($paymentOrderApprovalTransaction->assigned_to);
+                $isFinalApproval = $isDirectManagerFlow
+                    ? ($currentApprover?->parent_id ? false : true)
+                    : ($paymentOrderApprovalTransaction->order == $totalRequiredApprovals);
                 if (!$isFinalApproval) {
                     $nextOrder = $paymentOrderApprovalTransaction->order + 1;
                     $nextStep = $processSteps->where('order', $nextOrder)->first();
-                    if ($nextStep) {
-                        $nextApprover = DB::table('users')
-                            ->join('process_step_user', 'users.id', '=', 'process_step_user.user_id')
-                            ->where('process_step_user.process_step_id', $nextStep->id)
-                            ->select('users.id')
-                            ->first();
-                        if ($nextApprover) {
+                    if ($isDirectManagerFlow) {
+                        $stepIdForTask = $nextStep->id ?? ($currentStep->id ?? null);
+                        $resolvedApproverId = $currentApprover?->parent_id;
+                        if ($resolvedApproverId && $stepIdForTask) {
                             $nextTransaction = new 
                                 \App\Models\PaymentOrderApprovalTransaction([
                                     'payment_order_id' => $paymentOrderApprovalTransaction->payment_order_id,
                                     'requester_id' => $paymentOrderApprovalTransaction->requester_id,
-                                    'assigned_to' => $nextApprover->id,
+                                    'assigned_to' => $resolvedApproverId,
+                                    'order' => $nextOrder,
+                                    'description' => $nextStep->description ?? ($eloquentCurrentStep?->description),
+                                    'status' => 'Pending',
+                                    'created_by' => auth()->id(),
+                                    'updated_by' => auth()->id()
+                                ]);
+                            $nextTransaction->save();
+                            $taskId = DB::table('tasks')->insertGetId([
+                                'process_step_id' => $stepIdForTask,
+                                'process_id' => $nextStep->process_id ?? ($eloquentCurrentStep?->process_id),
+                                'assigned_at' => now(),
+                                'urgency' => 'Normal',
+                                'assigned_to_user_id' => $resolvedApproverId,
+                                'assigned_from_user_id' => $paymentOrderApprovalTransaction->requester_id,
+                                'read_status' => null,
+                                'payment_order_id' => $paymentOrderApprovalTransaction->payment_order_id,
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]);
+                        }
+                    } elseif ($nextStep) {
+                        $resolver = new ApproverResolver();
+                        $eloquentStep = EloquentProcessStep::find($nextStep->id);
+                        $requester = User::find($paymentOrderApprovalTransaction->requester_id);
+                        $resolvedApproverId = null;
+                        if ($eloquentStep && $eloquentStep->designation && strcasecmp(trim($eloquentStep->designation->designation), 'Direct Manager') === 0) {
+                            $currentApprover = User::find($paymentOrderApprovalTransaction->assigned_to);
+                            $resolvedApproverId = $currentApprover?->parent_id;
+                        } else {
+                            $resolvedApproverId = $eloquentStep && $requester
+                                ? $resolver->resolveApproverId($eloquentStep, $requester)
+                                : null;
+                        }
+                        if ($resolvedApproverId) {
+                            $nextTransaction = new 
+                                \App\Models\PaymentOrderApprovalTransaction([
+                                    'payment_order_id' => $paymentOrderApprovalTransaction->payment_order_id,
+                                    'requester_id' => $paymentOrderApprovalTransaction->requester_id,
+                                    'assigned_to' => $resolvedApproverId,
                                     'order' => $nextOrder,
                                     'description' => $nextStep->description,
                                     'status' => 'Pending',
@@ -146,7 +191,7 @@ class PaymentOrderApprovalTransactionController extends Controller
                                 'process_id' => $nextStep->process_id,
                                 'assigned_at' => now(),
                                 'urgency' => 'Normal',
-                                'assigned_to_user_id' => $nextApprover->id,
+                                'assigned_to_user_id' => $resolvedApproverId,
                                 'assigned_from_user_id' => $paymentOrderApprovalTransaction->requester_id,
                                 'read_status' => null,
                                 'payment_order_id' => $paymentOrderApprovalTransaction->payment_order_id,

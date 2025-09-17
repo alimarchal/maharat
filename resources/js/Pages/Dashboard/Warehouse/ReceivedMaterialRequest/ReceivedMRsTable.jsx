@@ -17,7 +17,7 @@ const ReceivedMRsTable = () => {
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [selectedFilter, setSelectedFilter] = useState("All");
 
-    const filters = ["All", "Issued", "Pending", "Rejected"];
+    const filters = ["All", "Approved", "Issued"];
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -27,7 +27,7 @@ const ReceivedMRsTable = () => {
                     include: 'requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus',
                     page: currentPage,
                     per_page: 10,
-                    'filter[status_id]': '1,51,52' // Only fetch Issued (51), Pending (1), or Rejected (52) statuses
+                    'filter[status_id]': '4,51' // Fetch Approved (4) and Issued (51)
                 }
             });
             
@@ -51,6 +51,7 @@ const ReceivedMRsTable = () => {
 
     const statusColors = {
         "Pending": "text-yellow-500",
+        "Approved": "text-green-600",
         "Issued": "text-green-500",
         "Rejected": "text-red-500"
     };
@@ -65,6 +66,7 @@ const ReceivedMRsTable = () => {
     const getStatusCell = (status) => {
         const statusColors = {
             "Pending": "bg-yellow-100 text-yellow-800",
+            "Approved": "bg-green-100 text-green-800",
             "Issue Material": "bg-green-100 text-green-800",
             "Rejected": "bg-red-100 text-red-800"
         };

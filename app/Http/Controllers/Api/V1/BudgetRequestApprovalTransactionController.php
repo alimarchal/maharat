@@ -19,6 +19,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Spatie\QueryBuilder\QueryBuilder;
+use App\Models\ProcessStep as EloquentProcessStep;
+use App\Models\User;
+use App\Services\ApproverResolver;
 
 class BudgetRequestApprovalTransactionController extends Controller
 {
@@ -137,9 +140,13 @@ class BudgetRequestApprovalTransactionController extends Controller
                     ->get();
 
                 $totalRequiredApprovals = $processSteps->count();
-                
-                // Check if this is the final approval (current order equals total required approvals)
-                $isFinalApproval = $budgetRequestApprovalTransaction->order == $totalRequiredApprovals;
+                $currentStep = $processSteps->where('order', $budgetRequestApprovalTransaction->order)->first();
+                $eloquentCurrentStep = $currentStep ? EloquentProcessStep::find($currentStep->id) : null;
+                $isDirectManagerFlow = $eloquentCurrentStep && $eloquentCurrentStep->designation && strcasecmp(trim($eloquentCurrentStep->designation->designation), 'Direct Manager') === 0;
+                $currentApprover = User::find($budgetRequestApprovalTransaction->assigned_to);
+                $isFinalApproval = $isDirectManagerFlow
+                    ? ($currentApprover?->parent_id ? false : true)
+                    : ($budgetRequestApprovalTransaction->order == $totalRequiredApprovals);
 
                 Log::info('Approval status check', [
                     'request_budget_id' => $budgetRequestApprovalTransaction->request_budgets_id,
@@ -153,20 +160,63 @@ class BudgetRequestApprovalTransactionController extends Controller
                 if (!$isFinalApproval) {
                     $nextOrder = $budgetRequestApprovalTransaction->order + 1;
                     $nextStep = $processSteps->where('order', $nextOrder)->first();
-                    if ($nextStep) {
-                        // Find the next approver (assume a method or logic exists to get approver by step and request budget)
-                        $nextApprover = DB::table('users')
-                            ->join('process_step_user', 'users.id', '=', 'process_step_user.user_id')
-                            ->where('process_step_user.process_step_id', $nextStep->id)
-                            ->select('users.id')
-                            ->first();
-                        if ($nextApprover) {
+                    if ($isDirectManagerFlow) {
+                        $stepIdForTask = $nextStep->id ?? ($currentStep->id ?? null);
+                        $resolvedApproverId = $currentApprover?->parent_id;
+                        if ($resolvedApproverId && $stepIdForTask) {
                             // Create next approval transaction
                             $nextTransaction = new 
                                 \App\Models\BudgetRequestApprovalTransaction([
                                     'request_budgets_id' => $budgetRequestApprovalTransaction->request_budgets_id,
                                     'requester_id' => $budgetRequestApprovalTransaction->requester_id,
-                                    'assigned_to' => $nextApprover->id,
+                                    'assigned_to' => $resolvedApproverId,
+                                    'order' => $nextOrder,
+                                    'description' => $nextStep->description ?? ($eloquentCurrentStep?->description),
+                                    'status' => 'Pending',
+                                    'created_by' => Auth::id(),
+                                    'updated_by' => Auth::id()
+                                ]);
+                            $nextTransaction->save();
+                            // Create next task
+                            $taskId = DB::table('tasks')->insertGetId([
+                                'process_step_id' => $stepIdForTask,
+                                'process_id' => $nextStep->process_id ?? ($eloquentCurrentStep?->process_id),
+                                'assigned_at' => now(),
+                                'urgency' => 'Normal',
+                                'assigned_to_user_id' => $resolvedApproverId,
+                                'assigned_from_user_id' => $budgetRequestApprovalTransaction->requester_id,
+                                'read_status' => null,
+                                'material_request_id' => null,
+                                'request_budgets_id' => $budgetRequestApprovalTransaction->request_budgets_id,
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]);
+                            Log::info('Created next approval transaction and task for next approver (Direct Manager)', [
+                                'request_budget_id' => $budgetRequestApprovalTransaction->request_budgets_id,
+                                'next_order' => $nextOrder,
+                                'next_approver_id' => $resolvedApproverId
+                            ]);
+                        }
+                    } elseif ($nextStep) {
+                        $resolver = new ApproverResolver();
+                        $eloquentStep = EloquentProcessStep::find($nextStep->id);
+                        $requester = User::find($budgetRequestApprovalTransaction->requester_id);
+                        $resolvedApproverId = null;
+                        if ($eloquentStep && $eloquentStep->designation && strcasecmp(trim($eloquentStep->designation->designation), 'Direct Manager') === 0) {
+                            $currentApprover = User::find($budgetRequestApprovalTransaction->assigned_to);
+                            $resolvedApproverId = $currentApprover?->parent_id;
+                        } else {
+                            $resolvedApproverId = $eloquentStep && $requester
+                                ? $resolver->resolveApproverId($eloquentStep, $requester)
+                                : null;
+                        }
+                        if ($resolvedApproverId) {
+                            // Create next approval transaction
+                            $nextTransaction = new 
+                                \App\Models\BudgetRequestApprovalTransaction([
+                                    'request_budgets_id' => $budgetRequestApprovalTransaction->request_budgets_id,
+                                    'requester_id' => $budgetRequestApprovalTransaction->requester_id,
+                                    'assigned_to' => $resolvedApproverId,
                                     'order' => $nextOrder,
                                     'description' => $nextStep->description,
                                     'status' => 'Pending',
@@ -180,7 +230,7 @@ class BudgetRequestApprovalTransactionController extends Controller
                                 'process_id' => $nextStep->process_id,
                                 'assigned_at' => now(),
                                 'urgency' => 'Normal',
-                                'assigned_to_user_id' => $nextApprover->id,
+                                'assigned_to_user_id' => $resolvedApproverId,
                                 'assigned_from_user_id' => $budgetRequestApprovalTransaction->requester_id,
                                 'read_status' => null,
                                 'material_request_id' => null,
@@ -213,7 +263,7 @@ class BudgetRequestApprovalTransactionController extends Controller
                             Log::info('Created next approval transaction and task for next approver', [
                                 'request_budget_id' => $budgetRequestApprovalTransaction->request_budgets_id,
                                 'next_order' => $nextOrder,
-                                'next_approver_id' => $nextApprover->id
+                                'next_approver_id' => $resolvedApproverId
                             ]);
                         } else {
                             Log::warning('No next approver found for next process step', [

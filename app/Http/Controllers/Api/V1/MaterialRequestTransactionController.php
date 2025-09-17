@@ -7,6 +7,8 @@ use App\Http\Requests\V1\MaterialRequestTransaction\StoreMaterialRequestTransact
 use App\Http\Requests\V1\MaterialRequestTransaction\UpdateMaterialRequestTransactionRequest;
 use App\Http\Resources\V1\MaterialRequestTransactionResource;
 use App\Models\MaterialRequestTransaction;
+use App\Models\ProcessStep as EloquentProcessStep;
+use App\Models\User;
 use App\Models\Task;
 use App\QueryParameters\MaterialRequestTransactionParameters;
 use App\Services\TaskNotificationService;
@@ -14,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use App\Services\ApproverResolver;
 use Spatie\QueryBuilder\QueryBuilder;
 
 class MaterialRequestTransactionController extends Controller
@@ -95,7 +98,13 @@ class MaterialRequestTransactionController extends Controller
                     ->orderBy('process_steps.order')
                     ->get();
                 $totalRequiredApprovals = $processSteps->count();
-                $isFinalApproval = $materialRequestTransaction->order == $totalRequiredApprovals;
+                $currentStep = $processSteps->where('order', $materialRequestTransaction->order)->first();
+                $eloquentCurrentStep = $currentStep ? EloquentProcessStep::find($currentStep->id) : null;
+                $isDirectManagerFlow = $eloquentCurrentStep && $eloquentCurrentStep->designation && strcasecmp(trim($eloquentCurrentStep->designation->designation), 'Direct Manager') === 0;
+                $currentApprover = User::find($materialRequestTransaction->assigned_to);
+                $isFinalApproval = $isDirectManagerFlow
+                    ? ($currentApprover?->parent_id ? false : true)
+                    : ($materialRequestTransaction->order == $totalRequiredApprovals);
                 if (!$isFinalApproval) {
                     $nextOrder = $materialRequestTransaction->order + 1;
                     $nextStep = $processSteps->where('order', $nextOrder)->first();
@@ -106,23 +115,66 @@ class MaterialRequestTransactionController extends Controller
                         'next_step_id' => $nextStep ? $nextStep->id : null,
                         'total_steps' => $totalRequiredApprovals
                     ]);
-                    if ($nextStep) {
-                        $nextApprover = DB::table('users')
-                            ->join('process_step_user', 'users.id', '=', 'process_step_user.user_id')
-                            ->where('process_step_user.process_step_id', $nextStep->id)
-                            ->select('users.id')
-                            ->first();
-                        if ($nextApprover) {
-                            \Log::info('=== CREATING NEXT APPROVAL TRANSACTION ===', [
+                    if ($isDirectManagerFlow) {
+                        $stepIdForTask = $nextStep->id ?? ($currentStep->id ?? null);
+                        $resolvedApproverId = $currentApprover?->parent_id;
+                        if ($resolvedApproverId && $stepIdForTask) {
+                            \Log::info('=== CREATING NEXT APPROVAL (DIRECT MANAGER) ===', [
                                 'material_request_id' => $materialRequestTransaction->material_request_id,
                                 'next_order' => $nextOrder,
-                                'next_approver_id' => $nextApprover->id
+                                'next_approver_id' => $resolvedApproverId
                             ]);
                             $nextTransaction = new 
                                 \App\Models\MaterialRequestTransaction([
                                     'material_request_id' => $materialRequestTransaction->material_request_id,
                                     'requester_id' => $materialRequestTransaction->requester_id,
-                                    'assigned_to' => $nextApprover->id,
+                                    'assigned_to' => $resolvedApproverId,
+                                    'order' => $nextOrder,
+                                    'description' => $nextStep->description ?? ($eloquentCurrentStep?->description),
+                                    'status' => 'Pending',
+                                    'created_by' => auth()->id(),
+                                    'updated_by' => auth()->id()
+                                ]);
+                            $nextTransaction->save();
+                            $taskId = DB::table('tasks')->insertGetId([
+                                'process_step_id' => $stepIdForTask,
+                                'process_id' => $nextStep->process_id ?? ($eloquentCurrentStep?->process_id),
+                                'assigned_at' => now(),
+                                'urgency' => 'Normal',
+                                'assigned_to_user_id' => $resolvedApproverId,
+                                'assigned_from_user_id' => $materialRequestTransaction->requester_id,
+                                'read_status' => null,
+                                'material_request_id' => $materialRequestTransaction->material_request_id,
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]);
+                            // notifications follow below
+                        }
+                    } elseif ($nextStep) {
+                        // Resolve next approver via ApproverResolver
+                        $resolver = new ApproverResolver();
+                        $eloquentStep = EloquentProcessStep::find($nextStep->id);
+                        $requester = User::find($materialRequestTransaction->requester_id);
+                        $resolvedApproverId = null;
+                        if ($eloquentStep && $eloquentStep->designation && strcasecmp(trim($eloquentStep->designation->designation), 'Direct Manager') === 0) {
+                            $currentApprover = User::find($materialRequestTransaction->assigned_to);
+                            $resolvedApproverId = $currentApprover?->parent_id;
+                        } else {
+                            $resolvedApproverId = $eloquentStep && $requester
+                                ? $resolver->resolveApproverId($eloquentStep, $requester)
+                                : null;
+                        }
+                        if ($resolvedApproverId) {
+                            \Log::info('=== CREATING NEXT APPROVAL TRANSACTION ===', [
+                                'material_request_id' => $materialRequestTransaction->material_request_id,
+                                'next_order' => $nextOrder,
+                                'next_approver_id' => $resolvedApproverId
+                            ]);
+                            $nextTransaction = new 
+                                \App\Models\MaterialRequestTransaction([
+                                    'material_request_id' => $materialRequestTransaction->material_request_id,
+                                    'requester_id' => $materialRequestTransaction->requester_id,
+                                    'assigned_to' => $resolvedApproverId,
                                     'order' => $nextOrder,
                                     'description' => $nextStep->description,
                                     'status' => 'Pending',
@@ -135,7 +187,7 @@ class MaterialRequestTransactionController extends Controller
                                 'process_id' => $nextStep->process_id,
                                 'assigned_at' => now(),
                                 'urgency' => 'Normal',
-                                'assigned_to_user_id' => $nextApprover->id,
+                                'assigned_to_user_id' => $resolvedApproverId,
                                 'assigned_from_user_id' => $materialRequestTransaction->requester_id,
                                 'read_status' => null,
                                 'material_request_id' => $materialRequestTransaction->material_request_id,
