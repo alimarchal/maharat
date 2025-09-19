@@ -156,6 +156,11 @@ const ViewBudget = () => {
         0
     );
 
+    const totalBalance = budgets?.reduce(
+        (sum, budget) => sum + (parseFloat(budget.request_budget?.balance_amount) || 0),
+        0
+    );
+
     return (
         <div className="w-full">
             <h2 className="text-3xl font-bold text-[#2C323C] mb-6">
@@ -178,22 +183,23 @@ const ViewBudget = () => {
                         <th className="py-3 px-4">Sub Cost Centers</th>
                         <th className="py-3 px-4">Department</th>
                         <th className="py-3 px-4">Amount Requested</th>
+                        <th className="py-3 px-4">Amount Approved</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
-                            Amount Approved
+                            Balance Amount
                         </th>
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-center text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="5" className="text-center py-12">
+                            <td colSpan="6" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="5"
+                                colSpan="6"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -222,11 +228,17 @@ const ViewBudget = () => {
                                             ?.approved_amount || 0
                                     ).toLocaleString()}
                                 </td>
+                                <td className="py-3 px-4 text-red-500">
+                                    {parseFloat(
+                                        budget.request_budget
+                                            ?.balance_amount || 0
+                                    ).toLocaleString()}
+                                </td>
                             </tr>
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="5" className="py-4">
+                            <td colSpan="6" className="py-4">
                                 No budget data available.
                             </td>
                         </tr>
@@ -242,8 +254,11 @@ const ViewBudget = () => {
                         <td className="p-4 text-blue-500">
                             {totalRequested.toLocaleString()}
                         </td>
-                        <td className="p-4 text-green-500 rounded-tr-2xl rounded-br-2xl">
+                        <td className="p-4 text-green-500">
                             {totalApproved.toLocaleString()}
+                        </td>
+                        <td className="p-4 text-red-500 rounded-tr-2xl rounded-br-2xl">
+                            {totalBalance.toLocaleString()}
                         </td>
                     </tr>
                 </tbody>
