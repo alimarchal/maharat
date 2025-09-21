@@ -119,11 +119,13 @@ const RequestTable = ({ selectedFilter }) => {
                             </td>
                         </tr>
                     ) : (() => {
-                        const filteredRequests = requests.filter(
-                            (req) =>
-                                selectedFilter === "All" ||
-                                req.status?.name === selectedFilter
-                        );
+                        const filteredRequests = requests
+                            .filter(
+                                (req) =>
+                                    selectedFilter === "All" ||
+                                    req.status?.name === selectedFilter
+                            )
+                            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                         
                         if (filteredRequests.length === 0) {
                             return (

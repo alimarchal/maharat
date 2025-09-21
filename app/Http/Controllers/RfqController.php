@@ -56,7 +56,7 @@ class RfqController extends Controller
             'items.*.expected_delivery_date' => 'required|date|after_or_equal:issue_date',
             'items.*.attachment' => 'nullable|file|max:10240', // 10MB max
             'items.*.unit' => 'required|string|exists:units,name',
-            'items.*.brand' => 'nullable|string|exists:brands,name',
+            'items.*.brand' => 'nullable|string|max:255',
         ]);
 
         $rfq = Rfq::create($validated);

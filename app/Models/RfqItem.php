@@ -19,7 +19,7 @@ class RfqItem extends Model
         'description',
         'unit_id',
         'quantity',
-        'brand_id',
+        'brand',
         'model',
         'specifications',
         'attachment',
@@ -46,10 +46,6 @@ class RfqItem extends Model
         return $this->belongsTo(Unit::class);
     }
 
-    public function brand()
-    {
-        return $this->belongsTo(Brand::class);
-    }
 
     public function status(): BelongsTo
     {

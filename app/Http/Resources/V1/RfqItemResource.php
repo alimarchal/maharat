@@ -17,7 +17,7 @@ class RfqItemResource extends JsonResource
             'item_name' => $this->item_name,
             'description' => $this->description,
             'quantity' => number_format((float)$this->quantity, 1, '.', ''),
-            'brand_id' => $this->brand_id,
+            'brand' => $this->brand,
 
             'model' => $this->model,
             'specifications' => $this->specifications,
@@ -37,7 +37,6 @@ class RfqItemResource extends JsonResource
             // Relationships
             'unit' => new UnitResource($this->whenLoaded('unit')),
             'status' => new StatusResource($this->whenLoaded('status')),
-            'brand' => new BrandResource($this->whenLoaded('brand')),
             'product' => new ProductResource($this->whenLoaded('product')),
             'category' => new ProductCategoryResource($this->whenLoaded('category')),
 

@@ -507,6 +507,11 @@ class AccountController extends Controller
                 'new_status' => $newStatus
             ]);
 
+            // If invoice is fully paid, update related material requests to "Pending" status
+            if ($newStatus === 'Paid') {
+                $this->updateMaterialRequestsForPaidInvoice($invoice);
+            }
+
         } elseif (str_starts_with($invoiceNumber, 'PMT')) {
             // Handle Payment Order
             $paymentOrder = \App\Models\PaymentOrder::where('payment_order_number', $invoiceNumber)->first();
@@ -641,6 +646,38 @@ class AccountController extends Controller
                 'message' => 'Failed to restore account',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Update material requests to "Approved" status when an external invoice is fully paid
+     */
+    private function updateMaterialRequestsForPaidInvoice($invoice)
+    {
+        try {
+            // Find material requests that are in "Referred" status and related to this invoice
+            // This assumes there's a relationship between invoices and material requests through RFQ
+            $materialRequests = \App\Models\MaterialRequest::where('status_id', 2) // Referred status
+                ->get();
+
+            foreach ($materialRequests as $materialRequest) {
+                // Update to "Approved" status (status_id = 4) - shows as "Pending" in frontend
+                $materialRequest->update([
+                    'status_id' => 4, // Approved status (shows as Pending in frontend)
+                    'updated_at' => now()
+                ]);
+
+                \Log::info('Material request status updated to Approved after invoice payment', [
+                    'material_request_id' => $materialRequest->id,
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error updating material requests for paid invoice', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }

@@ -302,7 +302,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                                         {item.description || item.product?.description || "N/A"}
                                     </td>
                                     <td className="py-3 px-4">
-                                        {item.brand?.name || item.brand_id || "N/A"}
+                                        {item.brand || "N/A"}
                                     </td>
                                     <td className="py-3 px-4">
                                         {item.unit?.name || item.unit_id || "N/A"}

@@ -379,6 +379,38 @@ class TaskController extends Controller
                             'created_at' => now(),
                             'updated_at' => now()
                         ]);
+
+                        // Update any material requests that are in "Referred" status and related to this RFQ
+                        // This handles the case where material request was referred for RFQ and RFQ gets rejected
+                        $rfqRequests = DB::table('rfq_requests')
+                            ->where('rfq_id', $task->rfq_id)
+                            ->get();
+
+                        foreach ($rfqRequests as $rfqRequest) {
+                            // Find material requests that match this RFQ request details
+                            $materialRequests = DB::table('material_requests')
+                                ->where('status_id', 2) // Referred status
+                                ->where('department_id', $rfqRequest->department_id)
+                                ->where('cost_center_id', $rfqRequest->cost_center_id)
+                                ->where('warehouse_id', $rfqRequest->warehouse_id)
+                                ->get();
+
+                            foreach ($materialRequests as $materialRequest) {
+                                // Update material request status to Rejected
+                                DB::table('material_requests')
+                                    ->where('id', $materialRequest->id)
+                                    ->update([
+                                        'status_id' => 52, // Rejected status
+                                        'updated_at' => now()
+                                    ]);
+
+                                Log::info('=== MATERIAL REQUEST UPDATED TO REJECTED DUE TO RFQ REJECTION ===', [
+                                    'material_request_id' => $materialRequest->id,
+                                    'rfq_id' => $task->rfq_id,
+                                    'rfq_request_id' => $rfqRequest->id
+                                ]);
+                            }
+                        }
                     }
                 } else {
                     Log::warning('=== NO RFQ APPROVAL TRANSACTION FOUND ===', [

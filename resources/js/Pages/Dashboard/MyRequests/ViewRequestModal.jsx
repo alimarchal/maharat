@@ -68,6 +68,7 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
 
         switch (status?.toLowerCase()) {
             case "pending":
+            case "approved": // Show approved as pending with yellow color
                 badgeClass += " bg-yellow-100 text-yellow-800";
                 icon = faCircleExclamation;
                 break;
@@ -87,7 +88,7 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
         return (
             <span className={badgeClass}>
                 {icon && <FontAwesomeIcon icon={icon} className="mr-1" />}
-                {status}
+                {status === "Approved" ? "Pending" : status}
             </span>
         );
     };

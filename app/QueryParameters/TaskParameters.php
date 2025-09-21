@@ -90,7 +90,6 @@ class TaskParameters
         'rfq.items.product',
         'rfq.items.unit',
         'rfq.items.category',
-        'rfq.items.brand',
         'rfq.items.status',
         'rfq.requester',
         'rfq.warehouse',

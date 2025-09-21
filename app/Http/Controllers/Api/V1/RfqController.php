@@ -75,7 +75,6 @@ class RfqController extends Controller
             $rfq = Rfq::with([
                 'status',
                 'items.unit',
-                'items.brand',
                 'warehouse',
                 'department',
                 'costCenter',
@@ -249,7 +248,7 @@ class RfqController extends Controller
                             'description' => $item['description'] ?? null,
                             'unit_id' => $item['unit_id'] ?? null,
                             'quantity' => $item['quantity'] ?? null,
-                            'brand_id' => $item['brand_id'] ?? null,
+                            'brand' => $item['brand'] ?? null,
                             'expected_delivery_date' => $item['expected_delivery_date'] ?? null,
                             'status_id' => $item['status_id'] ?? 24, // Changed from 47 to 24 (Draft)
                             'created_at' => now(),
@@ -305,7 +304,7 @@ class RfqController extends Controller
             Log::info('RFQ created successfully with ID: ' . $rfqId);
 
             // Get the new RFQ to return
-            $rfq = Rfq::with(['status', 'warehouse', 'items.unit', 'items.brand'])
+            $rfq = Rfq::with(['status', 'warehouse', 'items.unit'])
                 ->findOrFail($rfqId);
 
             // Return response with loaded relationships
@@ -398,7 +397,7 @@ class RfqController extends Controller
                             'description' => $item['description'] ?? null,
                             'unit_id' => $item['unit_id'] ?? null,
                             'quantity' => $item['quantity'] ?? null,
-                            'brand_id' => $item['brand_id'] ?? null,
+                            'brand' => $item['brand'] ?? null,
                             'expected_delivery_date' => $item['expected_delivery_date'] ?? null,
                             'status_id' => $item['status_id'] ?? 24, // Changed from 47 to 24 (Draft)
                             'updated_at' => now()
@@ -442,7 +441,7 @@ class RfqController extends Controller
             DB::commit();
 
             // Reload RFQ with fresh data
-            $refreshedRfq = Rfq::with(['status', 'warehouse', 'items.unit', 'items.brand'])
+            $refreshedRfq = Rfq::with(['status', 'warehouse', 'items.unit'])
                 ->findOrFail($id);
 
             return response()->json([

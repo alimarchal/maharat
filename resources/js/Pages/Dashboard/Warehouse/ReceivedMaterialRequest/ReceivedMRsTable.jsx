@@ -17,7 +17,7 @@ const ReceivedMRsTable = () => {
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [selectedFilter, setSelectedFilter] = useState("All");
 
-    const filters = ["All", "Approved", "Issued"];
+    const filters = ["All", "Pending", "Referred", "Issued", "Rejected"];
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -27,7 +27,7 @@ const ReceivedMRsTable = () => {
                     include: 'requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus',
                     page: currentPage,
                     per_page: 10,
-                    'filter[status_id]': '4,51' // Fetch Approved (4) and Issued (51)
+                    'filter[status_id]': '4,2,51,52' // Fetch Approved (4), Referred (2), Issued (51), and Rejected (52)
                 }
             });
             
@@ -51,7 +51,8 @@ const ReceivedMRsTable = () => {
 
     const statusColors = {
         "Pending": "text-yellow-500",
-        "Approved": "text-green-600",
+        "Approved": "text-yellow-500", // Show approved as pending with yellow color
+        "Referred": "text-purple-600", // Dark purple for referred status
         "Issued": "text-green-500",
         "Rejected": "text-red-500"
     };
@@ -66,14 +67,18 @@ const ReceivedMRsTable = () => {
     const getStatusCell = (status) => {
         const statusColors = {
             "Pending": "bg-yellow-100 text-yellow-800",
-            "Approved": "bg-green-100 text-green-800",
-            "Issue Material": "bg-green-100 text-green-800",
+            "Approved": "bg-yellow-100 text-yellow-800", // Show approved as pending with yellow color
+            "Referred": "bg-purple-100 text-purple-800", // Dark purple for referred status
+            "Issued": "bg-green-100 text-green-800",
             "Rejected": "bg-red-100 text-red-800"
         };
 
+        // Show "Approved" status as "Pending" in frontend
+        const displayStatus = status === "Approved" ? "Pending" : status;
+
         return (
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status] || "bg-gray-100 text-gray-800"}`}>
-                {status}
+                {displayStatus}
             </span>
         );
     };
@@ -107,9 +112,9 @@ const ReceivedMRsTable = () => {
     };
 
     const handleEdit = (request) => {
-        // Only allow editing if status is Pending
-        if (request.status?.name !== "Pending") {
-            toast.error("Only Pending requests can be modified");
+        // Allow editing if status is Pending, Approved, or Referred
+        if (request.status?.name !== "Pending" && request.status?.name !== "Approved" && request.status?.name !== "Referred") {
+            toast.error("Only Pending, Approved, or Referred requests can be modified");
             return;
         }
         setSelectedRequest(request);
@@ -170,17 +175,11 @@ const ReceivedMRsTable = () => {
 
                         // Check if we have enough stock
                         if (currentQuantity < requestedQty) {
-                            const errorMessage = `Cannot issue material! Insufficient stock for ${productName}.\n\nAvailable: ${currentQuantity} pieces\nRequested: ${requestedQty} pieces`;
-                            alert(errorMessage);
+                            // Don't show popup, just return silently
                             return;
                         }
                     } else {
-                        const errorMessage = `Cannot issue material! No inventory found for ${productName} in the selected warehouse.`;
-                        console.log('=== INVENTORY NOT FOUND ERROR ===');
-                        console.log('Product Name:', productName);
-                        console.log('Product ID:', productId);
-                        console.log('Warehouse ID:', warehouseId);
-                        alert(errorMessage);
+                        // Don't show popup, just return silently
                         return;
                     }
                 }
@@ -194,6 +193,8 @@ const ReceivedMRsTable = () => {
                 statusId = 52;
             } else if (formData.status === "Issue Material") {
                 statusId = 51;
+            } else if (formData.status === "Referred") {
+                statusId = 2; // Referred status
             }
 
             const statusResponse = await axios.put(`/api/v1/material-requests/${formData.material_request_id}`, {
@@ -283,6 +284,7 @@ const ReceivedMRsTable = () => {
                             id: statusId,
                             name: formData.status === "Issue Material" ? "Issued" : 
                                   formData.status === "Rejected" ? "Rejected" : 
+                                  formData.status === "Referred" ? "Referred" :
                                   formData.status === "Pending" ? "Pending" : "N/A"
                         }
                     }
@@ -295,10 +297,14 @@ const ReceivedMRsTable = () => {
         }
     };
 
-    const filteredRequests = requests.filter((req) => {
-        if (selectedFilter === "All") return true;
-        return req.status?.name === selectedFilter;
-    });
+    const filteredRequests = requests
+        .filter((req) => {
+            if (selectedFilter === "All") return true;
+            // Treat "Approved" status as "Pending" for filtering
+            const displayStatus = req.status?.name === "Approved" ? "Pending" : req.status?.name;
+            return displayStatus === selectedFilter;
+        })
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     return (
         <div className="w-full overflow-hidden">
@@ -406,7 +412,7 @@ const ReceivedMRsTable = () => {
                                             "text-gray-500"
                                         }`}
                                     >
-                                        {req.status?.name || "N/A"}
+                                        {req.status?.name === "Approved" ? "Pending" : req.status?.name || "N/A"}
                                     </td>
                                     <td className="py-3 px-4">
                                         <div className="flex flex-col">
@@ -432,7 +438,7 @@ const ReceivedMRsTable = () => {
                                         >
                                             <FontAwesomeIcon icon={faEye} />
                                         </button>
-                                        {req.status?.name === "Pending" && (
+                                        {(req.status?.name === "Pending" || req.status?.name === "Approved") && (
                                             <button
                                                 onClick={() => {
                                                     handleEdit(req);
