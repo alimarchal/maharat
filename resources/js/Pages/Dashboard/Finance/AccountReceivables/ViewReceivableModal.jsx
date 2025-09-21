@@ -199,7 +199,7 @@ const ViewReceivableModal = ({ id, isOpen, onClose }) => {
         return (
             <span className={badgeClass}>
                 {icon && <FontAwesomeIcon icon={icon} className="mr-1" />}
-                {formattedStatus}
+                {status === "Approved" ? "Pending" : formattedStatus}
             </span>
         );
     };

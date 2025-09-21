@@ -22,10 +22,8 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
     const [subCostCenters, setSubCostCenters] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [errors, setErrors] = useState({});
-    //TODO: Uncomment when second phase has started for new feature
-    // const [showRfqOption, setShowRfqOption] = useState(false);
-    // const [rfqError, setRfqError] = useState("");
-    // const [rfqAlreadyRequested, setRfqAlreadyRequested] = useState(false);
+    const [showRfqOption, setShowRfqOption] = useState(false);
+    const [rfqError, setRfqError] = useState("");
 
     useEffect(() => {
         axios
@@ -62,43 +60,11 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                 fetchSubCostCenters(requestData.cost_center_id);
             }
             
-            //TODO: Uncomment when second phase has started for new feature
-            // setShowRfqOption(false);
-            // setRfqError("");
+            setShowRfqOption(false);
+            setRfqError("");
         }
     }, [isOpen, requestData]);
 
-    //TODO: Uncomment when second phase has started for new feature
-    // useEffect(() => {
-    //     // Check if RFQ request already exists for this material request
-    //     const checkRfqRequest = async () => {
-    //         if (isOpen && requestData && requestData.items && requestData.items.length > 0) {
-    //             try {
-    //                 // Check for any RFQ request for any of the items in this material request
-    //                 const rfqRes = await axios.get('/api/v1/rfq-requests', {
-    //                     params: {
-    //                         user_id: requestData.requester_id,
-    //                         warehouse_id: requestData.warehouse_id,
-    //                         // Optionally filter by item name or product id if needed
-    //                     }
-    //                 });
-    //                 const rfqRequests = rfqRes.data?.data || [];
-    //                 // If any RFQ request exists for any item in this MR, consider it already requested
-    //                 const alreadyRequested = requestData.items.some(item =>
-    //                     rfqRequests.some(r =>
-    //                         (r.name === item.product?.name || r.product_id === item.product?.id)
-    //                     )
-    //                 );
-    //                 setRfqAlreadyRequested(alreadyRequested);
-    //             } catch (err) {
-    //                 setRfqAlreadyRequested(false);
-    //             }
-    //         } else {
-    //             setRfqAlreadyRequested(false);
-    //         }
-    //     };
-    //     checkRfqRequest();
-    // }, [isOpen, requestData]);
 
     const fetchSubCostCenters = async (costCenterId) => {
         try {
@@ -190,10 +156,9 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                     }
                 } catch (error) {
                     if (error.message.includes("No inventory found")) {
-                        //TODO: Uncomment when second phase has started for new feature
-                        // setShowRfqOption(true);
-                        // setRfqError(error.message);
-                        // return;
+                        setShowRfqOption(true);
+                        setRfqError(error.message);
+                        return;
                         
                         // For now, just show the error and don't proceed
                         setErrors({ general: error.message });
@@ -210,48 +175,54 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
         }
     };
 
-    //TODO: Uncomment when second phase has started for new feature
-    // const handleCreateRfqRequest = async () => {
-    //     try {
-    //         // Create RFQ request for each item in the material request
-    //         const items = requestData.items || [];
+    const handleCreateRfqRequest = async () => {
+        try {
+            // Create RFQ request for each item in the material request
+            const items = requestData.items || [];
             
-    //         for (const item of items) {
-    //             const rfqRequestData = {
-    //                 user_id: requestData.requester_id,
-    //                 name: item.product?.name || "Unknown Item",
-    //                 description: item.description || "",
-    //                 quantity: parseInt(item.quantity) || 1,
-    //                 category_id: item.product?.category_id,
-    //                 unit_id: item.unit_id,
-    //                 warehouse_id: requestData.warehouse_id,
-    //                 department_id: requestData.department_id,
-    //                 cost_center_id: requestData.cost_center_id,
-    //                 sub_cost_center_id: requestData.sub_cost_center_id,
-    //                 photo: item.photo,
-    //             };
+            for (const item of items) {
+                const rfqRequestData = {
+                    user_id: requestData.requester_id,
+                    name: item.product?.name || "Unknown Item",
+                    description: item.description || "",
+                    quantity: parseInt(item.quantity) || 1,
+                    category_id: item.product?.category_id,
+                    unit_id: item.unit_id,
+                    warehouse_id: requestData.warehouse_id,
+                    department_id: requestData.department_id,
+                    cost_center_id: requestData.cost_center_id,
+                    sub_cost_center_id: requestData.sub_cost_center_id,
+                    photo: item.photo,
+                };
 
-    //             await axios.post("/api/v1/rfq-requests", rfqRequestData);
-    //         }
+                await axios.post("/api/v1/rfq-requests", rfqRequestData);
+            }
 
-    //         // Update material request status to indicate RFQ was created
-    //         await axios.put(`/api/v1/material-requests/${formData.material_request_id}`, {
-    //             status: "Pending",
-    //             description: "RFQ request created for items with no inventory"
-    //         });
+            // Update material request status to "Referred" when RFQ is created
+            await axios.put(`/api/v1/material-requests/${requestData.id}`, {
+                status_id: 2, // Referred status
+                description: "RFQ request created for items with no inventory"
+            });
 
-    //         onSave(formData);
-    //         onClose();
-    //     } catch (error) {
-    //         setRfqError("Failed to create RFQ request. Please try again.");
-    //     }
-    // };
+            // Update the form data to reflect the new status
+            const updatedFormData = {
+                ...formData,
+                material_request_id: requestData.id,
+                status: "Referred",
+                status_id: 2
+            };
 
-    //TODO: Uncomment when second phase has started for new feature
-    // const handleDeclineRfq = () => {
-    //     setShowRfqOption(false);
-    //     setRfqError("");
-    // };
+            onSave(updatedFormData);
+            onClose();
+        } catch (error) {
+            setRfqError("Failed to create RFQ request. Please try again.");
+        }
+    };
+
+    const handleDeclineRfq = () => {
+        setShowRfqOption(false);
+        setRfqError("");
+    };
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
@@ -268,7 +239,6 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                     </button>
                 </div>
 
-                {/*TODO: Uncomment when second phase has started for new feature
                 {showRfqOption && (
                     <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                         <h3 className="text-lg font-semibold text-red-600 mb-2">
@@ -281,16 +251,12 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                             Would you like to send an RFQ request to procure these items?
                         </p>
                         <div className="flex space-x-4">
-                            {rfqAlreadyRequested ? (
-                                <span className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">RFQ already requested</span>
-                            ) : (
-                                <button
-                                    onClick={handleCreateRfqRequest}
-                                    className="px-4 py-2 bg-[#009FDC] text-white rounded-lg hover:bg-[#007CB8] transition-colors"
-                                >
-                                    Send RFQ Request
-                                </button>
-                            )}
+                            <button
+                                onClick={handleCreateRfqRequest}
+                                className="px-4 py-2 bg-[#009FDC] text-white rounded-lg hover:bg-[#007CB8] transition-colors"
+                            >
+                                Send RFQ Request
+                            </button>
                             <button
                                 onClick={handleDeclineRfq}
                                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
@@ -300,7 +266,6 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                         </div>
                     </div>
                 )}
-                */}
 
                 {errors.general && (
                     <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -421,9 +386,8 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                                 value={formData.status}
                                 onChange={handleChange}
                                 options={[
-                                    { id: "Pending", label: "Pending" },
-                                    { id: "Rejected", label: "Rejected" },
                                     { id: "Issue Material", label: "Issue Material" },
+                                    { id: "Rejected", label: "Rejected" },
                                 ]}
                             />
                             {errors.status && (

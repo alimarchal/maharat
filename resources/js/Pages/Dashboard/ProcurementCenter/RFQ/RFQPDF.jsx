@@ -13,7 +13,7 @@ export default function RFQPDF({ rfqId, onGenerated }) {
             try {
                 setLoading(true);
                 // Include all related data in the request with expanded include list
-                const response = await axios.get(`/api/v1/rfqs/${rfqId}?include=status,warehouse,items.unit,items.brand,items.product,costCenter,subCostCenter,categories,paymentType,cost_center,sub_cost_center,payment_type,items.specifications,department`);
+                const response = await axios.get(`/api/v1/rfqs/${rfqId}?include=status,warehouse,items.unit,items.product,costCenter,subCostCenter,categories,paymentType,cost_center,sub_cost_center,payment_type,items.specifications,department`);
                 if (response.data?.data) {
                     const data = response.data.data;
                     
@@ -432,11 +432,8 @@ export default function RFQPDF({ rfqId, onGenerated }) {
                         unitName = item.unit.name || "N/A";
                     }
 
-                    // Get brand name from relationship
-                    let brandName = "N/A";
-                    if (item.brand) {
-                        brandName = item.brand.name || "N/A";
-                    }
+                    // Get brand name as text
+                    let brandName = item.brand || "N/A";
 
                     return [
                         index + 1,

@@ -12,7 +12,7 @@ export default function RFQExcel({ rfqId, onGenerated }) {
             try {
                 setLoading(true);
                 // Include all related data in the request with expanded include list
-                const response = await axios.get(`/api/v1/rfqs/${rfqId}?include=status,warehouse,items.unit,items.brand,items.product,costCenter,subCostCenter,categories,paymentType,cost_center,sub_cost_center,payment_type,items.specifications`);
+                const response = await axios.get(`/api/v1/rfqs/${rfqId}?include=status,warehouse,items,items.unit,items.product,costCenter,subCostCenter,categories,paymentType,cost_center,sub_cost_center,payment_type,items.specifications`);
                 
                 if (response.data?.data) {
                     const data = response.data.data;
@@ -248,10 +248,10 @@ export default function RFQExcel({ rfqId, onGenerated }) {
                         unitName = item.unit.name || 'N/A';
                     }
                     
-                    // Get brand name from relationship
+                    // Get brand name as text - handle all cases
                     let brandName = 'N/A';
-                    if (item.brand) {
-                        brandName = item.brand.name || 'N/A';
+                    if (item.brand && item.brand !== '' && item.brand !== null && item.brand !== undefined) {
+                        brandName = String(item.brand);
                     }
                     
                     return [

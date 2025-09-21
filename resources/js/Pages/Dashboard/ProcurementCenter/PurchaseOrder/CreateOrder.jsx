@@ -72,13 +72,32 @@ export default function CreatePurchaseOrder() {
 
     const fetchRfqs = async () => {
         try {
+            // First fetch all quotations to get RFQ IDs that have quotations
+            const quotationsResponse = await axios.get("/api/v1/quotations?per_page=1000");
+            const quotationsData = quotationsResponse.data.data || [];
+            
+            // Get unique RFQ IDs that have quotations
+            const rfqIdsWithQuotations = [...new Set(quotationsData.map(q => q.rfq_id).filter(id => id))];
+            
+            if (rfqIdsWithQuotations.length === 0) {
+                setError("No RFQs found with quotations");
+                setRfqs([]);
+                return;
+            }
+            
+            // Fetch RFQs that have quotations and don't have purchase orders
             const response = await axios.get(
                 "/api/v1/rfqs/without-purchase-orders"
             );
+            
             if (response.data && response.data.success && response.data.data) {
-                setRfqs(response.data.data);
+                // Filter to only show RFQs that have quotations
+                const rfqsWithQuotations = response.data.data.filter(rfq => 
+                    rfqIdsWithQuotations.includes(rfq.id)
+                );
+                setRfqs(rfqsWithQuotations);
             } else {
-                setError("No RFQs found without purchase orders");
+                setError("No RFQs found with quotations");
                 setRfqs([]);
             }
         } catch (error) {

@@ -24,7 +24,7 @@ const ItemModal = ({
         description: "",
         unit_id: "",
         quantity: "",
-        brand_id: "",
+        brand: "",
         expected_delivery_date: "",
         attachment: null,
         rfq_id: rfqId,
@@ -35,7 +35,6 @@ const ItemModal = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [selectedUnit, setSelectedUnit] = useState(null);
-    const [selectedBrand, setSelectedBrand] = useState(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -59,7 +58,7 @@ const ItemModal = ({
                     description: item.description || "",
                     unit_id: item.unit_id ? String(item.unit_id) : "",
                     quantity: item.quantity || "",
-                    brand_id: item.brand_id ? String(item.brand_id) : "",
+                    brand: item.brand || item.brand_name || "",
                     expected_delivery_date: item.expected_delivery_date || "",
                     attachment: item.attachment || null,
                     id: item.id,
@@ -77,10 +76,6 @@ const ItemModal = ({
                     const unit = units.find(u => String(u.id) === String(item.unit_id));
                     setSelectedUnit(unit);
                 }
-                if (item.brand_id) {
-                    const brand = brands.find(b => String(b.id) === String(item.brand_id));
-                    setSelectedBrand(brand);
-                }
             } else {
                 const today = new Date();
                 const nextMonth = new Date(today);
@@ -92,7 +87,7 @@ const ItemModal = ({
                     description: "",
                     unit_id: "",
                     quantity: "",
-                    brand_id: "",
+                    brand: "",
                     expected_delivery_date: nextMonth
                         .toISOString()
                         .split("T")[0],
@@ -103,7 +98,6 @@ const ItemModal = ({
                 // Reset selected items
                 setSelectedProduct(null);
                 setSelectedUnit(null);
-                setSelectedBrand(null);
             }
             setTempFile(null);
             setErrors({});
@@ -135,6 +129,8 @@ const ItemModal = ({
             setFormData({ ...formData, quantity: value });
         } else if (name === "expected_delivery_date") {
             setFormData({ ...formData, expected_delivery_date: value });
+        } else if (name === "brand") {
+            setFormData({ ...formData, brand: value });
         } else {
             setFormData({ ...formData, [name]: value });
         }
@@ -158,37 +154,7 @@ const ItemModal = ({
         });
     };
 
-    const handleBrandSelect = (brand) => {
-        setSelectedBrand(brand);
-        setFormData({
-            ...formData,
-            brand_id: String(brand.id),
-        });
-    };
 
-    // Function to get available brands (filter out already selected brands for the same product)
-    const getAvailableBrands = () => {
-        if (!selectedProduct) return brands;
-        
-        // Get all items with the same product (excluding current item being edited)
-        const sameProductItems = existingItems.filter(existingItem => {
-            // Skip the current item being edited
-            if (isEdit && item && existingItem.id === item.id) return false;
-            
-            // Check if it's the same product
-            return existingItem.product_id === selectedProduct.id || 
-                   existingItem.item_name === selectedProduct.name;
-        });
-        
-        // Get brand IDs that are already selected for this product
-        const usedBrandIds = sameProductItems
-            .map(item => item.brand_id)
-            .filter(brandId => brandId && brandId !== "")
-            .map(brandId => String(brandId));
-        
-        // Filter out brands that are already used
-        return brands.filter(brand => !usedBrandIds.includes(String(brand.id)));
-    };
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -215,7 +181,7 @@ const ItemModal = ({
         if (!formData.unit_id) validationErrors.unit_id = "Unit is required";
         if (!formData.quantity)
             validationErrors.quantity = "Quantity is required";
-        if (!formData.brand_id) validationErrors.brand_id = "Brand is required";
+        if (!formData.brand) validationErrors.brand = "Brand is required";
         if (!formData.expected_delivery_date)
             validationErrors.expected_delivery_date =
                 "Delivery date is required";
@@ -380,21 +346,13 @@ const ItemModal = ({
                             onChange={handleChange}
                             error={errors.quantity}
                         />
-                        <SelectFloating
+                        <InputFloating
                             label="Brand"
-                            name="brand_id"
-                            value={selectedBrand ? selectedBrand.name : ""}
-                            onChange={(e) => {
-                                const brand = getAvailableBrands().find(b => b.name === e.target.value);
-                                if (brand) {
-                                    handleBrandSelect(brand);
-                                }
-                            }}
-                            options={getAvailableBrands().map((brand) => ({
-                                id: brand.name,
-                                label: brand.name,
-                            }))}
-                            error={errors.brand_id}
+                            name="brand"
+                            type="text"
+                            value={formData.brand || ""}
+                            onChange={handleChange}
+                            error={errors.brand}
                         />
                         <InputFloating
                             label="Expected Delivery Date"

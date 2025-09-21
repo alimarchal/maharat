@@ -22,6 +22,32 @@ const RfqRequestsTable = ({ onSelectRfqRequest }) => {
             
             // Update the local state
             updateRfqRequestStatus(item.id, 'Rejected');
+
+            // Update related material requests to "Rejected" status
+            try {
+                // Find material requests that are in "Referred" status and match this RFQ request
+                const materialRequestsResponse = await axios.get('/api/v1/material-requests', {
+                    params: {
+                        'filter[status_id]': '2', // Referred status
+                        'filter[department_id]': item.department_id,
+                        'filter[cost_center_id]': item.cost_center_id,
+                        'filter[warehouse_id]': item.warehouse_id
+                    }
+                });
+
+                const materialRequests = materialRequestsResponse.data?.data || [];
+                
+                // Update each matching material request to "Rejected"
+                for (const materialRequest of materialRequests) {
+                    await axios.put(`/api/v1/material-requests/${materialRequest.id}`, {
+                        status_id: 52, // Rejected status
+                        description: 'Material request rejected due to RFQ request rejection'
+                    });
+                }
+            } catch (materialRequestError) {
+                console.error('Error updating material request status:', materialRequestError);
+                // Don't show error to user as the main RFQ rejection was successful
+            }
         } catch (error) {
             console.error('Error rejecting RFQ request:', error);
             alert('Failed to reject RFQ request. Please try again.');

@@ -27,7 +27,6 @@ class QuotationParameters
         'rfq.items',
         'rfq.items.product',
         'rfq.items.unit',
-        'rfq.items.brand',
         'supplier',
         'status',
         'documents'

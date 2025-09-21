@@ -2,14 +2,12 @@ import React, { useState } from "react";
 import RequestTable from "./RequestTable";
 import { Link } from "@inertiajs/react";
 import NewItemModal from "./NewItemModal";
-//TODO: Uncomment when second phase has started for new feature
-// import { useRequestItems } from "@/Components/RequestItemsContext";
+import { useRequestItems } from "@/Components/RequestItemsContext";
 
 const RequestIndex = () => {
     const [selectedFilter, setSelectedFilter] = useState("All");
     const [isModalOpen, setIsModalOpen] = useState(false);
-    //TODO: Uncomment when second phase has started for new feature
-    // const { approvedCount, pendingCount } = useRequestItems();
+    const { approvedCount, pendingCount } = useRequestItems();
 
     const filters = ["All", "Draft", "Pending", "Approved", "Rejected"];
 
@@ -51,13 +49,11 @@ const RequestIndex = () => {
                         className="relative bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                     >
                         Make New Request
-                        {/*TODO: Uncomment when second phase has started for new feature
                         {approvedCount > 0 && (
                             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-sm h-6 w-6 rounded-full flex items-center justify-center">
                                 {approvedCount}
                             </span>
                         )}
-                        */}
                     </Link>
                 </div>
             </div>

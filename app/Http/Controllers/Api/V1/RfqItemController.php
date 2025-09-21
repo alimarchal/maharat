@@ -59,7 +59,7 @@ class RfqItemController extends Controller
                     'product_id' => $item['product_id'] ?? null,
                     'unit_id' => $item['unit_id'] ?? null,
                     'quantity' => $item['quantity'] ?? null,
-                    'brand_id' => $item['brand_id'] ?? null,
+                    'brand' => $item['brand'] ?? null,
                     'expected_delivery_date' => $item['expected_delivery_date'] ?? null,
                     'status_id' => $item['status_id'] ?? null
                 ];

@@ -29,6 +29,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { router } from "@inertiajs/react";
 import { usePage } from "@inertiajs/react";
+import { useRequestItems } from "@/Components/RequestItemsContext";
 
 const DropdownItem = ({ text, icon, onClick, notificationCount = 0 }) => {
     return (
@@ -250,6 +251,12 @@ export default function MainDashboard({ roles, permissions }) {
     const user_id = user.id;
     const [pendingTasksCount, setPendingTasksCount] = useState(0);
     const [requestedItemsCount, setRequestedItemsCount] = useState(0);
+    const [pendingMaterialRequestsCount, setPendingMaterialRequestsCount] = useState(0);
+    const [pendingRfqRequestsCount, setPendingRfqRequestsCount] = useState(0);
+    const [quotationsRfqCount, setQuotationsRfqCount] = useState(0);
+    const [purchaseOrdersRfqCount, setPurchaseOrdersRfqCount] = useState(0);
+    const [unpaidInvoicesCount, setUnpaidInvoicesCount] = useState(0);
+    const [approvedItemsCount, setApprovedItemsCount] = useState(0);
     const [loading, setLoading] = useState(true);
 
     // Fetch pending tasks count
@@ -289,6 +296,187 @@ export default function MainDashboard({ roles, permissions }) {
         };
         fetchRequestedItems();
     }, []);
+
+    // Fetch pending material requests count for warehouse notifications
+    useEffect(() => {
+        const fetchPendingMaterialRequests = async () => {
+            try {
+                const response = await fetch(
+                    `/api/v1/material-requests?filter[status_id]=4&per_page=1`
+                );
+                const data = await response.json();
+                if (response.ok) {
+                    setPendingMaterialRequestsCount(data.meta?.total || 0);
+                }
+            } catch (err) {
+                console.error("Error fetching pending material requests:", err);
+            }
+        };
+        fetchPendingMaterialRequests();
+    }, []);
+
+    // Fetch pending RFQ requests count for procurement notifications
+    useEffect(() => {
+        const fetchPendingRfqRequests = async () => {
+            try {
+                const response = await fetch(`/api/v1/rfq-requests`);
+                const data = await response.json();
+                if (response.ok) {
+                    const requests = data.data || [];
+                    // Filter for pending requests that haven't been requested yet
+                    const pendingRequests = requests.filter(req => req.status === 'Pending' && !req.is_requested);
+                    setPendingRfqRequestsCount(pendingRequests.length);
+                }
+            } catch (err) {
+                console.error("Error fetching pending RFQ requests:", err);
+            }
+        };
+        fetchPendingRfqRequests();
+    }, []);
+
+    // Fetch quotations RFQ count (RFQs with status_id 47 that don't have quotations or purchase orders)
+    useEffect(() => {
+        const fetchQuotationsRfqCount = async () => {
+            try {
+                // Fetch all RFQs with status_id 47
+                const allRfqsResponse = await fetch(`/api/v1/rfqs?filter[status_id]=47&per_page=1000`);
+                const allRfqsData = await allRfqsResponse.json();
+                
+                if (allRfqsResponse.ok) {
+                    const allRfqs = allRfqsData.data || [];
+                    
+                    // Fetch all quotations to check which RFQs already have quotations
+                    const quotationsResponse = await fetch("/api/v1/quotations");
+                    const quotationsData = await quotationsResponse.json();
+                    
+                    // Fetch all purchase orders to check which RFQs already have POs
+                    const purchaseOrdersResponse = await fetch("/api/v1/purchase-orders");
+                    const purchaseOrdersData = await purchaseOrdersResponse.json();
+                    
+                    if (quotationsResponse.ok && purchaseOrdersResponse.ok) {
+                        const quotations = quotationsData.data || [];
+                        const purchaseOrders = purchaseOrdersData.data || [];
+                        
+                        // Create sets of RFQ IDs that already have quotations or purchase orders
+                        const rfqIdsWithQuotation = new Set();
+                        const rfqIdsWithPO = new Set();
+                        
+                        quotations.forEach((quotation) => {
+                            if (quotation.rfq_id) {
+                                rfqIdsWithQuotation.add(quotation.rfq_id);
+                            }
+                        });
+                        
+                        purchaseOrders.forEach((po) => {
+                            if (po.rfq_id) {
+                                rfqIdsWithPO.add(po.rfq_id);
+                            }
+                        });
+                        
+                        // Count RFQs that don't have quotations AND don't have purchase orders
+                        const rfqsWithoutQuotationOrPO = allRfqs.filter((rfq) => 
+                            !rfqIdsWithQuotation.has(rfq.id) && !rfqIdsWithPO.has(rfq.id)
+                        );
+                        
+                        setQuotationsRfqCount(rfqsWithoutQuotationOrPO.length);
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching quotations RFQ count:", err);
+            }
+        };
+        fetchQuotationsRfqCount();
+    }, []);
+
+    // Fetch purchase orders RFQ count (RFQs that have quotations but no purchase orders)
+    useEffect(() => {
+        const fetchPurchaseOrdersRfqCount = async () => {
+            try {
+                // First fetch all quotations to get RFQ IDs that have quotations
+                const quotationsResponse = await fetch("/api/v1/quotations?per_page=1000");
+                const quotationsData = await quotationsResponse.json();
+                
+                if (quotationsResponse.ok) {
+                    const quotations = quotationsData.data || [];
+                    
+                    // Get unique RFQ IDs that have quotations
+                    const rfqIdsWithQuotations = [...new Set(quotations.map(q => q.rfq_id).filter(id => id))];
+                    
+                    if (rfqIdsWithQuotations.length === 0) {
+                        setPurchaseOrdersRfqCount(0);
+                        return;
+                    }
+                    
+                    // Fetch RFQs that don't have purchase orders
+                    const rfqsResponse = await fetch("/api/v1/rfqs/without-purchase-orders");
+                    const rfqsData = await rfqsResponse.json();
+                    
+                    if (rfqsResponse.ok && rfqsData.success && rfqsData.data) {
+                        // Filter to only show RFQs that have quotations
+                        const rfqsWithQuotations = rfqsData.data.filter(rfq => 
+                            rfqIdsWithQuotations.includes(rfq.id)
+                        );
+                        setPurchaseOrdersRfqCount(rfqsWithQuotations.length);
+                    } else {
+                        setPurchaseOrdersRfqCount(0);
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching purchase orders RFQ count:", err);
+                setPurchaseOrdersRfqCount(0);
+            }
+        };
+        fetchPurchaseOrdersRfqCount();
+    }, []);
+
+    // Fetch unpaid invoices count
+    useEffect(() => {
+        const fetchUnpaidInvoicesCount = async () => {
+            try {
+                const response = await fetch("/api/v1/external-invoices?filter[status]=Unpaid&per_page=1");
+                const data = await response.json();
+                
+                if (response.ok) {
+                    setUnpaidInvoicesCount(data.meta?.total || 0);
+                }
+            } catch (err) {
+                console.error("Error fetching unpaid invoices count:", err);
+                setUnpaidInvoicesCount(0);
+            }
+        };
+        fetchUnpaidInvoicesCount();
+    }, []);
+
+    // Fetch approved items count (same as approvedCount in RequestItemsContext)
+    useEffect(() => {
+        const fetchApprovedItemsCount = async () => {
+            try {
+                const params = { 
+                    filter: { 
+                        status: "Approved",
+                        is_requested: false, // Only show items that haven't been requested yet
+                        user_id: user_id
+                    } 
+                };
+                const response = await fetch(`/api/v1/request-item?${new URLSearchParams({
+                    'filter[status]': 'Approved',
+                    'filter[is_requested]': 'false',
+                    'filter[user_id]': user_id
+                })}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Extract the data array from the paginated response (same as RequestItemsContext)
+                    const items = data.data?.data || data.data || [];
+                    setApprovedItemsCount(items.length);
+                }
+            } catch (err) {
+                console.error("Error fetching approved items count:", err);
+                setApprovedItemsCount(0);
+            }
+        };
+        fetchApprovedItemsCount();
+    }, [user_id]);
 
     const hasPermission = (permission) => {
         const permissionMap = {
@@ -330,24 +518,28 @@ export default function MainDashboard({ roles, permissions }) {
             text: "RFQs",
             icon: faFileCirclePlus,
             onClick: () => router.visit("/rfqs"),
+            notificationCount: pendingRfqRequestsCount,
             //requiredPermission: "view_rfqs",
         },
         {
             text: "Quotations",
             icon: faFileInvoice,
             onClick: () => router.visit("/quotations"),
+            notificationCount: quotationsRfqCount,
             //requiredPermission: "view_quotations",
         },
         {
             text: "Purchase Orders",
             icon: faFileSignature,
             onClick: () => router.visit("/purchase-orders"),
+            notificationCount: purchaseOrdersRfqCount,
             //requiredPermission: "view_purchase_orders",
         },
         {
             text: "External Invoices",
             icon: faFileAlt,
             onClick: () => router.visit("/external-invoices"),
+            notificationCount: unpaidInvoicesCount,
             //requiredPermission: "view_invoices",
         },
     ];
@@ -392,6 +584,7 @@ export default function MainDashboard({ roles, permissions }) {
             text: "User Material Requests",
             icon: faFileAlt,
             onClick: () => router.visit("/material-requests"),
+            notificationCount: pendingMaterialRequestsCount,
             //requiredPermission: "view_material_requests",
         },
         {
@@ -495,6 +688,12 @@ export default function MainDashboard({ roles, permissions }) {
     const budgetDropdownItems = filterDropdownItems(baseBudgetDropdownItems);
     const configDropdownItems = filterDropdownItems(baseConfigDropdownItems);
 
+    // Calculate total procurement notifications
+    const totalProcurementNotifications = pendingRfqRequestsCount + quotationsRfqCount + purchaseOrdersRfqCount + unpaidInvoicesCount;
+    
+    // Calculate total warehouse notifications
+    const totalWarehouseNotifications = pendingMaterialRequestsCount + requestedItemsCount;
+
     // Determine which cards to show based on permissions
     const showRequestsCard = hasPermission("My Requests");
     const showTasksCard = hasPermission("Task Center");
@@ -529,6 +728,7 @@ export default function MainDashboard({ roles, permissions }) {
                         bgColor="bg-[#C4E4F0]"
                         iconColor="text-[#005372]"
                         onClick={() => router.visit("/my-requests")}
+                        notificationCount={approvedItemsCount}
                     />
                 )}
                 {showTasksCard && (
@@ -550,6 +750,7 @@ export default function MainDashboard({ roles, permissions }) {
                         bgColor="bg-[#BFBCD8]"
                         iconColor="text-[#393559]"
                         dropdownItems={purchaseDropdownItems.length > 0 ? purchaseDropdownItems : null}
+                        notificationCount={totalProcurementNotifications}
                     />
                 )}
                 {showFinanceCard && (
@@ -571,7 +772,7 @@ export default function MainDashboard({ roles, permissions }) {
                         iconColor="text-[#665200]"
                         dropdownItems={warehouseDropdownItems.length > 0 ? warehouseDropdownItems : null}
                         onClick={() => router.visit("/warehouse-management")}
-                        notificationCount={requestedItemsCount}
+                        notificationCount={totalWarehouseNotifications}
                     />
                 )}
                 {showBudgetCard && (
