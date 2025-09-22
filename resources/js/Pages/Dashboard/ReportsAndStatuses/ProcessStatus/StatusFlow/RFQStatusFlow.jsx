@@ -39,7 +39,15 @@ const RFQStatusFlow = () => {
                 const sortedStatuses = processStep.sort(
                     (a, b) => a.order - b.order
                 );
-                setStatuses(sortedStatuses);
+
+                // Add requester step at the beginning
+                const requesterStep = {
+                    id: 'requester',
+                    description: 'Requester',
+                    order: 0
+                };
+                
+                setStatuses([requesterStep, ...sortedStatuses]);
             }
 
             const response = await axios.get(
@@ -48,7 +56,7 @@ const RFQStatusFlow = () => {
             setCardData(response.data?.data);
 
             if (response.data?.data && response.data.data.length > 0) {
-                setCurrentStep(response.data.data.length);
+                setCurrentStep(1 + response.data.data.length);
             }
         } catch (error) {
             console.error("Error fetching status:", error);
