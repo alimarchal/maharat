@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faEdit, faTrash, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faEdit, faTrash, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { usePage } from "@inertiajs/react";
 import ViewRequestModal from "../MyRequests/ViewRequestModal";
 import axios from "axios";
@@ -220,7 +220,7 @@ const RequestTable = ({ selectedFilter }) => {
                                         className="text-[#9B9DA2] hover:text-gray-500"
                                         title="View Process Card"
                                     >
-                                        <FontAwesomeIcon icon={faSearch} />
+                                        <FontAwesomeIcon icon={faInfoCircle} />
                                     </button>
                                     {req.status?.name === "Draft" && (
                                         <>
@@ -289,11 +289,12 @@ const RequestTable = ({ selectedFilter }) => {
                 />
             )}
 
-            { /* View Card Modal */}
+            {/* View Card Modal */}
             {isViewCardModalOpen && (
                 <ViewCardModal
                     isOpen={isViewCardModalOpen}
                     onClose={() => setIsViewCardModalOpen(false)}
+                    request={selectedRequest}
                 />
             )}
         </div>
