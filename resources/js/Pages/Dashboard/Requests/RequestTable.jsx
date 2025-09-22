@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faEdit, faTrash, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { usePage } from "@inertiajs/react";
 import ViewRequestModal from "../MyRequests/ViewRequestModal";
 import axios from "axios";
+import ViewCardModal from "./ViewCardModal";
 
 const RequestTable = ({ selectedFilter }) => {
     const user_id = usePage().props.auth.user.id;
@@ -14,6 +15,7 @@ const RequestTable = ({ selectedFilter }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [isViewCardModalOpen, setIsViewCardModalOpen] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
 
     useEffect(() => {
@@ -64,6 +66,11 @@ const RequestTable = ({ selectedFilter }) => {
     const handleViewRequest = (request) => {
         setSelectedRequest(request);
         setIsViewModalOpen(true);
+    };
+
+    const handleViewCards = (request) => {
+        setSelectedRequest(request);
+        setIsViewCardModalOpen(true);
     };
 
     const statusColors = {
@@ -208,6 +215,13 @@ const RequestTable = ({ selectedFilter }) => {
                                     >
                                         <FontAwesomeIcon icon={faEye} />
                                     </button>
+                                    <button
+                                        onClick={() => handleViewCards(req)}
+                                        className="text-[#9B9DA2] hover:text-gray-500"
+                                        title="View Process Card"
+                                    >
+                                        <FontAwesomeIcon icon={faInfoCircle} />
+                                    </button>
                                     {req.status?.name === "Draft" && (
                                         <>
                                             <Link
@@ -271,6 +285,15 @@ const RequestTable = ({ selectedFilter }) => {
                 <ViewRequestModal
                     isOpen={isViewModalOpen}
                     onClose={() => setIsViewModalOpen(false)}
+                    request={selectedRequest}
+                />
+            )}
+
+            {/* View Card Modal */}
+            {isViewCardModalOpen && (
+                <ViewCardModal
+                    isOpen={isViewCardModalOpen}
+                    onClose={() => setIsViewCardModalOpen(false)}
                     request={selectedRequest}
                 />
             )}
