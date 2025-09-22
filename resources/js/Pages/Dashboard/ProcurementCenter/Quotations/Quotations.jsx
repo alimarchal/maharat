@@ -11,6 +11,7 @@ const Quotations = () => {
     const [selectedFilter, setSelectedFilter] = useState("All");
     const filters = ["All", "Expired", "Active", "Approved"];
     const [loading, setLoading] = useState(true);
+    const [quotationsRfqCount, setQuotationsRfqCount] = useState(0);
 
     const fetchQuotations = async () => {
         setLoading(true);
@@ -46,6 +47,60 @@ const Quotations = () => {
     useEffect(() => {
         fetchQuotations();
     }, [currentPage]);
+
+    // Fetch quotations RFQ count (RFQs with status_id 47 that don't have quotations or purchase orders)
+    useEffect(() => {
+        const fetchQuotationsRfqCount = async () => {
+            try {
+                // Fetch all RFQs with status_id 47
+                const allRfqsResponse = await fetch(`/api/v1/rfqs?filter[status_id]=47&per_page=1000`);
+                const allRfqsData = await allRfqsResponse.json();
+                
+                if (allRfqsResponse.ok) {
+                    const allRfqs = allRfqsData.data || [];
+                    
+                    // Fetch all quotations to check which RFQs already have quotations
+                    const quotationsResponse = await fetch("/api/v1/quotations");
+                    const quotationsData = await quotationsResponse.json();
+                    
+                    // Fetch all purchase orders to check which RFQs already have POs
+                    const purchaseOrdersResponse = await fetch("/api/v1/purchase-orders");
+                    const purchaseOrdersData = await purchaseOrdersResponse.json();
+                    
+                    if (quotationsResponse.ok && purchaseOrdersResponse.ok) {
+                        const quotations = quotationsData.data || [];
+                        const purchaseOrders = purchaseOrdersData.data || [];
+                        
+                        // Create sets of RFQ IDs that already have quotations or purchase orders
+                        const rfqIdsWithQuotation = new Set();
+                        const rfqIdsWithPO = new Set();
+                        
+                        quotations.forEach((quotation) => {
+                            if (quotation.rfq_id) {
+                                rfqIdsWithQuotation.add(quotation.rfq_id);
+                            }
+                        });
+                        
+                        purchaseOrders.forEach((po) => {
+                            if (po.rfq_id) {
+                                rfqIdsWithPO.add(po.rfq_id);
+                            }
+                        });
+                        
+                        // Count RFQs that don't have quotations AND don't have purchase orders
+                        const rfqsWithoutQuotationOrPO = allRfqs.filter((rfq) => 
+                            !rfqIdsWithQuotation.has(rfq.id) && !rfqIdsWithPO.has(rfq.id)
+                        );
+                        
+                        setQuotationsRfqCount(rfqsWithoutQuotationOrPO.length);
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching quotations RFQ count:", err);
+            }
+        };
+        fetchQuotationsRfqCount();
+    }, []);
 
     const applyFilter = (filter, data = quotations) => {
         const quotationsToFilter = data.length > 0 ? data : quotations;
@@ -118,9 +173,14 @@ const Quotations = () => {
                     </Link>
                     <Link
                         href="/quotations/create-quotation"
-                        className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
+                        className="relative bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
                     >
                         Add New Quotation
+                        {quotationsRfqCount > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-sm h-6 w-6 rounded-full flex items-center justify-center">
+                                {quotationsRfqCount}
+                            </span>
+                        )}
                     </Link>
                 </div>
             </div>
