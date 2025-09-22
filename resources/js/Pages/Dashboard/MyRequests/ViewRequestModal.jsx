@@ -10,6 +10,7 @@ import {
     faCircleExclamation,
     faCircleXmark,
     faNoteSticky,
+    faImage,
 } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 
@@ -46,9 +47,30 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
                         }
                     });
                     const transactions = response.data?.data || [];
-                    // Find the first Pending transaction (current approver). If none, leave null
-                    const pending = transactions.find(t => (t.status || '').toLowerCase() === 'pending');
-                    setCurrentApprover(pending?.assigned_user || null);
+                    
+                    // Find the appropriate transaction based on request status
+                    let approverTransaction = null;
+                    let approverUser = null;
+                    
+                    if (request.status?.name === 'Referred') {
+                        // Find the most recent Refer transaction
+                        approverTransaction = transactions.find(t => t.status === 'Refer');
+                        approverUser = approverTransaction?.referred_user;
+                    } else if (request.status?.name === 'Rejected') {
+                        // Find the most recent Reject transaction
+                        approverTransaction = transactions.find(t => t.status === 'Reject');
+                        approverUser = approverTransaction?.assigned_user;
+                    } else if (request.status?.name === 'Pending') {
+                        // Find the most recent Pending transaction
+                        approverTransaction = transactions.find(t => t.status === 'Pending');
+                        approverUser = approverTransaction?.assigned_user;
+                    } else if (request.status?.name === 'Draft') {
+                        // For draft, find the next approver (first pending transaction)
+                        approverTransaction = transactions.find(t => t.status === 'Pending');
+                        approverUser = approverTransaction?.assigned_user;
+                    }
+                    
+                    setCurrentApprover(approverUser);
                 } catch (error) {
                     console.error('Error fetching current approver:', error);
                 }
@@ -68,7 +90,6 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
 
         switch (status?.toLowerCase()) {
             case "pending":
-            case "approved": // Show approved as pending with yellow color
                 badgeClass += " bg-yellow-100 text-yellow-800";
                 icon = faCircleExclamation;
                 break;
@@ -88,7 +109,7 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
         return (
             <span className={badgeClass}>
                 {icon && <FontAwesomeIcon icon={icon} className="mr-1" />}
-                {status === "Approved" ? "Pending" : status}
+                {status}
             </span>
         );
     };
@@ -192,9 +213,14 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
                                         {request.department?.name || "N/A"}
                                     </span>
                                 </div>
-                                {currentApprover && request.status?.name !== 'Approved' && (
+                                {currentApprover && ['Draft', 'Pending', 'Referred', 'Rejected'].includes(request.status?.name) && (
                                     <div className="flex justify-between border-b border-gray-100 pb-2">
-                                        <span className="text-gray-600">Approver:</span>
+                                        <span className="text-gray-600">
+                                            {request.status?.name === 'Rejected' ? 'Rejected by:' : 
+                                             request.status?.name === 'Referred' ? 'Referred to:' :
+                                             request.status?.name === 'Pending' ? 'Pending on:' :
+                                             request.status?.name === 'Draft' ? 'Next approver:' : 'Approver:'}
+                                        </span>
                                         <span className="font-medium">
                                             {currentApprover.name}
                                         </span>
@@ -237,13 +263,16 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full">
-                                    <thead className="bg-gray-50">
+                                    <thead className="bg-[#C7E7DE] text-[#2C323C] text-sm font-medium text-left">
                                         <tr>
-                                            <th className="px-4 py-2 text-left">Item</th>
-                                            <th className="px-4 py-2 text-left">Category</th>
-                                            <th className="px-4 py-2 text-left">Quantity</th>
-                                            <th className="px-4 py-2 text-left">Unit</th>
-                                            <th className="px-4 py-2 text-left">Priority</th>
+                                            <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">Item</th>
+                                            <th className="py-3 px-4">Category</th>
+                                            <th className="py-3 px-4">Quantity</th>
+                                            <th className="py-3 px-4">Unit</th>
+                                            <th className={`py-3 px-4 ${request.items?.some(item => item.photo_url) ? '' : 'rounded-tr-2xl rounded-br-2xl'}`}>Priority</th>
+                                            {request.items?.some(item => item.photo_url) && (
+                                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Image</th>
+                                            )}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y">
@@ -264,6 +293,36 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
                                                 <td className="px-4 py-2">
                                                     <PriorityBadge priority={item.urgency_status?.name} />
                                                 </td>
+                                                {request.items?.some(item => item.photo_url) && (
+                                                    <td className="px-4 py-2 text-center">
+                                                        {item.photo_url ? (
+                                                            <div className="flex items-center justify-center">
+                                                                <img
+                                                                    src={item.photo_url}
+                                                                    alt={`${item.product?.name || 'Item'} image`}
+                                                                    className="w-12 h-12 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                                                                    onClick={() => window.open(item.photo_url, '_blank')}
+                                                                    title="Click to view full size"
+                                                                    onError={(e) => {
+                                                                        console.log('Image failed to load:', item.photo_url);
+                                                                        e.target.style.display = 'none';
+                                                                        e.target.nextSibling.style.display = 'flex';
+                                                                    }}
+                                                                    onLoad={() => console.log('Image loaded successfully:', item.photo_url)}
+                                                                />
+                                                                <div className="flex items-center text-gray-400" style={{display: 'none'}}>
+                                                                    <FontAwesomeIcon icon={faImage} className="w-6 h-6" />
+                                                                    <span className="ml-2 text-sm">Image not found</span>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center justify-center text-gray-400">
+                                                                <FontAwesomeIcon icon={faImage} className="w-6 h-6" />
+                                                                <span className="ml-2 text-sm">No image</span>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>

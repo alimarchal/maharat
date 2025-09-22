@@ -52,7 +52,7 @@ const MRTable = () => {
     return (
         <div className="w-full overflow-hidden">
             <table className="w-full">
-                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                <thead className="bg-[#C7E7DE] text-[#2C323C] text-lg font-medium text-left">
                     <tr>
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             Request #

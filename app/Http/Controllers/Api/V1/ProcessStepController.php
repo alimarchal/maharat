@@ -384,25 +384,29 @@ class ProcessStepController extends Controller
         if (!empty($processStep->designation_id)) {
             $designation = $processStep->designation;
             if ($designation && strcasecmp(trim($designation->designation), 'Direct Manager') === 0) {
-                $parentUser = User::find($user->parent_id);
+                // If user has no parent (is head), they approve their own requests
+                $approverId = $user->parent_id ?: $user->id;
+                $approverUser = User::find($approverId);
                 return response()->json([
                     'success' => true,
-                    'message' => 'Approver is a direct manager.',
+                    'message' => $user->parent_id ? 'Approver is a direct manager.' : 'User is head and approves their own requests.',
                     'data' => [
-                        'approver_id' => $user->parent_id,
-                        'approver' => $parentUser
+                        'approver_id' => $approverId,
+                        'approver' => $approverUser
                     ]
                 ], Response::HTTP_OK);
             }
         } else {
             // Empty designation means default to direct manager
-            $parentUser = User::find($user->parent_id);
+            // If user has no parent (is head), they approve their own requests
+            $approverId = $user->parent_id ?: $user->id;
+            $approverUser = User::find($approverId);
             return response()->json([
                 'success' => true,
-                'message' => 'Approver is a direct manager.',
+                'message' => $user->parent_id ? 'Approver is a direct manager.' : 'User is head and approves their own requests.',
                 'data' => [
-                    'approver_id' => $user->parent_id,
-                    'approver' => $parentUser
+                    'approver_id' => $approverId,
+                    'approver' => $approverUser
                 ]
             ], Response::HTTP_OK);
         }
@@ -446,12 +450,15 @@ class ProcessStepController extends Controller
             }
         }
 
-        // No matching approver found
+        // No matching approver found - if user is head, they approve their own requests
+        $approverId = $user->parent_id ?: $user->id;
+        $approverUser = User::find($approverId);
         return response()->json([
             'success' => true,
-            'message' => 'No user with the required designation found in the hierarchy.',
+            'message' => $user->parent_id ? 'No user with the required designation found in the hierarchy.' : 'User is head and approves their own requests.',
             'data' => [
-                'approver_id' => $user->parent_id,
+                'approver_id' => $approverId,
+                'approver' => $approverUser,
                 'designation_required' => $designation_name,
                 'process_step' => $process_step_info
             ]

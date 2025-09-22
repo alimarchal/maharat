@@ -21,7 +21,7 @@ const RequestTable = ({ selectedFilter }) => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/material-requests?include=requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus&page=${currentPage}&filter[requester_id]=${user_id}`
+                    `/api/v1/material-requests?include=requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus&page=${currentPage}&filter[requester_id]=${user_id}&sort=-created_at`
                 );
                 const data = await response.json();
 
@@ -70,6 +70,7 @@ const RequestTable = ({ selectedFilter }) => {
         Pending: "text-yellow-500",
         Approved: "text-green-500",
         Rejected: "text-red-500",
+        Referred: "text-blue-500",
         Issued: "text-green-500"
     };
 
@@ -83,7 +84,7 @@ const RequestTable = ({ selectedFilter }) => {
     return (
         <div className="w-full overflow-hidden">
             <table className="w-full">
-                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                <thead className="bg-[#C7E7DE] text-[#2C323C] text-lg font-medium text-left">
                     <tr>
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             Request #
@@ -119,13 +120,11 @@ const RequestTable = ({ selectedFilter }) => {
                             </td>
                         </tr>
                     ) : (() => {
-                        const filteredRequests = requests
-                            .filter(
-                                (req) =>
-                                    selectedFilter === "All" ||
-                                    req.status?.name === selectedFilter
-                            )
-                            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                        const filteredRequests = requests.filter(
+                            (req) =>
+                                selectedFilter === "All" ||
+                                req.status?.name === selectedFilter
+                        );
                         
                         if (filteredRequests.length === 0) {
                             return (
@@ -234,7 +233,9 @@ const RequestTable = ({ selectedFilter }) => {
             </table>
 
             {/* Pagination */}
-            {!loading && !error && requests.length > 0 && (
+            {!loading && !error && requests.filter(req => 
+                selectedFilter === "All" || req.status?.name === selectedFilter
+            ).length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                     {Array.from(
                         { length: lastPage },
