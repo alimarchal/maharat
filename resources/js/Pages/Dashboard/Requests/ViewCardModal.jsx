@@ -113,7 +113,7 @@ const ViewCardModal = ({ isOpen, onClose, request }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[110]">
             <div className="bg-white p-8 rounded-2xl w-[95%] max-w-6xl max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between border-b pb-2 mb-4">
                     <h2 className="text-2xl font-bold text-[#2C323C]">
