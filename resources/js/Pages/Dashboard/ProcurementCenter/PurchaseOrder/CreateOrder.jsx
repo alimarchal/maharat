@@ -427,6 +427,17 @@ export default function CreatePurchaseOrder() {
                 {/* Pagination */}
                 {!loading && !error && quotations.length > 0 && (
                     <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                        <button
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                                currentPage <= 1
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : ""
+                            }`}
+                            disabled={currentPage <= 1}
+                        >
+                            Previous
+                        </button>
                         {Array.from(
                             { length: lastPage },
                             (_, index) => index + 1

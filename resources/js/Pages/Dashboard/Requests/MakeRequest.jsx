@@ -59,9 +59,11 @@ const MakeRequest = () => {
 
     // Pagination states for categories and products
     const [categoriesPage, setCategoriesPage] = useState(1);
+    const [categoriesTotalPages, setCategoriesTotalPages] = useState(1);
     const [categoriesHasMore, setCategoriesHasMore] = useState(true);
     const [loadingCategories, setLoadingCategories] = useState(false);
     const [productsPages, setProductsPages] = useState({});
+    const [productsTotalPages, setProductsTotalPages] = useState({});
     const [productsHasMore, setProductsHasMore] = useState({});
     const [loadingMoreProducts, setLoadingMoreProducts] = useState({});
     
@@ -111,10 +113,12 @@ const MakeRequest = () => {
             if (meta && meta.current_page && meta.last_page) {
                 setCategoriesHasMore(meta.current_page < meta.last_page);
                 setCategoriesPage(meta.current_page);
+                setCategoriesTotalPages(meta.last_page);
             } else {
                 // If no pagination meta, assume we have all data
                 setCategoriesHasMore(false);
                 setCategoriesPage(1);
+                setCategoriesTotalPages(1);
             }
         } catch (error) {
             console.error('Error fetching categories:', error);
@@ -154,6 +158,11 @@ const MakeRequest = () => {
                         ...prev,
                         [categoryId]: meta.current_page
                     }));
+                    
+                    setProductsTotalPages(prev => ({
+                        ...prev,
+                        [categoryId]: meta.last_page
+                    }));
                 } else {
                     // If no pagination meta, assume we have all data
                     setProductsHasMore(prev => ({
@@ -162,6 +171,11 @@ const MakeRequest = () => {
                     }));
                     
                     setProductsPages(prev => ({
+                        ...prev,
+                        [categoryId]: 1
+                    }));
+                    
+                    setProductsTotalPages(prev => ({
                         ...prev,
                         [categoryId]: 1
                     }));
@@ -200,6 +214,14 @@ const MakeRequest = () => {
             const nextPage = (productsPages[categoryId] || 1) + 1;
             fetchProductsForCategory(categoryId, nextPage, true);
         }
+    };
+
+    const handleCategoryPageChange = (page) => {
+        fetchCategories(page, false);
+    };
+
+    const handleProductPageChange = (categoryId, page) => {
+        fetchProductsForCategory(categoryId, page, false);
     };
 
     const handleItemChange = (index, e) => {
@@ -878,6 +900,10 @@ const MakeRequest = () => {
                                 }))}
                                 loading={loadingCategories}
                                 hasMore={categoriesHasMore}
+                                showPagination={true}
+                                currentPage={categoriesPage}
+                                totalPages={categoriesTotalPages}
+                                onPageChange={handleCategoryPageChange}
                             />
                             {errors[`items.${index}.category_id`] && (
                                 <p className="text-red-500 text-sm">
@@ -901,6 +927,10 @@ const MakeRequest = () => {
                                 })()}
                                 loading={loadingMoreProducts[item.category_id] || loadingProducts}
                                 hasMore={productsHasMore[item.category_id] || false}
+                                showPagination={true}
+                                currentPage={productsPages[item.category_id] || 1}
+                                totalPages={productsTotalPages[item.category_id] || 1}
+                                onPageChange={(page) => handleProductPageChange(item.category_id, page)}
                             />
                             {errors[`items.${index}.product_id`] && (
                                 <p className="text-red-500 text-sm">

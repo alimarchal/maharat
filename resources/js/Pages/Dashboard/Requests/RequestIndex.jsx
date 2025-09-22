@@ -9,7 +9,7 @@ const RequestIndex = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const { approvedCount, pendingCount } = useRequestItems();
 
-    const filters = ["All", "Draft", "Pending", "Approved", "Rejected"];
+    const filters = ["All", "Draft", "Pending", "Approved", "Referred", "Rejected"];
 
     return (
         <div className="min-h-screen">

@@ -18,18 +18,34 @@ const RequestTable = ({ selectedFilter }) => {
     const [isViewCardModalOpen, setIsViewCardModalOpen] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
 
+    // Calculate pagination when requests or filter changes
+    useEffect(() => {
+        const filteredRequests = requests.filter(
+            (req) =>
+                selectedFilter === "All" ||
+                req.status?.name === selectedFilter
+        );
+        
+        const itemsPerPage = 10;
+        const totalPages = Math.max(1, Math.ceil(filteredRequests.length / itemsPerPage));
+        setLastPage(totalPages);
+    }, [requests, selectedFilter]);
+
     useEffect(() => {
         const fetchRequests = async () => {
             setLoading(true);
             try {
+                // Fetch all records for frontend filtering and pagination
                 const response = await fetch(
-                    `/api/v1/material-requests?include=requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus&page=${currentPage}&filter[requester_id]=${user_id}&sort=-created_at`
+                    `/api/v1/material-requests?include=requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus&filter[requester_id]=${user_id}&sort=-created_at&per_page=1000`
                 );
                 const data = await response.json();
 
                 if (response.ok) {
                     setRequests(data.data || []);
-                    setLastPage(data.meta?.last_page || 1);
+                    
+                    // Debug: Log status names to see what we're getting
+                    console.log('Status names from API:', data.data?.map(req => req.status?.name));
                 } else {
                     setError(data.message || "Failed to fetch requests.");
                 }
@@ -42,7 +58,12 @@ const RequestTable = ({ selectedFilter }) => {
         };
 
         fetchRequests();
-    }, [currentPage]);
+    }, []);
+
+    // Reset to page 1 when filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedFilter]);
 
     const handleDelete = async (id) => {
         if (!confirm("Are you sure you want to delete this Request?")) return;
@@ -74,6 +95,7 @@ const RequestTable = ({ selectedFilter }) => {
     };
 
     const statusColors = {
+        Draft: "text-gray-500",
         Pending: "text-yellow-500",
         Approved: "text-green-500",
         Rejected: "text-red-500",
@@ -133,7 +155,13 @@ const RequestTable = ({ selectedFilter }) => {
                                 req.status?.name === selectedFilter
                         );
                         
-                        if (filteredRequests.length === 0) {
+                        // Frontend pagination
+                        const itemsPerPage = 10;
+                        const startIndex = (currentPage - 1) * itemsPerPage;
+                        const endIndex = startIndex + itemsPerPage;
+                        const paginatedRequests = filteredRequests.slice(startIndex, endIndex);
+                        
+                        if (paginatedRequests.length === 0) {
                             return (
                                 <tr>
                                     <td
@@ -146,7 +174,7 @@ const RequestTable = ({ selectedFilter }) => {
                             );
                         }
                         
-                        return filteredRequests.map((req) => (
+                        return paginatedRequests.map((req) => (
                             <tr key={req.id}>
                                 <td className="py-3 px-4">MR-{req.id}</td>
                                 <td className="py-3 px-4">
@@ -251,8 +279,19 @@ const RequestTable = ({ selectedFilter }) => {
                 selectedFilter === "All" || req.status?.name === selectedFilter
             ).length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    <button
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage <= 1
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage <= 1}
+                    >
+                        Previous
+                    </button>
                     {Array.from(
-                        { length: lastPage },
+                        { length: Math.max(1, lastPage) },
                         (_, index) => index + 1
                     ).map((page) => (
                         <button
