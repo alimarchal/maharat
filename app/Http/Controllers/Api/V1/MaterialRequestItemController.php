@@ -11,6 +11,7 @@ use App\QueryParameters\MaterialRequestItemParameters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
 use Spatie\QueryBuilder\QueryBuilder;
 
 class MaterialRequestItemController extends Controller
@@ -37,7 +38,18 @@ class MaterialRequestItemController extends Controller
     public function store(StoreMaterialRequestItemRequest $request): JsonResponse
     {
         try {
-            $item = MaterialRequestItem::create($request->validated());
+            $itemData = $request->validated();
+            
+            // Handle photo upload if exists
+            if ($request->hasFile('photo')) {
+                $file = $request->file('photo');
+                if ($file->isValid()) {
+                    $path = $file->store('material-request-items', 'public');
+                    $itemData['photo'] = $path;
+                }
+            }
+            
+            $item = MaterialRequestItem::create($itemData);
 
             return response()->json([
                 'message' => 'Material request item created successfully',
@@ -67,7 +79,23 @@ class MaterialRequestItemController extends Controller
     public function update(UpdateMaterialRequestItemRequest $request, MaterialRequestItem $materialRequestItem): JsonResponse
     {
         try {
-            $materialRequestItem->update($request->validated());
+            $itemData = $request->validated();
+            
+            // Handle photo upload if exists
+            if ($request->hasFile('photo')) {
+                $file = $request->file('photo');
+                if ($file->isValid()) {
+                    // Delete old photo if exists
+                    if ($materialRequestItem->photo) {
+                        Storage::disk('public')->delete($materialRequestItem->photo);
+                    }
+                    
+                    $path = $file->store('material-request-items', 'public');
+                    $itemData['photo'] = $path;
+                }
+            }
+            
+            $materialRequestItem->update($itemData);
             return response()->json([
                 'message' => 'Material request item updated successfully',
                 'data' => new MaterialRequestItemResource(

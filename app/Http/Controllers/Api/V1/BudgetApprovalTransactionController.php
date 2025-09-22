@@ -176,7 +176,8 @@ class BudgetApprovalTransactionController extends Controller
                         $resolvedApproverId = null;
                         if ($eloquentStep && $eloquentStep->designation && strcasecmp(trim($eloquentStep->designation->designation), 'Direct Manager') === 0) {
                             $currentApprover = User::find($budgetApprovalTransaction->assigned_to);
-                            $resolvedApproverId = $currentApprover?->parent_id;
+                            // If current approver has no parent (is head), they approve their own requests
+                            $resolvedApproverId = $currentApprover?->parent_id ?: $currentApprover?->id;
                         } else {
                             $resolvedApproverId = $eloquentStep && $requester
                                 ? $resolver->resolveApproverId($eloquentStep, $requester)

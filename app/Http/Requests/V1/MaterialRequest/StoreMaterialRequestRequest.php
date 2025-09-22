@@ -30,7 +30,7 @@ class StoreMaterialRequestRequest extends FormRequest
             'items.*.quantity' => ['required', 'numeric', 'min:0.0001'],
             'items.*.urgency' => ['required', 'exists:statuses,id'],
             'items.*.description' => ['nullable', 'string'],
-            'items.*.photo' => ['nullable', 'string'], // Adjust based on your file upload handling
+            'items.*.photo' => ['nullable', 'file', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
         ];
     }
 }

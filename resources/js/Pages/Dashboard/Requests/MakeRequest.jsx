@@ -236,28 +236,83 @@ const MakeRequest = () => {
         setProcessError(""); // Clear any previous process errors
 
         try {
+            // Check if any items have photos
+            const hasPhotos = formData.items.some(item => item.photo && item.photo instanceof File);
+            
             const url = requestId
                 ? `/api/v1/material-requests/${requestId}`
                 : "/api/v1/material-requests";
-            const method = requestId ? "put" : "post";
-
-            // Prepare data for submission - convert empty string to null for sub_cost_center_id
-            const submitData = {
-                ...formData,
-                items: formData.items.map(item => ({
-                    ...item,
-                    user_id: user_id,
-                    is_added: false
-                }))
-            };
+            const method = requestId ? (hasPhotos ? "post" : "put") : "post";
+            console.log('Form data items:', formData.items);
+            console.log('Has photos:', hasPhotos);
             
-            // Convert empty string to null for sub_cost_center_id if no sub cost centers are available
-            const availableSubCostCenters = getAvailableSubCostCenters(formData.cost_center_id);
-            if (submitData.sub_cost_center_id === "" && availableSubCostCenters.length === 0) {
-                submitData.sub_cost_center_id = null;
+            let submitData;
+            
+            if (hasPhotos) {
+                // Use FormData for file uploads
+                submitData = new FormData();
+                
+                // Add method override for PUT requests
+                if (requestId) {
+                    submitData.append('_method', 'PUT');
+                }
+                
+                // Add main request data
+                submitData.append('requester_id', formData.requester_id);
+                submitData.append('warehouse_id', formData.warehouse_id);
+                submitData.append('expected_delivery_date', formData.expected_delivery_date);
+                submitData.append('status_id', formData.status_id);
+                submitData.append('cost_center_id', formData.cost_center_id);
+                submitData.append('sub_cost_center_id', formData.sub_cost_center_id || '');
+                submitData.append('department_id', formData.department_id);
+                
+                // Add items data
+                formData.items.forEach((item, index) => {
+                    // Include item ID for edit mode
+                    if (item.id) {
+                        submitData.append(`items[${index}][id]`, item.id);
+                    }
+                    submitData.append(`items[${index}][product_id]`, item.product_id);
+                    submitData.append(`items[${index}][unit_id]`, item.unit_id);
+                    submitData.append(`items[${index}][category_id]`, item.category_id);
+                    submitData.append(`items[${index}][quantity]`, item.quantity);
+                    submitData.append(`items[${index}][urgency]`, item.urgency);
+                    submitData.append(`items[${index}][description]`, item.description || '');
+                    submitData.append(`items[${index}][user_id]`, user_id);
+                    submitData.append(`items[${index}][is_added]`, 'false');
+                    
+                    // Add photo file if exists
+                    if (item.photo && item.photo instanceof File) {
+                        submitData.append(`items[${index}][photo]`, item.photo);
+                    }
+                });
+                
+                // Debug FormData contents
+                console.log('FormData entries:');
+                for (let [key, value] of submitData.entries()) {
+                    console.log(key, value);
+                }
+            } else {
+                // Use regular JSON for non-file data
+                submitData = {
+                    ...formData,
+                    items: formData.items.map(item => ({
+                        ...item,
+                        user_id: user_id,
+                        is_added: false
+                    }))
+                };
+                
+                // Convert empty string to null for sub_cost_center_id if no sub cost centers are available
+                const availableSubCostCenters = getAvailableSubCostCenters(formData.cost_center_id);
+                if (submitData.sub_cost_center_id === "" && availableSubCostCenters.length === 0) {
+                    submitData.sub_cost_center_id = null;
+                }
             }
 
-            const materialRequest = await axios[method](url, submitData);
+            const materialRequest = await axios[method](url, submitData, {
+                headers: hasPhotos ? { 'Content-Type': 'multipart/form-data' } : {}
+            });
             const materialRequestId = materialRequest.data.data.id;
 
             // Only create workflow (transaction and task) if this is a new request, not an edit
@@ -530,12 +585,14 @@ const MakeRequest = () => {
                         sub_cost_center_id: requestData.subCostCenter?.id || "",
                         department_id: requestData.department?.id || "",
                         items: items.map((item) => ({
+                            id: item.id || null, // Include item ID for edit mode
                             product_id: item.product?.id || "",
                             unit_id: item.unit?.id || "",
                             category_id: item.category?.id || "",
                             quantity: item.quantity || "",
                             urgency: item.urgency_status?.id || "",
                             photo: item.photo || null,
+                            photo_url: item.photo_url || null,
                             description: item.description || "",
                             user_id: item.user_id || null,
                             is_added: item.is_added || false
@@ -610,9 +667,13 @@ const MakeRequest = () => {
 
     const handleFileChange = async (index, e) => {
         const file = e.target.files[0];
+        console.log('File selected:', file);
+        console.log('File type:', typeof file);
+        console.log('Is File instance:', file instanceof File);
         if (file) {
             const newItems = [...formData.items];
-            newItems[index].photo = file.name;
+            newItems[index].photo = file; // Store the actual File object
+            console.log('Updated item photo:', newItems[index].photo);
             setFormData({ ...formData, items: newItems });
         }
     };
@@ -913,8 +974,22 @@ const MakeRequest = () => {
                                     className="text-gray-500 mr-2"
                                 />
                                 {item.photo ? (
-                                    <span className="text-gray-700 text-sm sm:text-base overflow-hidden text-ellipsis max-w-[80%]">
-                                        {item.photo}
+                                    <span 
+                                        className="text-gray-700 text-sm sm:text-base overflow-hidden text-ellipsis max-w-[80%] cursor-pointer hover:text-blue-600 hover:underline"
+                                        onClick={() => {
+                                            if (item.photo instanceof File) {
+                                                // For new files, create object URL
+                                                const url = URL.createObjectURL(item.photo);
+                                                window.open(url, '_blank');
+                                            } else {
+                                                // For existing photos, use the photo_url
+                                                const photoUrl = item.photo_url || `/storage/material-request-items/${item.photo}`;
+                                                window.open(photoUrl, '_blank');
+                                            }
+                                        }}
+                                        title="Click to view image"
+                                    >
+                                        {item.photo instanceof File ? item.photo.name : 'Attachment'}
                                     </span>
                                 ) : (
                                     <span className="text-sm sm:text-base">

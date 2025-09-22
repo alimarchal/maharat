@@ -27,7 +27,8 @@ const ReceivedMRsTable = () => {
                     include: 'requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus',
                     page: currentPage,
                     per_page: 10,
-                    'filter[status_id]': '4,2,51,52' // Fetch Approved (4), Referred (2), Issued (51), and Rejected (52)
+                    'filter[status_id]': '4,2,51,52', // Fetch Approved (4), Referred (2), Issued (51), and Rejected (52)
+                    sort: '-created_at' // Sort by created_at descending globally (newest first)
                 }
             });
             
@@ -52,7 +53,7 @@ const ReceivedMRsTable = () => {
     const statusColors = {
         "Pending": "text-yellow-500",
         "Approved": "text-yellow-500", // Show approved as pending with yellow color
-        "Referred": "text-purple-600", // Dark purple for referred status
+        "Referred": "text-blue-500", // Blue for referred status
         "Issued": "text-green-500",
         "Rejected": "text-red-500"
     };
@@ -68,7 +69,7 @@ const ReceivedMRsTable = () => {
         const statusColors = {
             "Pending": "bg-yellow-100 text-yellow-800",
             "Approved": "bg-yellow-100 text-yellow-800", // Show approved as pending with yellow color
-            "Referred": "bg-purple-100 text-purple-800", // Dark purple for referred status
+            "Referred": "bg-blue-100 text-blue-800", // Blue for referred status
             "Issued": "bg-green-100 text-green-800",
             "Rejected": "bg-red-100 text-red-800"
         };
@@ -297,14 +298,12 @@ const ReceivedMRsTable = () => {
         }
     };
 
-    const filteredRequests = requests
-        .filter((req) => {
-            if (selectedFilter === "All") return true;
-            // Treat "Approved" status as "Pending" for filtering
-            const displayStatus = req.status?.name === "Approved" ? "Pending" : req.status?.name;
-            return displayStatus === selectedFilter;
-        })
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const filteredRequests = requests.filter((req) => {
+        if (selectedFilter === "All") return true;
+        // Treat "Approved" status as "Pending" for filtering
+        const displayStatus = req.status?.name === "Approved" ? "Pending" : req.status?.name;
+        return displayStatus === selectedFilter;
+    });
 
     return (
         <div className="w-full overflow-hidden">
@@ -332,7 +331,7 @@ const ReceivedMRsTable = () => {
             </div>
 
             <table className="w-full">
-                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
+                <thead className="bg-[#C7E7DE] text-[#2C323C] text-lg font-medium text-left">
                     <tr>
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             Request #
@@ -468,7 +467,11 @@ const ReceivedMRsTable = () => {
             </table>
 
             {/* Pagination */}
-            {!loading && !error && requests.length > 0 && (
+            {!loading && !error && requests.filter(req => {
+                if (selectedFilter === "All") return true;
+                const displayStatus = req.status?.name === "Approved" ? "Pending" : req.status?.name;
+                return displayStatus === selectedFilter;
+            }).length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                     {Array.from(
                         { length: lastPage },

@@ -19,6 +19,7 @@ class MaterialRequestItemResource extends JsonResource
             'urgency' => $this->urgency,
             'description' => $this->description,
             'photo' => $this->photo,
+            'photo_url' => $this->photo_url,
             'product' => new ProductResource($this->whenLoaded('product')),
             'unit' => new UnitResource($this->whenLoaded('unit')),
             'category' => new ProductCategoryResource($this->whenLoaded('category')),

@@ -20,7 +20,7 @@ class UpdateMaterialRequestItemRequest extends FormRequest
             'quantity' => ['sometimes', 'required', 'numeric', 'min:0.0001'],
             'urgency' => ['sometimes', 'required', 'exists:statuses,id'],
             'description' => ['nullable', 'string'],
-            'photo' => ['nullable', 'string'], // Adjust based on your file upload handling
+            'photo' => ['nullable', 'file', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
         ];
     }
 }
