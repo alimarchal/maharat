@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const SelectFloating = ({ label, name, value, onChange, options, onScroll, loading, hasMore = true }) => {
+const SelectFloating = ({ label, name, value, onChange, options, onScroll, loading, hasMore = true, showPagination = false, currentPage = 1, totalPages = 1, onPageChange }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedLabel, setSelectedLabel] = useState('');
     const [openUpward, setOpenUpward] = useState(false);
@@ -150,6 +150,49 @@ const SelectFloating = ({ label, name, value, onChange, options, onScroll, loadi
                         {loading && options && options.length > 0 && (
                             <div className="px-4 py-2 text-gray-500 text-center">
                                 Loading...
+                            </div>
+                        )}
+                        
+                        {/* Pagination Controls */}
+                        {showPagination && totalPages > 1 && (
+                            <div className="border-t border-gray-200 px-2 py-2">
+                                <div className="flex justify-between items-center text-sm">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (currentPage > 1 && onPageChange) {
+                                                onPageChange(currentPage - 1);
+                                            }
+                                        }}
+                                        disabled={currentPage <= 1}
+                                        className={`px-2 py-1 rounded text-xs ${
+                                            currentPage <= 1
+                                                ? "text-gray-400 cursor-not-allowed"
+                                                : "text-blue-600 hover:text-blue-800"
+                                        }`}
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="text-gray-600">
+                                        {currentPage} / {totalPages}
+                                    </span>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (currentPage < totalPages && onPageChange) {
+                                                onPageChange(currentPage + 1);
+                                            }
+                                        }}
+                                        disabled={currentPage >= totalPages}
+                                        className={`px-2 py-1 rounded text-xs ${
+                                            currentPage >= totalPages
+                                                ? "text-gray-400 cursor-not-allowed"
+                                                : "text-blue-600 hover:text-blue-800"
+                                        }`}
+                                    >
+                                        Next
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>

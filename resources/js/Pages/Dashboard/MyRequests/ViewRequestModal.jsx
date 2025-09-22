@@ -89,8 +89,20 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
         let icon = null;
 
         switch (status?.toLowerCase()) {
+            case "draft":
+                badgeClass += " bg-gray-100 text-gray-800";
+                icon = faCircleExclamation;
+                break;
             case "pending":
                 badgeClass += " bg-yellow-100 text-yellow-800";
+                icon = faCircleExclamation;
+                break;
+            case "approved":
+                badgeClass += " bg-green-100 text-green-800";
+                icon = faCircleCheck;
+                break;
+            case "referred":
+                badgeClass += " bg-blue-100 text-blue-800";
                 icon = faCircleExclamation;
                 break;
             case "issued":
@@ -216,10 +228,10 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
                                 {currentApprover && ['Draft', 'Pending', 'Referred', 'Rejected'].includes(request.status?.name) && (
                                     <div className="flex justify-between border-b border-gray-100 pb-2">
                                         <span className="text-gray-600">
-                                            {request.status?.name === 'Rejected' ? 'Rejected by:' : 
-                                             request.status?.name === 'Referred' ? 'Referred to:' :
-                                             request.status?.name === 'Pending' ? 'Pending on:' :
-                                             request.status?.name === 'Draft' ? 'Next approver:' : 'Approver:'}
+                                            {request.status?.name === 'Rejected' ? 'Rejected By:' : 
+                                             request.status?.name === 'Referred' ? 'Referred To:' :
+                                             request.status?.name === 'Pending' ? 'Pending On:' :
+                                             request.status?.name === 'Draft' ? 'Next Approver:' : 'Approver:'}
                                         </span>
                                         <span className="font-medium">
                                             {currentApprover.name}
