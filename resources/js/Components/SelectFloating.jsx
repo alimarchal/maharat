@@ -3,7 +3,9 @@ import React, { useState, useRef, useEffect } from 'react';
 const SelectFloating = ({ label, name, value, onChange, options, onScroll, loading, hasMore = true }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedLabel, setSelectedLabel] = useState('');
+    const [openUpward, setOpenUpward] = useState(false);
     const dropdownRef = useRef(null);
+    const dropdownMenuRef = useRef(null);
     const scrollTimeoutRef = useRef(null);
 
     // Find the selected option label
@@ -11,6 +13,38 @@ const SelectFloating = ({ label, name, value, onChange, options, onScroll, loadi
         const selectedOption = options.find(option => option.id == value);
         setSelectedLabel(selectedOption ? selectedOption.label : '');
     }, [value, options]);
+
+    // Calculate dropdown position when opening
+    useEffect(() => {
+        if (isOpen && dropdownRef.current) {
+            const calculatePosition = () => {
+                const triggerRect = dropdownRef.current.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                const dropdownHeight = 160;
+                const spaceBelow = viewportHeight - triggerRect.bottom;
+                const spaceAbove = triggerRect.top;
+
+                // If there's not enough space below but enough above, open upward
+                if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+                    setOpenUpward(true);
+                } else {
+                    setOpenUpward(false);
+                }
+            };
+
+            // Calculate immediately
+            calculatePosition();
+
+            // Recalculate on window resize or scroll
+            window.addEventListener('resize', calculatePosition);
+            window.addEventListener('scroll', calculatePosition);
+
+            return () => {
+                window.removeEventListener('resize', calculatePosition);
+                window.removeEventListener('scroll', calculatePosition);
+            };
+        }
+    }, [isOpen]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -80,7 +114,12 @@ const SelectFloating = ({ label, name, value, onChange, options, onScroll, loadi
             
             {isOpen && (
                 <div 
-                    className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-[160px] overflow-y-auto"
+                    ref={dropdownMenuRef}
+                    className={`absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-[160px] overflow-y-auto ${
+                        openUpward 
+                            ? 'bottom-full mb-1 mt-0' 
+                            : 'top-full mt-1'
+                    }`}
                     onScroll={handleScroll}
                 >
                     <div className="py-1">
