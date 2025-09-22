@@ -57,14 +57,17 @@ const QuotationModal = ({
                 } else {
                     setExistingDocument(null);
                 }
+                const totalAmount = quotation.total_amount || "";
+                const calculatedVatAmount = totalAmount ? (parseFloat(totalAmount) * 0.15).toFixed(2) : "";
+                
                 setFormData({
                     company_name: "Maharat",
                     supplier_name: quotation.supplier_name || "",
                     issue_date: formatDateForInput(quotation.issue_date) || "",
                     valid_until:
                         formatDateForInput(quotation.valid_until) || "",
-                    total_amount: quotation.total_amount || "",
-                    vat_amount: quotation.vat_amount || "",
+                    total_amount: totalAmount,
+                    vat_amount: calculatedVatAmount,
                     id: quotation.id,
                     quotation_number: quotation.quotation_number,
                 });
@@ -148,10 +151,22 @@ const QuotationModal = ({
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
+        
+        setFormData((prev) => {
+            const newFormData = {
+                ...prev,
+                [name]: value,
+            };
+            
+            // Auto-calculate VAT (15%) when total_amount changes
+            if (name === 'total_amount' && value) {
+                const totalAmount = parseFloat(value) || 0;
+                const vatAmount = totalAmount * 0.15; // 15% VAT
+                newFormData.vat_amount = vatAmount.toFixed(2);
+            }
+            
+            return newFormData;
+        });
     };
 
     const handleFileChange = (e) => {
@@ -179,12 +194,24 @@ const QuotationModal = ({
             validationErrors.supplier_name = "Supplier is required";
         if (!formData.issue_date)
             validationErrors.issue_date = "Issue date is required";
+        if (!formData.valid_until)
+            validationErrors.valid_until = "Expiry date is required";
+        
+        // Validate that expiry date is not before issue date
+        if (formData.issue_date && formData.valid_until) {
+            const issueDate = new Date(formData.issue_date);
+            const expiryDate = new Date(formData.valid_until);
+            if (expiryDate < issueDate) {
+                validationErrors.valid_until = "Expiry date cannot be before issue date";
+            }
+        }
+        
         if (!formData.total_amount)
             validationErrors.total_amount = "Amount is required";
-        if (formData.vat_amount && isNaN(formData.vat_amount))
-            validationErrors.vat_amount = "VAT amount must be a valid number";
-        if (formData.vat_amount && parseFloat(formData.vat_amount) < 0)
-            validationErrors.vat_amount = "VAT amount cannot be negative";
+        if (formData.total_amount && isNaN(formData.total_amount))
+            validationErrors.total_amount = "Amount must be a valid number";
+        if (formData.total_amount && parseFloat(formData.total_amount) < 0)
+            validationErrors.total_amount = "Amount cannot be negative";
         
         // Make attachment required
         if (!tempDocument && !existingDocument) {
@@ -509,6 +536,7 @@ const QuotationModal = ({
                             value={formData.valid_until}
                             onChange={handleChange}
                             error={errors.valid_until}
+                            min={formData.issue_date || undefined}
                         />
                         <InputFloating
                             label="Amount"
@@ -519,12 +547,13 @@ const QuotationModal = ({
                             error={errors.total_amount}
                         />
                         <InputFloating
-                            label="VAT Amount"
+                            label="VAT Amount (15%)"
                             name="vat_amount"
                             type="number"
                             value={formData.vat_amount}
                             onChange={handleChange}
                             error={errors.vat_amount}
+                            disabled={true}
                         />
                     </div>
 

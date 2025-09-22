@@ -45,7 +45,14 @@ export default function NewQuotation() {
                 })
             );
 
-            setRfqs(rfqsWithDetails);
+            // Sort RFQs from latest to oldest based on created_at
+            const sortedRfqs = rfqsWithDetails.sort((a, b) => {
+                const dateA = new Date(a.created_at);
+                const dateB = new Date(b.created_at);
+                return dateB - dateA; // Latest first (descending order)
+            });
+
+            setRfqs(sortedRfqs);
             setLastPage(response.data.meta.last_page);
             setError("");
         } catch (error) {

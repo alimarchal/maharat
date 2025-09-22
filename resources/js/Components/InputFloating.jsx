@@ -1,4 +1,4 @@
-const InputFloating = ({ label, name, value, onChange, type = "text", error, readOnly = false, placeholder }) => {
+const InputFloating = ({ label, name, value, onChange, type = "text", error, readOnly = false, placeholder, min, max, disabled }) => {
     return (
         <div className="relative w-full">
             <input
@@ -7,8 +7,11 @@ const InputFloating = ({ label, name, value, onChange, type = "text", error, rea
                 value={value}
                 onChange={onChange}
                 readOnly={readOnly}
+                disabled={disabled}
+                min={min}
+                max={max}
                 placeholder={placeholder || (type === "date" ? "DD/MM/YYYY" : " ")}
-                className={`peer border ${error ? 'border-red-500' : 'border-gray-300'} p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 ${error ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-[#009FDC] focus:border-[#009FDC]'} transition-all duration-300 ease-in-out ${readOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                className={`peer border ${error ? 'border-red-500' : 'border-gray-300'} p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 ${error ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-[#009FDC] focus:border-[#009FDC]'} transition-all duration-300 ease-in-out ${readOnly || disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             />
 
             <label

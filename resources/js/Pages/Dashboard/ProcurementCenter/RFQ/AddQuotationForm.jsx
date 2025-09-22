@@ -1190,6 +1190,35 @@ function AddQuotationForm() {
         // Check if at least one item is added
         if (!formData.items || formData.items.length === 0) {
             validationErrors.items = "At least one item is required";
+        } else {
+            // Check if all items are empty/invalid
+            const validItems = formData.items.filter(item => 
+                item.item_name && 
+                item.item_name.trim() !== "" && 
+                item.product_id && 
+                item.product_id !== "" &&
+                item.unit_id && 
+                item.unit_id !== "" &&
+                item.quantity && 
+                item.quantity !== "" &&
+                item.brand && 
+                item.brand.trim() !== "" &&
+                item.expected_delivery_date && 
+                item.expected_delivery_date !== ""
+            );
+            
+            if (validItems.length === 0) {
+                validationErrors.items = "At least one complete item is required. Please add an item with all required fields filled.";
+            }
+        }
+
+        // Validate that closing date is not before issue date
+        if (formData.issue_date && formData.closing_date) {
+            const issueDate = new Date(formData.issue_date);
+            const closingDate = new Date(formData.closing_date);
+            if (closingDate < issueDate) {
+                validationErrors.closing_date = "Closing date cannot be before issue date";
+            }
         }
 
         // If there are validation errors, display them and stop
@@ -1294,12 +1323,71 @@ function AddQuotationForm() {
             }
             const newRfqId = response.data.data?.id;
 
-            // Only save items if there are items to save
+            // Only save items if there are valid items to save
+            const validItems = formData.items.filter(item => 
+                item.item_name && 
+                item.item_name.trim() !== "" && 
+                item.product_id && 
+                item.product_id !== "" &&
+                item.unit_id && 
+                item.unit_id !== "" &&
+                item.quantity && 
+                item.quantity !== "" &&
+                item.brand && 
+                item.brand.trim() !== "" &&
+                item.expected_delivery_date && 
+                item.expected_delivery_date !== ""
+            );
+            
+            if (validItems.length === 0) {
+                setErrors({
+                    items: "Cannot create RFQ without at least one complete item. Please add an item with all required fields filled.",
+                });
+                setIsSaving(false);
+                return;
+            }
+            
             if (formData.items.length > 0) {
                 const existingItems = [];
                 const newItems = [];
 
                 formData.items.forEach((item) => {
+                    // Validate required fields for each item
+                    const itemValidationErrors = [];
+                    
+                    if (!item.product_id || item.product_id === "" || item.product_id === null) {
+                        itemValidationErrors.push("Product selection is required");
+                    }
+                    
+                    if (!item.item_name || item.item_name.trim() === "") {
+                        itemValidationErrors.push("Item name is required");
+                    }
+                    
+                    if (!item.unit_id || item.unit_id === "" || item.unit_id === null) {
+                        itemValidationErrors.push("Unit selection is required");
+                    }
+                    
+                    if (!item.quantity || item.quantity === "" || item.quantity === null || item.quantity <= 0) {
+                        itemValidationErrors.push("Valid quantity is required");
+                    }
+                    
+                    if (!item.brand || item.brand.trim() === "") {
+                        itemValidationErrors.push("Brand name is required");
+                    }
+                    
+                    if (!item.expected_delivery_date || item.expected_delivery_date === "") {
+                        itemValidationErrors.push("Expected delivery date is required");
+                    }
+                    
+                    // If there are validation errors for this item, add them to the main errors
+                    if (itemValidationErrors.length > 0) {
+                        setErrors({
+                            items: `Item validation failed: ${itemValidationErrors.join(", ")}. Please check all required fields are filled.`,
+                        });
+                        setIsSaving(false);
+                        return;
+                    }
+                    
                     if (
                         item.id &&
                         !item.id.toString().startsWith("temp-") &&
@@ -1307,11 +1395,11 @@ function AddQuotationForm() {
                     ) {
                         existingItems.push({
                             id: item.id,
-                            product_id: item.product_id,
+                            product_id: item.product_id ? parseInt(item.product_id) : null,
                             item_name: item.item_name,
                             description: item.description,
-                            unit_id: item.unit_id,
-                            quantity: item.quantity,
+                            unit_id: item.unit_id ? parseInt(item.unit_id) : null,
+                            quantity: item.quantity ? parseInt(item.quantity) : null,
                             brand: item.brand,
                             expected_delivery_date: item.expected_delivery_date,
                             rfq_id: newRfqId,
@@ -1320,11 +1408,11 @@ function AddQuotationForm() {
                     } else {
                         // This is a new item, don't include ID
                         newItems.push({
-                            product_id: item.product_id,
+                            product_id: item.product_id ? parseInt(item.product_id) : null,
                             item_name: item.item_name,
                             description: item.description,
-                            unit_id: item.unit_id,
-                            quantity: item.quantity,
+                            unit_id: item.unit_id ? parseInt(item.unit_id) : null,
+                            quantity: item.quantity ? parseInt(item.quantity) : null,
                             brand: item.brand,
                             expected_delivery_date: item.expected_delivery_date,
                             rfq_id: newRfqId,
@@ -1412,11 +1500,23 @@ function AddQuotationForm() {
                             }
                         );
                     } catch (createError) {
+                        let errorMessage = "RFQ was saved, but there was an error saving new items.";
+                        
+                        if (createError.response?.data?.message) {
+                            const message = createError.response.data.message;
+                            if (message.includes("product_id") && message.includes("Incorrect integer value")) {
+                                errorMessage = "RFQ was saved, but there was an error saving items: Please ensure all required fields are filled including Product selection, Brand name, and Expected delivery date.";
+                            } else if (message.includes("SQLSTATE[22007]") || message.includes("Invalid datetime format")) {
+                                errorMessage = "RFQ was saved, but there was an error saving items: Please check that all dates are valid and all required fields are filled.";
+                            } else {
+                                errorMessage = `RFQ was saved, but there was an error saving new items: ${message}`;
+                            }
+                        } else {
+                            errorMessage = "RFQ was saved, but there was an error saving new items. Please check that all required fields are filled.";
+                        }
+                        
                         setErrors({
-                            items:
-                                "RFQ was saved, but there was an error saving new items: " +
-                                (createError.response?.data?.message ||
-                                    "Unknown error"),
+                            items: errorMessage,
                         });
                         setIsSaving(false);
                         return;
@@ -1645,6 +1745,12 @@ function AddQuotationForm() {
             {errors.payment_type && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
                     {errors.payment_type}
+                </div>
+            )}
+
+            {errors.closing_date && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                    {errors.closing_date}
                 </div>
             )}
 
@@ -1978,7 +2084,10 @@ function AddQuotationForm() {
                                     e.target.value
                                 )
                             }
-                            className="w-[55%] bg-blue-50 border-gray-400 rounded-xl focus:ring-0"
+                            className={`w-[55%] bg-blue-50 border rounded-xl focus:ring-0 ${
+                                errors.closing_date ? 'border-red-500' : 'border-gray-400'
+                            }`}
+                            min={formData.issue_date || undefined}
                             required
                         />
 
