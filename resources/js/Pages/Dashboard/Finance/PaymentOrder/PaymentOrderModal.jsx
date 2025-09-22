@@ -442,7 +442,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                             />
                         </div>
 
-                        {/* Payment Type (scrollable dropdown) */}
+                        {/* Payment Type */}
                         <div className="w-full">
                             <div className="relative w-full">
                                 <SelectFloating
@@ -456,7 +456,6 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                         { id: "Credit upto 60 days", label: "Credit upto 60 days" },
                                         { id: "Credit upto 90 days", label: "Credit upto 90 days" },
                                         { id: "Credit upto 120 days", label: "Credit upto 120 days" },
-                                        // Add more options here if needed
                                     ]}
                                     error={errors.payment_type}
                                     dropdownClassName="max-h-40 overflow-y-auto"
@@ -482,8 +481,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                     readOnly
                                 />
                                 <label
-                                    className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
-                                        {"-top-2 left-2 text-base text-[#009FDC] px-1"}`}
+                                    className={`absolute left-3 px-1 bg-white transition-all -top-2 text-base text-[#009FDC]`}
                                 >
                                     Amount
                                 </label>
@@ -506,8 +504,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                     readOnly
                                 />
                                 <label
-                                    className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
-                                        {"-top-2 left-2 text-base text-[#009FDC] px-1"}`}
+                                    className={`absolute left-3 px-1 bg-white text-base transition-all -top-2 text-[#009FDC]`}
                                 >
                                     VAT Amount
                                 </label>
