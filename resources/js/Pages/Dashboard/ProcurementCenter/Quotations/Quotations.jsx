@@ -120,7 +120,7 @@ const Quotations = () => {
                         href="/quotations/create-quotation"
                         className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
                     >
-                        Create Quotation
+                        Add New Quotation
                     </Link>
                 </div>
             </div>
