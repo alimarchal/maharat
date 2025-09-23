@@ -322,22 +322,24 @@ const ItemModal = ({
                             readOnly
                             className="bg-gray-50"
                         />
-                        <SelectFloating
-                            label="Unit"
-                            name="unit_id"
-                            value={selectedUnit ? selectedUnit.name : ""}
-                            onChange={(e) => {
-                                const unit = units.find(u => u.name === e.target.value);
-                                if (unit) {
-                                    handleUnitSelect(unit);
-                                }
-                            }}
-                            options={units.map((unit) => ({
-                                id: unit.name,
-                                label: unit.name,
-                            }))}
-                            error={errors.unit_id}
-                        />
+                        <div>
+                            <SelectFloating
+                                label="Unit"
+                                name="unit_id"
+                                value={selectedUnit ? selectedUnit.name : ""}
+                                onChange={(e) => {
+                                    const unit = units.find(u => u.name === e.target.value);
+                                    if (unit) {
+                                        handleUnitSelect(unit);
+                                    }
+                                }}
+                                options={units.map((unit) => ({
+                                    id: unit.name,
+                                    label: unit.name,
+                                }))}
+                                error={errors.unit_id}
+                            />
+                        </div>
                         <InputFloating
                             label="Quantity"
                             name="quantity"
