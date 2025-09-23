@@ -259,24 +259,25 @@ export default function MainDashboard({ roles, permissions }) {
     const [approvedItemsCount, setApprovedItemsCount] = useState(0);
     const [loading, setLoading] = useState(true);
 
-    // Fetch pending tasks count
+    // Fetch pending requests count (all types of pending requests)
     useEffect(() => {
-        const fetchPendingTasks = async () => {
+        const fetchPendingRequests = async () => {
             try {
                 const response = await fetch(
-                    `/api/v1/tasks?filter[assigned_to_user_id]=${user_id}&filter[status]=Pending&per_page=1`
+                    `/api/v1/tasks?filter[assigned_to_user_id]=${user_id}&filter[status]=Pending&per_page=1000`
                 );
                 const data = await response.json();
                 if (response.ok) {
+                    // Use meta.total for the actual count, not the limited per_page results
                     setPendingTasksCount(data.meta?.total || 0);
                 }
             } catch (err) {
-                console.error("Error fetching pending tasks:", err);
+                console.error("Error fetching pending requests:", err);
             } finally {
                 setLoading(false);
             }
         };
-        fetchPendingTasks();
+        fetchPendingRequests();
     }, [user_id]);
 
     // Fetch requested items count for warehouse notifications

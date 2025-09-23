@@ -102,8 +102,9 @@ class MaterialRequestTransactionController extends Controller
                 $eloquentCurrentStep = $currentStep ? EloquentProcessStep::find($currentStep->id) : null;
                 $isDirectManagerFlow = $eloquentCurrentStep && $eloquentCurrentStep->designation && strcasecmp(trim($eloquentCurrentStep->designation->designation), 'Direct Manager') === 0;
                 $currentApprover = User::find($materialRequestTransaction->assigned_to);
+                $requester = User::find($materialRequestTransaction->requester_id);
                 $isFinalApproval = $isDirectManagerFlow
-                    ? ($currentApprover?->parent_id ? false : true)
+                    ? ($requester?->parent_id ? false : true)  // If requester has parent, not final. If no parent, final.
                     : ($materialRequestTransaction->order == $totalRequiredApprovals);
                 if (!$isFinalApproval) {
                     $nextOrder = $materialRequestTransaction->order + 1;
@@ -115,92 +116,83 @@ class MaterialRequestTransactionController extends Controller
                         'next_step_id' => $nextStep ? $nextStep->id : null,
                         'total_steps' => $totalRequiredApprovals
                     ]);
-                    if ($isDirectManagerFlow) {
-                        $stepIdForTask = $nextStep->id ?? ($currentStep->id ?? null);
-                        $resolvedApproverId = $currentApprover?->parent_id;
-                        if ($resolvedApproverId && $stepIdForTask) {
-                            \Log::info('=== CREATING NEXT APPROVAL (DIRECT MANAGER) ===', [
-                                'material_request_id' => $materialRequestTransaction->material_request_id,
-                                'next_order' => $nextOrder,
-                                'next_approver_id' => $resolvedApproverId
-                            ]);
-                            $nextTransaction = new 
-                                \App\Models\MaterialRequestTransaction([
-                                    'material_request_id' => $materialRequestTransaction->material_request_id,
-                                    'requester_id' => $materialRequestTransaction->requester_id,
-                                    'assigned_to' => $resolvedApproverId,
-                                    'order' => $nextOrder,
-                                    'description' => $nextStep->description ?? ($eloquentCurrentStep?->description),
-                                    'status' => 'Pending',
-                                    'created_by' => auth()->id(),
-                                    'updated_by' => auth()->id()
-                                ]);
-                            $nextTransaction->save();
-                            $taskId = DB::table('tasks')->insertGetId([
-                                'process_step_id' => $stepIdForTask,
-                                'process_id' => $nextStep->process_id ?? ($eloquentCurrentStep?->process_id),
-                                'assigned_at' => now(),
-                                'urgency' => 'Normal',
-                                'assigned_to_user_id' => $resolvedApproverId,
-                                'assigned_from_user_id' => $materialRequestTransaction->requester_id,
-                                'read_status' => null,
-                                'material_request_id' => $materialRequestTransaction->material_request_id,
-                                'created_at' => now(),
-                                'updated_at' => now()
-                            ]);
-                            // notifications follow below
-                        }
-                    } elseif ($nextStep) {
+                    if ($nextStep) {
                         // Resolve next approver via ApproverResolver
                         $resolver = new ApproverResolver();
                         $eloquentStep = EloquentProcessStep::find($nextStep->id);
                         $requester = User::find($materialRequestTransaction->requester_id);
-                        $resolvedApproverId = null;
-                        if ($eloquentStep && $eloquentStep->designation && strcasecmp(trim($eloquentStep->designation->designation), 'Direct Manager') === 0) {
-                            $currentApprover = User::find($materialRequestTransaction->assigned_to);
-                            // If current approver has no parent (is head), they approve their own requests
-                            $resolvedApproverId = $currentApprover?->parent_id ?: $currentApprover?->id;
-                        } else {
-                            $resolvedApproverId = $eloquentStep && $requester
-                                ? $resolver->resolveApproverId($eloquentStep, $requester)
-                                : null;
-                        }
+                        $resolvedApproverId = $eloquentStep && $requester
+                            ? $resolver->resolveApproverId($eloquentStep, $requester)
+                            : null;
                         if ($resolvedApproverId) {
-                            \Log::info('=== CREATING NEXT APPROVAL TRANSACTION ===', [
-                                'material_request_id' => $materialRequestTransaction->material_request_id,
-                                'next_order' => $nextOrder,
-                                'next_approver_id' => $resolvedApproverId
-                            ]);
-                            $nextTransaction = new 
-                                \App\Models\MaterialRequestTransaction([
+                            // Check if transaction already exists for this material request and order
+                            $existingTransaction = MaterialRequestTransaction::where('material_request_id', $materialRequestTransaction->material_request_id)
+                                ->where('order', $nextOrder)
+                                ->where('assigned_to', $resolvedApproverId)
+                                ->first();
+                            
+                            if (!$existingTransaction) {
+                                \Log::info('=== CREATING NEXT APPROVAL TRANSACTION ===', [
                                     'material_request_id' => $materialRequestTransaction->material_request_id,
-                                    'requester_id' => $materialRequestTransaction->requester_id,
-                                    'assigned_to' => $resolvedApproverId,
-                                    'order' => $nextOrder,
-                                    'description' => $nextStep->description,
-                                    'status' => 'Pending',
-                                    'created_by' => auth()->id(),
-                                    'updated_by' => auth()->id()
+                                    'next_order' => $nextOrder,
+                                    'next_approver_id' => $resolvedApproverId
                                 ]);
-                            $nextTransaction->save();
-                            $taskId = DB::table('tasks')->insertGetId([
-                                'process_step_id' => $nextStep->id,
-                                'process_id' => $nextStep->process_id,
-                                'assigned_at' => now(),
-                                'urgency' => 'Normal',
-                                'assigned_to_user_id' => $resolvedApproverId,
-                                'assigned_from_user_id' => $materialRequestTransaction->requester_id,
-                                'read_status' => null,
-                                'material_request_id' => $materialRequestTransaction->material_request_id,
-                                'created_at' => now(),
-                                'updated_at' => now()
-                            ]);
+                                $nextTransaction = new 
+                                    \App\Models\MaterialRequestTransaction([
+                                        'material_request_id' => $materialRequestTransaction->material_request_id,
+                                        'requester_id' => $materialRequestTransaction->requester_id,
+                                        'assigned_to' => $resolvedApproverId,
+                                        'order' => $nextOrder,
+                                        'description' => $nextStep->description,
+                                        'status' => 'Pending',
+                                        'created_by' => auth()->id(),
+                                        'updated_by' => auth()->id()
+                                    ]);
+                                $nextTransaction->save();
+                                
+                                // Check if task already exists for this material request, process step, and assigned user
+                                $existingTask = DB::table('tasks')
+                                    ->where('material_request_id', $materialRequestTransaction->material_request_id)
+                                    ->where('process_step_id', $nextStep->id)
+                                    ->where('assigned_to_user_id', $resolvedApproverId)
+                                    ->where('status', '!=', 'Completed')
+                                    ->first();
+                                
+                                if (!$existingTask) {
+                                    $taskId = DB::table('tasks')->insertGetId([
+                                        'process_step_id' => $nextStep->id,
+                                        'process_id' => $nextStep->process_id,
+                                        'assigned_at' => now(),
+                                        'urgency' => 'Normal',
+                                        'assigned_to_user_id' => $resolvedApproverId,
+                                        'assigned_from_user_id' => $materialRequestTransaction->requester_id,
+                                        'read_status' => null,
+                                        'material_request_id' => $materialRequestTransaction->material_request_id,
+                                        'created_at' => now(),
+                                        'updated_at' => now()
+                                    ]);
+                                } else {
+                                    \Log::info('=== TASK ALREADY EXISTS, SKIPPING CREATION ===', [
+                                        'material_request_id' => $materialRequestTransaction->material_request_id,
+                                        'process_step_id' => $nextStep->id,
+                                        'assigned_to_user_id' => $resolvedApproverId
+                                    ]);
+                                }
+                            } else {
+                                \Log::info('=== TRANSACTION ALREADY EXISTS, SKIPPING CREATION ===', [
+                                    'material_request_id' => $materialRequestTransaction->material_request_id,
+                                    'order' => $nextOrder,
+                                    'assigned_to' => $resolvedApproverId
+                                ]);
+                            }
 
-                            // Send task assignment notification
-                            $task = Task::with(['assignedToUser', 'process'])->find($taskId);
-                            if ($task) {
-                                $notificationService = new TaskNotificationService();
-                                $notificationService->sendTaskAssignmentNotification($task, 'Material Request');
+                            // Send task assignment notification only if task was created
+                            if (isset($taskId)) {
+                                $task = Task::with(['assignedToUser', 'process'])->find($taskId);
+                                if ($task) {
+                                    $notificationService = new TaskNotificationService();
+                                    $notificationService->sendTaskAssignmentNotification($task, 'Material Request');
+                                }
                             }
                             
                             // Send intermediate status notification to requester

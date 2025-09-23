@@ -38,7 +38,7 @@ class ApproverResolver
                 }
                 $current = User::find($current->parent_id);
             }
-            return $requester->parent_id ?: null;
+            return null;
         }
 
         $approver = DB::table('users')
