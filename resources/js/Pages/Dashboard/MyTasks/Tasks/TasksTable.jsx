@@ -17,14 +17,30 @@ const TasksTable = () => {
 
     const [selectedFilter, setSelectedFilter] = useState("All");
     const filters = ["All", "Pending", "Approved", "Rejected"];
+    
+    // Reset to page 1 when filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedFilter]);
 
     useEffect(() => {
         const fetchTasks = async () => {
             setLoading(true);
             try {
-                const response = await fetch(
-                    `/api/v1/tasks?include=processStep,process,assignedFromUser,assignedToUser,descriptions,material_request,material_request.items,material_request.items.product,material_request.items.unit,material_request.items.category,material_request.items.urgencyStatus,material_request.requester,material_request.warehouse,material_request.department,material_request.costCenter,rfq,rfq.items,rfq.items.product,rfq.items.unit,rfq.items.category,rfq.items.status,rfq.requester,rfq.warehouse,rfq.department,rfq.costCenter,purchase_order,purchase_order.supplier,purchase_order.user,payment_order,payment_order.supplier,payment_order.user,payment_order.purchase_order,invoice,invoice.items,invoice.client,invoice.representative,budget,budget.department,budget.costCenter,budget_approval_transaction,request_budget,request_budget.department,request_budget.costCenter,request_budget.fiscalPeriod&page=${currentPage}&filter[assigned_to_user_id]=${user_id}&sort=-created_at`
-                );
+                // Build filter parameters
+                const filterParams = new URLSearchParams({
+                    'include': 'processStep,process,assignedFromUser,assignedToUser,descriptions,material_request,material_request.items,material_request.items.product,material_request.items.unit,material_request.items.category,material_request.items.urgencyStatus,material_request.requester,material_request.warehouse,material_request.department,material_request.costCenter,rfq,rfq.items,rfq.items.product,rfq.items.unit,rfq.items.category,rfq.items.status,rfq.requester,rfq.warehouse,rfq.department,rfq.costCenter,purchase_order,purchase_order.supplier,purchase_order.user,payment_order,payment_order.supplier,payment_order.user,payment_order.purchase_order,invoice,invoice.items,invoice.client,invoice.representative,budget,budget.department,budget.costCenter,budget_approval_transaction,request_budget,request_budget.department,request_budget.costCenter,request_budget.fiscalPeriod',
+                    'page': currentPage.toString(),
+                    'filter[assigned_to_user_id]': user_id.toString(),
+                    'sort': '-created_at'
+                });
+                
+                // Add status filter if not "All"
+                if (selectedFilter !== "All") {
+                    filterParams.append('filter[status]', selectedFilter);
+                }
+                
+                const response = await fetch(`/api/v1/tasks?${filterParams.toString()}`);
                 const data = await response.json();
                 if (response.ok) {
                     setTasks(data.data || []);
@@ -40,7 +56,7 @@ const TasksTable = () => {
             }
         };
         fetchTasks();
-    }, [currentPage]);
+    }, [currentPage, selectedFilter, user_id]);
 
     const statusColors = {
         Pending: "text-yellow-500",
@@ -108,14 +124,8 @@ const TasksTable = () => {
                             </td>
                         </tr>
                     ) : (() => {
-                        const filteredTasks = tasks.filter(
-                            (req) =>
-                                selectedFilter === "All" ||
-                                req.status === selectedFilter
-                        );
-                        
-                        if (filteredTasks.length > 0) {
-                            return filteredTasks.map((req) => (
+                        if (tasks.length > 0) {
+                            return tasks.map((req) => (
                                 <tr
                                     key={req.id}
                                     className="border-b border-gray-200"
@@ -193,9 +203,7 @@ const TasksTable = () => {
             </table>
 
             {/* Pagination */}
-            {!loading && !error && tasks.filter(req => 
-                selectedFilter === "All" || req.status === selectedFilter
-            ).length > 0 && (
+            {!loading && !error && tasks.length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                     <button
                         onClick={() => setCurrentPage(currentPage - 1)}
