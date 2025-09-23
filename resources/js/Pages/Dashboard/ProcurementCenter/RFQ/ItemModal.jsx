@@ -185,6 +185,17 @@ const ItemModal = ({
         if (!formData.expected_delivery_date)
             validationErrors.expected_delivery_date =
                 "Delivery date is required";
+        
+        // Validate that expected delivery date is not before current date
+        if (formData.expected_delivery_date) {
+            const deliveryDate = new Date(formData.expected_delivery_date);
+            const currentDate = new Date();
+            currentDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+            
+            if (deliveryDate < currentDate) {
+                validationErrors.expected_delivery_date = "Expected delivery date cannot be before current date";
+            }
+        }
 
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
@@ -363,6 +374,7 @@ const ItemModal = ({
                             value={formData.expected_delivery_date || ""}
                             onChange={handleChange}
                             error={errors.expected_delivery_date}
+                            min={new Date().toISOString().split('T')[0]}
                         />
                     </div>
                     <div className="flex justify-center">

@@ -93,11 +93,6 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
 
     const validateForm = () => {
         const newErrors = {};
-        if (!formData.material_request_id)
-            newErrors.material_request_id = "Request Number is required";
-        if (!formData.items) newErrors.items = "Items field is required";
-        if (!formData.cost_center_id)
-            newErrors.cost_center_id = "Cost Center is required";
         if (!formData.priority) newErrors.priority = "Priority is required";
         if (!formData.status) newErrors.status = "Status is required";
         if ((formData.status === "Pending" || formData.status === "Rejected") && !formData.description)
@@ -225,8 +220,8 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
     };
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white p-8 rounded-2xl w-[90%] lg:w-1/2">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 overflow-y-auto">
+            <div className="bg-white p-8 rounded-2xl w-[90%] lg:w-3/4 xl:w-2/3 max-w-4xl my-8">
                 <div className="flex justify-between border-b pb-2 mb-4">
                     <h2 className="text-3xl font-bold text-[#2C323C]">
                         Issue Material to {requestData?.requester?.name}
@@ -278,82 +273,9 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4 relative">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <InputFloating
-                                label="Request Number"
-                                name="material_request_id"
-                                value={formData.material_request_id}
-                                onChange={handleChange}
-                                disabled
-                            />
-                            {errors.material_request_id && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.material_request_id}
-                                </p>
-                            )}
-                        </div>
-                        <div>
-                            <InputFloating
-                                label="Items"
-                                name="items"
-                                value={formData.items}
-                                onChange={handleChange}
-                                disabled
-                            />
-                            {errors.items && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.items}
-                                </p>
-                            )}
-                        </div>
-                        <div>
-                            <SelectFloating
-                                label="Cost Center"
-                                name="cost_center_id"
-                                value={formData.cost_center_id}
-                                onChange={handleChange}
-                                options={costCenters.map((c) => ({
-                                    id: c.id,
-                                    label: c.name,
-                                }))}
-                            />
-                            {errors.cost_center_id && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.cost_center_id}
-                                </p>
-                            )}
-                        </div>
-                        <div>
-                            <SelectFloating
-                                label="Sub Cost Center"
-                                name="sub_cost_center_id"
-                                value={formData.sub_cost_center_id}
-                                onChange={handleChange}
-                                options={[
-                                    { id: "", label: "Select Sub Cost Center" },
-                                    ...subCostCenters.map((c) => ({
-                                        id: c.id.toString(),
-                                        label: c.name,
-                                    }))
-                                ]}
-                                disabled={!formData.cost_center_id}
-                            />
-                        </div>
-                        <div>
-                            <SelectFloating
-                                label="Department"
-                                name="department_id"
-                                value={formData.department_id}
-                                onChange={handleChange}
-                                options={departments.map((dep) => ({
-                                    id: dep.id,
-                                    label: dep.name,
-                                }))}
-                            />
-                        </div>
-                        <div>
+                        <div className="relative z-10">
                             <SelectFloating
                                 label="Priority"
                                 name="priority"
@@ -371,15 +293,7 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                                 </p>
                             )}
                         </div>
-                    </div>
-                    <div
-                        className={`grid ${
-                            formData.status === "Pending" || formData.status === "Rejected"
-                                ? "grid-cols-1 md:grid-cols-2"
-                                : "grid-cols-1"
-                        } gap-6`}
-                    >
-                        <div>
+                        <div className="relative z-10">
                             <SelectFloating
                                 label="Status"
                                 name="status"
@@ -396,7 +310,9 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                                 </p>
                             )}
                         </div>
-                        {(formData.status === "Pending" || formData.status === "Rejected") && (
+                    </div>
+                    {(formData.status === "Pending" || formData.status === "Rejected") && (
+                        <div className="grid grid-cols-1 gap-6">
                             <div>
                                 <InputFloating
                                     label={formData.status === "Rejected" ? "Rejection Reason" : "Description"}
@@ -410,8 +326,8 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                                     </p>
                                 )}
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
                     <div className="my-4 flex justify-center w-full">
                         <button
                             type="submit"
