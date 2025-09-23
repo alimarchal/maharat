@@ -413,7 +413,7 @@ export default function PurchaseOrdersTable() {
                                         currentPage === page
                                             ? "bg-[#009FDC] text-white"
                                             : "border border-[#B9BBBD] bg-white"
-                                    } rounded-full hover:bg-[#0077B6] hover:text-center transition`}
+                                    } rounded-full hover:bg-[#0077B6] hover:text-white hover:text-center transition`}
                                 >
                                     {page}
                                 </button>

@@ -301,7 +301,7 @@ const RequestTable = ({ selectedFilter }) => {
                                 currentPage === page
                                     ? "bg-[#009FDC] text-white"
                                     : "border border-[#B9BBBD] bg-white"
-                            } rounded-full hover:bg-[#0077B6] transition`}
+                            } rounded-full hover:bg-[#0077B6] hover:text-white transition`}
                         >
                             {page}
                         </button>
