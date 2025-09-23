@@ -54,8 +54,8 @@ const ReceivedMRsTable = () => {
 
     const statusColors = {
         "Pending": "text-yellow-500",
-        "Approved": "text-yellow-500", // Show approved as pending with yellow color
-        "Referred": "text-blue-500", // Blue for referred status
+        "Approved": "text-yellow-500",
+        "Referred": "text-blue-500",
         "Issued": "text-green-500",
         "Rejected": "text-red-500"
     };
@@ -65,25 +65,6 @@ const ReceivedMRsTable = () => {
         Medium: "text-orange-500",
         Low: "text-green-500",
         Normal: "text-green-500",
-    };
-
-    const getStatusCell = (status) => {
-        const statusColors = {
-            "Pending": "bg-yellow-100 text-yellow-800",
-            "Approved": "bg-yellow-100 text-yellow-800", // Show approved as pending with yellow color
-            "Referred": "bg-blue-100 text-blue-800", // Blue for referred status
-            "Issued": "bg-green-100 text-green-800",
-            "Rejected": "bg-red-100 text-red-800"
-        };
-
-        // Show "Approved" status as "Pending" in frontend
-        const displayStatus = status === "Approved" ? "Pending" : status;
-
-        return (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status] || "bg-gray-100 text-gray-800"}`}>
-                {displayStatus}
-            </span>
-        );
     };
 
     const handleViewRequest = async (request) => {
@@ -134,9 +115,8 @@ const ReceivedMRsTable = () => {
                 // Check stock for each item
                 for (const item of currentRequest.items) {
                     const requestedQty = parseFloat(item.quantity);
-                    const productId = item.product_id; // This should be the actual product ID
+                    const productId = item.product_id;
                     const warehouseId = currentRequest.warehouse_id;
-                    const productName = item.product?.name || 'Unknown Product';
 
                     // Check current inventory quantity
                     const inventoryResponse = await axios.get(`/api/v1/inventories`, {
@@ -171,7 +151,7 @@ const ReceivedMRsTable = () => {
             } else if (formData.status === "Issue Material") {
                 statusId = 51;
             } else if (formData.status === "Referred") {
-                statusId = 2; // Referred status
+                statusId = 2;
             }
 
             const statusResponse = await axios.put(`/api/v1/material-requests/${formData.material_request_id}`, {
