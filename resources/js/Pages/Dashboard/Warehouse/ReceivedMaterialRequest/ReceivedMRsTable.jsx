@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronRight, faEye } from "@fortawesome/free-solid-svg-icons";
+import { faChevronRight, faEye, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import ReceivedMRsModal from "./ReceivedMRsModal";
 import ViewRequestModal from "./ViewRequestModal";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import ViewCardModal from "../../Requests/ViewCardModal";
 
 const ReceivedMRsTable = () => {
     const [requests, setRequests] = useState([]);
@@ -14,6 +15,7 @@ const ReceivedMRsTable = () => {
     const [lastPage, setLastPage] = useState(1);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [isViewCardModalOpen, setIsViewCardModalOpen] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [selectedFilter, setSelectedFilter] = useState("All");
 
@@ -28,7 +30,7 @@ const ReceivedMRsTable = () => {
                     page: currentPage,
                     per_page: 10,
                     'filter[status_id]': '4,2,51,52', // Fetch Approved (4), Referred (2), Issued (51), and Rejected (52)
-                    sort: '-created_at' // Sort by created_at descending globally (newest first)
+                    sort: '-created_at'
                 }
             });
             
@@ -89,19 +91,14 @@ const ReceivedMRsTable = () => {
             const response = await axios.get(`/api/v1/issue-materials?filter[material_request_id]=${request.id}`);
             const issueMaterialData = response.data.data[0];
             
-            console.log("ReceivedMRsTable - Issue Material API Response:", response.data);
-            console.log("ReceivedMRsTable - Issue Material Data:", issueMaterialData);
-            
             if (issueMaterialData) {
                 const updatedRequest = {
                     ...request,
                     transaction: issueMaterialData,
                     description: issueMaterialData.description
                 };
-                console.log("ReceivedMRsTable - Updated Request:", updatedRequest);
                 setSelectedRequest(updatedRequest);
             } else {
-                console.log("ReceivedMRsTable - No issue material data found for request:", request.id);
                 setSelectedRequest(request);
             }
             setIsViewModalOpen(true);
@@ -110,6 +107,12 @@ const ReceivedMRsTable = () => {
             setSelectedRequest(request);
             setIsViewModalOpen(true);
         }
+    };
+
+    // Add this handler for ViewCardModal
+    const handleViewCards = (request) => {
+        setSelectedRequest(request);
+        setIsViewCardModalOpen(true);
     };
 
     const handleEdit = (request) => {
@@ -124,34 +127,16 @@ const ReceivedMRsTable = () => {
 
     const handleSave = async (formData) => {
         try {
-            console.log('Starting handleSave with formData:', formData);
-            console.log('Description from formData:', formData.description);
-            console.log('Rejection reason from formData:', formData.rejection_reason);
-
             // If status is "Issue Material", check stock availability first
             if (formData.status === "Issue Material") {
                 const currentRequest = requests.find(r => r.id === formData.material_request_id);
-                console.log('Checking stock for request:', currentRequest);
 
                 // Check stock for each item
                 for (const item of currentRequest.items) {
-                    console.log('=== INVENTORY CHECK DEBUG ===');
-                    console.log('Full item object:', item);
-                    console.log('Item product_id:', item.product_id);
-                    console.log('Item product object:', item.product);
-                    console.log('Item product name:', item.product?.name);
-                    
                     const requestedQty = parseFloat(item.quantity);
                     const productId = item.product_id; // This should be the actual product ID
                     const warehouseId = currentRequest.warehouse_id;
                     const productName = item.product?.name || 'Unknown Product';
-
-                    console.log('Stock check details:', {
-                        requestedQuantity: requestedQty,
-                        productId,
-                        warehouseId,
-                        productName
-                    });
 
                     // Check current inventory quantity
                     const inventoryResponse = await axios.get(`/api/v1/inventories`, {
@@ -161,18 +146,9 @@ const ReceivedMRsTable = () => {
                         }
                     });
 
-                    console.log('Inventory API URL:', `/api/v1/inventories?filter[warehouse_id]=${warehouseId}&filter[product_id]=${productId}`);
-                    console.log('Inventory response:', inventoryResponse.data);
-                    console.log('Inventory data length:', inventoryResponse.data?.data?.length);
-
                     if (inventoryResponse.data?.data?.length > 0) {
                         const currentInventory = inventoryResponse.data.data[0];
                         const currentQuantity = parseFloat(currentInventory.quantity) || 0;
-
-                        console.log("Quantity calculation:", {
-                            currentQuantity,
-                            requestedQuantity: requestedQty
-                        });
 
                         // Check if we have enough stock
                         if (currentQuantity < requestedQty) {
@@ -202,7 +178,6 @@ const ReceivedMRsTable = () => {
                 status_id: statusId,
                 rejection_reason: formData.status === "Rejected" ? formData.rejection_reason : null
             });
-            console.log('Status update response:', statusResponse.data);
 
             // Only proceed with issue material creation if status is "Issue Material"
             if (formData.status === "Issue Material") {
@@ -224,11 +199,7 @@ const ReceivedMRsTable = () => {
                     status: formData.status,
                     description: formData.description || null
                 };
-                
-                console.log('Issue Material Payload:', issueMaterialPayload);
-                
                 const issueMaterialResponse = await axios.post('/api/v1/issue-materials', issueMaterialPayload);
-                console.log('Issue materials response:', issueMaterialResponse.data);
 
                 // Process stock operations for each item
                 for (const item of currentRequest.items) {
@@ -262,8 +233,6 @@ const ReceivedMRsTable = () => {
                             reference_number: `IM-${issueMaterialResponse.data.data.id}`,
                             notes: `Stock out for material request #${formData.material_request_id}`
                         });
-
-                        console.log(`Updated inventory for product ${item.product?.name}: ${currentQuantity} -> ${newQuantity}`);
                     }
                 }
             }
@@ -437,6 +406,13 @@ const ReceivedMRsTable = () => {
                                         >
                                             <FontAwesomeIcon icon={faEye} />
                                         </button>
+                                        <button
+                                            onClick={() => handleViewCards(req)}
+                                            className="text-[#9B9DA2] hover:text-gray-500"
+                                            title="View Process Card"
+                                        >
+                                            <FontAwesomeIcon icon={faInfoCircle} />
+                                        </button>
                                         {(req.status?.name === "Pending" || req.status?.name === "Approved") && (
                                             <button
                                                 onClick={() => {
@@ -528,6 +504,15 @@ const ReceivedMRsTable = () => {
                 <ViewRequestModal
                     isOpen={isViewModalOpen}
                     onClose={() => setIsViewModalOpen(false)}
+                    request={selectedRequest}
+                />
+            )}
+
+            {/* Add the ViewCardModal */}
+            {isViewCardModalOpen && (
+                <ViewCardModal
+                    isOpen={isViewCardModalOpen}
+                    onClose={() => setIsViewCardModalOpen(false)}
                     request={selectedRequest}
                 />
             )}
