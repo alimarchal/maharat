@@ -38,6 +38,8 @@ class RequestBudget extends Model
         'previous_year_budget_amount' => 'decimal:2',
         'requested_amount' => 'decimal:2',
         'revenue_planned' => 'decimal:2',
+        'previous_year_revenue' => 'decimal:2',
+        'current_year_revenue' => 'decimal:2',
         'approved_amount' => 'decimal:2',
         'reserved_amount' => 'decimal:2',
         'consumed_amount' => 'decimal:2',
@@ -85,11 +87,115 @@ class RequestBudget extends Model
     }
 
     /**
+     * Get the user who created the request budget.
+     */
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
      * Get the user who updated the request budget.
      */
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * Get the user who updated the request budget (alias for consistency).
+     */
+    public function updatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * Scope to get only approved budget requests.
+     */
+    public function scopeApproved($query)
+    {
+        return $query->where('status', 'Approved');
+    }
+
+    /**
+     * Scope to filter by cost center.
+     */
+    public function scopeForCostCenter($query, $costCenterId)
+    {
+        return $query->where('cost_center_id', $costCenterId);
+    }
+
+    /**
+     * Scope to filter by sub cost center.
+     */
+    public function scopeForSubCostCenter($query, $subCostCenterId)
+    {
+        return $query->where('sub_cost_center', $subCostCenterId);
+    }
+
+    /**
+     * Scope to filter by fiscal period.
+     */
+    public function scopeForFiscalPeriod($query, $fiscalPeriodId)
+    {
+        return $query->where('fiscal_period_id', $fiscalPeriodId);
+    }
+
+    /**
+     * Scope to filter by department.
+     */
+    public function scopeForDepartment($query, $departmentId)
+    {
+        return $query->where('department_id', $departmentId);
+    }
+
+    /**
+     * Scope to filter by status.
+     */
+    public function scopeByStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    /**
+     * Get total expenses (consumed amount) for multiple sub cost centers.
+     */
+    public static function getTotalExpensesForSubCostCenters(array $subCostCenterIds, $status = 'Approved')
+    {
+        return self::whereIn('sub_cost_center', $subCostCenterIds)
+            ->where('status', $status)
+            ->sum('consumed_amount') ?? 0;
+    }
+
+    /**
+     * Get total balance for multiple sub cost centers.
+     */
+    public static function getTotalBalanceForSubCostCenters(array $subCostCenterIds, $status = 'Approved')
+    {
+        return self::whereIn('sub_cost_center', $subCostCenterIds)
+            ->where('status', $status)
+            ->sum('balance_amount') ?? 0;
+    }
+
+    /**
+     * Get total expenses (consumed amount) for a single sub cost center.
+     */
+    public static function getExpensesForSubCostCenter($subCostCenterId, $status = 'Approved')
+    {
+        return self::where('sub_cost_center', $subCostCenterId)
+            ->where('status', $status)
+            ->sum('consumed_amount') ?? 0;
+    }
+
+    /**
+     * Get total balance for a single sub cost center.
+     */
+    public static function getBalanceForSubCostCenter($subCostCenterId, $status = 'Approved')
+    {
+        return self::where('sub_cost_center', $subCostCenterId)
+            ->where('status', $status)
+            ->sum('balance_amount') ?? 0;
     }
 
     /**
@@ -145,5 +251,41 @@ class RequestBudget extends Model
         }
 
         return "Budget request already exists for this combination of fiscal year, department, cost center, and sub cost center.";
+    }
+
+    /**
+     * Calculate the remaining budget (approved - consumed)
+     */
+    public function getRemainingBudgetAttribute()
+    {
+        return $this->approved_amount - $this->consumed_amount;
+    }
+
+    /**
+     * Calculate the budget utilization percentage
+     */
+    public function getBudgetUtilizationAttribute()
+    {
+        if ($this->approved_amount <= 0) {
+            return 0;
+        }
+        
+        return round(($this->consumed_amount / $this->approved_amount) * 100, 2);
+    }
+
+    /**
+     * Check if budget is over-utilized
+     */
+    public function isOverBudget()
+    {
+        return $this->consumed_amount > $this->approved_amount;
+    }
+
+    /**
+     * Check if budget is nearly exhausted (90% utilized)
+     */
+    public function isNearlyExhausted($threshold = 90)
+    {
+        return $this->getBudgetUtilizationAttribute() >= $threshold;
     }
 }

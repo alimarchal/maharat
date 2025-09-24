@@ -28,6 +28,10 @@ class CostCenterResource extends JsonResource
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,
 
+            // Budget calculations
+            'total_expenses' => $this->calculateTotalExpenses(),
+            'total_balance' => $this->calculateTotalBalance(),
+
             // Include related resources when loaded
             'parent' => new CostCenterResource($this->whenLoaded('parent')),
             'children' => CostCenterResource::collection($this->whenLoaded('children')),
@@ -37,5 +41,53 @@ class CostCenterResource extends JsonResource
             'created_by_user' => new UserResource($this->whenLoaded('createdBy')),
             'updated_by_user' => new UserResource($this->whenLoaded('updatedBy')),
         ];
+    }
+
+    /**
+     * Calculate total expenses for this cost center
+     */
+    private function calculateTotalExpenses()
+    {
+        if ($this->parent_id === null) {
+            // Main cost center: sum all sub cost centers' expenses
+            $subCostCenterIds = $this->children->pluck('id')->toArray();
+            
+            if (empty($subCostCenterIds)) {
+                return 0;
+            }
+
+            return \App\Models\RequestBudget::whereIn('sub_cost_center', $subCostCenterIds)
+                ->where('status', 'Approved')
+                ->sum('consumed_amount') ?? 0;
+        } else {
+            // Sub cost center: get direct expenses
+            return \App\Models\RequestBudget::where('sub_cost_center', $this->id)
+                ->where('status', 'Approved')
+                ->sum('consumed_amount') ?? 0;
+        }
+    }
+
+    /**
+     * Calculate total balance for this cost center
+     */
+    private function calculateTotalBalance()
+    {
+        if ($this->parent_id === null) {
+            // Main cost center: sum all sub cost centers' balances
+            $subCostCenterIds = $this->children->pluck('id')->toArray();
+            
+            if (empty($subCostCenterIds)) {
+                return 0;
+            }
+
+            return \App\Models\RequestBudget::whereIn('sub_cost_center', $subCostCenterIds)
+                ->where('status', 'Approved')
+                ->sum('balance_amount') ?? 0;
+        } else {
+            // Sub cost center: get direct balance
+            return \App\Models\RequestBudget::where('sub_cost_center', $this->id)
+                ->where('status', 'Approved')
+                ->sum('balance_amount') ?? 0;
+        }
     }
 }
