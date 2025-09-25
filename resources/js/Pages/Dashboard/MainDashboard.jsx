@@ -520,28 +520,28 @@ export default function MainDashboard({ roles, permissions }) {
             icon: faFileCirclePlus,
             onClick: () => router.visit("/rfqs"),
             notificationCount: pendingRfqRequestsCount,
-            //requiredPermission: "view_rfqs",
+            requiredPermission: "view_rfqs",
         },
         {
             text: "Quotations",
             icon: faFileInvoice,
             onClick: () => router.visit("/quotations"),
             notificationCount: quotationsRfqCount,
-            //requiredPermission: "view_quotations",
+            requiredPermission: "view_quotations",
         },
         {
             text: "Purchase Orders",
             icon: faFileSignature,
             onClick: () => router.visit("/purchase-orders"),
             notificationCount: purchaseOrdersRfqCount,
-            //requiredPermission: "view_purchase_orders",
+            requiredPermission: "view_purchase_orders",
         },
         {
             text: "External Invoices",
             icon: faFileAlt,
             onClick: () => router.visit("/external-invoices"),
             notificationCount: unpaidInvoicesCount,
-            //requiredPermission: "view_invoices",
+            requiredPermission: "view_invoices",
         },
     ];
 
@@ -551,31 +551,31 @@ export default function MainDashboard({ roles, permissions }) {
             text: "Maharat Invoices",
             icon: faFileInvoice,
             onClick: () => router.visit("/maharat-invoices"),
-            //requiredPermission: "view_maharat_invoices",
-        },
-        {
-            text: "Accounts",
-            icon: faBook,
-            onClick: () => router.visit("/accounts"),
-            //requiredPermission: "view_finance",
+            requiredPermission: "view_maharat_invoices",
         },
         {
             text: "Payment Orders",
             icon: faMoneyCheckDollar,
             onClick: () => router.visit("/payment-orders"),
-            //requiredPermission: "view_payment_orders",
+            requiredPermission: "view_payment_orders",
         },
         {
             text: "Account Receivables",
             icon: faFileInvoiceDollar,
             onClick: () => router.visit("/account-receivables"),
-            //requiredPermission: "view_finance",
+            requiredPermission: "view_account_receivables",
         },
         {
             text: "Account Payables",
             icon: faFileInvoice,
             onClick: () => router.visit("/account-payables"),
-            //requiredPermission: "view_finance",
+            requiredPermission: "view_account_payables",
+        },
+        {
+            text: "Accounts",
+            icon: faBook,
+            onClick: () => router.visit("/accounts"),
+            requiredPermission: "view_accounts",
         },
     ];
 
@@ -586,32 +586,32 @@ export default function MainDashboard({ roles, permissions }) {
             icon: faFileAlt,
             onClick: () => router.visit("/material-requests"),
             notificationCount: pendingMaterialRequestsCount,
-            //requiredPermission: "view_material_requests",
+            requiredPermission: "view_material_requests",
         },
         {
             text: "Categories",
             icon: faListCheck,
             onClick: () => router.visit("/category"),
-            //requiredPermission: "view_warehouse",
+            requiredPermission: "view_warehouse",
         },
         {
             text: "Items",
             icon: faClipboardList,
             onClick: () => router.visit("/items"),
-            //requiredPermission: "view_warehouse",
+            requiredPermission: "view_warehouse",
             notificationCount: requestedItemsCount,
         },
         {
             text: "Goods Receiving Notes",
             icon: faFileInvoice,
             onClick: () => router.visit("/goods-receiving-notes"),
-            //requiredPermission: "view_goods_receiving_notes",
+            requiredPermission: "view_goods_receiving_notes",
         },
         {
             text: "Inventory Tracking",
             icon: faChartBar,
             onClick: () => router.visit("/inventory-tracking"),
-            //requiredPermission: "view_warehouse",
+            requiredPermission: "view_warehouse",
         },
     ];
 
@@ -621,31 +621,31 @@ export default function MainDashboard({ roles, permissions }) {
             text: "Cost Centers",
             icon: faCoins,
             onClick: () => router.visit("/cost-centers"),
-            //requiredPermission: "view_budget",
+            requiredPermission: "view_budget",
         },
         {
             text: "Income Statement",
             icon: faChartLine,
             onClick: () => router.visit("/income-statement"),
-            //requiredPermission: "view_finance",
+            requiredPermission: "view_finance",
         },
         {
             text: "Balance Sheet",
             icon: faBalanceScale,
             onClick: () => router.visit("/balance-sheet"),
-            //requiredPermission: "view_finance",
+            requiredPermission: "view_finance",
         },
         {
             text: "Budget",
             icon: faMoneyBillWave,
             onClick: () => router.visit("/budget"),
-            //requiredPermission: "view_budget",
+            requiredPermission: "view_budget",
         },
         {
             text: "Request a Budget",
             icon: faFileSignature,
             onClick: () => router.visit("/request-budgets"),
-            //requiredPermission: "view_budget",
+            requiredPermission: "view_budget",
         },
     ];
 
@@ -655,26 +655,26 @@ export default function MainDashboard({ roles, permissions }) {
             text: "Organizational Chart",
             icon: faChartBar,
             onClick: () => router.visit("/chart"),
-            //requiredPermission: "view_org_chart",
+            requiredPermission: "view_org_chart",
         },
         {
             text: "Process Flow",
             icon: faDiagramProject,
             onClick: () => router.visit("/process-flow"),
-            //requiredPermission: "view_process_flow",
+            requiredPermission: "view_process_flow",
         },
         // Only show Notification Settings for users without parent_id (top-level users)
         ...(user.parent_id === null ? [{
             text: "Notification Settings",
             icon: faBell,
             onClick: () => router.visit("/notification-settings"),
-            //requiredPermission: "manage_settings",
+            requiredPermission: "manage_settings",
         }] : []),
         {
             text: "Roles & Permission",
             icon: faUserPen,
             onClick: () => router.visit("/roles-permissions"),
-            //requiredPermission: "view_permission_settings",
+            requiredPermission: "view_permission_settings",
         },
     ];
 
@@ -696,14 +696,15 @@ export default function MainDashboard({ roles, permissions }) {
     const totalWarehouseNotifications = pendingMaterialRequestsCount + requestedItemsCount;
 
     // Determine which cards to show based on permissions
-    const showRequestsCard = hasPermission("My Requests");
-    const showTasksCard = hasPermission("Task Center");
-    const showProcurementCard = hasPermission("Procurement Center");
-    const showFinanceCard = hasPermission("Finance Center");
-    const showWarehouseCard = hasPermission("Warehouse");
-    const showBudgetCard = hasPermission("Budget & Accounts");
-    const showStatusesCard = hasPermission("Statuses");
-    const showConfigCard = hasPermission("Configuration Center");
+    const showRequestsCard = hasPermission("view_requests");
+    const showTasksCard = hasPermission("view_tasks");
+    const showProcurementCard = hasPermission("view_procurement");
+    const showFinanceCard = hasPermission("view_finance");
+    const showWarehouseCard = hasPermission("view_warehouse");
+    const showBudgetCard = hasPermission("view_budget");
+    const showStatusCard = hasPermission("view_statuses");
+    const showConfigCard = hasPermission("view_configuration");
+    
 
     return (
         <>
@@ -786,10 +787,10 @@ export default function MainDashboard({ roles, permissions }) {
                         dropdownItems={budgetDropdownItems.length > 0 ? budgetDropdownItems : null}
                     />
                 )}
-                {showStatusesCard && (
+                {showStatusCard && (
                     <DashboardCard
                         icon={faClipboardList}
-                        title="Statuses"
+                        title="Status"
                         subtitle="All Statuses"
                         bgColor="bg-[#B9BBBD]"
                         iconColor="text-[#2C323C]"

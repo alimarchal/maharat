@@ -5,6 +5,7 @@ import axios from "axios";
 import AccountsModal from "./AccountsModal";
 import SuccessModal from "../../../../Components/SuccessModal";
 import { Link } from "@inertiajs/react";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const SPECIAL_ACCOUNT_IDS = [1, 3, 6, 7, 10];
 const isSpecialAccountId = (id) => SPECIAL_ACCOUNT_IDS.includes(Number(id));
@@ -21,6 +22,10 @@ const AccountsTable = () => {
         message: "",
         title: "Success!"
     });
+    const { hasPermission } = usePermissions();
+    
+    // Check permissions for buttons
+    const canCreateNewAccount = hasPermission("create_new_account");
 
     const [selectedFilter, setSelectedFilter] = useState("All");
     const filters = ["All", "Approved", "Pending"];
@@ -241,13 +246,15 @@ const AccountsTable = () => {
                             </button>
                         ))}
                     </div>
-                    <button
-                        type="button"
-                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                        onClick={() => setIsModalOpen(true)}
-                    >
-                        Create a new Account
-                    </button>
+                    {canCreateNewAccount && (
+                        <button
+                            type="button"
+                            className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                            onClick={() => setIsModalOpen(true)}
+                        >
+                            Create a new Account
+                        </button>
+                    )}
                 </div>
             </div>
 
