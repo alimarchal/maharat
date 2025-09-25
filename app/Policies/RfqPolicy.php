@@ -45,7 +45,12 @@ class RfqPolicy
      */
     public function delete(User $user, Rfq $rfq): bool
     {
-        return false;
+        // Allow deletion only if:
+        // 1. User is the requester AND
+        // 2. Status is Draft (not yet submitted for approval)
+        return $user->id === $rfq->requester_id && 
+               $rfq->status && 
+               $rfq->status->name === 'Draft';
     }
 
     /**

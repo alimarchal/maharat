@@ -194,6 +194,12 @@ class MaterialRequestController extends Controller
         try {
             DB::beginTransaction();
 
+            // Delete related tasks first
+            \App\Models\Task::where('material_request_id', $materialRequest->id)->delete();
+
+            // Delete related email logs
+            \App\Models\EmailLog::where('material_request_id', $materialRequest->id)->delete();
+
             // Delete related items first
             $materialRequest->items()->delete();
 

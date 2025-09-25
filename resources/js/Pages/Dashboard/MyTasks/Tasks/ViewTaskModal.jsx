@@ -11,6 +11,7 @@ import {
     faCircleXmark,
     faClock,
     faFileAlt,
+    faImage,
 } from "@fortawesome/free-solid-svg-icons";
 
 const ViewTaskModal = ({ isOpen, onClose, task }) => {
@@ -279,23 +280,44 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                     <table className="w-full text-sm">
                                                         <thead className="bg-[#C7E7DE] text-[#2C323C]">
                                                             <tr>
-                                                                <th className="p-3 rounded-tl-xl rounded-bl-xl text-left">Item</th>
-                                                                <th className="p-3 text-left">Category</th>
-                                                                <th className="p-3 text-left">Quantity</th>
-                                                                <th className="p-3 text-left">Unit</th>
-                                                                <th className="p-3 rounded-tr-xl rounded-br-xl text-left">Priority</th>
+                                                                <th className="p-3 rounded-tl-xl rounded-bl-xl text-center">Item</th>
+                                                                <th className="p-3 text-center">Category</th>
+                                                                <th className="p-3 text-center">Quantity</th>
+                                                                <th className="p-3 text-center">Unit</th>
+                                                                <th className={`p-3 text-center ${task.material_request.items?.some(item => item.photo_url && item.photo_url.trim() !== '') ? '' : 'rounded-tr-xl rounded-br-xl'}`}>Priority</th>
+                                                                {task.material_request.items?.some(item => item.photo_url && item.photo_url.trim() !== '') && (
+                                                                    <th className="p-3 rounded-tr-xl rounded-br-xl text-center">Image</th>
+                                                                )}
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-gray-200">
                                                             {task.material_request.items.map((item, index) => (
                                                                 <tr key={index}>
-                                                                    <td className="px-3 py-2">{item.product?.name || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.category?.name || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{Math.floor(item.quantity) || "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.unit?.name || "N/A"}</td>
-                                                                    <td className="px-3 py-2">
+                                                                    <td className="px-3 py-2 text-center">{item.product?.name || "N/A"}</td>
+                                                                    <td className="px-3 py-2 text-center">{item.category?.name || "N/A"}</td>
+                                                                    <td className="px-3 py-2 text-center">{Math.floor(item.quantity) || "N/A"}</td>
+                                                                    <td className="px-3 py-2 text-center">{item.unit?.name || "N/A"}</td>
+                                                                    <td className="px-3 py-2 text-center">
                                                                         <UrgencyBadge urgency={item.urgency_status?.name} />
                                                                     </td>
+                                                                    {task.material_request.items?.some(item => item.photo_url && item.photo_url.trim() !== '') && (
+                                                                        <td className="px-3 py-2 text-center">
+                                                                            {item.photo_url && item.photo_url.trim() !== '' && (
+                                                                                <div className="flex justify-center">
+                                                                                    <img
+                                                                                        src={item.photo_url}
+                                                                                        alt="Item Image"
+                                                                                        className="w-16 h-16 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                                                                                        onClick={() => window.open(item.photo_url, '_blank')}
+                                                                                        title="Click to view full size"
+                                                                                        onError={(e) => {
+                                                                                            e.target.style.display = 'none';
+                                                                                        }}
+                                                                                    />
+                                                                                </div>
+                                                                            )}
+                                                                        </td>
+                                                                    )}
                                                                 </tr>
                                                             ))}
                                                         </tbody>
@@ -344,25 +366,53 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                     <table className="w-full text-sm">
                                                         <thead className="bg-[#C7E7DE] text-[#2C323C]">
                                                             <tr>
-                                                                <th className="px-3 py-2 text-left rounded-tl-xl rounded-bl-xl">Item</th>
-                                                                <th className="px-3 py-2 text-left">Category</th>
-                                                                <th className="px-3 py-2 text-left">Quantity</th>
-                                                                <th className="px-3 py-2 text-left">Unit</th>
-                                                                <th className="px-3 py-2 text-left rounded-tr-xl rounded-br-xl">Description</th>
+                                                                <th className="px-3 py-2 text-center rounded-tl-xl rounded-bl-xl">Item</th>
+                                                                <th className="px-3 py-2 text-center">Category</th>
+                                                                <th className="px-3 py-2 text-center">Quantity</th>
+                                                                <th className={`px-3 py-2 text-center ${task.rfq.items?.some(item => item.attachment) ? '' : 'rounded-tr-xl rounded-br-xl'}`}>Unit</th>
+                                                                {task.rfq.items?.some(item => item.attachment) && (
+                                                                    <th className="px-3 py-2 text-center rounded-tr-xl rounded-br-xl">Attachment</th>
+                                                                )}
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-gray-200">
                                                             {task.rfq.items.map((item, index) => (
                                                                 <tr key={index}>
-                                                                    <td className="px-3 py-2">{item.item_name || item.product?.name || "N/A"}</td>
-                                                                    <td className="px-3 py-2">
+                                                                    <td className="px-3 py-2 text-center">{item.item_name || item.product?.name || "N/A"}</td>
+                                                                    <td className="px-3 py-2 text-center">
                                                                         {rfqCategoryName || "Loading..."}
                                                                     </td>
-                                                                    <td className="px-3 py-2">{item.quantity ? parseFloat(item.quantity).toFixed(1) : "N/A"}</td>
-                                                                    <td className="px-3 py-2">{item.unit?.name || item.product?.unit?.name || "N/A"}</td>
-                                                                    <td className="px-3 py-2">
-                                                                        {rfqDescription || "Loading..."}
-                                                                    </td>
+                                                                    <td className="px-3 py-2 text-center">{item.quantity ? parseFloat(item.quantity).toFixed(1) : "N/A"}</td>
+                                                                    <td className="px-3 py-2 text-center">{item.unit?.name || item.product?.unit?.name || "N/A"}</td>
+                                                                    {task.rfq.items?.some(item => item.attachment) && (
+                                                                        <td className="px-3 py-2 text-center">
+                                                                            {item.attachment ? (
+                                                                                <div className="flex justify-center">
+                                                                                    <img
+                                                                                        src="/images/pdf-file.png"
+                                                                                        alt="PDF"
+                                                                                        className="w-4 h-4 cursor-pointer hover:opacity-80 transition-opacity"
+                                                                                        onClick={() => {
+                                                                                            let fileUrl = null;
+                                                                                            if (typeof item.attachment === "string") {
+                                                                                                fileUrl = `/storage/${item.attachment}`.replace("/storage/storage/", "/storage/");
+                                                                                            } else if (typeof item.attachment === "object") {
+                                                                                                if (item.attachment.url && item.attachment.url.startsWith("http")) {
+                                                                                                    fileUrl = item.attachment.url;
+                                                                                                } else {
+                                                                                                    fileUrl = `/storage/${item.attachment.url || item.attachment.path || item.attachment}`.replace("/storage/storage/", "/storage/");
+                                                                                                }
+                                                                                            }
+                                                                                            if (fileUrl) {
+                                                                                                window.open(fileUrl, '_blank');
+                                                                                            }
+                                                                                        }}
+                                                                                        title="View Attachment"
+                                                                                    />
+                                                                                </div>
+                                                                            ) : null}
+                                                                        </td>
+                                                                    )}
                                                                 </tr>
                                                             ))}
                                                         </tbody>
@@ -407,6 +457,40 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 </span>
                                             </div>
                                         </div>
+                                        
+                                        {/* Purchase Order Attachments */}
+                                        {task.purchase_order.attachment && (
+                                            <div className="mt-4">
+                                                <h4 className="font-semibold text-gray-700 mb-2">Attachments:</h4>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            let fileUrl = null;
+                                                            if (typeof task.purchase_order.attachment === "string") {
+                                                                fileUrl = `/storage/${task.purchase_order.attachment}`.replace("/storage/storage/", "/storage/");
+                                                            } else if (typeof task.purchase_order.attachment === "object") {
+                                                                if (task.purchase_order.attachment.url && task.purchase_order.attachment.url.startsWith("http")) {
+                                                                    fileUrl = task.purchase_order.attachment.url;
+                                                                } else {
+                                                                    fileUrl = `/storage/${task.purchase_order.attachment.url || task.purchase_order.attachment.path || task.purchase_order.attachment}`.replace("/storage/storage/", "/storage/");
+                                                                }
+                                                            }
+                                                            if (fileUrl) {
+                                                                window.open(fileUrl, '_blank');
+                                                            }
+                                                        }}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors"
+                                                    >
+                                                        <img
+                                                            src="/images/pdf-file.png"
+                                                            alt="PDF"
+                                                            className="w-4 h-4"
+                                                        />
+                                                        <span>Purchase Order Document</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                         
                                         {/* Purchase Order Items section removed - PurchaseOrder model doesn't have items */}
                                     </div>
@@ -453,6 +537,40 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 <span className="font-medium ml-2">{task.request_budget.fiscal_period?.period_name || "N/A"}</span>
                                             </div>
                                         </div>
+                                        
+                                        {/* Request Budget Attachments */}
+                                        {task.request_budget.attachment_path && (
+                                            <div className="mt-4">
+                                                <h4 className="font-semibold text-gray-700 mb-2">Attachments:</h4>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            let fileUrl = null;
+                                                            if (typeof task.request_budget.attachment_path === "string") {
+                                                                fileUrl = `/storage/${task.request_budget.attachment_path}`.replace("/storage/storage/", "/storage/");
+                                                            } else if (typeof task.request_budget.attachment_path === "object") {
+                                                                if (task.request_budget.attachment_path.url && task.request_budget.attachment_path.url.startsWith("http")) {
+                                                                    fileUrl = task.request_budget.attachment_path.url;
+                                                                } else {
+                                                                    fileUrl = `/storage/${task.request_budget.attachment_path.url || task.request_budget.attachment_path.path || task.request_budget.attachment_path}`.replace("/storage/storage/", "/storage/");
+                                                                }
+                                                            }
+                                                            if (fileUrl) {
+                                                                window.open(fileUrl, '_blank');
+                                                            }
+                                                        }}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors"
+                                                    >
+                                                        <img
+                                                            src="/images/pdf-file.png"
+                                                            alt="PDF"
+                                                            className="w-4 h-4"
+                                                        />
+                                                        <span>Budget Request Document</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

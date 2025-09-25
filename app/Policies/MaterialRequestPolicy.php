@@ -45,7 +45,12 @@ class MaterialRequestPolicy
      */
     public function delete(User $user, MaterialRequest $materialRequest): bool
     {
-        return false;
+        // Allow deletion only if:
+        // 1. User is the requester AND
+        // 2. Status is Draft (not yet submitted for approval)
+        return $user->id === $materialRequest->requester_id && 
+               $materialRequest->status && 
+               $materialRequest->status->name === 'Draft';
     }
 
     /**
