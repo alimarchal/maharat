@@ -20,7 +20,7 @@ return [
         'view_requests', 'view_tasks', 'view_faqs', 'view_user_manual'
     ],
     'Internal Audit' => [
-        'view_requests', 'view_tasks', 'view_faqs', 'view_user_manual'
+        'view_requests', 'view_tasks', 'view_procurement', 'view_finance', 'view_faqs', 'view_user_manual'
     ],
     'PMO' => [
         'view_requests', 'view_tasks', 'view_faqs', 'view_user_manual'
@@ -38,10 +38,10 @@ return [
         'view_requests', 'view_tasks', 'view_procurement', 'view_finance', 'view_warehouse', 'view_budget', 'view_faqs', 'view_user_manual'
     ],
     'Procurement Specialist' => [
-        'view_requests', 'view_tasks', 'view_procurement', 'view_faqs', 'view_user_manual'
+        'view_requests', 'view_tasks', 'view_warehouse', 'view_faqs', 'view_user_manual'
     ],
     'Procurement Officer' => [
-        'view_requests', 'view_tasks', 'view_procurement', 'view_finance', 'view_warehouse', 'view_budget', 'view_faqs', 'view_user_manual'
+        'view_requests', 'view_tasks', 'view_procurement', 'view_faqs', 'view_user_manual'
     ],
     'IT Specilist' => [
         'view_requests', 'view_tasks', 'view_faqs', 'view_user_manual'
@@ -79,4 +79,4 @@ return [
     'Admin Clerk' => [
         'view_requests', 'view_tasks', 'view_faqs', 'view_user_manual'
     ],
-]; 
+];

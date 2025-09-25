@@ -142,26 +142,31 @@ class DesignationPermissionService
                 'view_dashboard', 'edit_profile',
                 'view_requests', 'create_requests', 'edit_requests',
                 'view_tasks', 'create_tasks',
-                'view_process_flow', 'view_faqs', 'view_user_manual',
+                'view_faqs', 'view_user_manual',
                 'view_procurement', 'manage_procurement',
                 'view_rfqs', 'create_rfqs',
                 'view_purchase_orders', 'create_purchase_orders',
-                'view_warehouse', 'manage_warehouse',
-                'stock_in', 'stock_out',
-                'view_reports', 'create_reports', 'export_reports',
-                'manage_settings',
                 'view_notifications',  // Added because they have warehouse access
-                'view_finance', 'manage_finance',  // Added for Finance Center access
-                'view_budget', 'manage_budget'  // Added for Budget & Accounts access
             ],
             'Procurement Specialist' => [
+                'view_dashboard', 'edit_profile',
+                'view_requests', 'create_requests', 'edit_requests',
+                'view_tasks', 'create_tasks',
+                'view_faqs', 'view_user_manual',
+                'view_warehouse', 'manage_warehouse',
+                'stock_in', 'stock_out',
+                'view_notifications'
+            ],
+            'Internal Audit' => [
                 'view_dashboard', 'edit_profile',
                 'view_requests', 'create_requests', 'edit_requests',
                 'view_tasks', 'create_tasks',
                 'view_process_flow', 'view_faqs', 'view_user_manual',
                 'view_procurement', 'manage_procurement',
                 'view_rfqs', 'create_rfqs',
-                'view_purchase_orders', 'create_purchase_orders'
+                'view_purchase_orders', 'create_purchase_orders',
+                'view_finance', 'manage_finance',
+                'view_maharat_invoices', 'create_maharat_invoices',
             ]
         ];
 
@@ -217,4 +222,4 @@ class DesignationPermissionService
         // Assign permissions
         $user->syncPermissions($permissions);
     }
-} 
+}
