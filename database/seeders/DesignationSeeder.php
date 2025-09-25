@@ -30,7 +30,9 @@ class DesignationSeeder extends Seeder
             // Do not remove this core logic.
             'Direct Manager',
             'Procurement Officer',
+            'Procurement Specialist',
             'Procurement Supervisor',
+            'Internal Audit'
         ];
 
         foreach ($designations as $designation) {
