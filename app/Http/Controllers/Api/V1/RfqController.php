@@ -475,6 +475,12 @@ class RfqController extends Controller
 
         DB::beginTransaction();
         try {
+            // Delete related tasks first
+            \App\Models\Task::where('rfq_id', $id)->delete();
+
+            // Delete related email logs
+            \App\Models\EmailLog::where('rfq_id', $id)->delete();
+
             // Delete categories
             DB::table('rfq_categories')->where('rfq_id', $id)->delete();
 

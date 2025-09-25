@@ -279,6 +279,20 @@ class InvoiceController extends Controller
             DB::beginTransaction();
 
             $invoice = Invoice::findOrFail($id);
+
+            // Delete related tasks first
+            \App\Models\Task::where('invoice_id', $id)->delete();
+
+            // Delete related email logs
+            \App\Models\EmailLog::where('invoice_id', $id)->delete();
+
+            // Delete related Maharat invoice approval transactions
+            \App\Models\MahratInvoiceApprovalTransaction::where('invoice_id', $id)->delete();
+
+            // Delete invoice items
+            $invoice->items()->delete();
+
+            // Delete the invoice
             $invoice->delete();
 
             DB::commit();

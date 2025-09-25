@@ -45,7 +45,12 @@ class RequestBudgetPolicy
      */
     public function delete(User $user, RequestBudget $requestBudget): bool
     {
-        return false;
+        // Allow deletion only if:
+        // 1. User is the creator AND
+        // 2. Status is Draft or Pending (not yet approved)
+        return $user->id === $requestBudget->created_by && 
+               $requestBudget->status && 
+               in_array($requestBudget->status, ['Draft', 'Pending']);
     }
 
     /**

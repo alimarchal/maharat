@@ -45,7 +45,12 @@ class InvoicePolicy
      */
     public function delete(User $user, Invoice $invoice): bool
     {
-        return false;
+        // Allow deletion only if:
+        // 1. User is the creator AND
+        // 2. Status is Draft (not yet submitted for approval)
+        return $user->id === $invoice->created_by && 
+               $invoice->status && 
+               $invoice->status === 'Draft';
     }
 
     /**
