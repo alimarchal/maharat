@@ -65,17 +65,20 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
         let isValid = true;
 
         rfqItems.forEach((item) => {
-            const deliveredQty = quantityDelivered[item.id];
-            if (!deliveredQty || parseInt(deliveredQty) <= 0) {
-                newErrors[item.id] =
-                    "Quantity is required and must be greater than 0.";
+            const deliveredQty = parseInt(quantityDelivered[item.id]) || 0;
+            const orderedQty = parseInt(item.quantity) || 0;
+            
+            if (!quantityDelivered[item.id] || deliveredQty <= 0) {
+                newErrors[item.id] = "Quantity is required and must be greater than 0.";
+                isValid = false;
+            } else if (deliveredQty > orderedQty) {
+                newErrors[item.id] = `Delivered quantity cannot exceed ordered quantity of ${orderedQty}`;
                 isValid = false;
             }
         });
 
         if (!formData.delivery_note_number) {
-            newErrors.delivery_note_number =
-                "Delivery Note Number is required.";
+            newErrors.delivery_note_number = "Delivery Note Number is required.";
             isValid = false;
         }
         if (!formData.receiver_name) {
@@ -170,7 +173,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                         upc: grnsData.supplier?.upc || null,
                         quantity_delivered: parseInt(deliveredQty),
                         delivery_date: currentDate,
-                        delivery_status: deliveryOption,
+                        delivery_status: deliveryOption, // Track status per item
                     };
                     await axios.post(
                         "/api/v1/grn-receive-goods",
@@ -194,7 +197,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                     
                     const inventoryPayload = {
                         warehouse_id: warehouseId,
-                        quantity: deliveredQty,
+                        quantity: deliveredQty, // Use delivered quantity instead of ordered
                         reorder_level: parseInt(item.quantity),
                         description: item.description,
                     };
@@ -324,7 +327,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                                 <th className="py-3 px-4">Description</th>
                                 <th className="py-3 px-4">Brand</th>
                                 <th className="py-3 px-4">Unit</th>
-                                <th className="py-3 px-4">QTY Ordered</th>
+                                <th className="py-3 px-4 text-center">QTY Ordered</th>
                                 <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
                                     QTY Delivered
                                 </th>
@@ -351,6 +354,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                                     const orderedQty = parseInt(item.quantity) || 0;
                                     const deliveredQty = parseInt(quantityDelivered[item.id]) || 0;
                                     const isPartial = deliveredQty > 0 && deliveredQty !== orderedQty;
+                                    const isExceeded = deliveredQty > orderedQty;
                                     
                                     return (
                                         <tr key={item.id}>
@@ -367,7 +371,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                                             <td className="py-3 px-4">
                                                 {item.unit?.name || item.unit_id || "N/A"}
                                             </td>
-                                            <td className="py-3 px-4 text-center">
+                                            <td className="py-3 px-4 text-xl font-medium text-center">
                                                 {orderedQty}
                                             </td>
                                             <td className="py-3 px-4">
@@ -377,7 +381,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                                                     onChange={(e) => handleQuantityChange(e, item.id)}
                                                     className="w-full p-2 border rounded"
                                                     min="0"
-                                                    max={orderedQty * 1.1} // Allow 10% over-delivery
+                                                    max={orderedQty}
                                                     placeholder="Enter quantity"
                                                 />
                                                 {error[item.id] && (
@@ -385,7 +389,11 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                                                         {error[item.id]}
                                                     </p>
                                                 )}
-                                                {isPartial && (
+                                                {isExceeded ? (
+                                                    <p className="text-red-600 text-xs mt-1">
+                                                        Cannot exceed ordered quantity
+                                                    </p>
+                                                ) : isPartial && (
                                                     <p className="text-amber-600 text-xs mt-1">
                                                         Partial delivery detected
                                                     </p>
