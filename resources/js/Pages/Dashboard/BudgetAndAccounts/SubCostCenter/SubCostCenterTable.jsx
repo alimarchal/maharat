@@ -19,30 +19,14 @@ const SubCostCenterTable = () => {
     const fetchSubCostCenters = async () => {
         try {
             setLoading(true);
-            console.log("Fetching sub cost centers...");
             const response = await axios.get(
                 `/api/v1/cost-centers?include=parent,children,department,manager,budgetOwner&page=${currentPage}&per_page=15&is_main=false&status_filter=${selectedFilter}`
             );
-            console.log("Sub cost centers API response:", response.data);
-            console.log("Sub cost centers data:", response.data.data);
-            
-            // Log each sub cost center to check parent data
-            if (response.data.data) {
-                response.data.data.forEach((center, index) => {
-                    console.log(`Sub cost center ${index + 1}:`, {
-                        id: center.id,
-                        name: center.name,
-                        parent_id: center.parent_id,
-                        parent: center.parent
-                    });
-                });
-            }
             
             setSubCostCenters(response.data.data || []);
             setLastPage(response.data.meta?.last_page || 1);
             setError(null);
         } catch (error) {
-            console.error("Error fetching sub-cost centers:", error);
             console.error("Error details:", error.response?.data);
             setError(
                 "Failed to load sub-cost centers. Please try again later."
@@ -67,26 +51,30 @@ const SubCostCenterTable = () => {
                 fetchSubCostCenters();
             } catch (error) {
                 console.error("Error deleting sub cost center:", error);
+                alert("An error occurred while deleting the sub cost center. Please try again.");
             }
         }
     };
 
     // Function to get parent name
     const getParentName = (center) => {
-        console.log("getParentName called with center:", center);
-        console.log("center.parent_id:", center.parent_id);
-        console.log("center.parent:", center.parent);
-        
         if (!center.parent_id) return "No Parent";
         
         // Use the included parent data directly
         if (center.parent) {
-            console.log("Found parent, returning name:", center.parent.name);
             return center.parent.name;
         }
-        
-        console.log("No parent found, returning N/A");
         return "N/A";
+    };
+
+    // Format currency for display
+    const formatCurrency = (amount) => {
+        if (amount === null || amount === undefined) return "0.00";
+        return new Intl.NumberFormat('en-US', {
+            style: 'decimal',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(amount);
     };
 
     return (
@@ -114,107 +102,127 @@ const SubCostCenterTable = () => {
                 </div>
             </div>
 
-            <table className="w-full border-collapse">
-                <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
-                    <tr>
-                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
-                            ID
-                        </th>
-                        <th className="py-3 px-4">Cost Center Name</th>
-                        <th className="py-3 px-4">Sub Cost Center Name</th>
-                        <th className="py-3 px-4">Type</th>
-                        <th className="py-3 px-4">Department/Unit</th>
-                        <th className="py-3 px-4">Manager</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4">Description</th>
-                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
-                            Actions
-                        </th>
-                    </tr>
-                </thead>
-                <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
-                    {loading ? (
+            <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                    <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                         <tr>
-                            <td colSpan="9" className="text-center py-12">
-                                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
-                            </td>
+                            <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
+                                ID
+                            </th>
+                            <th className="py-3 px-4">Cost Center Name</th>
+                            <th className="py-3 px-4">Sub Cost Center Name</th>
+                            <th className="py-3 px-4">Type</th>
+                            <th className="py-3 px-4">Department/Unit</th>
+                            <th className="py-3 px-4">Manager</th>
+                            <th className="py-3 px-4">Status</th>
+                            <th className="py-3 px-4">Expenses</th>
+                            <th className="py-3 px-4">Balance</th>
+                            <th className="py-3 px-4">Description</th>
+                            <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
+                                Actions
+                            </th>
                         </tr>
-                    ) : error ? (
-                        <tr>
-                            <td
-                                colSpan="9"
-                                className="text-center text-red-500 font-medium py-4"
-                            >
-                                {error}
-                            </td>
-                        </tr>
-                    ) : subCostCenters.length > 0 ? (
-                        subCostCenters
-                            .map((center, index) => {
-                                // Calculate display ID based on current page and items per page
-                                const itemsPerPage = 15; // Default Laravel pagination
-                                const displayId = (currentPage - 1) * itemsPerPage + index + 1;
-                                
-                                return (
-                                    <tr key={center.id}>
-                                        <td className="py-3 px-4">{displayId}</td>
-                                        <td className="py-3 px-4">
-                                            {getParentName(center)}
-                                        </td>
-                                        <td className="py-3 px-4">{center.name}</td>
-                                        <td className="py-3 px-4">
-                                            {center.cost_center_type || "N/A"}
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            {center.department?.name || "N/A"}
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            {center.manager?.name || "N/A"}
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            {center.status}
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            {center.description}
-                                        </td>
-                                        <td className="py-3 px-4 flex justify-center text-center space-x-3">
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedSubCostCenter(
-                                                        center
-                                                    );
-                                                    setIsModalOpen(true);
-                                                }}
-                                                className="text-blue-400 hover:text-blue-500"
-                                                title="Edit Sub Cost Center"
-                                            >
-                                                <FontAwesomeIcon icon={faEdit} />
-                                            </button>
-                                            <button
-                                                onClick={() =>
-                                                    handleDelete(center.id)
-                                                }
-                                                className="text-red-600 hover:text-red-800"
-                                                title="Delete Sub Cost Center"
-                                            >
-                                                <FontAwesomeIcon icon={faTrash} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            })
-                    ) : (
-                        <tr>
-                            <td
-                                colSpan="9"
-                                className="text-center text-[#2C323C] font-medium py-4"
-                            >
-                                No Sub Cost Centers found.
-                            </td>
-                        </tr>
-                    )}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
+                        {loading ? (
+                            <tr>
+                                <td colSpan="11" className="py-12">
+                                    <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
+                                </td>
+                            </tr>
+                        ) : error ? (
+                            <tr>
+                                <td
+                                    colSpan="11"
+                                    className="text-center text-red-500 font-medium py-4"
+                                >
+                                    {error}
+                                </td>
+                            </tr>
+                        ) : subCostCenters.length > 0 ? (
+                            subCostCenters
+                                .map((center, index) => {
+                                    // Calculate display ID based on current page and items per page
+                                    const itemsPerPage = 15; // Default Laravel pagination
+                                    const displayId = (currentPage - 1) * itemsPerPage + index + 1;
+                                    
+                                    return (
+                                        <tr key={center.id}>
+                                            <td className="py-3 px-4">{displayId}</td>
+                                            <td className="py-3 px-4">
+                                                {getParentName(center)}
+                                            </td>
+                                            <td className="py-3 px-4">{center.name}</td>
+                                            <td className="py-3 px-4">
+                                                {center.cost_center_type || "N/A"}
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                {center.department?.name || "N/A"}
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                {center.manager?.name || "N/A"}
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <span className={`px-2 py-1 rounded-full text-xs ${
+                                                    center.status === 'Approved' 
+                                                        ? 'bg-green-100 text-green-800' 
+                                                        : 'bg-yellow-100 text-yellow-800'
+                                                }`}>
+                                                    {center.status}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <span className="text-red-600">
+                                                    {formatCurrency(center.total_expenses)}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <span className="text-green-600">
+                                                    {formatCurrency(center.total_balance)}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                {center.description || "N/A"}
+                                            </td>
+                                            <td className="py-3 px-4 flex justify-center text-center space-x-3">
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedSubCostCenter(
+                                                            center
+                                                        );
+                                                        setIsModalOpen(true);
+                                                    }}
+                                                    className="text-blue-400 hover:text-blue-500"
+                                                    title="Edit Sub Cost Center"
+                                                >
+                                                    <FontAwesomeIcon icon={faEdit} />
+                                                </button>
+                                                <button
+                                                    onClick={() =>
+                                                        handleDelete(center.id)
+                                                    }
+                                                    className="text-red-600 hover:text-red-800"
+                                                    title="Delete Sub Cost Center"
+                                                >
+                                                    <FontAwesomeIcon icon={faTrash} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                        ) : (
+                            <tr>
+                                <td
+                                    colSpan="11"
+                                    className="text-center text-[#2C323C] font-medium py-4"
+                                >
+                                    No Sub Cost Centers found.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
 
             {/* Pagination */}
             {!loading && !error && subCostCenters.length > 0 && (
