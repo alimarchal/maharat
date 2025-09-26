@@ -87,7 +87,7 @@ export default function GRNTable() {
                                 <th className="py-3 px-4">Supplier</th>
                                 <th className="py-3 px-4">Quantity</th>
                                 <th className="py-3 px-4">Delivery Date</th>
-                                <th className="py-3 px-4">Attachment</th>
+                                <th className="py-3 px-4 text-center">Attachment</th>
                                 <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                                     Actions
                                 </th>

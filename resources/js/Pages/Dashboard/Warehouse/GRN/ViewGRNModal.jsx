@@ -3,16 +3,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faTimes,
     faFileInvoiceDollar,
-    faUser,
     faBuilding,
-    faListCheck,
     faCircleCheck,
     faCircleExclamation,
     faCircleXmark,
-    faNoteSticky,
-    faTruck,
     faBoxes,
-    faCalendarAlt,
 } from "@fortawesome/free-solid-svg-icons";
 
 const ViewGRNModal = ({ isOpen, onClose, grn }) => {
@@ -70,10 +65,10 @@ const ViewGRNModal = ({ isOpen, onClose, grn }) => {
                             <h2 className="text-2xl md:text-3xl font-bold">
                                 Good Receiving Note Details
                             </h2>
-                            <p className="mt-1">GRN #{grn.grn_number}</p>
+                            <p className="m-1">GRN #: {grn.grn_number}</p>
                         </div>
                         <button onClick={onClose}>
-                            <FontAwesomeIcon icon={faTimes} size="lg" />
+                            <FontAwesomeIcon icon={faTimes} size="lg" className="hover:text-red-600" />
                         </button>
                     </div>
                 </div>
