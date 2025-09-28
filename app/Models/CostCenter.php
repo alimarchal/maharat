@@ -81,6 +81,51 @@ class CostCenter extends Model
         return $this->hasMany(Rfq::class, 'cost_center_id');
     }
 
+    // Budget requests relationships
+    public function budgetRequests(): HasMany
+    {
+        return $this->hasMany(RequestBudget::class, 'cost_center_id');
+    }
+
+    public function subCostCenterBudgetRequests(): HasMany
+    {
+        return $this->hasMany(RequestBudget::class, 'sub_cost_center');
+    }
+
+    // Accessor for total expenses (consumed_amount)
+    public function getTotalExpensesAttribute()
+    {
+        if ($this->parent_id === null) {
+            // This is a main cost center, sum from sub cost centers
+            return $this->children()
+                ->with('subCostCenterBudgetRequests')
+                ->get()
+                ->sum(function ($child) {
+                    return $child->subCostCenterBudgetRequests->sum('consumed_amount');
+                });
+        } else {
+            // This is a sub cost center, get direct expenses
+            return $this->subCostCenterBudgetRequests->sum('consumed_amount');
+        }
+    }
+
+    // Accessor for total balance
+    public function getTotalBalanceAttribute()
+    {
+        if ($this->parent_id === null) {
+            // This is a main cost center, sum from sub cost centers
+            return $this->children()
+                ->with('subCostCenterBudgetRequests')
+                ->get()
+                ->sum(function ($child) {
+                    return $child->subCostCenterBudgetRequests->sum('balance_amount');
+                });
+        } else {
+            // This is a sub cost center, get direct balance
+            return $this->subCostCenterBudgetRequests->sum('balance_amount');
+        }
+    }
+
     // Query scopes
     public function scopeActive($query)
     {
@@ -95,5 +140,21 @@ class CostCenter extends Model
                 $q->whereNull('effective_end_date')
                     ->orWhere('effective_end_date', '>=', $date);
             });
+    }
+
+    public function scopeWithBudgetTotals($query)
+    {
+        return $query->withSum(['budgetRequests as direct_expenses' => function ($query) {
+            $query->where('status', 'Approved');
+        }], 'consumed_amount')
+        ->withSum(['budgetRequests as direct_balance' => function ($query) {
+            $query->where('status', 'Approved');
+        }], 'balance_amount')
+        ->withSum(['subCostCenterBudgetRequests as sub_expenses' => function ($query) {
+            $query->where('status', 'Approved');
+        }], 'consumed_amount')
+        ->withSum(['subCostCenterBudgetRequests as sub_balance' => function ($query) {
+            $query->where('status', 'Approved');
+        }], 'balance_amount');
     }
 }

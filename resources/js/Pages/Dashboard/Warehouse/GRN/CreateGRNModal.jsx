@@ -20,30 +20,14 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
 
     const currentDate = new Date().toISOString().split("T")[0];
 
-    // Debug the data structure when modal opens
     useEffect(() => {
         if (grnsData) {
-            console.log("=== GRN Data Debug ===");
-            console.log("Full grnsData:", grnsData);
-            console.log("warehouse_id from grnsData:", grnsData.warehouse_id);
-            console.log("warehouse object:", grnsData.warehouse);
-            console.log("rfq warehouse_id:", grnsData.rfq?.warehouse_id);
-            console.log("quotation rfq warehouse_id:", grnsData.quotation?.rfq?.warehouse_id);
-            console.log("requestForQuotation warehouse_id:", grnsData.requestForQuotation?.warehouse_id);
-            
-            // Try to find items in different locations
             const itemsFromRfq = grnsData?.rfq?.items;
             const itemsFromQuotationRfq = grnsData?.quotation?.rfq?.items;
             const itemsFromRequestForQuotation = grnsData?.requestForQuotation?.items;
             
-            console.log("Items from rfq:", itemsFromRfq);
-            console.log("Items from quotation.rfq:", itemsFromQuotationRfq);
-            console.log("Items from requestForQuotation:", itemsFromRequestForQuotation);
-            
             // Use the first available items array
             const items = itemsFromRfq || itemsFromQuotationRfq || itemsFromRequestForQuotation || [];
-            console.log("Final items array:", items);
-            
             setRfqItems(items);
         }
     }, [grnsData]);
@@ -158,29 +142,12 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                                   grnsData?.requestForQuotation?.warehouse_id ||
                                   grnsData?.requestForQuotation?.warehouse?.id;
                 
-                console.log("=== Inventory Payload Debug ===");
-                console.log("Item:", item);
-                console.log("Product ID:", item?.product_id);
-                console.log("Warehouse ID found:", warehouseId);
-                console.log("Available warehouse data:", {
-                    grnsData_warehouse_id: grnsData?.warehouse_id,
-                    grnsData_warehouse_id_from_object: grnsData?.warehouse?.id,
-                    rfq_warehouse_id: grnsData?.rfq?.warehouse_id,
-                    rfq_warehouse_id_from_object: grnsData?.rfq?.warehouse?.id,
-                    quotation_rfq_warehouse_id: grnsData?.quotation?.rfq?.warehouse_id,
-                    quotation_rfq_warehouse_id_from_object: grnsData?.quotation?.rfq?.warehouse?.id,
-                    requestForQuotation_warehouse_id: grnsData?.requestForQuotation?.warehouse_id,
-                    requestForQuotation_warehouse_id_from_object: grnsData?.requestForQuotation?.warehouse?.id,
-                });
-                
                 const inventoryPayload = {
                     warehouse_id: warehouseId,
                     quantity: parseInt(item.quantity),
                     reorder_level: parseInt(item.quantity),
                     description: item.description,
                 };
-                
-                console.log("Final inventory payload:", inventoryPayload);
                 
                 await axios.post(
                     `/api/v1/inventories/product/${item?.product_id}/stock-in`,

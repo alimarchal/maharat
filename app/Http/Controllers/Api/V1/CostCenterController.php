@@ -29,7 +29,7 @@ class CostCenterController extends Controller
         if (request()->has('is_main')) {
             if (request()->boolean('is_main')) {
                 // Show only main cost centers (parent_id = null)
-                $query->whereNull('parent_id');
+                $query->whereNull('parent_id')->with('children');
             } else {
                 // Show only sub cost centers (parent_id != null)
                 $query->whereNotNull('parent_id');
