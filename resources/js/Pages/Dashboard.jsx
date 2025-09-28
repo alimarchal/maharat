@@ -270,7 +270,14 @@ export default function Dashboard({ auth, page }) {
                     };
                     return categoryToPermission[category];
                 })
-                .filter(Boolean) : // Remove undefined values
+                .filter(Boolean)
+                .concat([
+                    // Add individual configuration permissions
+                    ...(realTimePermissions?.configuration_center?.subOptions?.organizational_chart ? ["view_org_chart"] : []),
+                    ...(realTimePermissions?.configuration_center?.subOptions?.process_flow ? ["view_process_flow"] : []),
+                    ...(realTimePermissions?.configuration_center?.subOptions?.notification_settings ? ["manage_settings"] : []),
+                    ...(realTimePermissions?.configuration_center?.subOptions?.roles_permissions ? ["view_permission_settings"] : [])
+                ]) : // Remove undefined values
             auth.user.permissions;
 
         console.log('🎯 Dashboard: Using permissions:', permissionsArray);

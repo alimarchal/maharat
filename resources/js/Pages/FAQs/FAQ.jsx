@@ -15,6 +15,7 @@ import {
     faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const FAQModal = ({ isOpen, onClose, onSave, faq = null, isEdit = false }) => {
     const [formData, setFormData] = useState({
@@ -220,6 +221,7 @@ const FAQModal = ({ isOpen, onClose, onSave, faq = null, isEdit = false }) => {
 };
 
 const FAQAccordion = () => {
+    const { hasPermission } = usePermissions();
     const [expandedIndex, setExpandedIndex] = useState(null);
     const [showHelpForm, setShowHelpForm] = useState(false);
     const [helpFormData, setHelpFormData] = useState({
@@ -233,10 +235,6 @@ const FAQAccordion = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitSuccess, setSubmitSuccess] = useState(false);
     const [faqs, setFaqs] = useState([]);
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [canCreateFaq, setCanCreateFaq] = useState(false);
-    const [canEditFaq, setCanEditFaq] = useState(false);
-    const [canDeleteFaq, setCanDeleteFaq] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editingFaq, setEditingFaq] = useState(null);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -245,39 +243,7 @@ const FAQAccordion = () => {
 
     useEffect(() => {
         fetchFaqs();
-        fetchUserData();
     }, []);
-
-    const fetchUserData = async () => {
-        try {
-            const response = await axios.get("/api/v1/user/current", {
-                headers: {
-                    Accept: "application/json",
-                    "Content-Type": "application/json",
-                },
-            });
-
-            if (response.data && response.data.data) {
-                const userData = response.data.data;
-                setIsAdmin(userData.roles && userData.roles.includes("Admin"));
-                
-                // Check for FAQ permissions
-                if (userData.permissions) {
-                    setCanCreateFaq(userData.permissions.includes('create_faqs'));
-                    setCanEditFaq(userData.permissions.includes('edit_faqs'));
-                    setCanDeleteFaq(userData.permissions.includes('delete_faqs'));
-                }
-            } else {
-                console.error("Invalid user data format:", response.data);
-                setIsAdmin(false);
-            }
-        } catch (error) {
-            if (error.response) {
-                console.error("Response data:", error.response.data);
-            }
-            setIsAdmin(false);
-        }
-    };
 
     const fetchFaqs = async () => {
         try {
@@ -447,9 +413,9 @@ const FAQAccordion = () => {
                         Find answers to common questions about our application
                     </p>
                 </div>
-                {(canCreateFaq || canEditFaq || canDeleteFaq) && (
+                {(hasPermission("create_faqs") || hasPermission("edit_faqs") || hasPermission("delete_faqs")) && (
                     <div className="flex space-x-4">
-                        {canCreateFaq && (
+                        {hasPermission("create_faqs") && (
                             <button
                                 onClick={handleAdd}
                                 className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
@@ -457,7 +423,7 @@ const FAQAccordion = () => {
                                 Add FAQ
                             </button>
                         )}
-                        {(canEditFaq || canDeleteFaq) && (
+                        {(hasPermission("edit_faqs") || hasPermission("delete_faqs")) && (
                             <button
                                 onClick={() => setIsEditMode(!isEditMode)}
                                 className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
@@ -465,12 +431,14 @@ const FAQAccordion = () => {
                                 {isEditMode ? "Done Editing" : "Edit FAQs"}
                             </button>
                         )}
-                        <Link
-                            href={route("faqs.view")}
-                            className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
-                        >
-                            View FAQs
-                        </Link>
+                        {hasPermission("view_faqs") && (
+                            <Link
+                                href={route("faqs.view")}
+                                className="px-6 py-2 bg-[#009FDC] text-white rounded-full hover:bg-[#007BB5] transition duration-300"
+                            >
+                                View FAQs
+                            </Link>
+                        )}
                     </div>
                 )}
             </div>
@@ -540,7 +508,7 @@ const FAQAccordion = () => {
                                                     <div className="flex items-center">
                                                         {isEditMode && (
                                                             <>
-                                                                {canEditFaq && (
+                                                                {hasPermission("edit_faqs") && (
                                                                     <button
                                                                         onClick={(
                                                                             e
@@ -555,7 +523,7 @@ const FAQAccordion = () => {
                                                                         <FaEdit />
                                                                     </button>
                                                                 )}
-                                                                {canDeleteFaq && (
+                                                                {hasPermission("delete_faqs") && (
                                                                     <button
                                                                         onClick={(
                                                                             e

@@ -4,22 +4,34 @@ import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import axios from "axios";
 import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const RequestBudgetTable = () => {
+    const { hasPermission } = usePermissions();
     const [budgetRequests, setBudgetRequests] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [deletingId, setDeletingId] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
+    const [selectedFilter, setSelectedFilter] = useState("All");
+
+    const filters = ["All", "Approved", "Pending", "Rejected", "Draft"];
 
     useEffect(() => {
         const fetchBudgetRequests = async () => {
             setLoading(true);
             try {
-                const response = await axios.get(
-                    `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator&page=${currentPage}&per_page=15&sort=-created_at`
-                );
+                let url = `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator&page=${currentPage}&per_page=15&sort=-created_at`;
+                
+                // If create_department_budget_request is disabled, only show approved records
+                const effectiveFilter = hasPermission('create_department_budget_request') ? selectedFilter : 'Approved';
+                
+                if (effectiveFilter !== "All") {
+                    url += `&filter[status]=${effectiveFilter}`;
+                }
+
+                const response = await axios.get(url);
                 setBudgetRequests(response.data.data);
                 setLastPage(response.data.meta?.last_page || 1);
             } catch (err) {
@@ -30,7 +42,7 @@ const RequestBudgetTable = () => {
         };
 
         fetchBudgetRequests();
-    }, [currentPage]);
+    }, [currentPage, selectedFilter]);
 
     const handleDelete = async (id) => {
         if (!window.confirm("Are you sure you want to delete this budget request? This will also delete any associated tasks and approval transactions.")) {
@@ -48,18 +60,44 @@ const RequestBudgetTable = () => {
         }
     };
 
+    const handleFilterChange = (filter) => {
+        setSelectedFilter(filter);
+        setCurrentPage(1);
+    };
+
     return (
         <div className="w-full">
             <div className="flex justify-between items-center text-center mb-6">
                 <h2 className="text-3xl font-bold text-[#2C323C]">
                     Department Budget Requests
                 </h2>
-                <Link
-                    href={`/request-budgets/create`}
-                    className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                >
-                    Create Department Budget Request
-                </Link>
+                <div className="flex items-center gap-4">
+                    {hasPermission('create_department_budget_request') && (
+                        <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
+                            {filters.map((filter) => (
+                                <button
+                                    key={filter}
+                                    className={`px-6 py-2 rounded-full text-xl transition ${
+                                        selectedFilter === filter
+                                            ? "bg-[#009FDC] text-white"
+                                            : "text-[#9B9DA2]"
+                                    }`}
+                                    onClick={() => handleFilterChange(filter)}
+                                >
+                                    {filter}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    {hasPermission('create_department_budget_request') && (
+                        <Link
+                            href={`/request-budgets/create`}
+                            className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                        >
+                            Create Department Budget Request
+                        </Link>
+                    )}
+                </div>
             </div>
 
             <table className="w-full border-collapse">
@@ -137,7 +175,7 @@ const RequestBudgetTable = () => {
                                 </td>
                                 <td className="py-3 px-4">
                                     <div className="flex items-start justify-center gap-4">
-                                        {request.status === 'Draft' && (
+                                        {request.status === 'Draft' && hasPermission('create_department_budget_request') && (
                                             <Link
                                                 href={`/request-budgets/${request.id}/edit`}
                                                 className="text-blue-400 hover:text-blue-500"
@@ -169,7 +207,7 @@ const RequestBudgetTable = () => {
                                                 />
                                             </button>
                                         )}
-                                        {request.status === 'Draft' && (
+                                        {request.status === 'Draft' && hasPermission('create_department_budget_request') && (
                                             <button
                                                 className={`text-red-500 hover:text-red-800 ${
                                                     deletingId === request.id ? 'opacity-50 cursor-not-allowed' : ''

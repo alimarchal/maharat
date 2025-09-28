@@ -42,10 +42,12 @@ class PermissionController extends Controller
             'view_procurement', 'view_rfqs', 'make_new_rfq', 'view_quotations', 'add_supplier', 'add_new_quotation', 'view_purchase_orders', 'create_new_purchase_order', 'view_invoices', 'add_invoice',
             'view_finance', 'view_maharat_invoices', 'add_customers', 'create_new_invoice', 'view_payment_orders', 'create_payment_order', 'view_account_receivables', 'view_account_payables', 'view_accounts', 'create_new_account',
             'view_warehouse', 'stock_in', 'stock_out', 'view_material_requests', 'view_goods_receiving_notes', 'view_categories', 'view_items', 'view_inventory_tracking', 'create_warehouse', 'create_categories', 'create_items', 'create_goods_receiving_notes', 'add_inventory',
-            'view_budget', 'manage_budget', 'approve_budget',
-            'view_statuses',
-            'view_configuration', 'view_process_flow', 'manage_settings',
-            'view_notifications', 'edit_profile', 'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'view_faqs', 'create_faqs', 'edit_faqs', 'delete_faqs'
+            'view_budget', 'manage_budget', 'approve_budget', 'view_cost_centers', 'view_income_statement', 'view_balance_sheet', 'view_request_budget', 'create_cost_center', 'create_sub_cost_center', 'create_fiscal_year', 'create_budget', 'approve_budget_option', 'create_department_budget_request',
+            'view_statuses', 'view_material_request_status', 'view_rfq_status', 'view_purchase_order_status', 'view_payment_order_status', 'view_maharat_invoice_status', 'view_budget_request_status', 'view_total_budget_status',
+            'view_faqs', 'create_faqs', 'edit_faqs', 'delete_faqs',
+            'view_configuration', 'view_process_flow', 'manage_settings', 'view_org_chart', 'view_permission_settings',
+            'view_notifications', 'edit_profile', 'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'modify_user_manual',
+            'edit_employee', 'add_employee', 'delete_employee'
         ];
         
         // Calculate effective permissions
@@ -223,8 +225,41 @@ class PermissionController extends Controller
             'budget_accounts' => [
                 'enabled' => $hasEffectivePermission('view_budget'),
                 'subOptions' => [
-                    'manage_budget' => $hasEffectivePermission('manage_budget'),
-                    'approve_budget' => $hasEffectivePermission('approve_budget'),
+                    'cost_centers' => [
+                        'enabled' => $hasEffectivePermission('view_cost_centers'),
+                        'subOptions' => [
+                            'create_cost_center' => $hasEffectivePermission('create_cost_center'),
+                            'create_sub_cost_center' => $hasEffectivePermission('create_sub_cost_center'),
+                        ]
+                    ],
+                    'income_statement' => $hasEffectivePermission('view_income_statement'),
+                    'balance_sheet' => $hasEffectivePermission('view_balance_sheet'),
+                    'budget' => [
+                        'enabled' => $hasEffectivePermission('manage_budget'),
+                        'subOptions' => [
+                            'create_fiscal_year' => $hasEffectivePermission('create_fiscal_year'),
+                            'create_budget' => $hasEffectivePermission('create_budget'),
+                            'approve_budget' => $hasEffectivePermission('approve_budget_option'),
+                        ]
+                    ],
+                    'request_budget' => [
+                        'enabled' => $hasEffectivePermission('view_request_budget'),
+                        'subOptions' => [
+                            'create_department_budget_request' => $hasEffectivePermission('create_department_budget_request'),
+                        ]
+                    ],
+                ]
+            ],
+            'status' => [
+                'enabled' => $hasEffectivePermission('view_statuses'),
+                'subOptions' => [
+                    'material_request_status' => $hasEffectivePermission('view_material_request_status'),
+                    'rfq_status' => $hasEffectivePermission('view_rfq_status'),
+                    'purchase_order_status' => $hasEffectivePermission('view_purchase_order_status'),
+                    'payment_order_status' => $hasEffectivePermission('view_payment_order_status'),
+                    'maharat_invoice_status' => $hasEffectivePermission('view_maharat_invoice_status'),
+                    'budget_request_status' => $hasEffectivePermission('view_budget_request_status'),
+                    'total_budget_status' => $hasEffectivePermission('view_total_budget_status'),
                 ]
             ],
             'reports' => [
@@ -237,17 +272,38 @@ class PermissionController extends Controller
             'configuration_center' => [
                 'enabled' => $hasEffectivePermission('view_configuration'),
                 'subOptions' => [
+                    'organizational_chart' => [
+                        'enabled' => $hasEffectivePermission('view_org_chart'),
+                        'subOptions' => [
+                            'edit_employee' => $hasEffectivePermission('edit_employee'),
+                            'add_employee' => $hasEffectivePermission('add_employee'),
+                            'delete_employee' => $hasEffectivePermission('delete_employee'),
+                        ]
+                    ],
                     'process_flow' => $hasEffectivePermission('view_process_flow'),
                     'notification_settings' => $hasEffectivePermission('manage_settings'),
+                    'roles_permissions' => $hasEffectivePermission('view_permission_settings'),
                 ]
             ],
             'sidebar' => [
-                'enabled' => $hasEffectivePermission('view_notifications'),
+                'enabled' => $hasEffectivePermission('view_notifications') || $hasEffectivePermission('edit_profile') || $hasEffectivePermission('view_user_manual') || $hasEffectivePermission('view_faqs'),
                 'subOptions' => [
-                    'notification' => $hasEffectivePermission('view_notifications'),
+                    'notification_settings' => $hasEffectivePermission('view_notifications'),
                     'profile_settings' => $hasEffectivePermission('edit_profile'),
-                    'user_manual' => $hasEffectivePermission('view_user_manual'),
-                    'faqs' => $hasEffectivePermission('view_faqs'),
+                    'user_manual' => [
+                        'enabled' => $hasEffectivePermission('view_user_manual'),
+                        'subOptions' => [
+                            'modify_manual' => $hasEffectivePermission('modify_user_manual'),
+                        ]
+                    ],
+                    'faqs' => [
+                        'enabled' => $hasEffectivePermission('view_faqs'),
+                        'subOptions' => [
+                            'add_faq' => $hasEffectivePermission('create_faqs'),
+                            'edit_faq' => $hasEffectivePermission('edit_faqs'),
+                            'delete_faq' => $hasEffectivePermission('delete_faqs'),
+                        ]
+                    ],
                 ]
             ]
         ];

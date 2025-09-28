@@ -7,10 +7,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faEdit, faFile, faChevronUp, faChevronDown, faGripVertical } from "@fortawesome/free-solid-svg-icons";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { toast } from "react-hot-toast";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function UserManualSubSections() {
     const { props } = usePage();
     const section = props.section;
+    const { hasPermission } = usePermissions();
     const [isCreateGuideOpen, setIsCreateGuideOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [subSections, setSubSections] = useState([]);
@@ -22,8 +24,6 @@ export default function UserManualSubSections() {
     const [currentCardLevel, setCurrentCardLevel] = useState(0);
     const [showCardForm, setShowCardForm] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
-    const [canEditManual, setCanEditManual] = useState(false);
-    const [canDeleteManual, setCanDeleteManual] = useState(false);
 
     useEffect(() => {
         fetchSubSections();
@@ -44,12 +44,6 @@ export default function UserManualSubSections() {
             if (response.data && response.data.data) {
                 const userData = response.data.data;
                 setIsAdmin(userData.roles && userData.roles.includes("Admin"));
-                
-                // Check for user manual permissions
-                if (userData.permissions) {
-                    setCanEditManual(userData.permissions.includes('edit_user_manual'));
-                    setCanDeleteManual(userData.permissions.includes('delete_user_manual'));
-                }
             } else {
                 console.error("Invalid user data format:", response.data);
                 setIsAdmin(false);
@@ -289,14 +283,14 @@ export default function UserManualSubSections() {
                         <h3 className="text-2xl font-bold">
                             {title}
                         </h3>
-                        {(isAdmin || canEditManual || canDeleteManual) && (
+                        {(isAdmin || hasPermission("modify_user_manual")) && (
                             <div className="flex items-center space-x-2">
                                 {isAdmin && (
                                     <div {...provided.dragHandleProps} className="cursor-move p-2 hover:bg-[#009FDC]/10 rounded-full transition-colors duration-200">
                                         <FontAwesomeIcon icon={faGripVertical} className="text-[#009FDC] hover:text-[#007BB5] transition-colors duration-200" />
                                     </div>
                                 )}
-                                {(isAdmin || canEditManual) && (
+                                {hasPermission("modify_user_manual") && (
                                     <button
                                         onClick={(e) => {
                                             e.preventDefault();
@@ -340,13 +334,15 @@ export default function UserManualSubSections() {
                 <h2 className="text-3xl font-bold text-[#2C323C]">
                     {formatSectionTitle(section)}
                 </h2>
-                <button
-                    type="button"
-                    onClick={() => setIsCreateGuideOpen(true)}
-                    className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                >
-                    Create a User Guide
-                </button>
+                {hasPermission("modify_user_manual") && (
+                    <button
+                        type="button"
+                        onClick={() => setIsCreateGuideOpen(true)}
+                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                    >
+                        Create a User Guide
+                    </button>
+                )}
             </div>
 
             {isLoading ? (

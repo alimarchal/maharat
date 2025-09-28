@@ -601,31 +601,31 @@ export default function MainDashboard({ roles, permissions }) {
             text: "Cost Centers",
             icon: faCoins,
             onClick: () => router.visit("/cost-centers"),
-            requiredPermission: "view_budget",
+            requiredPermission: "view_cost_centers",
         },
         {
             text: "Income Statement",
             icon: faChartLine,
             onClick: () => router.visit("/income-statement"),
-            requiredPermission: "view_finance",
+            requiredPermission: "view_income_statement",
         },
         {
             text: "Balance Sheet",
             icon: faBalanceScale,
             onClick: () => router.visit("/balance-sheet"),
-            requiredPermission: "view_finance",
+            requiredPermission: "view_balance_sheet",
         },
         {
             text: "Budget",
             icon: faMoneyBillWave,
             onClick: () => router.visit("/budget"),
-            requiredPermission: "view_budget",
+            requiredPermission: "manage_budget",
         },
         {
             text: "Request a Budget",
             icon: faFileSignature,
             onClick: () => router.visit("/request-budgets"),
-            requiredPermission: "view_budget",
+            requiredPermission: "view_request_budget",
         },
     ];
 
@@ -643,13 +643,12 @@ export default function MainDashboard({ roles, permissions }) {
             onClick: () => router.visit("/process-flow"),
             requiredPermission: "view_process_flow",
         },
-        // Only show Notification Settings for users without parent_id (top-level users)
-        ...(user.parent_id === null ? [{
+        {
             text: "Notification Settings",
             icon: faBell,
             onClick: () => router.visit("/notification-settings"),
             requiredPermission: "manage_settings",
-        }] : []),
+        },
         {
             text: "Roles & Permission",
             icon: faUserPen,
@@ -683,7 +682,7 @@ export default function MainDashboard({ roles, permissions }) {
     const showWarehouseCard = hasPermission("view_warehouse");
     const showBudgetCard = hasPermission("view_budget");
     const showStatusCard = hasPermission("view_statuses");
-    const showConfigCard = hasPermission("view_configuration");
+    const showConfigCard = hasPermission("view_configuration") || hasPermission("view_org_chart") || hasPermission("view_process_flow") || hasPermission("manage_settings") || hasPermission("view_permission_settings");
     
 
     return (
@@ -781,7 +780,7 @@ export default function MainDashboard({ roles, permissions }) {
                     <DashboardCard
                         icon={faCogs}
                         title="Configuration Center"
-                        subtitle="Process Flow"
+                        subtitle={configDropdownItems.length > 0 ? configDropdownItems[0].text : "System Settings"}
                         bgColor="bg-[#DEEEE9]"
                         iconColor="text-[#074D38]"
                         dropdownItems={configDropdownItems.length > 0 ? configDropdownItems : null}

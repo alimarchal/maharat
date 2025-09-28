@@ -475,28 +475,71 @@ class UserController extends Controller
             "Budget & Accounts" => [
                 "base" => "view_budget",
                 "subOptions" => [
-                    "Manage Budget" => ["base" => "manage_budget"],
-                    "Approve Budget" => ["base" => "approve_budget"]
+                    "Cost Centers" => [
+                        "base" => "view_cost_centers",
+                        "subOptions" => [
+                            "Create Cost Center" => ["base" => "create_cost_center"],
+                            "Create Sub Cost Center" => ["base" => "create_sub_cost_center"]
+                        ]
+                    ],
+                    "Income Statement" => ["base" => "view_income_statement"],
+                    "Balance Sheet" => ["base" => "view_balance_sheet"],
+                    "Budget" => [
+                        "base" => "manage_budget",
+                        "subOptions" => [
+                            "Create Fiscal Year" => ["base" => "create_fiscal_year"],
+                            "Create a Budget" => ["base" => "create_budget"],
+                            "Approve Budget" => ["base" => "approve_budget_option"]
+                        ]
+                    ],
+                    "Request a Budget" => [
+                        "base" => "view_request_budget",
+                        "subOptions" => [
+                            "Create Department Budget Request" => ["base" => "create_department_budget_request"]
+                        ]
+                    ]
                 ]
             ],
             "Status" => [
                 "base" => "view_statuses",
-                "subOptions" => []
+                "subOptions" => [
+                    "Material Request Status" => ["base" => "view_material_request_status"],
+                    "RFQ Status" => ["base" => "view_rfq_status"],
+                    "Purchase Order Status" => ["base" => "view_purchase_order_status"],
+                    "Payment Order Status" => ["base" => "view_payment_order_status"],
+                    "Maharat Invoice Status" => ["base" => "view_maharat_invoice_status"],
+                    "Budget Request Status" => ["base" => "view_budget_request_status"],
+                    "Total Budget Status" => ["base" => "view_total_budget_status"]
+                ]
             ],
             "Configuration Center" => [
                 "base" => "view_configuration",
                 "subOptions" => [
+                    "Organizational Chart" => ["base" => "view_org_chart"],
                     "Process Flow" => ["base" => "view_process_flow"],
-                    "Notification Settings" => ["base" => "manage_settings"]
+                    "Notification Settings" => ["base" => "manage_settings"],
+                    "Roles & Permission" => ["base" => "view_permission_settings"]
                 ]
             ],
             "Sidebar" => [
                 "base" => "view_notifications",
                 "subOptions" => [
-                    "Notification" => ["base" => "view_notifications"],
+                    "Notification Settings" => ["base" => "view_notifications"],
                     "Profile Settings" => ["base" => "edit_profile"],
-                    "User Manual" => ["base" => "view_user_manual"],
-                    "FAQs" => ["base" => "view_faqs"]
+                    "User Manual" => [
+                        "base" => "view_user_manual",
+                        "subOptions" => [
+                            "Modify Manual" => ["base" => "modify_user_manual"]
+                        ]
+                    ],
+                    "FAQs" => [
+                        "base" => "view_faqs",
+                        "subOptions" => [
+                            "Add FAQ" => ["base" => "create_faqs"],
+                            "Edit FAQ" => ["base" => "edit_faqs"],
+                            "Delete FAQ" => ["base" => "delete_faqs"]
+                        ]
+                    ]
                 ]
             ]
         ];

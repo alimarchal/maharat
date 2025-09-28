@@ -4,10 +4,12 @@ import { Play, Edit, Trash, AlertCircle, Construction } from "lucide-react";
 import axios from "axios";
 import CreateUserGuide from "./CreateUserGuide";
 import { toast } from "react-hot-toast";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function GuideDetail() {
     const { props } = usePage();
     const { auth } = usePage().props;
+    const { hasPermission } = usePermissions();
     
     // Get IDs from props or route data
     const guideId = props.id || props.section || "create-request";
@@ -25,8 +27,6 @@ export default function GuideDetail() {
     const [imageErrors, setImageErrors] = useState({});
     const [isUnderConstruction, setIsUnderConstruction] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
-    const [canEditManual, setCanEditManual] = useState(false);
-    const [canDeleteManual, setCanDeleteManual] = useState(false);
 
     useEffect(() => {
         // Only fetch from API if we have a numeric ID
@@ -142,12 +142,6 @@ export default function GuideDetail() {
             if (response.data && response.data.data) {
                 const userData = response.data.data;
                 setIsAdmin(userData.roles && userData.roles.includes("Admin"));
-                
-                // Check for user manual permissions
-                if (userData.permissions) {
-                    setCanEditManual(userData.permissions.includes('edit_user_manual'));
-                    setCanDeleteManual(userData.permissions.includes('delete_user_manual'));
-                }
             }
         } catch (error) {
             console.error("Error fetching user data:", error);
@@ -470,10 +464,10 @@ export default function GuideDetail() {
             </div>
             
             {/* Edit/Delete Buttons for authenticated users with permissions */}
-            {guide && (isAdmin || canEditManual || canDeleteManual) && (
+            {guide && (isAdmin || hasPermission("modify_user_manual")) && (
                 <div className="flex justify-end mb-4">
                     <div className="flex space-x-2">
-                        {(isAdmin || canEditManual) && (
+                        {hasPermission("modify_user_manual") && (
                             <button
                                 onClick={() => setIsEditModalOpen(true)}
                                 className="bg-[#009FDC] text-white p-2 rounded-full hover:bg-blue-600 transition duration-150"
@@ -482,7 +476,7 @@ export default function GuideDetail() {
                                 <Edit size={20} />
                             </button>
                         )}
-                        {(isAdmin || canDeleteManual) && (
+                        {hasPermission("modify_user_manual") && (
                             <button
                                 onClick={() => setShowConfirmDelete(true)}
                                 className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition duration-150"

@@ -123,6 +123,11 @@ export const PERMISSIONS = {
     CREATE_FAQS: 'create_faqs',
     EDIT_FAQS: 'edit_faqs',
     DELETE_FAQS: 'delete_faqs',
+    
+    // Organizational Chart / Employee Management sub-options
+    EDIT_EMPLOYEE: 'edit_employee',
+    ADD_EMPLOYEE: 'add_employee',
+    DELETE_EMPLOYEE: 'delete_employee',
 };
 
 /**

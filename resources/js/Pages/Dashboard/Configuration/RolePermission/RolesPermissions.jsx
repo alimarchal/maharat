@@ -179,25 +179,114 @@ const permissionCategories = {
         base: "view_budget",
         description: "Budget and accounting management",
         subOptions: {
-            "Manage Budget": {
-                base: "manage_budget",
-                description: "Full budget management access"
+            "Cost Centers": {
+                base: "view_cost_centers",
+                description: "Manage cost centers and sub-cost centers",
+                subOptions: {
+                    "Create Cost Center": {
+                        base: "create_cost_center",
+                        description: "Create new cost centers"
+                    },
+                    "Create Sub Cost Center": {
+                        base: "create_sub_cost_center",
+                        description: "Create new sub cost centers"
+                    }
+                }
             },
-            "Approve Budget": {
-                base: "approve_budget",
-                description: "Budget approval authority"
+            "Income Statement": {
+                base: "view_income_statement",
+                description: "View and manage income statements"
+            },
+            "Balance Sheet": {
+                base: "view_balance_sheet",
+                description: "View and manage balance sheets"
+            },
+            "Budget": {
+                base: "manage_budget",
+                description: "Full budget management access",
+                subOptions: {
+                    "Create Fiscal Year": {
+                        base: "create_fiscal_year",
+                        description: "Create new fiscal years"
+                    },
+                    "Create a Budget": {
+                        base: "create_budget",
+                        description: "Create new budgets"
+                    },
+                    "Approve Budget": {
+                        base: "approve_budget_option",
+                        description: "Approve pending budgets"
+                    }
+                }
+            },
+            "Request a Budget": {
+                base: "view_request_budget",
+                description: "Request and manage budget requests",
+                subOptions: {
+                    "Create Department Budget Request": {
+                        base: "create_department_budget_request",
+                        description: "Create new department budget requests"
+                    }
+                }
             }
         }
     },
     "Status": {
         base: "view_statuses",
         description: "Status management and viewing",
-        subOptions: {}
+        subOptions: {
+            "Material Request Status": {
+                base: "view_material_request_status",
+                description: "View material request statuses"
+            },
+            "RFQ Status": {
+                base: "view_rfq_status",
+                description: "View RFQ statuses"
+            },
+            "Purchase Order Status": {
+                base: "view_purchase_order_status",
+                description: "View purchase order statuses"
+            },
+            "Payment Order Status": {
+                base: "view_payment_order_status",
+                description: "View payment order statuses"
+            },
+            "Maharat Invoice Status": {
+                base: "view_maharat_invoice_status",
+                description: "View Maharat invoice statuses"
+            },
+            "Budget Request Status": {
+                base: "view_budget_request_status",
+                description: "View budget request statuses"
+            },
+            "Total Budget Status": {
+                base: "view_total_budget_status",
+                description: "View total budget statuses"
+            }
+        }
     },
     "Configuration Center": {
         base: "view_configuration",
         description: "System configuration management",
         subOptions: {
+            "Organizational Chart": {
+                base: "view_org_chart",
+                description: "View and manage organizational structure",
+                subOptions: {
+                    "Edit Employee": {
+                        base: "edit_employee",
+                        description: "Edit employee information"
+                    },
+                    "Add Employee": {
+                        base: "add_employee",
+                        description: "Add new employees to the organization"
+                    },
+                    "Delete Employee": {
+                        base: "delete_employee",
+                        description: "Remove employees from the organization"
+                    }
+                }
+            },
             "Process Flow": {
                 base: "view_process_flow",
                 description: "Process flow management and creation"
@@ -205,6 +294,10 @@ const permissionCategories = {
             "Notification Settings": {
                 base: "manage_settings",
                 description: "Notification settings management"
+            },
+            "Roles & Permission": {
+                base: "view_permission_settings",
+                description: "Manage user roles and permissions"
             }
         }
     },
@@ -212,9 +305,9 @@ const permissionCategories = {
         base: "view_notifications",
         description: "Sidebar navigation and features",
         subOptions: {
-            "Notification": {
+            "Notification Settings": {
                 base: "view_notifications",
-                description: "Notification access"
+                description: "Access notification settings"
             },
             "Profile Settings": {
                 base: "edit_profile",
@@ -222,21 +315,30 @@ const permissionCategories = {
             },
             "User Manual": {
                 base: "view_user_manual",
-                description: "User manual with creation, editing, and deletion capabilities",
-                subFeatures: {
-                    "Create Manual": "create_user_manual",
-                    "Edit Manual": "edit_user_manual",
-                    "Delete Manual": "delete_user_manual"
+                description: "Access user manual with creation, editing, and deletion capabilities",
+                subOptions: {
+                    "Modify Manual": {
+                        base: "modify_user_manual",
+                        description: "Create, edit, and delete user manual entries"
+                    }
                 }
             },
             "FAQs": {
                 base: "view_faqs",
-                description: "FAQs with full CRUD capabilities",
-                subFeatures: {
-                    "Create FAQ": "create_faqs",
-                    "View FAQ": "view_faqs",
-                    "Edit FAQ": "edit_faqs",
-                    "Delete FAQ": "delete_faqs"
+                description: "Access frequently asked questions",
+                subOptions: {
+                    "Add FAQ": {
+                        base: "create_faqs",
+                        description: "Create new FAQs"
+                    },
+                    "Edit FAQ": {
+                        base: "edit_faqs",
+                        description: "Edit existing FAQs"
+                    },
+                    "Delete FAQ": {
+                        base: "delete_faqs",
+                        description: "Delete FAQs"
+                    }
                 }
             }
         }
@@ -686,11 +788,13 @@ const RolesPermissions = () => {
     };
 
     const canManageRole = (role) => {
-        return currentUserRole?.name === "Admin" || currentUserRole?.name === "Managing Director";
+        // Allow anyone with view_permission_settings permission to manage roles
+        return true;
     };
 
     const canManageUser = (user) => {
-        return currentUserRole?.name === "Admin" || currentUserRole?.name === "Managing Director";
+        // Allow anyone with view_permission_settings permission to manage users
+        return true;
     };
 
     if (loading) {
