@@ -48,6 +48,14 @@ class SimplePermissionSeeder extends Seeder
             'items',
             'good_receiving_notes',
             'inventory_tracking',
+            'view_categories',
+            'view_items',
+            'view_inventory_tracking',
+            'create_warehouse',
+            'create_categories',
+            'create_items',
+            'create_goods_receiving_notes',
+            'add_inventory',
             
             // Budget & Accounts sub-options
             'cost_centers',

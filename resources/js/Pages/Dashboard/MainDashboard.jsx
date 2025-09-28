@@ -572,13 +572,13 @@ export default function MainDashboard({ roles, permissions }) {
             text: "Categories",
             icon: faListCheck,
             onClick: () => router.visit("/category"),
-            requiredPermission: "view_warehouse",
+            requiredPermission: "view_categories",
         },
         {
             text: "Items",
             icon: faClipboardList,
             onClick: () => router.visit("/items"),
-            requiredPermission: "view_warehouse",
+            requiredPermission: "view_items",
             notificationCount: requestedItemsCount,
         },
         {
@@ -591,7 +591,7 @@ export default function MainDashboard({ roles, permissions }) {
             text: "Inventory Tracking",
             icon: faChartBar,
             onClick: () => router.visit("/inventory-tracking"),
-            requiredPermission: "view_warehouse",
+            requiredPermission: "view_inventory_tracking",
         },
     ];
 

@@ -5,6 +5,7 @@ import axios from "axios";
 import InventoryModal from "./InventoryModal";
 import InventoryExcel from "./InventoryExcel";
 import InventoryPDF from "./InventoryPDF";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const InventoryTable = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,6 +17,7 @@ const InventoryTable = () => {
     const [selectedExcelInventoryId, setSelectedExcelInventoryId] = useState(null);
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
     const [selectedPDFInventoryId, setSelectedPDFInventoryId] = useState(null);
+    const { hasPermission } = usePermissions();
 
     const fetchInventories = async () => {
         try {
@@ -278,30 +280,32 @@ const InventoryTable = () => {
                 </tbody>
             </table>
 
-            <div className="flex justify-center items-center relative w-full my-8">
-                <div
-                    className="absolute top-1/2 left-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
-                    style={{
-                        background:
-                            "linear-gradient(to right, #9B9DA2, #9B9DA200)",
-                    }}
-                ></div>
-                <button
-                    type="button"
-                    className="p-2 text-base sm:text-lg flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] transition-all duration-300 hover:border-[#009FDC] hover:bg-[#009FDC] hover:text-white hover:scale-105"
-                    onClick={() => setIsModalOpen(true)}
-                >
-                    <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add
-                    Inventory
-                </button>
-                <div
-                    className="absolute top-1/2 right-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
-                    style={{
-                        background:
-                            "linear-gradient(to left, #9B9DA2, #9B9DA200)",
-                    }}
-                ></div>
-            </div>
+            {hasPermission("add_inventory") && (
+                <div className="flex justify-center items-center relative w-full my-8">
+                    <div
+                        className="absolute top-1/2 left-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
+                        style={{
+                            background:
+                                "linear-gradient(to right, #9B9DA2, #9B9DA200)",
+                        }}
+                    ></div>
+                    <button
+                        type="button"
+                        className="p-2 text-base sm:text-lg flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] transition-all duration-300 hover:border-[#009FDC] hover:bg-[#009FDC] hover:text-white hover:scale-105"
+                        onClick={() => setIsModalOpen(true)}
+                    >
+                        <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add
+                        Inventory
+                    </button>
+                    <div
+                        className="absolute top-1/2 right-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
+                        style={{
+                            background:
+                                "linear-gradient(to left, #9B9DA2, #9B9DA200)",
+                        }}
+                    ></div>
+                </div>
+            )}
 
             {/* Render the modal */}
             <InventoryModal

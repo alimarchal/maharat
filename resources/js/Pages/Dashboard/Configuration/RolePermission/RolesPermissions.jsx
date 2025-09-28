@@ -125,21 +125,53 @@ const permissionCategories = {
         base: "view_warehouse",
         description: "Warehouse and inventory management",
         subOptions: {
-            "Stock In": {
-                base: "stock_in",
-                description: "Stock in operations"
-            },
-            "Stock Out": {
-                base: "stock_out",
-                description: "Stock out operations"
-            },
-            "Material Requests": {
+            "User Material Requests": {
                 base: "view_material_requests",
-                description: "Material request management"
+                description: "User material request management"
             },
-            "Good Receiving Notes": {
+            "Categories": {
+                base: "view_categories",
+                description: "Category management",
+                subOptions: {
+                    "Create New Category": {
+                        base: "create_categories",
+                        description: "Create new categories"
+                    }
+                }
+            },
+            "Items": {
+                base: "view_items",
+                description: "Item management",
+                subOptions: {
+                    "Create New Item": {
+                        base: "create_items",
+                        description: "Create new items"
+                    }
+                }
+            },
+            "Goods Receiving Notes": {
                 base: "view_goods_receiving_notes",
-                description: "Goods receiving notes management"
+                description: "Goods receiving notes management",
+                subOptions: {
+                    "Create Good Receiving Notes": {
+                        base: "create_goods_receiving_notes",
+                        description: "Create new goods receiving notes"
+                    }
+                }
+            },
+            "Inventory Tracking": {
+                base: "view_inventory_tracking",
+                description: "Inventory tracking and monitoring",
+                subOptions: {
+                    "Add Inventory": {
+                        base: "add_inventory",
+                        description: "Add new inventory items"
+                    }
+                }
+            },
+            "Create Warehouse": {
+                base: "create_warehouse",
+                description: "Create new warehouses"
             }
         }
     },
@@ -376,22 +408,10 @@ const RolesPermissions = () => {
                     if (!newPermissions[category]) newPermissions[category] = { main: false, subOptions: {} };
                     newPermissions[category].main = newValue;
                     
-                    // If disabling main card, disable all sub-options
-                    if (!newValue) {
-                        Object.keys(categoryConfig.subOptions).forEach(subOpt => {
-                            if (!newPermissions[category].subOptions[subOpt]) {
-                                newPermissions[category].subOptions[subOpt] = { enabled: false };
-                            }
-                            newPermissions[category].subOptions[subOpt].enabled = false;
-                        });
-                    }
-                    
                     setPermissions(newPermissions);
 
                     // Toggle main permission only
                     const permissionsToToggle = [{ permission: categoryConfig.base, value: newValue }];
-                    
-                    // Don't automatically toggle sub-options - let them be controlled individually
 
                     // Handle special cases for linked permissions
                     if (categoryConfig.base === 'notification_settings') {
@@ -412,6 +432,7 @@ const RolesPermissions = () => {
                     const allSuccessful = results.every(result => result.data.message === 'Permission toggled successfully');
 
                     if (!allSuccessful) {
+                        console.log('❌ Some API calls failed, reverting...');
                         // Revert on failure
                         fetchRolePermissions(selectedRole.id);
                     }
@@ -429,22 +450,10 @@ const RolesPermissions = () => {
                     if (!newPermissions[category]) newPermissions[category] = { main: false, subOptions: {} };
                     newPermissions[category].main = newValue;
                     
-                    // If disabling main card, disable all sub-options
-                    if (!newValue) {
-                        Object.keys(categoryConfig.subOptions).forEach(subOpt => {
-                            if (!newPermissions[category].subOptions[subOpt]) {
-                                newPermissions[category].subOptions[subOpt] = { enabled: false };
-                            }
-                            newPermissions[category].subOptions[subOpt].enabled = false;
-                        });
-                    }
-                    
                     setPermissions(newPermissions);
 
                     // Toggle main permission only
                     const permissionsToToggle = [{ permission: categoryConfig.base, value: newValue }];
-                    
-                    // Don't automatically toggle sub-options - let them be controlled individually
 
                     // Handle special cases for linked permissions
                     if (categoryConfig.base === 'notification_settings') {
@@ -467,10 +476,8 @@ const RolesPermissions = () => {
                     console.log('✅ All successful:', allSuccessful);
 
                     if (!allSuccessful) {
+                        console.log('❌ Some API calls failed, reverting...');
                         // Revert on failure
-                        fetchCombinedUserPermissions(selectedUser.id);
-                    } else {
-                        // Refresh permissions after successful toggle
                         fetchCombinedUserPermissions(selectedUser.id);
                     }
                 } catch (error) {
@@ -495,10 +502,6 @@ const RolesPermissions = () => {
                     if (!newPermissions[category].subOptions[subOption]) newPermissions[category].subOptions[subOption] = { enabled: false };
                     newPermissions[category].subOptions[subOption].enabled = newValue;
                     
-                    // If enabling sub-option, enable main card
-                    if (newValue && !newPermissions[category].main) {
-                        newPermissions[category].main = true;
-                    }
                     
                     setPermissions(newPermissions);
 
@@ -508,10 +511,6 @@ const RolesPermissions = () => {
                         value: newValue 
                     }];
                     
-                    // If enabling sub-option, also enable main card
-                    if (newValue && !permissions[category]?.main) {
-                        permissionsToToggle.push({ permission: categoryConfig.base, value: true });
-                    }
 
                     // Handle special cases for linked permissions
                     if (categoryConfig.subOptions[subOption].base === 'sidebar_notification') {
@@ -532,6 +531,7 @@ const RolesPermissions = () => {
                     const allSuccessful = results.every(result => result.data.message === 'Permission toggled successfully');
 
                     if (!allSuccessful) {
+                        console.log('❌ Some API calls failed, reverting...');
                         // Revert on failure
                         fetchRolePermissions(selectedRole.id);
                     }
@@ -551,10 +551,6 @@ const RolesPermissions = () => {
                     if (!newPermissions[category].subOptions[subOption]) newPermissions[category].subOptions[subOption] = { enabled: false };
                     newPermissions[category].subOptions[subOption].enabled = newValue;
                     
-                    // If enabling sub-option, enable main card
-                    if (newValue && !newPermissions[category].main) {
-                        newPermissions[category].main = true;
-                    }
                     
                     setPermissions(newPermissions);
 
@@ -564,10 +560,6 @@ const RolesPermissions = () => {
                         value: newValue 
                     }];
                     
-                    // If enabling sub-option, also enable main card
-                    if (newValue && !permissions[category]?.main) {
-                        permissionsToToggle.push({ permission: categoryConfig.base, value: true });
-                    }
 
                     // Handle special cases for linked permissions
                     if (categoryConfig.subOptions[subOption].base === 'sidebar_notification') {
@@ -590,10 +582,8 @@ const RolesPermissions = () => {
                     console.log('✅ All successful:', allSuccessful);
 
                     if (!allSuccessful) {
+                        console.log('❌ Some API calls failed, reverting...');
                         // Revert on failure
-                        fetchCombinedUserPermissions(selectedUser.id);
-                    } else {
-                        // Refresh permissions after successful toggle
                         fetchCombinedUserPermissions(selectedUser.id);
                     }
                 } catch (error) {
@@ -620,15 +610,6 @@ const RolesPermissions = () => {
                     if (!newPermissions[category].subOptions[subOption].subOptions[nestedSubOption]) newPermissions[category].subOptions[subOption].subOptions[nestedSubOption] = { enabled: false };
                     newPermissions[category].subOptions[subOption].subOptions[nestedSubOption].enabled = newValue;
                     
-                    // If enabling nested sub-option, enable parent sub-option and main card
-                    if (newValue) {
-                        if (!newPermissions[category].subOptions[subOption].enabled) {
-                            newPermissions[category].subOptions[subOption].enabled = true;
-                        }
-                        if (!newPermissions[category].main) {
-                            newPermissions[category].main = true;
-                        }
-                    }
                     
                     setPermissions(newPermissions);
 
@@ -638,21 +619,6 @@ const RolesPermissions = () => {
                         value: newValue 
                     }];
                     
-                    // If enabling nested sub-option, also enable parent sub-option and main card
-                    if (newValue) {
-                        if (!permissions[category]?.subOptions?.[subOption]?.enabled) {
-                            permissionsToToggle.push({ 
-                                permission: categoryConfig.subOptions[subOption].base, 
-                                value: true 
-                            });
-                        }
-                        if (!permissions[category]?.main) {
-                            permissionsToToggle.push({ 
-                                permission: categoryConfig.base, 
-                                value: true 
-                            });
-                        }
-                    }
 
                     // Toggle all permissions
                     const promises = permissionsToToggle.map(({ permission, value }) =>
@@ -685,15 +651,6 @@ const RolesPermissions = () => {
                     if (!newPermissions[category].subOptions[subOption].subOptions[nestedSubOption]) newPermissions[category].subOptions[subOption].subOptions[nestedSubOption] = { enabled: false };
                     newPermissions[category].subOptions[subOption].subOptions[nestedSubOption].enabled = newValue;
                     
-                    // If enabling nested sub-option, enable parent sub-option and main card
-                    if (newValue) {
-                        if (!newPermissions[category].subOptions[subOption].enabled) {
-                            newPermissions[category].subOptions[subOption].enabled = true;
-                        }
-                        if (!newPermissions[category].main) {
-                            newPermissions[category].main = true;
-                        }
-                    }
                     
                     setPermissions(newPermissions);
 
@@ -703,21 +660,6 @@ const RolesPermissions = () => {
                         value: newValue 
                     }];
                     
-                    // If enabling nested sub-option, also enable parent sub-option and main card
-                    if (newValue) {
-                        if (!permissions[category]?.subOptions?.[subOption]?.enabled) {
-                            permissionsToToggle.push({ 
-                                permission: categoryConfig.subOptions[subOption].base, 
-                                value: true 
-                            });
-                        }
-                        if (!permissions[category]?.main) {
-                            permissionsToToggle.push({ 
-                                permission: categoryConfig.base, 
-                                value: true 
-                            });
-                        }
-                    }
 
                     // Toggle all permissions
                     const promises = permissionsToToggle.map(({ permission, value }) =>

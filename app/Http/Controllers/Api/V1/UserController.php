@@ -444,10 +444,32 @@ class UserController extends Controller
             "Warehouse" => [
                 "base" => "view_warehouse",
                 "subOptions" => [
-                    "Stock In" => ["base" => "stock_in"],
-                    "Stock Out" => ["base" => "stock_out"],
-                    "Material Requests" => ["base" => "view_material_requests"],
-                    "Good Receiving Notes" => ["base" => "view_goods_receiving_notes"]
+                    "User Material Requests" => ["base" => "view_material_requests"],
+                    "Categories" => [
+                        "base" => "view_categories",
+                        "subOptions" => [
+                            "Create New Category" => ["base" => "create_categories"]
+                        ]
+                    ],
+                    "Items" => [
+                        "base" => "view_items",
+                        "subOptions" => [
+                            "Create New Item" => ["base" => "create_items"]
+                        ]
+                    ],
+                    "Goods Receiving Notes" => [
+                        "base" => "view_goods_receiving_notes",
+                        "subOptions" => [
+                            "Create Good Receiving Notes" => ["base" => "create_goods_receiving_notes"]
+                        ]
+                    ],
+                    "Inventory Tracking" => [
+                        "base" => "view_inventory_tracking",
+                        "subOptions" => [
+                            "Add Inventory" => ["base" => "add_inventory"]
+                        ]
+                    ],
+                    "Create Warehouse" => ["base" => "create_warehouse"]
                 ]
             ],
             "Budget & Accounts" => [

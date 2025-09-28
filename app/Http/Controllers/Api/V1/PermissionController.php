@@ -41,7 +41,7 @@ class PermissionController extends Controller
             'view_tasks',
             'view_procurement', 'view_rfqs', 'make_new_rfq', 'view_quotations', 'add_supplier', 'add_new_quotation', 'view_purchase_orders', 'create_new_purchase_order', 'view_invoices', 'add_invoice',
             'view_finance', 'view_maharat_invoices', 'add_customers', 'create_new_invoice', 'view_payment_orders', 'create_payment_order', 'view_account_receivables', 'view_account_payables', 'view_accounts', 'create_new_account',
-            'view_warehouse', 'stock_in', 'stock_out', 'view_material_requests', 'view_goods_receiving_notes',
+            'view_warehouse', 'stock_in', 'stock_out', 'view_material_requests', 'view_goods_receiving_notes', 'view_categories', 'view_items', 'view_inventory_tracking', 'create_warehouse', 'create_categories', 'create_items', 'create_goods_receiving_notes', 'add_inventory',
             'view_budget', 'manage_budget', 'approve_budget',
             'view_statuses',
             'view_configuration', 'view_process_flow', 'manage_settings',
@@ -192,10 +192,32 @@ class PermissionController extends Controller
             'warehouse' => [
                 'enabled' => $hasEffectivePermission('view_warehouse'),
                 'subOptions' => [
-                    'stock_in' => $hasEffectivePermission('stock_in'),
-                    'stock_out' => $hasEffectivePermission('stock_out'),
-                    'material_requests' => $hasEffectivePermission('view_material_requests'),
-                    'goods_receiving_notes' => $hasEffectivePermission('view_goods_receiving_notes'),
+                    'user_material_requests' => $hasEffectivePermission('view_material_requests'),
+                    'categories' => [
+                        'enabled' => $hasEffectivePermission('view_categories'),
+                        'subOptions' => [
+                            'create_new_category' => $hasEffectivePermission('create_categories'),
+                        ]
+                    ],
+                    'items' => [
+                        'enabled' => $hasEffectivePermission('view_items'),
+                        'subOptions' => [
+                            'create_new_item' => $hasEffectivePermission('create_items'),
+                        ]
+                    ],
+                    'goods_receiving_notes' => [
+                        'enabled' => $hasEffectivePermission('view_goods_receiving_notes'),
+                        'subOptions' => [
+                            'create_good_receiving_notes' => $hasEffectivePermission('create_goods_receiving_notes'),
+                        ]
+                    ],
+                    'inventory_tracking' => [
+                        'enabled' => $hasEffectivePermission('view_inventory_tracking'),
+                        'subOptions' => [
+                            'add_inventory' => $hasEffectivePermission('add_inventory'),
+                        ]
+                    ],
+                    'create_warehouse' => $hasEffectivePermission('create_warehouse'),
                 ]
             ],
             'budget_accounts' => [
