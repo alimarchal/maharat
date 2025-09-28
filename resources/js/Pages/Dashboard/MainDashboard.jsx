@@ -30,6 +30,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { router } from "@inertiajs/react";
 import { usePage } from "@inertiajs/react";
 import { useRequestItems } from "@/Components/RequestItemsContext";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const DropdownItem = ({ text, icon, onClick, notificationCount = 0 }) => {
     return (
@@ -249,6 +250,7 @@ const DashboardCard = ({
 export default function MainDashboard({ roles, permissions }) {
     const user = usePage().props.auth.user;
     const user_id = user.id;
+    const { hasPermission } = usePermissions();
     const [pendingTasksCount, setPendingTasksCount] = useState(0);
     const [requestedItemsCount, setRequestedItemsCount] = useState(0);
     const [pendingMaterialRequestsCount, setPendingMaterialRequestsCount] = useState(0);
@@ -479,29 +481,7 @@ export default function MainDashboard({ roles, permissions }) {
         fetchApprovedItemsCount();
     }, [user_id]);
 
-    const hasPermission = (permission) => {
-        const permissionMap = {
-            "My Requests": "view_requests",
-            "Task Center": "view_tasks",
-            "Procurement Center": "view_procurement",
-            "Finance Center": "view_finance",
-            "Warehouse": "view_warehouse",
-            "Budget & Accounts": "view_budget",
-            "Statuses": "view_statuses",
-            "Configuration Center": "view_configuration",
-            "FAQs": "view_faqs",
-            "User Manual": "view_user_manual",
-            "Notification Settings": "manage_settings"
-        };
-
-        // If the permission is a direct permission name (not a mapped one)
-        if (!permissionMap[permission]) {
-            return permissions && permissions.includes(permission);
-        }
-
-        // Check mapped permission
-        return permissions && permissions.includes(permissionMap[permission]);
-    };
+    // Use the hasPermission from usePermissions hook which includes user overrides
 
     // Filter dropdown items based on user permissions
     const filterDropdownItems = (items, requiredPermissions) => {
@@ -554,6 +534,12 @@ export default function MainDashboard({ roles, permissions }) {
             requiredPermission: "view_maharat_invoices",
         },
         {
+            text: "Accounts",
+            icon: faBook,
+            onClick: () => router.visit("/accounts"),
+            requiredPermission: "view_accounts",
+        },
+        {
             text: "Payment Orders",
             icon: faMoneyCheckDollar,
             onClick: () => router.visit("/payment-orders"),
@@ -570,12 +556,6 @@ export default function MainDashboard({ roles, permissions }) {
             icon: faFileInvoice,
             onClick: () => router.visit("/account-payables"),
             requiredPermission: "view_account_payables",
-        },
-        {
-            text: "Accounts",
-            icon: faBook,
-            onClick: () => router.visit("/accounts"),
-            requiredPermission: "view_accounts",
         },
     ];
 
@@ -695,7 +675,7 @@ export default function MainDashboard({ roles, permissions }) {
     // Calculate total warehouse notifications
     const totalWarehouseNotifications = pendingMaterialRequestsCount + requestedItemsCount;
 
-    // Determine which cards to show based on permissions
+    // Determine which cards to show based on permissions (using hook that includes user overrides)
     const showRequestsCard = hasPermission("view_requests");
     const showTasksCard = hasPermission("view_tasks");
     const showProcurementCard = hasPermission("view_procurement");

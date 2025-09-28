@@ -6,6 +6,7 @@ import InvoiceModal from "./InvoiceModal";
 import ViewExternalInvoiceModal from "./ViewExternalInvoiceModal";
 import { usePage } from "@inertiajs/react";
 import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const FileDisplay = ({ file, pendingFile }) => {
     // Helper function to fix file paths and extensions
@@ -71,6 +72,7 @@ const FileDisplay = ({ file, pendingFile }) => {
 
 const InvoicesTable = () => {
     const user_id = usePage().props.auth.user.id;
+    const { hasPermission } = usePermissions();
 
     const [invoices, setInvoices] = useState([]);
     const [error, setError] = useState("");
@@ -222,12 +224,14 @@ const InvoicesTable = () => {
                 <h2 className="text-[32px] font-bold text-[#2C323C] whitespace-nowrap">
                     Invoices
                 </h2>
-                <button
-                    onClick={handleAddInvoice}
-                    className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
-                >
-                    Add Invoice
-                </button>
+                {hasPermission("add_invoice") && (
+                    <button
+                        onClick={handleAddInvoice}
+                        className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
+                    >
+                        Add Invoice
+                    </button>
+                )}
             </div>
 
             {/* Invoices Table */}

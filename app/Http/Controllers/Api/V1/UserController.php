@@ -9,6 +9,7 @@ use App\Models\NotificationType;
 use App\Models\Role;
 use App\Models\UserNotificationSetting;
 use App\Services\NotificationSettingsService;
+use App\Services\UserPermissionOverrideService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Http\Requests\V1\StoreUserRequest;
@@ -351,6 +352,196 @@ class UserController extends Controller
         ]);
     }
 
+    public function getCombinedPermissions(User $user)
+    {
+        // Get user's role
+        $userRole = $user->roles()->first();
+        if (!$userRole) {
+            return response()->json([
+                'data' => []
+            ]);
+        }
+
+        // Get role permissions
+        $rolePermissions = $userRole->permissions->pluck('name')->toArray();
+        
+        // Get user permission overrides
+        $userOverrides = UserPermissionOverrideService::getUserOverrides($user);
+        
+        // Debug logging
+        \Log::info('🔍 User overrides for ' . $user->name . ' (ID: ' . $user->id . '):', $userOverrides);
+        \Log::info('🎭 Role permissions:', $rolePermissions);
+        
+        // Define permission categories (same as frontend)
+        $permissionCategories = [
+            "Requests" => [
+                "base" => "view_requests",
+                "subOptions" => [
+                    "Request New Item" => ["base" => "request_new_item"],
+                    "Make New Request" => ["base" => "make_new_request"]
+                ]
+            ],
+            "Task Center" => [
+                "base" => "view_tasks",
+                "subOptions" => []
+            ],
+            "Procurement Center" => [
+                "base" => "view_procurement",
+                "subOptions" => [
+                    "RFQs" => [
+                        "base" => "view_rfqs",
+                        "subOptions" => [
+                            "Make New RFQ" => ["base" => "make_new_rfq"]
+                        ]
+                    ],
+                    "Quotations" => [
+                        "base" => "view_quotations",
+                        "subOptions" => [
+                            "Add Supplier" => ["base" => "add_supplier"],
+                            "Add New Quotation" => ["base" => "add_new_quotation"]
+                        ]
+                    ],
+                    "Purchase Orders" => [
+                        "base" => "view_purchase_orders",
+                        "subOptions" => [
+                            "Create New Purchase Order" => ["base" => "create_new_purchase_order"]
+                        ]
+                    ],
+                    "External Invoices" => [
+                        "base" => "view_invoices",
+                        "subOptions" => [
+                            "Add Invoice" => ["base" => "add_invoice"]
+                        ]
+                    ]
+                ]
+            ],
+            "Finance Center" => [
+                "base" => "view_finance",
+                "subOptions" => [
+                    "Maharat Invoices" => [
+                        "base" => "view_maharat_invoices",
+                        "subOptions" => [
+                            "Add Customers" => ["base" => "add_customers"],
+                            "Create New Invoice" => ["base" => "create_new_invoice"]
+                        ]
+                    ],
+                    "Accounts" => [
+                        "base" => "view_accounts",
+                        "subOptions" => [
+                            "Create New Account" => ["base" => "create_new_account"]
+                        ]
+                    ],
+                    "Payment Orders" => [
+                        "base" => "view_payment_orders",
+                        "subOptions" => [
+                            "Create Payment Order" => ["base" => "create_payment_order"]
+                        ]
+                    ],
+                    "Account Receivables" => ["base" => "view_account_receivables"],
+                    "Account Payables" => ["base" => "view_account_payables"]
+                ]
+            ],
+            "Warehouse" => [
+                "base" => "view_warehouse",
+                "subOptions" => [
+                    "Stock In" => ["base" => "stock_in"],
+                    "Stock Out" => ["base" => "stock_out"],
+                    "Material Requests" => ["base" => "view_material_requests"],
+                    "Good Receiving Notes" => ["base" => "view_goods_receiving_notes"]
+                ]
+            ],
+            "Budget & Accounts" => [
+                "base" => "view_budget",
+                "subOptions" => [
+                    "Manage Budget" => ["base" => "manage_budget"],
+                    "Approve Budget" => ["base" => "approve_budget"]
+                ]
+            ],
+            "Status" => [
+                "base" => "view_statuses",
+                "subOptions" => []
+            ],
+            "Configuration Center" => [
+                "base" => "view_configuration",
+                "subOptions" => [
+                    "Process Flow" => ["base" => "view_process_flow"],
+                    "Notification Settings" => ["base" => "manage_settings"]
+                ]
+            ],
+            "Sidebar" => [
+                "base" => "view_notifications",
+                "subOptions" => [
+                    "Notification" => ["base" => "view_notifications"],
+                    "Profile Settings" => ["base" => "edit_profile"],
+                    "User Manual" => ["base" => "view_user_manual"],
+                    "FAQs" => ["base" => "view_faqs"]
+                ]
+            ]
+        ];
+
+        // Build combined permissions
+        $combinedPermissions = [];
+        $userHasOverrides = count($userOverrides) > 0;
+
+        foreach ($permissionCategories as $category => $config) {
+            $hasRoleMainPermission = in_array($config['base'], $rolePermissions);
+            $hasUserOverride = isset($userOverrides[$config['base']]);
+            
+            // If user has override for this permission, use user's setting
+            // Otherwise, use role permission
+            $mainPermission = $hasUserOverride ? $userOverrides[$config['base']] : $hasRoleMainPermission;
+            $isUserOverride = $hasUserOverride;
+
+            $combinedPermissions[$category] = [
+                'main' => $mainPermission,
+                'subOptions' => [],
+                'isUserOverride' => $isUserOverride
+            ];
+
+            // Process sub-options
+            foreach ($config['subOptions'] as $subOption => $subConfig) {
+                $hasRoleSubPermission = in_array($subConfig['base'], $rolePermissions);
+                $hasUserSubOverride = isset($userOverrides[$subConfig['base']]);
+                
+                // If user has override for this sub-permission, use user's setting
+                // Otherwise, use role permission
+                $subPermission = $hasUserSubOverride ? $userOverrides[$subConfig['base']] : $hasRoleSubPermission;
+                $isSubUserOverride = $hasUserSubOverride;
+
+                $combinedPermissions[$category]['subOptions'][$subOption] = [
+                    'enabled' => $subPermission,
+                    'subOptions' => [],
+                    'isUserOverride' => $isSubUserOverride
+                ];
+
+                // Process nested sub-options
+                if (isset($subConfig['subOptions'])) {
+                    foreach ($subConfig['subOptions'] as $nestedSubOption => $nestedConfig) {
+                        $hasRoleNestedPermission = in_array($nestedConfig['base'], $rolePermissions);
+                        $hasUserNestedOverride = isset($userOverrides[$nestedConfig['base']]);
+                        
+                        // If user has override for this nested permission, use user's setting
+                        // Otherwise, use role permission
+                        $nestedPermission = $hasUserNestedOverride ? $userOverrides[$nestedConfig['base']] : $hasRoleNestedPermission;
+                        $isNestedUserOverride = $hasUserNestedOverride;
+
+                        $combinedPermissions[$category]['subOptions'][$subOption]['subOptions'][$nestedSubOption] = [
+                            'enabled' => $nestedPermission,
+                            'isUserOverride' => $isNestedUserOverride
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Debug logging
+        \Log::info('🎯 Final combined permissions for ' . $user->name . ':', $combinedPermissions);
+        
+        return response()->json([
+            'data' => $combinedPermissions
+        ]);
+    }
+
     public function togglePermission(Request $request, User $user)
     {
         $validated = $request->validate([
@@ -358,15 +549,24 @@ class UserController extends Controller
             'value' => 'required|boolean'
         ]);
 
-        if ($validated['value']) {
-            $user->givePermissionTo($validated['permission']);
-        } else {
-            $user->revokePermissionTo($validated['permission']);
-        }
+        // Use the new service to handle permission overrides
+        \Log::info('🔄 Toggling permission for ' . $user->name . ':', [
+            'permission' => $validated['permission'],
+            'value' => $validated['value']
+        ]);
+        
+        UserPermissionOverrideService::setOverride(
+            $user, 
+            $validated['permission'], 
+            $validated['value']
+        );
+
+        $finalOverrides = UserPermissionOverrideService::getUserOverrides($user);
+        \Log::info('✅ Final overrides after toggle:', $finalOverrides);
 
         return response()->json([
             'success' => true,
-            'data' => $user->getAllPermissions()
+            'data' => $finalOverrides
         ]);
     }
 

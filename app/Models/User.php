@@ -175,6 +175,11 @@ class User extends Authenticatable
         return $this->hasMany(UserNotificationSetting::class);
     }
 
+    public function permissionOverrides()
+    {
+        return $this->hasMany(UserPermissionOverride::class);
+    }
+
     // Using Laravel's notification system
     public function receivesBroadcastNotificationsOn()
     {

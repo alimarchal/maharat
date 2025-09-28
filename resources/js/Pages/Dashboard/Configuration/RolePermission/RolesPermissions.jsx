@@ -29,7 +29,13 @@ const permissionCategories = {
         subOptions: {
             "RFQs": {
                 base: "view_rfqs",
-                description: "Request for Quotations management"
+                description: "Request for Quotations management",
+                subOptions: {
+                    "Make New RFQ": {
+                        base: "make_new_rfq",
+                        description: "Create new Request for Quotations"
+                    }
+                }
             },
             "Quotations": {
                 base: "view_quotations",
@@ -47,11 +53,23 @@ const permissionCategories = {
             },
             "Purchase Orders": {
                 base: "view_purchase_orders",
-                description: "Purchase order management"
+                description: "Purchase order management",
+                subOptions: {
+                    "Create New Purchase Order": {
+                        base: "create_new_purchase_order",
+                        description: "Create new purchase orders"
+                    }
+                }
             },
             "External Invoices": {
                 base: "view_invoices",
-                description: "External invoice management"
+                description: "External invoice management",
+                subOptions: {
+                    "Add Invoice": {
+                        base: "add_invoice",
+                        description: "Add new external invoices"
+                    }
+                }
             }
         }
     },
@@ -59,7 +77,7 @@ const permissionCategories = {
         base: "view_finance",
         description: "Financial management system",
         subOptions: {
-            "Maharat Invoice": {
+            "Maharat Invoices": {
                 base: "view_maharat_invoices",
                 description: "Maharat invoice management with customer addition",
                 subOptions: {
@@ -73,18 +91,6 @@ const permissionCategories = {
                     }
                 }
             },
-            "Payment Orders": {
-                base: "view_payment_orders",
-                description: "Payment order management"
-            },
-            "Account Receivables": {
-                base: "view_account_receivables",
-                description: "Account receivables management"
-            },
-            "Account Payables": {
-                base: "view_account_payables",
-                description: "Account payables management"
-            },
             "Accounts": {
                 base: "view_accounts",
                 description: "General accounts management",
@@ -94,6 +100,24 @@ const permissionCategories = {
                         description: "Create new accounts in the system"
                     }
                 }
+            },
+            "Payment Orders": {
+                base: "view_payment_orders",
+                description: "Payment order management",
+                subOptions: {
+                    "Create Payment Order": {
+                        base: "create_payment_order",
+                        description: "Create new payment orders"
+                    }
+                }
+            },
+            "Account Receivables": {
+                base: "view_account_receivables",
+                description: "Account receivables management"
+            },
+            "Account Payables": {
+                base: "view_account_payables",
+                description: "Account payables management"
             }
         }
     },
@@ -238,7 +262,7 @@ const RolesPermissions = () => {
 
     useEffect(() => {
         if (selectedUser && permissionMode === "user") {
-            fetchUserPermissions(selectedUser.id);
+            fetchCombinedUserPermissions(selectedUser.id);
         }
     }, [selectedUser, permissionMode]);
 
@@ -320,6 +344,18 @@ const RolesPermissions = () => {
         }
     };
 
+    const fetchCombinedUserPermissions = async (userId) => {
+        try {
+            console.log('🔍 Fetching combined permissions for user:', userId);
+            const response = await axios.get(`/api/v1/users/${userId}/combined-permissions`);
+            console.log('📥 Combined permissions response:', response.data);
+            console.log('📊 Permissions data:', response.data.data);
+            setPermissions(response.data.data || {});
+        } catch (error) {
+            console.error("❌ Failed to fetch combined user permissions:", error);
+        }
+    };
+
     const togglePermission = async (category, subOption = null, nestedSubOption = null) => {
         const categoryConfig = permissionCategories[category];
         const isMainCard = subOption === null;
@@ -329,6 +365,7 @@ const RolesPermissions = () => {
             // Toggle main card
             const currentValue = permissions[category]?.main || false;
             const newValue = !currentValue;
+            console.log('🔄 Toggling main card:', { category, currentValue, newValue, permissionMode });
             
             if (permissionMode === "role") {
                 if (!selectedRole || !canManageRole(selectedRole)) return;
@@ -425,16 +462,21 @@ const RolesPermissions = () => {
                     );
 
                     const results = await Promise.all(promises);
+                    console.log('📥 API responses:', results);
                     const allSuccessful = results.every(result => result.data.success === true);
+                    console.log('✅ All successful:', allSuccessful);
 
                     if (!allSuccessful) {
                         // Revert on failure
-                        fetchUserPermissions(selectedUser.id);
+                        fetchCombinedUserPermissions(selectedUser.id);
+                    } else {
+                        // Refresh permissions after successful toggle
+                        fetchCombinedUserPermissions(selectedUser.id);
                     }
                 } catch (error) {
                     console.error("Failed to toggle user permission:", error);
                     // Revert on error
-                    fetchUserPermissions(selectedUser.id);
+                    fetchCombinedUserPermissions(selectedUser.id);
                 }
             }
         } else if (!isNestedSubOption) {
@@ -543,16 +585,21 @@ const RolesPermissions = () => {
                     );
 
                     const results = await Promise.all(promises);
+                    console.log('📥 API responses:', results);
                     const allSuccessful = results.every(result => result.data.success === true);
+                    console.log('✅ All successful:', allSuccessful);
 
                     if (!allSuccessful) {
                         // Revert on failure
-                        fetchUserPermissions(selectedUser.id);
+                        fetchCombinedUserPermissions(selectedUser.id);
+                    } else {
+                        // Refresh permissions after successful toggle
+                        fetchCombinedUserPermissions(selectedUser.id);
                     }
                 } catch (error) {
                     console.error("Failed to toggle user permission:", error);
                     // Revert on error
-                    fetchUserPermissions(selectedUser.id);
+                    fetchCombinedUserPermissions(selectedUser.id);
                 }
             }
         } else if (isNestedSubOption) {
@@ -681,14 +728,16 @@ const RolesPermissions = () => {
                     );
 
                     const results = await Promise.all(promises);
+                    console.log('📥 API responses:', results);
                     const allSuccessful = results.every(result => result.data.success === true);
+                    console.log('✅ All successful:', allSuccessful);
 
                     if (!allSuccessful) {
-                        fetchUserPermissions(selectedUser.id);
+                        fetchCombinedUserPermissions(selectedUser.id);
                     }
                 } catch (error) {
                     console.error("Failed to toggle user permission:", error);
-                    fetchUserPermissions(selectedUser.id);
+                    fetchCombinedUserPermissions(selectedUser.id);
                 }
             }
         }
@@ -704,8 +753,13 @@ const RolesPermissions = () => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#009FDC]"></div>
+            <div className="w-full">
+                <div className="flex justify-center items-center h-64">
+                    <div className="text-center">
+                        <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-[#7D8086]">Loading permissions...</p>
+                    </div>
+                </div>
             </div>
         );
     }

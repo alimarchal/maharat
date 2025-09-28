@@ -483,6 +483,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::put('/roles/{role}', [RoleController::class, 'update']);
 
     Route::get('/users/{user}/permissions', [UserController::class, 'getPermissions']);
+    Route::get('/users/{user}/direct-permissions', [UserController::class, 'getDirectPermissions']);
+    Route::get('/users/{user}/combined-permissions', [UserController::class, 'getCombinedPermissions']);
     Route::post('/users/{user}/toggle-permission', [UserController::class, 'togglePermission']);
 
     // FAQ routes
