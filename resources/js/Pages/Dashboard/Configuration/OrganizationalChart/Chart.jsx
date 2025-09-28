@@ -5,6 +5,8 @@ import { Tree, TreeNode } from "react-organizational-chart";
 import { Card, IconButton, Menu, MenuItem, Typography, Button } from "@mui/material";
 import axios from "axios";
 import { router } from '@inertiajs/react';
+import { usePermissions } from "../../../../hooks/usePermissions";
+import { PERMISSIONS, hasPermission } from "../../../../utils/permissions";
 import "./Chart.css";
 
 function OrganizationNode({
@@ -19,7 +21,8 @@ function OrganizationNode({
     isSecretary = false,
     hasSecretaryParent,
     extraClass,
-    onMarkForDeletion
+    onMarkForDeletion,
+    userPermissions = []
 }) {
     const [anchorEl, setAnchorEl] = useState(null);
 
@@ -47,6 +50,11 @@ function OrganizationNode({
     // Secretary detection
     const isSecretaryNode = node.designation_id === 23 || (node.title && node.title.toLowerCase().includes('secretary'));
 
+    // Check if user has any permissions to show menu
+    const hasAnyPermission = hasPermission(userPermissions, PERMISSIONS.EDIT_EMPLOYEE) ||
+                           hasPermission(userPermissions, PERMISSIONS.ADD_EMPLOYEE) ||
+                           hasPermission(userPermissions, PERMISSIONS.DELETE_EMPLOYEE);
+
     return (
         <Card 
             variant="outlined" 
@@ -58,10 +66,12 @@ function OrganizationNode({
                     <FontAwesomeIcon icon={isRoot ? faSitemap : faUser} color={isRoot ? "#009FDC" : "black"} />
                 </div>
 
-                {/* Right: Three Dots Menu */}
-                <IconButton size="small" className="menu-icon" onClick={handleClick}>
-                    <FontAwesomeIcon icon={faEllipsisV} />
-                </IconButton>
+                {/* Right: Three Dots Menu - only show if user has any permissions */}
+                {hasAnyPermission && (
+                    <IconButton size="small" className="menu-icon" onClick={handleClick}>
+                        <FontAwesomeIcon icon={faEllipsisV} />
+                    </IconButton>
+                )}
             </div>
 
             {node.name ? (
@@ -109,17 +119,24 @@ function OrganizationNode({
             )}
 
             <Menu open={Boolean(anchorEl)} anchorEl={anchorEl} onClose={handleClose}>
-                {node.name && (
+                {/* Edit Employee - only show if user has permission and node has a name */}
+                {node.name && hasPermission(userPermissions, PERMISSIONS.EDIT_EMPLOYEE) && (
                     <MenuItem onClick={handleEdit}>
-                        Edit
+                        Edit Employee
                     </MenuItem>
                 )}
-                <MenuItem onClick={() => { onAddPosition(); handleClose(); }}>
-                    Add Position
-                </MenuItem>
-                {!isRoot && (
+                
+                {/* Add Employee - only show if user has permission */}
+                {hasPermission(userPermissions, PERMISSIONS.ADD_EMPLOYEE) && (
+                    <MenuItem onClick={() => { onAddPosition(); handleClose(); }}>
+                        Add Employee
+                    </MenuItem>
+                )}
+                
+                {/* Delete Employee - only show if user has permission and not root */}
+                {!isRoot && hasPermission(userPermissions, PERMISSIONS.DELETE_EMPLOYEE) && (
                     <MenuItem onClick={handleDeleteClick}>
-                        Delete
+                        Delete Employee
                     </MenuItem>
                 )}
             </Menu>
@@ -137,7 +154,8 @@ function OrgChartTree({
     extraClass = '',
     expandedStates,
     onExpansionChange,
-    isDummy
+    isDummy,
+    userPermissions = []
 }) {
     // If this is a dummy node, render a TreeNode with the dummy-spacing-node class
     if (node.isDummy) {
@@ -280,6 +298,7 @@ function OrgChartTree({
                         onToggleExpand={handleToggleExpand}
                         hasSecretaryParent={hasSecretaryParent}
                         onMarkForDeletion={onMarkForDeletion}
+                        userPermissions={userPermissions}
                     />
                     {secretaryChild && (
                         <div className="secretary-container">
@@ -288,6 +307,7 @@ function OrgChartTree({
                                 node={secretaryChild}
                                 onDelete={() => handleDelete(secretaryChild)}
                                 onMarkForDeletion={onMarkForDeletion}
+                                userPermissions={userPermissions}
                             />
                         </div>
                     )}
@@ -333,6 +353,7 @@ function OrgChartTree({
                                     expandedStates={expandedStates}
                                     onExpansionChange={onExpansionChange}
                                     isDummy
+                                    userPermissions={userPermissions}
                                 />
                             );
                         }
@@ -348,6 +369,7 @@ function OrgChartTree({
                                 extraClass={''}
                                 expandedStates={expandedStates}
                                 onExpansionChange={onExpansionChange}
+                                userPermissions={userPermissions}
                             />
                         );
                     })
@@ -358,7 +380,7 @@ function OrgChartTree({
 }
 
 // Add this new component for Secretary Node
-function SecretaryNode({ node, onDelete, onMarkForDeletion }) {
+function SecretaryNode({ node, onDelete, onMarkForDeletion, userPermissions = [] }) {
     const [anchorEl, setAnchorEl] = useState(null);
 
     const handleClick = (event) => {
@@ -385,6 +407,10 @@ function SecretaryNode({ node, onDelete, onMarkForDeletion }) {
     // Secretary detection
     const isSecretaryNode = node.designation_id === 23 || (node.title && node.title.toLowerCase().includes('secretary'));
 
+    // Check if user has any permissions to show menu
+    const hasAnyPermission = hasPermission(userPermissions, PERMISSIONS.EDIT_EMPLOYEE) ||
+                           hasPermission(userPermissions, PERMISSIONS.DELETE_EMPLOYEE);
+
     return (
         <Card 
             variant="outlined" 
@@ -405,13 +431,16 @@ function SecretaryNode({ node, onDelete, onMarkForDeletion }) {
                         color="#009FDC"
                     />
                 </div>
-                <IconButton 
-                    size="small" 
-                    className="menu-icon" 
-                    onClick={handleClick}
-                >
-                    <FontAwesomeIcon icon={faEllipsisV} />
-                </IconButton>
+                {/* Three Dots Menu - only show if user has any permissions */}
+                {hasAnyPermission && (
+                    <IconButton 
+                        size="small" 
+                        className="menu-icon" 
+                        onClick={handleClick}
+                    >
+                        <FontAwesomeIcon icon={faEllipsisV} />
+                    </IconButton>
+                )}
             </div>
             {/* Hide department for secretary node */}
             {!isSecretaryNode && (
@@ -440,12 +469,19 @@ function SecretaryNode({ node, onDelete, onMarkForDeletion }) {
                 anchorEl={anchorEl}
                 onClose={handleClose}
             >
-                <MenuItem onClick={handleEdit}>
-                    Edit
-                </MenuItem>
-                <MenuItem onClick={handleDeleteClick}>
-                    Delete
-                </MenuItem>
+                {/* Edit Employee - only show if user has permission */}
+                {hasPermission(userPermissions, PERMISSIONS.EDIT_EMPLOYEE) && (
+                    <MenuItem onClick={handleEdit}>
+                        Edit Employee
+                    </MenuItem>
+                )}
+                
+                {/* Delete Employee - only show if user has permission */}
+                {hasPermission(userPermissions, PERMISSIONS.DELETE_EMPLOYEE) && (
+                    <MenuItem onClick={handleDeleteClick}>
+                        Delete Employee
+                    </MenuItem>
+                )}
             </Menu>
         </Card>
     );
@@ -458,6 +494,9 @@ const Chart = () => {
     const [key, setKey] = useState(0);
     // Add a Map to store expansion states for each node
     const [expandedStates, setExpandedStates] = useState(new Map());
+    
+    // Get user permissions
+    const { permissions: userPermissions } = usePermissions();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -582,6 +621,7 @@ const Chart = () => {
                                     onMarkForDeletion={handleMarkForDeletion}
                                     expandedStates={expandedStates}
                                     onExpansionChange={handleExpansionChange}
+                                    userPermissions={userPermissions}
                                 />
                             )}
                         </Tree>

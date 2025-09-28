@@ -8,8 +8,10 @@ import {
 import { Link } from "@inertiajs/react";
 import PaymentOrderPDF from "./PaymentOrderPDF";
 import PaymentOrderSumAttachment from "./PaymentOrderSumAttachment";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const PaymentOrderTable = () => {
+    const { hasPermission } = usePermissions();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -125,12 +127,14 @@ const PaymentOrderTable = () => {
                 <h2 className="text-3xl font-bold text-[#2C323C] mb-4">
                     Payment Orders
                 </h2>
-                <Link
-                    href="/payment-orders/create"
-                    className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                >
-                    Create New Payment Order
-                </Link>
+                {hasPermission("create_payment_order") && (
+                    <Link
+                        href="/payment-orders/create"
+                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                    >
+                        Create New Payment Order
+                    </Link>
+                )}
             </div>
 
             {/* PDF Generation Component */}

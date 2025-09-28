@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTimes, faEdit, faFile, faChevronUp, faChevronDown, faGripVertical } from "@fortawesome/free-solid-svg-icons";
 import CardForm from "./CardForm";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // Fallback input component if InputFloating is not available
 const InputFloating = ({ label, type, value, onChange }) => (
@@ -28,9 +29,7 @@ const InputFloating = ({ label, type, value, onChange }) => (
 export default function UserManual() {
     const { auth } = usePage().props;
     const user = auth?.user;
-    const [canCreateManual, setCanCreateManual] = useState(false);
-    const [canEditManual, setCanEditManual] = useState(false);
-    const [canDeleteManual, setCanDeleteManual] = useState(false);
+    const { hasPermission } = usePermissions();
 
     const [userDesignation, setUserDesignation] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -59,13 +58,6 @@ export default function UserManual() {
         if (openCreateGuide === "true") {
             setIsCreateGuideOpen(true);
         }
-
-        // Check if user has user manual permissions
-        if (user && user.permissions) {
-            setCanCreateManual(user.permissions.includes('create_user_manual'));
-            setCanEditManual(user.permissions.includes('edit_user_manual'));
-            setCanDeleteManual(user.permissions.includes('delete_user_manual'));
-        }
     }, [user]);
 
     const fetchUserData = async () => {
@@ -80,12 +72,6 @@ export default function UserManual() {
             if (response.data && response.data.data) {
                 const userData = response.data.data;
                 setIsAdmin(userData.roles && userData.roles.includes("Admin"));
-                
-                // Check for user manual permissions
-                if (userData.permissions) {
-                    setCanEditManual(userData.permissions.includes('edit_user_manual'));
-                    setCanDeleteManual(userData.permissions.includes('delete_user_manual'));
-                }
             } else {
                 console.error("Invalid user data format:", response.data);
                 setIsAdmin(false);
@@ -348,14 +334,14 @@ export default function UserManual() {
                         <h3 className="text-2xl font-bold">
                             {title}
                         </h3>
-                        {(isAdmin || canEditManual || canDeleteManual) && (
+                        {(isAdmin || hasPermission("modify_user_manual")) && (
                             <div className="flex items-center space-x-2">
                                 {isAdmin && (
                                     <div {...provided.dragHandleProps} className="cursor-move p-2 hover:bg-[#009FDC]/10 rounded-full transition-colors duration-200">
                                         <FontAwesomeIcon icon={faGripVertical} className="text-[#009FDC] hover:text-[#007BB5] transition-colors duration-200" />
                                     </div>
                                 )}
-                                {(isAdmin || canEditManual) && (
+                                {hasPermission("modify_user_manual") && (
                                     <button
                                         onClick={(e) => {
                                             e.preventDefault();
@@ -399,7 +385,7 @@ export default function UserManual() {
                 <h2 className="text-3xl font-bold text-[#2C323C]">
                     User Manual
                 </h2>
-                {canCreateManual && (
+                {hasPermission("modify_user_manual") && (
                     <button
                         type="button"
                         onClick={() => setIsCreateGuideOpen(true)}

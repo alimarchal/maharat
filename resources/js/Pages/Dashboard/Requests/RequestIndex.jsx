@@ -3,11 +3,17 @@ import RequestTable from "./RequestTable";
 import { Link } from "@inertiajs/react";
 import NewItemModal from "./NewItemModal";
 import { useRequestItems } from "@/Components/RequestItemsContext";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const RequestIndex = () => {
     const [selectedFilter, setSelectedFilter] = useState("All");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const { approvedCount, pendingCount } = useRequestItems();
+    const { hasPermission } = usePermissions();
+    
+    // Check permissions for buttons
+    const canRequestNewItem = hasPermission("request_new_item");
+    const canMakeNewRequest = hasPermission("make_new_request");
 
     const filters = ["All", "Draft", "Pending", "Approved", "Referred", "Rejected"];
 
@@ -34,27 +40,31 @@ const RequestIndex = () => {
                         ))}
                     </div>
 
-                    <button
-                        type="button"
-                        title="Request a new item that is not listed in the stock items"
-                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                        onClick={() => setIsModalOpen(true)}
-                    >
-                        Request New Item
-                    </button>
+                    {canRequestNewItem && (
+                        <button
+                            type="button"
+                            title="Request a new item that is not listed in the stock items"
+                            className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                            onClick={() => setIsModalOpen(true)}
+                        >
+                            Request New Item
+                        </button>
+                    )}
 
-                    <Link
-                        href="/my-requests/create"
-                        title="Request a new item that is listed in the stock"
-                        className="relative bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                    >
-                        Make New Request
-                        {approvedCount > 0 && (
-                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-sm h-6 w-6 rounded-full flex items-center justify-center">
-                                {approvedCount}
-                            </span>
-                        )}
-                    </Link>
+                    {canMakeNewRequest && (
+                        <Link
+                            href="/my-requests/create"
+                            title="Request a new item that is listed in the stock"
+                            className="relative bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                        >
+                            Make New Request
+                            {approvedCount > 0 && (
+                                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-sm h-6 w-6 rounded-full flex items-center justify-center">
+                                    {approvedCount}
+                                </span>
+                            )}
+                        </Link>
+                    )}
                 </div>
             </div>
             <RequestTable selectedFilter={selectedFilter} />

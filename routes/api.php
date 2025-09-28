@@ -156,6 +156,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // Permissions
     Route::get('/permissions', [PermissionController::class, 'index']);
     Route::post('/permissions', [PermissionController::class, 'store']);
+    Route::get('/user/effective-permissions', [PermissionController::class, 'getUserEffectivePermissions']);
+    Route::get('/user/permission-structure', [PermissionController::class, 'getUserPermissionStructure']);
+    Route::get('/check-permission/{permission}', [PermissionController::class, 'checkPermission']);
 
     Route::apiResource('companies', CompanyController::class);
     Route::apiResource('statuses', StatusController::class);
@@ -175,9 +178,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('material-request-transactions', MaterialRequestTransactionController::class);
 
     // Request Items routes
-    Route::apiResource('request-item', ItemRequestController::class);
-    Route::put('request-item/{id}/status', [ItemRequestController::class, 'updateStatus']);
-    Route::put('request-item/{id}/mark-requested', [ItemRequestController::class, 'markAsRequested']);
+    Route::apiResource('request-item', ItemRequestController::class)->middleware('permission:view_requests');
+    Route::put('request-item/{id}/status', [ItemRequestController::class, 'updateStatus'])->middleware('permission:view_requests');
+    Route::put('request-item/{id}/mark-requested', [ItemRequestController::class, 'markAsRequested'])->middleware('permission:view_requests');
 
     // RFQ Requests routes
     Route::apiResource('rfq-requests', \App\Http\Controllers\Api\V1\RfqRequestController::class);
@@ -480,6 +483,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::put('/roles/{role}', [RoleController::class, 'update']);
 
     Route::get('/users/{user}/permissions', [UserController::class, 'getPermissions']);
+    Route::get('/users/{user}/direct-permissions', [UserController::class, 'getDirectPermissions']);
+    Route::get('/users/{user}/combined-permissions', [UserController::class, 'getCombinedPermissions']);
     Route::post('/users/{user}/toggle-permission', [UserController::class, 'togglePermission']);
 
     // FAQ routes

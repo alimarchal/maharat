@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "@inertiajs/react";
 import axios from "axios";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const Quotations = () => {
     const [quotations, setQuotations] = useState([]);
@@ -12,6 +13,11 @@ const Quotations = () => {
     const filters = ["All", "Expired", "Active", "Approved"];
     const [loading, setLoading] = useState(true);
     const [quotationsRfqCount, setQuotationsRfqCount] = useState(0);
+    const { hasPermission } = usePermissions();
+    
+    // Check permissions for buttons
+    const canAddSupplier = hasPermission("add_supplier");
+    const canAddNewQuotation = hasPermission("add_new_quotation");
 
     const fetchQuotations = async () => {
         setLoading(true);
@@ -165,23 +171,27 @@ const Quotations = () => {
                             </button>
                         ))}
                     </div>
-                    <Link
-                        href={`/suppliers`}
-                        className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
-                    >
-                        Add Suppliers
-                    </Link>
-                    <Link
-                        href="/quotations/create-quotation"
-                        className="relative bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
-                    >
-                        Add New Quotation
-                        {quotationsRfqCount > 0 && (
-                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-sm h-6 w-6 rounded-full flex items-center justify-center">
-                                {quotationsRfqCount}
-                            </span>
-                        )}
-                    </Link>
+                    {canAddSupplier && (
+                        <Link
+                            href={`/suppliers`}
+                            className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
+                        >
+                            Add Suppliers
+                        </Link>
+                    )}
+                    {canAddNewQuotation && (
+                        <Link
+                            href="/quotations/create-quotation"
+                            className="relative bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
+                        >
+                            Add New Quotation
+                            {quotationsRfqCount > 0 && (
+                                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-sm h-6 w-6 rounded-full flex items-center justify-center">
+                                    {quotationsRfqCount}
+                                </span>
+                            )}
+                        </Link>
+                    )}
                 </div>
             </div>
 

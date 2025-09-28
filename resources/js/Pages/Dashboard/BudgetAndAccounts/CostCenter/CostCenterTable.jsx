@@ -4,8 +4,10 @@ import { faEdit, faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import axios from "axios";
 import CostCenterModal from "./CostCenterModal";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const CostCenterTable = () => {
+    const { hasPermission } = usePermissions();
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [selectedFilter, setSelectedFilter] = useState("All");
@@ -96,12 +98,14 @@ const CostCenterTable = () => {
                             </button>
                         ))}
                     </div>
-                    <Link
-                        href="/cost-centers/sub-cost-centers"
-                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                    >
-                        Create Sub Cost Center
-                    </Link>
+                    {hasPermission('create_sub_cost_center') && (
+                        <Link
+                            href="/cost-centers/sub-cost-centers"
+                            className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                        >
+                            Create Sub Cost Center
+                        </Link>
+                    )}
                 </div>
             </div>
 
@@ -254,30 +258,32 @@ const CostCenterTable = () => {
                 </div>
             )}
 
-            <div className="flex justify-center items-center relative w-full my-8">
-                <div
-                    className="absolute top-1/2 left-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
-                    style={{
-                        background:
-                            "linear-gradient(to right, #9B9DA2, #9B9DA200)",
-                    }}
-                ></div>
-                <button
-                    type="button"
-                    className="p-2 text-base sm:text-lg flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] transition-all duration-300 hover:border-[#009FDC] hover:bg-[#009FDC] hover:text-white hover:scale-105"
-                    onClick={() => setIsModalOpen(true)}
-                >
-                    <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add a
-                    Cost Center
-                </button>
-                <div
-                    className="absolute top-1/2 right-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
-                    style={{
-                        background:
-                            "linear-gradient(to left, #9B9DA2, #9B9DA200)",
-                    }}
-                ></div>
-            </div>
+            {hasPermission('create_cost_center') && (
+                <div className="flex justify-center items-center relative w-full my-8">
+                    <div
+                        className="absolute top-1/2 left-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
+                        style={{
+                            background:
+                                "linear-gradient(to right, #9B9DA2, #9B9DA200)",
+                        }}
+                    ></div>
+                    <button
+                        type="button"
+                        className="p-2 text-base sm:text-lg flex items-center bg-white rounded-full border border-[#B9BBBD] text-[#9B9DA2] transition-all duration-300 hover:border-[#009FDC] hover:bg-[#009FDC] hover:text-white hover:scale-105"
+                        onClick={() => setIsModalOpen(true)}
+                    >
+                        <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add a
+                        Cost Center
+                    </button>
+                    <div
+                        className="absolute top-1/2 right-0 w-[45%] h-[3px] max-sm:w-[35%] flex-grow"
+                        style={{
+                            background:
+                                "linear-gradient(to left, #9B9DA2, #9B9DA200)",
+                        }}
+                    ></div>
+                </div>
+            )}
 
             {/* Render the modal */}
             <CostCenterModal

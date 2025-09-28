@@ -5,6 +5,7 @@ import { faRemove } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 import PurchaseOrderPDF from "./PurchaseOrderPDF";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const FileDisplay = ({ file, fileName }) => {
     if (!file) return null;
@@ -32,6 +33,7 @@ const FileDisplay = ({ file, fileName }) => {
 };
 
 export default function PurchaseOrdersTable() {
+    const { hasPermission } = usePermissions();
     const [purchaseOrders, setPurchaseOrders] = useState([]);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -191,12 +193,14 @@ export default function PurchaseOrdersTable() {
                     <h2 className="text-[32px] font-bold text-[#2C323C]">
                         Purchase Orders
                     </h2>
-                    <Link
-                        href="/purchase-orders/create-order"
-                        className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
-                    >
-                        Create New Purchase Order
-                    </Link>
+                    {hasPermission("create_new_purchase_order") && (
+                        <Link
+                            href="/purchase-orders/create-order"
+                            className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
+                        >
+                            Create New Purchase Order
+                        </Link>
+                    )}
                 </div>
 
                 {/* PDF Generation Component */}

@@ -9,6 +9,7 @@ import {
     faBookOpen,
 } from "@fortawesome/free-solid-svg-icons";
 import { router, usePage } from "@inertiajs/react";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const SidebarButton = ({
     icon,
@@ -67,14 +68,13 @@ const SidebarButton = ({
 const Sidebar = ({ isOpen }) => {
     const { url } = usePage();
     const user = usePage().props.auth.user;
-    const permissions = user?.permissions || [];
+    const { hasPermission } = usePermissions();
     
-    const hasPermission = (perm) => {
-        return permissions.includes(perm);
-    };
-
     // Check if user is a top-level user (parent_id is NULL)
     const isTopLevelUser = user?.parent_id === null;
+    
+    // Check if sidebar should be enabled (user has any sidebar permissions)
+    const sidebarEnabled = hasPermission("view_notifications") || hasPermission("edit_profile") || hasPermission("view_user_manual") || hasPermission("view_faqs");
 
     return (
         <>
@@ -90,26 +90,22 @@ const Sidebar = ({ isOpen }) => {
                         title="Dashboard"
                         isActive={url === "/dashboard"}
                     />
-                    {isTopLevelUser && (hasPermission("view_notifications") || hasPermission("manage_notifications")) && (
+                    {hasPermission("view_notifications") && (
                         <SidebarButton
                             icon={faBell}
                             link="/notification-settings"
-                            title="Notifications"
+                            title="Notification Settings"
                             isActive={url === "/notification-settings"}
                         />
                     )}
-                    {/* <SidebarButton
-                        icon={faCommentDots}
-                        link="/comments"
-                        title="Comments"
-                        isActive={url === "/comments"}
-                    /> */}
-                    <SidebarButton
-                        icon={faCog}
-                        link="/company-profile"
-                        title="Company Settings"
-                        isActive={url === "/company-profile"}
-                    />
+                    {hasPermission("edit_profile") && (
+                        <SidebarButton
+                            icon={faCog}
+                            link="/company-profile"
+                            title="Profile Settings"
+                            isActive={url === "/company-profile"}
+                        />
+                    )}
                 </nav>
 
                 <div className="flex flex-col gap-6">

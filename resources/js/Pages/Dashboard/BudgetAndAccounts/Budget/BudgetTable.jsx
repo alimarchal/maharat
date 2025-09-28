@@ -6,8 +6,10 @@ import axios from "axios";
 import BudgetPDF from "./BudgetPDF";
 import BudgetExcel from "./BudgetExcel";
 import FiscalYearModal from "./FiscalYearModal";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const BudgetTable = () => {
+    const { hasPermission } = usePermissions();
     const [budgets, setBudgets] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -24,7 +26,9 @@ const BudgetTable = () => {
 
     const [isFiscalYearModalOpen, setIsFiscalYearModalOpen] = useState(false);
 
-    const filters = ["All", "Active", "Pending", "Closed"];
+    const filters = hasPermission('approve_budget_option') 
+        ? ["All", "Active", "Pending", "Closed"]
+        : [];
 
     useEffect(() => {
         fetchBudgets();
@@ -37,8 +41,11 @@ const BudgetTable = () => {
         try {
             let url = `/api/v1/budgets?include=fiscalPeriod,department,costCenter,creator,updater&page=${currentPage}`;
 
-            if (selectedFilter !== "All") {
-                url += `&filter[status]=${selectedFilter}`;
+            // If approve_budget_option is disabled, always filter for Active
+            const effectiveFilter = hasPermission('approve_budget_option') ? selectedFilter : 'Active';
+            
+            if (effectiveFilter !== "All") {
+                url += `&filter[status]=${effectiveFilter}`;
             }
 
             const response = await axios.get(url);
@@ -166,40 +173,46 @@ const BudgetTable = () => {
             <div className="flex justify-between items-center mb-8">
                 <h2 className="text-3xl font-bold text-[#2C323C]">Budgets</h2>
                 <div className="flex justify-between items-center gap-4">
-                    <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
-                        {filters.map((filter) => (
-                            <button
-                                key={filter}
-                                className={`px-6 py-2 rounded-full text-xl transition ${
-                                    selectedFilter === filter
-                                        ? "bg-[#009FDC] text-white"
-                                        : "text-[#9B9DA2]"
-                                }`}
-                                onClick={() => handleFilterChange(filter)}
-                            >
-                                {filter}
-                            </button>
-                        ))}
-                    </div>
+                    {hasPermission('approve_budget_option') && (
+                        <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
+                            {filters.map((filter) => (
+                                <button
+                                    key={filter}
+                                    className={`px-6 py-2 rounded-full text-xl transition ${
+                                        selectedFilter === filter
+                                            ? "bg-[#009FDC] text-white"
+                                            : "text-[#9B9DA2]"
+                                    }`}
+                                    onClick={() => handleFilterChange(filter)}
+                                >
+                                    {filter}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                     {/* <Link
                         href="/budget/create"
                         className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
                     >
                         Create a Budget
                     </Link> */}
-                    <button
-                        onClick={() => setIsFiscalYearModalOpen(true)}
-                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                        type="button"
-                    >
-                        Create Fiscal Year
-                    </button>
-                    <Link
-                        href="/budget/fiscal-years"
-                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                    >
-                        Create a Budget
-                    </Link>
+                    {hasPermission('create_fiscal_year') && (
+                        <button
+                            onClick={() => setIsFiscalYearModalOpen(true)}
+                            className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                            type="button"
+                        >
+                            Create Fiscal Year
+                        </button>
+                    )}
+                    {hasPermission('create_budget') && (
+                        <Link
+                            href="/budget/fiscal-years"
+                            className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                        >
+                            Create a Budget
+                        </Link>
+                    )}
                 </div>
             </div>
 
@@ -328,7 +341,7 @@ const BudgetTable = () => {
                                     >
                                         <FontAwesomeIcon icon={faEye} />
                                     </Link>
-                                    {yearGroup.budgets[0]?.status === 'Pending' && (
+                                    {yearGroup.budgets[0]?.status === 'Pending' && hasPermission('approve_budget_option') && (
                                         <Link
                                             href={`budget/details/${yearGroup.budgets[0]?.id}?fiscal_period_id=${yearGroup.fiscalPeriodId}&mode=edit`}
                                             className="text-blue-400 hover:text-blue-500"

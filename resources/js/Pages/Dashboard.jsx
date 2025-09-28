@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Head, router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import axios from "axios";
 import RequestIndex from "./Dashboard/Requests/RequestIndex";
 import MakeRequest from "./Dashboard/Requests/MakeRequest";
 import MainDashboard from "./Dashboard/MainDashboard";
@@ -82,6 +83,29 @@ import ViewReceivableDetails from "./Dashboard/Finance/AccountReceivables/ViewRe
 import ViewPayableDetails from "./Dashboard/Finance/AccountPayables/ViewPayableDetails";
 
 export default function Dashboard({ auth, page }) {
+    const [realTimePermissions, setRealTimePermissions] = useState(null);
+    const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
+
+    // Fetch real-time permissions for the current user
+    useEffect(() => {
+        const fetchUserPermissions = async () => {
+            try {
+                console.log('🔍 Dashboard: Fetching real-time permissions for user:', auth.user.id);
+                const response = await axios.get(`/api/v1/users/${auth.user.id}/combined-permissions`);
+                console.log('📥 Dashboard: Real-time permissions response:', response.data);
+                setRealTimePermissions(response.data.data);
+            } catch (error) {
+                console.error("❌ Dashboard: Failed to fetch real-time permissions:", error);
+                // Fallback to auth permissions if API fails
+                setRealTimePermissions(auth.user.permissions);
+            } finally {
+                setIsLoadingPermissions(false);
+            }
+        };
+
+        fetchUserPermissions();
+    }, [auth.user.id]);
+
     const renderComponent = () => {
         if (page === "UserProfile/UserProfile") return <UserProfile />;
         if (page === "Requests/RequestIndex") return <RequestIndex />;
@@ -213,7 +237,52 @@ export default function Dashboard({ auth, page }) {
         if (page === "ProcurementCenter/PurchaseOrder/CreateOrder") return <CreatePurchaseOrder />;
         if (page === "ProcurementCenter/Invoices/Invoices") return <InvoicesTable />;
         
-        return <MainDashboard roles={auth.user.roles} permissions={auth.user.permissions} />;
+        // Show loading state while fetching permissions
+        if (isLoadingPermissions) {
+            return (
+                <div className="w-full">
+                    <div className="flex justify-center items-center h-64">
+                        <div className="text-center">
+                            <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                            <p className="text-[#7D8086]">Loading Dashboard...</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Convert real-time permissions to the format expected by MainDashboard
+        const permissionsArray = realTimePermissions ? 
+            Object.keys(realTimePermissions)
+                .filter(category => realTimePermissions[category]?.main === true)
+                .map(category => {
+                    // Map category names to permission names
+                    const categoryToPermission = {
+                        "Requests": "view_requests",
+                        "Task Center": "view_tasks", 
+                        "Procurement Center": "view_procurement",
+                        "Finance Center": "view_finance",
+                        "Warehouse": "view_warehouse",
+                        "Budget & Accounts": "view_budget",
+                        "Status": "view_statuses",
+                        "Configuration Center": "view_configuration",
+                        "Sidebar": "view_sidebar" // This might not be needed
+                    };
+                    return categoryToPermission[category];
+                })
+                .filter(Boolean)
+                .concat([
+                    // Add individual configuration permissions
+                    ...(realTimePermissions?.configuration_center?.subOptions?.organizational_chart ? ["view_org_chart"] : []),
+                    ...(realTimePermissions?.configuration_center?.subOptions?.process_flow ? ["view_process_flow"] : []),
+                    ...(realTimePermissions?.configuration_center?.subOptions?.notification_settings ? ["manage_settings"] : []),
+                    ...(realTimePermissions?.configuration_center?.subOptions?.roles_permissions ? ["view_permission_settings"] : [])
+                ]) : // Remove undefined values
+            auth.user.permissions;
+
+        console.log('🎯 Dashboard: Using permissions:', permissionsArray);
+        
+        return <MainDashboard roles={auth.user.roles} permissions={permissionsArray} />;
     };
 
     const currentPath = window.location.pathname;

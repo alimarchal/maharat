@@ -4,6 +4,7 @@ import { faEdit, faTrash, faRemove } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import axios from "axios";
 import MaharatPDF from "./MaharatPDF";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const MaharatInvoicesTable = () => {
     const [invoices, setInvoices] = useState([]);
@@ -12,6 +13,11 @@ const MaharatInvoicesTable = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [isDeleting, setIsDeleting] = useState(false);
+    const { hasPermission } = usePermissions();
+    
+    // Check permissions for buttons
+    const canAddCustomers = hasPermission("add_customers");
+    const canCreateNewInvoice = hasPermission("create_new_invoice");
 
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
     const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
@@ -226,18 +232,22 @@ const MaharatInvoicesTable = () => {
                             </button>
                         ))}
                     </div>
-                    <Link
-                        href={`/customers`}
-                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                    >
-                        Add Customers
-                    </Link>
-                    <Link
-                        href={`/maharat-invoices/create`}
-                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
-                    >
-                        Create New Invoice
-                    </Link>
+                    {canAddCustomers && (
+                        <Link
+                            href={`/customers`}
+                            className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                        >
+                            Add Customers
+                        </Link>
+                    )}
+                    {canCreateNewInvoice && (
+                        <Link
+                            href={`/maharat-invoices/create`}
+                            className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                        >
+                            Create New Invoice
+                        </Link>
+                    )}
                 </div>
             </div>
 

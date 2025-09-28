@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faTrash } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import ViewGRNModal from "./ViewGRNModal";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function GRNTable() {
     const [grns, setGrns] = useState([]);
@@ -13,6 +14,7 @@ export default function GRNTable() {
     const [loading, setLoading] = useState(true);
     const [selectedGrn, setSelectedGrn] = useState(null);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const { hasPermission } = usePermissions();
 
     const fetchGrns = async () => {
         setLoading(true);
@@ -67,12 +69,14 @@ export default function GRNTable() {
                     <h2 className="text-[32px] font-bold text-[#2C323C]">
                         Good Receiving Notes
                     </h2>
-                    <Link
-                        href="/goods-receiving-notes/create"
-                        className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
-                    >
-                        Create GRNs
-                    </Link>
+                    {hasPermission("create_goods_receiving_notes") && (
+                        <Link
+                            href="/goods-receiving-notes/create"
+                            className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
+                        >
+                            Create GRNs
+                        </Link>
+                    )}
                 </div>
 
                 <div className="w-full overflow-hidden">

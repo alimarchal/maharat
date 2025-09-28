@@ -40,13 +40,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/my-requests', function () {
         return Inertia::render('Dashboard', ['page' => 'Requests/RequestIndex']);
-    })->name('requests.index');
+    })->name('requests.index')->middleware('permission:view_requests');
     Route::get('/my-requests/create', function () {
         return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest']);
-    })->name('requests.create');
+    })->name('requests.create')->middleware('permission:make_new_request');
     Route::get('/my-requests/{id}/edit', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'Requests/MakeRequest', 'requestId' => $id]);
-    })->name('requests.edit');
+    })->name('requests.edit')->middleware('permission:make_new_request');
 
     Route::get('/warehouse', function () {
         return Inertia::render('Dashboard/Warehouse/Warehouse');

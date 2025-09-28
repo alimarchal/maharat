@@ -52,14 +52,28 @@ class RoleAndPermissionSeeder extends Seeder
             'view_budget',
             'manage_budget',
             'approve_budget',
+            'view_cost_centers',
+            'view_income_statement',
+            'view_balance_sheet',
+            'view_request_budget',
+            'create_cost_center',
+            'create_sub_cost_center',
+            'create_fiscal_year',
+            'create_budget',
+            'approve_budget_option',
+            'create_department_budget_request',
             'view_reports',
             'create_reports',
             'export_reports',
             'view_configuration',
+            'view_org_chart',
             'view_faqs',
             'create_faqs',
             'edit_faqs',
             'delete_faqs',
+            'edit_employee',
+            'add_employee',
+            'delete_employee',
             'approve_faqs',
             'view_user_manual',
             'create_user_manual',
@@ -95,7 +109,34 @@ class RoleAndPermissionSeeder extends Seeder
             'edit_profile',
             'view_notifications',
             'manage_notifications',
-            'view_statuses'
+            'modify_user_manual',
+            'modify_user_manual',
+            'view_statuses',
+            'view_material_request_status',
+            'view_rfq_status',
+            'view_purchase_order_status',
+            'view_payment_order_status',
+            'view_maharat_invoice_status',
+            'view_budget_request_status',
+            'view_total_budget_status',
+            'create_faqs',
+            'edit_faqs',
+            'delete_faqs',
+            'edit_employee',
+            'add_employee',
+            'delete_employee',
+            'view_material_request_status',
+            'view_rfq_status',
+            'view_purchase_order_status',
+            'view_payment_order_status',
+            'view_maharat_invoice_status',
+            'view_budget_request_status',
+            'view_total_budget_status',
+            
+            // Employee management permissions
+            'edit_employee',
+            'add_employee',
+            'delete_employee'
         ];
 
         foreach ($permissions as $permission) {
@@ -153,8 +194,27 @@ class RoleAndPermissionSeeder extends Seeder
                     'view_employee_currency_settings',
                     'view_notifications',
                     'manage_notifications',
-                    'view_statuses'
-                ];
+            'view_statuses',
+            'view_material_request_status',
+            'view_rfq_status',
+            'view_purchase_order_status',
+            'view_payment_order_status',
+            'view_maharat_invoice_status',
+            'view_budget_request_status',
+            'view_total_budget_status',
+            'create_faqs',
+            'edit_faqs',
+            'delete_faqs',
+            'edit_employee',
+            'add_employee',
+            'delete_employee',
+            'create_faqs',
+            'edit_faqs',
+            'delete_faqs',
+            'edit_employee',
+            'add_employee',
+            'delete_employee'
+        ];
                 
                 foreach ($configPermissions as $perm) {
                     if (!in_array($perm, $permissions)) {
@@ -207,7 +267,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_maharat_invoices', 'create_maharat_invoices',
             'view_warehouse', 'manage_warehouse',
             'stock_in', 'stock_out',
-            'view_budget', 'manage_budget', 'approve_budget',
+            'view_budget', 'manage_budget', 'approve_budget', 'view_cost_centers', 'view_income_statement', 'view_balance_sheet', 'view_request_budget', 'create_cost_center', 'create_sub_cost_center', 'create_fiscal_year', 'create_budget', 'approve_budget_option', 'create_department_budget_request',
             'view_reports', 'create_reports', 'export_reports',
             'view_process_flow',
             'view_permission_settings',
@@ -236,7 +296,20 @@ class RoleAndPermissionSeeder extends Seeder
             'view_employee_branch_settings',
             'view_employee_company_settings',
             'view_employee_currency_settings',
-            'view_statuses'
+            'view_statuses',
+            'view_material_request_status',
+            'view_rfq_status',
+            'view_purchase_order_status',
+            'view_payment_order_status',
+            'view_maharat_invoice_status',
+            'view_budget_request_status',
+            'view_total_budget_status',
+            'create_faqs',
+            'edit_faqs',
+            'delete_faqs',
+            'edit_employee',
+            'add_employee',
+            'delete_employee'
         ]);
 
         // Department Director
@@ -251,7 +324,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view_maharat_invoices', 'create_maharat_invoices',
             'view_warehouse', 'manage_warehouse',
             'stock_in', 'stock_out',
-            'view_budget', 'manage_budget', 'approve_budget',
+            'view_budget', 'manage_budget', 'approve_budget', 'view_cost_centers', 'view_income_statement', 'view_balance_sheet', 'view_request_budget', 'create_cost_center', 'create_sub_cost_center', 'create_fiscal_year', 'create_budget', 'approve_budget_option', 'create_department_budget_request',
             'view_reports', 'create_reports', 'export_reports',
             'view_process_flow',
             'view_permission_settings',
@@ -280,7 +353,20 @@ class RoleAndPermissionSeeder extends Seeder
             'view_employee_branch_settings',
             'view_employee_company_settings',
             'view_employee_currency_settings',
-            'view_statuses'
+            'view_statuses',
+            'view_material_request_status',
+            'view_rfq_status',
+            'view_purchase_order_status',
+            'view_payment_order_status',
+            'view_maharat_invoice_status',
+            'view_budget_request_status',
+            'view_total_budget_status',
+            'create_faqs',
+            'edit_faqs',
+            'delete_faqs',
+            'edit_employee',
+            'add_employee',
+            'delete_employee'
         ]);
 
         // Secretary role with limited view permissions
