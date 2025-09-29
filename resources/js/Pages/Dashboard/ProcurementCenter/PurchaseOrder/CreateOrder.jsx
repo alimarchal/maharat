@@ -69,6 +69,8 @@ export default function CreatePurchaseOrder() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedQuotation, setSelectedQuotation] = useState(null);
     const [purchaseOrders, setPurchaseOrders] = useState([]);
+    const [filteredQuotations, setFilteredQuotations] = useState([]);
+    const [filteredLastPage, setFilteredLastPage] = useState(1);
 
     const fetchRfqs = async () => {
         try {
@@ -113,23 +115,25 @@ export default function CreatePurchaseOrder() {
         setLoading(true);
 
         try {
+            // Fetch ALL quotations for the selected RFQ (no pagination from API)
             let url = "/api/v1/quotations";
             const params = {
-                page: currentPage,
                 include: "rfq,purchaseOrder,documents",
-                per_page: 10,
+                per_page: 1000, // Get all quotations
             };
             const response = await axios.get(url, { params });
-            let quotationsData = response.data.data || [];
+            let allQuotations = response.data.data || [];
 
+            // Filter quotations based on selected RFQ
+            let quotationsData = [];
             if (selectedRfq && selectedRfq !== "all") {
-                quotationsData = quotationsData.filter(
+                quotationsData = allQuotations.filter(
                     (quotation) =>
                         quotation.rfq &&
                         quotation.rfq.id === parseInt(selectedRfq)
                 );
             } else if (selectedRfq === "all") {
-                quotationsData = quotationsData;
+                quotationsData = allQuotations;
             } else {
                 quotationsData = [];
             }
@@ -184,8 +188,26 @@ export default function CreatePurchaseOrder() {
             if (quotationsWithDetails.length > 0) {
                 quotationsWithDetails.sort((a, b) => a.id - b.id);
             }
+
+            // Set all quotations
             setQuotations(quotationsWithDetails);
-            setLastPage(response.data.meta?.last_page || 1);
+            
+            // Calculate pagination for filtered results
+            const itemsPerPage = 10;
+            const totalPages = Math.ceil(quotationsWithDetails.length / itemsPerPage);
+            setFilteredLastPage(totalPages);
+            
+            // Reset to page 1 if current page is beyond available pages
+            if (currentPage > totalPages && totalPages > 0) {
+                setCurrentPage(1);
+            }
+            
+            // Get quotations for current page
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedQuotations = quotationsWithDetails.slice(startIndex, endIndex);
+            setFilteredQuotations(paginatedQuotations);
+            
             setError("");
         } catch (error) {
             setError(
@@ -193,6 +215,7 @@ export default function CreatePurchaseOrder() {
                     (error.response?.data?.message || "Unknown error")
             );
             setQuotations([]);
+            setFilteredQuotations([]);
         } finally {
             setLoading(false);
         }
@@ -204,7 +227,18 @@ export default function CreatePurchaseOrder() {
 
     useEffect(() => {
         fetchQuotations();
-    }, [currentPage, selectedRfq]);
+    }, [selectedRfq]);
+
+    // Separate effect for pagination changes
+    useEffect(() => {
+        if (quotations.length > 0) {
+            const itemsPerPage = 10;
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedQuotations = quotations.slice(startIndex, endIndex);
+            setFilteredQuotations(paginatedQuotations);
+        }
+    }, [currentPage, quotations]);
 
     const handleRfqChange = (e) => {
         setSelectedRfq(e.target.value);
@@ -319,8 +353,8 @@ export default function CreatePurchaseOrder() {
                                     {error}
                                 </td>
                             </tr>
-                        ) : quotations.length > 0 ? (
-                            quotations.map((quotation) => (
+                        ) : filteredQuotations.length > 0 ? (
+                            filteredQuotations.map((quotation) => (
                                 <tr key={quotation.id}>
                                     <td className="px-3 py-4">
                                         {quotation.quotation_number || "N/A"}
@@ -332,7 +366,23 @@ export default function CreatePurchaseOrder() {
                                         {quotation.supplier?.name || "N/A"}
                                     </td>
                                     <td className="px-3 py-4">
-                                        {quotation.total_amount || "N/A"}
+                                        {(() => {
+                                            // Use total_amount as base amount, or calculate from amount + vat_amount
+                                            const baseAmount = Number(quotation.total_amount) || Number(quotation.amount) || 0;
+                                            const vatAmount = Number(quotation.vat_amount) || 0;
+                                            
+                                            // If vat_amount is 0 or null, calculate 15% VAT from base amount
+                                            let finalVat = vatAmount;
+                                            if (vatAmount === 0 || !quotation.vat_amount) {
+                                                finalVat = baseAmount * 0.15; // 15% VAT
+                                            }
+                                            
+                                            const total = baseAmount + finalVat;
+                                            return total.toLocaleString(undefined, { 
+                                                minimumFractionDigits: 2, 
+                                                maximumFractionDigits: 2 
+                                            });
+                                        })()}
                                     </td>
                                     <td className="px-3 py-4">
                                         {formatDate(quotation.created_at)}
@@ -425,7 +475,7 @@ export default function CreatePurchaseOrder() {
                 </table>
 
                 {/* Pagination */}
-                {!loading && !error && quotations.length > 0 && (
+                {!loading && !error && filteredQuotations.length > 0 && filteredLastPage > 1 && (
                     <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                         <button
                             onClick={() => setCurrentPage(currentPage - 1)}
@@ -439,7 +489,7 @@ export default function CreatePurchaseOrder() {
                             Previous
                         </button>
                         {Array.from(
-                            { length: lastPage },
+                            { length: filteredLastPage },
                             (_, index) => index + 1
                         ).map((page) => (
                             <button
@@ -457,11 +507,11 @@ export default function CreatePurchaseOrder() {
                         <button
                             onClick={() => setCurrentPage(currentPage + 1)}
                             className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
-                                currentPage >= lastPage
+                                currentPage >= filteredLastPage
                                     ? "opacity-50 cursor-not-allowed"
                                     : ""
                             }`}
-                            disabled={currentPage >= lastPage}
+                            disabled={currentPage >= filteredLastPage}
                         >
                             Next
                         </button>

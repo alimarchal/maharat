@@ -203,6 +203,16 @@ export default function QuotationRFQ({ auth }) {
 
         try {
             await axios.delete(`/api/v1/quotations/${id}`);
+            
+            // Dispatch event to notify other components about quotation deletion
+            console.log('📢 QuotationRFQ: Dispatching quotation deleted event...');
+            window.dispatchEvent(new CustomEvent('quotationDeleted', {
+                detail: {
+                    quotationId: id,
+                    rfqId: rfqId
+                }
+            }));
+            
             fetchQuotations();
         } catch (error) {
             setError("Failed to delete record");

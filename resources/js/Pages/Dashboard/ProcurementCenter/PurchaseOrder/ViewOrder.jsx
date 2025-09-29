@@ -43,6 +43,7 @@ export default function PurchaseOrdersTable() {
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
     const [selectedOrderId, setSelectedOrderId] = useState(null);
     const [savedPdfUrl, setSavedPdfUrl] = useState(null);
+    const [purchaseOrdersRfqCount, setPurchaseOrdersRfqCount] = useState(0);
 
     const fetchPurchaseOrders = async () => {
         setLoading(true);
@@ -53,6 +54,7 @@ export default function PurchaseOrdersTable() {
                     page: currentPage,
                     include: "quotation,supplier",
                     per_page: 10,
+                    sort: "-created_at", // Sort by created_at descending (latest first)
                 },
             });
             const purchaseOrdersData = response.data.data || [];
@@ -125,9 +127,67 @@ export default function PurchaseOrdersTable() {
         }
     };
 
+    // Fetch purchase orders RFQ count (RFQs that have quotations but no purchase orders)
+    const fetchPurchaseOrdersRfqCount = async () => {
+        try {
+            // First fetch all quotations to get RFQ IDs that have quotations
+            const quotationsResponse = await fetch("/api/v1/quotations?per_page=1000");
+            const quotationsData = await quotationsResponse.json();
+            
+            if (quotationsResponse.ok) {
+                const quotations = quotationsData.data || [];
+                
+                // Get unique RFQ IDs that have quotations
+                const rfqIdsWithQuotations = [...new Set(quotations.map(q => q.rfq_id).filter(id => id))];
+                
+                if (rfqIdsWithQuotations.length === 0) {
+                    setPurchaseOrdersRfqCount(0);
+                    return;
+                }
+                
+                // Fetch RFQs that don't have purchase orders
+                const rfqsResponse = await fetch("/api/v1/rfqs/without-purchase-orders");
+                const rfqsData = await rfqsResponse.json();
+                
+                if (rfqsResponse.ok && rfqsData.success && rfqsData.data) {
+                    // Filter to only show RFQs that have quotations
+                    const rfqsWithQuotations = rfqsData.data.filter(rfq => 
+                        rfqIdsWithQuotations.includes(rfq.id)
+                    );
+                    setPurchaseOrdersRfqCount(rfqsWithQuotations.length);
+                } else {
+                    setPurchaseOrdersRfqCount(0);
+                }
+            }
+        } catch (err) {
+            console.error("Error fetching purchase orders RFQ count:", err);
+            setPurchaseOrdersRfqCount(0);
+        }
+    };
+
     useEffect(() => {
         fetchPurchaseOrders();
+        fetchPurchaseOrdersRfqCount();
     }, [currentPage]);
+
+    // Listen for quotation creation events from other components
+    useEffect(() => {
+        const handleQuotationCreated = () => {
+            console.log('📢 ViewOrder: Received quotation created event, refreshing count...');
+            fetchPurchaseOrdersRfqCount();
+        };
+
+        // Listen for custom events
+        window.addEventListener('quotationCreated', handleQuotationCreated);
+        window.addEventListener('quotationUpdated', handleQuotationCreated);
+        window.addEventListener('quotationDeleted', handleQuotationCreated);
+
+        return () => {
+            window.removeEventListener('quotationCreated', handleQuotationCreated);
+            window.removeEventListener('quotationUpdated', handleQuotationCreated);
+            window.removeEventListener('quotationDeleted', handleQuotationCreated);
+        };
+    }, []);
 
     const formatDateForDisplay = (dateString) => {
         if (!dateString) return "";
@@ -188,7 +248,7 @@ export default function PurchaseOrdersTable() {
 
     return (
         <div className="w-full">
-            <div className="w-full overflow-hidden">
+            <div className="w-full">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-[32px] font-bold text-[#2C323C]">
                         Purchase Orders
@@ -196,9 +256,14 @@ export default function PurchaseOrdersTable() {
                     {hasPermission("create_new_purchase_order") && (
                         <Link
                             href="/purchase-orders/create-order"
-                            className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
+                            className="relative bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
                         >
                             Create New Purchase Order
+                            {purchaseOrdersRfqCount > 0 && (
+                                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-sm h-6 w-6 rounded-full flex items-center justify-center">
+                                    {purchaseOrdersRfqCount}
+                                </span>
+                            )}
                         </Link>
                     )}
                 </div>

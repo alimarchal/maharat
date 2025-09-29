@@ -42,7 +42,7 @@ const BudgetTable = () => {
             let url = `/api/v1/budgets?include=fiscalPeriod,department,costCenter,creator,updater&page=${currentPage}`;
 
             // If approve_budget_option is disabled, always filter for Active
-            const effectiveFilter = hasPermission('approve_budget_option') ? selectedFilter : 'Active';
+            const effectiveFilter = hasPermission('approve_budget_option') ? selectedFilter : 'All';
             
             if (effectiveFilter !== "All") {
                 url += `&filter[status]=${effectiveFilter}`;

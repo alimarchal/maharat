@@ -274,6 +274,16 @@ const QuotationModal = ({
                     `/api/v1/quotations/${quotation.id}`,
                     updatePayload
                 );
+
+                // Dispatch event to notify other components about quotation update
+                console.log('📢 QuotationModal: Dispatching quotation updated event...');
+                window.dispatchEvent(new CustomEvent('quotationUpdated', {
+                    detail: {
+                        quotationId: quotation.id,
+                        rfqId: rfqId
+                    }
+                }));
+
                 if (tempDocument) {
                     const uploadSuccess = await uploadDocumentToServer(
                         quotation.id,
@@ -342,6 +352,16 @@ const QuotationModal = ({
                     setIsSaving(false);
                     return;
                 }
+
+                // Dispatch event to notify other components about quotation creation
+                console.log('📢 QuotationModal: Dispatching quotation created event...');
+                window.dispatchEvent(new CustomEvent('quotationCreated', {
+                    detail: {
+                        quotationId: response.data.data.id,
+                        rfqId: formData.rfq_id
+                    }
+                }));
+                
             } catch (error) {
                 console.error("Quotation creation error:", error);
                 if (error.response?.data?.message) {

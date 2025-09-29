@@ -338,57 +338,84 @@ export default function MainDashboard({ roles, permissions }) {
     }, []);
 
     // Fetch quotations RFQ count (RFQs with status_id 47 that don't have quotations or purchase orders)
-    useEffect(() => {
-        const fetchQuotationsRfqCount = async () => {
-            try {
-                // Fetch all RFQs with status_id 47
-                const allRfqsResponse = await fetch(`/api/v1/rfqs?filter[status_id]=47&per_page=1000`);
-                const allRfqsData = await allRfqsResponse.json();
+    const fetchQuotationsRfqCount = async () => {
+        try {
+            // Fetch all RFQs with status_id 47
+            const allRfqsResponse = await fetch(`/api/v1/rfqs?filter[status_id]=47&per_page=1000`);
+            const allRfqsData = await allRfqsResponse.json();
+            
+            if (allRfqsResponse.ok) {
+                const allRfqs = allRfqsData.data || [];
                 
-                if (allRfqsResponse.ok) {
-                    const allRfqs = allRfqsData.data || [];
+                // Fetch all quotations to check which RFQs already have quotations
+                const quotationsResponse = await fetch("/api/v1/quotations");
+                const quotationsData = await quotationsResponse.json();
+                
+                // Fetch all purchase orders to check which RFQs already have POs
+                const purchaseOrdersResponse = await fetch("/api/v1/purchase-orders");
+                const purchaseOrdersData = await purchaseOrdersResponse.json();
+                
+                if (quotationsResponse.ok && purchaseOrdersResponse.ok) {
+                    const quotations = quotationsData.data || [];
+                    const purchaseOrders = purchaseOrdersData.data || [];
                     
-                    // Fetch all quotations to check which RFQs already have quotations
-                    const quotationsResponse = await fetch("/api/v1/quotations");
-                    const quotationsData = await quotationsResponse.json();
+                    // Create sets of RFQ IDs that already have quotations or purchase orders
+                    const rfqIdsWithQuotation = new Set();
+                    const rfqIdsWithPO = new Set();
                     
-                    // Fetch all purchase orders to check which RFQs already have POs
-                    const purchaseOrdersResponse = await fetch("/api/v1/purchase-orders");
-                    const purchaseOrdersData = await purchaseOrdersResponse.json();
+                    quotations.forEach((quotation) => {
+                        if (quotation.rfq_id) {
+                            rfqIdsWithQuotation.add(quotation.rfq_id);
+                        }
+                    });
                     
-                    if (quotationsResponse.ok && purchaseOrdersResponse.ok) {
-                        const quotations = quotationsData.data || [];
-                        const purchaseOrders = purchaseOrdersData.data || [];
-                        
-                        // Create sets of RFQ IDs that already have quotations or purchase orders
-                        const rfqIdsWithQuotation = new Set();
-                        const rfqIdsWithPO = new Set();
-                        
-                        quotations.forEach((quotation) => {
-                            if (quotation.rfq_id) {
-                                rfqIdsWithQuotation.add(quotation.rfq_id);
-                            }
-                        });
-                        
-                        purchaseOrders.forEach((po) => {
-                            if (po.rfq_id) {
-                                rfqIdsWithPO.add(po.rfq_id);
-                            }
-                        });
-                        
-                        // Count RFQs that don't have quotations AND don't have purchase orders
-                        const rfqsWithoutQuotationOrPO = allRfqs.filter((rfq) => 
-                            !rfqIdsWithQuotation.has(rfq.id) && !rfqIdsWithPO.has(rfq.id)
-                        );
-                        
-                        setQuotationsRfqCount(rfqsWithoutQuotationOrPO.length);
-                    }
+                    purchaseOrders.forEach((po) => {
+                        if (po.rfq_id) {
+                            rfqIdsWithPO.add(po.rfq_id);
+                        }
+                    });
+                    
+                    // Count RFQs that don't have quotations AND don't have purchase orders
+                    const rfqsWithoutQuotationOrPO = allRfqs.filter((rfq) => 
+                        !rfqIdsWithQuotation.has(rfq.id) && !rfqIdsWithPO.has(rfq.id)
+                    );
+                    
+                    setQuotationsRfqCount(rfqsWithoutQuotationOrPO.length);
                 }
-            } catch (err) {
-                console.error("Error fetching quotations RFQ count:", err);
             }
-        };
+        } catch (err) {
+            console.error("Error fetching quotations RFQ count:", err);
+        }
+    };
+
+    useEffect(() => {
         fetchQuotationsRfqCount();
+    }, []);
+
+    // Listen for quotation creation events from other components
+    useEffect(() => {
+        let timeoutId;
+        
+        const handleQuotationCreated = () => {
+            console.log('📢 MainDashboard: Received quotation event, refreshing count...');
+            // Debounce to prevent multiple rapid calls
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                fetchQuotationsRfqCount();
+            }, 500);
+        };
+
+        // Listen for custom events
+        window.addEventListener('quotationCreated', handleQuotationCreated);
+        window.addEventListener('quotationUpdated', handleQuotationCreated);
+        window.addEventListener('quotationDeleted', handleQuotationCreated);
+
+        return () => {
+            clearTimeout(timeoutId);
+            window.removeEventListener('quotationCreated', handleQuotationCreated);
+            window.removeEventListener('quotationUpdated', handleQuotationCreated);
+            window.removeEventListener('quotationDeleted', handleQuotationCreated);
+        };
     }, []);
 
     // Fetch purchase orders RFQ count (RFQs that have quotations but no purchase orders)
