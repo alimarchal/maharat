@@ -328,6 +328,14 @@ class AccountController extends Controller
         $paymentOrder->paid_amount += $debitAmount;
         $paymentOrder->save();
 
+        // Update budget consumption based on payment amount
+        \Log::info('=== CALLING UPDATE BUDGET CONSUMPTION ===', [
+            'payment_order_id' => $paymentOrder->id,
+            'debit_amount' => $debitAmount,
+            'payment_order_number' => $paymentOrder->payment_order_number
+        ]);
+        $this->updateBudgetConsumption($paymentOrder, $debitAmount);
+
         // Record transaction flow for Liabilities (id 2)
         \App\Services\TransactionFlowService::recordTransactionFlow(
             2, // account_id
@@ -677,6 +685,162 @@ class AccountController extends Controller
             \Log::error('Error updating material requests for paid invoice', [
                 'invoice_id' => $invoice->id,
                 'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Update budget consumption based on payment amount
+     * Payment Order → Purchase Order → Request Budget
+     */
+    private function updateBudgetConsumption($paymentOrder, $paymentAmount)
+    {
+        \Log::info('=== UPDATE BUDGET CONSUMPTION METHOD CALLED ===', [
+            'payment_order_id' => $paymentOrder->id,
+            'payment_amount' => $paymentAmount,
+            'method_started_at' => now()
+        ]);
+        
+        try {
+            // Step 1: Payment Order → Purchase Order
+            $purchaseOrder = \App\Models\PurchaseOrder::find($paymentOrder->purchase_order_id);
+            
+            if (!$purchaseOrder) {
+                \Log::error('=== PURCHASE ORDER NOT FOUND ===', [
+                    'payment_order_id' => $paymentOrder->id,
+                    'purchase_order_id' => $paymentOrder->purchase_order_id
+                ]);
+                return;
+            }
+
+            // Step 2: Purchase Order → Request Budget ID
+            $requestBudgetId = $purchaseOrder->request_budget_id;
+
+            // If no direct budget link, try to find the appropriate budget
+            if (!$requestBudgetId) {
+                \Log::info('=== NO DIRECT BUDGET LINK, ATTEMPTING TO FIND BUDGET ===', [
+                    'payment_order_id' => $paymentOrder->id,
+                    'purchase_order_id' => $purchaseOrder->id,
+                    'department_id' => $purchaseOrder->department_id,
+                    'cost_center_id' => $purchaseOrder->cost_center_id,
+                    'sub_cost_center_id' => $purchaseOrder->sub_cost_center_id,
+                    'fiscal_period_id' => $purchaseOrder->fiscal_period_id
+                ]);
+
+                // Try to find a budget based on Purchase Order details
+                $budgetQuery = \App\Models\RequestBudget::where('status', 'Approved');
+                
+                if ($purchaseOrder->department_id) {
+                    $budgetQuery->where('department_id', $purchaseOrder->department_id);
+                }
+                
+                if ($purchaseOrder->cost_center_id) {
+                    $budgetQuery->where('cost_center_id', $purchaseOrder->cost_center_id);
+                }
+                
+                if ($purchaseOrder->sub_cost_center_id) {
+                    $budgetQuery->where('sub_cost_center', $purchaseOrder->sub_cost_center_id);
+                } else {
+                    $budgetQuery->whereNull('sub_cost_center');
+                }
+                
+                if ($purchaseOrder->fiscal_period_id) {
+                    $budgetQuery->where('fiscal_period_id', $purchaseOrder->fiscal_period_id);
+                }
+
+                $foundBudget = $budgetQuery->first();
+                
+                if ($foundBudget) {
+                    $requestBudgetId = $foundBudget->id;
+                    \Log::info('=== FOUND MATCHING BUDGET ===', [
+                        'payment_order_id' => $paymentOrder->id,
+                        'purchase_order_id' => $purchaseOrder->id,
+                        'found_budget_id' => $requestBudgetId,
+                        'budget_consumed_amount' => $foundBudget->consumed_amount,
+                        'budget_reserved_amount' => $foundBudget->reserved_amount,
+                        'budget_balance_amount' => $foundBudget->balance_amount
+                    ]);
+                } else {
+                    \Log::warning('=== NO MATCHING BUDGET FOUND ===', [
+                        'payment_order_id' => $paymentOrder->id,
+                        'purchase_order_id' => $purchaseOrder->id,
+                        'department_id' => $purchaseOrder->department_id,
+                        'cost_center_id' => $purchaseOrder->cost_center_id,
+                        'sub_cost_center_id' => $purchaseOrder->sub_cost_center_id,
+                        'fiscal_period_id' => $purchaseOrder->fiscal_period_id
+                    ]);
+                    return;
+                }
+            }
+
+            \Log::info('=== UPDATING BUDGET CONSUMPTION FOR PAYMENT ===', [
+                'payment_order_id' => $paymentOrder->id,
+                'purchase_order_id' => $purchaseOrder->id,
+                'request_budget_id' => $requestBudgetId,
+                'payment_amount' => $paymentAmount,
+                'po_total_amount' => $purchaseOrder->amount
+            ]);
+
+            // Step 3: Update Request Budget amounts
+            // First, let's get the current budget values
+            $currentBudget = \Illuminate\Support\Facades\DB::table('request_budgets')->where('id', $requestBudgetId)->first();
+            if ($currentBudget) {
+                \Log::info('=== CURRENT BUDGET VALUES ===', [
+                    'request_budget_id' => $requestBudgetId,
+                    'current_consumed_amount' => $currentBudget->consumed_amount,
+                    'current_reserved_amount' => $currentBudget->reserved_amount,
+                    'current_balance_amount' => $currentBudget->balance_amount
+                ]);
+            }
+
+            // Calculate new values
+            $newConsumedAmount = $currentBudget->consumed_amount + $paymentAmount;
+            $newReservedAmount = $currentBudget->reserved_amount - $paymentAmount;
+
+            \Log::info('=== CALCULATED NEW VALUES ===', [
+                'new_consumed_amount' => $newConsumedAmount,
+                'new_reserved_amount' => $newReservedAmount
+            ]);
+
+            // Update budget: increase consumed_amount and decrease reserved_amount
+            $budgetUpdated = \Illuminate\Support\Facades\DB::table('request_budgets')
+                ->where('id', $requestBudgetId)
+                ->update([
+                    'consumed_amount' => $newConsumedAmount,
+                    'reserved_amount' => $newReservedAmount,
+                    'updated_at' => now()
+                ]);
+
+            \Log::info('=== BUDGET CONSUMPTION UPDATE RESULT ===', [
+                'payment_order_id' => $paymentOrder->id,
+                'purchase_order_id' => $purchaseOrder->id,
+                'request_budget_id' => $requestBudgetId,
+                'budget_update_success' => $budgetUpdated,
+                'amount_added_to_consumed' => $paymentAmount,
+                'amount_reduced_from_reserved' => $paymentAmount
+            ]);
+
+            // Verify the update worked
+            $updatedBudget = \Illuminate\Support\Facades\DB::table('request_budgets')->where('id', $requestBudgetId)->first();
+            if ($updatedBudget) {
+                \Log::info('=== CURRENT BUDGET STATUS AFTER PAYMENT ===', [
+                    'request_budget_id' => $requestBudgetId,
+                    'consumed_amount' => $updatedBudget->consumed_amount,
+                    'reserved_amount' => $updatedBudget->reserved_amount,
+                    'balance_amount' => $updatedBudget->balance_amount,
+                    'update_was_successful' => ($updatedBudget->consumed_amount == $newConsumedAmount && $updatedBudget->reserved_amount == $newReservedAmount)
+                ]);
+            } else {
+                \Log::error('=== BUDGET NOT FOUND AFTER UPDATE ===', [
+                    'request_budget_id' => $requestBudgetId
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('=== ERROR UPDATING BUDGET CONSUMPTION ===', [
+                'payment_order_id' => $paymentOrder->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
         }
     }

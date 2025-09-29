@@ -306,6 +306,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::apiResource('accounts', AccountController::class);
     Route::post('accounts/{id}/restore', [AccountController::class, 'restore']);
+    Route::post('accounts/link-purchase-orders-to-budgets', [AccountController::class, 'linkPurchaseOrdersToBudgets']);
 
     // Transaction Flow routes
     Route::get('transaction-flows', [TransactionFlowController::class, 'index']);

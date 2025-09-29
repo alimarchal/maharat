@@ -246,22 +246,42 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                         <StatusBadge status={task.status} />
                                     </span>
                                 </div>
-                                {/* Show description for all statuses - contains info from previous approver */}
-                                {task.descriptions && task.descriptions.length > 0 ? (
-                                    <div className="flex justify-between border-b border-gray-100 pb-2">
-                                        <span className="text-gray-600">Description:</span>
-                                        <span className="font-medium text-gray-800 text-right max-w-xs">
-                                            {task.descriptions.map((desc, index) => desc.description).join(', ')}
-                                        </span>
-                                    </div>
-                                ) : (
-                                    <div className="flex justify-between border-b border-gray-100 pb-2">
-                                        <span className="text-gray-600">Description:</span>
-                                        <span className="font-medium text-gray-500 text-right max-w-xs">
-                                            No description provided
-                                        </span>
-                                    </div>
-                                )}
+                                {/* Show description from previous approvers for Pending/Rejected statuses */}
+                                {(() => {
+                                    // For Pending/Rejected statuses, show descriptions from previous approvers
+                                    if ((task.status === 'Pending' || task.status === 'Rejected') && allDescriptions.length > 0) {
+                                        // Filter descriptions from previous tasks (lower order numbers)
+                                        const previousDescriptions = allDescriptions.filter(desc => 
+                                            desc.task_order < (task.order_no || 0)
+                                        );
+                                        
+                                        if (previousDescriptions.length > 0) {
+                                            return (
+                                                <div className="flex justify-between border-b border-gray-100 pb-2">
+                                                    <span className="text-gray-600">Description:</span>
+                                                    <span className="font-medium text-gray-800 text-right max-w-xs">
+                                                        {previousDescriptions.map((desc, index) => desc.description).join(', ')}
+                                                    </span>
+                                                </div>
+                                            );
+                                        }
+                                    }
+                                    
+                                    // For other statuses or when no previous descriptions, show current task descriptions
+                                    if (task.descriptions && task.descriptions.length > 0) {
+                                        return (
+                                            <div className="flex justify-between border-b border-gray-100 pb-2">
+                                                <span className="text-gray-600">Description:</span>
+                                                <span className="font-medium text-gray-800 text-right max-w-xs">
+                                                    {task.descriptions.map((desc, index) => desc.description).join(', ')}
+                                                </span>
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    // No description to show
+                                    return null;
+                                })()}
                                 <div className="flex justify-between border-b border-gray-100 pb-2">
                                     <span className="text-gray-600">Urgency:</span>
                                     <span className="font-medium">
