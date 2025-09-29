@@ -3,7 +3,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import axios from "axios";
-import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 import { usePermissions } from "@/hooks/usePermissions";
 
 const RequestBudgetTable = () => {
@@ -21,12 +20,14 @@ const RequestBudgetTable = () => {
     useEffect(() => {
         const fetchBudgetRequests = async () => {
             setLoading(true);
+            setError("");
             try {
                 let url = `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator&page=${currentPage}&per_page=15&sort=-created_at`;
                 
-                // If create_department_budget_request is disabled, only show approved records
-                const effectiveFilter = hasPermission('create_department_budget_request') ? selectedFilter : 'Approved';
-                
+                // Determine effective filter
+                const canCreate = hasPermission('create_department_budget_request');
+                const effectiveFilter = canCreate ? selectedFilter : 'All';
+
                 if (effectiveFilter !== "All") {
                     url += `&filter[status]=${effectiveFilter}`;
                 }
@@ -122,14 +123,14 @@ const RequestBudgetTable = () => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="9" className="text-center py-12">
+                            <td colSpan="10" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="9"
+                                colSpan="10"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -230,7 +231,7 @@ const RequestBudgetTable = () => {
                     ) : (
                         <tr>
                             <td
-                                colSpan="9"
+                                colSpan="10"
                                 className="text-center text-[#2C323C] font-medium py-4"
                             >
                                 No Budget Requests found.
