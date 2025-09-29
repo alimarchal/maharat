@@ -238,6 +238,14 @@ class AccountController extends Controller
             $paymentOrder->status = 'Partially Paid';
         }
         $paymentOrder->save();
+
+        // Update budget consumption based on payment amount
+        \Log::info('=== CALLING UPDATE BUDGET CONSUMPTION ===', [
+            'payment_order_id' => $paymentOrder->id,
+            'debit_amount' => $debitAmount,
+            'payment_order_number' => $paymentOrder->payment_order_number
+        ]);
+        $this->updateBudgetConsumption($paymentOrder, $debitAmount);
         \Log::info('=== LIABILITIES ACCOUNT DEBIT COMPLETED (ENHANCED) ===', [
             'account_id' => $account->id,
             'account_name' => $account->name,
@@ -253,5 +261,259 @@ class AccountController extends Controller
             'message' => 'Liabilities account updated successfully. Debit amount: ' . $debitAmount . ', Tax: ' . $taxPaid . ', Net: ' . $netPaid,
             'data' => new AccountResource($account->load(['costCenter', 'creator', 'updater']))
         ], Response::HTTP_OK);
+    }
+
+    /**
+     * Update budget consumption based on payment amount
+     */
+    private function updateBudgetConsumption($paymentOrder, $paymentAmount)
+    {
+        \Log::info('=== UPDATE BUDGET CONSUMPTION METHOD CALLED ===', [
+            'payment_order_id' => $paymentOrder->id,
+            'payment_amount' => $paymentAmount,
+            'method_started_at' => now()
+        ]);
+        
+        try {
+            // Get the purchase order linked to this payment order
+            $purchaseOrder = \App\Models\PurchaseOrder::find($paymentOrder->purchase_order_id);
+            
+            if (!$purchaseOrder) {
+                \Log::error('=== PURCHASE ORDER NOT FOUND ===', [
+                    'payment_order_id' => $paymentOrder->id,
+                    'purchase_order_id' => $paymentOrder->purchase_order_id
+                ]);
+                return;
+            }
+
+            $requestBudgetId = $purchaseOrder->request_budget_id;
+
+            // If no direct budget link, try to find the appropriate budget
+            if (!$requestBudgetId) {
+                \Log::info('=== NO DIRECT BUDGET LINK, ATTEMPTING TO FIND BUDGET ===', [
+                    'payment_order_id' => $paymentOrder->id,
+                    'purchase_order_id' => $purchaseOrder->id,
+                    'department_id' => $purchaseOrder->department_id,
+                    'cost_center_id' => $purchaseOrder->cost_center_id,
+                    'sub_cost_center_id' => $purchaseOrder->sub_cost_center_id,
+                    'fiscal_period_id' => $purchaseOrder->fiscal_period_id
+                ]);
+
+                // Try to find a budget based on Purchase Order details
+                $budgetQuery = \App\Models\RequestBudget::where('status', 'Approved');
+                
+                if ($purchaseOrder->department_id) {
+                    $budgetQuery->where('department_id', $purchaseOrder->department_id);
+                }
+                
+                if ($purchaseOrder->cost_center_id) {
+                    $budgetQuery->where('cost_center_id', $purchaseOrder->cost_center_id);
+                }
+                
+                if ($purchaseOrder->sub_cost_center_id) {
+                    $budgetQuery->where('sub_cost_center', $purchaseOrder->sub_cost_center_id);
+                } else {
+                    $budgetQuery->whereNull('sub_cost_center');
+                }
+                
+                if ($purchaseOrder->fiscal_period_id) {
+                    $budgetQuery->where('fiscal_period_id', $purchaseOrder->fiscal_period_id);
+                }
+
+                $foundBudget = $budgetQuery->first();
+                
+                if ($foundBudget) {
+                    $requestBudgetId = $foundBudget->id;
+                    \Log::info('=== FOUND MATCHING BUDGET ===', [
+                        'payment_order_id' => $paymentOrder->id,
+                        'purchase_order_id' => $purchaseOrder->id,
+                        'found_budget_id' => $requestBudgetId,
+                        'budget_consumed_amount' => $foundBudget->consumed_amount,
+                        'budget_reserved_amount' => $foundBudget->reserved_amount,
+                        'budget_balance_amount' => $foundBudget->balance_amount
+                    ]);
+                } else {
+                    \Log::warning('=== NO MATCHING BUDGET FOUND ===', [
+                        'payment_order_id' => $paymentOrder->id,
+                        'purchase_order_id' => $purchaseOrder->id,
+                        'department_id' => $purchaseOrder->department_id,
+                        'cost_center_id' => $purchaseOrder->cost_center_id,
+                        'sub_cost_center_id' => $purchaseOrder->sub_cost_center_id,
+                        'fiscal_period_id' => $purchaseOrder->fiscal_period_id
+                    ]);
+                    return;
+                }
+            }
+
+            \Log::info('=== UPDATING BUDGET CONSUMPTION FOR PAYMENT ===', [
+                'payment_order_id' => $paymentOrder->id,
+                'purchase_order_id' => $purchaseOrder->id,
+                'request_budget_id' => $requestBudgetId,
+                'payment_amount' => $paymentAmount,
+                'po_total_amount' => $purchaseOrder->amount
+            ]);
+
+            // Update budget: increase consumed_amount and decrease reserved_amount
+            \Log::info('=== ATTEMPTING DATABASE UPDATE ===', [
+                'request_budget_id' => $requestBudgetId,
+                'payment_amount' => $paymentAmount,
+                'payment_amount_type' => gettype($paymentAmount)
+            ]);
+
+            // First, let's get the current budget values
+            $currentBudget = DB::table('request_budgets')->where('id', $requestBudgetId)->first();
+            if ($currentBudget) {
+                \Log::info('=== CURRENT BUDGET VALUES ===', [
+                    'request_budget_id' => $requestBudgetId,
+                    'current_consumed_amount' => $currentBudget->consumed_amount,
+                    'current_reserved_amount' => $currentBudget->reserved_amount,
+                    'current_balance_amount' => $currentBudget->balance_amount
+                ]);
+            }
+
+            // Try the update with explicit values first
+            $newConsumedAmount = $currentBudget->consumed_amount + $paymentAmount;
+            $newReservedAmount = $currentBudget->reserved_amount - $paymentAmount;
+
+            \Log::info('=== CALCULATED NEW VALUES ===', [
+                'new_consumed_amount' => $newConsumedAmount,
+                'new_reserved_amount' => $newReservedAmount
+            ]);
+
+            $budgetUpdated = DB::table('request_budgets')
+                ->where('id', $requestBudgetId)
+                ->update([
+                    'consumed_amount' => $newConsumedAmount,
+                    'reserved_amount' => $newReservedAmount,
+                    'updated_at' => now()
+                ]);
+
+            \Log::info('=== BUDGET CONSUMPTION UPDATE RESULT ===', [
+                'payment_order_id' => $paymentOrder->id,
+                'purchase_order_id' => $purchaseOrder->id,
+                'request_budget_id' => $requestBudgetId,
+                'budget_update_success' => $budgetUpdated,
+                'amount_added_to_consumed' => $paymentAmount,
+                'amount_reduced_from_reserved' => $paymentAmount
+            ]);
+
+            // Log current budget status
+            $budget = DB::table('request_budgets')->where('id', $requestBudgetId)->first();
+            if ($budget) {
+                \Log::info('=== CURRENT BUDGET STATUS AFTER PAYMENT ===', [
+                    'request_budget_id' => $requestBudgetId,
+                    'consumed_amount' => $budget->consumed_amount,
+                    'reserved_amount' => $budget->reserved_amount,
+                    'balance_amount' => $budget->balance_amount,
+                    'update_was_successful' => ($budget->consumed_amount == $newConsumedAmount && $budget->reserved_amount == $newReservedAmount)
+                ]);
+            } else {
+                \Log::error('=== BUDGET NOT FOUND AFTER UPDATE ===', [
+                    'request_budget_id' => $requestBudgetId
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('=== ERROR UPDATING BUDGET CONSUMPTION ===', [
+                'payment_order_id' => $paymentOrder->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * Retroactively link Purchase Orders to budgets for existing data
+     * This method can be called to fix Purchase Orders that were created without budget links
+     */
+    public function linkPurchaseOrdersToBudgets(): JsonResponse
+    {
+        try {
+            DB::beginTransaction();
+
+            // Find Purchase Orders without budget links
+            $purchaseOrdersWithoutBudget = \App\Models\PurchaseOrder::whereNull('request_budget_id')
+                ->whereNotNull('department_id')
+                ->whereNotNull('cost_center_id')
+                ->get();
+
+            $linkedCount = 0;
+            $notLinkedCount = 0;
+
+            foreach ($purchaseOrdersWithoutBudget as $purchaseOrder) {
+                // Try to find matching budget
+                $budgetQuery = \App\Models\RequestBudget::where('status', 'Approved');
+                
+                if ($purchaseOrder->department_id) {
+                    $budgetQuery->where('department_id', $purchaseOrder->department_id);
+                }
+                
+                if ($purchaseOrder->cost_center_id) {
+                    $budgetQuery->where('cost_center_id', $purchaseOrder->cost_center_id);
+                }
+                
+                if ($purchaseOrder->sub_cost_center_id) {
+                    $budgetQuery->where('sub_cost_center', $purchaseOrder->sub_cost_center_id);
+                } else {
+                    $budgetQuery->whereNull('sub_cost_center');
+                }
+                
+                if ($purchaseOrder->fiscal_period_id) {
+                    $budgetQuery->where('fiscal_period_id', $purchaseOrder->fiscal_period_id);
+                }
+
+                $foundBudget = $budgetQuery->first();
+                
+                if ($foundBudget) {
+                    $purchaseOrder->request_budget_id = $foundBudget->id;
+                    $purchaseOrder->save();
+                    $linkedCount++;
+                    
+                    \Log::info('=== LINKED PURCHASE ORDER TO BUDGET ===', [
+                        'purchase_order_id' => $purchaseOrder->id,
+                        'purchase_order_no' => $purchaseOrder->purchase_order_no,
+                        'budget_id' => $foundBudget->id,
+                        'department_id' => $purchaseOrder->department_id,
+                        'cost_center_id' => $purchaseOrder->cost_center_id,
+                        'sub_cost_center_id' => $purchaseOrder->sub_cost_center_id
+                    ]);
+                } else {
+                    $notLinkedCount++;
+                    
+                    \Log::warning('=== COULD NOT LINK PURCHASE ORDER TO BUDGET ===', [
+                        'purchase_order_id' => $purchaseOrder->id,
+                        'purchase_order_no' => $purchaseOrder->purchase_order_no,
+                        'department_id' => $purchaseOrder->department_id,
+                        'cost_center_id' => $purchaseOrder->cost_center_id,
+                        'sub_cost_center_id' => $purchaseOrder->sub_cost_center_id,
+                        'fiscal_period_id' => $purchaseOrder->fiscal_period_id
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Purchase Order budget linking completed',
+                'data' => [
+                    'total_processed' => $purchaseOrdersWithoutBudget->count(),
+                    'successfully_linked' => $linkedCount,
+                    'not_linked' => $notLinkedCount
+                ]
+            ], Response::HTTP_OK);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            \Log::error('=== ERROR LINKING PURCHASE ORDERS TO BUDGETS ===', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to link Purchase Orders to budgets',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 } 

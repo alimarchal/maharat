@@ -1391,39 +1391,13 @@ class TaskController extends Controller
                                 'new_status' => DB::table('purchase_orders')->where('id', $task->purchase_order_id)->value('status')
                             ]);
 
-                            // Update budget amounts when PO is approved
-                            if ($purchaseOrderUpdated) {
-                                $purchaseOrder = DB::table('purchase_orders')
-                                    ->where('id', $task->purchase_order_id)
-                                    ->first();
-
-                                if ($purchaseOrder && $purchaseOrder->request_budget_id) {
-                                    Log::info('=== UPDATING BUDGET AMOUNTS FOR APPROVED PO ===', [
-                                        'task_id' => $task->id,
-                                        'purchase_order_id' => $task->purchase_order_id,
-                                        'request_budget_id' => $purchaseOrder->request_budget_id,
-                                        'po_amount' => $purchaseOrder->amount
-                                    ]);
-
-                                    // Move amount from reserved_amount to consumed_amount
-                                    // After consumed_amount is updated, reduce reserved_amount by the consumed amount
-                                    $budgetUpdated = DB::table('request_budgets')
-                                        ->where('id', $purchaseOrder->request_budget_id)
-                                        ->update([
-                                            'consumed_amount' => DB::raw('consumed_amount + ' . $purchaseOrder->amount),
-                                            'reserved_amount' => DB::raw('reserved_amount - ' . $purchaseOrder->amount),
-                                            'updated_at' => now()
-                                        ]);
-
-                                    Log::info('=== BUDGET AMOUNTS UPDATE RESULT ===', [
-                                        'task_id' => $task->id,
-                                        'purchase_order_id' => $task->purchase_order_id,
-                                        'budget_update_success' => $budgetUpdated,
-                                        'amount_added_to_consumed' => $purchaseOrder->amount,
-                                        'amount_reduced_from_reserved' => $purchaseOrder->amount
-                                    ]);
-                                }
-                            }
+                            // Note: Budget consumption now happens during payment processing, not PO approval
+                            // PO approval only changes PO status, budget amounts remain unchanged
+                            Log::info('=== PO APPROVED - BUDGET CONSUMPTION HANDLED DURING PAYMENTS ===', [
+                                'task_id' => $task->id,
+                                'purchase_order_id' => $task->purchase_order_id,
+                                'note' => 'Budget consumption will be handled when payments are made against this PO'
+                            ]);
                         } else {
                             Log::info('=== NOT FINAL PURCHASE ORDER APPROVAL - KEEPING DRAFT STATUS ===', [
                                 'task_id' => $task->id,

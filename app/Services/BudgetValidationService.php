@@ -141,6 +141,10 @@ class BudgetValidationService
             $availableAmount = $requestBudget->balance_amount ?? 0;
             
             \Log::info('BudgetValidationService: Checking balance', [
+                'budgetId' => $requestBudget->id,
+                'balance_amount' => $requestBudget->balance_amount,
+                'reserved_amount' => $requestBudget->reserved_amount,
+                'consumed_amount' => $requestBudget->consumed_amount,
                 'availableAmount' => $availableAmount,
                 'requiredAmount' => $amount,
                 'sufficient' => $availableAmount >= $amount
@@ -176,9 +180,25 @@ class BudgetValidationService
      */
     public function reserveBudget($budget, $amount)
     {
+        \Log::info('BudgetValidationService: Reserving budget', [
+            'budgetId' => $budget->id,
+            'amount' => $amount,
+            'before_reserved_amount' => $budget->reserved_amount,
+            'before_balance_amount' => $budget->balance_amount,
+            'before_consumed_amount' => $budget->consumed_amount
+        ]);
+
         $budget->reserved_amount += $amount;
         $budget->balance_amount -= $amount;
         $budget->save();
+
+        \Log::info('BudgetValidationService: Budget reserved successfully', [
+            'budgetId' => $budget->id,
+            'amount' => $amount,
+            'after_reserved_amount' => $budget->reserved_amount,
+            'after_balance_amount' => $budget->balance_amount,
+            'after_consumed_amount' => $budget->consumed_amount
+        ]);
 
         return $budget;
     }
