@@ -190,6 +190,7 @@ class RfqApprovalTransactionController extends Controller
                                 'process_id' => $nextStep->process_id,
                                 'assigned_at' => now(),
                                 'urgency' => 'Normal',
+                                'order_no' => $nextOrder,
                                 'assigned_to_user_id' => $resolvedApproverId,
                                 'assigned_from_user_id' => $rfqApprovalTransaction->requester_id,
                                 'read_status' => null,
