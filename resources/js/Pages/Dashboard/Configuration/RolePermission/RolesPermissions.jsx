@@ -358,24 +358,24 @@ const RolesPermissions = () => {
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                const [userResponse, rolesResponse, usersResponse] = await Promise.all([
+                const [userResponse, designationsResponse, usersResponse] = await Promise.all([
                     axios.get("/api/v1/user/current-role"),
-                    axios.get("/api/v1/roles"),
+                    axios.get("/api/v1/designations?per_page=1000000000"),
                     axios.get("/api/v1/users?per_page=1000000000")
                 ]);
                 
                 setCurrentUserRole(userResponse.data.role);
-                setRoles(rolesResponse.data.data);
+                setRoles(designationsResponse.data.data);
                 setUsers(usersResponse.data.data);
                 
-                // Set Admin role as default selected role (or first role if Admin doesn't exist)
-                const adminRole = rolesResponse.data.data.find(role => role.name === "Admin");
-                const defaultRole = adminRole || rolesResponse.data.data[0];
-                setSelectedRole(defaultRole);
+                // Set Admin designation as default selected role (or first designation if Admin doesn't exist)
+                const adminDesignation = designationsResponse.data.data.find(designation => designation.designation === "Admin");
+                const defaultDesignation = adminDesignation || designationsResponse.data.data[0];
+                setSelectedRole(defaultDesignation);
                 
-                // Load default role's permissions
-                if (defaultRole) {
-                    await fetchRolePermissions(defaultRole.id);
+                // Load default designation's permissions
+                if (defaultDesignation) {
+                    await fetchRolePermissions(defaultDesignation.id);
                 }
                 
                 setLoading(false);
@@ -400,11 +400,11 @@ const RolesPermissions = () => {
         }
     }, [selectedUser, permissionMode]);
 
-    const fetchRolePermissions = async (roleId) => {
+    const fetchRolePermissions = async (designationId) => {
         try {
-            const response = await axios.get(`/api/v1/roles/${roleId}/permissions`);
-            const rolePermissions = response.data.data || [];
-            const permissionNames = rolePermissions.map(perm => perm.name);
+            const response = await axios.get(`/api/v1/designations/${designationId}/permissions`);
+            const designationPermissions = response.data.data || [];
+            const permissionNames = designationPermissions.map(perm => perm.name);
             
             const newPermissions = {};
             Object.keys(permissionCategories).forEach(category => {
@@ -435,7 +435,7 @@ const RolesPermissions = () => {
             });
             setPermissions(newPermissions);
         } catch (error) {
-            console.error("Failed to fetch role permissions:", error);
+            console.error("Failed to fetch designation permissions:", error);
         }
     };
 
@@ -524,7 +524,7 @@ const RolesPermissions = () => {
 
                     // Toggle all permissions
                     const promises = permissionsToToggle.map(({ permission, value }) =>
-                        axios.post(`/api/v1/roles/${selectedRole.id}/toggle-permission`, {
+                        axios.post(`/api/v1/designations/${selectedRole.id}/toggle-permission`, {
                             permission,
                             value,
                         })
@@ -623,7 +623,7 @@ const RolesPermissions = () => {
 
                     // Toggle all permissions
                     const promises = permissionsToToggle.map(({ permission, value }) =>
-                        axios.post(`/api/v1/roles/${selectedRole.id}/toggle-permission`, {
+                        axios.post(`/api/v1/designations/${selectedRole.id}/toggle-permission`, {
                             permission,
                             value,
                         })
@@ -724,7 +724,7 @@ const RolesPermissions = () => {
 
                     // Toggle all permissions
                     const promises = permissionsToToggle.map(({ permission, value }) =>
-                        axios.post(`/api/v1/roles/${selectedRole.id}/toggle-permission`, {
+                        axios.post(`/api/v1/designations/${selectedRole.id}/toggle-permission`, {
                             permission,
                             value,
                         })
@@ -812,13 +812,13 @@ const RolesPermissions = () => {
 
     const handleApproverChange = (value) => {
         if (value.startsWith("role-")) {
-            const roleId = parseInt(value.replace("role-", ""), 10);
-            const role = roles.find(r => r.id === roleId);
-            setSelectedRole(role);
+            const designationId = parseInt(value.replace("role-", ""), 10);
+            const designation = roles.find(d => d.id === designationId);
+            setSelectedRole(designation);
             setSelectedUser(null);
             setPermissionMode("role");
-            if (role) {
-                fetchRolePermissions(role.id);
+            if (designation) {
+                fetchRolePermissions(designation.id);
             }
         } else if (value.startsWith("user-")) {
             const userId = parseInt(value.replace("user-", ""), 10);
@@ -869,10 +869,10 @@ const RolesPermissions = () => {
                                     className: "border-t border-gray-300 my-1 py-1 text-center text-gray-500 text-sm font-medium"
                                 }] : []),
                                 ...roles
-                                    .sort((a, b) => a.name.localeCompare(b.name))
-                                    .map((role) => ({
-                                        id: `role-${role.id}`,
-                                        label: role.name,
+                                    .sort((a, b) => a.designation.localeCompare(b.designation))
+                                    .map((designation) => ({
+                                        id: `role-${designation.id}`,
+                                        label: designation.designation,
                                     })),
                                 ...(roles.length > 0 && users.length > 0 ? [{
                                     id: "separator-divider",
@@ -882,7 +882,7 @@ const RolesPermissions = () => {
                                     className: "border-t border-gray-300 my-1 py-1 text-center text-gray-500 text-sm font-medium"
                                 }] : []),
                                 ...users
-                                    .filter(user => ![2, 3, 4].includes(user.id))
+                                    .filter(user => ![2, 3, 4].includes(user.id)) // Comment out this line to include users with IDs 2, 3, 4
                                     .sort((a, b) => a.name.localeCompare(b.name))
                                     .map((user) => ({
                                         id: `user-${user.id}`,
@@ -901,7 +901,7 @@ const RolesPermissions = () => {
                             <div className="flex items-center gap-2">
                                 <span className="text-lg font-medium text-[#2C323C]">Currently Managing:</span>
                                 <span className="text-lg font-medium text-[#2C323C]">
-                                    {permissionMode === "role" ? selectedRole?.name : selectedUser?.name}
+                                    {permissionMode === "role" ? selectedRole?.designation : selectedUser?.name}
                                 </span>
                             </div>
                             {permissionMode === "user" && (
