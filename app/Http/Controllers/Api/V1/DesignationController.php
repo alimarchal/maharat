@@ -137,4 +137,83 @@ class DesignationController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+    /**
+     * Get permissions for a specific designation
+     */
+    public function getPermissions(Designation $designation): JsonResponse
+    {
+        try {
+            // Get the role associated with this designation
+            $roleName = app(\App\Services\DesignationPermissionService::class)->getRoleForDesignation($designation->designation);
+            $role = \Spatie\Permission\Models\Role::where('name', $roleName)->first();
+            
+            if (!$role) {
+                return response()->json([
+                    'data' => []
+                ], Response::HTTP_OK);
+            }
+            
+            return response()->json([
+                'data' => $role->permissions
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            \Log::error('Failed to get designation permissions: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to get designation permissions',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Toggle permission for a designation
+     */
+    public function togglePermission(Request $request, Designation $designation): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'permission' => 'required|string',
+                'value' => 'required|boolean'
+            ]);
+
+            // Get the role associated with this designation
+            $roleName = app(\App\Services\DesignationPermissionService::class)->getRoleForDesignation($designation->designation);
+            $role = \Spatie\Permission\Models\Role::where('name', $roleName)->first();
+            
+            if (!$role) {
+                return response()->json([
+                    'message' => 'No role found for this designation'
+                ], Response::HTTP_NOT_FOUND);
+            }
+
+            // Check if permission exists or create it
+            $permission = \Spatie\Permission\Models\Permission::firstOrCreate(
+                ['name' => $validated['permission']],
+                ['guard_name' => 'web']
+            );
+
+            if ($validated['value']) {
+                $role->givePermissionTo($permission);
+            } else {
+                $role->revokePermissionTo($permission);
+            }
+
+            // Clear permission cache
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+            return response()->json([
+                'message' => 'Permission toggled successfully',
+                'data' => $role->permissions
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Permission toggle failed: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+
+            return response()->json([
+                'message' => 'Failed to toggle permission',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
 }

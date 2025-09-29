@@ -380,6 +380,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::apiResource('designations', DesignationController::class);
     Route::post('designations/{id}/restore', [DesignationController::class, 'restore']);
+    Route::get('designations/{designation}/permissions', [DesignationController::class, 'getPermissions']);
+    Route::post('designations/{designation}/toggle-permission', [DesignationController::class, 'togglePermission']);
 
 
     Route::get('/notification-types', [NotificationTypesController::class, 'index']);
