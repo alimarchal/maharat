@@ -19,6 +19,8 @@ class Grn extends Model
         'purchase_order_id',
         'quantity',
         'delivery_date',
+        'delivery_status',
+        'adjustment_notes',
     ];
 
     protected $casts = [
@@ -49,5 +51,34 @@ class Grn extends Model
     public function externalDeliveryNote(): HasMany
     {
         return $this->hasMany(ExternalDeliveryNote::class);
+    }
+
+    public function adjustments(): HasMany
+    {
+        return $this->hasMany(PurchaseOrderAdjustment::class);
+    }
+
+    /**
+     * Check if this GRN represents a complete delivery
+     */
+    public function isCompleteDelivery(): bool
+    {
+        return $this->delivery_status === 'complete_delivery';
+    }
+
+    /**
+     * Check if this GRN represents a partial delivery with later expected
+     */
+    public function isLaterDelivery(): bool
+    {
+        return $this->delivery_status === 'later_delivery';
+    }
+
+    /**
+     * Check if this GRN represents an adjusted order
+     */
+    public function isAdjustedOrder(): bool
+    {
+        return $this->delivery_status === 'adjust_order';
     }
 }

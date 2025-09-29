@@ -14,17 +14,25 @@ class UpdateGrnRequest extends FormRequest
 
     public function rules(): array
     {
+        $grnId = $this->route('grn')?->id;
+
         return [
-            'user_id' => ['sometimes', 'nullable', 'exists:users,id'],
+            'user_id' => 'sometimes|exists:users,id',
             'grn_number' => [
                 'sometimes',
                 'string',
-                Rule::unique('grns')->ignore($this->grn)
+                'max:255',
+                Rule::unique('grns', 'grn_number')->ignore($grnId)
             ],
-            'quotation_id' => ['sometimes', 'nullable', 'exists:quotations,id'],
-            'purchase_order_id' => ['sometimes', 'nullable', 'exists:purchase_orders,id'],
-            'quantity' => ['sometimes', 'required', 'numeric', 'min:0'],
-            'delivery_date' => ['sometimes', 'required', 'date'],
+            'quotation_id' => 'sometimes|exists:quotations,id',
+            'purchase_order_id' => 'sometimes|exists:purchase_orders,id',
+            'quantity' => 'sometimes|numeric|min:0',
+            'delivery_date' => 'sometimes|date',
+            'delivery_status' => [
+                'sometimes',
+                Rule::in(['complete_delivery', 'later_delivery', 'adjust_order'])
+            ],
+            'adjustment_notes' => 'sometimes|string|max:1000',
         ];
     }
 }

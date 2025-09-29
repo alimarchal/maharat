@@ -7,6 +7,7 @@ use App\Http\Requests\V1\GrnReceiveGood\StoreGrnReceiveGoodRequest;
 use App\Http\Requests\V1\GrnReceiveGood\UpdateGrnReceiveGoodRequest;
 use App\Http\Resources\V1\GrnReceiveGoodResource;
 use App\Models\GrnReceiveGood;
+use App\Models\PurchaseOrder;
 use App\QueryParameters\GrnReceiveGoodParameters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
@@ -53,7 +54,28 @@ class GrnReceiveGoodController extends Controller
                 $validated['user_id'] = auth()->id();
             }
 
+            // Set default delivery status if not provided
+            if (!isset($validated['delivery_status'])) {
+                $validated['delivery_status'] = 'complete_delivery';
+            }
+
+            // Calculate pending quantity if not provided
+            if (!isset($validated['quantity_pending']) && isset($validated['quantity_quoted'], $validated['quantity_delivered'])) {
+                $validated['quantity_pending'] = $validated['quantity_quoted'] - $validated['quantity_delivered'];
+            }
+
             $receiveGood = GrnReceiveGood::create($validated);
+
+            // Auto-calculate pending quantity using model method
+            $receiveGood->calculatePendingQuantity()->save();
+
+            // Update purchase order delivery status if purchase_order_id is provided
+            if (isset($validated['purchase_order_id'])) {
+                $purchaseOrder = PurchaseOrder::find($validated['purchase_order_id']);
+                if ($purchaseOrder) {
+                    $purchaseOrder->updateDeliveryStatus();
+                }
+            }
 
             DB::commit();
 
@@ -65,6 +87,7 @@ class GrnReceiveGoodController extends Controller
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('GrnReceiveGood creation failed: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Failed to create received good',
                 'error' => $e->getMessage()
@@ -94,7 +117,26 @@ class GrnReceiveGoodController extends Controller
         try {
             DB::beginTransaction();
 
+            $oldPurchaseOrderId = $grnReceiveGood->purchase_order_id;
             $grnReceiveGood->update($request->validated());
+
+            // Auto-calculate pending quantity
+            $grnReceiveGood->calculatePendingQuantity()->save();
+
+            // Update purchase order delivery status for both old and new PO (if changed)
+            if ($oldPurchaseOrderId) {
+                $oldPurchaseOrder = PurchaseOrder::find($oldPurchaseOrderId);
+                if ($oldPurchaseOrder) {
+                    $oldPurchaseOrder->updateDeliveryStatus();
+                }
+            }
+
+            if ($grnReceiveGood->purchase_order_id && $grnReceiveGood->purchase_order_id !== $oldPurchaseOrderId) {
+                $newPurchaseOrder = PurchaseOrder::find($grnReceiveGood->purchase_order_id);
+                if ($newPurchaseOrder) {
+                    $newPurchaseOrder->updateDeliveryStatus();
+                }
+            }
 
             DB::commit();
 
@@ -121,7 +163,16 @@ class GrnReceiveGoodController extends Controller
         try {
             DB::beginTransaction();
 
+            $purchaseOrderId = $grnReceiveGood->purchase_order_id;
             $grnReceiveGood->delete();
+
+            // Update purchase order delivery status after deletion
+            if ($purchaseOrderId) {
+                $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
+                if ($purchaseOrder) {
+                    $purchaseOrder->updateDeliveryStatus();
+                }
+            }
 
             DB::commit();
 

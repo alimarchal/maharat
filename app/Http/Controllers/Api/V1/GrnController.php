@@ -7,6 +7,7 @@ use App\Http\Requests\V1\Grn\StoreGrnRequest;
 use App\Http\Requests\V1\Grn\UpdateGrnRequest;
 use App\Http\Resources\V1\GrnResource;
 use App\Models\Grn;
+use App\Models\PurchaseOrder;
 use App\QueryParameters\GrnParameters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
@@ -96,20 +97,32 @@ class GrnController extends Controller
                 $validated['grn_number'] = $this->generateGrnNumber();
             }
 
-
             // Set current user as creator if not specified
             if (!isset($validated['user_id'])) {
                 $validated['user_id'] = auth()->id();
             }
 
+            // Set default delivery status if not provided
+            if (!isset($validated['delivery_status'])) {
+                $validated['delivery_status'] = 'complete_delivery';
+            }
+
             $grn = Grn::create($validated);
+
+            // Update purchase order delivery status if purchase_order_id is provided
+            if (isset($validated['purchase_order_id'])) {
+                $purchaseOrder = PurchaseOrder::find($validated['purchase_order_id']);
+                if ($purchaseOrder) {
+                    $purchaseOrder->updateDeliveryStatus();
+                }
+            }
 
             DB::commit();
 
             return response()->json([
                 'message' => 'GRN created successfully',
                 'data' => new GrnResource(
-                    $grn->load(['user', 'quotation', 'purchaseOrder'])
+                    $grn->load(['user', 'quotation', 'purchaseOrder', 'receiveGoods'])
                 )
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
@@ -143,14 +156,30 @@ class GrnController extends Controller
         try {
             DB::beginTransaction();
 
+            $oldPurchaseOrderId = $grn->purchase_order_id;
             $grn->update($request->validated());
+
+            // Update purchase order delivery status for both old and new PO (if changed)
+            if ($oldPurchaseOrderId) {
+                $oldPurchaseOrder = PurchaseOrder::find($oldPurchaseOrderId);
+                if ($oldPurchaseOrder) {
+                    $oldPurchaseOrder->updateDeliveryStatus();
+                }
+            }
+
+            if ($grn->purchase_order_id && $grn->purchase_order_id !== $oldPurchaseOrderId) {
+                $newPurchaseOrder = PurchaseOrder::find($grn->purchase_order_id);
+                if ($newPurchaseOrder) {
+                    $newPurchaseOrder->updateDeliveryStatus();
+                }
+            }
 
             DB::commit();
 
             return response()->json([
                 'message' => 'GRN updated successfully',
                 'data' => new GrnResource(
-                    $grn->load(['user', 'quotation', 'purchaseOrder'])
+                    $grn->load(['user', 'quotation', 'purchaseOrder', 'receiveGoods'])
                 )
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
@@ -170,7 +199,16 @@ class GrnController extends Controller
         try {
             DB::beginTransaction();
 
+            $purchaseOrderId = $grn->purchase_order_id;
             $grn->delete();
+
+            // Update purchase order delivery status after deletion
+            if ($purchaseOrderId) {
+                $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
+                if ($purchaseOrder) {
+                    $purchaseOrder->updateDeliveryStatus();
+                }
+            }
 
             DB::commit();
 
@@ -184,5 +222,42 @@ class GrnController extends Controller
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * Get delivery status options
+     */
+    public function getDeliveryStatusOptions(): JsonResponse
+    {
+        return response()->json([
+            'data' => [
+                'complete_delivery' => 'Complete Delivery',
+                'later_delivery' => 'Expecting Later Delivery',
+                'adjust_order' => 'Adjust Order (No Further Delivery)'
+            ]
+        ]);
+    }
+
+    /**
+     * Get GRNs by delivery status
+     */
+    public function getByDeliveryStatus(string $status): JsonResponse
+    {
+        $validStatuses = ['complete_delivery', 'later_delivery', 'adjust_order'];
+        
+        if (!in_array($status, $validStatuses)) {
+            return response()->json([
+                'message' => 'Invalid delivery status',
+                'valid_statuses' => $validStatuses
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        $grns = QueryBuilder::for(Grn::class)
+            ->where('delivery_status', $status)
+            ->allowedIncludes(GrnParameters::ALLOWED_INCLUDES)
+            ->paginate()
+            ->appends(request()->query());
+
+        return GrnResource::collection($grns);
     }
 }

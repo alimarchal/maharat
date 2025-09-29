@@ -23,7 +23,9 @@ class GrnReceiveGood extends Model
         'upc',
         'category_id',
         'quantity_delivered',
+        'quantity_pending',
         'delivery_date',
+        'delivery_status',
     ];
 
     protected $casts = [
@@ -31,6 +33,7 @@ class GrnReceiveGood extends Model
         'delivery_date' => 'date',
         'quantity_quoted' => 'decimal:2',
         'quantity_delivered' => 'decimal:2',
+        'quantity_pending' => 'decimal:2',
     ];
 
     public function grn(): BelongsTo
@@ -62,4 +65,30 @@ class GrnReceiveGood extends Model
     {
         return $this->belongsTo(ProductCategory::class);
     }
+
+    /**
+     * Calculate pending quantity automatically
+     */
+    public function calculatePendingQuantity()
+    {
+        $this->quantity_pending = $this->quantity_quoted - $this->quantity_delivered;
+        return $this;
+    }
+
+    /**
+     * Check if delivery is complete for this item
+     */
+    public function isCompleteDelivery(): bool
+    {
+        return $this->quantity_delivered >= $this->quantity_quoted;
+    }
+
+    /**
+     * Check if this is a partial delivery
+     */
+    public function isPartialDelivery(): bool
+    {
+        return $this->quantity_delivered < $this->quantity_quoted && $this->quantity_delivered > 0;
+    }
 }
+

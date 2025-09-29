@@ -4,57 +4,71 @@ namespace App\QueryParameters;
 
 class PurchaseOrderParameters
 {
-    public const ALLOWED_FILTERS = [
+    const ALLOWED_FILTERS = [
+        'id',
         'purchase_order_no',
-        'warehouse_id',
-        'rfq_id',
-        'department_id',
-        'cost_center_id',
-        'sub_cost_center_id',
         'quotation_id',
         'supplier_id',
         'user_id',
-        'purchase_order_date',
-        'request_budget_id',
-        'status',
-        'created_at'
-    ];
-
-    public const ALLOWED_SORTS = [
+        'rfq_id',
         'cost_center_id',
         'sub_cost_center_id',
-        'purchase_order_no',
-        'rfq_id',
         'purchase_order_date',
+        'expiry_date',
         'amount',
+        'vat_amount',
+        'delivered_amount',
+        'pending_amount',
         'status',
-        'created_at'
+        'has_good_receive_note',
+        'delivery_status',
+        'fiscal_period_id',
+        'request_budget_id',
+        'created_at',
+        'updated_at',
     ];
 
-    public const ALLOWED_INCLUDES = [
+    const ALLOWED_SORTS = [
+        'id',
+        'purchase_order_no',
+        'purchase_order_date',
+        'expiry_date',
+        'amount',
+        'vat_amount',
+        'delivered_amount',
+        'pending_amount',
+        'status',
+        'delivery_status',
+        'created_at',
+        'updated_at',
+    ];
+
+    const ALLOWED_INCLUDES = [
         'quotation',
+        'quotation.supplier',
         'quotation.rfq',
         'quotation.rfq.items',
         'quotation.rfq.items.product',
         'quotation.rfq.items.unit',
+        'quotation.rfq.items.product.category',
         'supplier',
         'user',
         'department',
-        'paymentOrders',
-        'goodReceiveNote',
         'costCenter',
         'subCostCenter',
         'warehouse',
-        'requestBudget',
-        'rfq',
-        'rfq.warehouse',
-        'rfq.items',
-        'rfq.items.product',
-        'rfq.items.product.category',
-        'rfq.items.product.unit',
-        'rfq.items.unit',
-        'requestForQuotation.warehouse',
+        'requestForQuotation',
+        'requestForQuotation.items',
+        'requestForQuotation.items.product',
+        'requestForQuotation.items.unit',
         'requestForQuotation.items.product.category',
-        'requestForQuotation.items.product.unit',
+        'requestBudget',
+        'fiscalPeriod',
+        'paymentOrders',
+        'goodReceiveNote',
+        'goodReceiveNote.receiveGoods',
+        'adjustments',
+        'adjustments.user',
+        'adjustments.approver',
     ];
 }

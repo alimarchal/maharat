@@ -87,6 +87,7 @@ use App\Http\Controllers\ItemRequestController;
 use App\Http\Controllers\Api\V1\AccountCodeController;
 use App\Http\Controllers\Api\V1\TransactionFlowController;
 use App\Http\Controllers\Api\V1\UploadController;
+use App\Http\Controllers\Api\V1\PurchaseOrderAdjustmentController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -537,5 +538,19 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/process-steps/reorder', [App\Http\Controllers\Api\V1\ProcessStepController::class, 'reorder']);
 
     Route::put('/rfqs/{id}/status', [RfqController::class, 'updateStatus']);
+
+    // GRN additional routes
+    Route::get('grns/delivery-status/options', [GrnController::class, 'getDeliveryStatusOptions']);
+    Route::get('grns/delivery-status/{status}', [GrnController::class, 'getByDeliveryStatus']);
+
+    // Purchase Order Adjustments Routes
+    Route::apiResource('purchase-order-adjustments', PurchaseOrderAdjustmentController::class)->except(['update']);
+    Route::post('purchase-order-adjustments/{adjustment}/approve', [PurchaseOrderAdjustmentController::class, 'approve']);
+    Route::post('purchase-order-adjustments/{adjustment}/reject', [PurchaseOrderAdjustmentController::class, 'reject']);
+    Route::get('purchase-orders/{purchaseOrderId}/adjustments', [PurchaseOrderAdjustmentController::class, 'getByPurchaseOrder']);
+
+    // Purchase Order additional routes
+    Route::get('purchase-orders/{id}/delivery-summary', [PurchaseOrderController::class, 'getDeliverySummary']);
+    Route::post('purchase-orders/{id}/update-delivery-status', [PurchaseOrderController::class, 'updateDeliveryStatus']);
 
 });
