@@ -7,6 +7,7 @@ use App\Http\Requests\V1\Budget\StoreBudgetRequest;
 use App\Http\Requests\V1\Budget\UpdateBudgetRequest;
 use App\Http\Resources\V1\BudgetResource;
 use App\Models\Budget;
+use App\Models\RequestBudget;
 use App\QueryParameters\BudgetParameters;
 use App\QueryFilters\FiscalPeriodStatusFilter;
 use Illuminate\Http\JsonResponse;
@@ -59,8 +60,13 @@ class BudgetController extends Controller
             ->whereIn('fiscal_period_id', $fiscalPeriodIds)
             ->orderBy('fiscal_period_id', 'desc')
             ->orderBy('id', 'desc')
-            ->get();
-
+            ->get()
+            ->each(function ($budget) {
+            $totalExpense = RequestBudget::where('sub_cost_center', $budget->sub_cost_center_id)->sum('consumed_amount');
+            if ($budget->total_expense_actual != $totalExpense) {
+                $budget->update(['total_expense_actual' => $totalExpense]);
+            }
+        });
         // Create a custom paginator instance based on fiscal periods
         $budgets = new \Illuminate\Pagination\LengthAwarePaginator(
             $budgets,
