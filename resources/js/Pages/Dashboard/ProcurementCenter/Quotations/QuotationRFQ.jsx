@@ -338,9 +338,12 @@ export default function QuotationRFQ({ auth }) {
                                         )}
                                     </td>
                                     <td className="px-3 py-4">
-                                        {parseInt(
-                                            quotation.total_amount || 0
-                                        ).toLocaleString()}
+                                        {(() => {
+                                            const baseAmount = parseInt(quotation.total_amount || 0);
+                                            const vatAmount = parseInt(quotation.vat_amount || 0);
+                                            const totalWithVat = baseAmount + vatAmount;
+                                            return totalWithVat.toLocaleString();
+                                        })()}
                                     </td>
                                     <td className="px-3 py-4">
                                         <div className="flex justify-center">
