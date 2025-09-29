@@ -695,11 +695,23 @@ export default function MainDashboard({ roles, permissions }) {
     const budgetDropdownItems = filterDropdownItems(baseBudgetDropdownItems);
     const configDropdownItems = filterDropdownItems(baseConfigDropdownItems);
 
-    // Calculate total procurement notifications
-    const totalProcurementNotifications = pendingRfqRequestsCount + quotationsRfqCount + purchaseOrdersRfqCount + unpaidInvoicesCount;
+    // Calculate total procurement notifications based on user permissions
+    const totalProcurementNotifications = (() => {
+        let total = 0;
+        if (hasPermission("view_rfqs")) total += pendingRfqRequestsCount;
+        if (hasPermission("view_quotations")) total += quotationsRfqCount;
+        if (hasPermission("view_purchase_orders")) total += purchaseOrdersRfqCount;
+        if (hasPermission("view_invoices")) total += unpaidInvoicesCount;
+        return total;
+    })();
     
-    // Calculate total warehouse notifications
-    const totalWarehouseNotifications = pendingMaterialRequestsCount + requestedItemsCount;
+    // Calculate total warehouse notifications based on user permissions
+    const totalWarehouseNotifications = (() => {
+        let total = 0;
+        if (hasPermission("view_material_requests")) total += pendingMaterialRequestsCount;
+        if (hasPermission("view_items")) total += requestedItemsCount;
+        return total;
+    })();
 
     // Determine which cards to show based on permissions (using hook that includes user overrides)
     const showRequestsCard = hasPermission("view_requests");
@@ -748,7 +760,7 @@ export default function MainDashboard({ roles, permissions }) {
                         bgColor="bg-[#C4E4F0]"
                         iconColor="text-[#005372]"
                         onClick={() => router.visit("/my-requests")}
-                        notificationCount={approvedItemsCount}
+                        notificationCount={hasPermission("view_requests") ? approvedItemsCount : 0}
                     />
                 )}
                 {showTasksCard && (
@@ -759,7 +771,7 @@ export default function MainDashboard({ roles, permissions }) {
                         bgColor="bg-[#F7EBBA]"
                         iconColor="text-[#665200]"
                         onClick={() => router.visit("/tasks")}
-                        notificationCount={pendingTasksCount}
+                        notificationCount={hasPermission("view_tasks") ? pendingTasksCount : 0}
                     />
                 )}
                 {showProcurementCard && (
