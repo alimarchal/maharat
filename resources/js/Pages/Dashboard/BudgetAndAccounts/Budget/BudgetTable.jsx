@@ -274,7 +274,7 @@ const BudgetTable = () => {
                     {loading ? (
                         <tr>
                             <td colSpan="7" className="text-center py-12">
-                                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
