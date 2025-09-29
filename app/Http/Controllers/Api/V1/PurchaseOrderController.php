@@ -169,13 +169,24 @@ class PurchaseOrderController extends Controller
 
             \Log::info('PurchaseOrder Store - Selected fiscal period ID: ' . $fiscalPeriodId);
 
-            // Validate budget availability
+            // Calculate total amount including VAT for budget validation
+            $baseAmount = floatval($validatedData['amount'] ?? 0);
+            $vatAmount = floatval($validatedData['vat_amount'] ?? 0);
+            $totalAmount = $baseAmount + $vatAmount;
+
+            \Log::info('PurchaseOrder Store - Amount calculation', [
+                'base_amount' => $baseAmount,
+                'vat_amount' => $vatAmount,
+                'total_amount' => $totalAmount
+            ]);
+
+            // Validate budget availability with total amount (including VAT)
             $budgetValidation = $budgetService->validateBudgetAvailability(
                 $rfq->department_id,
                 $rfq->cost_center_id,
                 $rfq->sub_cost_center_id,
                 $fiscalPeriodId,
-                $validatedData['amount']
+                $totalAmount
             );
 
             \Log::info('PurchaseOrder Store - Budget validation result: ' . json_encode($budgetValidation));
@@ -184,9 +195,13 @@ class PurchaseOrderController extends Controller
                 throw new \Exception($budgetValidation['message']);
             }
 
-            // Reserve budget
-            $budgetService->reserveBudget($budgetValidation['budget'], $validatedData['amount']);
-            \Log::info('PurchaseOrder Store - Budget reserved successfully');
+            // Reserve budget with total amount (including VAT)
+            $budgetService->reserveBudget($budgetValidation['budget'], $totalAmount);
+            \Log::info('PurchaseOrder Store - Budget reserved successfully', [
+                'reserved_amount' => $totalAmount,
+                'base_amount' => $baseAmount,
+                'vat_amount' => $vatAmount
+            ]);
 
             // Add fiscal period and budget info to purchase order
             $validatedData['fiscal_period_id'] = $fiscalPeriodId;

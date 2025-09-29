@@ -1476,19 +1476,26 @@ class TaskController extends Controller
                                 ->first();
 
                             if ($purchaseOrder && $purchaseOrder->request_budget_id) {
+                                // Calculate total amount including VAT for budget release
+                                $baseAmount = floatval($purchaseOrder->amount ?? 0);
+                                $vatAmount = floatval($purchaseOrder->vat_amount ?? 0);
+                                $totalAmount = $baseAmount + $vatAmount;
+
                                 Log::info('=== RELEASING BUDGET FOR REJECTED PO ===', [
                                     'task_id' => $task->id,
                                     'purchase_order_id' => $task->purchase_order_id,
                                     'request_budget_id' => $purchaseOrder->request_budget_id,
-                                    'po_amount' => $purchaseOrder->amount
+                                    'po_base_amount' => $baseAmount,
+                                    'po_vat_amount' => $vatAmount,
+                                    'po_total_amount' => $totalAmount
                                 ]);
 
-                                // Release reserved budget back to available balance
+                                // Release reserved budget back to available balance (including VAT)
                                 $budgetReleased = DB::table('request_budgets')
                                     ->where('id', $purchaseOrder->request_budget_id)
                                     ->update([
-                                        'reserved_amount' => DB::raw('reserved_amount - ' . $purchaseOrder->amount),
-                                        'balance_amount' => DB::raw('balance_amount + ' . $purchaseOrder->amount),
+                                        'reserved_amount' => DB::raw('reserved_amount - ' . $totalAmount),
+                                        'balance_amount' => DB::raw('balance_amount + ' . $totalAmount),
                                         'updated_at' => now()
                                     ]);
 
@@ -1496,7 +1503,9 @@ class TaskController extends Controller
                                     'task_id' => $task->id,
                                     'purchase_order_id' => $task->purchase_order_id,
                                     'budget_release_success' => $budgetReleased,
-                                    'amount_released' => $purchaseOrder->amount
+                                    'amount_released' => $totalAmount,
+                                    'base_amount' => $baseAmount,
+                                    'vat_amount' => $vatAmount
                                 ]);
                             }
                         }
