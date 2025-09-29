@@ -15,9 +15,31 @@ export const usePermissions = () => {
     const fetchPermissions = async () => {
         try {
             setLoading(true);
+            
+            // Check cache first
+            const cacheKey = `user_permissions_${Date.now().toString().slice(0, -6)}`; // Cache for 1 minute
+            const cachedPermissions = sessionStorage.getItem('user_permissions');
+            const cacheTimestamp = sessionStorage.getItem('user_permissions_timestamp');
+            
+            const now = Date.now();
+            const oneMinute = 60 * 1000;
+            
+            if (cachedPermissions && cacheTimestamp && (now - parseInt(cacheTimestamp)) < oneMinute) {
+                console.log('📦 usePermissions: Using cached permissions');
+                setPermissions(JSON.parse(cachedPermissions));
+                setError(null);
+                setLoading(false);
+                return;
+            }
+            
             const response = await axios.get('/api/v1/user/effective-permissions');
-            setPermissions(response.data.data);
+            const permissions = response.data.data;
+            setPermissions(permissions);
             setError(null);
+            
+            // Cache the permissions
+            sessionStorage.setItem('user_permissions', JSON.stringify(permissions));
+            sessionStorage.setItem('user_permissions_timestamp', now.toString());
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to fetch permissions');
             setPermissions([]);
@@ -30,9 +52,30 @@ export const usePermissions = () => {
     const fetchPermissionStructure = async () => {
         try {
             setLoading(true);
+            
+            // Check cache first
+            const cachedStructure = sessionStorage.getItem('user_permission_structure');
+            const cacheTimestamp = sessionStorage.getItem('user_permission_structure_timestamp');
+            
+            const now = Date.now();
+            const fiveMinutes = 5 * 60 * 1000;
+            
+            if (cachedStructure && cacheTimestamp && (now - parseInt(cacheTimestamp)) < fiveMinutes) {
+                console.log('📦 usePermissions: Using cached permission structure');
+                setPermissionStructure(JSON.parse(cachedStructure));
+                setError(null);
+                setLoading(false);
+                return;
+            }
+            
             const response = await axios.get('/api/v1/user/permission-structure');
-            setPermissionStructure(response.data.data);
+            const structure = response.data.data;
+            setPermissionStructure(structure);
             setError(null);
+            
+            // Cache the structure
+            sessionStorage.setItem('user_permission_structure', JSON.stringify(structure));
+            sessionStorage.setItem('user_permission_structure_timestamp', now.toString());
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to fetch permission structure');
             setPermissionStructure({});
@@ -54,6 +97,15 @@ export const usePermissions = () => {
     // Check if user has all of the given permissions
     const hasAllPermissions = (permissionList) => {
         return permissionList.every(permission => permissions.includes(permission));
+    };
+
+    // Clear permission cache (useful when permissions are updated)
+    const clearPermissionCache = () => {
+        sessionStorage.removeItem('user_permissions');
+        sessionStorage.removeItem('user_permissions_timestamp');
+        sessionStorage.removeItem('user_permission_structure');
+        sessionStorage.removeItem('user_permission_structure_timestamp');
+        console.log('🗑️ usePermissions: Cache cleared');
     };
 
     // Check if a main feature is enabled
@@ -93,6 +145,7 @@ export const usePermissions = () => {
         hasPermission,
         hasAnyPermission,
         hasAllPermissions,
+        clearPermissionCache,
         isFeatureEnabled,
         isSubOptionEnabled,
         shouldShowFeature,

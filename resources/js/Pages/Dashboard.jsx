@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { Head, router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import axios from "axios";
@@ -81,23 +81,66 @@ import AddQuotationForm from "./Dashboard/ProcurementCenter/RFQ/AddQuotationForm
 import AccountDetailsTable from "./Dashboard/Finance/Accounts/AccountDetailsTable";
 import ViewReceivableDetails from "./Dashboard/Finance/AccountReceivables/ViewReceivableDetails";
 import ViewPayableDetails from "./Dashboard/Finance/AccountPayables/ViewPayableDetails";
+import { preloadDashboardImages } from "@/utils/imageOptimization";
+
+// Loading component for better UX
+const LoadingSpinner = () => (
+    <div className="w-full">
+        <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-[#7D8086]">Loading...</p>
+            </div>
+        </div>
+    </div>
+);
 
 export default function Dashboard({ auth, page }) {
     const [realTimePermissions, setRealTimePermissions] = useState(null);
     const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
 
-    // Fetch real-time permissions for the current user
+    // Cache permissions in sessionStorage to avoid repeated API calls
     useEffect(() => {
         const fetchUserPermissions = async () => {
+            const cacheKey = `permissions_${auth.user.id}`;
+            const cachedPermissions = sessionStorage.getItem(cacheKey);
+            const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
+            
+            // Check if we have cached permissions that are less than 5 minutes old
+            const now = Date.now();
+            const fiveMinutes = 5 * 60 * 1000;
+            
+            if (cachedPermissions && cacheTimestamp && (now - parseInt(cacheTimestamp)) < fiveMinutes) {
+                console.log('📦 Dashboard: Using cached permissions');
+                setRealTimePermissions(JSON.parse(cachedPermissions));
+                setIsLoadingPermissions(false);
+                
+                // Preload critical images while permissions are cached
+                preloadDashboardImages().catch(console.error);
+                return;
+            }
+
             try {
-                console.log('🔍 Dashboard: Fetching real-time permissions for user:', auth.user.id);
+                console.log('🔍 Dashboard: Fetching fresh permissions for user:', auth.user.id);
                 const response = await axios.get(`/api/v1/users/${auth.user.id}/combined-permissions`);
-                console.log('📥 Dashboard: Real-time permissions response:', response.data);
-                setRealTimePermissions(response.data.data);
+                console.log('📥 Dashboard: Fresh permissions response:', response.data);
+                
+                const permissions = response.data.data;
+                setRealTimePermissions(permissions);
+                
+                // Cache the permissions
+                sessionStorage.setItem(cacheKey, JSON.stringify(permissions));
+                sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
+                
+                // Preload critical images after permissions are loaded
+                preloadDashboardImages().catch(console.error);
             } catch (error) {
                 console.error("❌ Dashboard: Failed to fetch real-time permissions:", error);
                 // Fallback to auth permissions if API fails
                 setRealTimePermissions(auth.user.permissions);
+                
+                // Still preload images even if permissions fail
+                preloadDashboardImages().catch(console.error);
             } finally {
                 setIsLoadingPermissions(false);
             }

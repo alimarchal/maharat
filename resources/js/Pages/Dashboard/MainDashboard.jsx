@@ -716,8 +716,20 @@ export default function MainDashboard({ roles, permissions }) {
         <>
             <div
                 className="relative w-full h-72 md:h-80 lg:h-60 bg-cover bg-center text-white p-6 rounded-3xl"
-                style={{ backgroundImage: "url('/images/banner.png')" }}
+                style={{ 
+                    backgroundImage: "url('/images/banner.png')",
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                }}
             >
+                {/* Preload the banner image for faster loading */}
+                <img 
+                    src="/images/banner.png" 
+                    alt="" 
+                    className="hidden" 
+                    onLoad={() => console.log('Banner image preloaded')}
+                />
                 <div className="absolute bottom-4 text-left">
                     <h2 className="text-3xl md:text-4xl font-bold">
                         Welcome Back!
