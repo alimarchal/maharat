@@ -18,6 +18,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
     const [fiscalPeriodName, setFiscalPeriodName] = useState("");
     const [rfqCategoryName, setRfqCategoryName] = useState("");
     const [rfqDescription, setRfqDescription] = useState("");
+    const [allDescriptions, setAllDescriptions] = useState([]);
 
     useEffect(() => {
         if (isOpen && task && task.budget && task.budget.fiscal_period_id) {
@@ -59,6 +60,72 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                         console.error("Error fetching product or category:", error);
                     });
             }
+        }
+
+        // Fetch all descriptions for this request type
+        if (isOpen && task) {
+            const fetchAllDescriptions = async () => {
+                try {
+                    let requestId = null;
+                    let requestType = null;
+
+                    // Determine the request type and ID
+                    if (task.material_request_id) {
+                        requestId = task.material_request_id;
+                        requestType = 'material_request';
+                    } else if (task.rfq_id) {
+                        requestId = task.rfq_id;
+                        requestType = 'rfq';
+                    } else if (task.purchase_order_id) {
+                        requestId = task.purchase_order_id;
+                        requestType = 'purchase_order';
+                    } else if (task.payment_order_id) {
+                        requestId = task.payment_order_id;
+                        requestType = 'payment_order';
+                    } else if (task.invoice_id) {
+                        requestId = task.invoice_id;
+                        requestType = 'invoice';
+                    } else if (task.budget_id) {
+                        requestId = task.budget_id;
+                        requestType = 'budget';
+                    } else if (task.request_budgets_id) {
+                        requestId = task.request_budgets_id;
+                        requestType = 'request_budgets';
+                    }
+
+                    if (requestId && requestType) {
+                        // Fetch all tasks for this request
+                        const response = await axios.get(`/api/v1/tasks?filter[${requestType}_id]=${requestId}&include=descriptions`);
+                        if (response.data && response.data.data) {
+                            // Collect all descriptions from all tasks
+                            const descriptions = [];
+                            response.data.data.forEach(taskItem => {
+                                if (taskItem.descriptions && taskItem.descriptions.length > 0) {
+                                    taskItem.descriptions.forEach(desc => {
+                                        descriptions.push({
+                                            ...desc,
+                                            task_id: taskItem.id,
+                                            task_order: taskItem.order_no
+                                        });
+                                    });
+                                }
+                            });
+                            // Sort by task order and creation date
+                            descriptions.sort((a, b) => {
+                                if (a.task_order !== b.task_order) {
+                                    return (a.task_order || 0) - (b.task_order || 0);
+                                }
+                                return new Date(a.created_at) - new Date(b.created_at);
+                            });
+                            setAllDescriptions(descriptions);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error fetching all descriptions:", error);
+                }
+            };
+
+            fetchAllDescriptions();
         }
     }, [isOpen, task]);
 
@@ -179,6 +246,14 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                         <StatusBadge status={task.status} />
                                     </span>
                                 </div>
+                                {allDescriptions && allDescriptions.length > 0 && (
+                                    <div className="flex justify-between border-b border-gray-100 pb-2">
+                                        <span className="text-gray-600">Description:</span>
+                                        <span className="font-medium text-gray-800 text-right max-w-xs">
+                                            {allDescriptions.map((desc, index) => desc.description).join(', ')}
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between border-b border-gray-100 pb-2">
                                     <span className="text-gray-600">Urgency:</span>
                                     <span className="font-medium">

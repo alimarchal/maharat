@@ -45,6 +45,11 @@ class MaterialRequest extends Model
         return $this->hasMany(MaterialRequestItem::class);
     }
 
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(MaterialRequestTransaction::class);
+    }
+
 
     /**
      * Get the department associated with the material request.
