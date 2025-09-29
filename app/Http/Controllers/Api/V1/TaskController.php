@@ -131,11 +131,59 @@ class TaskController extends Controller
                     'assigned_to_user_id' => $task->assigned_to_user_id
                 ]);
 
-                // Get total number of required approvals for this RFQ
-                $totalApprovals = DB::table('tasks')
+                // Update the corresponding RFQ approval transaction FIRST
+                $approvalTransaction = DB::table('rfq_approval_transactions')
                     ->where('rfq_id', $task->rfq_id)
-                    ->where('process_id', $task->process_id)
-                    ->count();
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->first();
+
+                if ($approvalTransaction) {
+                    Log::info('=== UPDATING RFQ APPROVAL TRANSACTION ===', [
+                        'task_id' => $task->id,
+                        'rfq_id' => $task->rfq_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+
+                    // Update the approval transaction status
+                    $transactionUpdated = DB::table('rfq_approval_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => 'Approve',
+                            'updated_by' => auth()->id(),
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== RFQ APPROVAL TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'rfq_id' => $task->rfq_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_success' => $transactionUpdated
+                    ]);
+
+                    if (!$transactionUpdated) {
+                        Log::error('=== RFQ APPROVAL TRANSACTION UPDATE FAILED ===', [
+                            'task_id' => $task->id,
+                            'rfq_id' => $task->rfq_id,
+                            'approval_transaction_id' => $approvalTransaction->id
+                        ]);
+                        throw new \Exception('Failed to update RFQ approval transaction');
+                    }
+                } else {
+                    Log::warning('=== NO RFQ APPROVAL TRANSACTION FOUND ===', [
+                        'task_id' => $task->id,
+                        'rfq_id' => $task->rfq_id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+                }
+
+                // Get total number of required approvals from process steps (correct method)
+                $processSteps = DB::table('process_steps')
+                    ->join('processes', 'process_steps.process_id', '=', 'processes.id')
+                    ->where('processes.title', 'RFQ Approval')
+                    ->orderBy('process_steps.order')
+                    ->get();
+                $totalRequiredApprovals = $processSteps->count();
 
                 // Get all tasks for this RFQ to verify
                 $allTasks = DB::table('tasks')
@@ -143,31 +191,83 @@ class TaskController extends Controller
                     ->where('process_id', $task->process_id)
                     ->get();
 
-                Log::info('=== RFQ APPROVAL TASKS ===', [
+                Log::info('=== RFQ APPROVAL PROCESS STEPS ===', [
                     'rfq_id' => $task->rfq_id,
-                    'total_tasks' => $totalApprovals,
+                    'total_process_steps' => $totalRequiredApprovals,
                     'current_task_order_no' => $task->order_no,
                     'all_tasks' => $allTasks->toArray(),
+                    'process_steps' => $processSteps->toArray(),
                     'task_order_no_type' => gettype($task->order_no),
-                    'total_approvals_type' => gettype($totalApprovals)
+                    'total_approvals_type' => gettype($totalRequiredApprovals)
                 ]);
 
-                // Check if this is the final approval - use loose comparison for string/number mismatch
-                $isFinalApproval = (string)$task->order_no === (string)$totalApprovals;
+                // Check if this is the final approval - use process steps count
+                $isFinalApproval = (string)$task->order_no === (string)$totalRequiredApprovals;
 
                 Log::info('=== FINAL APPROVAL CHECK ===', [
                     'rfq_id' => $task->rfq_id,
                     'current_order_no' => $task->order_no,
-                    'total_approvals' => $totalApprovals,
+                    'total_required_approvals' => $totalRequiredApprovals,
                     'is_final_approval' => $isFinalApproval,
                     'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
                     'comparison_details' => [
                         'order_no_string' => (string)$task->order_no,
-                        'total_approvals_string' => (string)$totalApprovals,
-                        'strict_comparison' => $task->order_no === $totalApprovals,
-                        'loose_comparison' => $task->order_no == $totalApprovals
+                        'total_approvals_string' => (string)$totalRequiredApprovals,
+                        'strict_comparison' => $task->order_no === $totalRequiredApprovals,
+                        'loose_comparison' => $task->order_no == $totalRequiredApprovals
                     ]
                 ]);
+
+                // Debug: Log all variables before decision
+                Log::info('=== RFQ DECISION VARIABLES DEBUG ===', [
+                    'task_id' => $task->id,
+                    'rfq_id' => $task->rfq_id,
+                    'approval_transaction_exists' => $approvalTransaction ? true : false,
+                    'approval_transaction_id' => $approvalTransaction ? $approvalTransaction->id : null,
+                    'transaction_updated' => $transactionUpdated,
+                    'is_final_approval' => $isFinalApproval,
+                    'task_order_no' => $task->order_no,
+                    'total_required_approvals' => $totalRequiredApprovals
+                ]);
+
+                // Now trigger the RfqApprovalTransactionController logic to create next task
+                // BUT ONLY if this is NOT the final approval
+                if ($approvalTransaction && $transactionUpdated && !$isFinalApproval) {
+                    Log::info('=== TRIGGERING RFQ APPROVAL TRANSACTION CONTROLLER LOGIC ===', [
+                        'task_id' => $task->id,
+                        'rfq_id' => $task->rfq_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'is_final_approval' => $isFinalApproval
+                    ]);
+
+                    // Create a mock request to trigger the RfqApprovalTransactionController update logic
+                    $rfqApprovalTransaction = \App\Models\RfqApprovalTransaction::find($approvalTransaction->id);
+                    if ($rfqApprovalTransaction) {
+                        Log::info('=== CALLING HANDLE RFQ APPROVAL TRANSACTION UPDATE ===', [
+                            'task_id' => $task->id,
+                            'rfq_id' => $task->rfq_id,
+                            'rfq_approval_transaction_id' => $rfqApprovalTransaction->id
+                        ]);
+                        // Call the RfqApprovalTransactionController update method logic
+                        $this->handleRfqApprovalTransactionUpdate($rfqApprovalTransaction);
+                    } else {
+                        Log::error('=== RFQ APPROVAL TRANSACTION NOT FOUND ===', [
+                            'task_id' => $task->id,
+                            'rfq_id' => $task->rfq_id,
+                            'approval_transaction_id' => $approvalTransaction->id
+                        ]);
+                    }
+                } else {
+                    Log::info('=== SKIPPING NEXT TASK CREATION ===', [
+                        'task_id' => $task->id,
+                        'rfq_id' => $task->rfq_id,
+                        'approval_transaction_exists' => $approvalTransaction ? true : false,
+                        'transaction_updated' => $transactionUpdated,
+                        'is_final_approval' => $isFinalApproval,
+                        'reason' => !$approvalTransaction ? 'NO_APPROVAL_TRANSACTION' : 
+                                   (!$transactionUpdated ? 'TRANSACTION_NOT_UPDATED' : 'FINAL_APPROVAL')
+                    ]);
+                }
 
                 if ($isFinalApproval) {
                     Log::info('=== FINAL APPROVAL DETECTED - UPDATING RFQ STATUS ===', [
@@ -1290,6 +1390,40 @@ class TaskController extends Controller
                                 'update_success' => $purchaseOrderUpdated,
                                 'new_status' => DB::table('purchase_orders')->where('id', $task->purchase_order_id)->value('status')
                             ]);
+
+                            // Update budget amounts when PO is approved
+                            if ($purchaseOrderUpdated) {
+                                $purchaseOrder = DB::table('purchase_orders')
+                                    ->where('id', $task->purchase_order_id)
+                                    ->first();
+
+                                if ($purchaseOrder && $purchaseOrder->request_budget_id) {
+                                    Log::info('=== UPDATING BUDGET AMOUNTS FOR APPROVED PO ===', [
+                                        'task_id' => $task->id,
+                                        'purchase_order_id' => $task->purchase_order_id,
+                                        'request_budget_id' => $purchaseOrder->request_budget_id,
+                                        'po_amount' => $purchaseOrder->amount
+                                    ]);
+
+                                    // Move amount from reserved_amount to consumed_amount
+                                    // After consumed_amount is updated, reduce reserved_amount by the consumed amount
+                                    $budgetUpdated = DB::table('request_budgets')
+                                        ->where('id', $purchaseOrder->request_budget_id)
+                                        ->update([
+                                            'consumed_amount' => DB::raw('consumed_amount + ' . $purchaseOrder->amount),
+                                            'reserved_amount' => DB::raw('reserved_amount - ' . $purchaseOrder->amount),
+                                            'updated_at' => now()
+                                        ]);
+
+                                    Log::info('=== BUDGET AMOUNTS UPDATE RESULT ===', [
+                                        'task_id' => $task->id,
+                                        'purchase_order_id' => $task->purchase_order_id,
+                                        'budget_update_success' => $budgetUpdated,
+                                        'amount_added_to_consumed' => $purchaseOrder->amount,
+                                        'amount_reduced_from_reserved' => $purchaseOrder->amount
+                                    ]);
+                                }
+                            }
                         } else {
                             Log::info('=== NOT FINAL PURCHASE ORDER APPROVAL - KEEPING DRAFT STATUS ===', [
                                 'task_id' => $task->id,
@@ -1360,6 +1494,38 @@ class TaskController extends Controller
                             'update_success' => $purchaseOrderUpdated,
                             'new_status' => DB::table('purchase_orders')->where('id', $task->purchase_order_id)->value('status')
                         ]);
+
+                        // Release budget when PO is rejected
+                        if ($purchaseOrderUpdated) {
+                            $purchaseOrder = DB::table('purchase_orders')
+                                ->where('id', $task->purchase_order_id)
+                                ->first();
+
+                            if ($purchaseOrder && $purchaseOrder->request_budget_id) {
+                                Log::info('=== RELEASING BUDGET FOR REJECTED PO ===', [
+                                    'task_id' => $task->id,
+                                    'purchase_order_id' => $task->purchase_order_id,
+                                    'request_budget_id' => $purchaseOrder->request_budget_id,
+                                    'po_amount' => $purchaseOrder->amount
+                                ]);
+
+                                // Release reserved budget back to available balance
+                                $budgetReleased = DB::table('request_budgets')
+                                    ->where('id', $purchaseOrder->request_budget_id)
+                                    ->update([
+                                        'reserved_amount' => DB::raw('reserved_amount - ' . $purchaseOrder->amount),
+                                        'balance_amount' => DB::raw('balance_amount + ' . $purchaseOrder->amount),
+                                        'updated_at' => now()
+                                    ]);
+
+                                Log::info('=== BUDGET RELEASE RESULT ===', [
+                                    'task_id' => $task->id,
+                                    'purchase_order_id' => $task->purchase_order_id,
+                                    'budget_release_success' => $budgetReleased,
+                                    'amount_released' => $purchaseOrder->amount
+                                ]);
+                            }
+                        }
                     }
                 } else {
                     Log::warning('=== NO APPROVAL TRANSACTION FOUND FOR PURCHASE ORDER REJECTION ===', [
@@ -1774,6 +1940,209 @@ class TaskController extends Controller
                $task->request_budgets_id ?? 
                $task->budget_id ?? 
                $task->id;
+    }
+
+    /**
+     * Handle RFQ approval transaction update logic (simplified like Material Request)
+     */
+    private function handleRfqApprovalTransactionUpdate($rfqApprovalTransaction)
+    {
+        try {
+            Log::info('=== HANDLING RFQ APPROVAL TRANSACTION UPDATE (SIMPLIFIED) ===', [
+                'transaction_id' => $rfqApprovalTransaction->id,
+                'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                'order' => $rfqApprovalTransaction->order,
+                'status' => $rfqApprovalTransaction->status
+            ]);
+
+            // If the status is 'Approve', check if this is the final approval
+            if ($rfqApprovalTransaction->status === 'Approve') {
+                Log::info('=== RFQ APPROVAL TRANSACTION STATUS IS APPROVE ===', [
+                    'transaction_id' => $rfqApprovalTransaction->id,
+                    'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                    'order' => $rfqApprovalTransaction->order,
+                    'status' => $rfqApprovalTransaction->status
+                ]);
+
+                $processSteps = DB::table('process_steps')
+                    ->join('processes', 'process_steps.process_id', '=', 'processes.id')
+                    ->where('processes.title', 'RFQ Approval')
+                    ->orderBy('process_steps.order')
+                    ->get();
+                $totalRequiredApprovals = $processSteps->count();
+                $isFinalApproval = $rfqApprovalTransaction->order == $totalRequiredApprovals;
+
+                Log::info('=== RFQ APPROVAL FINAL CHECK (SIMPLIFIED) ===', [
+                    'transaction_id' => $rfqApprovalTransaction->id,
+                    'current_order' => $rfqApprovalTransaction->order,
+                    'total_required_approvals' => $totalRequiredApprovals,
+                    'is_final_approval' => $isFinalApproval,
+                    'process_steps_found' => $processSteps->count(),
+                    'process_steps' => $processSteps->toArray()
+                ]);
+
+                if (!$isFinalApproval) {
+                    $nextOrder = $rfqApprovalTransaction->order + 1;
+                    $nextStep = $processSteps->where('order', $nextOrder)->first();
+                    
+                    Log::info('=== CREATING NEXT RFQ APPROVAL TRANSACTION (SIMPLIFIED) ===', [
+                        'transaction_id' => $rfqApprovalTransaction->id,
+                        'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                        'current_order' => $rfqApprovalTransaction->order,
+                        'next_order' => $nextOrder,
+                        'next_step_id' => $nextStep ? $nextStep->id : null
+                    ]);
+
+                    if ($nextStep) {
+                        Log::info('=== NEXT STEP FOUND ===', [
+                            'transaction_id' => $rfqApprovalTransaction->id,
+                            'next_step_id' => $nextStep->id,
+                            'next_step_order' => $nextStep->order,
+                            'next_step_description' => $nextStep->description
+                        ]);
+
+                        $resolver = new \App\Services\ApproverResolver();
+                        $eloquentStep = \App\Models\ProcessStep::find($nextStep->id);
+                        $requester = \App\Models\User::find($rfqApprovalTransaction->requester_id);
+                        
+                        Log::info('=== APPROVER RESOLVER INPUTS ===', [
+                            'transaction_id' => $rfqApprovalTransaction->id,
+                            'eloquent_step_found' => $eloquentStep ? true : false,
+                            'eloquent_step_id' => $eloquentStep ? $eloquentStep->id : null,
+                            'requester_found' => $requester ? true : false,
+                            'requester_id' => $requester ? $requester->id : null,
+                            'requester_name' => $requester ? $requester->name : null
+                        ]);
+
+                        if ($eloquentStep && $requester) {
+                            Log::info('=== CALLING APPROVER RESOLVER ===', [
+                                'transaction_id' => $rfqApprovalTransaction->id,
+                                'step_id' => $eloquentStep->id,
+                                'step_approver_id' => $eloquentStep->approver_id,
+                                'step_designation_id' => $eloquentStep->designation_id,
+                                'requester_id' => $requester->id,
+                                'requester_parent_id' => $requester->parent_id,
+                                'requester_designation_id' => $requester->designation_id
+                            ]);
+                            
+                            $resolvedApproverId = $resolver->resolveApproverId($eloquentStep, $requester);
+                            
+                            Log::info('=== APPROVER RESOLVER RESULT ===', [
+                                'transaction_id' => $rfqApprovalTransaction->id,
+                                'resolved_approver_id' => $resolvedApproverId
+                            ]);
+                        } else {
+                            $resolvedApproverId = null;
+                            Log::warning('=== CANNOT CALL APPROVER RESOLVER ===', [
+                                'transaction_id' => $rfqApprovalTransaction->id,
+                                'eloquent_step_found' => $eloquentStep ? true : false,
+                                'requester_found' => $requester ? true : false
+                            ]);
+                        }
+
+                        Log::info('=== RESOLVED NEXT APPROVER (SIMPLIFIED) ===', [
+                            'transaction_id' => $rfqApprovalTransaction->id,
+                            'next_step_id' => $nextStep->id,
+                            'resolved_approver_id' => $resolvedApproverId,
+                            'requester_id' => $rfqApprovalTransaction->requester_id
+                        ]);
+
+                        if ($resolvedApproverId) {
+                            // Check if transaction already exists for this RFQ and order
+                            $existingTransaction = \App\Models\RfqApprovalTransaction::where('rfq_id', $rfqApprovalTransaction->rfq_id)
+                                ->where('order', $nextOrder)
+                                ->where('assigned_to', $resolvedApproverId)
+                                ->first();
+                            
+                            if (!$existingTransaction) {
+                                $nextTransaction = new \App\Models\RfqApprovalTransaction([
+                                    'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                                    'requester_id' => $rfqApprovalTransaction->requester_id,
+                                    'assigned_to' => $resolvedApproverId,
+                                    'order' => $nextOrder,
+                                    'description' => $nextStep->description,
+                                    'status' => 'Pending',
+                                    'created_by' => auth()->id(),
+                                    'updated_by' => auth()->id()
+                                ]);
+                                $nextTransaction->save();
+
+                                // Check if task already exists for this RFQ, process step, and assigned user
+                                $existingTask = DB::table('tasks')
+                                    ->where('rfq_id', $rfqApprovalTransaction->rfq_id)
+                                    ->where('process_step_id', $nextStep->id)
+                                    ->where('assigned_to_user_id', $resolvedApproverId)
+                                    ->where('status', '!=', 'Completed')
+                                    ->first();
+                                
+                                if (!$existingTask) {
+                                    $taskId = DB::table('tasks')->insertGetId([
+                                        'process_step_id' => $nextStep->id,
+                                        'process_id' => $nextStep->process_id,
+                                        'assigned_at' => now(),
+                                        'urgency' => 'Normal',
+                                        'order_no' => $nextOrder,
+                                        'assigned_to_user_id' => $resolvedApproverId,
+                                        'assigned_from_user_id' => $rfqApprovalTransaction->requester_id,
+                                        'read_status' => null,
+                                        'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                                        'created_at' => now(),
+                                        'updated_at' => now()
+                                    ]);
+
+                                    Log::info('=== NEXT RFQ TASK CREATED (SIMPLIFIED) ===', [
+                                        'transaction_id' => $rfqApprovalTransaction->id,
+                                        'next_transaction_id' => $nextTransaction->id,
+                                        'next_task_id' => $taskId,
+                                        'assigned_to' => $resolvedApproverId
+                                    ]);
+
+                                    // Send task assignment notification
+                                    $task = \App\Models\Task::with(['assignedToUser', 'process'])->find($taskId);
+                                    if ($task) {
+                                        $notificationService = new \App\Services\TaskNotificationService();
+                                        $notificationService->sendTaskAssignmentNotification($task, 'RFQ Approval');
+                                    }
+                                } else {
+                                    Log::info('=== RFQ TASK ALREADY EXISTS ===', [
+                                        'transaction_id' => $rfqApprovalTransaction->id,
+                                        'existing_task_id' => $existingTask->id,
+                                        'assigned_to' => $resolvedApproverId
+                                    ]);
+                                }
+                            } else {
+                                Log::info('=== RFQ TRANSACTION ALREADY EXISTS ===', [
+                                    'transaction_id' => $rfqApprovalTransaction->id,
+                                    'existing_transaction_id' => $existingTransaction->id,
+                                    'assigned_to' => $resolvedApproverId
+                                ]);
+                            }
+                        } else {
+                            Log::warning('=== NO APPROVER RESOLVED FOR NEXT STEP ===', [
+                                'transaction_id' => $rfqApprovalTransaction->id,
+                                'next_step_id' => $nextStep->id
+                            ]);
+                        }
+                    } else {
+                        Log::warning('=== NO NEXT STEP FOUND ===', [
+                            'transaction_id' => $rfqApprovalTransaction->id,
+                            'next_order' => $nextOrder
+                        ]);
+                    }
+                } else {
+                    Log::info('=== FINAL RFQ APPROVAL - NO NEXT TASK NEEDED ===', [
+                        'transaction_id' => $rfqApprovalTransaction->id,
+                        'rfq_id' => $rfqApprovalTransaction->rfq_id
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('=== ERROR IN RFQ APPROVAL TRANSACTION UPDATE ===', [
+                'transaction_id' => $rfqApprovalTransaction->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     }
 
     public function destroy(Task $task): JsonResponse

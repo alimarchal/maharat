@@ -246,11 +246,19 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                         <StatusBadge status={task.status} />
                                     </span>
                                 </div>
-                                {allDescriptions && allDescriptions.length > 0 && (
+                                {/* Show description for all statuses - contains info from previous approver */}
+                                {task.descriptions && task.descriptions.length > 0 ? (
                                     <div className="flex justify-between border-b border-gray-100 pb-2">
                                         <span className="text-gray-600">Description:</span>
                                         <span className="font-medium text-gray-800 text-right max-w-xs">
-                                            {allDescriptions.map((desc, index) => desc.description).join(', ')}
+                                            {task.descriptions.map((desc, index) => desc.description).join(', ')}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div className="flex justify-between border-b border-gray-100 pb-2">
+                                        <span className="text-gray-600">Description:</span>
+                                        <span className="font-medium text-gray-500 text-right max-w-xs">
+                                            No description provided
                                         </span>
                                     </div>
                                 )}
