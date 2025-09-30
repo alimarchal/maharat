@@ -96,13 +96,17 @@ class GrnController extends Controller
                 $validated['grn_number'] = $this->generateGrnNumber();
             }
 
-
             // Set current user as creator if not specified
             if (!isset($validated['user_id'])) {
                 $validated['user_id'] = auth()->id();
             }
 
             $grn = Grn::create($validated);
+
+            // Update material request status if GRN is issued against a purchase order
+            if ($grn->purchase_order_id) {
+                $this->updateMaterialRequestStatusFromGRN($grn);
+            }
 
             DB::commit();
 
@@ -183,6 +187,92 @@ class GrnController extends Controller
                 'message' => 'Failed to delete GRN',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Update material request status when GRN is issued against a purchase order
+     */
+    private function updateMaterialRequestStatusFromGRN(Grn $grn): void
+    {
+        try {
+            // Get the purchase order and its related RFQ
+            $purchaseOrder = $grn->purchaseOrder()->with('rfq')->first();
+            
+            if (!$purchaseOrder || !$purchaseOrder->rfq) {
+                \Log::warning('GRN Status Update: Purchase order or RFQ not found', [
+                    'grn_id' => $grn->id,
+                    'purchase_order_id' => $grn->purchase_order_id
+                ]);
+                return;
+            }
+
+            $rfq = $purchaseOrder->rfq;
+            
+            \Log::info('GRN Status Update: Processing GRN for material request update', [
+                'grn_id' => $grn->id,
+                'grn_number' => $grn->grn_number,
+                'purchase_order_id' => $purchaseOrder->id,
+                'rfq_id' => $rfq->id,
+                'rfq_number' => $rfq->rfq_number
+            ]);
+
+            // Find material requests that match this RFQ's details
+            // Material requests are linked to RFQs by matching department, cost center, sub cost center, and warehouse
+            $materialRequests = \App\Models\MaterialRequest::where('status_id', 2) // Referred status
+                ->where('department_id', $rfq->department_id)
+                ->where('cost_center_id', $rfq->cost_center_id)
+                ->where('sub_cost_center_id', $rfq->sub_cost_center_id)
+                ->where('warehouse_id', $rfq->warehouse_id)
+                ->get();
+
+            \Log::info('GRN Status Update: Found matching material requests', [
+                'grn_id' => $grn->id,
+                'rfq_id' => $rfq->id,
+                'matching_requests_count' => $materialRequests->count(),
+                'search_criteria' => [
+                    'department_id' => $rfq->department_id,
+                    'cost_center_id' => $rfq->cost_center_id,
+                    'sub_cost_center_id' => $rfq->sub_cost_center_id,
+                    'warehouse_id' => $rfq->warehouse_id
+                ]
+            ]);
+
+            foreach ($materialRequests as $materialRequest) {
+                // Update material request status to Approved (status_id = 4)
+                $materialRequest->update([
+                    'status_id' => 4, // Approved status
+                    'updated_at' => now()
+                ]);
+
+                \Log::info('GRN Status Update: Material request status updated', [
+                    'grn_id' => $grn->id,
+                    'material_request_id' => $materialRequest->id,
+                    'old_status_id' => 2, // Referred
+                    'new_status_id' => 4, // Approved
+                    'rfq_id' => $rfq->id
+                ]);
+            }
+
+            if ($materialRequests->isEmpty()) {
+                \Log::warning('GRN Status Update: No matching material requests found', [
+                    'grn_id' => $grn->id,
+                    'rfq_id' => $rfq->id,
+                    'search_criteria' => [
+                        'department_id' => $rfq->department_id,
+                        'cost_center_id' => $rfq->cost_center_id,
+                        'sub_cost_center_id' => $rfq->sub_cost_center_id,
+                        'warehouse_id' => $rfq->warehouse_id
+                    ]
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('GRN Status Update: Failed to update material request status', [
+                'grn_id' => $grn->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
         }
     }
 }
