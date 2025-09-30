@@ -19,6 +19,7 @@ const RFQStatusFlow = () => {
     const [showModal, setShowModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [modalType, setModalType] = useState("");
+    const [rfqDate, setRfqDate] = useState(null);
 
     useEffect(() => {
         if (id) {
@@ -54,6 +55,10 @@ const RFQStatusFlow = () => {
                 `/api/v1/rfq-approval-transactions?filter[rfq_id]=${id}&include=rfq,requester,assignedTo,referredTo,creator,updater`
             );
             setCardData(response.data?.data);
+
+            if (response.data?.data?.[0]?.rfq?.created_at) {
+                setRfqDate(response.data.data[0].rfq.created_at);
+            }
 
             if (response.data?.data && response.data.data.length > 0) {
                 setCurrentStep(1 + response.data.data.length);
@@ -122,19 +127,15 @@ const RFQStatusFlow = () => {
                             <span className="text-gray-600">RFQ-{id}</span>
                         </div>
                         <div className="text-gray-500 text-sm">
-                            {statuses.length > 0 ? (
+                            {rfqDate ? (
                                 <>
-                                    {new Date(
-                                        statuses[0].created_at
-                                    ).toLocaleDateString("en-US", {
+                                    {new Date(rfqDate).toLocaleDateString("en-US", {
                                         day: "2-digit",
                                         month: "short",
                                         year: "numeric",
                                     })}{" "}
                                     <span className="text-xs text-gray-400">
-                                        {new Date(
-                                            statuses[0].created_at
-                                        ).toLocaleTimeString("en-US", {
+                                        {new Date(rfqDate).toLocaleTimeString("en-US", {
                                             hour: "2-digit",
                                             minute: "2-digit",
                                             hour12: true,

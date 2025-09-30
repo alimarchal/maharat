@@ -76,7 +76,7 @@ const PMTTable = () => {
                                         "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {order.purchase_order.quotation
+                                    {order.purchase_order?.quotation
                                         ?.quotation_number || "N/A"}
                                 </td>
                                 <td className="py-3 px-4">

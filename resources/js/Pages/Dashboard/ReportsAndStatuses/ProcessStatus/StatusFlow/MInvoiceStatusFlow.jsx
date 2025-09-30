@@ -19,6 +19,7 @@ const MInvoiceStatusFlow = () => {
     const [showModal, setShowModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [modalType, setModalType] = useState("");
+    const [invoiceDate, setInvoiceDate] = useState(null);
 
     useEffect(() => {
         if (id) {
@@ -54,6 +55,10 @@ const MInvoiceStatusFlow = () => {
                 `/api/v1/mahrat-invoice-approval-trans?filter[invoice_id]=${id}&include=invoice,requester,assignedUser,referredUser,createdByUser,updatedByUser`
             );
             setCardData(response.data?.data);
+
+            if (response.data?.data?.[0]?.invoice?.created_at) {
+                setInvoiceDate(response.data.data[0].invoice.created_at);
+            }
 
             if (response.data?.data && response.data.data.length > 0) {
                 setCurrentStep(1 + response.data.data.length);
@@ -122,19 +127,15 @@ const MInvoiceStatusFlow = () => {
                             <span className="text-gray-600">IN-{id}</span>
                         </div>
                         <div className="text-gray-500 text-sm">
-                            {statuses.length > 0 ? (
+                            {invoiceDate ? (
                                 <>
-                                    {new Date(
-                                        statuses[0].created_at
-                                    ).toLocaleDateString("en-US", {
+                                    {new Date(invoiceDate).toLocaleDateString("en-US", {
                                         day: "2-digit",
                                         month: "short",
                                         year: "numeric",
                                     })}{" "}
                                     <span className="text-xs text-gray-400">
-                                        {new Date(
-                                            statuses[0].created_at
-                                        ).toLocaleTimeString("en-US", {
+                                        {new Date(invoiceDate).toLocaleTimeString("en-US", {
                                             hour: "2-digit",
                                             minute: "2-digit",
                                             hour12: true,
@@ -343,8 +344,7 @@ const MInvoiceStatusFlow = () => {
                             </div>
                         ) : (
                             <div className="p-4 text-center text-gray-500 text-base">
-                                No Maharat Invoice Approval transactions
-                                available.
+                                No Maharat Invoice Approval transactions available.
                             </div>
                         )}
                     </>
