@@ -111,19 +111,16 @@ export default function Dashboard({ auth, page }) {
             const fiveMinutes = 5 * 60 * 1000;
             
             if (cachedPermissions && cacheTimestamp && (now - parseInt(cacheTimestamp)) < fiveMinutes) {
-                console.log('📦 Dashboard: Using cached permissions');
                 setRealTimePermissions(JSON.parse(cachedPermissions));
                 setIsLoadingPermissions(false);
                 
                 // Preload critical images while permissions are cached
-                preloadDashboardImages().catch(console.error);
+                preloadDashboardImages().catch(() => {});
                 return;
             }
 
             try {
-                console.log('🔍 Dashboard: Fetching fresh permissions for user:', auth.user.id);
                 const response = await axios.get(`/api/v1/users/${auth.user.id}/combined-permissions`);
-                console.log('📥 Dashboard: Fresh permissions response:', response.data);
                 
                 const permissions = response.data.data;
                 setRealTimePermissions(permissions);
@@ -133,14 +130,13 @@ export default function Dashboard({ auth, page }) {
                 sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
                 
                 // Preload critical images after permissions are loaded
-                preloadDashboardImages().catch(console.error);
+                preloadDashboardImages().catch(() => {});
             } catch (error) {
-                console.error("❌ Dashboard: Failed to fetch real-time permissions:", error);
                 // Fallback to auth permissions if API fails
                 setRealTimePermissions(auth.user.permissions);
                 
                 // Still preload images even if permissions fail
-                preloadDashboardImages().catch(console.error);
+                preloadDashboardImages().catch(() => {});
             } finally {
                 setIsLoadingPermissions(false);
             }
@@ -323,7 +319,6 @@ export default function Dashboard({ auth, page }) {
                 ]) : // Remove undefined values
             auth.user.permissions;
 
-        console.log('🎯 Dashboard: Using permissions:', permissionsArray);
         
         return <MainDashboard roles={auth.user.roles} permissions={permissionsArray} />;
     };

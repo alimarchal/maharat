@@ -26,15 +26,13 @@ export const RfqRequestsProvider = ({ children }) => {
         try {
             // Remove user_id filter to show all RFQ requests for all users
             const response = await axios.get(`/api/v1/rfq-requests`);
-            console.log('RFQ Requests API Response:', response.data);
             const requests = response.data.data || [];
             
             setRfqRequests(requests);
             setPendingCount(requests.filter(req => req.status === 'Pending' && !req.is_requested).length);
             setApprovedCount(requests.filter(req => req.status === 'Approved' && !req.is_requested).length);
-            console.log('Filtered pending requests:', requests.filter(req => req.status === 'Pending' && !req.is_requested));
         } catch (error) {
-            console.error('Error fetching RFQ requests:', error);
+            // Error fetching RFQ requests
         } finally {
             setLoading(false);
         }

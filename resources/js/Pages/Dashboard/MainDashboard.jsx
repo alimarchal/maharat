@@ -279,7 +279,7 @@ export default function MainDashboard({ roles, permissions }) {
                     setPendingTasksCount(data.meta?.total || 0);
                 }
             } catch (err) {
-                console.error("Error fetching pending requests:", err);
+                // Error fetching pending requests
             } finally {
                 setLoading(false);
             }
@@ -299,7 +299,7 @@ export default function MainDashboard({ roles, permissions }) {
                     setRequestedItemsCount(data.data?.total || 0);
                 }
             } catch (err) {
-                console.error("Error fetching requested items:", err);
+                // Error fetching requested items
             }
         };
         fetchRequestedItems();
@@ -317,7 +317,7 @@ export default function MainDashboard({ roles, permissions }) {
                     setPendingMaterialRequestsCount(data.meta?.total || 0);
                 }
             } catch (err) {
-                console.error("Error fetching pending material requests:", err);
+                // Error fetching pending material requests
             }
         };
         fetchPendingMaterialRequests();
@@ -336,7 +336,7 @@ export default function MainDashboard({ roles, permissions }) {
                     setPendingRfqRequestsCount(pendingRequests.length);
                 }
             } catch (err) {
-                console.error("Error fetching pending RFQ requests:", err);
+                // Error fetching pending RFQ requests
             }
         };
         fetchPendingRfqRequests();
@@ -389,7 +389,7 @@ export default function MainDashboard({ roles, permissions }) {
                 }
             }
         } catch (err) {
-            console.error("Error fetching quotations RFQ count:", err);
+            // Error fetching quotations RFQ count
         }
     };
 
@@ -402,7 +402,6 @@ export default function MainDashboard({ roles, permissions }) {
         let timeoutId;
         
         const handleQuotationCreated = () => {
-            console.log('📢 MainDashboard: Received quotation event, refreshing count...');
             // Debounce to prevent multiple rapid calls
             clearTimeout(timeoutId);
             timeoutId = setTimeout(() => {
@@ -457,7 +456,7 @@ export default function MainDashboard({ roles, permissions }) {
                     }
                 }
             } catch (err) {
-                console.error("Error fetching purchase orders RFQ count:", err);
+                // Error fetching purchase orders RFQ count
                 setPurchaseOrdersRfqCount(0);
             }
         };
@@ -475,7 +474,7 @@ export default function MainDashboard({ roles, permissions }) {
                     setUnpaidInvoicesCount(data.meta?.total || 0);
                 }
             } catch (err) {
-                console.error("Error fetching unpaid invoices count:", err);
+                // Error fetching unpaid invoices count
                 setUnpaidInvoicesCount(0);
             }
         };
@@ -506,7 +505,7 @@ export default function MainDashboard({ roles, permissions }) {
                     setApprovedItemsCount(items.length);
                 }
             } catch (err) {
-                console.error("Error fetching approved items count:", err);
+                // Error fetching approved items count
                 setApprovedItemsCount(0);
             }
         };
@@ -523,7 +522,7 @@ export default function MainDashboard({ roles, permissions }) {
                     setMaharatInvoicesCount(data.meta?.total || 0);
                 }
             } catch (err) {
-                console.error("Error fetching maharat invoices count:", err);
+                // Error fetching maharat invoices count
             }
         };
         fetchMaharatInvoicesCount();
@@ -800,7 +799,6 @@ export default function MainDashboard({ roles, permissions }) {
                     src="/images/banner.png" 
                     alt="" 
                     className="hidden" 
-                    onLoad={() => console.log('Banner image preloaded')}
                 />
                 <div className="absolute bottom-4 text-left">
                     <h2 className="text-3xl md:text-4xl font-bold">

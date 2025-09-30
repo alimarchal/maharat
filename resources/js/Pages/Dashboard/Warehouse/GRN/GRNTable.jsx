@@ -20,7 +20,7 @@ export default function GRNTable() {
         setLoading(true);
         try {
             const response = await fetch(
-                `/api/v1/grns?include=user,quotation.supplier,purchaseOrder,receiveGoods.supplier,receiveGoods.category,externalDeliveryNote&page=${currentPage}`
+                `/api/v1/grns?include=user,quotation.supplier,purchaseOrder,receiveGoods.supplier,receiveGoods.category,externalDeliveryNote&page=${currentPage}&sort=-created_at`
             );
             const data = await response.json();
             if (response.ok) {
@@ -220,6 +220,17 @@ export default function GRNTable() {
                     {/* Pagination */}
                     {!loading && !error && grns.length > 0 && (
                         <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                            <button
+                                onClick={() => setCurrentPage(currentPage - 1)}
+                                className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                                    currentPage <= 1
+                                        ? "opacity-50 cursor-not-allowed"
+                                        : ""
+                                }`}
+                                disabled={currentPage <= 1}
+                            >
+                                Previous
+                            </button>
                             {Array.from(
                                 { length: lastPage },
                                 (_, index) => index + 1
