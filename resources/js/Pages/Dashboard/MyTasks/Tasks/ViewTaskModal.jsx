@@ -4,14 +4,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faTimes,
     faUser,
-    faBuilding,
-    faListCheck,
     faCircleCheck,
     faCircleExclamation,
     faCircleXmark,
-    faClock,
     faFileAlt,
-    faImage,
 } from "@fortawesome/free-solid-svg-icons";
 
 const ViewTaskModal = ({ isOpen, onClose, task }) => {
@@ -526,7 +522,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                     </div>
                                 )}
 
-                                {/* Purchase Order Details */}
+                               {/* Purchase Order Details */}
                                 {task.process.title === "Purchase Order Approval" && task.purchase_order && (
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
@@ -539,18 +535,30 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 <span className="font-medium ml-2">{task.purchase_order.purchase_order_no || "N/A"}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Supplier:</span>
-                                                <span className="font-medium ml-2">{task.purchase_order.supplier?.name || "N/A"}</span>
+                                                <span className="text-gray-600">Amount:</span>
+                                                <span className="font-medium ml-2">{task.purchase_order.amount ? parseFloat(task.purchase_order.amount).toFixed(2) : "N/A"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600">VAT Amount:</span>
+                                                <span className="font-medium ml-2">{task.purchase_order.vat_amount ? parseFloat(task.purchase_order.vat_amount).toFixed(2) : "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Total Amount:</span>
-                                                <span className="font-medium ml-2">{task.purchase_order.amount ? parseFloat(task.purchase_order.amount).toFixed(2) : "N/A"}</span>
+                                                <span className="font-medium ml-2">
+                                                    {task.purchase_order.amount && task.purchase_order.vat_amount 
+                                                        ? (parseFloat(task.purchase_order.amount) + parseFloat(task.purchase_order.vat_amount)).toFixed(2)
+                                                        : "N/A"}
+                                                </span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Purchase Order Date:</span>
                                                 <span className="font-medium ml-2">
                                                     {task.purchase_order.purchase_order_date ? new Date(task.purchase_order.purchase_order_date).toLocaleDateString() : "N/A"}
                                                 </span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600">Supplier:</span>
+                                                <span className="font-medium ml-2">{task.purchase_order.supplier?.name || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Created By:</span>
@@ -761,8 +769,20 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 <span className="font-medium ml-2">{task.payment_order.purchase_order?.purchase_order_no || "N/A"}</span>
                                             </div>
                                             <div>
+                                                <span className="text-gray-600">Amount:</span>
+                                                <span className="font-medium ml-2">{task?.payment_order?.purchase_order?.amount ? parseFloat(task?.payment_order?.purchase_order?.amount).toFixed(2) : "N/A"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600">VAT Amount:</span>
+                                                <span className="font-medium ml-2">{task?.payment_order?.purchase_order?.vat_amount ? parseFloat(task?.payment_order?.purchase_order?.vat_amount).toFixed(2) : "N/A"}</span>
+                                            </div>
+                                            <div>
                                                 <span className="text-gray-600">Total Amount:</span>
-                                                <span className="font-medium ml-2">{task.payment_order.total_amount ? parseFloat(task.payment_order.total_amount).toFixed(2) : "N/A"}</span>
+                                                <span className="font-medium ml-2">
+                                                    {task?.payment_order?.purchase_order?.amount && task?.payment_order?.purchase_order?.vat_amount 
+                                                        ? (parseFloat(task?.payment_order?.purchase_order?.amount) + parseFloat(task?.payment_order?.purchase_order?.vat_amount)).toFixed(2)
+                                                        : "N/A"}
+                                                </span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Paid Amount:</span>
