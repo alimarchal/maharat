@@ -10,18 +10,18 @@ const permissionCategories = {
         subOptions: {
             "Request New Item": {
                 base: "request_new_item",
-                description: "Allow users to request new items"
+                description: "Allow users to request new items",
             },
             "Make New Request": {
-                base: "make_new_request", 
-                description: "Allow users to create new requests"
-            }
-        }
+                base: "make_new_request",
+                description: "Allow users to create new requests",
+            },
+        },
     },
     "Task Center": {
         base: "view_tasks",
         description: "Task management and approval system",
-        subOptions: {}
+        subOptions: {},
     },
     "Procurement Center": {
         base: "view_procurement",
@@ -33,9 +33,9 @@ const permissionCategories = {
                 subOptions: {
                     "Make New RFQ": {
                         base: "make_new_rfq",
-                        description: "Create new Request for Quotations"
-                    }
-                }
+                        description: "Create new Request for Quotations",
+                    },
+                },
             },
             "Quotations": {
                 base: "view_quotations",
@@ -43,13 +43,13 @@ const permissionCategories = {
                 subOptions: {
                     "Add Supplier": {
                         base: "add_supplier",
-                        description: "Add new suppliers to the system"
+                        description: "Add new suppliers to the system",
                     },
                     "Add New Quotation": {
                         base: "add_new_quotation",
-                        description: "Create new quotations"
-                    }
-                }
+                        description: "Create new quotations",
+                    },
+                },
             },
             "Purchase Orders": {
                 base: "view_purchase_orders",
@@ -57,9 +57,9 @@ const permissionCategories = {
                 subOptions: {
                     "Create New Purchase Order": {
                         base: "create_new_purchase_order",
-                        description: "Create new purchase orders"
-                    }
-                }
+                        description: "Create new purchase orders",
+                    },
+                },
             },
             "External Invoices": {
                 base: "view_invoices",
@@ -67,11 +67,11 @@ const permissionCategories = {
                 subOptions: {
                     "Add Invoice": {
                         base: "add_invoice",
-                        description: "Add new external invoices"
-                    }
-                }
-            }
-        }
+                        description: "Add new external invoices",
+                    },
+                },
+            },
+        },
     },
     "Finance Center": {
         base: "view_finance",
@@ -83,13 +83,13 @@ const permissionCategories = {
                 subOptions: {
                     "Add Customers": {
                         base: "add_customers",
-                        description: "Add new customers to the system"
+                        description: "Add new customers to the system",
                     },
                     "Create New Invoice": {
                         base: "create_new_invoice",
-                        description: "Create new Maharat invoices"
-                    }
-                }
+                        description: "Create new Maharat invoices",
+                    },
+                },
             },
             "Accounts": {
                 base: "view_accounts",
@@ -97,9 +97,9 @@ const permissionCategories = {
                 subOptions: {
                     "Create New Account": {
                         base: "create_new_account",
-                        description: "Create new accounts in the system"
-                    }
-                }
+                        description: "Create new accounts in the system",
+                    },
+                },
             },
             "Payment Orders": {
                 base: "view_payment_orders",
@@ -107,19 +107,19 @@ const permissionCategories = {
                 subOptions: {
                     "Create Payment Order": {
                         base: "create_payment_order",
-                        description: "Create new payment orders"
-                    }
-                }
+                        description: "Create new payment orders",
+                    },
+                },
             },
             "Account Receivables": {
                 base: "view_account_receivables",
-                description: "Account receivables management"
+                description: "Account receivables management",
             },
             "Account Payables": {
                 base: "view_account_payables",
-                description: "Account payables management"
-            }
-        }
+                description: "Account payables management",
+            },
+        },
     },
     "Warehouse": {
         base: "view_warehouse",
@@ -127,7 +127,7 @@ const permissionCategories = {
         subOptions: {
             "User Material Requests": {
                 base: "view_material_requests",
-                description: "User material request management"
+                description: "User material request management",
             },
             "Categories": {
                 base: "view_categories",
@@ -135,9 +135,9 @@ const permissionCategories = {
                 subOptions: {
                     "Create New Category": {
                         base: "create_categories",
-                        description: "Create new categories"
-                    }
-                }
+                        description: "Create new categories",
+                    },
+                },
             },
             "Items": {
                 base: "view_items",
@@ -145,9 +145,9 @@ const permissionCategories = {
                 subOptions: {
                     "Create New Item": {
                         base: "create_items",
-                        description: "Create new items"
-                    }
-                }
+                        description: "Create new items",
+                    },
+                },
             },
             "Goods Receiving Notes": {
                 base: "view_goods_receiving_notes",
@@ -155,9 +155,9 @@ const permissionCategories = {
                 subOptions: {
                     "Create Good Receiving Notes": {
                         base: "create_goods_receiving_notes",
-                        description: "Create new goods receiving notes"
-                    }
-                }
+                        description: "Create new goods receiving notes",
+                    },
+                },
             },
             "Inventory Tracking": {
                 base: "view_inventory_tracking",
@@ -165,15 +165,15 @@ const permissionCategories = {
                 subOptions: {
                     "Add Inventory": {
                         base: "add_inventory",
-                        description: "Add new inventory items"
-                    }
-                }
+                        description: "Add new inventory items",
+                    },
+                },
             },
             "Create Warehouse": {
                 base: "create_warehouse",
-                description: "Create new warehouses"
-            }
-        }
+                description: "Create new warehouses",
+            },
+        },
     },
     "Budget & Accounts": {
         base: "view_budget",
@@ -185,21 +185,21 @@ const permissionCategories = {
                 subOptions: {
                     "Create Cost Center": {
                         base: "create_cost_center",
-                        description: "Create new cost centers"
+                        description: "Create new cost centers",
                     },
                     "Create Sub Cost Center": {
                         base: "create_sub_cost_center",
-                        description: "Create new sub cost centers"
-                    }
-                }
+                        description: "Create new sub cost centers",
+                    },
+                },
             },
             "Income Statement": {
                 base: "view_income_statement",
-                description: "View and manage income statements"
+                description: "View and manage income statements",
             },
             "Balance Sheet": {
                 base: "view_balance_sheet",
-                description: "View and manage balance sheets"
+                description: "View and manage balance sheets",
             },
             "Budget": {
                 base: "manage_budget",
@@ -207,17 +207,17 @@ const permissionCategories = {
                 subOptions: {
                     "Create Fiscal Year": {
                         base: "create_fiscal_year",
-                        description: "Create new fiscal years"
+                        description: "Create new fiscal years",
                     },
                     "Create a Budget": {
                         base: "create_budget",
-                        description: "Create new budgets"
+                        description: "Create new budgets",
                     },
                     "Approve Budget": {
                         base: "approve_budget_option",
-                        description: "Approve pending budgets"
-                    }
-                }
+                        description: "Approve pending budgets",
+                    },
+                },
             },
             "Request a Budget": {
                 base: "view_request_budget",
@@ -225,11 +225,11 @@ const permissionCategories = {
                 subOptions: {
                     "Create Department Budget Request": {
                         base: "create_department_budget_request",
-                        description: "Create new department budget requests"
-                    }
-                }
-            }
-        }
+                        description: "Create new department budget requests",
+                    },
+                },
+            },
+        },
     },
     "Status": {
         base: "view_statuses",
@@ -237,33 +237,33 @@ const permissionCategories = {
         subOptions: {
             "Material Request Status": {
                 base: "view_material_request_status",
-                description: "View material request statuses"
+                description: "View material request statuses",
             },
             "RFQ Status": {
                 base: "view_rfq_status",
-                description: "View RFQ statuses"
+                description: "View RFQ statuses",
             },
             "Purchase Order Status": {
                 base: "view_purchase_order_status",
-                description: "View purchase order statuses"
+                description: "View purchase order statuses",
             },
             "Payment Order Status": {
                 base: "view_payment_order_status",
-                description: "View payment order statuses"
+                description: "View payment order statuses",
             },
             "Maharat Invoice Status": {
                 base: "view_maharat_invoice_status",
-                description: "View Maharat invoice statuses"
+                description: "View Maharat invoice statuses",
             },
             "Budget Request Status": {
                 base: "view_budget_request_status",
-                description: "View budget request statuses"
+                description: "View budget request statuses",
             },
             "Total Budget Status": {
                 base: "view_total_budget_status",
-                description: "View total budget statuses"
-            }
-        }
+                description: "View total budget statuses",
+            },
+        },
     },
     "Configuration Center": {
         base: "view_configuration",
@@ -275,31 +275,31 @@ const permissionCategories = {
                 subOptions: {
                     "Edit Employee": {
                         base: "edit_employee",
-                        description: "Edit employee information"
+                        description: "Edit employee information",
                     },
                     "Add Employee": {
                         base: "add_employee",
-                        description: "Add new employees to the organization"
+                        description: "Add new employees to the organization",
                     },
                     "Delete Employee": {
                         base: "delete_employee",
-                        description: "Remove employees from the organization"
-                    }
-                }
+                        description: "Remove employees from the organization",
+                    },
+                },
             },
             "Process Flow": {
                 base: "view_process_flow",
-                description: "Process flow management and creation"
+                description: "Process flow management and creation",
             },
             "Notification Settings": {
                 base: "manage_settings",
-                description: "Notification settings management"
+                description: "Notification settings management",
             },
             "Roles & Permission": {
                 base: "view_permission_settings",
-                description: "Manage user roles and permissions"
-            }
-        }
+                description: "Manage user roles and permissions",
+            },
+        },
     },
     "Sidebar": {
         base: "view_notifications",
@@ -307,11 +307,11 @@ const permissionCategories = {
         subOptions: {
             "Notification Settings": {
                 base: "view_notifications",
-                description: "Access notification settings"
+                description: "Access notification settings",
             },
             "Profile Settings": {
                 base: "edit_profile",
-                description: "Profile settings access"
+                description: "Profile settings access",
             },
             "User Manual": {
                 base: "view_user_manual",
@@ -319,9 +319,9 @@ const permissionCategories = {
                 subOptions: {
                     "Modify Manual": {
                         base: "modify_user_manual",
-                        description: "Create, edit, and delete user manual entries"
-                    }
-                }
+                        description: "Create, edit, and delete user manual entries",
+                    },
+                },
             },
             "FAQs": {
                 base: "view_faqs",
@@ -329,20 +329,20 @@ const permissionCategories = {
                 subOptions: {
                     "Add FAQ": {
                         base: "create_faqs",
-                        description: "Create new FAQs"
+                        description: "Create new FAQs",
                     },
                     "Edit FAQ": {
                         base: "edit_faqs",
-                        description: "Edit existing FAQs"
+                        description: "Edit existing FAQs",
                     },
                     "Delete FAQ": {
                         base: "delete_faqs",
-                        description: "Delete FAQs"
-                    }
-                }
-            }
-        }
-    }
+                        description: "Delete FAQs",
+                    },
+                },
+            },
+        },
+    },
 };
 
 const RolesPermissions = () => {
@@ -353,7 +353,7 @@ const RolesPermissions = () => {
     const [selectedRole, setSelectedRole] = useState(null);
     const [selectedUser, setSelectedUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [permissionMode, setPermissionMode] = useState("role"); // "role" or "user"
+    const [permissionMode, setPermissionMode] = useState("role");
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -361,23 +361,23 @@ const RolesPermissions = () => {
                 const [userResponse, designationsResponse, usersResponse] = await Promise.all([
                     axios.get("/api/v1/user/current-role"),
                     axios.get("/api/v1/designations?per_page=1000000000"),
-                    axios.get("/api/v1/users?per_page=1000000000")
+                    axios.get("/api/v1/users?per_page=1000000000"),
                 ]);
-                
+
                 setCurrentUserRole(userResponse.data.role);
                 setRoles(designationsResponse.data.data);
                 setUsers(usersResponse.data.data);
-                
+
                 // Set Admin designation as default selected role (or first designation if Admin doesn't exist)
-                const adminDesignation = designationsResponse.data.data.find(designation => designation.designation === "Admin");
+                const adminDesignation = designationsResponse.data.data.find((designation) => designation.designation === "Admin");
                 const defaultDesignation = adminDesignation || designationsResponse.data.data[0];
                 setSelectedRole(defaultDesignation);
-                
+
                 // Load default designation's permissions
                 if (defaultDesignation) {
                     await fetchRolePermissions(defaultDesignation.id);
                 }
-                
+
                 setLoading(false);
             } catch (error) {
                 console.error("Failed to fetch initial data:", error);
@@ -404,30 +404,30 @@ const RolesPermissions = () => {
         try {
             const response = await axios.get(`/api/v1/designations/${designationId}/permissions`);
             const designationPermissions = response.data.data || [];
-            const permissionNames = designationPermissions.map(perm => perm.name);
-            
+            const permissionNames = designationPermissions.map((perm) => perm.name);
+
             const newPermissions = {};
-            Object.keys(permissionCategories).forEach(category => {
+            Object.keys(permissionCategories).forEach((category) => {
                 const categoryConfig = permissionCategories[category];
                 newPermissions[category] = {
                     main: permissionNames.includes(categoryConfig.base),
-                    subOptions: {}
+                    subOptions: {},
                 };
-                
+
                 // Check sub-options
-                Object.keys(categoryConfig.subOptions).forEach(subOption => {
+                Object.keys(categoryConfig.subOptions).forEach((subOption) => {
                     const subOptionConfig = categoryConfig.subOptions[subOption];
                     newPermissions[category].subOptions[subOption] = {
                         enabled: permissionNames.includes(subOptionConfig.base),
-                        subOptions: {}
+                        subOptions: {},
                     };
-                    
+
                     // Check nested sub-options if they exist
                     if (subOptionConfig.subOptions) {
-                        Object.keys(subOptionConfig.subOptions).forEach(nestedSubOption => {
+                        Object.keys(subOptionConfig.subOptions).forEach((nestedSubOption) => {
                             const nestedSubOptionConfig = subOptionConfig.subOptions[nestedSubOption];
                             newPermissions[category].subOptions[subOption].subOptions[nestedSubOption] = {
-                                enabled: permissionNames.includes(nestedSubOptionConfig.base)
+                                enabled: permissionNames.includes(nestedSubOptionConfig.base),
                             };
                         });
                     }
@@ -443,30 +443,30 @@ const RolesPermissions = () => {
         try {
             const response = await axios.get(`/api/v1/users/${userId}/permissions`);
             const userPermissions = response.data.data || [];
-            const permissionNames = userPermissions.map(perm => perm.name);
-            
+            const permissionNames = userPermissions.map((perm) => perm.name);
+
             const newPermissions = {};
-            Object.keys(permissionCategories).forEach(category => {
+            Object.keys(permissionCategories).forEach((category) => {
                 const categoryConfig = permissionCategories[category];
                 newPermissions[category] = {
                     main: permissionNames.includes(categoryConfig.base),
-                    subOptions: {}
+                    subOptions: {},
                 };
-                
+
                 // Check sub-options
-                Object.keys(categoryConfig.subOptions).forEach(subOption => {
+                Object.keys(categoryConfig.subOptions).forEach((subOption) => {
                     const subOptionConfig = categoryConfig.subOptions[subOption];
                     newPermissions[category].subOptions[subOption] = {
                         enabled: permissionNames.includes(subOptionConfig.base),
-                        subOptions: {}
+                        subOptions: {},
                     };
-                    
+
                     // Check nested sub-options if they exist
                     if (subOptionConfig.subOptions) {
-                        Object.keys(subOptionConfig.subOptions).forEach(nestedSubOption => {
+                        Object.keys(subOptionConfig.subOptions).forEach((nestedSubOption) => {
                             const nestedSubOptionConfig = subOptionConfig.subOptions[nestedSubOption];
                             newPermissions[category].subOptions[subOption].subOptions[nestedSubOption] = {
-                                enabled: permissionNames.includes(nestedSubOptionConfig.base)
+                                enabled: permissionNames.includes(nestedSubOptionConfig.base),
                             };
                         });
                     }
@@ -480,13 +480,10 @@ const RolesPermissions = () => {
 
     const fetchCombinedUserPermissions = async (userId) => {
         try {
-            console.log('🔍 Fetching combined permissions for user:', userId);
             const response = await axios.get(`/api/v1/users/${userId}/combined-permissions`);
-            console.log('📥 Combined permissions response:', response.data);
-            console.log('📊 Permissions data:', response.data.data);
             setPermissions(response.data.data || {});
         } catch (error) {
-            console.error("❌ Failed to fetch combined user permissions:", error);
+            console.error("Failed to fetch combined user permissions:", error);
         }
     };
 
@@ -494,32 +491,31 @@ const RolesPermissions = () => {
         const categoryConfig = permissionCategories[category];
         const isMainCard = subOption === null;
         const isNestedSubOption = nestedSubOption !== null;
-        
+
         if (isMainCard) {
             // Toggle main card
             const currentValue = permissions[category]?.main || false;
             const newValue = !currentValue;
-            console.log('🔄 Toggling main card:', { category, currentValue, newValue, permissionMode });
-            
+
             if (permissionMode === "role") {
                 if (!selectedRole || !canManageRole(selectedRole)) return;
-                
+
                 try {
                     // Update UI immediately
                     const newPermissions = { ...permissions };
                     if (!newPermissions[category]) newPermissions[category] = { main: false, subOptions: {} };
                     newPermissions[category].main = newValue;
-                    
+
                     setPermissions(newPermissions);
 
                     // Toggle main permission only
                     const permissionsToToggle = [{ permission: categoryConfig.base, value: newValue }];
 
                     // Handle special cases for linked permissions
-                    if (categoryConfig.base === 'notification_settings') {
-                        permissionsToToggle.push({ permission: 'sidebar_notification', value: newValue });
-                    } else if (categoryConfig.base === 'sidebar') {
-                        permissionsToToggle.push({ permission: 'notification_settings', value: newValue });
+                    if (categoryConfig.base === "notification_settings") {
+                        permissionsToToggle.push({ permission: "sidebar_notification", value: newValue });
+                    } else if (categoryConfig.base === "sidebar") {
+                        permissionsToToggle.push({ permission: "notification_settings", value: newValue });
                     }
 
                     // Toggle all permissions
@@ -531,37 +527,35 @@ const RolesPermissions = () => {
                     );
 
                     const results = await Promise.all(promises);
-                    const allSuccessful = results.every(result => result.data.message === 'Permission toggled successfully');
+                    const allSuccessful = results.every((result) => result.data.message === "Permission toggled successfully");
 
                     if (!allSuccessful) {
-                        console.log('❌ Some API calls failed, reverting...');
                         // Revert on failure
                         fetchRolePermissions(selectedRole.id);
                     }
                 } catch (error) {
                     console.error("Failed to toggle role permission:", error);
-                    // Revert on error
                     fetchRolePermissions(selectedRole.id);
                 }
             } else {
-        if (!selectedUser || !canManageUser(selectedUser)) return;
-                
+                if (!selectedUser || !canManageUser(selectedUser)) return;
+
                 try {
                     // Update UI immediately
                     const newPermissions = { ...permissions };
                     if (!newPermissions[category]) newPermissions[category] = { main: false, subOptions: {} };
                     newPermissions[category].main = newValue;
-                    
+
                     setPermissions(newPermissions);
 
                     // Toggle main permission only
                     const permissionsToToggle = [{ permission: categoryConfig.base, value: newValue }];
 
                     // Handle special cases for linked permissions
-                    if (categoryConfig.base === 'notification_settings') {
-                        permissionsToToggle.push({ permission: 'sidebar_notification', value: newValue });
-                    } else if (categoryConfig.base === 'sidebar') {
-                        permissionsToToggle.push({ permission: 'notification_settings', value: newValue });
+                    if (categoryConfig.base === "notification_settings") {
+                        permissionsToToggle.push({ permission: "sidebar_notification", value: newValue });
+                    } else if (categoryConfig.base === "sidebar") {
+                        permissionsToToggle.push({ permission: "notification_settings", value: newValue });
                     }
 
                     // Toggle all permissions
@@ -573,18 +567,13 @@ const RolesPermissions = () => {
                     );
 
                     const results = await Promise.all(promises);
-                    console.log('📥 API responses:', results);
-                    const allSuccessful = results.every(result => result.data.success === true);
-                    console.log('✅ All successful:', allSuccessful);
+                    const allSuccessful = results.every((result) => result.data.success === true);
 
                     if (!allSuccessful) {
-                        console.log('❌ Some API calls failed, reverting...');
-                        // Revert on failure
                         fetchCombinedUserPermissions(selectedUser.id);
                     }
                 } catch (error) {
                     console.error("Failed to toggle user permission:", error);
-                    // Revert on error
                     fetchCombinedUserPermissions(selectedUser.id);
                 }
             }
@@ -592,10 +581,10 @@ const RolesPermissions = () => {
             // Toggle sub-option
             const currentValue = permissions[category]?.subOptions?.[subOption]?.enabled || false;
             const newValue = !currentValue;
-            
+
             if (permissionMode === "role") {
                 if (!selectedRole || !canManageRole(selectedRole)) return;
-                
+
                 try {
                     // Update UI immediately
                     const newPermissions = { ...permissions };
@@ -603,22 +592,20 @@ const RolesPermissions = () => {
                     if (!newPermissions[category].subOptions) newPermissions[category].subOptions = {};
                     if (!newPermissions[category].subOptions[subOption]) newPermissions[category].subOptions[subOption] = { enabled: false };
                     newPermissions[category].subOptions[subOption].enabled = newValue;
-                    
-                    
+
                     setPermissions(newPermissions);
 
                     // Toggle sub-option permission
-                    const permissionsToToggle = [{ 
-                        permission: categoryConfig.subOptions[subOption].base, 
-                        value: newValue 
+                    const permissionsToToggle = [{
+                        permission: categoryConfig.subOptions[subOption].base,
+                        value: newValue,
                     }];
-                    
 
                     // Handle special cases for linked permissions
-                    if (categoryConfig.subOptions[subOption].base === 'sidebar_notification') {
-                        permissionsToToggle.push({ permission: 'notification_settings', value: newValue });
-                    } else if (categoryConfig.subOptions[subOption].base === 'notification_settings') {
-                        permissionsToToggle.push({ permission: 'sidebar_notification', value: newValue });
+                    if (categoryConfig.subOptions[subOption].base ==="sidebar_notification") {
+                        permissionsToToggle.push({ permission: "notification_settings", value: newValue });
+                    } else if (categoryConfig.subOptions[subOption].base ==="notification_settings") {
+                        permissionsToToggle.push({ permission: "sidebar_notification", value: newValue });
                     }
 
                     // Toggle all permissions
@@ -630,21 +617,18 @@ const RolesPermissions = () => {
                     );
 
                     const results = await Promise.all(promises);
-                    const allSuccessful = results.every(result => result.data.message === 'Permission toggled successfully');
+                    const allSuccessful = results.every((result) => result.data.message ==="Permission toggled successfully");
 
                     if (!allSuccessful) {
-                        console.log('❌ Some API calls failed, reverting...');
-                        // Revert on failure
                         fetchRolePermissions(selectedRole.id);
                     }
                 } catch (error) {
                     console.error("Failed to toggle role permission:", error);
-                    // Revert on error
                     fetchRolePermissions(selectedRole.id);
                 }
             } else {
                 if (!selectedUser || !canManageUser(selectedUser)) return;
-                
+
                 try {
                     // Update UI immediately
                     const newPermissions = { ...permissions };
@@ -652,22 +636,20 @@ const RolesPermissions = () => {
                     if (!newPermissions[category].subOptions) newPermissions[category].subOptions = {};
                     if (!newPermissions[category].subOptions[subOption]) newPermissions[category].subOptions[subOption] = { enabled: false };
                     newPermissions[category].subOptions[subOption].enabled = newValue;
-                    
-                    
+
                     setPermissions(newPermissions);
 
                     // Toggle sub-option permission
-                    const permissionsToToggle = [{ 
-                        permission: categoryConfig.subOptions[subOption].base, 
-                        value: newValue 
+                    const permissionsToToggle = [{
+                        permission: categoryConfig.subOptions[subOption].base,
+                        value: newValue,
                     }];
-                    
 
                     // Handle special cases for linked permissions
-                    if (categoryConfig.subOptions[subOption].base === 'sidebar_notification') {
-                        permissionsToToggle.push({ permission: 'notification_settings', value: newValue });
-                    } else if (categoryConfig.subOptions[subOption].base === 'notification_settings') {
-                        permissionsToToggle.push({ permission: 'sidebar_notification', value: newValue });
+                    if (categoryConfig.subOptions[subOption].base === "sidebar_notification") {
+                        permissionsToToggle.push({ permission: "notification_settings", value: newValue });
+                    } else if (categoryConfig.subOptions[subOption].base === "notification_settings") {
+                        permissionsToToggle.push({ permission: "sidebar_notification", value: newValue });
                     }
 
                     // Toggle all permissions
@@ -679,18 +661,13 @@ const RolesPermissions = () => {
                     );
 
                     const results = await Promise.all(promises);
-                    console.log('📥 API responses:', results);
-                    const allSuccessful = results.every(result => result.data.success === true);
-                    console.log('✅ All successful:', allSuccessful);
+                    const allSuccessful = results.every((result) => result.data.success === true);
 
                     if (!allSuccessful) {
-                        console.log('❌ Some API calls failed, reverting...');
-                        // Revert on failure
                         fetchCombinedUserPermissions(selectedUser.id);
                     }
                 } catch (error) {
                     console.error("Failed to toggle user permission:", error);
-                    // Revert on error
                     fetchCombinedUserPermissions(selectedUser.id);
                 }
             }
@@ -698,10 +675,10 @@ const RolesPermissions = () => {
             // Toggle nested sub-option
             const currentValue = permissions[category]?.subOptions?.[subOption]?.subOptions?.[nestedSubOption]?.enabled || false;
             const newValue = !currentValue;
-            
+
             if (permissionMode === "role") {
                 if (!selectedRole || !canManageRole(selectedRole)) return;
-                
+
                 try {
                     // Update UI immediately
                     const newPermissions = { ...permissions };
@@ -711,16 +688,14 @@ const RolesPermissions = () => {
                     if (!newPermissions[category].subOptions[subOption].subOptions) newPermissions[category].subOptions[subOption].subOptions = {};
                     if (!newPermissions[category].subOptions[subOption].subOptions[nestedSubOption]) newPermissions[category].subOptions[subOption].subOptions[nestedSubOption] = { enabled: false };
                     newPermissions[category].subOptions[subOption].subOptions[nestedSubOption].enabled = newValue;
-                    
-                    
+
                     setPermissions(newPermissions);
 
                     // Toggle nested sub-option permission
-                    const permissionsToToggle = [{ 
-                        permission: categoryConfig.subOptions[subOption].subOptions[nestedSubOption].base, 
-                        value: newValue 
+                    const permissionsToToggle = [{
+                        permission: categoryConfig.subOptions[subOption].subOptions[nestedSubOption].base,
+                        value: newValue,
                     }];
-                    
 
                     // Toggle all permissions
                     const promises = permissionsToToggle.map(({ permission, value }) =>
@@ -731,7 +706,7 @@ const RolesPermissions = () => {
                     );
 
                     const results = await Promise.all(promises);
-                    const allSuccessful = results.every(result => result.data.message === 'Permission toggled successfully');
+                    const allSuccessful = results.every((result) => result.data.message ==="Permission toggled successfully");
 
                     if (!allSuccessful) {
                         fetchRolePermissions(selectedRole.id);
@@ -742,7 +717,7 @@ const RolesPermissions = () => {
                 }
             } else {
                 if (!selectedUser || !canManageUser(selectedUser)) return;
-                
+
                 try {
                     // Update UI immediately
                     const newPermissions = { ...permissions };
@@ -752,16 +727,14 @@ const RolesPermissions = () => {
                     if (!newPermissions[category].subOptions[subOption].subOptions) newPermissions[category].subOptions[subOption].subOptions = {};
                     if (!newPermissions[category].subOptions[subOption].subOptions[nestedSubOption]) newPermissions[category].subOptions[subOption].subOptions[nestedSubOption] = { enabled: false };
                     newPermissions[category].subOptions[subOption].subOptions[nestedSubOption].enabled = newValue;
-                    
-                    
+
                     setPermissions(newPermissions);
 
                     // Toggle nested sub-option permission
-                    const permissionsToToggle = [{ 
-                        permission: categoryConfig.subOptions[subOption].subOptions[nestedSubOption].base, 
-                        value: newValue 
+                    const permissionsToToggle = [{
+                        permission: categoryConfig.subOptions[subOption].subOptions[nestedSubOption].base,
+                        value: newValue,
                     }];
-                    
 
                     // Toggle all permissions
                     const promises = permissionsToToggle.map(({ permission, value }) =>
@@ -772,9 +745,7 @@ const RolesPermissions = () => {
                     );
 
                     const results = await Promise.all(promises);
-                    console.log('📥 API responses:', results);
-                    const allSuccessful = results.every(result => result.data.success === true);
-                    console.log('✅ All successful:', allSuccessful);
+                    const allSuccessful = results.every((result) => result.data.success === true);
 
                     if (!allSuccessful) {
                         fetchCombinedUserPermissions(selectedUser.id);
@@ -803,7 +774,7 @@ const RolesPermissions = () => {
                 <div className="flex justify-center items-center h-64">
                     <div className="text-center">
                         <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-[#7D8086]">Loading permissions...</p>
+                        <p className="text-[#7D8086]">Loading Permissions...</p>
                     </div>
                 </div>
             </div>
@@ -813,7 +784,7 @@ const RolesPermissions = () => {
     const handleApproverChange = (value) => {
         if (value.startsWith("role-")) {
             const designationId = parseInt(value.replace("role-", ""), 10);
-            const designation = roles.find(d => d.id === designationId);
+            const designation = roles.find((d) => d.id === designationId);
             setSelectedRole(designation);
             setSelectedUser(null);
             setPermissionMode("role");
@@ -822,7 +793,7 @@ const RolesPermissions = () => {
             }
         } else if (value.startsWith("user-")) {
             const userId = parseInt(value.replace("user-", ""), 10);
-            const user = users.find(u => u.id === userId);
+            const user = users.find((u) => u.id === userId);
             setSelectedUser(user);
             setSelectedRole(null);
             setPermissionMode("user");
@@ -841,13 +812,13 @@ const RolesPermissions = () => {
             <div className="w-full">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
                     <div className="mb-4 md:mb-0">
-                        <h2 className="text-3xl font-bold text-[#2C323C]">
+                        <h2 className="text-2xl md:text-3xl font-bold text-[#2C323C]">
                             Roles & Permissions Management
-                    </h2>
-                        <p className="text-[#7D8086] text-xl">
+                        </h2>
+                        <p className="text-[#7D8086] text-base md:text-lg mt-1">
                             Manage permissions for roles and individual users
-                    </p>
-                </div>
+                        </p>
+                    </div>
                     <div className="flex flex-col gap-4 w-full md:w-2/5">
                         <SelectFloating
                             label="Select Role or User"
@@ -866,7 +837,7 @@ const RolesPermissions = () => {
                                     label: "ROLES",
                                     disabled: true,
                                     isSeparator: true,
-                                    className: "border-t border-gray-300 my-1 py-1 text-center text-gray-500 text-sm font-medium"
+                                    className: "border-t border-gray-300 my-1 py-1 text-center text-gray-500 text-sm font-medium",
                                 }] : []),
                                 ...roles
                                     .sort((a, b) => a.designation.localeCompare(b.designation))
@@ -879,10 +850,10 @@ const RolesPermissions = () => {
                                     label: "USERS (Override)",
                                     disabled: true,
                                     isSeparator: true,
-                                    className: "border-t border-gray-300 my-1 py-1 text-center text-gray-500 text-sm font-medium"
+                                    className: "border-t border-gray-300 my-1 py-1 text-center text-gray-500 text-sm font-medium",
                                 }] : []),
                                 ...users
-                                    .filter(user => ![2, 3, 4].includes(user.id)) // Comment out this line to include users with IDs 2, 3, 4
+                                    .filter((user) => ![2, 3, 4].includes(user.id))
                                     .sort((a, b) => a.name.localeCompare(b.name))
                                     .map((user) => ({
                                         id: `user-${user.id}`,
@@ -896,20 +867,20 @@ const RolesPermissions = () => {
 
                 {/* Current Selection Info */}
                 {(selectedRole || selectedUser) && (
-                    <div className="bg-[#DCECF2] p-4 md:p-6 my-6 rounded-2xl">
-                        <div className="flex flex-col sm:flex-row gap-4 items-center">
+                    <div className="bg-[#DCECF2] p-5 md:p-6 my-6 rounded-2xl">
+                        <div className="flex flex-col sm:flex-row gap-3 items-center">
                             <div className="flex items-center gap-2">
-                                <span className="text-lg font-medium text-[#2C323C]">Currently Managing:</span>
-                                <span className="text-lg font-medium text-[#2C323C]">
+                                <span className="text-base font-medium text-[#2C323C]">Currently Managing:</span>
+                                <span className="text-base font-semibold text-[#2C323C]">
                                     {permissionMode === "role" ? selectedRole?.designation : selectedUser?.name}
                                 </span>
                             </div>
                             {permissionMode === "user" && (
-                                <div className="text-sm text-[#7D8086]">
+                                <div className="text-xs md:text-sm text-[#7D8086]">
                                     User permissions override role permissions
                                 </div>
-                    )}
-                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -917,23 +888,23 @@ const RolesPermissions = () => {
                 {Object.keys(permissionCategories).map((category) => {
                     const categoryConfig = permissionCategories[category];
                     const mainEnabled = permissions[category]?.main || false;
-                    const canEdit = permissionMode === "role" 
-                        ? canManageRole(selectedRole) 
+                    const canEdit = permissionMode === "role"
+                        ? canManageRole(selectedRole)
                         : canManageUser(selectedUser);
-                    
+
                     return (
                         <div key={category} className="mb-8">
                             {/* Main Card */}
-                            <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg transition-shadow mb-4">
-                                <div className="flex items-center justify-between mb-4">
+                            <div className="bg-white p-5 md:p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg transition-shadow mb-4">
+                                <div className="flex items-center justify-between mb-3">
                                     <div>
-                                        <h3 className="text-xl font-bold text-[#2C323C] mb-2">
+                                        <h3 className="text-lg md:text-xl font-bold text-[#2C323C] mb-1">
                                             {category}
                                         </h3>
-                                        <p className="text-sm text-[#7D8086]">
+                                        <p className="text-xs md:text-sm text-[#7D8086]">
                                             {categoryConfig.description}
                                         </p>
-                    </div>
+                                    </div>
                                     <label
                                         className={`flex items-center cursor-pointer ${
                                             !canEdit ? "opacity-50 cursor-not-allowed" : ""
@@ -961,7 +932,7 @@ const RolesPermissions = () => {
                                         </div>
                                     </label>
                                 </div>
-                                
+
                                 {/* Sub-options - only show if main card is enabled */}
                                 {mainEnabled && Object.keys(categoryConfig.subOptions).length > 0 && (
                                     <div className="border-t border-gray-200 pt-4">
@@ -1007,7 +978,7 @@ const RolesPermissions = () => {
                                                         <p className="text-xs text-[#7D8086] mb-2">
                                                             {subOptionConfig.description}
                                                         </p>
-                                                        
+                                            
                                                         {/* Nested sub-options - only show if sub-option is enabled */}
                                                         {subEnabled && subOptionConfig.subOptions && Object.keys(subOptionConfig.subOptions).length > 0 && (
                                                             <div className="mt-2 pt-2 border-t border-gray-300">
@@ -1032,14 +1003,14 @@ const RolesPermissions = () => {
                                                                                         disabled={!canEdit}
                                                                                     />
                                                                                     <div
-                                                                                        className={`w-6 h-3 rounded-full border border-[#2C323C33] p-0.5 shadow-sm transition duration-300 ${
+                                                                                        className={`w-8 h-4 flex items-center rounded-full border border-[#2C323C33] p-0.5 shadow-sm transition duration-300 ${
                                                                                             nestedEnabled ? "bg-[#28a745]" : "bg-[#D7D8D9]"
                                                                                         }`}
-                                                                                    >
+                                                                                        >
                                                                                         <div
-                                                                                            className={`w-2 h-2 rounded-full shadow-sm transform transition duration-300 ${
+                                                                                            className={`w-3 h-3 rounded-full shadow-sm transform transition duration-300 ${
                                                                                                 nestedEnabled
-                                                                                                    ? "translate-x-3 bg-white"
+                                                                                                    ? "translate-x-4 bg-white"
                                                                                                     : "bg-white"
                                                                                             }`}
                                                                                         ></div>
@@ -1061,7 +1032,7 @@ const RolesPermissions = () => {
                         </div>
                     );
                 })}
-                    </div>
+            </div>
         </div>
     );
 };
