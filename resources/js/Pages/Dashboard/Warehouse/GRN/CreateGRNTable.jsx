@@ -17,7 +17,7 @@ const CreateGRNTable = () => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/purchase-orders?has_good_receive_note=false&include=department,costCenter,subCostCenter,warehouse,quotation.rfq.items,quotation.rfq.items.unit,quotation.rfq.items.product,supplier,user&page=${currentPage}`
+                    `/api/v1/purchase-orders?has_good_receive_note=false&include=department,costCenter,subCostCenter,warehouse,quotation.rfq.items,quotation.rfq.items.unit,quotation.rfq.items.product,supplier,user&page=${currentPage}&sort=-created_at`
                 );
                 const res = await response.json();
                 if (response.ok) {
@@ -34,7 +34,7 @@ const CreateGRNTable = () => {
         };
 
         fetchPurchaseOrders();
-    }, []);
+    }, [currentPage]);
 
     return (
         <div className="w-full">
@@ -140,6 +140,50 @@ const CreateGRNTable = () => {
                     )}
                 </tbody>
             </table>
+
+            {/* Pagination */}
+            {!loading && !error && orders.length > 0 && (
+                <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    <button
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage <= 1
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage <= 1}
+                    >
+                        Previous
+                    </button>
+                    {Array.from(
+                        { length: lastPage },
+                        (_, index) => index + 1
+                    ).map((page) => (
+                        <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-1 ${
+                                currentPage === page
+                                    ? "bg-[#009FDC] text-white"
+                                    : "border border-[#B9BBBD] bg-white"
+                            } rounded-full hover:bg-[#0077B6] hover:text-white transition`}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage >= lastPage
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage >= lastPage}
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
 
             {/* Render the modal */}
             <CreateGRNModal

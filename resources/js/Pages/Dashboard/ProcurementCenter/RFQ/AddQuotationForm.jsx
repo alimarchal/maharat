@@ -1026,10 +1026,21 @@ function AddQuotationForm() {
             console.log('handleFormInputChange - sub_cost_center_id:', { oldValue: formData.sub_cost_center_id, newValue: value, type: typeof value });
         }
         
-        setFormData((prev) => ({
-            ...prev,
-            [field]: value,
-        }));
+        // If category is being changed, clear all items to prevent mismatched items
+        if (field === 'category_id' && formData.category_id !== value) {
+            console.log('Category changed, clearing items table');
+            setFormData((prev) => ({
+                ...prev,
+                [field]: value,
+                items: [], // Clear all items when category changes
+            }));
+        } else {
+            setFormData((prev) => ({
+                ...prev,
+                [field]: value,
+            }));
+        }
+        
         // Clear error for this field if it exists
         if (errors[field]) {
             setErrors((prev) => ({ ...prev, [field]: undefined }));

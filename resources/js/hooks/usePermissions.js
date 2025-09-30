@@ -25,7 +25,6 @@ export const usePermissions = () => {
             const oneMinute = 60 * 1000;
             
             if (cachedPermissions && cacheTimestamp && (now - parseInt(cacheTimestamp)) < oneMinute) {
-                console.log('📦 usePermissions: Using cached permissions');
                 setPermissions(JSON.parse(cachedPermissions));
                 setError(null);
                 setLoading(false);
@@ -61,7 +60,6 @@ export const usePermissions = () => {
             const fiveMinutes = 5 * 60 * 1000;
             
             if (cachedStructure && cacheTimestamp && (now - parseInt(cacheTimestamp)) < fiveMinutes) {
-                console.log('📦 usePermissions: Using cached permission structure');
                 setPermissionStructure(JSON.parse(cachedStructure));
                 setError(null);
                 setLoading(false);
@@ -105,7 +103,6 @@ export const usePermissions = () => {
         sessionStorage.removeItem('user_permissions_timestamp');
         sessionStorage.removeItem('user_permission_structure');
         sessionStorage.removeItem('user_permission_structure_timestamp');
-        console.log('🗑️ usePermissions: Cache cleared');
     };
 
     // Check if a main feature is enabled

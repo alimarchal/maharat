@@ -225,10 +225,19 @@ export default function QuotationRFQ({ auth }) {
         setIsModalOpen(true);
     };
 
-    const handleEditQuotation = (quotation) => {
-        setSelectedQuotation(quotation);
-        setIsEditMode(true);
-        setIsModalOpen(true);
+    const handleEditQuotation = async (quotation) => {
+        try {
+            // Fetch the quotation with quotation_items for editing
+            const response = await axios.get(`/api/v1/quotations/${quotation.id}`);
+            const quotationWithItems = response.data.data;
+            
+            setSelectedQuotation(quotationWithItems);
+            setIsEditMode(true);
+            setIsModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching quotation for editing:', error);
+            setError("Failed to load quotation for editing");
+        }
     };
 
     const handleSaveQuotation = () => {

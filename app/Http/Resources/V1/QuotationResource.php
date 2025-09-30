@@ -35,7 +35,30 @@ class QuotationResource extends JsonResource
             'rfq' => new RfqResource($this->whenLoaded('rfq')),
             'supplier' => new SupplierResource($this->whenLoaded('supplier')),
             'status' => new StatusResource($this->whenLoaded('status')),
-            'documents' => QuotationDocumentResource::collection($this->documents)
+            'documents' => QuotationDocumentResource::collection($this->documents),
+            'quotation_items' => $this->whenLoaded('quotationItems', function () {
+                return $this->quotationItems->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'rfq_item_id' => $item->rfq_item_id,
+                        'unit_price' => $item->unit_price,
+                        'total_price' => $item->total_price,
+                        'vat_amount' => $item->vat_amount,
+                        'notes' => $item->notes,
+                        'rfq_item' => $item->rfqItem ? [
+                            'id' => $item->rfqItem->id,
+                            'item_name' => $item->rfqItem->item_name,
+                            'description' => $item->rfqItem->description,
+                            'quantity' => $item->rfqItem->quantity,
+                            'unit' => $item->rfqItem->unit ? $item->rfqItem->unit->name : null,
+                            'product' => $item->rfqItem->product ? $item->rfqItem->product->name : null,
+                            'brand' => $item->rfqItem->brand,
+                            'model' => $item->rfqItem->model,
+                            'specifications' => $item->rfqItem->specifications
+                        ] : null
+                    ];
+                });
+            })
         ];
     }
 }

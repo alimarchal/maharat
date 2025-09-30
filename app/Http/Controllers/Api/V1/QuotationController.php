@@ -8,6 +8,8 @@ use App\Http\Requests\V1\Quotation\UpdateQuotationRequest;
 use App\Http\Resources\V1\QuotationResource;
 use App\Models\Quotation;
 use App\Models\QuotationDocument;
+use App\Models\QuotationItem;
+use App\Models\RfqItem;
 use App\Models\Supplier;
 use App\QueryParameters\QuotationParameters;
 use Illuminate\Http\JsonResponse;
@@ -94,6 +96,31 @@ class QuotationController extends Controller
 
     public function store(Request $request)
     {
+        // Handle quotation_items validation - can be array or JSON string
+        $quotationItems = $request->input('quotation_items');
+        if (is_string($quotationItems)) {
+            $quotationItems = json_decode($quotationItems, true);
+        }
+        
+        // Validate quotation_items if provided
+        if ($quotationItems && is_array($quotationItems)) {
+            foreach ($quotationItems as $index => $item) {
+                if (!isset($item['rfq_item_id']) || !isset($item['unit_price'])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Quotation item at index {$index} is missing required fields"
+                    ], 422);
+                }
+                
+                if (!is_numeric($item['unit_price']) || $item['unit_price'] < 0) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Unit price for item at index {$index} must be a valid positive number"
+                    ], 422);
+                }
+            }
+        }
+
         // Validate basic quotation fields
         $request->validate([
             'quotation_number' => 'nullable|string|max:255',
@@ -107,6 +134,8 @@ class QuotationController extends Controller
         ]);
 
         try {
+            DB::beginTransaction();
+
             // Generate quotation number if not provided
             if (empty($request->quotation_number)) {
                 $quotationNumber = $this->generateQuotationNumber();
@@ -123,6 +152,15 @@ class QuotationController extends Controller
                 throw new \Exception('Active status for quotations not found');
             }
             
+            // Calculate total amount from quotation items if provided
+            $totalAmount = $request->total_amount;
+            if ($quotationItems && is_array($quotationItems)) {
+                $totalAmount = $this->calculateTotalAmount($quotationItems);
+            }
+            
+            // Calculate VAT amount (15% of total amount)
+            $vatAmount = $totalAmount ? ($totalAmount * 0.15) : 0;
+            
             // Create the quotation record
             $quotation = Quotation::create([
                 'quotation_number' => $quotationNumber,
@@ -130,11 +168,16 @@ class QuotationController extends Controller
                 'supplier_id' => $request->supplier_id,
                 'issue_date' => $request->issue_date,
                 'valid_until' => $request->valid_until,
-                'total_amount' => $request->total_amount,
-                'vat_amount' => $request->vat_amount,
+                'total_amount' => $totalAmount,
+                'vat_amount' => $vatAmount,
                 'notes' => $request->notes,
                 'status_id' => $activeStatus->id // Set the default status as Active
             ]);
+            
+            // Create quotation items if provided
+            if ($quotationItems && is_array($quotationItems)) {
+                $this->createQuotationItems($quotation->id, $quotationItems);
+            }
             
             // If RFQ company ID is provided, update the RFQ record
             if ($request->has('update_rfq') && $request->input('update_rfq') && $request->has('rfq_company_id')) {
@@ -143,13 +186,16 @@ class QuotationController extends Controller
                 ]);
             }
             
+            DB::commit();
+            
             return response()->json([
                 'success' => true,
                 'message' => 'Quotation created successfully',
-                'data' => new QuotationResource($quotation->load(['rfq', 'supplier', 'documents']))
+                'data' => new QuotationResource($quotation->load(['rfq', 'supplier', 'documents', 'quotationItems.rfqItem']))
             ], Response::HTTP_CREATED);
             
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Failed to create quotation: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -160,7 +206,7 @@ class QuotationController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $quotation = Quotation::with(['rfq', 'supplier', 'status', 'documents'])
+        $quotation = Quotation::with(['rfq', 'supplier', 'status', 'documents', 'quotationItems.rfqItem.unit', 'quotationItems.rfqItem.product'])
             ->findOrFail($id);
 
         return response()->json(['data' => new QuotationResource($quotation)], Response::HTTP_OK);
@@ -170,26 +216,69 @@ class QuotationController extends Controller
     {
         $quotation = Quotation::findOrFail($id);
 
-        // Update the fields in the quotations table
-        $quotation->update($request->except(['company_name', 'supplier_name', 'original_name', 'file_path', 'update_rfq', 'rfq_company_id']));
+        try {
+            DB::beginTransaction();
 
-        // Check if the request contains organization_name and update the related RFQ
-        if ($request->has('update_rfq') && $request->input('update_rfq') && $request->has('rfq_company_id')) {
-            $rfqId = $quotation->rfq_id;
-            DB::table('rfqs')->where('id', $rfqId)->update([
-                'company_id' => $request->input('rfq_company_id')
-            ]);
+            // Handle quotation_items if provided
+            $quotationItems = $request->input('quotation_items');
+            if (is_string($quotationItems)) {
+                $quotationItems = json_decode($quotationItems, true);
+            }
+
+            // Calculate total amount from quotation items if provided
+            $totalAmount = $request->total_amount;
+            if ($quotationItems && is_array($quotationItems)) {
+                $totalAmount = $this->calculateTotalAmount($quotationItems);
+            }
+
+            // Calculate VAT amount (15% of total amount)
+            $vatAmount = $totalAmount ? ($totalAmount * 0.15) : 0;
+
+            // Update the quotation with calculated amounts
+            $quotation->update(array_merge(
+                $request->except(['company_name', 'supplier_name', 'original_name', 'file_path', 'update_rfq', 'rfq_company_id', 'quotation_items']),
+                [
+                    'total_amount' => $totalAmount,
+                    'vat_amount' => $vatAmount
+                ]
+            ));
+
+            // Update quotation items if provided
+            if ($quotationItems && is_array($quotationItems)) {
+                // Delete existing quotation items
+                $quotation->quotationItems()->delete();
+                
+                // Create new quotation items
+                $this->createQuotationItems($quotation->id, $quotationItems);
+            }
+
+            // Check if the request contains organization_name and update the related RFQ
+            if ($request->has('update_rfq') && $request->input('update_rfq') && $request->has('rfq_company_id')) {
+                $rfqId = $quotation->rfq_id;
+                DB::table('rfqs')->where('id', $rfqId)->update([
+                    'company_id' => $request->input('rfq_company_id')
+                ]);
+            }
+
+            // Check if the request contains original_name or file_path and update related documents
+            if ($request->has('original_name') || $request->has('file_path')) {
+                $quotation->documents()->update([
+                    'original_name' => $request->input('original_name', 'N/A'),
+                    'file_path' => $request->input('file_path', 'N/A'),
+                ]);
+            }
+
+            DB::commit();
+            return response()->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to update quotation: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update quotation: ' . $e->getMessage()
+            ], 500);
         }
-
-        // Check if the request contains original_name or file_path and update related documents
-        if ($request->has('original_name') || $request->has('file_path')) {
-            $quotation->documents()->update([
-                'original_name' => $request->input('original_name', 'N/A'),
-                'file_path' => $request->input('file_path', 'N/A'),
-            ]);
-        }
-
-        return response()->json(['success' => true]);
     }
 
     public function uploadTerms(Request $request)
@@ -277,6 +366,87 @@ class QuotationController extends Controller
                 'error' => 'Failed to load quotations',
                 'message' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Get RFQ items for quotation creation
+     */
+    public function getRfqItems($rfqId)
+    {
+        try {
+            $rfqItems = RfqItem::with(['unit', 'product', 'category'])
+                ->where('rfq_id', $rfqId)
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $rfqItems->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'item_name' => $item->item_name,
+                        'description' => $item->description,
+                        'quantity' => $item->quantity,
+                        'unit' => $item->unit ? $item->unit->name : null,
+                        'product' => $item->product ? $item->product->name : null,
+                        'category' => $item->category ? $item->category->name : null,
+                        'brand' => $item->brand,
+                        'model' => $item->model,
+                        'specifications' => $item->specifications
+                    ];
+                })
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching RFQ items: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch RFQ items: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Calculate total amount from quotation items
+     */
+    private function calculateTotalAmount(array $quotationItems): float
+    {
+        $totalAmount = 0;
+        
+        foreach ($quotationItems as $item) {
+            $rfqItem = RfqItem::find($item['rfq_item_id']);
+            if ($rfqItem) {
+                $unitPrice = floatval($item['unit_price']);
+                $quantity = floatval($rfqItem->quantity);
+                $itemTotal = $unitPrice * $quantity;
+                $totalAmount += $itemTotal;
+            }
+        }
+        
+        return $totalAmount;
+    }
+
+    /**
+     * Create quotation items
+     */
+    private function createQuotationItems(int $quotationId, array $quotationItems): void
+    {
+        foreach ($quotationItems as $item) {
+            $rfqItem = RfqItem::find($item['rfq_item_id']);
+            if ($rfqItem) {
+                $unitPrice = floatval($item['unit_price']);
+                $quantity = floatval($rfqItem->quantity);
+                $totalPrice = $unitPrice * $quantity;
+                $vatAmount = $totalPrice * 0.15; // 15% VAT
+                
+                QuotationItem::create([
+                    'quotation_id' => $quotationId,
+                    'rfq_item_id' => $item['rfq_item_id'],
+                    'unit_price' => $unitPrice,
+                    'total_price' => $totalPrice,
+                    'vat_amount' => $vatAmount,
+                    'notes' => $item['notes'] ?? null
+                ]);
+            }
         }
     }
 }

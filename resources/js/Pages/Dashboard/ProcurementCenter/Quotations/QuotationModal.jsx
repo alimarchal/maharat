@@ -26,6 +26,8 @@ const QuotationModal = ({
 
     const [companies, setCompanies] = useState([{ id: 1, name: "Maharat" }]);
     const [suppliers, setSuppliers] = useState([]);
+    const [rfqItems, setRfqItems] = useState([]);
+    const [quotationItems, setQuotationItems] = useState([]);
     const [errors, setErrors] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const [tempDocument, setTempDocument] = useState(null);
@@ -57,6 +59,36 @@ const QuotationModal = ({
                 } else {
                     setExistingDocument(null);
                 }
+                
+                // Handle existing quotation items
+                if (quotation.quotation_items && quotation.quotation_items.length > 0) {
+                    // Format unit price to remove unnecessary decimal places
+                    const formatUnitPrice = (price) => {
+                        const num = parseFloat(price);
+                        if (isNaN(num)) return "";
+                        
+                        // Convert to string and remove trailing zeros after decimal point
+                        let str = num.toString();
+                        
+                        // If it has a decimal point, remove trailing zeros but keep the decimal point if needed
+                        if (str.includes('.')) {
+                            str = str.replace(/0+$/, ''); // Remove trailing zeros
+                            if (str.endsWith('.')) {
+                                str = str.slice(0, -1); // Remove decimal point if no digits after
+                            }
+                        }
+                        
+                        return str;
+                    };
+                    
+                    const existingQuotationItems = quotation.quotation_items.map(item => ({
+                        rfq_item_id: item.rfq_item_id,
+                        unit_price: item.unit_price ? formatUnitPrice(item.unit_price) : "",
+                        total_price: parseFloat(item.total_price || 0)
+                    }));
+                    setQuotationItems(existingQuotationItems);
+                }
+                
                 const totalAmount = quotation.total_amount || "";
                 const calculatedVatAmount = totalAmount ? (parseFloat(totalAmount) * 0.15).toFixed(2) : "";
                 
@@ -88,11 +120,67 @@ const QuotationModal = ({
         }
     }, [isOpen, quotation, isEdit]);
 
+    // Separate useEffect to handle supplier selection after suppliers are loaded
+    useEffect(() => {
+        if (isEdit && quotation && suppliers.length > 0 && formData.supplier_name === "") {
+            // Find the supplier by name or ID
+            let selectedSupplierName = "";
+            
+            // First try to find by supplier name
+            if (quotation.supplier_name) {
+                const supplierByName = suppliers.find(s => s.name === quotation.supplier_name);
+                if (supplierByName) {
+                    selectedSupplierName = supplierByName.name;
+                }
+            }
+            
+            // If not found by name, try to find by supplier ID
+            if (!selectedSupplierName && quotation.supplier_id) {
+                const supplierById = suppliers.find(s => s.id === quotation.supplier_id);
+                if (supplierById) {
+                    selectedSupplierName = supplierById.name;
+                }
+            }
+            
+            // Update form data with the found supplier name
+            if (selectedSupplierName) {
+                setFormData(prev => ({
+                    ...prev,
+                    supplier_name: selectedSupplierName
+                }));
+            }
+        }
+    }, [suppliers, isEdit, quotation, formData.supplier_name]);
+
     const fetchFormData = async () => {
         try {
             // Fetch all suppliers
             const suppliersResponse = await axios.get("/api/v1/suppliers");
             const allSuppliers = suppliersResponse.data.data || [];
+            
+            // Fetch RFQ items if rfqId is provided
+            if (rfqId) {
+                try {
+                    const rfqItemsResponse = await axios.get(`/api/v1/quotations/rfq-items/${rfqId}`);
+                    if (rfqItemsResponse.data && rfqItemsResponse.data.success) {
+                        setRfqItems(rfqItemsResponse.data.data);
+                        
+                        // Initialize quotation items with empty unit prices ONLY if not in edit mode
+                        if (!isEdit) {
+                            const initialQuotationItems = rfqItemsResponse.data.data.map(item => ({
+                                rfq_item_id: item.id,
+                                unit_price: "",
+                                total_price: 0
+                            }));
+                            setQuotationItems(initialQuotationItems);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error fetching RFQ items:", error);
+                    setRfqItems([]);
+                    setQuotationItems([]);
+                }
+            }
             
             // Fetch existing quotations for this RFQ to filter out used suppliers
             let usedSupplierIds = new Set();
@@ -169,6 +257,44 @@ const QuotationModal = ({
         });
     };
 
+    const handleUnitPriceChange = (rfqItemId, unitPrice) => {
+        const numericPrice = parseFloat(unitPrice) || 0;
+        
+        setQuotationItems(prev => {
+            const updated = prev.map(item => {
+                if (item.rfq_item_id === rfqItemId) {
+                    const rfqItem = rfqItems.find(ri => ri.id === rfqItemId);
+                    const quantity = parseFloat(rfqItem?.quantity) || 0;
+                    const totalPrice = numericPrice * quantity;
+                    
+                    return {
+                        ...item,
+                        unit_price: unitPrice,
+                        total_price: totalPrice
+                    };
+                }
+                return item;
+            });
+            
+            // Calculate total amount
+            const totalAmount = updated.reduce((sum, item) => sum + item.total_price, 0);
+            const vatAmount = totalAmount * 0.15;
+            
+            // Update form data with calculated totals
+            setFormData(prev => ({
+                ...prev,
+                total_amount: totalAmount.toFixed(2),
+                vat_amount: vatAmount.toFixed(2)
+            }));
+            
+            return updated;
+        });
+    };
+
+    const calculateTotalAmount = () => {
+        return quotationItems.reduce((sum, item) => sum + item.total_price, 0);
+    };
+
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -206,12 +332,19 @@ const QuotationModal = ({
             }
         }
         
-        if (!formData.total_amount)
-            validationErrors.total_amount = "Amount is required";
-        if (formData.total_amount && isNaN(formData.total_amount))
-            validationErrors.total_amount = "Amount must be a valid number";
-        if (formData.total_amount && parseFloat(formData.total_amount) < 0)
-            validationErrors.total_amount = "Amount cannot be negative";
+        // Validate unit prices
+        let hasValidUnitPrices = false;
+        quotationItems.forEach((item, index) => {
+            if (item.unit_price && parseFloat(item.unit_price) > 0) {
+                hasValidUnitPrices = true;
+            } else {
+                validationErrors[`unit_price_${item.rfq_item_id}`] = "Unit price is required";
+            }
+        });
+        
+        if (!hasValidUnitPrices) {
+            validationErrors.total_amount = "At least one item must have a valid unit price";
+        }
         
         // Make attachment required
         if (!tempDocument && !existingDocument) {
@@ -267,6 +400,7 @@ const QuotationModal = ({
                     total_amount: formData.total_amount,
                     vat_amount: formData.vat_amount,
                     rfq_id: rfqId,
+                    quotation_items: quotationItems.filter(item => item.unit_price && parseFloat(item.unit_price) > 0),
                     update_rfq: true,
                     updated_at: new Date().toISOString(),
                 };
@@ -320,6 +454,7 @@ const QuotationModal = ({
                 rfq_id: rfqId,
                 update_rfq: true,
                 quotation_number: "",
+                quotation_items: quotationItems.filter(item => item.unit_price && parseFloat(item.unit_price) > 0),
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             };
@@ -328,13 +463,24 @@ const QuotationModal = ({
                     dataToSubmit[key] !== null &&
                     dataToSubmit[key] !== undefined
                 ) {
-                    formDataToSend.append(key, dataToSubmit[key]);
+                    if (key === 'quotation_items') {
+                        formDataToSend.append(key, JSON.stringify(dataToSubmit[key]));
+                    } else {
+                        formDataToSend.append(key, dataToSubmit[key]);
+                    }
                 }
             });
 
             if (tempDocument) {
                 formDataToSend.append("document", tempDocument);
             }
+
+            // Debug: Log what we're sending
+            console.log('Sending quotation data:', {
+                quotation_items: quotationItems.filter(item => item.unit_price && parseFloat(item.unit_price) > 0),
+                total_amount: formData.total_amount,
+                vat_amount: formData.vat_amount
+            });
 
             // Create new quotation
             let response;
@@ -498,9 +644,9 @@ const QuotationModal = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-            <div className="bg-white p-8 rounded-2xl w-[90%] max-w-3xl">
-                <div className="flex justify-between border-b pb-2 mb-4">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
+            <div className="bg-white rounded-2xl w-[90%] max-w-3xl max-h-[90vh] flex flex-col">
+                <div className="flex justify-between border-b pb-2 mb-4 p-8 pb-4">
                     <h2 className="text-3xl font-bold text-[#2C323C]">
                         {isEdit ? "Edit Quotation" : "Add Quotation"}
                     </h2>
@@ -511,6 +657,7 @@ const QuotationModal = ({
                         <FontAwesomeIcon icon={faTimes} />
                     </button>
                 </div>
+                <div className="flex-1 overflow-y-auto px-8 pb-8 pt-4">
                 {errors.submit && (
                     <div
                         className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
@@ -559,12 +706,13 @@ const QuotationModal = ({
                             min={formData.issue_date || undefined}
                         />
                         <InputFloating
-                            label="Amount"
+                            label="Total Amount"
                             name="total_amount"
                             type="number"
                             value={formData.total_amount}
                             onChange={handleChange}
                             error={errors.total_amount}
+                            disabled={true}
                         />
                         <InputFloating
                             label="VAT Amount (15%)"
@@ -576,6 +724,76 @@ const QuotationModal = ({
                             disabled={true}
                         />
                     </div>
+
+                    {/* RFQ Items Section */}
+                    {rfqItems.length > 0 && (
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-semibold text-gray-700">Items & Pricing</h3>
+                            {rfqItems.map((item, index) => {
+                                const quotationItem = quotationItems.find(qi => qi.rfq_item_id === item.id);
+                                
+                                // Format quantity to remove unnecessary decimal places
+                                const formatQuantity = (qty) => {
+                                    const num = parseFloat(qty);
+                                    if (isNaN(num)) return qty; // Return original if not a number
+                                    
+                                    // Convert to string and remove trailing zeros after decimal point
+                                    let str = num.toString();
+                                    
+                                    // If it has a decimal point, remove trailing zeros but keep the decimal point if needed
+                                    if (str.includes('.')) {
+                                        str = str.replace(/0+$/, ''); // Remove trailing zeros
+                                        if (str.endsWith('.')) {
+                                            str = str.slice(0, -1); // Remove decimal point if no digits after
+                                        }
+                                    }
+                                    
+                                    return str;
+                                };
+                                
+                                return (
+                                    <div key={item.id} className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-gray-50">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                {item.product || item.item_name || `Item ${index + 1}`}
+                                            </label>
+                                            <div className="text-sm text-gray-600">
+                                                {item.item_name && item.item_name !== item.product && (
+                                                    <div className="font-medium">{item.item_name}</div>
+                                                )}
+                                                {item.description && (
+                                                    <div className="text-xs text-gray-500">{item.description}</div>
+                                                )}
+                                                <div className="text-xs text-gray-500">
+                                                    Quantity: {formatQuantity(item.quantity)} {item.unit}
+                                                </div>
+                                                {item.brand && (
+                                                    <div className="text-xs text-gray-500">Brand: {item.brand}</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <InputFloating
+                                                label="Unit Price"
+                                                type="number"
+                                                step="0.01"
+                                                value={quotationItem?.unit_price || ""}
+                                                onChange={(e) => handleUnitPriceChange(item.id, e.target.value)}
+                                                error={errors[`unit_price_${item.id}`]}
+                                                placeholder="0.00"
+                                            />
+                                            {parseFloat(quotationItem?.total_price || 0) > 0 && (
+                                                <div className="text-sm text-gray-600 mt-1 space-y-1">
+                                                    <div>Total: {parseFloat(quotationItem.total_price || 0).toFixed(2)}</div>
+                                                    <div>VAT (15%): {(parseFloat(quotationItem.total_price || 0) * 0.15).toFixed(2)}</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     <div className="flex justify-center">
                         <div className="space-y-2 w-full max-w-sm">
@@ -662,6 +880,7 @@ const QuotationModal = ({
                         </button>
                     </div>
                 </form>
+                </div>
             </div>
         </div>
     );
