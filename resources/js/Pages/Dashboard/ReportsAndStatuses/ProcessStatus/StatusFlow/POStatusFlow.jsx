@@ -19,6 +19,7 @@ const POStatusFlow = () => {
     const [showModal, setShowModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [modalType, setModalType] = useState("");
+    const [purchaseOrderDate, setPurchaseOrderDate] = useState(null);
 
     useEffect(() => {
         if (id) {
@@ -54,6 +55,10 @@ const POStatusFlow = () => {
                 `/api/v1/po-approval-transactions?filter[purchase_order_id]=${id}&include=purchaseOrder,requester,assignedTo,referredTo,creator,updater`
             );
             setCardData(response.data?.data);
+
+            if (response.data?.data?.[0]?.purchase_order?.created_at) {
+                setPurchaseOrderDate(response.data.data[0].purchase_order.created_at);
+            }
 
             if (response.data?.data && response.data.data.length > 0) {
                 setCurrentStep(1 + response.data.data.length);
@@ -122,19 +127,15 @@ const POStatusFlow = () => {
                             <span className="text-gray-600">PO-{id}</span>
                         </div>
                         <div className="text-gray-500 text-sm">
-                            {statuses.length > 0 ? (
+                            {purchaseOrderDate ? (
                                 <>
-                                    {new Date(
-                                        statuses[0].created_at
-                                    ).toLocaleDateString("en-US", {
+                                    {new Date(purchaseOrderDate).toLocaleDateString("en-US", {
                                         day: "2-digit",
                                         month: "short",
                                         year: "numeric",
                                     })}{" "}
                                     <span className="text-xs text-gray-400">
-                                        {new Date(
-                                            statuses[0].created_at
-                                        ).toLocaleTimeString("en-US", {
+                                        {new Date(purchaseOrderDate).toLocaleTimeString("en-US", {
                                             hour: "2-digit",
                                             minute: "2-digit",
                                             hour12: true,

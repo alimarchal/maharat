@@ -19,6 +19,7 @@ const TotalBudgetStatusFlow = () => {
     const [showModal, setShowModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [modalType, setModalType] = useState("");
+    const [budgetDate, setBudgetDate] = useState(null);
 
     useEffect(() => {
         if (id) {
@@ -54,6 +55,10 @@ const TotalBudgetStatusFlow = () => {
                 `/api/v1/budget-approval-transactions?filter[budget_id]=${id}&include=budget,requester,assignedUser,referredUser,createdByUser,updatedByUser`
             );
             setCardData(response.data?.data);
+
+            if (response.data?.data?.[0]?.budget?.created_at) {
+                setBudgetDate(response.data.data[0].budget.created_at);
+            }
 
             if (response.data?.data && response.data.data.length > 0) {
                 setCurrentStep(1 + response.data.data.length);
@@ -122,19 +127,15 @@ const TotalBudgetStatusFlow = () => {
                             <span className="text-gray-600">BUDGET-{id}</span>
                         </div>
                         <div className="text-gray-500 text-sm">
-                            {statuses.length > 0 ? (
+                            {budgetDate ? (
                                 <>
-                                    {new Date(
-                                        statuses[0].created_at
-                                    ).toLocaleDateString("en-US", {
+                                    {new Date(budgetDate).toLocaleDateString("en-US", {
                                         day: "2-digit",
                                         month: "short",
                                         year: "numeric",
                                     })}{" "}
                                     <span className="text-xs text-gray-400">
-                                        {new Date(
-                                            statuses[0].created_at
-                                        ).toLocaleTimeString("en-US", {
+                                        {new Date(budgetDate).toLocaleTimeString("en-US", {
                                             hour: "2-digit",
                                             minute: "2-digit",
                                             hour12: true,

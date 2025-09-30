@@ -19,6 +19,7 @@ const BudgetRequestStatusFlow = () => {
     const [showModal, setShowModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [modalType, setModalType] = useState("");
+    const [budgetRequestDate, setBudgetRequestDate] = useState(null);
 
     useEffect(() => {
         if (id) {
@@ -54,6 +55,10 @@ const BudgetRequestStatusFlow = () => {
                 `/api/v1/budget-request-approval-trans?filter[request_budgets_id]=${id}&include=requestBudget,requester,assignedUser,referredUser,createdByUser,updatedByUser`
             );
             setCardData(response.data?.data);
+
+            if (response.data?.data?.[0]?.request_budget?.created_at) {
+                setBudgetRequestDate(response.data.data[0].request_budget.created_at);
+            }
 
             if (response.data?.data && response.data.data.length > 0) {
                 setCurrentStep(1 + response.data.data.length);
@@ -122,19 +127,15 @@ const BudgetRequestStatusFlow = () => {
                             <span className="text-gray-600">{id}</span>
                         </div>
                         <div className="text-gray-500 text-sm">
-                            {statuses.length > 0 ? (
+                            {budgetRequestDate ? (
                                 <>
-                                    {new Date(
-                                        statuses[0].created_at
-                                    ).toLocaleDateString("en-US", {
+                                    {new Date(budgetRequestDate).toLocaleDateString("en-US", {
                                         day: "2-digit",
                                         month: "short",
                                         year: "numeric",
                                     })}{" "}
                                     <span className="text-xs text-gray-400">
-                                        {new Date(
-                                            statuses[0].created_at
-                                        ).toLocaleTimeString("en-US", {
+                                        {new Date(budgetRequestDate).toLocaleTimeString("en-US", {
                                             hour: "2-digit",
                                             minute: "2-digit",
                                             hour12: true,
@@ -343,8 +344,7 @@ const BudgetRequestStatusFlow = () => {
                             </div>
                         ) : (
                             <div className="p-4 text-center text-gray-500 text-base">
-                                No Budget Request Approval transactions
-                                available.
+                                No Budget Request Approval transactions available.
                             </div>
                         )}
                     </>
