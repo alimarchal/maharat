@@ -21,6 +21,7 @@ const PaymentOrderTable = () => {
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
     const [selectedPaymentId, setSelectedPaymentId] = useState(null);
     const [savedPdfUrl, setSavedPdfUrl] = useState(null);
+    const [pendingPaymentOrdersCount, setPendingPaymentOrdersCount] = useState(0);
 
     const fetchOrders = async () => {
         setLoading(true);
@@ -43,6 +44,36 @@ const PaymentOrderTable = () => {
     useEffect(() => {
         fetchOrders();
     }, [currentPage]);
+
+    // Fetch count of purchase orders that need payment orders
+    useEffect(() => {
+        const fetchPendingPaymentOrdersCount = async () => {
+            try {
+                const [poRes, extInvRes] = await Promise.all([
+                    fetch("/api/v1/purchase-orders?has_payment_order=false&filter[status]=Approved"),
+                    fetch("/api/v1/external-invoices")
+                ]);
+                const poData = await poRes.json();
+                const extInvData = await extInvRes.json();
+
+                if (poRes.ok && extInvRes.ok) {
+                    const purchaseOrders = poData.data || [];
+                    const externalInvoicePOIds = (extInvData.data || []).map(inv => inv.purchase_order_id);
+                    
+                    // Count purchase orders that have external invoices but no payment orders
+                    const pendingCount = purchaseOrders.filter(order => 
+                        externalInvoicePOIds.map(String).includes(String(order.id))
+                    ).length;
+                    
+                    setPendingPaymentOrdersCount(pendingCount);
+                }
+            } catch (err) {
+                console.error("Error fetching pending payment orders count:", err);
+            }
+        };
+        
+        fetchPendingPaymentOrdersCount();
+    }, []);
 
     // Handle PDF generation
     const handleGeneratePDF = (paymentId) => {
@@ -130,9 +161,14 @@ const PaymentOrderTable = () => {
                 {hasPermission("create_payment_order") && (
                     <Link
                         href="/payment-orders/create"
-                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                        className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium relative"
                     >
                         Create New Payment Order
+                        {pendingPaymentOrdersCount > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold">
+                                {pendingPaymentOrdersCount}
+                            </span>
+                        )}
                     </Link>
                 )}
             </div>
