@@ -812,10 +812,10 @@ const RolesPermissions = () => {
             <div className="w-full">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
                     <div className="mb-4 md:mb-0">
-                        <h2 className="text-3xl font-bold text-[#2C323C]">
+                        <h2 className="text-2xl md:text-3xl font-bold text-[#2C323C]">
                             Roles & Permissions Management
                         </h2>
-                        <p className="text-[#7D8086] text-xl">
+                        <p className="text-[#7D8086] text-base md:text-lg mt-1">
                             Manage permissions for roles and individual users
                         </p>
                     </div>
@@ -867,16 +867,16 @@ const RolesPermissions = () => {
 
                 {/* Current Selection Info */}
                 {(selectedRole || selectedUser) && (
-                    <div className="bg-[#DCECF2] p-4 md:p-6 my-6 rounded-2xl">
-                        <div className="flex flex-col sm:flex-row gap-4 items-center">
+                    <div className="bg-[#DCECF2] p-5 md:p-6 my-6 rounded-2xl">
+                        <div className="flex flex-col sm:flex-row gap-3 items-center">
                             <div className="flex items-center gap-2">
-                                <span className="text-lg font-medium text-[#2C323C]">Currently Managing:</span>
-                                <span className="text-lg font-medium text-[#2C323C]">
+                                <span className="text-base font-medium text-[#2C323C]">Currently Managing:</span>
+                                <span className="text-base font-semibold text-[#2C323C]">
                                     {permissionMode === "role" ? selectedRole?.designation : selectedUser?.name}
                                 </span>
                             </div>
                             {permissionMode === "user" && (
-                                <div className="text-sm text-[#7D8086]">
+                                <div className="text-xs md:text-sm text-[#7D8086]">
                                     User permissions override role permissions
                                 </div>
                             )}
@@ -895,13 +895,13 @@ const RolesPermissions = () => {
                     return (
                         <div key={category} className="mb-8">
                             {/* Main Card */}
-                            <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg transition-shadow mb-4">
-                                <div className="flex items-center justify-between mb-4">
+                            <div className="bg-white p-5 md:p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg transition-shadow mb-4">
+                                <div className="flex items-center justify-between mb-3">
                                     <div>
-                                        <h3 className="text-xl font-bold text-[#2C323C] mb-2">
+                                        <h3 className="text-lg md:text-xl font-bold text-[#2C323C] mb-1">
                                             {category}
                                         </h3>
-                                        <p className="text-sm text-[#7D8086]">
+                                        <p className="text-xs md:text-sm text-[#7D8086]">
                                             {categoryConfig.description}
                                         </p>
                                     </div>
