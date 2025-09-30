@@ -248,6 +248,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/quotations/update-batch', [QuotationController::class, 'updateBatch']);
     Route::post('/quotations/upload-terms', [QuotationController::class, 'uploadTerms']);
     Route::get('/quotations/next-number', [QuotationController::class, 'getNextQuotationNumber']);
+    Route::get('/quotations/rfq-items/{rfqId}', [QuotationController::class, 'getRfqItems']);
 
     // Purchase Orders API Routes
     Route::get('purchase-orders/applicable-fiscal-periods', [PurchaseOrderController::class, 'getApplicableFiscalPeriods']);

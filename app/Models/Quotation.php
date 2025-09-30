@@ -54,4 +54,9 @@ class Quotation extends Model
     {
         return $this->belongsTo(Status::class);
     }
+
+    public function quotationItems(): HasMany
+    {
+        return $this->hasMany(QuotationItem::class);
+    }
 }
