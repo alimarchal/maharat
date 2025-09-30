@@ -29,7 +29,7 @@ const ReceivedMRsTable = () => {
                     include: 'requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus',
                     page: currentPage,
                     per_page: 10,
-                    'filter[status_id]': '4,2,51,52', // Fetch Approved (4), Referred (2), Issued (51), and Rejected (52)
+                    'filter[status_id]': '1,4,2,51,52', // Fetch Pending (1), Approved (4), Referred (2), Issued (51), and Rejected (52)
                     sort: '-created_at'
                 }
             });
@@ -249,8 +249,8 @@ const ReceivedMRsTable = () => {
 
     const filteredRequests = requests.filter((req) => {
         if (selectedFilter === "All") return true;
-        // Treat "Approved" status as "Pending" for filtering
-        const displayStatus = req.status?.name === "Approved" ? "Pending" : req.status?.name;
+        // Treat both "Approved" and "Pending" status as "Pending" for filtering
+        const displayStatus = (req.status?.name === "Approved" || req.status?.name === "Pending") ? "Pending" : req.status?.name;
         return displayStatus === selectedFilter;
     });
 
@@ -360,7 +360,7 @@ const ReceivedMRsTable = () => {
                                             "text-gray-500"
                                         }`}
                                     >
-                                        {req.status?.name === "Approved" ? "Pending" : req.status?.name || "N/A"}
+                                        {req.status?.name === "Approved" || req.status?.name === "Pending" ? "Pending" : req.status?.name || "N/A"}
                                     </td>
                                     <td className="py-3 px-4">
                                         <div className="flex flex-col">
@@ -425,7 +425,7 @@ const ReceivedMRsTable = () => {
             {/* Pagination */}
             {!loading && !error && requests.filter(req => {
                 if (selectedFilter === "All") return true;
-                const displayStatus = req.status?.name === "Approved" ? "Pending" : req.status?.name;
+                const displayStatus = (req.status?.name === "Approved" || req.status?.name === "Pending") ? "Pending" : req.status?.name;
                 return displayStatus === selectedFilter;
             }).length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
