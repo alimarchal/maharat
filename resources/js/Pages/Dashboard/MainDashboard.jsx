@@ -259,6 +259,11 @@ export default function MainDashboard({ roles, permissions }) {
     const [purchaseOrdersRfqCount, setPurchaseOrdersRfqCount] = useState(0);
     const [unpaidInvoicesCount, setUnpaidInvoicesCount] = useState(0);
     const [approvedItemsCount, setApprovedItemsCount] = useState(0);
+    
+    // Finance Center notification counts
+    const [maharatInvoicesCount, setMaharatInvoicesCount] = useState(0);
+    const [paymentOrdersCount, setPaymentOrdersCount] = useState(0);
+    
     const [loading, setLoading] = useState(true);
 
     // Fetch pending requests count (all types of pending requests)
@@ -508,6 +513,51 @@ export default function MainDashboard({ roles, permissions }) {
         fetchApprovedItemsCount();
     }, [user_id]);
 
+    // Fetch Maharat Invoices count for finance notifications
+    useEffect(() => {
+        const fetchMaharatInvoicesCount = async () => {
+            try {
+                const response = await fetch(`/api/v1/invoices?per_page=1`);
+                const data = await response.json();
+                if (response.ok) {
+                    setMaharatInvoicesCount(data.meta?.total || 0);
+                }
+            } catch (err) {
+                console.error("Error fetching maharat invoices count:", err);
+            }
+        };
+        fetchMaharatInvoicesCount();
+    }, []);
+
+    // Fetch Payment Orders count for finance notifications (using same logic as PaymentOrderTable)
+    useEffect(() => {
+        const fetchPaymentOrdersCount = async () => {
+            try {
+                const [poRes, extInvRes] = await Promise.all([
+                    fetch("/api/v1/purchase-orders?has_payment_order=false&filter[status]=Approved"),
+                    fetch("/api/v1/external-invoices")
+                ]);
+                const poData = await poRes.json();
+                const extInvData = await extInvRes.json();
+
+                if (poRes.ok && extInvRes.ok) {
+                    const purchaseOrders = poData.data || [];
+                    const externalInvoicePOIds = (extInvData.data || []).map(inv => inv.purchase_order_id);
+                    
+                    // Count purchase orders that have external invoices but no payment orders
+                    const pendingCount = purchaseOrders.filter(order => 
+                        externalInvoicePOIds.map(String).includes(String(order.id))
+                    ).length;
+                    
+                    setPaymentOrdersCount(pendingCount);
+                }
+            } catch (err) {
+                console.error("Error fetching payment orders count:", err);
+            }
+        };
+        fetchPaymentOrdersCount();
+    }, []);
+
     // Use the hasPermission from usePermissions hook which includes user overrides
 
     // Filter dropdown items based on user permissions
@@ -558,6 +608,7 @@ export default function MainDashboard({ roles, permissions }) {
             text: "Maharat Invoices",
             icon: faFileInvoice,
             onClick: () => router.visit("/maharat-invoices"),
+            notificationCount: maharatInvoicesCount,
             requiredPermission: "view_maharat_invoices",
         },
         {
@@ -570,6 +621,7 @@ export default function MainDashboard({ roles, permissions }) {
             text: "Payment Orders",
             icon: faMoneyCheckDollar,
             onClick: () => router.visit("/payment-orders"),
+            notificationCount: paymentOrdersCount,
             requiredPermission: "view_payment_orders",
         },
         {
@@ -713,6 +765,14 @@ export default function MainDashboard({ roles, permissions }) {
         return total;
     })();
 
+    // Calculate total finance notifications based on user permissions
+    const totalFinanceNotifications = (() => {
+        let total = 0;
+        if (hasPermission("view_maharat_invoices")) total += maharatInvoicesCount;
+        if (hasPermission("view_payment_orders")) total += paymentOrdersCount;
+        return total;
+    })();
+
     // Determine which cards to show based on permissions (using hook that includes user overrides)
     const showRequestsCard = hasPermission("view_requests");
     const showTasksCard = hasPermission("view_tasks");
@@ -793,6 +853,7 @@ export default function MainDashboard({ roles, permissions }) {
                         bgColor="bg-[#C4E4F0]"
                         iconColor="text-[#005372]"
                         dropdownItems={financeDropdownItems.length > 0 ? financeDropdownItems : null}
+                        notificationCount={totalFinanceNotifications}
                     />
                 )}
                 {showWarehouseCard && (
