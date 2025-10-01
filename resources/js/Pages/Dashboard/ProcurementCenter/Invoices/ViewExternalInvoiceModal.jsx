@@ -36,8 +36,8 @@ const ViewExternalInvoiceModal = ({ isOpen, onClose, invoice }) => {
     const paidVAT = paidAmountRaw * 15 / 115;
     // Paid Amount = paid_amount - paidVAT
     const paidAmount = paidAmountRaw - paidVAT;
-    // Remaining Amount = totalAmount - paidAmount
-    const remainingAmount = totalAmount - paidAmount;
+    // Remaining Amount = (totalAmount + vatAmount) - paidAmountRaw
+    const remainingAmount = (totalAmount + vatAmount) - paidAmountRaw;
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[99999]">
@@ -133,4 +133,4 @@ const ViewExternalInvoiceModal = ({ isOpen, onClose, invoice }) => {
     );
 };
 
-export default ViewExternalInvoiceModal; 
+export default ViewExternalInvoiceModal;
