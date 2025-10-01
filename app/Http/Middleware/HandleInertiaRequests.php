@@ -29,17 +29,34 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        return [
-            ...parent::share($request),
-            'auth' => [
-                'user' => $request->user() ? array_merge(
-                    $request->user()->toArray(),
-                    [
-                        'roles' => $request->user()->roles->pluck('name'),
-                        'permissions' => $request->user()->getAllPermissions()->pluck('name')
-                    ]
-                ) : null,
-            ],
-        ];
+        try {
+            // Log the request details
+            \Log::info('Inertia Request', [
+                'url' => $request->url(),
+                'method' => $request->method(),
+                'user_id' => $request->user()?->id,
+                'route_name' => $request->route()?->getName(),
+            ]);
+
+            return [
+                ...parent::share($request),
+                'auth' => [
+                    'user' => $request->user() ? array_merge(
+                        $request->user()->toArray(),
+                        [
+                            'roles' => $request->user()->roles->pluck('name'),
+                            'permissions' => $request->user()->getAllPermissions()->pluck('name')
+                        ]
+                    ) : null,
+                ],
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Inertia Middleware Error', [
+                'url' => $request->url(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
     }
 }
