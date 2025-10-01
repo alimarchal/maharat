@@ -300,8 +300,9 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
             };
 
             // Use the direct fields from payment_orders table
-            console.log("Payment:", paymentOrder)
-            const totalAmount = paymentOrder.total_amount + paymentOrder.vat_amount;
+            const baseAmount = parseFloat(paymentOrder.total_amount || 0);
+            const vatAmount = parseFloat(paymentOrder.vat_amount || 0);
+            const totalAmount = baseAmount + vatAmount;
             const paidAmount = paymentOrder.paid_amount;
             const paymentType = paymentOrder.payment_type;
 
@@ -471,19 +472,65 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
                 console.error("Error generating table:", tableError);
             }
 
-            // Add Bank Details section
+            // Add amount breakdown after table
             const tableResult = doc.lastAutoTable || {
                 finalY: tableStartY + 30,
             };
-            const finalY = tableResult.finalY + 15;
+            let finalY = tableResult.finalY;
 
-            // Add separator line
+            // Add subtotal, VAT, and total amount after table
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            
+            // Subtotal
+            doc.text("Subtotal:", pageWidth - margin - 60, finalY + 10);
+            doc.setFont("helvetica", "normal");
+            doc.text(
+                formatCurrency(baseAmount),
+                pageWidth - margin,
+                finalY + 10,
+                { align: "right" }
+            );
+
+            // VAT Amount
+            doc.setFont("helvetica", "bold");
+            doc.text("VAT Amount:", pageWidth - margin - 60, finalY + 18);
+            doc.setFont("helvetica", "normal");
+            doc.text(
+                formatCurrency(vatAmount),
+                pageWidth - margin,
+                finalY + 18,
+                { align: "right" }
+            );
+
+            // Draw a line before total
             doc.setDrawColor(200, 200, 200);
             doc.setLineWidth(0.3);
-            doc.line(margin, finalY - 5, pageWidth - margin, finalY - 5);
+            doc.line(
+                pageWidth - margin - 70,
+                finalY + 22,
+                pageWidth - margin,
+                finalY + 22
+            );
 
-            // Define signatureY variable - this was missing in the original code
-            const signatureY = finalY + 40;
+            // Total Amount
+            doc.setFont("helvetica", "bold");
+            doc.text("Total Amount:", pageWidth - margin - 60, finalY + 28);
+            doc.text(
+                formatCurrency(totalAmount),
+                pageWidth - margin,
+                finalY + 28,
+                { align: "right" }
+            );
+
+            // Update finalY and add separator line
+            finalY = finalY + 35;
+            doc.setDrawColor(200, 200, 200);
+            doc.setLineWidth(0.3);
+            doc.line(margin, finalY, pageWidth - margin, finalY);
+
+            // Define signatureY variable
+            const signatureY = finalY + 5;
 
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
