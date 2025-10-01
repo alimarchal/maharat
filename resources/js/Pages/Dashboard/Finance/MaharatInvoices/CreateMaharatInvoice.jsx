@@ -1106,7 +1106,7 @@ export default function CreateMaharatInvoice() {
 
             <div className="w-full flex justify-center">
                 <img
-                    src="/images/MCTC Logo.png"
+                    src="/images/MCTC_Logo.png"
                     alt="Maharat Logo"
                     className="w-48 h-20"
                 />

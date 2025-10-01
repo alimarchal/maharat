@@ -250,7 +250,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('accounts.page');
     Route::get('/accounts/{id}/details', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'Finance/Accounts/AccountDetailsTable', 'accountId' => $id]);
-    })->name('accounts.index');
+    })->name('accounts.details');
 
     Route::get('/payment-orders', function () {
         return Inertia::render('Dashboard', ['page' => 'Finance/PaymentOrder/PaymentOrderTable']);
@@ -264,14 +264,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('receivable.index');
     Route::get('/account-receivables/{id}/details', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'AccountReceivables/ViewReceivableDetails', 'receivableId' => $id]);
-    })->name('receivable.index');
+    })->name('receivable.details');
 
     Route::get('/account-payables', function () {
         return Inertia::render('Dashboard', ['page' => 'AccountPayables/PayablesTable']);
     })->name('payables.index');
     Route::get('/account-payables/{id}/details', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'AccountPayables/ViewPayableDetails', 'payableId' => $id]);
-    })->name('payables.index');
+    })->name('payables.details');
 
     Route::get('/cost-centers', function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/CostCenter/CostCenterTable']);
@@ -308,7 +308,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/budget/fiscal-years', function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/EditFiscalPeriod']);
-    })->name('fiscal-periods.index');
+    })->name('budget.fiscal-years');
 
     Route::get('/request-budgets', function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/RequestBudgetTable']);

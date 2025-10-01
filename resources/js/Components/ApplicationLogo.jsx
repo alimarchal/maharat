@@ -1,7 +1,7 @@
 export default function ApplicationLogo(props) {
     return (
         <img
-            src="/images/MCTC Logo.png"
+            src="/images/MCTC_Logo.png"
             alt="MCTC Logo"
             // className="h-12 w-12" // Adjust size as needed
             {...props}

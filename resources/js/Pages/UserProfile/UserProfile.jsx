@@ -237,7 +237,7 @@ const UserProfile = () => {
                                     alt="User Profile"
                                     className="w-full h-full object-contain"
                                     onError={(e) => {
-                                        e.target.src = "/images/MCTC Logo.png";
+                                        e.target.src = "/images/MCTC_Logo.png";
                                     }}
                                 />
                             ) : (

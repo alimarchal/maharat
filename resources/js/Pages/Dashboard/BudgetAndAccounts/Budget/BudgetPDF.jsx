@@ -81,7 +81,7 @@ export default function BudgetPDF({ budgetId, onGenerated }) {
             // Logo
             try {
                 const img = new Image();
-                img.src = "/images/MCTC Logo.png";
+                img.src = "/images/MCTC_Logo.png";
                 await new Promise((resolve, reject) => {
                     img.onload = resolve;
                     img.onerror = reject;

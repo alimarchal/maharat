@@ -58,7 +58,7 @@ const LoginPage = () => {
 
         {
             text: "",
-            imgSrc: "/images/MCTC Logo.png",
+            imgSrc: "/images/MCTC_Logo.png",
             bgColor: "white",
             isEmpty: false,
         },
