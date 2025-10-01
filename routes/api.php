@@ -277,6 +277,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // GRN routes
     Route::apiResource('grns', GrnController::class);
     Route::post('/grns/save-all', [GrnController::class, 'saveAll']);
+    Route::post('/grns/{grn}/partial-delivery-action', [GrnController::class, 'handlePartialDeliveryAction']);
+    Route::post('/grns/{grn}/add-delivery', [GrnController::class, 'addAdditionalDelivery']);
 
     // GRN Receive Goods routes
     Route::apiResource('grn-receive-goods', GrnReceiveGoodController::class);

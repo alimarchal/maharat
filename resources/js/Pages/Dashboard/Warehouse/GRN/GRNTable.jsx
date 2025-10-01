@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "@inertiajs/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faTrash, faPlus, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import ViewGRNModal from "./ViewGRNModal";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -14,6 +14,9 @@ export default function GRNTable() {
     const [loading, setLoading] = useState(true);
     const [selectedGrn, setSelectedGrn] = useState(null);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [isAddDeliveryModalOpen, setIsAddDeliveryModalOpen] = useState(false);
+    const [additionalQuantity, setAdditionalQuantity] = useState("");
+    const [deliveryNotes, setDeliveryNotes] = useState("");
     const { hasPermission } = usePermissions();
 
     const fetchGrns = async () => {
@@ -62,6 +65,56 @@ export default function GRNTable() {
         setIsViewModalOpen(true);
     };
 
+    const handleAddDelivery = (grn) => {
+        setSelectedGrn(grn);
+        setAdditionalQuantity("");
+        setDeliveryNotes("");
+        setIsAddDeliveryModalOpen(true);
+    };
+
+    const handleSubmitAdditionalDelivery = async () => {
+        if (!additionalQuantity || additionalQuantity <= 0) {
+            alert("Please enter a valid quantity");
+            return;
+        }
+
+        try {
+            await axios.post(`/api/v1/grns/${selectedGrn.id}/add-delivery`, {
+                additional_quantity: parseFloat(additionalQuantity),
+                notes: deliveryNotes
+            });
+            
+            setIsAddDeliveryModalOpen(false);
+            setSelectedGrn(null);
+            setAdditionalQuantity("");
+            setDeliveryNotes("");
+            fetchGrns();
+            alert("Additional delivery added successfully!");
+        } catch (error) {
+            console.error("Error adding delivery:", error);
+            alert("Failed to add additional delivery");
+        }
+    };
+
+    const getDeliveryStatusBadge = (grn) => {
+        if (!grn.delivery_status) return null;
+        
+        const statusConfig = {
+            complete: { color: "bg-green-100 text-green-800", text: "Complete" },
+            partial: { color: "bg-yellow-100 text-yellow-800", text: "Partial" },
+            awaiting_remaining: { color: "bg-orange-100 text-orange-800", text: "Awaiting Remaining" }
+        };
+        
+        const config = statusConfig[grn.delivery_status];
+        if (!config) return null;
+        
+        return (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+                {config.text}
+            </span>
+        );
+    };
+
     return (
         <div className="w-full">
             <div className="w-full overflow-hidden">
@@ -90,6 +143,8 @@ export default function GRNTable() {
                                 <th className="py-3 px-4">Purchase Order #</th>
                                 <th className="py-3 px-4">Supplier</th>
                                 <th className="py-3 px-4">Quantity</th>
+                                <th className="py-3 px-4">Expected</th>
+                                <th className="py-3 px-4">Status</th>
                                 <th className="py-3 px-4">Delivery Date</th>
                                 <th className="py-3 px-4 text-center">Attachment</th>
                                 <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
@@ -101,7 +156,7 @@ export default function GRNTable() {
                             {loading ? (
                                 <tr>
                                     <td
-                                        colSpan="8"
+                                        colSpan="10"
                                         className="text-center py-12"
                                     >
                                         <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
@@ -110,7 +165,7 @@ export default function GRNTable() {
                             ) : error ? (
                                 <tr>
                                     <td
-                                        colSpan="8"
+                                        colSpan="10"
                                         className="text-center text-red-500 font-medium py-4"
                                     >
                                         {error}
@@ -140,6 +195,12 @@ export default function GRNTable() {
                                             </td>
                                             <td className="py-3 px-4">
                                                 {grn.quantity}
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                {grn.expected_quantity || "N/A"}
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                {getDeliveryStatusBadge(grn)}
                                             </td>
                                             <td className="py-3 px-4">
                                                 {grn.delivery_date}
@@ -188,6 +249,17 @@ export default function GRNTable() {
                                                             icon={faEye}
                                                         />
                                                     </button>
+                                                    {(grn.delivery_status === 'partial' || grn.delivery_status === 'awaiting_remaining') && (
+                                                        <button
+                                                            onClick={() => handleAddDelivery(grn)}
+                                                            className="text-blue-600 hover:text-blue-800"
+                                                            title="Add Additional Delivery"
+                                                        >
+                                                            <FontAwesomeIcon
+                                                                icon={faPlus}
+                                                            />
+                                                        </button>
+                                                    )}
                                                     <button
                                                         onClick={() =>
                                                             handleDelete(grn.id)
@@ -207,7 +279,7 @@ export default function GRNTable() {
                             ) : (
                                 <tr>
                                     <td
-                                        colSpan="8"
+                                        colSpan="10"
                                         className="text-center text-[#2C323C] font-medium py-4"
                                     >
                                         No GRNs found.
@@ -272,6 +344,80 @@ export default function GRNTable() {
                 }}
                 grn={selectedGrn}
             />
+
+            {/* Add Additional Delivery Modal */}
+            {isAddDeliveryModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-96 max-w-full mx-4">
+                        <h3 className="text-lg font-semibold mb-4">Add Additional Delivery</h3>
+                        
+                        {selectedGrn && (
+                            <div className="mb-4">
+                                <p className="text-sm text-gray-600 mb-2">
+                                    <strong>GRN:</strong> {selectedGrn.grn_number}
+                                </p>
+                                <p className="text-sm text-gray-600 mb-2">
+                                    <strong>Current Quantity:</strong> {selectedGrn.quantity}
+                                </p>
+                                <p className="text-sm text-gray-600 mb-2">
+                                    <strong>Expected Quantity:</strong> {selectedGrn.expected_quantity}
+                                </p>
+                                <p className="text-sm text-gray-600 mb-2">
+                                    <strong>Remaining:</strong> {(selectedGrn.expected_quantity || 0) - selectedGrn.quantity}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Additional Quantity
+                            </label>
+                            <input
+                                type="number"
+                                value={additionalQuantity}
+                                onChange={(e) => setAdditionalQuantity(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Enter additional quantity"
+                                min="0"
+                                step="0.01"
+                            />
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Notes (Optional)
+                            </label>
+                            <textarea
+                                value={deliveryNotes}
+                                onChange={(e) => setDeliveryNotes(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Enter any notes about this additional delivery"
+                                rows="3"
+                            />
+                        </div>
+
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={() => {
+                                    setIsAddDeliveryModalOpen(false);
+                                    setSelectedGrn(null);
+                                    setAdditionalQuantity("");
+                                    setDeliveryNotes("");
+                                }}
+                                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSubmitAdditionalDelivery}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                            >
+                                Add Delivery
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

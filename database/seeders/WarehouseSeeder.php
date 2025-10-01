@@ -21,16 +21,19 @@ class WarehouseSeeder extends Seeder
             return;
         }
 
+        // Check if warehouses table is already populated
+        if (DB::table('warehouses')->count() > 0) {
+            $this->command->warn('Warehouses table already has data. Skipping WarehouseSeeder to prevent data loss.');
+            return;
+        }
+
         DB::statement('SET FOREIGN_KEY_CHECKS=0;'); // Disable foreign key checks
 
         try {
-            // Delete dependent records in related tables before truncating warehouses
-            if (Schema::hasTable('rfqs')) {
-                DB::table('rfqs')->truncate();
+            // Only truncate warehouses table if it's empty
+            if (DB::table('warehouses')->count() === 0) {
+                DB::table('warehouses')->truncate();
             }
-
-            // Truncate the warehouses table (faster than delete + reset AUTO_INCREMENT)
-            DB::table('warehouses')->truncate();
 
             // Single warehouse data for Riyadh
             $warehouses = [

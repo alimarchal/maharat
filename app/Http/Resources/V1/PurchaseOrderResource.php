@@ -31,6 +31,8 @@ class PurchaseOrderResource extends JsonResource
             'expiry_date' => $this->expiry_date ? $this->expiry_date->toDateString() : null,
             'amount' => $this->amount,
             'vat_amount' => $this->vat_amount,
+            'adjust_amount' => $this->adjust_amount,
+            'total_amount' => $this->total_amount,
             'attachment' => $this->attachment,
             'original_name' => $this->original_name,
             'generated_document' => $this->generated_document,

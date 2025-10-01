@@ -25,6 +25,8 @@ class PurchaseOrder extends Model
         'expiry_date',
         'amount',
         'vat_amount',
+        'adjust_amount',
+        'total_amount',
         'attachment',
         'original_name',
         'generated_document',
@@ -37,7 +39,9 @@ class PurchaseOrder extends Model
         'purchase_order_date' => 'date',
         'expiry_date' => 'date',
         'amount' => 'decimal:2',
-        'vat_amount' => 'decimal:2'
+        'vat_amount' => 'decimal:2',
+        'adjust_amount' => 'decimal:2',
+        'total_amount' => 'decimal:2'
     ];
 
 
@@ -134,5 +138,30 @@ class PurchaseOrder extends Model
     public function externalInvoice()
     {
         return $this->hasOne(ExternalInvoice::class);
+    }
+
+    /**
+     * Calculate the total amount after adjustments
+     */
+    public function calculateTotalAmount()
+    {
+        return $this->amount + $this->vat_amount - $this->adjust_amount;
+    }
+
+    /**
+     * Update the total_amount field
+     */
+    public function updateTotalAmount()
+    {
+        $this->total_amount = $this->calculateTotalAmount();
+        $this->save();
+    }
+
+    /**
+     * Check if this purchase order has partial deliveries
+     */
+    public function hasPartialDeliveries()
+    {
+        return $this->adjust_amount > 0;
     }
 }

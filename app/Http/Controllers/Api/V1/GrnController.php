@@ -7,8 +7,11 @@ use App\Http\Requests\V1\Grn\StoreGrnRequest;
 use App\Http\Requests\V1\Grn\UpdateGrnRequest;
 use App\Http\Resources\V1\GrnResource;
 use App\Models\Grn;
+use App\Models\PurchaseOrder;
 use App\QueryParameters\GrnParameters;
+use App\Services\PartialDeliveryService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -101,7 +104,40 @@ class GrnController extends Controller
                 $validated['user_id'] = auth()->id();
             }
 
+            // Get expected quantity from purchase order if not provided
+            if (!isset($validated['expected_quantity']) && isset($validated['purchase_order_id'])) {
+                $purchaseOrder = PurchaseOrder::find($validated['purchase_order_id']);
+                if ($purchaseOrder) {
+                    // Get expected quantity from RFQ items
+                    $quotation = $purchaseOrder->quotation;
+                    if ($quotation && $quotation->rfq && $quotation->rfq->rfqItems()->exists()) {
+                        $validated['expected_quantity'] = $quotation->rfq->rfqItems()->sum('quantity');
+                    }
+                }
+            }
+
+            // Determine delivery status
+            if (isset($validated['expected_quantity']) && $validated['expected_quantity'] > 0) {
+                if ($validated['quantity'] < $validated['expected_quantity']) {
+                    $validated['delivery_status'] = 'partial';
+                } else {
+                    $validated['delivery_status'] = 'complete';
+                }
+            } else {
+                $validated['delivery_status'] = 'complete';
+            }
+
             $grn = Grn::create($validated);
+
+            // Handle partial delivery action if provided
+            if (isset($validated['action']) && $validated['delivery_status'] === 'partial') {
+                $partialDeliveryService = new PartialDeliveryService();
+                $partialDeliveryService->handlePartialDeliveryAdjustment(
+                    $grn,
+                    $validated['action'],
+                    $validated['notes'] ?? null
+                );
+            }
 
             // Update material request status if GRN is issued against a purchase order
             if ($grn->purchase_order_id) {
@@ -185,6 +221,54 @@ class GrnController extends Controller
             DB::rollBack();
             return response()->json([
                 'message' => 'Failed to delete GRN',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Handle partial delivery action for existing GRN
+     */
+    public function handlePartialDeliveryAction(Request $request, Grn $grn): JsonResponse
+    {
+        try {
+            $action = $request->input('action');
+            $notes = $request->input('notes');
+            
+            $partialDeliveryService = new PartialDeliveryService();
+            $partialDeliveryService->handlePartialDeliveryAdjustment($grn, $action, $notes);
+
+            return response()->json([
+                'message' => 'Partial delivery action completed successfully',
+                'data' => new GrnResource($grn->load(['user', 'quotation', 'purchaseOrder']))
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to handle partial delivery action',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Add additional delivery to existing GRN
+     */
+    public function addAdditionalDelivery(Request $request, Grn $grn): JsonResponse
+    {
+        try {
+            $additionalQuantity = $request->input('additional_quantity');
+            $notes = $request->input('notes');
+            
+            $partialDeliveryService = new PartialDeliveryService();
+            $partialDeliveryService->addAdditionalDelivery($grn, $additionalQuantity, $notes);
+
+            return response()->json([
+                'message' => 'Additional delivery added successfully',
+                'data' => new GrnResource($grn->load(['user', 'quotation', 'purchaseOrder']))
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to add additional delivery',
                 'error' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
