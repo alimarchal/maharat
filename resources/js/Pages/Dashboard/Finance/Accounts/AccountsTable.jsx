@@ -43,7 +43,6 @@ const AccountsTable = () => {
             const response = await axios.get(
                 `/api/v1/accounts?include=costCenter,accountCode&page=${currentPage}`
             );
-            console.log("API Response for accounts:", response.data);
             if (response.data && response.data.data) {
                 let filteredAccounts = response.data.data;
                 if (selectedFilter !== "All") {
