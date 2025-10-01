@@ -12,10 +12,6 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
         const fetchPaymentOrder = async () => {
             try {
                 setLoading(true);
-                
-                console.log("⚠️ Fetching payment order with ID:", paymentOrderId);
-                
-                // CRITICAL FIX: The API is missing fields from PaymentOrderResource
                 // Make a direct fetch to get the raw payment order data
                 const rawDataResponse = await axios.get(
                     `/api/v1/payment-orders/${paymentOrderId}/raw-data`
@@ -23,43 +19,27 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
                 
                 // If the raw data endpoint fails, fall back to standard API
                 if (!rawDataResponse.data || !rawDataResponse.data.data) {
-                    console.warn("Raw data endpoint failed, falling back to standard API");
-                    // Original API call as fallback
                     const response = await axios.get(
                         `/api/v1/payment-orders/${paymentOrderId}?include=user,purchaseOrder,purchaseOrder.supplier,purchaseOrder.quotation,logs`
                     );
                     
                     if (response.data?.data) {
                         const data = response.data.data;
-                        console.log("⚠️ Using standard API data");
-                        
-                        // Fix missing issue_date by checking for date field
                         if (!data.issue_date && data.date) {
-                            console.log("Using date field instead of issue_date");
                             data.issue_date = data.date;
                         }
-                        
                         setPaymentOrder(data);
                     }
                 } else {
-                    // Use the raw data that includes all database fields
                     const rawData = rawDataResponse.data.data;
-                    console.log("✅ Using raw payment order data with all fields:", rawData);
-                    
-                    // Fix missing issue_date by checking for date field
                     if (!rawData.issue_date && rawData.date) {
-                        console.log("Using date field instead of issue_date");
                         rawData.issue_date = rawData.date;
                     }
                     
                     setPaymentOrder(rawData);
                 }
             } catch (error) {
-                console.error("Error fetching payment data:", error);
-                
-                // Last resort fallback - try direct fetch without the raw-data endpoint
                 try {
-                    console.warn("Attempting last resort fallback to standard API");
                     const standardResponse = await axios.get(
                         `/api/v1/payment-orders/${paymentOrderId}?include=user,purchaseOrder,purchaseOrder.supplier,purchaseOrder.quotation,logs`
                     );
@@ -85,29 +65,14 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
 
     useEffect(() => {
         if (!loading && !error && paymentOrder) {
-            // Add pre-generation debug
-            console.log("About to generate PDF with data:", {
-                payment_order_number: paymentOrder.payment_order_number,
-                issue_date: paymentOrder.issue_date,
-                status: paymentOrder.status,
-                payment_type: paymentOrder.payment_type,
-                total_amount: paymentOrder.total_amount,
-                paid_amount: paymentOrder.paid_amount
-            });
-            
             generatePDF();
         }
     }, [paymentOrder, loading, error]);
 
     const formatDateForDisplay = (dateString) => {
         if (!dateString) {
-            console.log("Date is empty");
             return "N/A";
         }
-        
-        // Debug the date string coming in
-        console.log("📅 Formatting date:", dateString, "type:", typeof dateString);
-        
         try {
             // Try to construct a date safely with more formats
             let date;
@@ -123,20 +88,16 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
                         parseInt(parts[1], 10) - 1,
                         parseInt(parts[2], 10)
                     ));
-                    console.log("Parsed MySQL date:", date);
                 } else {
                     // Try other formats
                     date = new Date(dateString);
-                    console.log("Parsed general date:", date);
                 }
             } else {
                 date = new Date(dateString);
-                console.log("Parsed non-string date:", date);
             }
             
             // Check if date is valid
             if (isNaN(date.getTime())) {
-                console.log("⚠️ Invalid date:", dateString);
                 return "N/A";
             }
             
@@ -146,7 +107,6 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
             const year = date.getFullYear();
             
             const formatted = `${day}/${month}/${year}`;
-            console.log("✅ Formatted date:", formatted);
             return formatted;
         } catch (error) {
             console.error("Error formatting date:", error);
@@ -221,13 +181,6 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
             doc.setFont("helvetica", "bold");
             doc.text("Payment Order #:", margin + 5, startY + 8);
             doc.text("Date:", margin + 5, startY + 18);
-
-            // Debug issue_date field specifically
-            console.log("📅 PDF issue_date:", {
-                issue_date: paymentOrder.issue_date,
-                type: typeof paymentOrder.issue_date,
-                formatted: formatDateForDisplay(paymentOrder.issue_date)
-            });
             
             // Try to get the most reliable date
             let displayDate;
@@ -266,13 +219,8 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
             doc.text("Purchase Order #:", rightBoxX + 5, startY + 8);
             doc.text("Status:", rightBoxX + 5, startY + 18);
 
-            // Debug status field in extreme detail with actual database field name
-            console.log("🔴 PAYMENT ORDER FIELDS FROM DATABASE:");
-            console.log("Available fields:", Object.keys(paymentOrder));
-
             // DIRECT ACCESS from payment_orders table
             const statusText = paymentOrder.status || "N/A";
-            console.log("Status field direct access:", statusText);
 
             doc.setFont("helvetica", "normal");
             doc.text(
@@ -347,29 +295,16 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
 
             // Format currency values
             const formatCurrency = (value) => {
-                console.log("Currency value input:", value, typeof value);
                 if (value === null || value === undefined) return 'N/A';
                 return `SAR ${parseFloat(value).toFixed(2)}`;
             };
 
-            // DIRECT ACCESS from payment_orders table
-            console.log("🔹 PAYMENT DETAILS DIRECT ACCESS:");
-            console.log({
-                total_amount: paymentOrder.total_amount,
-                paid_amount: paymentOrder.paid_amount,
-                payment_type: paymentOrder.payment_type
-            });
-
             // Use the direct fields from payment_orders table
-            const totalAmount = paymentOrder.total_amount;
+            const baseAmount = parseFloat(paymentOrder.total_amount || 0);
+            const vatAmount = parseFloat(paymentOrder.vat_amount || 0);
+            const totalAmount = baseAmount + vatAmount;
             const paidAmount = paymentOrder.paid_amount;
             const paymentType = paymentOrder.payment_type;
-
-            console.log("Final values:", {
-                totalAmount,
-                paidAmount,
-                paymentType
-            });
 
             doc.setFont("helvetica", "normal");
             // Total Amount
@@ -537,19 +472,65 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
                 console.error("Error generating table:", tableError);
             }
 
-            // Add Bank Details section
+            // Add amount breakdown after table
             const tableResult = doc.lastAutoTable || {
                 finalY: tableStartY + 30,
             };
-            const finalY = tableResult.finalY + 15;
+            let finalY = tableResult.finalY;
 
-            // Add separator line
+            // Add subtotal, VAT, and total amount after table
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            
+            // Subtotal
+            doc.text("Subtotal:", pageWidth - margin - 60, finalY + 10);
+            doc.setFont("helvetica", "normal");
+            doc.text(
+                formatCurrency(baseAmount),
+                pageWidth - margin,
+                finalY + 10,
+                { align: "right" }
+            );
+
+            // VAT Amount
+            doc.setFont("helvetica", "bold");
+            doc.text("VAT Amount:", pageWidth - margin - 60, finalY + 18);
+            doc.setFont("helvetica", "normal");
+            doc.text(
+                formatCurrency(vatAmount),
+                pageWidth - margin,
+                finalY + 18,
+                { align: "right" }
+            );
+
+            // Draw a line before total
             doc.setDrawColor(200, 200, 200);
             doc.setLineWidth(0.3);
-            doc.line(margin, finalY - 5, pageWidth - margin, finalY - 5);
+            doc.line(
+                pageWidth - margin - 70,
+                finalY + 22,
+                pageWidth - margin,
+                finalY + 22
+            );
 
-            // Define signatureY variable - this was missing in the original code
-            const signatureY = finalY + 40;
+            // Total Amount
+            doc.setFont("helvetica", "bold");
+            doc.text("Total Amount:", pageWidth - margin - 60, finalY + 28);
+            doc.text(
+                formatCurrency(totalAmount),
+                pageWidth - margin,
+                finalY + 28,
+                { align: "right" }
+            );
+
+            // Update finalY and add separator line
+            finalY = finalY + 35;
+            doc.setDrawColor(200, 200, 200);
+            doc.setLineWidth(0.3);
+            doc.line(margin, finalY, pageWidth - margin, finalY);
+
+            // Define signatureY variable
+            const signatureY = finalY + 5;
 
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
@@ -633,26 +614,11 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
                 URL.revokeObjectURL(fileUrl);
             }, 1000);
 
-            console.log("PDF Generated:", {
-                fileName: pdfFileName,
-                fileSize: pdfFile.size,
-                fileType: pdfFile.type
-            });
-
             // Upload the PDF file to the server and save in the attachment column
             const formData = new FormData();
             formData.append("attachment", pdfFile);
-            
-            console.log("FormData:", {
-                hasAttachment: formData.has("attachment"),
-                fileName: pdfFile.name,
-                fileSize: pdfFile.size
-            });
 
             try {
-                console.log("Uploading PDF to server to save in attachment column");
-                
-                // First, upload the file using a POST request to a dedicated endpoint
                 const uploadResponse = await axios.post(
                     `/api/v1/payment-orders/${paymentOrderId}/save-attachment`,
                     formData,
@@ -663,31 +629,23 @@ export default function PaymentOrderPDF({ paymentOrderId, onGenerated }) {
                     }
                 );
 
-                console.log("Upload Response:", uploadResponse.data);
-
                 if (uploadResponse.data?.success) {
                     const documentPath = uploadResponse.data?.file_path;
-                    console.log("Document saved at path:", documentPath);
                     
                     if (onGenerated && typeof onGenerated === "function") {
                         onGenerated(documentPath);
                     }
                 } else {
-                    console.warn("Document generated but not saved to server:", uploadResponse.data);
-                    // Fall back to local URL
                     if (onGenerated && typeof onGenerated === "function") {
                         onGenerated(fileUrl);
                     }
                 }
             } catch (uploadError) {
-                console.error("Error saving PDF to server:", uploadError);
-                // Still return the local URL even if upload fails
                 if (onGenerated && typeof onGenerated === "function") {
                     onGenerated(fileUrl);
                 }
             }
         } catch (error) {
-            console.error("Error generating PDF:", error);
             alert("Failed to generate PDF. Please try again.");
             if (onGenerated && typeof onGenerated === "function") {
                 onGenerated(null, error);

@@ -57,15 +57,6 @@ export default function BudgetExcel({ budgetId, onGenerated }) {
         return `${day}/${month}/${year}`;
     };
 
-    const formatCurrency = (amount) => {
-        if (amount === null || amount === undefined) return "SAR 0.00";
-        return `SAR ${parseFloat(amount).toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        })}`;
-    };
-
-    // For Excel, strip the currency symbol and formatting to get just the numeric value
     const getNumericValue = (amount) => {
         if (amount === null || amount === undefined) return 0;
         return parseFloat(amount) || 0;
@@ -81,9 +72,6 @@ export default function BudgetExcel({ budgetId, onGenerated }) {
         return {
             value: variance,
             percentage: percentage,
-            formatted: `${formatCurrency(variance)} (${percentage.toFixed(
-                2
-            )}%)`,
             numericValue: variance,
             numericPercentage: percentage,
         };
@@ -91,10 +79,8 @@ export default function BudgetExcel({ budgetId, onGenerated }) {
 
     const generateExcel = async () => {
         try {
-            // Create workbook
             const workbook = new ExcelJS.Workbook();
 
-            // Add document properties
             workbook.creator = "Maharat MCTC";
             workbook.lastModifiedBy = "Maharat MCTC";
             workbook.created = new Date();
@@ -104,355 +90,307 @@ export default function BudgetExcel({ budgetId, onGenerated }) {
             workbook.category = "Financial Documents";
 
             // Summary Sheet
-            const summaryData = [
-                ["BUDGET REPORT"],
-                [""], // Empty row for spacing
-                [`Budget ID: ${budget.id}`],
-                [`Description: ${budget.description || "N/A"}`],
-                [`Status: ${budget.status || "N/A"}`],
-                [""], // Empty row for spacing
-                ["Budget Details"],
-                [""], // Empty row for spacing
-                ["Fiscal Period:", budget.fiscal_period?.period_name || "N/A"],
-                [
-                    "Period Range:",
-                    `${formatDateForDisplay(
-                        budget.fiscal_period?.start_date
-                    )} - ${formatDateForDisplay(
-                        budget.fiscal_period?.end_date
-                    )}`,
-                ],
-                ["Department:", budget.department?.name || "N/A"],
-                ["Department Code:", budget.department?.code || "N/A"],
-                ["Cost Center:", budget.cost_center?.name || "N/A"],
-                ["Cost Center Code:", budget.cost_center?.code || "N/A"],
-                [
-                    "Cost Center Type:",
-                    budget.cost_center?.cost_center_type || "N/A",
-                ],
-                ["Created By:", budget.creator?.name || "N/A"],
-                ["Created At:", formatDateForDisplay(budget.created_at)],
-                [""], // Empty row for spacing
-                ["Budget Summary"],
-                [""], // Empty row for spacing
-                ["Category", "Planned", "Actual", "Variance", "Variance %"],
-            ];
-
-            // Calculate variances - safely handle null/undefined values
-            const revenueVariance = calculateVariance(
-                budget.total_revenue_planned,
-                budget.total_revenue_actual
-            );
-            const expenseVariance = calculateVariance(
-                budget.total_expense_planned,
-                budget.total_expense_actual
-            );
-
-            // Calculate profit/loss
-            const plannedProfit =
-                (parseFloat(budget.total_revenue_planned) || 0) -
-                (parseFloat(budget.total_expense_planned) || 0);
-            const actualProfit =
-                (parseFloat(budget.total_revenue_actual) || 0) -
-                (parseFloat(budget.total_expense_actual) || 0);
-            const profitVariance = calculateVariance(
-                plannedProfit,
-                actualProfit
-            );
-
-            // Add budget summary rows
-            summaryData.push([
-                "Revenue",
-                getNumericValue(budget.total_revenue_planned),
-                getNumericValue(budget.total_revenue_actual),
-                revenueVariance.numericValue,
-                revenueVariance.numericPercentage,
-            ]);
-            summaryData.push([
-                "Expenses",
-                getNumericValue(budget.total_expense_planned),
-                getNumericValue(budget.total_expense_actual),
-                expenseVariance.numericValue,
-                expenseVariance.numericPercentage,
-            ]);
-            summaryData.push([
-                "Profit/Loss",
-                plannedProfit,
-                actualProfit,
-                profitVariance.numericValue,
-                profitVariance.numericPercentage,
-            ]);
-
-            summaryData.push([""], [""], ["Budget Performance Analysis"], [""]);
-
-            // Add performance summary based on data
-            const revPercent =
-                (getNumericValue(budget.total_revenue_actual) /
-                    (getNumericValue(budget.total_revenue_planned) || 0.01)) *
-                100;
-
-            const expPercent =
-                (getNumericValue(budget.total_expense_actual) /
-                    (getNumericValue(budget.total_expense_planned) || 0.01)) *
-                100;
-
-            // Revenue analysis
-            if (revPercent >= 100) {
-                summaryData.push([
-                    "Revenue Performance:",
-                    "✓ Revenue target achieved successfully.",
-                ]);
-            } else if (revPercent >= 90) {
-                summaryData.push([
-                    "Revenue Performance:",
-                    "! Revenue slightly below target.",
-                ]);
-            } else {
-                summaryData.push([
-                    "Revenue Performance:",
-                    "✗ Revenue significantly below target. Requires attention.",
-                ]);
-            }
-
-            // Expense analysis
-            if (expPercent <= 95) {
-                summaryData.push([
-                    "Expense Performance:",
-                    "✓ Expenses well controlled below budget.",
-                ]);
-            } else if (expPercent <= 105) {
-                summaryData.push([
-                    "Expense Performance:",
-                    "! Expenses approximately at budgeted level.",
-                ]);
-            } else {
-                summaryData.push([
-                    "Expense Performance:",
-                    "✗ Expenses exceed budget. Requires review.",
-                ]);
-            }
-
-            // Profit analysis - safely handle possible zero or negative values
-            if (plannedProfit === 0) {
-                summaryData.push([
-                    "Profit Performance:",
-                    "! No profit was planned.",
-                ]);
-            } else {
-                const profitPercent =
-                    (actualProfit / Math.abs(plannedProfit)) * 100;
-                if (plannedProfit > 0) {
-                    // Normal case - profit was expected
-                    if (profitPercent >= 100) {
-                        summaryData.push([
-                            "Profit Performance:",
-                            "✓ Profit target achieved.",
-                        ]);
-                    } else if (profitPercent >= 90) {
-                        summaryData.push([
-                            "Profit Performance:",
-                            "! Profit slightly below target.",
-                        ]);
-                    } else {
-                        summaryData.push([
-                            "Profit Performance:",
-                            "✗ Profit significantly below target.",
-                        ]);
-                    }
-                } else {
-                    // Special case - loss was expected
-                    if (actualProfit > 0) {
-                        summaryData.push([
-                            "Profit Performance:",
-                            "✓ Exceeded expectations - profit achieved instead of projected loss.",
-                        ]);
-                    } else if (actualProfit > plannedProfit) {
-                        summaryData.push([
-                            "Profit Performance:",
-                            "✓ Loss less than projected.",
-                        ]);
-                    } else {
-                        summaryData.push([
-                            "Profit Performance:",
-                            "✗ Loss greater than projected.",
-                        ]);
-                    }
-                }
-            }
-
-            // Add generation timestamp
-            summaryData.push([""]);
-            summaryData.push([
-                "Generated:",
-                `${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
-            ]);
-            summaryData.push([
-                "Generated By:",
-                "Maharat MCTC Financial System",
-            ]);
-
-            // Create summary worksheet
             const summaryWorksheet = workbook.addWorksheet("Budget Summary");
 
-            // Add rows to the worksheet
-            summaryData.forEach(row => {
-                summaryWorksheet.addRow(row);
-            });
+            // Add title
+            summaryWorksheet.mergeCells('A1:E1');
+            const titleCell = summaryWorksheet.getCell('A1');
+            titleCell.value = 'BUDGET REPORT';
+            titleCell.font = { size: 16, bold: true };
+            titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+            titleCell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFC7E7DE' }
+            };
+
+            summaryWorksheet.addRow([]);
+
+            // Budget Information Section
+            summaryWorksheet.addRow(['Budget ID:', budget.id]);
+            summaryWorksheet.addRow(['Status:', budget.status || 'N/A']);
+            summaryWorksheet.addRow(['Description:', budget.description || 'N/A']);
+            summaryWorksheet.addRow([]);
+
+            // Budget Details Header
+            summaryWorksheet.mergeCells(`A${summaryWorksheet.lastRow.number + 1}:E${summaryWorksheet.lastRow.number + 1}`);
+            const detailsHeaderCell = summaryWorksheet.getCell(`A${summaryWorksheet.lastRow.number + 1}`);
+            detailsHeaderCell.value = 'Budget Details';
+            detailsHeaderCell.font = { size: 14, bold: true };
+            detailsHeaderCell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFF0F0F0' }
+            };
+
+            summaryWorksheet.addRow([]);
+
+            // Budget Details
+            summaryWorksheet.addRow(['Fiscal Period:', budget.fiscal_period?.period_name || 'N/A']);
+            summaryWorksheet.addRow(['Period Range:', `${formatDateForDisplay(budget.fiscal_period?.start_date)} - ${formatDateForDisplay(budget.fiscal_period?.end_date)}`]);
+            summaryWorksheet.addRow(['Department:', budget.department?.name || 'N/A']);
+            summaryWorksheet.addRow(['Department Code:', budget.department?.code || 'N/A']);
+            summaryWorksheet.addRow(['Cost Center:', budget.cost_center?.name || 'N/A']);
+            summaryWorksheet.addRow(['Cost Center Code:', budget.cost_center?.code || 'N/A']);
+            summaryWorksheet.addRow(['Cost Center Type:', budget.cost_center?.cost_center_type || 'N/A']);
+            summaryWorksheet.addRow(['Created By:', budget.creator?.name || 'N/A']);
+            summaryWorksheet.addRow(['Created At:', formatDateForDisplay(budget.created_at)]);
+            summaryWorksheet.addRow([]);
+
+            // Financial Summary Header
+            summaryWorksheet.mergeCells(`A${summaryWorksheet.lastRow.number + 1}:E${summaryWorksheet.lastRow.number + 1}`);
+            const summaryHeaderCell = summaryWorksheet.getCell(`A${summaryWorksheet.lastRow.number + 1}`);
+            summaryHeaderCell.value = 'Financial Summary';
+            summaryHeaderCell.font = { size: 14, bold: true };
+            summaryHeaderCell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFF0F0F0' }
+            };
+
+            summaryWorksheet.addRow([]);
+
+            // Financial Summary Table Headers
+            const headerRow = summaryWorksheet.addRow(['Category', 'Planned', 'Actual', 'Variance', 'Variance %']);
+            headerRow.font = { bold: true };
+            headerRow.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFC7E7DE' }
+            };
+            headerRow.alignment = { horizontal: 'center' };
+
+            // Calculate values
+            const revenuePlanned = getNumericValue(budget.total_revenue_planned);
+            const revenueActual = getNumericValue(budget.total_revenue_actual);
+            const revenueVariance = calculateVariance(revenuePlanned, revenueActual);
+
+            const expensePlanned = getNumericValue(budget.total_expense_planned);
+            const expenseActual = getNumericValue(budget.total_expense_actual);
+            const expenseVariance = calculateVariance(expensePlanned, expenseActual);
+
+            const profitPlanned = revenuePlanned - expensePlanned;
+            const profitActual = revenueActual - expenseActual;
+            const profitVariance = calculateVariance(profitPlanned, profitActual);
+
+            // Add data rows
+            const revenueRow = summaryWorksheet.addRow([
+                'Revenue',
+                revenuePlanned,
+                revenueActual,
+                revenueVariance.numericValue,
+                revenueVariance.numericPercentage / 100
+            ]);
+            revenueRow.getCell(2).numFmt = '#,##0.00';
+            revenueRow.getCell(3).numFmt = '#,##0.00';
+            revenueRow.getCell(4).numFmt = '#,##0.00';
+            revenueRow.getCell(5).numFmt = '0.00%';
+
+            const expenseRow = summaryWorksheet.addRow([
+                'Expenses',
+                expensePlanned,
+                expenseActual,
+                expenseVariance.numericValue,
+                expenseVariance.numericPercentage / 100
+            ]);
+            expenseRow.getCell(2).numFmt = '#,##0.00';
+            expenseRow.getCell(3).numFmt = '#,##0.00';
+            expenseRow.getCell(4).numFmt = '#,##0.00';
+            expenseRow.getCell(5).numFmt = '0.00%';
+
+            const profitRow = summaryWorksheet.addRow([
+                'Net Profit',
+                profitPlanned,
+                profitActual,
+                profitVariance.numericValue,
+                profitVariance.numericPercentage / 100
+            ]);
+            profitRow.font = { bold: true };
+            profitRow.getCell(2).numFmt = '#,##0.00';
+            profitRow.getCell(3).numFmt = '#,##0.00';
+            profitRow.getCell(4).numFmt = '#,##0.00';
+            profitRow.getCell(5).numFmt = '0.00%';
 
             // Set column widths
-            summaryWorksheet.getColumn(1).width = 20;
-            summaryWorksheet.getColumn(2).width = 25;
-            summaryWorksheet.getColumn(3).width = 25;
+            summaryWorksheet.getColumn(1).width = 25;
+            summaryWorksheet.getColumn(2).width = 20;
+            summaryWorksheet.getColumn(3).width = 20;
             summaryWorksheet.getColumn(4).width = 20;
             summaryWorksheet.getColumn(5).width = 15;
 
-            // Merge cells for headers
-            summaryWorksheet.mergeCells('A1:E1'); // Title
-            summaryWorksheet.mergeCells('A3:E3'); // Budget ID
-            summaryWorksheet.mergeCells('A4:E4'); // Description
-            summaryWorksheet.mergeCells('A5:E5'); // Status
-            summaryWorksheet.mergeCells('A7:E7'); // Budget Details heading
-            summaryWorksheet.mergeCells('A19:E19'); // Budget Summary heading
-            summaryWorksheet.mergeCells(`A${summaryData.length - 9}:E${summaryData.length - 9}`); // Performance Analysis heading
+            // Performance Analysis Sheet
+            const performanceWorksheet = workbook.addWorksheet("Performance Analysis");
 
-            // Performance Metrics Sheet
-            const performanceData = [
-                ["BUDGET PERFORMANCE METRICS"],
-                [""], // Empty row for spacing
-                [`Budget ID: ${budget.id}`],
-                [""], // Empty row for spacing
-                ["Performance Indicators"],
-                [""], // Empty row for spacing
-                ["Indicator", "Value", "Target", "Performance", "Status"],
-            ];
+            // Title
+            performanceWorksheet.mergeCells('A1:E1');
+            const perfTitleCell = performanceWorksheet.getCell('A1');
+            perfTitleCell.value = 'PERFORMANCE ANALYSIS';
+            perfTitleCell.font = { size: 16, bold: true };
+            perfTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+            perfTitleCell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFC7E7DE' }
+            };
 
-            // Revenue achievement percentage
-            const revenueAchievement = revPercent;
-            let revenueStatus = "✓ Good";
-            if (revenueAchievement < 90) revenueStatus = "✗ Poor";
-            else if (revenueAchievement < 100) revenueStatus = "! Fair";
+            performanceWorksheet.addRow([]);
+            performanceWorksheet.addRow(['Budget ID:', budget.id]);
+            performanceWorksheet.addRow([]);
 
-            performanceData.push([
-                "Revenue Achievement",
-                `${revenueAchievement.toFixed(2)}%`,
-                "100%",
-                revenueAchievement >= 100 ? "On Target" : "Below Target",
-                revenueStatus,
+            // Performance Indicators Header
+            performanceWorksheet.mergeCells(`A${performanceWorksheet.lastRow.number + 1}:E${performanceWorksheet.lastRow.number + 1}`);
+            const perfHeaderCell = performanceWorksheet.getCell(`A${performanceWorksheet.lastRow.number + 1}`);
+            perfHeaderCell.value = 'Performance Indicators';
+            perfHeaderCell.font = { size: 14, bold: true };
+            perfHeaderCell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFF0F0F0' }
+            };
+
+            performanceWorksheet.addRow([]);
+
+            // Performance table headers
+            const perfHeaderRow = performanceWorksheet.addRow(['Indicator', 'Achievement', 'Target', 'Status', 'Performance']);
+            perfHeaderRow.font = { bold: true };
+            perfHeaderRow.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFC7E7DE' }
+            };
+            perfHeaderRow.alignment = { horizontal: 'center' };
+
+            // Revenue Achievement
+            const revPercentage = revenuePlanned !== 0 ? (revenueActual / revenuePlanned) * 100 : 0;
+            const revStatus = revPercentage >= 100 ? '✓ Good' : revPercentage >= 90 ? '◐ Fair' : '✗ Poor';
+            const revPerf = revPercentage >= 100 ? 'On Target' : 'Below Target';
+            
+            const revRow = performanceWorksheet.addRow([
+                'Revenue Achievement',
+                revPercentage / 100,
+                1,
+                revStatus,
+                revPerf
             ]);
+            revRow.getCell(2).numFmt = '0.00%';
+            revRow.getCell(3).numFmt = '0.00%';
 
-            // Expense control percentage
-            const expenseControl = expPercent;
-            let expenseStatus = "✓ Good";
-            if (expenseControl > 105) expenseStatus = "✗ Poor";
-            else if (expenseControl > 100) expenseStatus = "! Fair";
-
-            performanceData.push([
-                "Expense Control",
-                `${expenseControl.toFixed(2)}%`,
-                "100%",
-                expenseControl <= 100 ? "On Target" : "Above Target",
-                expenseStatus,
+            // Expense Control
+            const expPercentage = expensePlanned !== 0 ? (expenseActual / expensePlanned) * 100 : 0;
+            const expStatus = expPercentage <= 95 ? '✓ Good' : expPercentage <= 105 ? '◐ Fair' : '✗ Poor';
+            const expPerf = expPercentage <= 100 ? 'On Target' : 'Above Target';
+            
+            const expRow = performanceWorksheet.addRow([
+                'Expense Control',
+                expPercentage / 100,
+                1,
+                expStatus,
+                expPerf
             ]);
+            expRow.getCell(2).numFmt = '0.00%';
+            expRow.getCell(3).numFmt = '0.00%';
 
-            // Profit margin - if there was planned profit
-            if (plannedProfit !== 0) {
-                const profitAchievement = (actualProfit / plannedProfit) * 100;
-                let profitStatus = "✓ Good";
-                if (profitAchievement < 90) profitStatus = "✗ Poor";
-                else if (profitAchievement < 100) profitStatus = "! Fair";
-
-                performanceData.push([
-                    "Profit Achievement",
-                    `${profitAchievement.toFixed(2)}%`,
-                    "100%",
-                    profitAchievement >= 100 ? "On Target" : "Below Target",
+            // Profit Achievement
+            if (profitPlanned !== 0) {
+                const profitPercentage = (profitActual / profitPlanned) * 100;
+                const profitStatus = profitPercentage >= 100 ? '✓ Good' : profitPercentage >= 90 ? '◐ Fair' : '✗ Poor';
+                const profitPerf = profitPercentage >= 100 ? 'On Target' : 'Below Target';
+                
+                const profRow = performanceWorksheet.addRow([
+                    'Profit Achievement',
+                    profitPercentage / 100,
+                    1,
                     profitStatus,
+                    profitPerf
                 ]);
+                profRow.getCell(2).numFmt = '0.00%';
+                profRow.getCell(3).numFmt = '0.00%';
             }
 
-            // Create performance worksheet
-            const performanceWorksheet = workbook.addWorksheet("Performance Metrics");
-
-            // Add rows to the worksheet
-            performanceData.forEach(row => {
-                performanceWorksheet.addRow(row);
-            });
-
             // Set column widths
-            performanceWorksheet.getColumn(1).width = 20; // Indicator column
-            performanceWorksheet.getColumn(2).width = 15; // Value column
-            performanceWorksheet.getColumn(3).width = 15; // Target column
-            performanceWorksheet.getColumn(4).width = 20; // Performance column
-            performanceWorksheet.getColumn(5).width = 15; // Status column
-
-            // Merge cells
-            performanceWorksheet.mergeCells('A1:E1'); // Title
-            performanceWorksheet.mergeCells('A3:E3'); // Budget ID
-            performanceWorksheet.mergeCells('A5:E5'); // Performance Indicators heading
+            performanceWorksheet.getColumn(1).width = 25;
+            performanceWorksheet.getColumn(2).width = 15;
+            performanceWorksheet.getColumn(3).width = 15;
+            performanceWorksheet.getColumn(4).width = 15;
+            performanceWorksheet.getColumn(5).width = 20;
 
             // Detailed Figures Sheet
-            const detailData = [
-                ["BUDGET DETAILED FIGURES"],
-                [""], // Empty row for spacing
-                [`Budget ID: ${budget.id}`],
-                [""], // Empty row for spacing
-                [
-                    "Category",
-                    "Type",
-                    "Planned",
-                    "Actual",
-                    "Variance",
-                    "Variance %",
-                ],
-            ];
-
-            // Add detailed revenue and expense figures
-            detailData.push([
-                "Revenue",
-                "Total",
-                getNumericValue(budget.total_revenue_planned),
-                getNumericValue(budget.total_revenue_actual),
-                revenueVariance.numericValue,
-                revenueVariance.numericPercentage,
-            ]);
-
-            detailData.push([
-                "Expenses",
-                "Total",
-                getNumericValue(budget.total_expense_planned),
-                getNumericValue(budget.total_expense_actual),
-                expenseVariance.numericValue,
-                expenseVariance.numericPercentage,
-            ]);
-
-            detailData.push([
-                "Profit/Loss",
-                "Net",
-                plannedProfit,
-                actualProfit,
-                profitVariance.numericValue,
-                profitVariance.numericPercentage,
-            ]);
-
-            // Create detailed figures worksheet
             const detailsWorksheet = workbook.addWorksheet("Detailed Figures");
 
-            // Add rows to the worksheet
-            detailData.forEach(row => {
-                detailsWorksheet.addRow(row);
-            });
+            // Title
+            detailsWorksheet.mergeCells('A1:F1');
+            const detailTitleCell = detailsWorksheet.getCell('A1');
+            detailTitleCell.value = 'DETAILED FINANCIAL FIGURES';
+            detailTitleCell.font = { size: 16, bold: true };
+            detailTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+            detailTitleCell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFC7E7DE' }
+            };
+
+            detailsWorksheet.addRow([]);
+            detailsWorksheet.addRow(['Budget ID:', budget.id]);
+            detailsWorksheet.addRow([]);
+
+            // Detailed table headers
+            const detailHeaderRow = detailsWorksheet.addRow(['Category', 'Type', 'Planned', 'Actual', 'Variance', 'Variance %']);
+            detailHeaderRow.font = { bold: true };
+            detailHeaderRow.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFC7E7DE' }
+            };
+            detailHeaderRow.alignment = { horizontal: 'center' };
+
+            // Add detailed rows
+            const detailRevRow = detailsWorksheet.addRow([
+                'Revenue',
+                'Total',
+                revenuePlanned,
+                revenueActual,
+                revenueVariance.numericValue,
+                revenueVariance.numericPercentage / 100
+            ]);
+            detailRevRow.getCell(3).numFmt = '#,##0.00';
+            detailRevRow.getCell(4).numFmt = '#,##0.00';
+            detailRevRow.getCell(5).numFmt = '#,##0.00';
+            detailRevRow.getCell(6).numFmt = '0.00%';
+
+            const detailExpRow = detailsWorksheet.addRow([
+                'Expenses',
+                'Total',
+                expensePlanned,
+                expenseActual,
+                expenseVariance.numericValue,
+                expenseVariance.numericPercentage / 100
+            ]);
+            detailExpRow.getCell(3).numFmt = '#,##0.00';
+            detailExpRow.getCell(4).numFmt = '#,##0.00';
+            detailExpRow.getCell(5).numFmt = '#,##0.00';
+            detailExpRow.getCell(6).numFmt = '0.00%';
+
+            const detailProfitRow = detailsWorksheet.addRow([
+                'Net Profit',
+                'Net',
+                profitPlanned,
+                profitActual,
+                profitVariance.numericValue,
+                profitVariance.numericPercentage / 100
+            ]);
+            detailProfitRow.font = { bold: true };
+            detailProfitRow.getCell(3).numFmt = '#,##0.00';
+            detailProfitRow.getCell(4).numFmt = '#,##0.00';
+            detailProfitRow.getCell(5).numFmt = '#,##0.00';
+            detailProfitRow.getCell(6).numFmt = '0.00%';
 
             // Set column widths
-            detailsWorksheet.getColumn(1).width = 20; // Category column
-            detailsWorksheet.getColumn(2).width = 15; // Type column
-            detailsWorksheet.getColumn(3).width = 15; // Planned column
-            detailsWorksheet.getColumn(4).width = 15; // Actual column
-            detailsWorksheet.getColumn(5).width = 15; // Variance column
-            detailsWorksheet.getColumn(6).width = 15; // Variance % column
-
-            // Merge cells
-            detailsWorksheet.mergeCells('A1:F1'); // Title
-            detailsWorksheet.mergeCells('A3:F3'); // Budget ID
+            detailsWorksheet.getColumn(1).width = 20;
+            detailsWorksheet.getColumn(2).width = 15;
+            detailsWorksheet.getColumn(3).width = 20;
+            detailsWorksheet.getColumn(4).width = 20;
+            detailsWorksheet.getColumn(5).width = 20;
+            detailsWorksheet.getColumn(6).width = 15;
 
             // Generate Excel file
             const excelBuffer = await workbook.xlsx.writeBuffer();
@@ -479,7 +417,6 @@ export default function BudgetExcel({ budgetId, onGenerated }) {
             URL.revokeObjectURL(url);
             document.body.removeChild(link);
 
-            // Notify parent component that Excel has been generated
             if (onGenerated && typeof onGenerated === "function") {
                 onGenerated(excelFile);
             }
@@ -487,7 +424,6 @@ export default function BudgetExcel({ budgetId, onGenerated }) {
             console.error("Error generating Excel:", error);
             alert("Failed to generate Excel file. Please try again.");
 
-            // Notify parent component about the error
             if (onGenerated && typeof onGenerated === "function") {
                 onGenerated(null, error);
             }
@@ -502,5 +438,5 @@ export default function BudgetExcel({ budgetId, onGenerated }) {
         return <div>Error: {error}</div>;
     }
 
-    return null; // This component doesn't render anything visible
+    return null;
 }
