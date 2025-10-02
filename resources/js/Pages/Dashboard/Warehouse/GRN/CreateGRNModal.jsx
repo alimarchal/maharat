@@ -5,8 +5,11 @@ import axios from "axios";
 import { router } from "@inertiajs/react";
 import InputFloating from "../../../../Components/InputFloating";
 import PartialDeliveryModal from "./PartialDeliveryModal";
+import { usePage } from "@inertiajs/react";
 
 const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
+    const user_id = usePage().props.auth.user.id;
+
     const [formData, setFormData] = useState({
         delivery_note_number: "",
         receiver_name: "",
@@ -133,9 +136,9 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
         await processGRNCreation("complete_delivery");
     };
 
-    const handlePartialDeliveryConfirm = async (deliveryOption) => {
+    const handlePartialDeliveryConfirm = async (deliveryOption, processInfo = null) => {
         setShowPartialDeliveryModal(false);
-        await processGRNCreation(deliveryOption);
+        await processGRNCreation(deliveryOption, processInfo);
     };
 
     const processGRNCreation = async (deliveryOption, processInfo = null) => {
@@ -238,9 +241,12 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
             await axios.put(`/api/v1/purchase-orders/${grnsData?.id}`, purchaseOrderPayload);
 
             // Handle approval process for adjust_order option
-            console.log("Process:", processInfo)
-            if (deliveryOption === "adjust_order" && processInfo) {
-                console.log("Process Info:", processInfo)
+            if (deliveryOption === "adjust_order") {
+                if (!processInfo) {
+                    setError({ submit: "Failed to initialize approval process. Please try again." });
+                    setLoading(false);
+                    return;
+                }
                 const { processStep, assignUser, process } = processInfo;
                 
                 // Create GRN approval transaction
@@ -252,14 +258,15 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                     description: processStep.description,
                     status: "Pending",
                 };
-                const response = await axios.post("/api/v1/grn-approval-transactions", GRNTransactionPayload);
-                console.log("Res:",response)
+                await axios.post("/api/v1/grn-approval-transactions", GRNTransactionPayload);
+
                 // Create task for approver
                 const taskPayload = {
                     process_step_id: processStep.id,
                     process_id: processStep.process_id,
                     assigned_at: new Date().toISOString(),
                     urgency: "Normal",
+                    order_no: processStep.order,
                     assigned_to_user_id: assignUser.approver_id,
                     assigned_from_user_id: user_id,
                     grn_id: grnId,
