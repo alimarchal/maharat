@@ -19,6 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             \App\Http\Middleware\LocaleMiddleware::class,
         ]);
+        
+        // Ensure CSRF protection is enabled for web routes
+        $middleware->validateCsrfTokens(except: [
+            // Add any routes that should be excluded from CSRF protection
+        ]);
     
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class, 
