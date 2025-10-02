@@ -53,17 +53,9 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
         
-        // Transform roles and permissions to match API format
-        $roles = $user->roles->pluck('name')->toArray();
-        $permissions = $user->permissions->pluck('name')->toArray();
-
-        return redirect()->intended(route('dashboard', absolute: false))
-            ->with('auth', [
-                'user' => array_merge($user->toArray(), [
-                    'roles' => $roles,
-                    'permissions' => $permissions
-                ])
-            ]);
+        // Don't store complex user data in session flash data
+        // Inertia middleware will handle user data on each request
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 
     /**

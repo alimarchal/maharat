@@ -30,24 +30,59 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         try {
-            // Log the request details
-            \Log::info('Inertia Request', [
-                'url' => $request->url(),
-                'method' => $request->method(),
-                'user_id' => $request->user()?->id,
-                'route_name' => $request->route()?->getName(),
-            ]);
+            // Log the request details (only in debug mode)
+            if (config('app.debug')) {
+                \Log::info('Inertia Request', [
+                    'url' => $request->url(),
+                    'method' => $request->method(),
+                    'user_id' => $request->user()?->id,
+                    'route_name' => $request->route()?->getName(),
+                ]);
+            }
+
+            // Safely get user data without complex relationships
+            $userData = null;
+            if ($request->user()) {
+                try {
+                    // Get basic user data
+                    $user = $request->user();
+                    
+                    // Convert roles and permissions to simple arrays
+                    $roles = $user->roles()->pluck('name')->toArray();
+                    $permissions = $user->getAllPermissions()->pluck('name')->toArray();
+                    
+                    // Create clean user data array
+                    $userData = [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'email_verified_at' => $user->email_verified_at,
+                        'created_at' => $user->created_at,
+                        'updated_at' => $user->updated_at,
+                        'roles' => $roles,
+                        'permissions' => $permissions
+                    ];
+                } catch (\Exception $userError) {
+                    \Log::error('Error loading user data in Inertia', [
+                        'user_id' => $request->user()?->id,
+                        'error' => $userError->getMessage()
+                    ]);
+                    
+                    // Fallback to basic user data only
+                    $userData = [
+                        'id' => $request->user()->id,
+                        'name' => $request->user()->name,
+                        'email' => $request->user()->email,
+                        'roles' => [],
+                        'permissions' => []
+                    ];
+                }
+            }
 
             return [
                 ...parent::share($request),
                 'auth' => [
-                    'user' => $request->user() ? array_merge(
-                        $request->user()->toArray(),
-                        [
-                            'roles' => $request->user()->roles->pluck('name'),
-                            'permissions' => $request->user()->getAllPermissions()->pluck('name')
-                        ]
-                    ) : null,
+                    'user' => $userData,
                 ],
             ];
         } catch (\Exception $e) {
@@ -56,7 +91,14 @@ class HandleInertiaRequests extends Middleware
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            throw $e;
+            
+            // Return minimal data to prevent complete failure
+            return [
+                ...parent::share($request),
+                'auth' => [
+                    'user' => null,
+                ],
+            ];
         }
     }
 }
