@@ -36,6 +36,13 @@ const SidebarButton = ({
         }
     };
 
+    const handleNavigation = (e) => {
+        if (!isLogout) {
+            e.preventDefault();
+            router.visit(link);
+        }
+    };
+
     const ButtonContent = () => (
         <div className="relative">
             <FontAwesomeIcon icon={icon} size="xl" />
@@ -51,8 +58,8 @@ const SidebarButton = ({
             <ButtonContent />
         </button>
     ) : (
-        <a
-            href={link}
+        <button
+            onClick={handleNavigation}
             title={title}
             className={`flex items-center justify-center w-14 h-14 rounded-full transition-all duration-300 ease-in-out ${
                 isActive
@@ -61,7 +68,7 @@ const SidebarButton = ({
             }`}
         >
             <ButtonContent />
-        </a>
+        </button>
     );
 };
 

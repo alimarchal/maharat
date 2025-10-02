@@ -16,17 +16,13 @@ export default function BudgetPDF({ budgetId, onGenerated }) {
                     `/api/v1/budgets/${budgetId}?include=fiscalPeriod,department,costCenter,subCostCenter,creator,updater`
                 );
                 if (response.data?.data) {
-                    const data = response.data.data;
-                    setBudget(data);
+                    setBudget(response.data.data);
                 } else {
                     throw new Error("Invalid budget data format");
                 }
             } catch (error) {
                 console.error("Error fetching budget data:", error);
-                setError(
-                    "Failed to load budget: " +
-                        (error.message || "Unknown error")
-                );
+                setError("Failed to load budget: " + (error.message || "Unknown error"));
             } finally {
                 setLoading(false);
             }
@@ -59,58 +55,11 @@ export default function BudgetPDF({ budgetId, onGenerated }) {
     };
 
     const formatCurrency = (amount) => {
-        if (amount === null || amount === undefined) return "SAR 0.00";
-        return `SAR ${parseFloat(amount).toLocaleString(undefined, {
+        if (amount === null || amount === undefined) return "0.00";
+        return parseFloat(amount).toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
-        })}`;
-    };
-
-    const calculateVariance = (planned, actual) => {
-        const plannedValue = parseFloat(planned) || 0;
-        const actualValue = parseFloat(actual) || 0;
-        const variance = actualValue - plannedValue;
-        const percentage =
-            plannedValue !== 0 ? (variance / plannedValue) * 100 : 0;
-
-        return {
-            value: variance,
-            percentage: percentage,
-            formatted: `${formatCurrency(variance)} (${percentage.toFixed(
-                2
-            )}%)`,
-        };
-    };
-
-    // Helper function to wrap text within a given width
-    const wrapText = (doc, text, maxWidth) => {
-        if (!text || text === "N/A") return [text || "N/A"];
-        
-        const words = text.split(' ');
-        const lines = [];
-        let currentLine = words[0];
-
-        for (let i = 1; i < words.length; i++) {
-            const word = words[i];
-            const width = doc.getStringUnitWidth(currentLine + " " + word) * doc.internal.scaleFactor;
-            if (width < maxWidth) {
-                currentLine += " " + word;
-            } else {
-                lines.push(currentLine);
-                currentLine = word;
-            }
-        }
-        lines.push(currentLine);
-        return lines;
-    };
-
-    // Helper function to add wrapped text
-    const addWrappedText = (doc, text, x, y, maxWidth, lineHeight = 5) => {
-        const lines = wrapText(doc, text, maxWidth);
-        lines.forEach((line, index) => {
-            doc.text(line, x, y + (index * lineHeight));
         });
-        return lines.length * lineHeight;
     };
 
     const generatePDF = async () => {
@@ -126,19 +75,17 @@ export default function BudgetPDF({ budgetId, onGenerated }) {
             const margin = 15;
             const contentWidth = pageWidth - margin * 2;
 
-            // Initialize autotable to ensure plugin is loaded
-            autoTable(doc, {
-                /* empty config */
-            });
+            // Initialize autotable
+            autoTable(doc, {});
 
             // Logo
             try {
                 const img = new Image();
-                img.src = "/images/MCTC Logo.png";
+                img.src = "/images/MCTC_Logo.png";
                 await new Promise((resolve, reject) => {
                     img.onload = resolve;
                     img.onerror = reject;
-                    setTimeout(resolve, 3000); // Failsafe timeout
+                    setTimeout(resolve, 3000);
                 });
 
                 const logoHeight = 20;
@@ -154,7 +101,6 @@ export default function BudgetPDF({ budgetId, onGenerated }) {
                 );
             } catch (imgErr) {
                 console.error("Error adding logo:", imgErr);
-                // Continue without logo if it fails
             }
 
             // Title bar
@@ -167,149 +113,67 @@ export default function BudgetPDF({ budgetId, onGenerated }) {
             });
 
             const startY = margin + 40;
-            const boxHeight = 40;
-            const leftBoxWidth = contentWidth * 0.48;
-            const rightBoxWidth = contentWidth * 0.48;
-            const centerGap = contentWidth * 0.04;
+            const boxHeight = 30;
+            const boxWidth = (contentWidth - 6) / 3;
 
-            // Left info box
+            // Three column layout for basic info
+            // Column 1 - Budget Info
             doc.setFillColor(240, 240, 240);
-            doc.roundedRect(margin, startY, leftBoxWidth, boxHeight, 3, 3, "F");
-
-            doc.setFontSize(9);
+            doc.roundedRect(margin, startY, boxWidth, boxHeight, 3, 3, "F");
+            
+            doc.setFontSize(8);
             doc.setFont("helvetica", "bold");
-            doc.text("Budget ID:", margin + 5, startY + 8);
-            doc.text("Description:", margin + 5, startY + 18);
-            doc.text("Status:", margin + 5, startY + 33);
+            doc.text("Budget ID:", margin + 3, startY + 8);
+            doc.text("Status:", margin + 3, startY + 18);
 
             doc.setFont("helvetica", "normal");
-            doc.text(budget.id.toString() || "N/A", margin + 40, startY + 8);
-            
-            // Wrap description text
-            const descriptionMaxWidth = leftBoxWidth - 45;
-            addWrappedText(doc, budget.description || "N/A", margin + 40, startY + 18, descriptionMaxWidth, 4);
-            
-            doc.text(budget.status || "N/A", margin + 40, startY + 33);
+            doc.text(budget.id?.toString() || "N/A", margin + 22, startY + 8, {
+                maxWidth: boxWidth - 25
+            });
+            doc.text(budget.status || "N/A", margin + 22, startY + 18, {
+                maxWidth: boxWidth - 25
+            });
 
-            // Right info box
-            const rightBoxX = margin + leftBoxWidth + centerGap;
+            // Column 2 - Fiscal Period
+            const col2X = margin + boxWidth + 3;
             doc.setFillColor(240, 240, 240);
-            doc.roundedRect(
-                rightBoxX,
-                startY,
-                rightBoxWidth,
-                boxHeight,
-                3,
-                3,
-                "F"
-            );
-
+            doc.roundedRect(col2X, startY, boxWidth, boxHeight, 3, 3, "F");
+            
             doc.setFont("helvetica", "bold");
-            doc.text("Fiscal Period:", rightBoxX + 5, startY + 8);
-            doc.text("Period Range:", rightBoxX + 5, startY + 18);
-            doc.text("Created By:", rightBoxX + 5, startY + 33);
+            doc.text("Fiscal Period:", col2X + 3, startY + 8);
+            doc.text("Created By:", col2X + 3, startY + 18);
 
             doc.setFont("helvetica", "normal");
-            doc.text(
-                budget.fiscal_period?.period_name || "N/A",
-                rightBoxX + 40,
-                startY + 8
-            );
-            doc.text(
-                `${formatDateForDisplay(
-                    budget.fiscal_period?.start_date
-                )} - ${formatDateForDisplay(budget.fiscal_period?.end_date)}`,
-                rightBoxX + 40,
-                startY + 18
-            );
-            doc.text(
-                budget.creator?.name || "N/A",
-                rightBoxX + 40,
-                startY + 33
-            );
+            doc.text(budget.fiscal_period?.period_name || "N/A", col2X + 26, startY + 8, {
+                maxWidth: boxWidth - 29
+            });
+            doc.text(budget.creator?.name || "N/A", col2X + 26, startY + 18, {
+                maxWidth: boxWidth - 29
+            });
 
-            // Department details section
-            const deptStartY = startY + boxHeight + 5;
-            const deptBoxHeight = 40;
-
-            // Department box
+            // Column 3 - Department Info
+            const col3X = col2X + boxWidth + 3;
             doc.setFillColor(240, 240, 240);
-            doc.roundedRect(
-                margin,
-                deptStartY,
-                leftBoxWidth,
-                deptBoxHeight,
-                3,
-                3,
-                "F"
-            );
-
-            doc.setFontSize(9);
+            doc.roundedRect(col3X, startY, boxWidth, boxHeight, 3, 3, "F");
+            
             doc.setFont("helvetica", "bold");
-            doc.text("Department:", margin + 5, deptStartY + 8);
-            doc.text("Department Code:", margin + 5, deptStartY + 18);
-            doc.text("Created At:", margin + 5, deptStartY + 33);
+            doc.text("Department:", col3X + 3, startY + 8);
+            doc.text("Cost Center:", col3X + 3, startY + 18);
 
             doc.setFont("helvetica", "normal");
-            
-            // Wrap department name
-            const deptMaxWidth = leftBoxWidth - 55;
-            addWrappedText(doc, budget.department?.name || "N/A", margin + 50, deptStartY + 8, deptMaxWidth, 4);
-            
-            doc.text(
-                budget.department?.code || "N/A",
-                margin + 50,
-                deptStartY + 18
-            );
-            doc.text(
-                formatDateForDisplay(budget.created_at),
-                margin + 50,
-                deptStartY + 33
-            );
+            doc.text(budget.department?.name || "N/A", col3X + 26, startY + 8, {
+                maxWidth: boxWidth - 29
+            });
+            doc.text(budget.cost_center?.name || "N/A", col3X + 26, startY + 18, {
+                maxWidth: boxWidth - 29
+            });
 
-            // Cost Center box
-            doc.setFillColor(240, 240, 240);
-            doc.roundedRect(
-                rightBoxX,
-                deptStartY,
-                rightBoxWidth,
-                deptBoxHeight,
-                3,
-                3,
-                "F"
-            );
-
-            doc.setFont("helvetica", "bold");
-            doc.text("Cost Center:", rightBoxX + 5, deptStartY + 8);
-            doc.text("Cost Center Code:", rightBoxX + 5, deptStartY + 18);
-            doc.text("Cost Center Type:", rightBoxX + 5, deptStartY + 33);
-
-            doc.setFont("helvetica", "normal");
-            
-            // Wrap cost center name
-            const costCenterMaxWidth = rightBoxWidth - 55;
-            addWrappedText(doc, budget.cost_center?.name || "N/A", rightBoxX + 50, deptStartY + 8, costCenterMaxWidth, 4);
-            
-            doc.text(
-                budget.cost_center?.code || "N/A",
-                rightBoxX + 50,
-                deptStartY + 18
-            );
-            
-            // Wrap cost center type
-            addWrappedText(doc, budget.cost_center?.cost_center_type || "N/A", rightBoxX + 50, deptStartY + 33, costCenterMaxWidth, 4);
-
-            // Budget Summary Section Title
-            const summaryStartY = deptStartY + deptBoxHeight + 15;
+            // Budget Summary Section
+            const summaryStartY = startY + boxHeight + 15;
 
             doc.setDrawColor(200, 200, 200);
             doc.setLineWidth(0.3);
-            doc.line(
-                margin,
-                summaryStartY - 5,
-                pageWidth - margin,
-                summaryStartY - 5
-            );
+            doc.line(margin, summaryStartY - 5, pageWidth - margin, summaryStartY - 5);
 
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
@@ -317,69 +181,62 @@ export default function BudgetPDF({ budgetId, onGenerated }) {
                 align: "center",
             });
 
-            // Budget Summary Table
+            // Financial Summary Table
             const summaryTableStartY = summaryStartY + 10;
-            const summaryTableColumns = [
-                "Category",
-                "Planned",
-                "Actual",
-                "Variance",
-            ];
+            const summaryColumns = ["Category", "Planned", "Actual", "Variance", "Variance %"];
 
-            // Calculate variances - safely handle null/undefined values
-            const revenueVariance = calculateVariance(
-                budget.total_revenue_planned,
-                budget.total_revenue_actual
-            );
-            const expenseVariance = calculateVariance(
-                budget.total_expense_planned,
-                budget.total_expense_actual
-            );
+            // FIXED CALCULATIONS - using correct field names
+            const revenuePlanned = parseFloat(budget.total_revenue_planned || 0);
+            const revenueActual = parseFloat(budget.total_revenue_actual || 0);
+            const revenueVariance = revenueActual - revenuePlanned;
+            const revenueVariancePct = revenuePlanned !== 0 ? (revenueVariance / revenuePlanned) * 100 : 0;
 
-            // Calculate profit/loss
-            const plannedProfit =
-                (parseFloat(budget.total_revenue_planned) || 0) -
-                (parseFloat(budget.total_expense_planned) || 0);
-            const actualProfit =
-                (parseFloat(budget.total_revenue_actual) || 0) -
-                (parseFloat(budget.total_expense_actual) || 0);
-            const profitVariance = calculateVariance(
-                plannedProfit,
-                actualProfit
-            );
+            const expensePlanned = parseFloat(budget.total_expense_planned || 0);
+            const expenseActual = parseFloat(budget.total_expense_actual || 0);
+            const expenseVariance = expenseActual - expensePlanned;
+            const expenseVariancePct = expensePlanned !== 0 ? (expenseVariance / expensePlanned) * 100 : 0;
 
-            const summaryTableRows = [
+            const profitPlanned = revenuePlanned - expensePlanned;
+            const profitActual = revenueActual - expenseActual;
+            const profitVariance = profitActual - profitPlanned;
+            const profitVariancePct = profitPlanned !== 0 ? (profitVariance / profitPlanned) * 100 : 0;
+
+            const summaryRows = [
                 [
                     "Revenue",
-                    formatCurrency(budget.total_revenue_planned),
-                    formatCurrency(budget.total_revenue_actual),
-                    revenueVariance.formatted,
+                    formatCurrency(revenuePlanned),
+                    formatCurrency(revenueActual),
+                    formatCurrency(revenueVariance),
+                    `${revenueVariancePct.toFixed(1)}%`,
                 ],
                 [
                     "Expenses",
-                    formatCurrency(budget.total_expense_planned),
-                    formatCurrency(budget.total_expense_actual),
-                    expenseVariance.formatted,
+                    formatCurrency(expensePlanned),
+                    formatCurrency(expenseActual),
+                    formatCurrency(expenseVariance),
+                    `${expenseVariancePct.toFixed(1)}%`,
                 ],
                 [
-                    "Profit/Loss",
-                    formatCurrency(plannedProfit),
-                    formatCurrency(actualProfit),
-                    profitVariance.formatted,
+                    "Net Profit",
+                    formatCurrency(profitPlanned),
+                    formatCurrency(profitActual),
+                    formatCurrency(profitVariance),
+                    `${profitVariancePct.toFixed(1)}%`,
                 ],
             ];
 
             try {
                 autoTable(doc, {
-                    head: [summaryTableColumns],
-                    body: summaryTableRows,
+                    head: [summaryColumns],
+                    body: summaryRows,
                     startY: summaryTableStartY,
                     margin: { left: margin, right: margin },
                     styles: {
-                        fontSize: 10,
-                        cellPadding: 5,
+                        fontSize: 9,
+                        cellPadding: 4,
                         lineWidth: 0.1,
                         valign: "middle",
+                        overflow: 'linebreak',
                     },
                     headStyles: {
                         fillColor: [199, 231, 222],
@@ -388,342 +245,136 @@ export default function BudgetPDF({ budgetId, onGenerated }) {
                         halign: "center",
                     },
                     columnStyles: {
-                        0: { halign: "left" },
-                        1: { halign: "right" },
-                        2: { halign: "right" },
-                        3: { halign: "right" },
+                        0: { halign: "left", cellWidth: 40 },
+                        1: { halign: "right", cellWidth: 35 },
+                        2: { halign: "right", cellWidth: 35 },
+                        3: { halign: "right", cellWidth: 35 },
+                        4: { halign: "right", cellWidth: 35 },
                     },
                     alternateRowStyles: {
                         fillColor: [245, 245, 245],
                     },
-                    tableWidth: contentWidth,
+                    didParseCell: function(data) {
+                        // Color the variance cells
+                        if (data.column.index === 3 || data.column.index === 4) {
+                            if (data.row.index < 2) {
+                                const variance = parseFloat(summaryRows[data.row.index][3].replace(/,/g, ''));
+                                if (data.row.index === 0) {
+                                    data.cell.styles.textColor = variance >= 0 ? [0, 128, 0] : [255, 0, 0];
+                                } else {
+                                    data.cell.styles.textColor = variance <= 0 ? [0, 128, 0] : [255, 0, 0];
+                                }
+                            } else {
+                                const variance = parseFloat(summaryRows[2][3].replace(/,/g, ''));
+                                data.cell.styles.textColor = variance >= 0 ? [0, 128, 0] : [255, 0, 0];
+                            }
+                        }
+                    },
                 });
             } catch (tableError) {
                 console.error("Error generating summary table:", tableError);
             }
 
-            // Budget Analysis & Performance Section
+            // Performance Analysis Section
             const tableResult = doc.lastAutoTable || {
-                finalY: summaryTableStartY + 30,
+                finalY: summaryTableStartY + 40,
             };
-            const analysisStartY = tableResult.finalY + 10; // Reduced spacing
-
-            // Calculate required space for analysis section
-            const gaugeHeight = 20;
-            const requiredSpaceForAnalysis = 
-                15 + // Analysis title and spacing
-                10 + // Revenue performance title and spacing
-                gaugeHeight + 5 + // Revenue gauge and spacing
-                15 + // Spacing between gauges
-                10 + // Expense performance title and spacing  
-                gaugeHeight + 5 + // Expense gauge and spacing
-                20 + // Notes section spacing
-                40 + // Notes content (estimated)
-                20; // Footer spacing
-
-            // Check if we have enough space on current page
-            const availableSpace = pageHeight - analysisStartY - 15; // 15mm bottom margin
-            const shouldAddNewPage = availableSpace < requiredSpaceForAnalysis;
-
-            if (shouldAddNewPage) {
-                doc.addPage();
-                const newAnalysisStartY = margin + 10;
-                
-                doc.setDrawColor(200, 200, 200);
-                doc.setLineWidth(0.3);
-                doc.line(
-                    margin,
-                    newAnalysisStartY - 5,
-                    pageWidth - margin,
-                    newAnalysisStartY - 5
-                );
-
-                doc.setFontSize(12);
-                doc.setFont("helvetica", "bold");
-                doc.text("Budget Analysis", pageWidth / 2, newAnalysisStartY, {
-                    align: "center",
-                });
-
-                var currentAnalysisY = newAnalysisStartY;
-            } else {
-                doc.setDrawColor(200, 200, 200);
-                doc.setLineWidth(0.3);
-                doc.line(
-                    margin,
-                    analysisStartY - 5,
-                    pageWidth - margin,
-                    analysisStartY - 5
-                );
-
-                doc.setFontSize(12);
-                doc.setFont("helvetica", "bold");
-                doc.text("Budget Analysis", pageWidth / 2, analysisStartY, {
-                    align: "center",
-                });
-
-                var currentAnalysisY = analysisStartY;
-            }
-
-            // Add budget performance gauge section - visual representation of budget performance
-            const performanceStartY = currentAnalysisY + 10;
-
-            // Revenue performance
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "bold");
-            doc.text("Revenue Performance", margin, performanceStartY);
-
-            // Safely calculate percentages to avoid division by zero
-            const plannedRevenue = parseFloat(budget.total_revenue_planned) || 1; // Use 1 instead of 0.01 to avoid artificial inflation
-            const actualRevenue = parseFloat(budget.total_revenue_actual) || 0;
-            const revPercent = plannedRevenue !== 0 ? (actualRevenue / plannedRevenue) * 100 : 0;
-
-            const gaugeWidth = contentWidth;
-            const actualRevWidth = Math.max(20, Math.min((revPercent / 100) * gaugeWidth, gaugeWidth)); // Minimum 20mm for text visibility
-
-            // Background gauge
-            doc.setFillColor(240, 240, 240);
-            doc.roundedRect(
-                margin,
-                performanceStartY + 5,
-                gaugeWidth,
-                gaugeHeight,
-                2,
-                2,
-                "F"
-            );
-
-            // Actual gauge - color based on performance
-            if (revPercent >= 100) {
-                doc.setFillColor(144, 238, 144); // Light green
-            } else if (revPercent >= 90) {
-                doc.setFillColor(255, 255, 153); // Light yellow
-            } else {
-                doc.setFillColor(255, 182, 193); // Light red
-            }
-
-            doc.roundedRect(
-                margin,
-                performanceStartY + 5,
-                actualRevWidth,
-                gaugeHeight,
-                2,
-                2,
-                "F"
-            );
-
-            // Percentage text
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 0, 0); // Black text for better visibility
-
-            const percentText = `${revPercent.toFixed(1)}%`;
-            const textWidth = doc.getStringUnitWidth(percentText) * doc.internal.scaleFactor;
-            
-            // Position text in center of bar if bar is wide enough, otherwise at the end
-            let textX;
-            if (actualRevWidth > textWidth + 10) {
-                textX = margin + (actualRevWidth / 2);
-            } else {
-                textX = margin + actualRevWidth + 5;
-            }
-            
-            doc.text(percentText, textX, performanceStartY + 17, {
-                align: actualRevWidth > textWidth + 10 ? "center" : "left"
-            });
-
-            // Expense performance
-            const expensePerformanceY = performanceStartY + gaugeHeight + 15;
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 0, 0);
-            doc.text("Expense Performance", margin, expensePerformanceY);
-
-            // Safely calculate percentages
-            const plannedExpense = parseFloat(budget.total_expense_planned) || 1; // Use 1 instead of 0.01 to avoid artificial inflation
-            const actualExpense = parseFloat(budget.total_expense_actual) || 0;
-            const expPercent = plannedExpense !== 0 ? (actualExpense / plannedExpense) * 100 : 0;
-
-            const actualExpWidth = Math.max(20, Math.min((expPercent / 100) * gaugeWidth, gaugeWidth)); // Minimum 20mm for text visibility
-
-            // Background gauge
-            doc.setFillColor(240, 240, 240);
-            doc.roundedRect(
-                margin,
-                expensePerformanceY + 5,
-                gaugeWidth,
-                gaugeHeight,
-                2,
-                2,
-                "F"
-            );
-
-            // Actual gauge - for expenses, lower is better
-            if (expPercent <= 95) {
-                doc.setFillColor(144, 238, 144); // Light green
-            } else if (expPercent <= 105) {
-                doc.setFillColor(255, 255, 153); // Light yellow
-            } else {
-                doc.setFillColor(255, 182, 193); // Light red
-            }
-
-            doc.roundedRect(
-                margin,
-                expensePerformanceY + 5,
-                actualExpWidth,
-                gaugeHeight,
-                2,
-                2,
-                "F"
-            );
-
-            // Percentage text
-            const expPercentText = `${expPercent.toFixed(1)}%`;
-            const expTextWidth = doc.getStringUnitWidth(expPercentText) * doc.internal.scaleFactor;
-            
-            // Position text in center of bar if bar is wide enough, otherwise at the end
-            let expTextX;
-            if (actualExpWidth > expTextWidth + 10) {
-                expTextX = margin + (actualExpWidth / 2);
-            } else {
-                expTextX = margin + actualExpWidth + 5;
-            }
-            
-            doc.text(expPercentText, expTextX, expensePerformanceY + 17, {
-                align: actualExpWidth > expTextWidth + 10 ? "center" : "left"
-            });
-
-            // Notes section
-            const notesStartY = expensePerformanceY + gaugeHeight + 15; // Reduced spacing
-
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 0, 0);
-            doc.text("Notes & Comments", margin, notesStartY);
+            const analysisStartY = tableResult.finalY + 15;
 
             doc.setDrawColor(200, 200, 200);
-            doc.setLineWidth(0.1);
-            doc.line(
-                margin,
-                notesStartY + 5,
-                pageWidth - margin,
-                notesStartY + 5
-            );
+            doc.setLineWidth(0.3);
+            doc.line(margin, analysisStartY - 5, pageWidth - margin, analysisStartY - 5);
 
-            // Create a background box for notes
-            const notesBoxHeight = 35;
-            doc.setFillColor(248, 249, 250);
-            doc.roundedRect(
-                margin,
-                notesStartY + 8,
-                contentWidth,
-                notesBoxHeight,
-                3,
-                3,
-                "F"
-            );
-
-            // Add a subtle border
-            doc.setDrawColor(220, 220, 220);
-            doc.setLineWidth(0.1);
-            doc.roundedRect(
-                margin,
-                notesStartY + 8,
-                contentWidth,
-                notesBoxHeight,
-                3,
-                3,
-                "S"
-            );
-
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(60, 60, 60);
-
-            // Add performance summary based on data
-            let performanceAnalysis = [];
-
-            // Revenue analysis
-            if (revPercent >= 100) {
-                performanceAnalysis.push("✓ Revenue Performance: Target achieved successfully");
-            } else if (revPercent >= 90) {
-                performanceAnalysis.push("⚠ Revenue Performance: Slightly below target");
-            } else {
-                performanceAnalysis.push("✗ Revenue Performance: Significantly below target - requires attention");
-            }
-
-            // Expense analysis
-            if (expPercent <= 95) {
-                performanceAnalysis.push("✓ Expense Control: Well managed below budget");
-            } else if (expPercent <= 105) {
-                performanceAnalysis.push("⚠ Expense Control: Approximately at budgeted level");
-            } else {
-                performanceAnalysis.push("✗ Expense Control: Exceeds budget - requires review");
-            }
-
-            // Profit analysis - safely handle possible zero or negative values
-            if (plannedProfit === 0) {
-                performanceAnalysis.push("ⓘ Profit Target: No profit was planned for this period");
-            } else {
-                const profitPercent = (actualProfit / Math.abs(plannedProfit)) * 100;
-                if (plannedProfit > 0) {
-                    // Normal case - profit was expected
-                    if (profitPercent >= 100) {
-                        performanceAnalysis.push("✓ Profit Achievement: Target achieved");
-                    } else if (profitPercent >= 90) {
-                        performanceAnalysis.push("⚠ Profit Achievement: Slightly below target");
-                    } else {
-                        performanceAnalysis.push("✗ Profit Achievement: Significantly below target");
-                    }
-                } else {
-                    // Special case - loss was expected
-                    if (actualProfit > 0) {
-                        performanceAnalysis.push("✓ Outstanding Performance: Profit achieved vs projected loss");
-                    } else if (actualProfit > plannedProfit) {
-                        performanceAnalysis.push("✓ Better than Expected: Loss less than projected");
-                    } else {
-                        performanceAnalysis.push("✗ Concerning: Loss greater than projected");
-                    }
-                }
-            }
-
-            // Add the formatted analysis text with improved typography
-            let currentTextY = notesStartY + 18;
-            const lineSpacing = 5.5; // Slightly increased for better readability
-            
-            performanceAnalysis.forEach((analysis, index) => {
-                // Use different font weights for icons and text
-                const parts = analysis.split(' ');
-                const icon = parts[0];
-                const text = parts.slice(1).join(' ');
-                
-                // Draw icon with bold font
-                doc.setFont("helvetica", "bold");
-                doc.text(icon, margin + 5, currentTextY);
-                
-                // Draw text with regular font
-                doc.setFont("helvetica", "normal");
-                doc.text(text, margin + 12, currentTextY, {
-                    maxWidth: contentWidth - 17,
-                    align: "left",
-                });
-                
-                currentTextY += lineSpacing;
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text("Performance Analysis", pageWidth / 2, analysisStartY, {
+                align: "center",
             });
 
-            const notesEndY = notesStartY + 8 + notesBoxHeight + 5;
+            // Performance Gauges
+            const gaugeStartY = analysisStartY + 10;
+            const gaugeHeight = 15;
+            const gaugeWidth = contentWidth - 30;
 
-            // Footer with generation timestamp - positioned after all content
-            const currentPageHeight = shouldAddNewPage ? pageHeight : pageHeight;
-            const footerY = Math.min(notesEndY + 15, currentPageHeight - 15); // Position footer properly
+            // Revenue Performance Gauge
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.text("Revenue Achievement", margin, gaugeStartY);
+
+            const revPercentage = revenuePlanned !== 0 ? (revenueActual / revenuePlanned) * 100 : 0;
+            const revGaugeWidth = Math.max(10, Math.min((revPercentage / 100) * gaugeWidth, gaugeWidth));
+
+            // Background
+            doc.setFillColor(240, 240, 240);
+            doc.roundedRect(margin, gaugeStartY + 3, gaugeWidth, gaugeHeight, 2, 2, "F");
+
+            // Actual gauge with color coding
+            if (revPercentage >= 100) {
+                doc.setFillColor(76, 175, 80);
+            } else if (revPercentage >= 90) {
+                doc.setFillColor(255, 193, 7);
+            } else {
+                doc.setFillColor(244, 67, 54);
+            }
+            doc.roundedRect(margin, gaugeStartY + 3, revGaugeWidth, gaugeHeight, 2, 2, "F");
+
+            // Percentage text
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text(
+                `${revPercentage.toFixed(1)}%`,
+                margin + gaugeWidth + 5,
+                gaugeStartY + 12
+            );
+
+            // Expense Performance Gauge
+            const expGaugeStartY = gaugeStartY + gaugeHeight + 10;
+            doc.setFont("helvetica", "bold");
+            doc.text("Expense Control", margin, expGaugeStartY);
+
+            const expPercentage = expensePlanned !== 0 ? (expenseActual / expensePlanned) * 100 : 0;
+            const expGaugeWidth = Math.max(10, Math.min((expPercentage / 100) * gaugeWidth, gaugeWidth));
+
+            // Background
+            doc.setFillColor(240, 240, 240);
+            doc.roundedRect(margin, expGaugeStartY + 3, gaugeWidth, gaugeHeight, 2, 2, "F");
+
+            // Actual gauge
+            if (expPercentage <= 95) {
+                doc.setFillColor(76, 175, 80);
+            } else if (expPercentage <= 105) {
+                doc.setFillColor(255, 193, 7);
+            } else {
+                doc.setFillColor(244, 67, 54);
+            }
+            doc.roundedRect(margin, expGaugeStartY + 3, expGaugeWidth, gaugeHeight, 2, 2, "F");
+
+            // Percentage text
+            doc.setTextColor(0, 0, 0);
+            doc.text(
+                `${expPercentage.toFixed(1)}%`,
+                margin + gaugeWidth + 5,
+                expGaugeStartY + 12
+            );
+
+            // Footer
+            const footerY = expGaugeStartY + gaugeHeight + 20;
             doc.setFontSize(8);
             doc.setFont("helvetica", "italic");
+            doc.setTextColor(128, 128, 128);
             doc.text(
-                `Generated on: ${new Date().toLocaleString()}`,
+                `Generated on: ${formatDateForDisplay(new Date().toISOString())} at ${new Date().toLocaleTimeString()}`,
                 margin,
                 footerY
             );
+            doc.text(
+                "Maharat MCTC - Confidential",
+                pageWidth - margin,
+                footerY,
+                { align: "right" }
+            );
 
-            // Save the PDF
+            // Save and download PDF
             const pdfBlob = doc.output("blob");
             const pdfFile = new File(
                 [pdfBlob],
@@ -731,16 +382,9 @@ export default function BudgetPDF({ budgetId, onGenerated }) {
                 { type: "application/pdf" }
             );
 
-            // Notify parent component that PDF was generated
-            if (onGenerated && typeof onGenerated === "function") {
-                onGenerated(pdfFile);
-            }
-
-            // Open the PDF in a new tab and trigger download
             const fileUrl = URL.createObjectURL(pdfBlob);
             window.open(fileUrl, "_blank");
             
-            // Automatically download the PDF
             const downloadLink = document.createElement('a');
             downloadLink.href = fileUrl;
             downloadLink.download = `budget_report_${budget.id}.pdf`;
@@ -748,10 +392,13 @@ export default function BudgetPDF({ budgetId, onGenerated }) {
             downloadLink.click();
             document.body.removeChild(downloadLink);
             
-            // Clean up the URL object after a short delay
             setTimeout(() => {
                 URL.revokeObjectURL(fileUrl);
             }, 1000);
+
+            if (onGenerated && typeof onGenerated === "function") {
+                onGenerated(pdfFile);
+            }
         } catch (error) {
             console.error("Error generating PDF:", error);
             alert("Failed to generate PDF. Please try again.");

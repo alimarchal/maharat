@@ -63,6 +63,11 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
             const margin = 15;
             const contentWidth = pageWidth - margin * 2;
 
+            // Calculate total amount
+            const baseAmount = parseFloat(purchaseOrder.amount || 0);
+            const vatAmount = parseFloat(purchaseOrder.vat_amount || 0);
+            const totalAmount = baseAmount + vatAmount;
+
             // Initialize autotable to ensure plugin is loaded
             autoTable(doc, {
                 /* empty config */
@@ -71,7 +76,7 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
             // Logo
             try {
                 const img = new Image();
-                img.src = "/images/MCTC Logo.png";
+                img.src = "/images/MCTC_Logo.png";
                 await new Promise((resolve, reject) => {
                     img.onload = resolve;
                     img.onerror = reject;
@@ -272,13 +277,10 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
                 termsStartY + 8
             );
             doc.text(
-                `${parseFloat(purchaseOrder.amount || 0).toLocaleString(
-                    undefined,
-                    {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                    }
-                )}`,
+                `${totalAmount.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                })}`,
                 margin + 40,
                 termsStartY + 18
             );
@@ -369,8 +371,14 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
                           "Purchase Order Items",
                           "As per quotation",
                           "1",
-                          purchaseOrder.amount || "0.00",
-                          purchaseOrder.amount || "0.00",
+                          baseAmount.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                          }),
+                          baseAmount.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                          }),
                       ],
                   ];
 
@@ -490,20 +498,57 @@ export default function PurchaseOrderPDF({ purchaseOrderId, onGenerated }) {
             };
             let finalY = tableResult.finalY;
 
-            // Add total amount after table
+            // Add subtotal, VAT, and total amount after table
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
-            doc.text("Total Amount:", pageWidth - margin - 60, finalY + 10);
+            
+            // Subtotal
+            doc.text("Subtotal:", pageWidth - margin - 60, finalY + 10);
+            doc.setFont("helvetica", "normal");
             doc.text(
-                `${parseFloat(purchaseOrder.amount || 0).toLocaleString(
-                    undefined,
-                    {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                    }
-                )}`,
+                `${baseAmount.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                })}`,
                 pageWidth - margin,
                 finalY + 10,
+                { align: "right" }
+            );
+
+            // VAT Amount
+            doc.setFont("helvetica", "bold");
+            doc.text("VAT Amount:", pageWidth - margin - 60, finalY + 18);
+            doc.setFont("helvetica", "normal");
+            doc.text(
+                `${vatAmount.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                })}`,
+                pageWidth - margin,
+                finalY + 18,
+                { align: "right" }
+            );
+
+            // Draw a line before total
+            doc.setDrawColor(200, 200, 200);
+            doc.setLineWidth(0.3);
+            doc.line(
+                pageWidth - margin - 70,
+                finalY + 22,
+                pageWidth - margin,
+                finalY + 22
+            );
+
+            // Total Amount
+            doc.setFont("helvetica", "bold");
+            doc.text("Total Amount:", pageWidth - margin - 60, finalY + 28);
+            doc.text(
+                `${totalAmount.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                })}`,
+                pageWidth - margin,
+                finalY + 28,
                 { align: "right" }
             );
 

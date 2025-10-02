@@ -10,11 +10,13 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
-    resolve: (name) =>
-        resolvePageComponent(
+    resolve: (name) => {
+        // Use async component loading for better performance
+        return resolvePageComponent(
             `./Pages/${name}.jsx`,
-            import.meta.glob('./Pages/**/*.jsx'),
-        ),
+            import.meta.glob('./Pages/**/*.jsx', { eager: false }),
+        );
+    },
     setup({ el, App, props }) {
         const root = createRoot(el);
 

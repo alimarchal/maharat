@@ -1697,7 +1697,7 @@ function AddQuotationForm() {
                     </p>
                 </div>
                 <img
-                    src="/images/MCTC Logo.png"
+                    src="/images/MCTC_Logo.png"
                     alt="Maharat Logo"
                     className="h-12"
                 />

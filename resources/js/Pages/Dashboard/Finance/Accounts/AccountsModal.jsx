@@ -162,13 +162,6 @@ const AccountsModal = ({
         loadInitialData();
     }, [isOpen, account, isEdit]);
 
-    // Add debugging for formData changes
-    useEffect(() => {
-        if (isEdit && account) {
-            console.log("Current formData:", formData);
-        }
-    }, [formData, isEdit, account]);
-
     const fetchAllCostCenters = async () => {
         let allCostCenters = [];
         let page = 1;
@@ -259,6 +252,11 @@ const AccountsModal = ({
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+
+        // Prevent changes to disabled fields in edit mode
+        if (isEdit && ['name', 'account_number', 'description', 'account_code_id', 'cost_center_id', 'status'].includes(name)) {
+            return;
+        }
 
         // Special handling for Account ID 2 (Liabilities)
         if (isEdit && account && account.id === 2) {
@@ -372,10 +370,6 @@ const AccountsModal = ({
         setIsSaving(true);
         setErrors({});
         setUploadError("");
-        // Debug log for invoice_number value
-        if (isEdit && account && account.id === 2) {
-            console.log("Submitting invoice_number value:", formData.invoice_number);
-        }
 
         const validationErrors = {};
         if (!formData.name) validationErrors.name = "Name is required";
@@ -660,6 +654,7 @@ const AccountsModal = ({
                             value={formData.name}
                             onChange={handleChange}
                             error={errors.name}
+                            disabled={isEdit}
                         />
                         <InputFloating
                             label="Account Code"
@@ -667,47 +662,62 @@ const AccountsModal = ({
                             value={formData.account_number}
                             onChange={handleChange}
                             error={errors.account_number}
+                            disabled={isEdit}
                         />
-                        <SelectFloating
-                            label="Cost Center"
-                            name="cost_center_id"
-                            value={formData.cost_center_id}
-                            onChange={handleChange}
-                            options={
-                                isLoading
-                                    ? [{ id: "", label: "Loading..." }]
-                                    : costCenterOptions
-                            }
-                            disabled={isLoading}
-                            error={errors.cost_center_id}
-                        />
-                        <SelectFloating
-                            label="Type"
-                            name="account_code_id"
-                            value={formData.account_code_id}
-                            onChange={handleChange}
-                            options={
-                                isLoading
-                                    ? [{ id: "", label: "Loading..." }]
-                                    : accountTypes
-                            }
-                            disabled={isLoading}
-                            error={errors.account_code_id}
-                        />
-                        <SelectFloating
-                            label="Status"
-                            name="status"
-                            value={formData.status}
-                            onChange={handleChange}
-                            options={statusOptions}
-                            error={errors.status}
-                        />
+                        <div className={isEdit ? "cursor-not-allowed" : ""}>
+                            <div className={isEdit ? "pointer-events-none" : ""}>
+                                <SelectFloating
+                                    label="Cost Center"
+                                    name="cost_center_id"
+                                    value={formData.cost_center_id}
+                                    onChange={handleChange}
+                                    options={
+                                        isLoading
+                                            ? [{ id: "", label: "Loading..." }]
+                                            : costCenterOptions
+                                    }
+                                    disabled={isLoading || isEdit}
+                                    error={errors.cost_center_id}
+                                />
+                            </div>
+                        </div>
+                        <div className={isEdit ? "cursor-not-allowed" : ""}>
+                            <div className={isEdit ? "pointer-events-none" : ""}>
+                                <SelectFloating
+                                    label="Type"
+                                    name="account_code_id"
+                                    value={formData.account_code_id}
+                                    onChange={handleChange}
+                                    options={
+                                        isLoading
+                                            ? [{ id: "", label: "Loading..." }]
+                                            : accountTypes
+                                    }
+                                    disabled={isLoading || isEdit}
+                                    error={errors.account_code_id}
+                                />
+                            </div>
+                        </div>
+                        <div className={isEdit ? "cursor-not-allowed" : ""}>
+                            <div className={isEdit ? "pointer-events-none" : ""}>
+                                <SelectFloating
+                                    label="Status"
+                                    name="status"
+                                    value={formData.status}
+                                    onChange={handleChange}
+                                    options={statusOptions}
+                                    error={errors.status}
+                                    disabled={isEdit}
+                                />
+                            </div>
+                        </div>
                         <InputFloating
                             label="Description"
                             name="description"
                             value={formData.description}
                             onChange={handleChange}
                             error={errors.description}
+                            disabled={isEdit}
                         />
                         {/* Reference Number: Hide in edit mode for id == 1 */}
                         {!(isEdit && account && isSpecialAccountId(account.id)) && (

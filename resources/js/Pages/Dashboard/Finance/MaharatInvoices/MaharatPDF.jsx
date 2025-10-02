@@ -137,7 +137,7 @@ export default function MaharatPDF({ invoiceId, onGenerated }) {
             // Add Maharat logo at the top center
             try {
                 const img = new Image();
-                img.src = '/images/MCTC Logo.png';
+                img.src = '/images/MCTC_Logo.png';
                 await new Promise((resolve, reject) => {
                     img.onload = resolve;
                     img.onerror = reject;

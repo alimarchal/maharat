@@ -236,12 +236,12 @@ const CompanyProfile = () => {
                                     className="w-full h-full object-contain"
                                     onError={(e) => {
                                         console.error('Error loading logo:', e);
-                                        e.target.src = '/images/MCTC Logo.png';
+                                        e.target.src = '/images/MCTC_Logo.png';
                                     }}
                                 />
                             ) : (
                                 <img
-                                    src="/images/MCTC Logo.png"
+                                    src="/images/MCTC_Logo.png"
                                     alt="Company Logo"
                                     className="w-full h-full object-contain"
                                 />
