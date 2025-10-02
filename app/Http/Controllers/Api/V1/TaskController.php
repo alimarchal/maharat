@@ -1758,6 +1758,60 @@ class TaskController extends Controller
                 }
             }
 
+            // Check if this is a GRN task and if it's being rejected
+            if ($task->grn_id && $request->input('status') === 'Rejected') {
+                Log::info('=== GRN TASK REJECTION CHECK ===', [
+                    'task_id' => $task->id,
+                    'grn_id' => $task->grn_id,
+                ]);
+
+                // Update the corresponding approval transaction
+                $approvalTransaction = DB::table('grn_approval_transactions')
+                    ->where('grn_id', $task->grn_id)
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->first();
+
+                if ($approvalTransaction) {
+                    Log::info('=== UPDATING GRN APPROVAL TRANSACTION FOR REJECTION ===', [
+                        'task_id' => $task->id,
+                        'grn_id' => $task->grn_id,
+                        'approval_transaction_id' => $approvalTransaction->id
+                    ]);
+
+                    // Update the approval transaction status
+                    $transactionUpdated = DB::table('grn_approval_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => 'Reject',
+                            'updated_by' => auth()->id(),
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== GRN REJECTION TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'grn_id' => $task->grn_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_success' => $transactionUpdated
+                    ]);
+
+                    if ($transactionUpdated) {
+                        // Revert the PO status to partially_delivered since adjustment was rejected
+                        DB::table('purchase_orders')
+                            ->where('id', DB::table('grns')->where('id', $task->grn_id)->value('purchase_order_id'))
+                            ->update([
+                                'delivery_status' => 'partially_delivered',
+                                'has_good_receive_note' => false,
+                                'updated_at' => now()
+                            ]);
+
+                        Log::info('=== GRN REJECTION - PO STATUS REVERTED ===', [
+                            'task_id' => $task->id,
+                            'grn_id' => $task->grn_id,
+                        ]);
+                    }
+                }
+            }
+
             // Send status notification to requester if task status changed
             // Skip general notification logic for budget approval tasks since we have specific logic for them
             if ($request->has('status') && in_array($request->input('status'), ['Approved', 'Rejected']) && !$task->budget_id) {

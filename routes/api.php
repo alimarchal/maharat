@@ -87,6 +87,7 @@ use App\Http\Controllers\ItemRequestController;
 use App\Http\Controllers\Api\V1\AccountCodeController;
 use App\Http\Controllers\Api\V1\TransactionFlowController;
 use App\Http\Controllers\Api\V1\UploadController;
+use App\Http\Controllers\Api\V1\GrnApprovalTransactionController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -546,5 +547,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/process-steps/reorder', [App\Http\Controllers\Api\V1\ProcessStepController::class, 'reorder']);
 
     Route::put('/rfqs/{id}/status', [RfqController::class, 'updateStatus']);
+
+    // GRN Approval Transactions
+    Route::apiResource('grn-approval-transactions', GrnApprovalTransactionController::class);
 
 });

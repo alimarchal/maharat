@@ -29,6 +29,7 @@ class Task extends Model
         'budget_approval_transaction_id',
         'request_budgets_id',
         'invoice_id',
+        'grn_id',
         'read_status',
         'tasks',
         'status',
@@ -113,5 +114,10 @@ class Task extends Model
     public function assignedUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to_user_id');
+    }
+
+    public function grn(): BelongsTo
+    {
+        return $this->belongsTo(Grn::class);
     }
 }
