@@ -213,6 +213,48 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user has effective permission (considering user overrides)
+     * User overrides take precedence over role/designation permissions
+     */
+    public function hasEffectivePermission(string $permissionName): bool
+    {
+        return \App\Services\UserPermissionOverrideService::getEffectivePermission($this, $permissionName);
+    }
+
+    /**
+     * Get all effective permissions for this user
+     */
+    public function getEffectivePermissions(): array
+    {
+        $rolePermissions = [];
+        
+        // Get role permissions (from designation)
+        $role = $this->roles()->first();
+        if ($role) {
+            $rolePermissions = $role->permissions->pluck('name')->toArray();
+        }
+
+        // Get user overrides
+        $userOverrides = \App\Services\UserPermissionOverrideService::getUserOverrides($this);
+
+        // Merge permissions: user overrides take precedence
+        $effectivePermissions = [];
+        
+        // Start with role permissions
+        foreach ($rolePermissions as $permission) {
+            $effectivePermissions[$permission] = true;
+        }
+
+        // Apply user overrides (these override role permissions)
+        foreach ($userOverrides as $permission => $isEnabled) {
+            $effectivePermissions[$permission] = $isEnabled;
+        }
+
+        // Return only enabled permissions
+        return array_keys(array_filter($effectivePermissions));
+    }
+
+    /**
      * Boot the model.
      */
     protected static function boot()

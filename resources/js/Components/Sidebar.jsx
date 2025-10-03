@@ -75,13 +75,23 @@ const SidebarButton = ({
 const Sidebar = ({ isOpen }) => {
     const { url } = usePage();
     const user = usePage().props.auth.user;
-    const { hasPermission } = usePermissions();
+    const { hasPermission, permissions, loading } = usePermissions();
     
     // Check if user is a top-level user (parent_id is NULL)
     const isTopLevelUser = user?.parent_id === null;
     
-    // Check if sidebar should be enabled (user has any sidebar permissions)
-    const sidebarEnabled = hasPermission("view_notifications") || hasPermission("edit_profile") || hasPermission("view_user_manual") || hasPermission("view_faqs");
+    // Check if sidebar should be enabled (user has main sidebar permission)
+    const sidebarEnabled = hasPermission("view_sidebar");
+    
+    // Debug logging (remove after testing)
+    console.log('Sidebar Debug:', {
+        loading,
+        sidebarEnabled,
+        hasViewSidebar: hasPermission("view_sidebar"),
+        hasSidebarNotification: hasPermission("sidebar_notification"),
+        hasEditProfile: hasPermission("edit_profile"),
+        allPermissions: permissions
+    });
 
     return (
         <>
@@ -97,7 +107,7 @@ const Sidebar = ({ isOpen }) => {
                         title="Dashboard"
                         isActive={url === "/dashboard"}
                     />
-                    {hasPermission("view_notifications") && (
+                    {hasPermission("sidebar_notification") && (
                         <SidebarButton
                             icon={faBell}
                             link="/notification-settings"
@@ -105,7 +115,7 @@ const Sidebar = ({ isOpen }) => {
                             isActive={url === "/notification-settings"}
                         />
                     )}
-                    {hasPermission("edit_profile") && (
+                    {hasPermission("view_sidebar") && hasPermission("edit_profile") && (
                         <SidebarButton
                             icon={faCog}
                             link="/company-profile"
@@ -116,7 +126,7 @@ const Sidebar = ({ isOpen }) => {
                 </nav>
 
                 <div className="flex flex-col gap-6">
-                    {hasPermission("view_user_manual") && (
+                    {hasPermission("view_sidebar") && hasPermission("view_user_manual") && (
                         <SidebarButton
                             icon={faBookOpen}
                             link="/user-manual"
@@ -124,7 +134,7 @@ const Sidebar = ({ isOpen }) => {
                             isActive={url === "/user-manual"}
                         />
                     )}
-                    {hasPermission("view_faqs") && (
+                    {hasPermission("view_sidebar") && hasPermission("view_faqs") && (
                         <SidebarButton
                             icon={faQuestionCircle}
                             link="/faqs"

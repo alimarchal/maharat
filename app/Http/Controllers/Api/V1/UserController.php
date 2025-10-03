@@ -362,15 +362,17 @@ class UserController extends Controller
             ]);
         }
 
-        // Get role permissions
+        // Get role permissions (from designation)
         $rolePermissions = $userRole->permissions->pluck('name')->toArray();
         
         // Get user permission overrides
         $userOverrides = UserPermissionOverrideService::getUserOverrides($user);
         
-        // Debug logging
-        \Log::info('🔍 User overrides for ' . $user->name . ' (ID: ' . $user->id . '):', $userOverrides);
-        \Log::info('🎭 Role permissions:', $rolePermissions);
+        // Debug logging (only in debug mode to reduce spam)
+        if (config('app.debug')) {
+            \Log::info('🔍 User overrides for ' . $user->name . ' (ID: ' . $user->id . '):', $userOverrides);
+            \Log::info('🎭 Role permissions:', $rolePermissions);
+        }
         
         // Define permission categories (same as frontend)
         $permissionCategories = [
@@ -515,16 +517,23 @@ class UserController extends Controller
             "Configuration Center" => [
                 "base" => "view_configuration",
                 "subOptions" => [
-                    "Organizational Chart" => ["base" => "view_org_chart"],
+                    "Organizational Chart" => [
+                        "base" => "view_org_chart",
+                        "subOptions" => [
+                            "Edit Employee" => ["base" => "edit_employee"],
+                            "Add Employee" => ["base" => "add_employee"],
+                            "Delete Employee" => ["base" => "delete_employee"]
+                        ]
+                    ],
                     "Process Flow" => ["base" => "view_process_flow"],
                     "Notification Settings" => ["base" => "manage_settings"],
                     "Roles & Permission" => ["base" => "view_permission_settings"]
                 ]
             ],
             "Sidebar" => [
-                "base" => "view_notifications",
+                "base" => "view_sidebar",
                 "subOptions" => [
-                    "Notification Settings" => ["base" => "view_notifications"],
+                    "Notification Settings" => ["base" => "sidebar_notification"],
                     "Profile Settings" => ["base" => "edit_profile"],
                     "User Manual" => [
                         "base" => "view_user_manual",
@@ -555,7 +564,8 @@ class UserController extends Controller
             // If user has override for this permission, use user's setting
             // Otherwise, use role permission
             $mainPermission = $hasUserOverride ? $userOverrides[$config['base']] : $hasRoleMainPermission;
-            $isUserOverride = $hasUserOverride;
+            // Only show as override if the user's setting differs from role's default
+            $isUserOverride = $hasUserOverride && ($userOverrides[$config['base']] !== $hasRoleMainPermission);
 
             $combinedPermissions[$category] = [
                 'main' => $mainPermission,
@@ -571,7 +581,8 @@ class UserController extends Controller
                 // If user has override for this sub-permission, use user's setting
                 // Otherwise, use role permission
                 $subPermission = $hasUserSubOverride ? $userOverrides[$subConfig['base']] : $hasRoleSubPermission;
-                $isSubUserOverride = $hasUserSubOverride;
+                // Only show as override if the user's setting differs from role's default
+                $isSubUserOverride = $hasUserSubOverride && ($userOverrides[$subConfig['base']] !== $hasRoleSubPermission);
 
                 $combinedPermissions[$category]['subOptions'][$subOption] = [
                     'enabled' => $subPermission,
@@ -588,7 +599,8 @@ class UserController extends Controller
                         // If user has override for this nested permission, use user's setting
                         // Otherwise, use role permission
                         $nestedPermission = $hasUserNestedOverride ? $userOverrides[$nestedConfig['base']] : $hasRoleNestedPermission;
-                        $isNestedUserOverride = $hasUserNestedOverride;
+                        // Only show as override if the user's setting differs from role's default
+                        $isNestedUserOverride = $hasUserNestedOverride && ($userOverrides[$nestedConfig['base']] !== $hasRoleNestedPermission);
 
                         $combinedPermissions[$category]['subOptions'][$subOption]['subOptions'][$nestedSubOption] = [
                             'enabled' => $nestedPermission,
@@ -599,8 +611,10 @@ class UserController extends Controller
             }
         }
 
-        // Debug logging
-        \Log::info('🎯 Final combined permissions for ' . $user->name . ':', $combinedPermissions);
+        // Debug logging (only in debug mode to reduce spam)
+        if (config('app.debug')) {
+            \Log::info('🎯 Final combined permissions for ' . $user->name . ':', $combinedPermissions);
+        }
         
         return response()->json([
             'data' => $combinedPermissions
@@ -615,23 +629,78 @@ class UserController extends Controller
         ]);
 
         // Use the new service to handle permission overrides
-        \Log::info('🔄 Toggling permission for ' . $user->name . ':', [
-            'permission' => $validated['permission'],
-            'value' => $validated['value']
-        ]);
+        if (config('app.debug')) {
+            \Log::info('🔄 Toggling permission for ' . $user->name . ':', [
+                'permission' => $validated['permission'],
+                'value' => $validated['value']
+            ]);
+        }
         
-        UserPermissionOverrideService::setOverride(
-            $user, 
-            $validated['permission'], 
-            $validated['value']
-        );
+        // Check if this matches the role's default permission
+        $userRole = $user->roles()->first();
+        $roleHasPermission = false;
+        
+        if ($userRole) {
+            $rolePermissions = $userRole->permissions->pluck('name')->toArray();
+            $roleHasPermission = in_array($validated['permission'], $rolePermissions);
+        }
+        
+        // If the new value matches the role's default, remove the override
+        if ($validated['value'] === $roleHasPermission) {
+            UserPermissionOverrideService::removeOverride($user, $validated['permission']);
+            
+            if (config('app.debug')) {
+                \Log::info('🗑️ Removed override - matches role default:', [
+                    'permission' => $validated['permission'],
+                    'role_has_permission' => $roleHasPermission,
+                    'user_value' => $validated['value']
+                ]);
+            }
+        } else {
+            // Value differs from role default, set override
+            UserPermissionOverrideService::setOverride(
+                $user, 
+                $validated['permission'], 
+                $validated['value']
+            );
+            
+            if (config('app.debug')) {
+                \Log::info('✅ Set override - differs from role default:', [
+                    'permission' => $validated['permission'],
+                    'role_has_permission' => $roleHasPermission,
+                    'user_value' => $validated['value']
+                ]);
+            }
+        }
 
         $finalOverrides = UserPermissionOverrideService::getUserOverrides($user);
-        \Log::info('✅ Final overrides after toggle:', $finalOverrides);
+        if (config('app.debug')) {
+            \Log::info('✅ Final overrides after toggle:', $finalOverrides);
+        }
 
         return response()->json([
             'success' => true,
             'data' => $finalOverrides
+        ]);
+    }
+
+    public function clearPermissionOverride(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'permission' => 'required|string'
+        ]);
+
+        if (config('app.debug')) {
+            \Log::info('🗑️ Clearing permission override for ' . $user->name . ':', [
+                'permission' => $validated['permission']
+            ]);
+        }
+
+        UserPermissionOverrideService::removeOverride($user, $validated['permission']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Permission override cleared - user will now use designation permissions'
         ]);
     }
 
