@@ -23,8 +23,16 @@ class FixScalaHostingSession
         try {
             $sessionId = $request->session()->getId();
             
-            // Check if this is a fresh request with existing cookies
-            if ($request->cookies->has('maharat_session') && config('session.driver') === 'database') {
+            // Only check session validity for very specific cases to prevent redirect loops
+            if (!$request->ajax() && 
+                !$request->expectsJson() && 
+                !$request->header('X-Inertia') &&
+                !$request->is('dashboard*') &&
+                !$request->is('login*') &&
+                !$request->is('/') &&
+                $request->cookies->has('maharat_session') && 
+                config('session.driver') === 'database') {
+                
                 $sessionTable = config('session.table', 'sessions');
                 
                 // Check if session exists in database
@@ -33,8 +41,6 @@ class FixScalaHostingSession
                     ->exists();
                 
                 if (!$sessionExists) {
-                    // Session cookie exists but no database record
-                    // This is the ScalaHosting issue - create a new session properly
                     Log::info('ScalaHosting session fix: Creating new session', [
                         'old_session_id' => $sessionId,
                         'url' => $request->url(),
@@ -63,14 +69,16 @@ class FixScalaHostingSession
                 'trace' => $e->getTraceAsString()
             ]);
             
-            // If there's an error, try to create a completely fresh session
-            try {
-                $request->session()->invalidate();
-                $request->session()->regenerate(true);
-            } catch (\Exception $regenerateError) {
-                Log::error('Failed to regenerate session', [
-                    'error' => $regenerateError->getMessage()
-                ]);
+            // Don't regenerate session on error for Inertia requests
+            if (!$request->header('X-Inertia')) {
+                try {
+                    $request->session()->invalidate();
+                    $request->session()->regenerate(true);
+                } catch (\Exception $regenerateError) {
+                    Log::error('Failed to regenerate session', [
+                        'error' => $regenerateError->getMessage()
+                    ]);
+                }
             }
             
             return $next($request);

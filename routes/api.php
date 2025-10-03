@@ -492,6 +492,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('/users/{user}/direct-permissions', [UserController::class, 'getDirectPermissions']);
     Route::get('/users/{user}/combined-permissions', [UserController::class, 'getCombinedPermissions']);
     Route::post('/users/{user}/toggle-permission', [UserController::class, 'togglePermission']);
+    Route::delete('/users/{user}/clear-permission-override', [UserController::class, 'clearPermissionOverride']);
 
     // FAQ routes
     Route::get('/faqs', [FaqController::class, 'index']);

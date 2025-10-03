@@ -266,25 +266,47 @@ export default function MainDashboard({ roles, permissions }) {
     
     const [loading, setLoading] = useState(true);
 
-    // Fetch pending requests count (all types of pending requests)
+    // Fetch all dashboard counts in a single effect to reduce API calls
     useEffect(() => {
-        const fetchPendingRequests = async () => {
+        let isMounted = true;
+        
+        const fetchAllCounts = async () => {
             try {
-                const response = await fetch(
-                    `/api/v1/tasks?filter[assigned_to_user_id]=${user_id}&filter[status]=Pending&per_page=1000`
-                );
-                const data = await response.json();
-                if (response.ok) {
-                    // Use meta.total for the actual count, not the limited per_page results
-                    setPendingTasksCount(data.meta?.total || 0);
-                }
-            } catch (err) {
-                // Error fetching pending requests
-            } finally {
+                // Batch multiple API calls with a small delay to prevent overwhelming the server
+                const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+                
+                // Fetch pending tasks count
+                const fetchPendingRequests = async () => {
+                    try {
+                        const response = await fetch(
+                            `/api/v1/tasks?filter[assigned_to_user_id]=${user_id}&filter[status]=Pending&per_page=1000`
+                        );
+                        const data = await response.json();
+                        if (response.ok && isMounted) {
+                            setPendingTasksCount(data.meta?.total || 0);
+                        }
+                    } catch (err) {
+                        // Error fetching pending requests
+                    }
+                };
+
+                await fetchPendingRequests();
+                
+                if (!isMounted) return;
                 setLoading(false);
+                
+            } catch (err) {
+                if (isMounted) {
+                    setLoading(false);
+                }
             }
         };
-        fetchPendingRequests();
+
+        fetchAllCounts();
+        
+        return () => {
+            isMounted = false;
+        };
     }, [user_id]);
 
     // Fetch requested items count for warehouse notifications
@@ -780,7 +802,7 @@ export default function MainDashboard({ roles, permissions }) {
     const showWarehouseCard = hasPermission("view_warehouse");
     const showBudgetCard = hasPermission("view_budget");
     const showStatusCard = hasPermission("view_statuses");
-    const showConfigCard = hasPermission("view_configuration") || hasPermission("view_org_chart") || hasPermission("view_process_flow") || hasPermission("manage_settings") || hasPermission("view_permission_settings");
+    const showConfigCard = hasPermission("view_configuration");
     
 
     return (

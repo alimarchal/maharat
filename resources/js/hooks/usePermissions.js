@@ -16,15 +16,14 @@ export const usePermissions = () => {
         try {
             setLoading(true);
             
-            // Check cache first
-            const cacheKey = `user_permissions_${Date.now().toString().slice(0, -6)}`; // Cache for 1 minute
-            const cachedPermissions = sessionStorage.getItem('user_permissions');
-            const cacheTimestamp = sessionStorage.getItem('user_permissions_timestamp');
+            // Clear all permission caches to ensure fresh data
+            sessionStorage.removeItem('user_permissions');
+            sessionStorage.removeItem('user_permissions_timestamp');
+            sessionStorage.removeItem('user_permission_structure');
+            sessionStorage.removeItem('user_permission_structure_timestamp');
             
-            const now = Date.now();
-            const oneMinute = 60 * 1000;
-            
-            if (cachedPermissions && cacheTimestamp && (now - parseInt(cacheTimestamp)) < oneMinute) {
+            // Always fetch fresh permissions (no caching for debugging)
+            if (false) {
                 setPermissions(JSON.parse(cachedPermissions));
                 setError(null);
                 setLoading(false);
@@ -36,9 +35,9 @@ export const usePermissions = () => {
             setPermissions(permissions);
             setError(null);
             
-            // Cache the permissions
-            sessionStorage.setItem('user_permissions', JSON.stringify(permissions));
-            sessionStorage.setItem('user_permissions_timestamp', now.toString());
+            // Don't cache permissions for debugging
+            // sessionStorage.setItem('user_permissions', JSON.stringify(permissions));
+            // sessionStorage.setItem('user_permissions_timestamp', now.toString());
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to fetch permissions');
             setPermissions([]);
@@ -52,14 +51,8 @@ export const usePermissions = () => {
         try {
             setLoading(true);
             
-            // Check cache first
-            const cachedStructure = sessionStorage.getItem('user_permission_structure');
-            const cacheTimestamp = sessionStorage.getItem('user_permission_structure_timestamp');
-            
-            const now = Date.now();
-            const fiveMinutes = 5 * 60 * 1000;
-            
-            if (cachedStructure && cacheTimestamp && (now - parseInt(cacheTimestamp)) < fiveMinutes) {
+            // Always fetch fresh permission structure (no caching for debugging)
+            if (false) {
                 setPermissionStructure(JSON.parse(cachedStructure));
                 setError(null);
                 setLoading(false);
@@ -71,9 +64,9 @@ export const usePermissions = () => {
             setPermissionStructure(structure);
             setError(null);
             
-            // Cache the structure
-            sessionStorage.setItem('user_permission_structure', JSON.stringify(structure));
-            sessionStorage.setItem('user_permission_structure_timestamp', now.toString());
+            // Don't cache structure for debugging
+            // sessionStorage.setItem('user_permission_structure', JSON.stringify(structure));
+            // sessionStorage.setItem('user_permission_structure_timestamp', now.toString());
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to fetch permission structure');
             setPermissionStructure({});

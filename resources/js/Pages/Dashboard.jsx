@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense } from "react";
+import React, { useState, useEffect, lazy, Suspense, useRef } from "react";
 import { Head, router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import axios from "axios";
@@ -98,51 +98,85 @@ const LoadingSpinner = () => (
 export default function Dashboard({ auth, page }) {
     const [realTimePermissions, setRealTimePermissions] = useState(null);
     const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
+    const requestInProgress = useRef(false);
 
     // Cache permissions in sessionStorage to avoid repeated API calls
     useEffect(() => {
+        let isMounted = true; // Prevent state updates if component unmounts
+        
         const fetchUserPermissions = async () => {
+            // Prevent multiple simultaneous requests
+            if (requestInProgress.current) {
+                return;
+            }
+            
+            requestInProgress.current = true;
+            
+            try {
             const cacheKey = `permissions_${auth.user.id}`;
             const cachedPermissions = sessionStorage.getItem(cacheKey);
             const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
             
-            // Check if we have cached permissions that are less than 5 minutes old
-            const now = Date.now();
-            const fiveMinutes = 5 * 60 * 1000;
-            
-            if (cachedPermissions && cacheTimestamp && (now - parseInt(cacheTimestamp)) < fiveMinutes) {
+                // Clear cache to ensure fresh permissions after role changes
+                sessionStorage.removeItem(cacheKey);
+                sessionStorage.removeItem(`${cacheKey}_timestamp`);
+                
+                // Always fetch fresh permissions (no caching for now to ensure real-time updates)
+                if (false) {
+                    if (isMounted) {
                 setRealTimePermissions(JSON.parse(cachedPermissions));
                 setIsLoadingPermissions(false);
+                    }
                 
                 // Preload critical images while permissions are cached
                 preloadDashboardImages().catch(() => {});
                 return;
             }
 
-            try {
+                console.log('Fetching permissions for user:', auth.user.id);
                 const response = await axios.get(`/api/v1/users/${auth.user.id}/combined-permissions`);
+                console.log('Permissions response:', response.data);
                 
+                if (isMounted) {
                 const permissions = response.data.data;
                 setRealTimePermissions(permissions);
                 
                 // Cache the permissions
                 sessionStorage.setItem(cacheKey, JSON.stringify(permissions));
                 sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
+                    
+                    setIsLoadingPermissions(false);
+                }
                 
                 // Preload critical images after permissions are loaded
                 preloadDashboardImages().catch(() => {});
             } catch (error) {
+                console.error('Permission fetch error:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    status: error.response?.status,
+                    data: error.response?.data,
+                    url: error.config?.url
+                });
+                if (isMounted) {
                 // Fallback to auth permissions if API fails
                 setRealTimePermissions(auth.user.permissions);
+                    setIsLoadingPermissions(false);
+                }
                 
                 // Still preload images even if permissions fail
                 preloadDashboardImages().catch(() => {});
             } finally {
-                setIsLoadingPermissions(false);
+                requestInProgress.current = false;
             }
         };
 
         fetchUserPermissions();
+        
+        // Cleanup function to prevent memory leaks
+        return () => {
+            isMounted = false;
+        };
     }, [auth.user.id]);
 
     const renderComponent = () => {
@@ -311,11 +345,133 @@ export default function Dashboard({ auth, page }) {
                 })
                 .filter(Boolean)
                 .concat([
-                    // Add individual configuration permissions
-                    ...(realTimePermissions?.configuration_center?.subOptions?.organizational_chart ? ["view_org_chart"] : []),
-                    ...(realTimePermissions?.configuration_center?.subOptions?.process_flow ? ["view_process_flow"] : []),
-                    ...(realTimePermissions?.configuration_center?.subOptions?.notification_settings ? ["manage_settings"] : []),
-                    ...(realTimePermissions?.configuration_center?.subOptions?.roles_permissions ? ["view_permission_settings"] : [])
+                    // Add all sub-permissions from realTimePermissions
+                    ...Object.keys(realTimePermissions).flatMap(category => {
+                        const categoryData = realTimePermissions[category];
+                        const subPermissions = [];
+                        
+                        if (categoryData.subOptions) {
+                            Object.keys(categoryData.subOptions).forEach(subOption => {
+                                const subOptionData = categoryData.subOptions[subOption];
+                                if (subOptionData.enabled) {
+                                    // Map sub-option names to permissions based on category context
+                                    let permission = null;
+                                    
+                                    // Handle context-specific mappings for duplicate names
+                                    if (subOption === "Notification Settings") {
+                                        if (category === "Configuration Center") {
+                                            permission = "manage_settings";
+                                        } else if (category === "Sidebar") {
+                                            permission = "sidebar_notification";
+                                        }
+                                    } else {
+                                        // General mapping for non-duplicate names
+                                        const subOptionToPermission = {
+                                            // Configuration Center
+                                            "Organizational Chart": "view_org_chart",
+                                            "Process Flow": "view_process_flow", 
+                                            "Roles & Permission": "view_permission_settings",
+                                            
+                                            // Procurement Center
+                                            "RFQs": "view_rfqs",
+                                            "Quotations": "view_quotations",
+                                            "Purchase Orders": "view_purchase_orders",
+                                            "External Invoices": "view_invoices",
+                                            
+                                            // Finance Center
+                                            "Maharat Invoices": "view_maharat_invoices",
+                                            "Accounts": "view_accounts",
+                                            "Payment Orders": "view_payment_orders",
+                                            "Account Receivables": "view_account_receivables",
+                                            "Account Payables": "view_account_payables",
+                                            
+                                            // Warehouse
+                                            "User Material Requests": "view_material_requests",
+                                            "Categories": "view_categories",
+                                            "Items": "view_items",
+                                            "Goods Receiving Notes": "view_goods_receiving_notes",
+                                            "Inventory Tracking": "view_inventory_tracking",
+                                            "Create Warehouse": "create_warehouse",
+                                            
+                                            // Budget & Accounts
+                                            "Cost Centers": "view_cost_centers",
+                                            "Income Statement": "view_income_statement",
+                                            "Balance Sheet": "view_balance_sheet",
+                                            "Budget": "manage_budget",
+                                            "Request a Budget": "view_request_budget",
+                                            
+                                            // Status
+                                            "Material Request Status": "view_material_request_status",
+                                            "RFQ Status": "view_rfq_status",
+                                            "Purchase Order Status": "view_purchase_order_status",
+                                            "Payment Order Status": "view_payment_order_status",
+                                            "Maharat Invoice Status": "view_maharat_invoice_status",
+                                            "Budget Request Status": "view_budget_request_status",
+                                            "Total Budget Status": "view_total_budget_status",
+                                            
+                                            // Sidebar (non-duplicate names)
+                                            "Profile Settings": "edit_profile",
+                                            "User Manual": "view_user_manual",
+                                            "FAQs": "view_faqs"
+                                        };
+                                        
+                                        permission = subOptionToPermission[subOption];
+                                    }
+                                    
+                                    if (permission) {
+                                        subPermissions.push(permission);
+                                    }
+                                }
+                                
+                                // Handle nested sub-options
+                                if (subOptionData.subOptions) {
+                                    Object.keys(subOptionData.subOptions).forEach(nestedSubOption => {
+                                        const nestedData = subOptionData.subOptions[nestedSubOption];
+                                        if (nestedData.enabled) {
+                                            const nestedToPermission = {
+                                                // Employee permissions
+                                                "Edit Employee": "edit_employee",
+                                                "Add Employee": "add_employee",
+                                                "Delete Employee": "delete_employee",
+                                                
+                                                // Other nested permissions can be added here
+                                                "Make New RFQ": "make_new_rfq",
+                                                "Add Supplier": "add_supplier",
+                                                "Add New Quotation": "add_new_quotation",
+                                                "Create New Purchase Order": "create_new_purchase_order",
+                                                "Add Invoice": "add_invoice",
+                                                "Add Customers": "add_customers",
+                                                "Create New Invoice": "create_new_invoice",
+                                                "Create New Account": "create_new_account",
+                                                "Create Payment Order": "create_payment_order",
+                                                "Create New Category": "create_categories",
+                                                "Create New Item": "create_items",
+                                                "Create Good Receiving Notes": "create_goods_receiving_notes",
+                                                "Add Inventory": "add_inventory",
+                                                "Create Cost Center": "create_cost_center",
+                                                "Create Sub Cost Center": "create_sub_cost_center",
+                                                "Create Fiscal Year": "create_fiscal_year",
+                                                "Create a Budget": "create_budget",
+                                                "Approve Budget": "approve_budget_option",
+                                                "Create Department Budget Request": "create_department_budget_request",
+                                                "Modify Manual": "modify_user_manual",
+                                                "Add FAQ": "create_faqs",
+                                                "Edit FAQ": "edit_faqs",
+                                                "Delete FAQ": "delete_faqs"
+                                            };
+                                            
+                                            const nestedPermission = nestedToPermission[nestedSubOption];
+                                            if (nestedPermission) {
+                                                subPermissions.push(nestedPermission);
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                        
+                        return subPermissions;
+                    })
                 ]) : // Remove undefined values
             auth.user.permissions;
 

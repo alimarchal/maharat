@@ -52,6 +52,9 @@ class DesignationPermissionService
         $configPermissions = [
             'view_configuration',
             'view_org_chart',
+            'edit_employee',
+            'add_employee', 
+            'delete_employee',
             'view_permission_settings',
             'view_company_settings',
             'view_department_settings',
@@ -81,22 +84,37 @@ class DesignationPermissionService
             'Managing Director' => [
                 'view_dashboard', 'edit_profile',
                 'view_requests', 'create_requests', 'edit_requests', 'delete_requests', 'approve_requests',
+                'request_new_item', 'make_new_request',
                 'view_tasks', 'create_tasks', 'assign_tasks',
                 'view_procurement', 'manage_procurement',
-                'view_rfqs', 'create_rfqs', 'approve_rfqs',
-                'view_purchase_orders', 'create_purchase_orders', 'approve_purchase_orders',
+                'view_rfqs', 'create_rfqs', 'approve_rfqs', 'make_new_rfq',
+                'view_quotations', 'add_supplier', 'add_new_quotation',
+                'view_purchase_orders', 'create_purchase_orders', 'approve_purchase_orders', 'create_new_purchase_order',
+                'view_invoices', 'add_invoice',
                 'view_finance', 'manage_finance',
-                'view_maharat_invoices', 'create_maharat_invoices',
+                'view_maharat_invoices', 'create_maharat_invoices', 'add_customers', 'create_new_invoice',
+                'view_accounts', 'create_new_account',
+                'view_payment_orders', 'create_payment_order',
+                'view_account_receivables', 'view_account_payables',
                 'view_warehouse', 'manage_warehouse',
+                'view_material_requests', 'view_categories', 'create_categories',
+                'view_items', 'create_items', 'view_goods_receiving_notes', 'create_goods_receiving_notes',
+                'view_inventory_tracking', 'add_inventory', 'create_warehouse',
                 'stock_in', 'stock_out',
                 'view_budget', 'manage_budget', 'approve_budget',
+                'view_cost_centers', 'create_cost_center', 'create_sub_cost_center',
+                'view_income_statement', 'view_balance_sheet',
+                'create_fiscal_year', 'create_budget', 'approve_budget_option',
+                'view_request_budget', 'create_department_budget_request',
                 'view_reports', 'create_reports', 'export_reports',
                 'view_process_flow',
                 'view_permission_settings',
                 'view_faqs', 'create_faqs', 'edit_faqs', 'delete_faqs', 'approve_faqs',
-                'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual',
-                'view_notifications', 'manage_notifications',
-                'view_statuses'  // Added statuses permission for directors
+                'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'approve_user_manual', 'modify_user_manual',
+                'view_notifications', 'manage_notifications', 'manage_settings',
+                'view_sidebar', 'sidebar_notification',
+                'view_statuses', 'view_material_request_status', 'view_rfq_status', 'view_purchase_order_status',
+                'view_payment_order_status', 'view_maharat_invoice_status', 'view_budget_request_status', 'view_total_budget_status'
             ],
             'Department Director' => [
                 'view_dashboard', 'edit_profile',
@@ -219,7 +237,9 @@ class DesignationPermissionService
         // Assign the role to the user
         $user->syncRoles([$role]);
 
-        // Assign permissions
-        $user->syncPermissions($permissions);
+        // DO NOT sync user permissions directly - only assign role permissions
+        // This prevents overriding user-specific permission overrides
+        // The role will have the designation permissions, and user overrides will take precedence
+        $role->syncPermissions($permissions);
     }
 }
