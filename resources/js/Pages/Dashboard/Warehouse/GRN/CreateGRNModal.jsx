@@ -5,8 +5,11 @@ import axios from "axios";
 import { router } from "@inertiajs/react";
 import InputFloating from "../../../../Components/InputFloating";
 import PartialDeliveryModal from "./PartialDeliveryModal";
+import { usePage } from "@inertiajs/react";
 
 const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
+    const user_id = usePage().props.auth.user.id;
+
     const [formData, setFormData] = useState({
         delivery_note_number: "",
         receiver_name: "",
@@ -133,12 +136,12 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
         await processGRNCreation("complete_delivery");
     };
 
-    const handlePartialDeliveryConfirm = async (deliveryOption) => {
+    const handlePartialDeliveryConfirm = async (deliveryOption, processInfo = null) => {
         setShowPartialDeliveryModal(false);
-        await processGRNCreation(deliveryOption);
+        await processGRNCreation(deliveryOption, processInfo);
     };
 
-    const processGRNCreation = async (deliveryOption) => {
+    const processGRNCreation = async (deliveryOption, processInfo = null) => {
         setLoading(true);
         try {
             const totalDeliveredQuantity = rfqItems.reduce((sum, item) => {
@@ -152,7 +155,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                 quotation_id: grnsData.quotation_id,
                 delivery_date: currentDate,
                 quantity: totalDeliveredQuantity,
-                delivery_status: deliveryOption, // Add this field to track delivery status
+                delivery_status: deliveryOption,
             };
             
             const grnResponse = await axios.post("/api/v1/grns", grnsPayload);
@@ -173,12 +176,9 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                         upc: grnsData.supplier?.upc || null,
                         quantity_delivered: parseInt(deliveredQty),
                         delivery_date: currentDate,
-                        delivery_status: deliveryOption, // Track status per item
+                        delivery_status: deliveryOption,
                     };
-                    await axios.post(
-                        "/api/v1/grn-receive-goods",
-                        grnsGoodsPayload
-                    );
+                    await axios.post("/api/v1/grn-receive-goods", grnsGoodsPayload);
                 }
             }
 
@@ -187,17 +187,17 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                 const deliveredQty = parseInt(quantityDelivered[item.id]) || 0;
                 if (deliveredQty > 0) {
                     const warehouseId = grnsData?.warehouse_id || 
-                                      grnsData?.warehouse?.id || 
-                                      grnsData?.rfq?.warehouse_id || 
-                                      grnsData?.rfq?.warehouse?.id ||
-                                      grnsData?.quotation?.rfq?.warehouse_id || 
-                                      grnsData?.quotation?.rfq?.warehouse?.id ||
-                                      grnsData?.requestForQuotation?.warehouse_id ||
-                                      grnsData?.requestForQuotation?.warehouse?.id;
+                                    grnsData?.warehouse?.id || 
+                                    grnsData?.rfq?.warehouse_id || 
+                                    grnsData?.rfq?.warehouse?.id ||
+                                    grnsData?.quotation?.rfq?.warehouse_id || 
+                                    grnsData?.quotation?.rfq?.warehouse?.id ||
+                                    grnsData?.requestForQuotation?.warehouse_id ||
+                                    grnsData?.requestForQuotation?.warehouse?.id;
                     
                     const inventoryPayload = {
                         warehouse_id: warehouseId,
-                        quantity: deliveredQty, // Use delivered quantity instead of ordered
+                        quantity: deliveredQty,
                         reorder_level: parseInt(item.quantity),
                         description: item.description,
                     };
@@ -211,44 +211,68 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
 
             // Create external delivery note
             const formDataToSend = new FormData();
-            formDataToSend.append(
-                "delivery_note_number",
-                formData.delivery_note_number
-            );
+            formDataToSend.append("delivery_note_number", formData.delivery_note_number);
             formDataToSend.append("grn_id", grnId);
             formDataToSend.append("purchase_order_id", grnsData.id);
             formDataToSend.append("attachment", formData.attachment);
             formDataToSend.append("attachment_name", formData.attachment_name);
 
-            await axios.post(
-                "/api/v1/external-delivery-notes",
-                formDataToSend,
-                {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                    },
-                }
-            );
+            await axios.post("/api/v1/external-delivery-notes", formDataToSend, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            });
 
             // Update purchase order based on delivery option
             let purchaseOrderStatus;
             if (deliveryOption === "adjust_order") {
-                purchaseOrderStatus = "completed"; // Mark as completed
+                purchaseOrderStatus = "completed";
             } else if (deliveryOption === "later_delivery") {
-                purchaseOrderStatus = "partially_delivered"; // Mark as partially delivered
+                purchaseOrderStatus = "partially_delivered";
             } else {
-                purchaseOrderStatus = "delivered"; // Complete delivery
+                purchaseOrderStatus = "delivered";
             }
 
             const purchaseOrderPayload = {
-                has_good_receive_note: deliveryOption !== "later_delivery", // Keep false for later delivery
+                has_good_receive_note: deliveryOption !== "later_delivery",
                 delivery_status: purchaseOrderStatus,
             };
             
-            await axios.put(
-                `/api/v1/purchase-orders/${grnsData?.id}`,
-                purchaseOrderPayload
-            );
+            await axios.put(`/api/v1/purchase-orders/${grnsData?.id}`, purchaseOrderPayload);
+
+            // Handle approval process for adjust_order option
+            if (deliveryOption === "adjust_order") {
+                if (!processInfo) {
+                    setError({ submit: "Failed to initialize approval process. Please try again." });
+                    setLoading(false);
+                    return;
+                }
+                const { processStep, assignUser, process } = processInfo;
+                
+                // Create GRN approval transaction
+                const GRNTransactionPayload = {
+                    grn_id: grnId,
+                    requester_id: user_id,
+                    assigned_to: assignUser.approver_id,
+                    order: processStep.order,
+                    description: processStep.description,
+                    status: "Pending",
+                };
+                await axios.post("/api/v1/grn-approval-transactions", GRNTransactionPayload);
+
+                // Create task for approver
+                const taskPayload = {
+                    process_step_id: processStep.id,
+                    process_id: processStep.process_id,
+                    assigned_at: new Date().toISOString(),
+                    urgency: "Normal",
+                    order_no: processStep.order,
+                    assigned_to_user_id: assignUser.approver_id,
+                    assigned_from_user_id: user_id,
+                    grn_id: grnId,
+                };
+                await axios.post("/api/v1/tasks", taskPayload);
+            }
 
             // If adjusting order, create adjustment records
             if (deliveryOption === "adjust_order") {
@@ -267,7 +291,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                 };
                 
                 // You'll need to create this endpoint
-                await axios.post("/api/v1/purchase-order-adjustments", adjustmentPayload);
+                // await axios.post("/api/v1/purchase-order-adjustments", adjustmentPayload);
             }
 
             onClose();

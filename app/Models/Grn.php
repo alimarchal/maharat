@@ -19,6 +19,8 @@ class Grn extends Model
         'purchase_order_id',
         'quantity',
         'delivery_date',
+        'status',
+        'delivery_status',
     ];
 
     protected $casts = [
@@ -49,5 +51,10 @@ class Grn extends Model
     public function externalDeliveryNote(): HasMany
     {
         return $this->hasMany(ExternalDeliveryNote::class);
+    }
+
+    public function approvalTransactions(): HasMany
+    {
+        return $this->hasMany(GrnApprovalTransaction::class);
     }
 }

@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { usePage } from "@inertiajs/react";
+import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 
@@ -9,18 +11,71 @@ const PartialDeliveryModal = ({
     onConfirm,
     purchaseOrderNumber 
 }) => {
+    const user_id = usePage().props.auth.user.id;
     const [deliveryOption, setDeliveryOption] = useState("");
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState({});
 
     if (!isOpen) return null;
 
     const handleConfirm = async () => {
-        if (!deliveryOption) return;
+        if (!deliveryOption) {
+            setErrors({ submit: "Please select a delivery option" });
+            return;
+        }
         
         setLoading(true);
+        setErrors({});
+        
         try {
-            await onConfirm(deliveryOption);
-        } finally {
+            // Only check process steps if user chose to adjust the order
+            if (deliveryOption === "adjust_order") {
+                const processResponse = await axios.get(
+                    "/api/v1/processes?include=steps,creator,updater&filter[title]=Short Delivery Adjustment Approval"
+                );
+                const process = processResponse.data?.data?.[0];
+                const processSteps = process?.steps || [];
+                
+                // Check if process and steps exist
+                if (!process || processSteps.length === 0) {
+                    setErrors({
+                        submit: "No approval process or steps found for Short Delivery Adjustment Approval",
+                    });
+                    setLoading(false);
+                    return;
+                }
+                
+                const processStep = processSteps[0];
+                
+                const processResponseViaUser = await axios.get(
+                    `/api/v1/process-steps/${processStep.id}/user/${user_id}`
+                );
+                const assignUser = processResponseViaUser?.data?.data;
+                
+                if (!assignUser || !assignUser.approver_id) {
+                    setErrors({
+                        submit: "No approver assigned for this process step",
+                    });
+                    setLoading(false);
+                    return;
+                }
+                
+                // Pass the process information to the confirm handler
+                await onConfirm(deliveryOption, {
+                    processStep,
+                    assignUser,
+                    process
+                });
+            } else {
+                // For later delivery, no approval process needed
+                await onConfirm(deliveryOption, null);
+            }
+        } catch (error) {
+            console.error("Error in handleConfirm:", error);
+            setErrors({
+                submit: error.response?.data?.message || 
+                        "An error occurred while processing your request. Please try again.",
+            });
             setLoading(false);
         }
     };
@@ -45,7 +100,7 @@ const PartialDeliveryModal = ({
                                 </p>
                             </div>
                         </div>
-                        <button onClick={onClose}>
+                        <button onClick={onClose} disabled={loading}>
                             <FontAwesomeIcon 
                                 icon={faTimes} 
                                 size="lg" 
@@ -57,6 +112,13 @@ const PartialDeliveryModal = ({
 
                 {/* Content */}
                 <div className="p-6">
+                    {/* Error Display */}
+                    {errors.submit && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                            <span className="block sm:inline">{errors.submit}</span>
+                        </div>
+                    )}
+
                     {/* Warning Message */}
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
                         <div className="flex items-start">
@@ -171,6 +233,7 @@ const PartialDeliveryModal = ({
                                     checked={deliveryOption === "later_delivery"}
                                     onChange={(e) => setDeliveryOption(e.target.value)}
                                     className="mt-1 mr-3 text-blue-600"
+                                    disabled={loading}
                                 />
                                 <div className="flex-1">
                                     <div className="font-medium text-gray-900 mb-1">
@@ -194,6 +257,7 @@ const PartialDeliveryModal = ({
                                     checked={deliveryOption === "adjust_order"}
                                     onChange={(e) => setDeliveryOption(e.target.value)}
                                     className="mt-1 mr-3 text-orange-600"
+                                    disabled={loading}
                                 />
                                 <div className="flex-1">
                                     <div className="font-medium text-gray-900 mb-1">
@@ -203,7 +267,7 @@ const PartialDeliveryModal = ({
                                         Accept the delivered quantity as final. The remaining items will not be delivered.
                                     </div>
                                     <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
-                                        <strong>Impact:</strong> Purchase order will be marked as completed. Invoice amount may need adjustment for undelivered items.
+                                        <strong>Impact:</strong> Purchase order will be marked as completed. Invoice amount may need adjustment for undelivered items. <strong>Requires approval.</strong>
                                     </div>
                                 </div>
                             </label>
@@ -226,7 +290,8 @@ const PartialDeliveryModal = ({
                                         By choosing this option:
                                     </p>
                                     <ul className="text-sm text-orange-700 list-disc list-inside space-y-1">
-                                        <li>The purchase order will be marked as completed</li>
+                                        <li>This action will require approval before processing</li>
+                                        <li>The purchase order will be marked as completed after approval</li>
                                         <li>Undelivered items will be removed from the order</li>
                                         <li>You may need to adjust the invoice amount with the supplier</li>
                                         <li>This action cannot be easily reversed</li>

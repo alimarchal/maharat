@@ -53,6 +53,12 @@ class ProcessSeeder extends Seeder
                 'updated_by' => 1,
             ],
             [
+                'title' => 'Short Delivery Adjustment Approval',
+                'status' => 'Active',
+                'created_by' => 1,
+                'updated_by' => 1,
+            ],
+            [
                 'title' => 'Total Budget Approval',
                 'status' => 'Active',
                 'created_by' => 1,
