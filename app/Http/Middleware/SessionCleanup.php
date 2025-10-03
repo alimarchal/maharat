@@ -19,14 +19,12 @@ class SessionCleanup
             // Get initial session ID
             $sessionId = $request->session()->getId();
             
-            // Only log session debug in debug mode to reduce log spam
-            if (config('app.debug')) {
-                Log::info('Session Debug - Start', [
-                    'url' => $request->url(),
-                    'session_id' => $sessionId,
-                    'user_id' => $request->user()?->id
-                ]);
-            }
+            Log::info('Session Debug - Start', [
+                'url' => $request->url(),
+                'session_id' => $sessionId,
+                'user_id' => $request->user()?->id,
+                'cookies' => $request->cookies->all()
+            ]);
             
             // For database sessions, check if session exists in database
             if (config('session.driver') === 'database') {
@@ -36,24 +34,20 @@ class SessionCleanup
                     ->first();
                 
                 if (!$sessionData) {
-                    if (config('app.debug')) {
-                        Log::warning('Session not found in database', [
-                            'session_id' => $sessionId,
-                            'user_id' => $request->user()?->id,
-                            'url' => $request->url()
-                        ]);
-                    }
+                    Log::warning('Session not found in database', [
+                        'session_id' => $sessionId,
+                        'user_id' => $request->user()?->id,
+                        'url' => $request->url()
+                    ]);
                     
                     // Don't regenerate - let Laravel handle it naturally
                     // This prevents the session ID mismatch issue
                 } else {
-                    if (config('app.debug')) {
-                        Log::info('Session found in database', [
-                            'session_id' => $sessionId,
-                            'last_activity' => $sessionData->last_activity,
-                            'user_id' => $request->user()?->id
-                        ]);
-                    }
+                    Log::info('Session found in database', [
+                        'session_id' => $sessionId,
+                        'last_activity' => $sessionData->last_activity,
+                        'user_id' => $request->user()?->id
+                    ]);
                 }
             }
             
@@ -85,12 +79,32 @@ class SessionCleanup
                 'user_id' => $request->user()?->id
             ]);
             
-            // Don't regenerate session to prevent redirect loops - let Laravel handle it naturally
-            Log::error('Session error occurred but not regenerating to prevent loops', [
-                'url' => $request->url(),
-                'user_id' => $request->user()?->id,
-                'error' => $e->getMessage()
-            ]);
+            // Don't regenerate session for Inertia requests to avoid disrupting the flow
+            if (!$request->header('X-Inertia') && !$request->ajax() && !$request->expectsJson()) {
+                // If session is corrupted, try to fix it
+                try {
+                    // Clear any corrupted session data
+                    $request->session()->flush();
+                    $request->session()->regenerate();
+                    
+                    Log::info('Session regenerated due to error', [
+                        'url' => $request->url(),
+                        'user_id' => $request->user()?->id
+                    ]);
+                    
+                } catch (\Exception $regenerateError) {
+                    Log::error('Session regeneration failed', [
+                        'error' => $regenerateError->getMessage()
+                    ]);
+                    
+                    // Last resort: return error response
+                    if ($request->expectsJson()) {
+                        return response()->json(['error' => 'Session error'], 500);
+                    }
+                    
+                    return redirect()->route('login')->with('error', 'Session expired. Please login again.');
+                }
+            }
             
             return $next($request);
         }

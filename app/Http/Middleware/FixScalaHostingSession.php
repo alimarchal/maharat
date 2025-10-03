@@ -23,16 +23,8 @@ class FixScalaHostingSession
         try {
             $sessionId = $request->session()->getId();
             
-            // Only check session validity for very specific cases to prevent redirect loops
-            if (!$request->ajax() && 
-                !$request->expectsJson() && 
-                !$request->header('X-Inertia') &&
-                !$request->is('dashboard*') &&
-                !$request->is('login*') &&
-                !$request->is('/') &&
-                $request->cookies->has('maharat_session') && 
-                config('session.driver') === 'database') {
-                
+            // Only check session validity for non-AJAX requests to avoid disrupting API calls
+            if (!$request->ajax() && !$request->expectsJson() && $request->cookies->has('maharat_session') && config('session.driver') === 'database') {
                 $sessionTable = config('session.table', 'sessions');
                 
                 // Check if session exists in database
@@ -41,22 +33,26 @@ class FixScalaHostingSession
                     ->exists();
                 
                 if (!$sessionExists) {
-                    Log::info('ScalaHosting session fix: Creating new session', [
-                        'old_session_id' => $sessionId,
-                        'url' => $request->url(),
-                        'user_agent' => $request->userAgent()
-                    ]);
-                    
-                    // Start a fresh session
-                    $request->session()->invalidate();
-                    $request->session()->regenerate(true);
-                    
-                    $newSessionId = $request->session()->getId();
-                    
-                    Log::info('ScalaHosting session fix: New session created', [
-                        'new_session_id' => $newSessionId,
-                        'url' => $request->url()
-                    ]);
+                    // Session cookie exists but no database record
+                    // Only regenerate if this is not an Inertia request to avoid disrupting the flow
+                    if (!$request->header('X-Inertia')) {
+                        Log::info('ScalaHosting session fix: Creating new session', [
+                            'old_session_id' => $sessionId,
+                            'url' => $request->url(),
+                            'user_agent' => $request->userAgent()
+                        ]);
+                        
+                        // Start a fresh session
+                        $request->session()->invalidate();
+                        $request->session()->regenerate(true);
+                        
+                        $newSessionId = $request->session()->getId();
+                        
+                        Log::info('ScalaHosting session fix: New session created', [
+                            'new_session_id' => $newSessionId,
+                            'url' => $request->url()
+                        ]);
+                    }
                 }
             }
             

@@ -133,9 +133,7 @@ export default function Dashboard({ auth, page }) {
                 return;
             }
 
-                console.log('Fetching permissions for user:', auth.user.id);
                 const response = await axios.get(`/api/v1/users/${auth.user.id}/combined-permissions`);
-                console.log('Permissions response:', response.data);
                 
                 if (isMounted) {
                 const permissions = response.data.data;
@@ -151,13 +149,6 @@ export default function Dashboard({ auth, page }) {
                 // Preload critical images after permissions are loaded
                 preloadDashboardImages().catch(() => {});
             } catch (error) {
-                console.error('Permission fetch error:', error);
-                console.error('Error details:', {
-                    message: error.message,
-                    status: error.response?.status,
-                    data: error.response?.data,
-                    url: error.config?.url
-                });
                 if (isMounted) {
                 // Fallback to auth permissions if API fails
                 setRealTimePermissions(auth.user.permissions);

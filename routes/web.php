@@ -16,105 +16,11 @@ use App\Http\Controllers\QuotationPDFController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\FAQController;
 use App\Http\Controllers\EmailLogController;
-use Illuminate\Support\Facades\DB;
 
-// Smart root redirect - check if user is authenticated
-Route::get('/', function (Request $request) {
-    \Log::info("🔍 Root route accessed", [
-        'url' => $request->url(),
-        'has_session' => $request->hasSession(),
-        'session_id' => $request->hasSession() ? $request->session()->getId() : 'NO_SESSION',
-        'has_maharat_cookie' => $request->cookie('maharat_session') ? 'yes' : 'no',
-        'cookie_session_id' => $request->cookie('maharat_session'),
-        'is_authenticated' => auth()->check(),
-        'user_id' => auth()->user()?->id,
-    ]);
-
-    // For ScalaHosting, handle returning users with session restoration
-    if (str_contains(config('app.url'), 'maharattraining.websoft.asia') && 
-        $request->cookie('maharat_session') && 
-        $request->hasSession()) {
-        
-        $sessionId = $request->session()->getId();
-        $cookieSessionId = $request->cookie('maharat_session');
-        
-        \Log::info("🔍 Root route: Checking session mismatch", [
-            'session_id' => $sessionId,
-            'cookie_session_id' => $cookieSessionId,
-            'ids_match' => $sessionId === $cookieSessionId,
-        ]);
-        
-        // Check if we need to restore authentication (either session mismatch OR user not authenticated)
-        $needsAuthRestoration = ($cookieSessionId !== $sessionId) || !auth()->check();
-        
-        if ($needsAuthRestoration) {
-            try {
-                $sessionLifetime = config('session.lifetime', 120) * 60;
-                $minLastActivity = time() - $sessionLifetime;
-                
-                $cookieSession = DB::table('sessions')
-                    ->where('id', $cookieSessionId)
-                    ->where('last_activity', '>', $minLastActivity)
-                    ->first();
-                
-                if ($cookieSession && $cookieSession->user_id) {
-                    // Find and authenticate the user
-                    $user = \App\Models\User::find($cookieSession->user_id);
-                    if ($user) {
-                        auth()->login($user);
-                        
-                        \Log::info("✅ Root route: Authentication restored for returning user", [
-                            'user_id' => $user->id,
-                            'user_email' => $user->email,
-                            'session_id' => $cookieSessionId,
-                            'session_ids_match' => $cookieSessionId === $sessionId,
-                            'was_authenticated' => false,
-                            'is_authenticated_after_login' => auth()->check(),
-                        ]);
-                        
-                        return redirect()->route('dashboard');
-                    }
-                } else {
-                    \Log::info("⚠️ Root route: Cookie session not found or expired", [
-                        'cookie_session_id' => $cookieSessionId,
-                        'min_last_activity' => $minLastActivity,
-                        'current_time' => time(),
-                    ]);
-                }
-            } catch (\Exception $e) {
-                \Log::error("🔴 Root route: Failed to restore authentication", [
-                    'error' => $e->getMessage(),
-                    'session_id' => $sessionId,
-                    'cookie_session_id' => $cookieSessionId,
-                ]);
-            }
-        } else {
-            \Log::info("✅ Root route: Session IDs match and user is authenticated", [
-                'session_id' => $sessionId,
-                'is_authenticated' => auth()->check(),
-                'user_id' => auth()->user()?->id,
-            ]);
-        }
-    }
-    
-    // Standard authentication check
-    if (auth()->check()) {
-        \Log::info("✅ Root route: User authenticated, redirecting to dashboard", [
-            'user_id' => auth()->user()->id,
-        ]);
-        return redirect()->route('dashboard');
-    }
-    
-    \Log::info("🔄 Root route: User not authenticated, redirecting to login");
+// Redirect root to login
+Route::get('/', function () {
     return redirect()->route('login');
 });
-
-// Debug routes (only for ScalaHosting)
-if (str_contains(config('app.url'), 'maharattraining.websoft.asia')) {
-    Route::get('/debug', [App\Http\Controllers\DebugController::class, 'showDebugInfo'])->name('debug.show');
-    Route::get('/debug/errors', [App\Http\Controllers\DebugController::class, 'showRecentErrors'])->name('debug.errors');
-    Route::get('/debug/clear', [App\Http\Controllers\DebugController::class, 'clearLogs'])->name('debug.clear');
-}
 
 // Email check route for forgot password
 Route::post('/check-email', [App\Http\Controllers\AuthController::class, 'checkEmail'])->name('check.email');
@@ -124,74 +30,7 @@ Route::post('/api/check-email', [App\Http\Controllers\AuthController::class, 'ch
 
 // Dashboard Routes (Protected by Auth & Email Verification)
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', function (Request $request) {
-        \Log::info("🔍 Dashboard route accessed", [
-            'url' => $request->url(),
-            'is_authenticated' => auth()->check(),
-            'user_id' => auth()->user()?->id,
-            'has_maharat_cookie' => $request->cookie('maharat_session') ? 'yes' : 'no',
-        ]);
-        
-        // Additional check for ScalaHosting returning users
-        if (str_contains(config('app.url'), 'maharattraining.websoft.asia') && 
-            !auth()->check() && 
-            $request->cookie('maharat_session') && 
-            $request->hasSession()) {
-            
-            $sessionId = $request->session()->getId();
-            $cookieSessionId = $request->cookie('maharat_session');
-            
-            \Log::info("🔍 Dashboard route: Attempting backup authentication restoration", [
-                'session_id' => $sessionId,
-                'cookie_session_id' => $cookieSessionId,
-                'ids_match' => $sessionId === $cookieSessionId,
-            ]);
-            
-            // Check if we need to restore authentication (either session mismatch OR user not authenticated)
-            $needsAuthRestoration = ($cookieSessionId !== $sessionId) || !auth()->check();
-            
-            if ($needsAuthRestoration) {
-                try {
-                    $sessionLifetime = config('session.lifetime', 120) * 60;
-                    $minLastActivity = time() - $sessionLifetime;
-                    
-                    $cookieSession = DB::table('sessions')
-                        ->where('id', $cookieSessionId)
-                        ->where('last_activity', '>', $minLastActivity)
-                        ->first();
-                    
-                    if ($cookieSession && $cookieSession->user_id) {
-                        // Find and authenticate the user
-                        $user = \App\Models\User::find($cookieSession->user_id);
-                        if ($user) {
-                            auth()->login($user);
-                            
-                            \Log::info("✅ Dashboard route: Authentication restored for returning user", [
-                                'user_id' => $user->id,
-                                'user_email' => $user->email,
-                                'session_id' => $cookieSessionId,
-                                'session_ids_match' => $cookieSessionId === $sessionId,
-                                'was_authenticated' => false,
-                                'is_authenticated_after_login' => auth()->check(),
-                            ]);
-                        }
-                    } else {
-                        \Log::info("⚠️ Dashboard route: Cookie session not found or expired", [
-                            'cookie_session_id' => $cookieSessionId,
-                            'min_last_activity' => $minLastActivity,
-                            'current_time' => time(),
-                        ]);
-                    }
-                } catch (\Exception $e) {
-                    \Log::error("🔴 Dashboard route: Failed to restore authentication", [
-                        'error' => $e->getMessage(),
-                        'session_id' => $sessionId,
-                        'cookie_session_id' => $cookieSessionId,
-                    ]);
-                }
-            }
-        }
-        
+    Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
 

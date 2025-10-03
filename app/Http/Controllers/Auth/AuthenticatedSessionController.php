@@ -31,14 +31,7 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
-        
-        // For ScalaHosting, avoid session regeneration to prevent cookie issues
-        if (!str_contains(config('app.url'), 'maharattraining.websoft.asia')) {
-            $request->session()->regenerate();
-        } else {
-            // For ScalaHosting, just update the session data without regenerating ID
-            Log::info('ScalaHosting: Skipping session regeneration on login to prevent cookie issues');
-        }
+        $request->session()->regenerate();
 
         $user = Auth::user()->load(['roles', 'permissions']);
         
