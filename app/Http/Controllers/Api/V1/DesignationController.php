@@ -9,6 +9,7 @@ use App\Http\Resources\V1\DesignationResource;
 use App\Models\Designation;
 use App\QueryParameters\DesignationParameters;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Spatie\QueryBuilder\QueryBuilder;
@@ -207,8 +208,12 @@ class DesignationController extends Controller
                 'data' => $role->permissions
             ]);
         } catch (\Exception $e) {
-            \Log::error('Permission toggle failed: ' . $e->getMessage());
-            \Log::error($e->getTraceAsString());
+            \Log::error('Permission toggle failed for designation: ' . $designation->designation, [
+                'designation_id' => $designation->id,
+                'permission' => $validated['permission'] ?? 'unknown',
+                'value' => $validated['value'] ?? 'unknown',
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'message' => 'Failed to toggle permission',

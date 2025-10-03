@@ -31,12 +31,8 @@ class UserPermissionOverrideService
             ]
         );
 
-        // Update the actual Spatie permission
-        if ($isEnabled) {
-            $user->givePermissionTo($permissionName);
-        } else {
-            $user->revokePermissionTo($permissionName);
-        }
+        // DO NOT update Spatie permissions directly - let the override system handle it
+        // This prevents conflicts between role permissions and user overrides
     }
 
     /**
@@ -87,7 +83,37 @@ class UserPermissionOverrideService
             ->where('permission_name', $permissionName)
             ->delete();
 
-        // Also remove from Spatie permissions
-        $user->revokePermissionTo($permissionName);
+        // DO NOT revoke Spatie permissions - let the role permissions take over
+        // This allows the user to fall back to their designation's permissions
+    }
+
+    /**
+     * Clean up redundant overrides that match role permissions
+     */
+    public static function cleanupRedundantOverrides(User $user): int
+    {
+        // Get user's role permissions
+        $userRole = $user->roles()->first();
+        if (!$userRole) {
+            return 0;
+        }
+        
+        $rolePermissions = $userRole->permissions->pluck('name')->toArray();
+        
+        // Get all user overrides
+        $overrides = UserPermissionOverride::where('user_id', $user->id)->get();
+        
+        $removedCount = 0;
+        foreach ($overrides as $override) {
+            $hasRolePermission = in_array($override->permission_name, $rolePermissions);
+            
+            // If override matches role permission, remove it (it's redundant)
+            if ($override->is_enabled === $hasRolePermission) {
+                $override->delete();
+                $removedCount++;
+            }
+        }
+        
+        return $removedCount;
     }
 }

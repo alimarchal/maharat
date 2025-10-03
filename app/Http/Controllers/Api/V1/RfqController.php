@@ -20,23 +20,34 @@ class RfqController extends Controller
     public function index()
     {
         try {
-            Log::info('Starting RFQ index request');
+            // Only log in debug mode to reduce log spam
+            if (config('app.debug')) {
+                Log::info('Starting RFQ index request');
+            }
 
             // Check if sub_cost_centers table exists
             $hasSubCostCenters = Schema::hasTable('sub_cost_centers');
-            Log::info('Sub cost centers table exists: ' . ($hasSubCostCenters ? 'yes' : 'no'));
+            if (config('app.debug')) {
+                Log::info('Sub cost centers table exists: ' . ($hasSubCostCenters ? 'yes' : 'no'));
+            }
 
             // Build the relationships array
             $relationships = ['status', 'supplier', 'department', 'costCenter', 'requester'];
-            Log::info('Base relationships: ' . implode(', ', $relationships));
+            if (config('app.debug')) {
+                Log::info('Base relationships: ' . implode(', ', $relationships));
+            }
 
             // Only include subCostCenter if the table exists
             if ($hasSubCostCenters) {
                 $relationships[] = 'subCostCenter';
-                Log::info('Added subCostCenter to relationships');
+                if (config('app.debug')) {
+                    Log::info('Added subCostCenter to relationships');
+                }
             }
 
-            Log::info('Final relationships to load: ' . implode(', ', $relationships));
+            if (config('app.debug')) {
+                Log::info('Final relationships to load: ' . implode(', ', $relationships));
+            }
 
             $rfqs = QueryBuilder::for(Rfq::class)
                 ->allowedFilters(RfqParameters::ALLOWED_FILTERS)
@@ -46,15 +57,16 @@ class RfqController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate(10);
 
-            // Log requester information for each RFQ
-            foreach ($rfqs as $rfq) {
-                Log::info("RFQ ID: {$rfq->id}, Requester ID: {$rfq->requester_id}, Requester Loaded: " . ($rfq->relationLoaded('requester') ? 'yes' : 'no'));
-                if ($rfq->relationLoaded('requester') && $rfq->requester) {
-                    Log::info("Requester Name: {$rfq->requester->name}");
+            // Only log detailed info in debug mode (and limit to first 3 RFQs)
+            if (config('app.debug')) {
+                foreach ($rfqs->take(3) as $rfq) {
+                    Log::info("RFQ ID: {$rfq->id}, Requester ID: {$rfq->requester_id}, Requester Loaded: " . ($rfq->relationLoaded('requester') ? 'yes' : 'no'));
+                    if ($rfq->relationLoaded('requester') && $rfq->requester) {
+                        Log::info("Requester Name: {$rfq->requester->name}");
+                    }
                 }
+                Log::info('Successfully fetched RFQs');
             }
-
-            Log::info('Successfully fetched RFQs');
 
             return RfqResource::collection($rfqs);
         } catch (\Exception $e) {

@@ -302,11 +302,11 @@ const permissionCategories = {
         },
     },
     "Sidebar": {
-        base: "view_notifications",
+        base: "view_sidebar",
         description: "Sidebar navigation and features",
         subOptions: {
             "Notification Settings": {
-                base: "view_notifications",
+                base: "sidebar_notification",
                 description: "Access notification settings",
             },
             "Profile Settings": {
@@ -481,7 +481,9 @@ const RolesPermissions = () => {
     const fetchCombinedUserPermissions = async (userId) => {
         try {
             const response = await axios.get(`/api/v1/users/${userId}/combined-permissions`);
-            setPermissions(response.data.data || {});
+            const permissionsData = response.data.data || {};
+            
+            setPermissions(permissionsData);
         } catch (error) {
             console.error("Failed to fetch combined user permissions:", error);
         }
@@ -511,12 +513,13 @@ const RolesPermissions = () => {
                     // Toggle main permission only
                     const permissionsToToggle = [{ permission: categoryConfig.base, value: newValue }];
 
-                    // Handle special cases for linked permissions
-                    if (categoryConfig.base === "notification_settings") {
-                        permissionsToToggle.push({ permission: "sidebar_notification", value: newValue });
-                    } else if (categoryConfig.base === "sidebar") {
-                        permissionsToToggle.push({ permission: "notification_settings", value: newValue });
-                    }
+                    // Handle special cases for linked permissions (disabled to prevent auto-enabling)
+                    // Commented out to give users full control over their permissions
+                    // if (categoryConfig.base === "notification_settings") {
+                    //     permissionsToToggle.push({ permission: "sidebar_notification", value: newValue });
+                    // } else if (categoryConfig.base === "sidebar") {
+                    //     permissionsToToggle.push({ permission: "notification_settings", value: newValue });
+                    // }
 
                     // Toggle all permissions
                     const promises = permissionsToToggle.map(({ permission, value }) =>
@@ -541,22 +544,16 @@ const RolesPermissions = () => {
                 if (!selectedUser || !canManageUser(selectedUser)) return;
 
                 try {
-                    // Update UI immediately
-                    const newPermissions = { ...permissions };
-                    if (!newPermissions[category]) newPermissions[category] = { main: false, subOptions: {} };
-                    newPermissions[category].main = newValue;
-
-                    setPermissions(newPermissions);
-
                     // Toggle main permission only
                     const permissionsToToggle = [{ permission: categoryConfig.base, value: newValue }];
 
-                    // Handle special cases for linked permissions
-                    if (categoryConfig.base === "notification_settings") {
-                        permissionsToToggle.push({ permission: "sidebar_notification", value: newValue });
-                    } else if (categoryConfig.base === "sidebar") {
-                        permissionsToToggle.push({ permission: "notification_settings", value: newValue });
-                    }
+                    // Handle special cases for linked permissions (disabled to prevent auto-enabling)
+                    // Commented out to give users full control over their permissions
+                    // if (categoryConfig.base === "notification_settings") {
+                    //     permissionsToToggle.push({ permission: "sidebar_notification", value: newValue });
+                    // } else if (categoryConfig.base === "sidebar") {
+                    //     permissionsToToggle.push({ permission: "notification_settings", value: newValue });
+                    // }
 
                     // Toggle all permissions
                     const promises = permissionsToToggle.map(({ permission, value }) =>
@@ -569,9 +566,8 @@ const RolesPermissions = () => {
                     const results = await Promise.all(promises);
                     const allSuccessful = results.every((result) => result.data.success === true);
 
-                    if (!allSuccessful) {
-                        fetchCombinedUserPermissions(selectedUser.id);
-                    }
+                    // Always refresh to get updated override status from backend
+                    fetchCombinedUserPermissions(selectedUser.id);
                 } catch (error) {
                     console.error("Failed to toggle user permission:", error);
                     fetchCombinedUserPermissions(selectedUser.id);
@@ -601,12 +597,13 @@ const RolesPermissions = () => {
                         value: newValue,
                     }];
 
-                    // Handle special cases for linked permissions
-                    if (categoryConfig.subOptions[subOption].base ==="sidebar_notification") {
-                        permissionsToToggle.push({ permission: "notification_settings", value: newValue });
-                    } else if (categoryConfig.subOptions[subOption].base ==="notification_settings") {
-                        permissionsToToggle.push({ permission: "sidebar_notification", value: newValue });
-                    }
+                    // Handle special cases for linked permissions (disabled to prevent auto-toggling)
+                    // Commented out to give users full control over their permissions
+                    // if (categoryConfig.subOptions[subOption].base === "sidebar_notification") {
+                    //     permissionsToToggle.push({ permission: "notification_settings", value: newValue });
+                    // } else if (categoryConfig.subOptions[subOption].base === "notification_settings") {
+                    //     permissionsToToggle.push({ permission: "sidebar_notification", value: newValue });
+                    // }
 
                     // Toggle all permissions
                     const promises = permissionsToToggle.map(({ permission, value }) =>
@@ -630,27 +627,19 @@ const RolesPermissions = () => {
                 if (!selectedUser || !canManageUser(selectedUser)) return;
 
                 try {
-                    // Update UI immediately
-                    const newPermissions = { ...permissions };
-                    if (!newPermissions[category]) newPermissions[category] = { main: false, subOptions: {} };
-                    if (!newPermissions[category].subOptions) newPermissions[category].subOptions = {};
-                    if (!newPermissions[category].subOptions[subOption]) newPermissions[category].subOptions[subOption] = { enabled: false };
-                    newPermissions[category].subOptions[subOption].enabled = newValue;
-
-                    setPermissions(newPermissions);
-
                     // Toggle sub-option permission
                     const permissionsToToggle = [{
                         permission: categoryConfig.subOptions[subOption].base,
                         value: newValue,
                     }];
 
-                    // Handle special cases for linked permissions
-                    if (categoryConfig.subOptions[subOption].base === "sidebar_notification") {
-                        permissionsToToggle.push({ permission: "notification_settings", value: newValue });
-                    } else if (categoryConfig.subOptions[subOption].base === "notification_settings") {
-                        permissionsToToggle.push({ permission: "sidebar_notification", value: newValue });
-                    }
+                    // Handle special cases for linked permissions (disabled to prevent auto-enabling)
+                    // Commented out to give users full control over their permissions
+                    // if (categoryConfig.subOptions[subOption].base === "sidebar_notification") {
+                    //     permissionsToToggle.push({ permission: "notification_settings", value: newValue });
+                    // } else if (categoryConfig.subOptions[subOption].base === "notification_settings") {
+                    //     permissionsToToggle.push({ permission: "sidebar_notification", value: newValue });
+                    // }
 
                     // Toggle all permissions
                     const promises = permissionsToToggle.map(({ permission, value }) =>
@@ -663,9 +652,8 @@ const RolesPermissions = () => {
                     const results = await Promise.all(promises);
                     const allSuccessful = results.every((result) => result.data.success === true);
 
-                    if (!allSuccessful) {
-                        fetchCombinedUserPermissions(selectedUser.id);
-                    }
+                    // Always refresh to get updated override status from backend
+                    fetchCombinedUserPermissions(selectedUser.id);
                 } catch (error) {
                     console.error("Failed to toggle user permission:", error);
                     fetchCombinedUserPermissions(selectedUser.id);
@@ -719,17 +707,6 @@ const RolesPermissions = () => {
                 if (!selectedUser || !canManageUser(selectedUser)) return;
 
                 try {
-                    // Update UI immediately
-                    const newPermissions = { ...permissions };
-                    if (!newPermissions[category]) newPermissions[category] = { main: false, subOptions: {} };
-                    if (!newPermissions[category].subOptions) newPermissions[category].subOptions = {};
-                    if (!newPermissions[category].subOptions[subOption]) newPermissions[category].subOptions[subOption] = { enabled: false, subOptions: {} };
-                    if (!newPermissions[category].subOptions[subOption].subOptions) newPermissions[category].subOptions[subOption].subOptions = {};
-                    if (!newPermissions[category].subOptions[subOption].subOptions[nestedSubOption]) newPermissions[category].subOptions[subOption].subOptions[nestedSubOption] = { enabled: false };
-                    newPermissions[category].subOptions[subOption].subOptions[nestedSubOption].enabled = newValue;
-
-                    setPermissions(newPermissions);
-
                     // Toggle nested sub-option permission
                     const permissionsToToggle = [{
                         permission: categoryConfig.subOptions[subOption].subOptions[nestedSubOption].base,
@@ -747,9 +724,8 @@ const RolesPermissions = () => {
                     const results = await Promise.all(promises);
                     const allSuccessful = results.every((result) => result.data.success === true);
 
-                    if (!allSuccessful) {
-                        fetchCombinedUserPermissions(selectedUser.id);
-                    }
+                    // Always refresh to get updated override status from backend
+                    fetchCombinedUserPermissions(selectedUser.id);
                 } catch (error) {
                     console.error("Failed to toggle user permission:", error);
                     fetchCombinedUserPermissions(selectedUser.id);
@@ -898,9 +874,16 @@ const RolesPermissions = () => {
                             <div className="bg-white p-5 md:p-6 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg transition-shadow mb-4">
                                 <div className="flex items-center justify-between mb-3">
                                     <div>
-                                        <h3 className="text-lg md:text-xl font-bold text-[#2C323C] mb-1">
-                                            {category}
-                                        </h3>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="text-lg md:text-xl font-bold text-[#2C323C]">
+                                                {category}
+                                            </h3>
+                                            {permissionMode === "user" && permissions[category]?.isUserOverride && (
+                                                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium">
+                                                    User Override
+                                                </span>
+                                            )}
+                                        </div>
                                         <p className="text-xs md:text-sm text-[#7D8086]">
                                             {categoryConfig.description}
                                         </p>
@@ -945,9 +928,16 @@ const RolesPermissions = () => {
                                                 return (
                                                     <div key={subOption} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                                         <div className="flex items-center justify-between mb-2">
-                                                            <h4 className="text-sm font-semibold text-[#2C323C]">
-                                                                {subOption}
-                                                            </h4>
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="text-sm font-semibold text-[#2C323C]">
+                                                                    {subOption}
+                                                                </h4>
+                                                                {permissionMode === "user" && permissions[category]?.subOptions?.[subOption]?.isUserOverride && (
+                                                                    <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-medium">
+                                                                        Override
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <label
                                                                 className={`flex items-center cursor-pointer ${
                                                                     !canEdit ? "opacity-50 cursor-not-allowed" : ""
@@ -991,9 +981,16 @@ const RolesPermissions = () => {
                                                                         const nestedEnabled = permissions[category]?.subOptions?.[subOption]?.subOptions?.[nestedSubOption]?.enabled || false;
                                                                         return (
                                                                             <div key={nestedSubOption} className="flex items-center justify-between">
-                                                                                <span className="text-xs text-[#666]">
-                                                                                    {nestedSubOption}
-                                                                                </span>
+                                                                                <div className="flex items-center gap-1">
+                                                                                    <span className="text-xs text-[#666]">
+                                                                                        {nestedSubOption}
+                                                                                    </span>
+                                                                    {permissionMode === "user" && permissions[category]?.subOptions?.[subOption]?.subOptions?.[nestedSubOption]?.isUserOverride && (
+                                                                        <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-medium">
+                                                                            Override
+                                                                        </span>
+                                                                    )}
+                                                                                </div>
                                                                                 <label className="flex items-center cursor-pointer">
                                                                                     <input
                                                                                         type="checkbox"
@@ -1038,4 +1035,3 @@ const RolesPermissions = () => {
 };
 
 export default RolesPermissions;
-

@@ -47,6 +47,7 @@ class PermissionController extends Controller
             'view_faqs', 'create_faqs', 'edit_faqs', 'delete_faqs',
             'view_configuration', 'view_process_flow', 'manage_settings', 'view_org_chart', 'view_permission_settings',
             'view_notifications', 'edit_profile', 'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'modify_user_manual',
+            'view_sidebar', 'sidebar_notification',
             'edit_employee', 'add_employee', 'delete_employee'
         ];
         
