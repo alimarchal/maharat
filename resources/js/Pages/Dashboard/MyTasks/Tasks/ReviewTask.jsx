@@ -424,7 +424,7 @@ const ReviewTask = () => {
                                 options={[
                                     { id: "Approve", label: "Approve" },
                                     { id: "Reject", label: "Reject" },
-                                    // { id: "Refer", label: "Refer" },
+                                    { id: "Refer", label: "Refer" },
                                 ]}
                             />
                             {errors.action && (
