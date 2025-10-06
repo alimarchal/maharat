@@ -138,40 +138,72 @@ class TaskController extends Controller
                             $query->where('budget_id', $task->budget_id);
                         } elseif ($task->request_budgets_id) {
                             $query->where('request_budgets_id', $task->request_budgets_id);
+                        } elseif ($task->grn_id) {
+                            $query->where('grn_id', $task->grn_id);
                         }
                     })
                     ->first();
 
                 if ($originalTask) {
-                    // Update BOTH tasks now
+                    // Update the referred user's task with their decision (Approved/Rejected)
                     $task->update($request->validated());
-                    
-                    // Update original task to Pending so original approver can review
-                    $originalTask->update([
+
+                    // Update referred user's task descriptions
+                    if ($request->has('descriptions')) {
+                        foreach ($request->input('descriptions') as $description) {
+                            TaskDescription::create([
+                                'task_id' => $task->id,
+                                'description' => $description['description'] ?? '',
+                                'action' => $request->input('status') === 'Approved' ? 'Approve' : 'Reject',
+                                'user_id' => $task->assigned_to_user_id
+                            ]);
+                        }
+                    }
+
+                    // CREATE A NEW TASK for the original approver
+                    $newTaskForOriginalApprover = Task::create([
+                        'process_step_id' => $originalTask->process_step_id,
+                        'process_id' => $originalTask->process_id,
+                        'assigned_at' => now(),
+                        'urgency' => $originalTask->urgency,
+                        'order_no' => $originalTask->order_no,
+                        'assigned_from_user_id' => $task->assigned_to_user_id, // From referred user
+                        'assigned_to_user_id' => $originalTask->assigned_to_user_id, // To original approver
+                        'material_request_id' => $originalTask->material_request_id,
+                        'rfq_id' => $originalTask->rfq_id,
+                        'purchase_order_id' => $originalTask->purchase_order_id,
+                        'payment_order_id' => $originalTask->payment_order_id,
+                        'invoice_id' => $originalTask->invoice_id,
+                        'budget_id' => $originalTask->budget_id,
+                        'budget_approval_transaction_id' => $originalTask->budget_approval_transaction_id,
+                        'request_budgets_id' => $originalTask->request_budgets_id,
+                        'grn_id' => $originalTask->grn_id,
                         'status' => 'Pending',
                         'read_status' => null
                     ]);
 
-                    // Copy the referred user's response to original task descriptions
-                    $latestDescription = $task->descriptions()->latest()->first();
-                    if ($latestDescription) {
+                    // Copy all task descriptions from original task to the new task
+                    foreach ($originalTask->descriptions as $desc) {
                         TaskDescription::create([
-                            'task_id' => $originalTask->id,
-                            'description' => "Referral response: " . $latestDescription->description,
-                            'action' => $request->input('status') === 'Approved' ? 'Approve' : 'Reject',
-                            'user_id' => $task->assigned_to_user_id
+                            'task_id' => $newTaskForOriginalApprover->id,
+                            'description' => $desc->description,
+                            'action' => $desc->action,
+                            'user_id' => $desc->user_id
                         ]);
                     }
 
-                    // Send notification back to original approver
-                    $originalTask->load(['assignedToUser', 'process']);
-                    if ($originalTask->assignedToUser && $originalTask->process) {
-                        $notificationService = new TaskNotificationService();
-                        $taskType = $notificationService->getTaskTypeFromProcess($originalTask->process->title);
-                        $notificationService->sendTaskAssignmentNotification($originalTask, $taskType);
-                    }
+                    // Add the referred user's response as a description to the new task
+                    $referredUserName = $task->assignedToUser->name ?? 'Referred User';
+                    $referredUserComment = $request->input('descriptions.0.description') ?? 'No comment provided';
+                    
+                    TaskDescription::create([
+                        'task_id' => $newTaskForOriginalApprover->id,
+                        'description' => $referredUserName,
+                        'action' => $request->input('status') === 'Approved' ? 'Approve' : 'Reject',
+                        'user_id' => $task->assigned_to_user_id
+                    ]);
 
-                    // Update the approval transaction
+                    // Update the approval transaction back to Pending and clear referral
                     if ($task->material_request_id) {
                         DB::table('material_request_transactions')
                             ->where('material_request_id', $task->material_request_id)
@@ -179,8 +211,67 @@ class TaskController extends Controller
                             ->where('referred_to', $task->assigned_to_user_id)
                             ->update([
                                 'status' => 'Pending',
+                                'referred_to' => null,
                                 'updated_at' => now()
                             ]);
+                    } elseif ($task->rfq_id) {
+                        DB::table('rfq_approval_transactions')
+                            ->where('rfq_id', $task->rfq_id)
+                            ->where('assigned_to', $originalTask->assigned_to_user_id)
+                            ->where('referred_to', $task->assigned_to_user_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'referred_to' => null,
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->purchase_order_id) {
+                        DB::table('po_approval_transactions')
+                            ->where('purchase_order_id', $task->purchase_order_id)
+                            ->where('assigned_to', $originalTask->assigned_to_user_id)
+                            ->where('referred_to', $task->assigned_to_user_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'referred_to' => null,
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->invoice_id) {
+                        DB::table('mahrat_invoice_approval_transactions')
+                            ->where('invoice_id', $task->invoice_id)
+                            ->where('assigned_to', $originalTask->assigned_to_user_id)
+                            ->where('referred_to', $task->assigned_to_user_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'referred_to' => null,
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->budget_id) {
+                        DB::table('budget_approval_transactions')
+                            ->where('budget_id', $task->budget_id)
+                            ->where('assigned_to', $originalTask->assigned_to_user_id)
+                            ->where('referred_to', $task->assigned_to_user_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'referred_to' => null,
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->request_budgets_id) {
+                        DB::table('budget_request_approval_transactions')
+                            ->where('request_budgets_id', $task->request_budgets_id)
+                            ->where('assigned_to', $originalTask->assigned_to_user_id)
+                            ->where('referred_to', $task->assigned_to_user_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'referred_to' => null,
+                                'updated_at' => now()
+                            ]);
+                    }
+
+                    // Send notification to original approver
+                    $newTaskForOriginalApprover->load(['assignedToUser', 'process']);
+                    if ($newTaskForOriginalApprover->assignedToUser && $newTaskForOriginalApprover->process) {
+                        $notificationService = new TaskNotificationService();
+                        $taskType = $notificationService->getTaskTypeFromProcess($newTaskForOriginalApprover->process->title);
+                        $notificationService->sendTaskAssignmentNotification($newTaskForOriginalApprover, $taskType);
                     }
                     
                     DB::commit();
