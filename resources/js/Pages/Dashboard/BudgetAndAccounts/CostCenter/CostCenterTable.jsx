@@ -23,9 +23,14 @@ const CostCenterTable = () => {
     const fetchCostCenters = async () => {
         try {
             setLoading(true);
-            const response = await axios.get(
-                `/api/v1/cost-centers?include=parent,children,department,manager,budgetOwner&page=${currentPage}&per_page=15&is_main=true&status_filter=${selectedFilter}`
-            );
+            let url = `/api/v1/cost-centers?include=parent,children,department,manager,budgetOwner&page=${currentPage}&per_page=15&is_main=true`;
+            
+            // Only add status filter if not "All"
+            if (selectedFilter !== "All") {
+                url += `&filter[status]=${selectedFilter}`;
+            }
+            
+            const response = await axios.get(url);
             setCostCenters(response.data.data || []);
             setLastPage(response.data.meta?.last_page || 1);
             setError(null);

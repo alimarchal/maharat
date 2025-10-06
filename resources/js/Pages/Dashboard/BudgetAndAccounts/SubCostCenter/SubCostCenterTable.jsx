@@ -19,9 +19,14 @@ const SubCostCenterTable = () => {
     const fetchSubCostCenters = async () => {
         try {
             setLoading(true);
-            const response = await axios.get(
-                `/api/v1/cost-centers?include=parent,children,department,manager,budgetOwner&page=${currentPage}&per_page=15&is_main=false&status_filter=${selectedFilter}`
-            );
+            let url = `/api/v1/cost-centers?include=parent,children,department,manager,budgetOwner&page=${currentPage}&per_page=15&is_main=false`;
+            
+            // Only add status filter if not "All"
+            if (selectedFilter !== "All") {
+                url += `&filter[status]=${selectedFilter}`;
+            }
+            
+            const response = await axios.get(url);
             
             setSubCostCenters(response.data.data || []);
             setLastPage(response.data.meta?.last_page || 1);
