@@ -109,14 +109,192 @@ class TaskController extends Controller
     public function update(UpdateTaskRequest $request, Task $task): JsonResponse
     {
         try {
-            Log::info('=== TASK UPDATE STARTED ===', [
-                'task_id' => $task->id,
-                'rfq_id' => $task->rfq_id,
-                'status' => $request->input('status'),
-                'request_data' => $request->all()
-            ]);
-
             DB::beginTransaction();
+
+            // ============================================================
+            // CHECK IF THIS IS A REFERRED TASK RESPONSE **BEFORE** UPDATING
+            // ============================================================
+            if ($task->assigned_from_user_id && 
+                $task->status === 'Pending' &&
+                in_array($request->input('status'), ['Approved', 'Rejected'])) {
+                
+                // Find the original task that was referred
+                $originalTask = Task::where('status', 'Referred')
+                    ->where('assigned_to_user_id', $task->assigned_from_user_id)
+                    ->where('order_no', $task->order_no)
+                    ->where('process_step_id', $task->process_step_id)
+                    ->where(function($query) use ($task) {
+                        if ($task->material_request_id) {
+                            $query->where('material_request_id', $task->material_request_id);
+                        } elseif ($task->rfq_id) {
+                            $query->where('rfq_id', $task->rfq_id);
+                        } elseif ($task->purchase_order_id) {
+                            $query->where('purchase_order_id', $task->purchase_order_id);
+                        } elseif ($task->payment_order_id) {
+                            $query->where('payment_order_id', $task->payment_order_id);
+                        } elseif ($task->invoice_id) {
+                            $query->where('invoice_id', $task->invoice_id);
+                        } elseif ($task->budget_id) {
+                            $query->where('budget_id', $task->budget_id);
+                        } elseif ($task->request_budgets_id) {
+                            $query->where('request_budgets_id', $task->request_budgets_id);
+                        } elseif ($task->grn_id) {
+                            $query->where('grn_id', $task->grn_id);
+                        }
+                    })
+                    ->first();
+
+                if ($originalTask) {
+                    // Update the referred user's task with their decision (Approved/Rejected)
+                    $task->update($request->validated());
+
+                    // Update referred user's task descriptions
+                    if ($request->has('descriptions')) {
+                        foreach ($request->input('descriptions') as $description) {
+                            TaskDescription::create([
+                                'task_id' => $task->id,
+                                'description' => $description['description'] ?? '',
+                                'action' => $request->input('status') === 'Approved' ? 'Approve' : 'Reject',
+                                'user_id' => $task->assigned_to_user_id
+                            ]);
+                        }
+                    }
+
+                    // CREATE A NEW TASK for the original approver
+                    $newTaskForOriginalApprover = Task::create([
+                        'process_step_id' => $originalTask->process_step_id,
+                        'process_id' => $originalTask->process_id,
+                        'assigned_at' => now(),
+                        'urgency' => $originalTask->urgency,
+                        'order_no' => $originalTask->order_no,
+                        'assigned_from_user_id' => $task->assigned_to_user_id, // From referred user
+                        'assigned_to_user_id' => $originalTask->assigned_to_user_id, // To original approver
+                        'material_request_id' => $originalTask->material_request_id,
+                        'rfq_id' => $originalTask->rfq_id,
+                        'purchase_order_id' => $originalTask->purchase_order_id,
+                        'payment_order_id' => $originalTask->payment_order_id,
+                        'invoice_id' => $originalTask->invoice_id,
+                        'budget_id' => $originalTask->budget_id,
+                        'budget_approval_transaction_id' => $originalTask->budget_approval_transaction_id,
+                        'request_budgets_id' => $originalTask->request_budgets_id,
+                        'grn_id' => $originalTask->grn_id,
+                        'status' => 'Pending',
+                        'read_status' => null
+                    ]);
+
+                    // Copy all task descriptions from original task to the new task
+                    foreach ($originalTask->descriptions as $desc) {
+                        TaskDescription::create([
+                            'task_id' => $newTaskForOriginalApprover->id,
+                            'description' => $desc->description,
+                            'action' => $desc->action,
+                            'user_id' => $desc->user_id
+                        ]);
+                    }
+
+                    // Add the referred user's response as a description to the new task
+                    $referredUserName = $task->assignedToUser->name ?? 'Referred User';
+                    $referredUserComment = $request->input('descriptions.0.description') ?? 'No comment provided';
+                    
+                    TaskDescription::create([
+                        'task_id' => $newTaskForOriginalApprover->id,
+                        'description' => $referredUserName,
+                        'action' => $request->input('status') === 'Approved' ? 'Approve' : 'Reject',
+                        'user_id' => $task->assigned_to_user_id
+                    ]);
+
+                    // Update the approval transaction back to Pending and clear referral
+                    if ($task->material_request_id) {
+                        DB::table('material_request_transactions')
+                            ->where('material_request_id', $task->material_request_id)
+                            ->where('assigned_to', $originalTask->assigned_to_user_id)
+                            ->where('referred_to', $task->assigned_to_user_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'referred_to' => null,
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->rfq_id) {
+                        DB::table('rfq_approval_transactions')
+                            ->where('rfq_id', $task->rfq_id)
+                            ->where('assigned_to', $originalTask->assigned_to_user_id)
+                            ->where('referred_to', $task->assigned_to_user_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'referred_to' => null,
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->purchase_order_id) {
+                        DB::table('po_approval_transactions')
+                            ->where('purchase_order_id', $task->purchase_order_id)
+                            ->where('assigned_to', $originalTask->assigned_to_user_id)
+                            ->where('referred_to', $task->assigned_to_user_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'referred_to' => null,
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->invoice_id) {
+                        DB::table('mahrat_invoice_approval_transactions')
+                            ->where('invoice_id', $task->invoice_id)
+                            ->where('assigned_to', $originalTask->assigned_to_user_id)
+                            ->where('referred_to', $task->assigned_to_user_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'referred_to' => null,
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->budget_id) {
+                        DB::table('budget_approval_transactions')
+                            ->where('budget_id', $task->budget_id)
+                            ->where('assigned_to', $originalTask->assigned_to_user_id)
+                            ->where('referred_to', $task->assigned_to_user_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'referred_to' => null,
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->request_budgets_id) {
+                        DB::table('budget_request_approval_transactions')
+                            ->where('request_budgets_id', $task->request_budgets_id)
+                            ->where('assigned_to', $originalTask->assigned_to_user_id)
+                            ->where('referred_to', $task->assigned_to_user_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'referred_to' => null,
+                                'updated_at' => now()
+                            ]);
+                    }
+
+                    // Send notification to original approver
+                    $newTaskForOriginalApprover->load(['assignedToUser', 'process']);
+                    if ($newTaskForOriginalApprover->assignedToUser && $newTaskForOriginalApprover->process) {
+                        $notificationService = new TaskNotificationService();
+                        $taskType = $notificationService->getTaskTypeFromProcess($newTaskForOriginalApprover->process->title);
+                        $notificationService->sendTaskAssignmentNotification($newTaskForOriginalApprover, $taskType);
+                    }
+                    
+                    DB::commit();
+                    
+                    return response()->json([
+                        'message' => 'Referral response recorded successfully',
+                        'data' => new TaskResource($task->load([
+                            'processStep',
+                            'process',
+                            'assignedUser',
+                            'descriptions',
+                            'material_request',
+                            'rfq',
+                            'purchase_order',
+                            'payment_order',
+                            'invoice',
+                            'budget',
+                            'budget_approval_transaction',
+                            'request_budget',
+                        ]))
+                    ], Response::HTTP_OK);
+                }
+            }
 
             $task->update($request->validated());
 
@@ -128,185 +306,78 @@ class TaskController extends Controller
                     'current_order_no' => $task->order_no,
                     'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
                     'process_id' => $task->process_id,
-                    'assigned_to_user_id' => $task->assigned_to_user_id
+                    'assigned_to_user_id' => $task->assigned_to_user_id,
+                    'assigned_from_user_id' => $task->assigned_from_user_id // Check if this is a referral response
                 ]);
 
-                // Update the corresponding RFQ approval transaction FIRST
-                $approvalTransaction = DB::table('rfq_approval_transactions')
-                    ->where('rfq_id', $task->rfq_id)
-                    ->where('assigned_to', $task->assigned_to_user_id)
-                    ->first();
+                // IMPORTANT: Skip normal approval flow if this task has assigned_from_user_id
+                // This means it's a referral response task, and we already handled it above
+                if (!$task->assigned_from_user_id) {
+                    // Update the corresponding RFQ approval transaction FIRST
+                    $approvalTransaction = DB::table('rfq_approval_transactions')
+                        ->where('rfq_id', $task->rfq_id)
+                        ->where('assigned_to', $task->assigned_to_user_id)
+                        ->whereNull('referred_to') // Only get transactions that are NOT referrals
+                        ->first();
 
-                if ($approvalTransaction) {
-                    Log::info('=== UPDATING RFQ APPROVAL TRANSACTION ===', [
-                        'task_id' => $task->id,
-                        'rfq_id' => $task->rfq_id,
-                        'approval_transaction_id' => $approvalTransaction->id,
-                        'assigned_to' => $task->assigned_to_user_id
-                    ]);
+                    if ($approvalTransaction) {
 
-                    // Update the approval transaction status
-                    $transactionUpdated = DB::table('rfq_approval_transactions')
-                        ->where('id', $approvalTransaction->id)
-                        ->update([
-                            'status' => 'Approve',
-                            'updated_by' => auth()->id(),
-                            'updated_at' => now()
-                        ]);
+                        // Update the approval transaction status
+                        $transactionUpdated = DB::table('rfq_approval_transactions')
+                            ->where('id', $approvalTransaction->id)
+                            ->update([
+                                'status' => 'Approve',
+                                'updated_by' => auth()->id(),
+                                'updated_at' => now()
+                            ]);
 
-                    Log::info('=== RFQ APPROVAL TRANSACTION UPDATE RESULT ===', [
-                        'task_id' => $task->id,
-                        'rfq_id' => $task->rfq_id,
-                        'approval_transaction_id' => $approvalTransaction->id,
-                        'update_success' => $transactionUpdated
-                    ]);
-
-                    if (!$transactionUpdated) {
-                        Log::error('=== RFQ APPROVAL TRANSACTION UPDATE FAILED ===', [
-                            'task_id' => $task->id,
-                            'rfq_id' => $task->rfq_id,
-                            'approval_transaction_id' => $approvalTransaction->id
-                        ]);
-                        throw new \Exception('Failed to update RFQ approval transaction');
-                    }
-                } else {
-                    Log::warning('=== NO RFQ APPROVAL TRANSACTION FOUND ===', [
-                        'task_id' => $task->id,
-                        'rfq_id' => $task->rfq_id,
-                        'assigned_to' => $task->assigned_to_user_id
-                    ]);
-                }
-
-                // Get total number of required approvals from process steps (correct method)
-                $processSteps = DB::table('process_steps')
-                    ->join('processes', 'process_steps.process_id', '=', 'processes.id')
-                    ->where('processes.title', 'RFQ Approval')
-                    ->orderBy('process_steps.order')
-                    ->get();
-                $totalRequiredApprovals = $processSteps->count();
-
-                // Get all tasks for this RFQ to verify
-                $allTasks = DB::table('tasks')
-                    ->where('rfq_id', $task->rfq_id)
-                    ->where('process_id', $task->process_id)
-                    ->get();
-
-                Log::info('=== RFQ APPROVAL PROCESS STEPS ===', [
-                    'rfq_id' => $task->rfq_id,
-                    'total_process_steps' => $totalRequiredApprovals,
-                    'current_task_order_no' => $task->order_no,
-                    'all_tasks' => $allTasks->toArray(),
-                    'process_steps' => $processSteps->toArray(),
-                    'task_order_no_type' => gettype($task->order_no),
-                    'total_approvals_type' => gettype($totalRequiredApprovals)
-                ]);
-
-                // Check if this is the final approval - use process steps count
-                $isFinalApproval = (string)$task->order_no === (string)$totalRequiredApprovals;
-
-                Log::info('=== FINAL APPROVAL CHECK ===', [
-                    'rfq_id' => $task->rfq_id,
-                    'current_order_no' => $task->order_no,
-                    'total_required_approvals' => $totalRequiredApprovals,
-                    'is_final_approval' => $isFinalApproval,
-                    'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
-                    'comparison_details' => [
-                        'order_no_string' => (string)$task->order_no,
-                        'total_approvals_string' => (string)$totalRequiredApprovals,
-                        'strict_comparison' => $task->order_no === $totalRequiredApprovals,
-                        'loose_comparison' => $task->order_no == $totalRequiredApprovals
-                    ]
-                ]);
-
-                // Debug: Log all variables before decision
-                Log::info('=== RFQ DECISION VARIABLES DEBUG ===', [
-                    'task_id' => $task->id,
-                    'rfq_id' => $task->rfq_id,
-                    'approval_transaction_exists' => $approvalTransaction ? true : false,
-                    'approval_transaction_id' => $approvalTransaction ? $approvalTransaction->id : null,
-                    'transaction_updated' => $transactionUpdated,
-                    'is_final_approval' => $isFinalApproval,
-                    'task_order_no' => $task->order_no,
-                    'total_required_approvals' => $totalRequiredApprovals
-                ]);
-
-                // Now trigger the RfqApprovalTransactionController logic to create next task
-                // BUT ONLY if this is NOT the final approval
-                if ($approvalTransaction && $transactionUpdated && !$isFinalApproval) {
-                    Log::info('=== TRIGGERING RFQ APPROVAL TRANSACTION CONTROLLER LOGIC ===', [
-                        'task_id' => $task->id,
-                        'rfq_id' => $task->rfq_id,
-                        'approval_transaction_id' => $approvalTransaction->id,
-                        'is_final_approval' => $isFinalApproval
-                    ]);
-
-                    // Create a mock request to trigger the RfqApprovalTransactionController update logic
-                    $rfqApprovalTransaction = \App\Models\RfqApprovalTransaction::find($approvalTransaction->id);
-                    if ($rfqApprovalTransaction) {
-                        Log::info('=== CALLING HANDLE RFQ APPROVAL TRANSACTION UPDATE ===', [
-                            'task_id' => $task->id,
-                            'rfq_id' => $task->rfq_id,
-                            'rfq_approval_transaction_id' => $rfqApprovalTransaction->id
-                        ]);
-                        // Call the RfqApprovalTransactionController update method logic
-                        $this->handleRfqApprovalTransactionUpdate($rfqApprovalTransaction);
+                        if (!$transactionUpdated) {
+                            Log::error('=== RFQ APPROVAL TRANSACTION UPDATE FAILED ===', [
+                                'task_id' => $task->id,
+                                'rfq_id' => $task->rfq_id,
+                                'approval_transaction_id' => $approvalTransaction->id
+                            ]);
+                            throw new \Exception('Failed to update RFQ approval transaction');
+                        }
                     } else {
-                        Log::error('=== RFQ APPROVAL TRANSACTION NOT FOUND ===', [
+                        Log::warning('=== NO RFQ APPROVAL TRANSACTION FOUND ===', [
                             'task_id' => $task->id,
                             'rfq_id' => $task->rfq_id,
-                            'approval_transaction_id' => $approvalTransaction->id
+                            'assigned_to' => $task->assigned_to_user_id
                         ]);
                     }
-                } else {
-                    Log::info('=== SKIPPING NEXT TASK CREATION ===', [
-                        'task_id' => $task->id,
-                        'rfq_id' => $task->rfq_id,
-                        'approval_transaction_exists' => $approvalTransaction ? true : false,
-                        'transaction_updated' => $transactionUpdated,
-                        'is_final_approval' => $isFinalApproval,
-                        'reason' => !$approvalTransaction ? 'NO_APPROVAL_TRANSACTION' : 
-                                   (!$transactionUpdated ? 'TRANSACTION_NOT_UPDATED' : 'FINAL_APPROVAL')
-                    ]);
-                }
 
-                if ($isFinalApproval) {
-                    Log::info('=== FINAL APPROVAL DETECTED - UPDATING RFQ STATUS ===', [
-                        'rfq_id' => $task->rfq_id,
-                        'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
-                        'target_status_id' => 47,
-                        'auth_user_id' => auth()->id()
-                    ]);
+                    // Get total number of required approvals from process steps
+                    $processSteps = DB::table('process_steps')
+                        ->join('processes', 'process_steps.process_id', '=', 'processes.id')
+                        ->where('processes.title', 'RFQ Approval')
+                        ->orderBy('process_steps.order')
+                        ->get();
+                    $totalRequiredApprovals = $processSteps->count();
 
-                    try {
-                        // Directly update the RFQ status in the database
-                        $updated = DB::table('rfqs')
+                    // Check if this is the final approval
+                    $isFinalApproval = (string)$task->order_no === (string)$totalRequiredApprovals;
+
+                    // Trigger next task creation ONLY if NOT final approval
+                    if ($approvalTransaction && $transactionUpdated && !$isFinalApproval) {
+                        $rfqApprovalTransaction = \App\Models\RfqApprovalTransaction::find($approvalTransaction->id);
+                        if ($rfqApprovalTransaction) {
+                            $this->handleRfqApprovalTransactionUpdate($rfqApprovalTransaction);
+                        }
+                    }
+
+                    // Update RFQ status based on approval stage
+                    if ($isFinalApproval) {
+                        DB::table('rfqs')
                             ->where('id', $task->rfq_id)
                             ->update([
-                                'status_id' => 47,
+                                'status_id' => 47, // Approved
                                 'approved_at' => now(),
                                 'approved_by' => auth()->id(),
                                 'updated_at' => now()
                             ]);
 
-                        Log::info('=== RFQ STATUS UPDATE RESULT ===', [
-                            'rfq_id' => $task->rfq_id,
-                            'update_success' => $updated,
-                            'rows_affected' => $updated,
-                            'new_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
-                            'update_query_executed' => true
-                        ]);
-
-                        if (!$updated) {
-                            Log::error('=== RFQ STATUS UPDATE FAILED ===', [
-                                'rfq_id' => $task->rfq_id,
-                                'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
-                                'update_result' => $updated
-                            ]);
-                            throw new \Exception('Failed to update RFQ status - no rows affected');
-                        }
-
-                        // Create status log entry
-                        $statusLogInserted = DB::table('rfq_status_logs')->insert([
+                        DB::table('rfq_status_logs')->insert([
                             'rfq_id' => $task->rfq_id,
                             'status_id' => 47,
                             'changed_by' => auth()->id(),
@@ -315,107 +386,33 @@ class TaskController extends Controller
                             'created_at' => now(),
                             'updated_at' => now()
                         ]);
-
-                        Log::info('=== RFQ STATUS LOG INSERTED ===', [
-                            'rfq_id' => $task->rfq_id,
-                            'status_log_inserted' => $statusLogInserted
+                    } else {
+                        Log::info('=== INTERMEDIATE APPROVAL - UPDATING RFQ TO PENDING ===', [
+                            'rfq_id' => $task->rfq_id
                         ]);
 
-                        // Verify the update
-                        $updatedRfq = DB::table('rfqs')->where('id', $task->rfq_id)->first();
-                        Log::info('=== RFQ STATUS VERIFICATION ===', [
-                            'rfq_id' => $task->rfq_id,
-                            'status_id' => $updatedRfq->status_id,
-                            'expected_status' => 47,
-                            'update_successful' => $updatedRfq->status_id === 47,
-                            'rfq_data' => $updatedRfq
-                        ]);
-
-                        // Refresh the task's RFQ relationship to get the updated status
-                        $task->load('rfq');
-
-                    } catch (\Exception $e) {
-                        Log::error('=== RFQ STATUS UPDATE ERROR ===', [
-                            'rfq_id' => $task->rfq_id,
-                            'error' => $e->getMessage(),
-                            'trace' => $e->getTraceAsString(),
-                            'error_code' => $e->getCode()
-                        ]);
-                        throw $e;
-                    }
-                } else {
-                    // This is the first approval (not final) - set status to Pending
-                    Log::info('=== FIRST APPROVAL DETECTED - UPDATING RFQ STATUS TO PENDING ===', [
-                        'rfq_id' => $task->rfq_id,
-                        'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
-                        'target_status_id' => 48,
-                        'auth_user_id' => auth()->id()
-                    ]);
-
-                    try {
-                        // Update the RFQ status to Pending (status_id: 48)
-                        $updated = DB::table('rfqs')
+                        DB::table('rfqs')
                             ->where('id', $task->rfq_id)
                             ->update([
-                                'status_id' => 48, // Pending status
+                                'status_id' => 48, // Pending
                                 'updated_at' => now()
                             ]);
 
-                        Log::info('=== RFQ STATUS UPDATE TO PENDING RESULT ===', [
-                            'rfq_id' => $task->rfq_id,
-                            'update_success' => $updated,
-                            'rows_affected' => $updated,
-                            'new_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
-                            'update_query_executed' => true
-                        ]);
-
-                        if (!$updated) {
-                            Log::error('=== RFQ STATUS UPDATE TO PENDING FAILED ===', [
-                                'rfq_id' => $task->rfq_id,
-                                'current_status_id' => DB::table('rfqs')->where('id', $task->rfq_id)->value('status_id'),
-                                'update_result' => $updated
-                            ]);
-                            throw new \Exception('Failed to update RFQ status to Pending - no rows affected');
-                        }
-
-                        // Create status log entry for Pending status
-                        $statusLogInserted = DB::table('rfq_status_logs')->insert([
+                        DB::table('rfq_status_logs')->insert([
                             'rfq_id' => $task->rfq_id,
                             'status_id' => 48,
                             'changed_by' => auth()->id(),
-                            'remarks' => 'RFQ moved to Pending status by first approver',
+                            'remarks' => 'RFQ moved to Pending status',
                             'approved_by' => auth()->id(),
                             'created_at' => now(),
                             'updated_at' => now()
                         ]);
-
-                        Log::info('=== RFQ STATUS LOG INSERTED FOR PENDING ===', [
-                            'rfq_id' => $task->rfq_id,
-                            'status_log_inserted' => $statusLogInserted
-                        ]);
-
-                        // Verify the update
-                        $updatedRfq = DB::table('rfqs')->where('id', $task->rfq_id)->first();
-                        Log::info('=== RFQ STATUS VERIFICATION FOR PENDING ===', [
-                            'rfq_id' => $task->rfq_id,
-                            'status_id' => $updatedRfq->status_id,
-                            'expected_status' => 48,
-                            'update_successful' => $updatedRfq->status_id === 48,
-                            'rfq_data' => $updatedRfq
-                        ]);
-
-                        // Refresh the task's RFQ relationship to get the updated status
-                        $task->load('rfq');
-
-                    } catch (\Exception $e) {
-                        Log::error('=== RFQ STATUS UPDATE TO PENDING ERROR ===', [
-                            'rfq_id' => $task->rfq_id,
-                            'error' => $e->getMessage(),
-                            'trace' => $e->getTraceAsString(),
-                            'error_code' => $e->getCode()
-                        ]);
-                        throw $e;
                     }
+                } else {
+                    Log::info('=== SKIPPING RFQ APPROVAL FLOW - THIS IS A REFERRAL RESPONSE ===', [
+                        'task_id' => $task->id,
+                        'assigned_from_user_id' => $task->assigned_from_user_id
+                    ]);
                 }
             }
 
@@ -1686,6 +1683,120 @@ class TaskController extends Controller
                         'task_id' => $task->id,
                         'material_request_id' => $task->material_request_id,
                         'assigned_to' => $task->assigned_to_user_id
+                    ]);
+                }
+            }
+
+            // Check if this is a task being referred
+            if ($request->input('status') === 'Referred') {
+                // Get the task description to find the referred user
+                $taskDescription = TaskDescription::where('task_id', $task->id)
+                    ->where('action', 'Refer')
+                    ->latest()
+                    ->first();
+
+                if ($taskDescription && $taskDescription->user_id) {
+                    // Create a new task for the referred user
+                    $referredTask = Task::create([
+                        'process_step_id' => $task->process_step_id,
+                        'process_id' => $task->process_id,
+                        'assigned_at' => now(),
+                        'urgency' => $task->urgency,
+                        'order_no' => $task->order_no,
+                        'assigned_from_user_id' => $task->assigned_to_user_id, // Current approver
+                        'assigned_to_user_id' => $taskDescription->user_id, // Referred user
+                        'material_request_id' => $task->material_request_id,
+                        'rfq_id' => $task->rfq_id,
+                        'purchase_order_id' => $task->purchase_order_id,
+                        'payment_order_id' => $task->payment_order_id,
+                        'invoice_id' => $task->invoice_id,
+                        'budget_id' => $task->budget_id,
+                        'budget_approval_transaction_id' => $task->budget_approval_transaction_id,
+                        'request_budgets_id' => $task->request_budgets_id,
+                        'grn_id' => $task->grn_id,
+                        'status' => 'Pending',
+                        'read_status' => null
+                    ]);
+
+                    // Copy task descriptions to new task
+                    foreach ($task->descriptions as $desc) {
+                        TaskDescription::create([
+                            'task_id' => $referredTask->id,
+                            'description' => $desc->description,
+                            'action' => $desc->action,
+                            'user_id' => $desc->user_id
+                        ]);
+                    }
+
+                    // Update the approval transaction to include referred_to
+                    if ($task->material_request_id) {
+                        DB::table('material_request_transactions')
+                            ->where('material_request_id', $task->material_request_id)
+                            ->where('assigned_to', $task->assigned_to_user_id)
+                            ->update([
+                                'referred_to' => $taskDescription->user_id,
+                                'status' => 'Refer',
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->rfq_id) {
+                        DB::table('rfq_approval_transactions')
+                            ->where('rfq_id', $task->rfq_id)
+                            ->where('assigned_to', $task->assigned_to_user_id)
+                            ->update([
+                                'referred_to' => $taskDescription->user_id,
+                                'status' => 'Refer',
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->purchase_order_id) {
+                        DB::table('po_approval_transactions')
+                            ->where('purchase_order_id', $task->purchase_order_id)
+                            ->where('assigned_to', $task->assigned_to_user_id)
+                            ->update([
+                                'referred_to' => $taskDescription->user_id,
+                                'status' => 'Refer',
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->invoice_id) {
+                        DB::table('mahrat_invoice_approval_transactions')
+                            ->where('invoice_id', $task->invoice_id)
+                            ->where('assigned_to', $task->assigned_to_user_id)
+                            ->update([
+                                'referred_to' => $taskDescription->user_id,
+                                'status' => 'Refer',
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->budget_id) {
+                        DB::table('budget_approval_transactions')
+                            ->where('budget_id', $task->budget_id)
+                            ->where('assigned_to', $task->assigned_to_user_id)
+                            ->update([
+                                'referred_to' => $taskDescription->user_id,
+                                'status' => 'Refer',
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->request_budgets_id) {
+                        DB::table('budget_request_approval_transactions')
+                            ->where('request_budgets_id', $task->request_budgets_id)
+                            ->where('assigned_to', $task->assigned_to_user_id)
+                            ->update([
+                                'referred_to' => $taskDescription->user_id,
+                                'status' => 'Refer',
+                                'updated_at' => now()
+                            ]);
+                    }
+
+                    // Send notification to referred user
+                    $referredTask->load(['assignedToUser', 'process']);
+                    if ($referredTask->assignedToUser && $referredTask->process) {
+                        $notificationService = new TaskNotificationService();
+                        $taskType = $notificationService->getTaskTypeFromProcess($referredTask->process->title);
+                        $notificationService->sendTaskAssignmentNotification($referredTask, $taskType);
+                    }
+
+                    Log::info('=== TASK REFERRED SUCCESSFULLY ===', [
+                        'original_task_id' => $task->id,
+                        'referred_task_id' => $referredTask->id,
+                        'referred_to_user_id' => $taskDescription->user_id
                     ]);
                 }
             }

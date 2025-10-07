@@ -86,128 +86,131 @@ const ReviewTask = () => {
             console.log('=== TASK DESCRIPTION RESPONSE ===', response.data);
             const taskDescription = response.data.data;
 
-            const transactions = [
-                {
-                    key: "material_request_id",
-                    url: "/api/v1/material-request-transactions",
-                    processTitle: "Material Request",
-                },
-                {
-                    key: "rfq_id",
-                    url: "/api/v1/rfq-approval-transactions",
-                    processTitle: "RFQ Approval",
-                },
-                {
-                    key: "purchase_order_id",
-                    url: "/api/v1/po-approval-transactions",
-                    processTitle: "Purchase Order Approval",
-                },
-                {
-                    key: "payment_order_id",
-                    url: "/api/v1/payment-order-approval-trans",
-                    processTitle: "Payment Order Approval",
-                },
-                {
-                    key: "invoice_id",
-                    url: "/api/v1/mahrat-invoice-approval-trans",
-                    processTitle: "Maharat Invoice Approval",
-                },
-                {
-                    key: "request_budgets_id",
-                    url: "/api/v1/budget-request-approval-trans",
-                    processTitle: "Budget Request Approval",
-                },
-                {
-                    key: "budget_id",
-                    url: "/api/v1/budget-approval-transactions",
-                    processTitle: "Total Budget Approval",
-                },
-            ];
+            // Only proceed with next task assignment if action is "Approve"
+            if (taskDescription.action === "Approve") {
+                const transactions = [
+                    {
+                        key: "material_request_id",
+                        url: "/api/v1/material-request-transactions",
+                        processTitle: "Material Request",
+                    },
+                    {
+                        key: "rfq_id",
+                        url: "/api/v1/rfq-approval-transactions",
+                        processTitle: "RFQ Approval",
+                    },
+                    {
+                        key: "purchase_order_id",
+                        url: "/api/v1/po-approval-transactions",
+                        processTitle: "Purchase Order Approval",
+                    },
+                    {
+                        key: "payment_order_id",
+                        url: "/api/v1/payment-order-approval-trans",
+                        processTitle: "Payment Order Approval",
+                    },
+                    {
+                        key: "invoice_id",
+                        url: "/api/v1/mahrat-invoice-approval-trans",
+                        processTitle: "Maharat Invoice Approval",
+                    },
+                    {
+                        key: "request_budgets_id",
+                        url: "/api/v1/budget-request-approval-trans",
+                        processTitle: "Budget Request Approval",
+                    },
+                    {
+                        key: "budget_id",
+                        url: "/api/v1/budget-approval-transactions",
+                        processTitle: "Total Budget Approval",
+                    },
+                ];
 
-            for (const transaction of transactions) {
-                const { key, url, processTitle } = transaction;
-                const id = taskData[key];
+                for (const transaction of transactions) {
+                    const { key, url, processTitle } = transaction;
+                    const id = taskData[key];
 
-                // Proceed only if ID is valid
-                if (!id) continue;
+                    // Proceed only if ID is valid
+                    if (!id) continue;
 
-                const processResponse = await axios.get(
-                    `/api/v1/processes?include=steps,creator,updater&filter[title]=${encodeURIComponent(
-                        processTitle
-                    )}`
-                );
-                console.log('=== PROCESS RESPONSE ===', processResponse.data);
-                const process = processResponse?.data?.data?.[0];
-                if (!process || !process.steps?.length) continue;
+                    const processResponse = await axios.get(
+                        `/api/v1/processes?include=steps,creator,updater&filter[title]=${encodeURIComponent(
+                            processTitle
+                        )}`
+                    );
+                    console.log('=== PROCESS RESPONSE ===', processResponse.data);
+                    const process = processResponse?.data?.data?.[0];
+                    if (!process || !process.steps?.length) continue;
 
-                // Get existing transactions for this item
-                const transactionResponse = await axios.get(
-                    `${url}?filter[${key}]=${id}`
-                );
-                console.log('=== EXISTING TRANSACTIONS RESPONSE ===', transactionResponse.data);
-                const existingTransactions =
-                    transactionResponse?.data?.data || [];
-                const completedOrders = existingTransactions.map((t) => String(t.order));
+                    // Get existing transactions for this item
+                    const transactionResponse = await axios.get(
+                        `${url}?filter[${key}]=${id}`
+                    );
+                    console.log('=== EXISTING TRANSACTIONS RESPONSE ===', transactionResponse.data);
+                    const existingTransactions =
+                        transactionResponse?.data?.data || [];
+                    const completedOrders = existingTransactions.map((t) => String(t.order));
 
-                // Find next unprocessed step
-                const nextStep = process.steps.find(
-                    (step) => !completedOrders.includes(String(step.order))
-                );
-                if (!nextStep || !nextStep.id) continue; // All steps done
+                    // Find next unprocessed step
+                    const nextStep = process.steps.find(
+                        (step) => !completedOrders.includes(String(step.order))
+                    );
+                    if (!nextStep || !nextStep.id) continue; // All steps done
 
-                // Check if a task already exists for this step to prevent duplicates
-                const existingTaskResponse = await axios.get(
-                    `/api/v1/tasks?filter[${key}]=${id}&filter[process_step_id]=${nextStep.id}&filter[status]=Pending`
-                );
-                console.log('=== EXISTING TASKS RESPONSE ===', existingTaskResponse.data);
-                const existingTasks = existingTaskResponse?.data?.data || [];
-                
-                // If a task already exists for this step, skip creating a new one
-                if (existingTasks.length > 0) {
-                    console.log(`Task already exists for ${processTitle} step ${nextStep.order}, skipping creation`);
-                    continue;
+                    // Check if a task already exists for this step to prevent duplicates
+                    const existingTaskResponse = await axios.get(
+                        `/api/v1/tasks?filter[${key}]=${id}&filter[process_step_id]=${nextStep.id}&filter[status]=Pending`
+                    );
+                    console.log('=== EXISTING TASKS RESPONSE ===', existingTaskResponse.data);
+                    const existingTasks = existingTaskResponse?.data?.data || [];
+                    
+                    // If a task already exists for this step, skip creating a new one
+                    if (existingTasks.length > 0) {
+                        console.log(`Task already exists for ${processTitle} step ${nextStep.order}, skipping creation`);
+                        continue;
+                    }
+
+                    // Get approver for the next step
+                    const stepUserResponse = await axios.get(
+                        `/api/v1/process-steps/${nextStep.id}/user/${logged_user}`
+                    );
+                    console.log('=== STEP USER RESPONSE ===', stepUserResponse.data);
+                    const assignUser = stepUserResponse?.data?.data;
+
+                    const commonPayload = {
+                        requester_id: logged_user,
+                        assigned_to: assignUser?.approver_id,
+                        order: String(nextStep.order),
+                        description: nextStep.description,
+                        status: "Pending",
+                        referred_to: taskDescription?.user_id || null,
+                    };
+                    const payload = { ...commonPayload, [key]: id };
+                    console.log('=== CREATING TRANSACTION PAYLOAD ===', payload);
+                    await axios.post(url, payload);
+
+                    // Show budget update notification for invoice approvals
+                    if (processTitle === "Maharat Invoice Approval") {
+                        toast.success("Invoice approved! Budget revenue will be updated automatically if main budget exists.");
+                    }
+
+                    const taskPayload = {
+                        process_step_id: nextStep.id,
+                        process_id: nextStep.process_id,
+                        assigned_at: new Date().toISOString(),
+                        urgency: "Normal",
+                        assigned_to_user_id: assignUser.approver_id || null,
+                        assigned_from_user_id: logged_user,
+                        read_status: null,
+                        order_no: String(nextStep.order),
+                        [key]: id,
+                    };
+                    console.log('=== CREATING TASK PAYLOAD ===', taskPayload);
+                    await axios.post("/api/v1/tasks", taskPayload);
+
+                    // Note: The TaskController already handles updating the request_budgets table
+                    // when the task is approved, so we don't need to make an additional PUT request here
                 }
-
-                // Get approver for the next step
-                const stepUserResponse = await axios.get(
-                    `/api/v1/process-steps/${nextStep.id}/user/${logged_user}`
-                );
-                console.log('=== STEP USER RESPONSE ===', stepUserResponse.data);
-                const assignUser = stepUserResponse?.data?.data;
-
-                const commonPayload = {
-                    requester_id: logged_user,
-                    assigned_to: assignUser?.approver_id,
-                    order: String(nextStep.order),
-                    description: nextStep.description,
-                    status: "Pending",
-                    referred_to: taskDescription?.user_id || null,
-                };
-                const payload = { ...commonPayload, [key]: id };
-                console.log('=== CREATING TRANSACTION PAYLOAD ===', payload);
-                await axios.post(url, payload);
-
-                // Show budget update notification for invoice approvals
-                if (processTitle === "Maharat Invoice Approval" && taskDescription.action === "Approve") {
-                    toast.success("Invoice approved! Budget revenue will be updated automatically if main budget exists.");
-                }
-
-                const taskPayload = {
-                    process_step_id: nextStep.id,
-                    process_id: nextStep.process_id,
-                    assigned_at: new Date().toISOString(),
-                    urgency: "Normal",
-                    assigned_to_user_id: assignUser.approver_id || null,
-                    assigned_from_user_id: logged_user,
-                    read_status: null,
-                    order_no: String(nextStep.order),
-                    [key]: id,
-                };
-                console.log('=== CREATING TASK PAYLOAD ===', taskPayload);
-                await axios.post("/api/v1/tasks", taskPayload);
-
-                // Note: The TaskController already handles updating the request_budgets table
-                // when the task is approved, so we don't need to make an additional PUT request here
             }
 
             // Update task status if applicable
@@ -232,7 +235,7 @@ const ReviewTask = () => {
                         console.error("Task update error response:", taskUpdateError.response?.data);
 
                         // Check for specific budget error in task update
-                        if (taskUpdateError.response?.data?.error ==="NO_MAIN_BUDGET") {
+                        if (taskUpdateError.response?.data?.error === "NO_MAIN_BUDGET") {
                             const errorMessage = taskUpdateError.response.data.message || "Approval failed: No main budget found for this invoice's fiscal period.";
                             toast.error(errorMessage, { id: "budget-error-toast" });
                             return; // Don't navigate, stay on the page
@@ -424,7 +427,7 @@ const ReviewTask = () => {
                                 options={[
                                     { id: "Approve", label: "Approve" },
                                     { id: "Reject", label: "Reject" },
-                                    // { id: "Refer", label: "Refer" },
+                                    { id: "Refer", label: "Refer" },
                                 ]}
                             />
                             {errors.action && (

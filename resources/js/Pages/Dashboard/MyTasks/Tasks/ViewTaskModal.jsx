@@ -381,6 +381,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                             <tr>
                                                                 <th className="p-3 rounded-tl-xl rounded-bl-xl text-center">Item</th>
                                                                 <th className="p-3 text-center">Category</th>
+                                                                <th className="p-3 text-center">Description</th>
                                                                 <th className="p-3 text-center">Quantity</th>
                                                                 <th className="p-3 text-center">Unit</th>
                                                                 <th className={`p-3 text-center ${task.material_request.items?.some(item => item.photo_url && item.photo_url.trim() !== '') ? '' : 'rounded-tr-xl rounded-br-xl'}`}>Priority</th>
@@ -394,6 +395,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                                 <tr key={index}>
                                                                     <td className="px-3 py-2 text-center">{item.product?.name || "N/A"}</td>
                                                                     <td className="px-3 py-2 text-center">{item.category?.name || "N/A"}</td>
+                                                                    <td className="px-3 py-2 text-center">{item?.description || "N/A"}</td>
                                                                     <td className="px-3 py-2 text-center">{Math.floor(item.quantity) || "N/A"}</td>
                                                                     <td className="px-3 py-2 text-center">{item.unit?.name || "N/A"}</td>
                                                                     <td className="px-3 py-2 text-center">
