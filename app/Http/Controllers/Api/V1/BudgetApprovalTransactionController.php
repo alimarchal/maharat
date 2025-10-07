@@ -122,8 +122,8 @@ class BudgetApprovalTransactionController extends Controller
                 $approvalService->updateBudgetStatus($budgetApprovalTransaction->budget_id, $approvalResult);
             }
 
-            // If the status is 'Approve', check if this is the final approval
-            if (isset($data['status']) && $data['status'] === 'Approve') {
+            // If the status is 'Approve' or 'Referred', check if this is the final approval
+            if (isset($data['status']) && in_array($data['status'], ['Approve', 'Referred'])) {
                 $processSteps = DB::table('process_steps')
                     ->join('processes', 'process_steps.process_id', '=', 'processes.id')
                     ->where('processes.title', 'Total Budget Approval')
