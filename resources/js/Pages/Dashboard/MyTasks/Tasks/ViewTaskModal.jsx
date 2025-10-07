@@ -395,7 +395,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                                 <tr key={index}>
                                                                     <td className="px-3 py-2 text-center">{item.product?.name || "N/A"}</td>
                                                                     <td className="px-3 py-2 text-center">{item.category?.name || "N/A"}</td>
-                                                                    <td className="px-3 py-2 text-center">{item.product?.description || "N/A"}</td>
+                                                                    <td className="px-3 py-2 text-center">{item?.description || "N/A"}</td>
                                                                     <td className="px-3 py-2 text-center">{Math.floor(item.quantity) || "N/A"}</td>
                                                                     <td className="px-3 py-2 text-center">{item.unit?.name || "N/A"}</td>
                                                                     <td className="px-3 py-2 text-center">
