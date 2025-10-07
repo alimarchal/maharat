@@ -14,9 +14,6 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(append: [
-            \App\Http\Middleware\FixScalaHostingSession::class,
-            \App\Http\Middleware\SessionCleanup::class,
-            \App\Http\Middleware\DebugMiddleware::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             \App\Http\Middleware\LocaleMiddleware::class,
