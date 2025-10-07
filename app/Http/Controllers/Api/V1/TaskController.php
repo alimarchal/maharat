@@ -115,7 +115,6 @@ class TaskController extends Controller
             // CHECK IF THIS IS A REFERRED TASK RESPONSE **BEFORE** UPDATING
             // ============================================================
             if ($task->assigned_from_user_id && 
-                $task->status === 'Pending' &&
                 in_array($request->input('status'), ['Approved', 'Rejected'])) {
                 
                 // Find the original task that was referred
@@ -198,7 +197,7 @@ class TaskController extends Controller
                     
                     TaskDescription::create([
                         'task_id' => $newTaskForOriginalApprover->id,
-                        'description' => $referredUserName,
+                        'description' => $referredUserComment, // Use the actual comment, not the username
                         'action' => $request->input('status') === 'Approved' ? 'Approve' : 'Reject',
                         'user_id' => $task->assigned_to_user_id
                     ]);
@@ -298,8 +297,8 @@ class TaskController extends Controller
 
             $task->update($request->validated());
 
-            // Check if this is an RFQ task and if it's being approved
-            if ($task->rfq_id && $request->input('status') === 'Approved') {
+            // Check if this is an RFQ task and if it's being approved or referred
+            if ($task->rfq_id && in_array($request->input('status'), ['Approved', 'Referred'])) {
                 Log::info('=== RFQ TASK APPROVAL CHECK ===', [
                     'task_id' => $task->id,
                     'rfq_id' => $task->rfq_id,
@@ -520,8 +519,8 @@ class TaskController extends Controller
                 }
             }
 
-            // Check if this is a Maharat Invoice task and if it's being approved
-            if ($task->invoice_id && $request->input('status') === 'Approved') {
+            // Check if this is a Maharat Invoice task and if it's being approved or referred
+            if ($task->invoice_id && in_array($request->input('status'), ['Approved', 'Referred'])) {
                 Log::info('=== MAHARAT INVOICE TASK APPROVAL CHECK ===', [
                     'task_id' => $task->id,
                     'invoice_id' => $task->invoice_id,
@@ -529,13 +528,16 @@ class TaskController extends Controller
                     'current_status' => DB::table('invoices')->where('id', $task->invoice_id)->value('status')
                 ]);
 
-                // Update the corresponding approval transaction
-                $approvalTransaction = DB::table('mahrat_invoice_approval_transactions')
-                    ->where('invoice_id', $task->invoice_id)
-                    ->where('assigned_to', $task->assigned_to_user_id)
-                    ->first();
+                // IMPORTANT: Skip normal approval flow if this task has assigned_from_user_id
+                // This means it's a referral response task, and we already handled it above
+                if (!$task->assigned_from_user_id) {
+                    // Update the corresponding approval transaction
+                    $approvalTransaction = DB::table('mahrat_invoice_approval_transactions')
+                        ->where('invoice_id', $task->invoice_id)
+                        ->where('assigned_to', $task->assigned_to_user_id)
+                        ->first();
 
-                if ($approvalTransaction) {
+                    if ($approvalTransaction) {
                     Log::info('=== UPDATING MAHARAT INVOICE APPROVAL TRANSACTION ===', [
                         'task_id' => $task->id,
                         'invoice_id' => $task->invoice_id,
@@ -824,10 +826,11 @@ class TaskController extends Controller
                         ]);
                     }
                 }
+                }
             }
 
-            // Check if this is a Budget Request task and if it's being approved
-            if ($task->request_budgets_id && $request->input('status') === 'Approved') {
+            // Check if this is a Budget Request task and if it's being approved or referred
+            if ($task->request_budgets_id && in_array($request->input('status'), ['Approved', 'Referred'])) {
                 Log::info('=== BUDGET REQUEST TASK APPROVAL CHECK ===', [
                     'task_id' => $task->id,
                     'request_budget_id' => $task->request_budgets_id,
@@ -835,8 +838,11 @@ class TaskController extends Controller
                     'current_status' => DB::table('request_budgets')->where('id', $task->request_budgets_id)->value('status')
                 ]);
 
-                // Find the corresponding approval transaction
-                $approvalTransaction = DB::table('budget_request_approval_transactions')
+                // IMPORTANT: Skip normal approval flow if this task has assigned_from_user_id
+                // This means it's a referral response task, and we already handled it above
+                if (!$task->assigned_from_user_id) {
+                    // Find the corresponding approval transaction
+                    $approvalTransaction = DB::table('budget_request_approval_transactions')
                     ->where('request_budgets_id', $task->request_budgets_id)
                     ->where('assigned_to', $task->assigned_to_user_id)
                     ->first();
@@ -1048,6 +1054,7 @@ class TaskController extends Controller
                         'assigned_to' => $task->assigned_to_user_id
                     ]);
                 }
+                }
             }
 
             // Check if this is a Budget Request task and if it's being rejected
@@ -1106,16 +1113,19 @@ class TaskController extends Controller
                 }
             }
 
-            // Check if this is a Budget Approval task and if it's being approved
-            if ($task->budget_id && $request->input('status') === 'Approved') {
+            // Check if this is a Budget Approval task and if it's being approved or referred
+            if ($task->budget_id && in_array($request->input('status'), ['Approved', 'Referred'])) {
                 Log::info('=== BUDGET APPROVAL TASK APPROVAL CHECK ===', [
                     'task_id' => $task->id,
                     'budget_id' => $task->budget_id,
                     'current_status' => DB::table('budgets')->where('id', $task->budget_id)->value('status')
                 ]);
 
-                // Find the corresponding budget approval transaction
-                $approvalTransaction = DB::table('budget_approval_transactions')
+                // IMPORTANT: Skip normal approval flow if this task has assigned_from_user_id
+                // This means it's a referral response task, and we already handled it above
+                if (!$task->assigned_from_user_id) {
+                    // Find the corresponding budget approval transaction
+                    $approvalTransaction = DB::table('budget_approval_transactions')
                     ->where('budget_id', $task->budget_id)
                     ->where('assigned_to', $task->assigned_to_user_id)
                     ->first();
@@ -1236,6 +1246,7 @@ class TaskController extends Controller
                         'assigned_to' => $task->assigned_to_user_id
                     ]);
                 }
+                }
             }
 
             // Check if this is a Budget Approval task and if it's being rejected
@@ -1305,8 +1316,8 @@ class TaskController extends Controller
                 }
             }
 
-            // Check if this is a Purchase Order task and if it's being approved
-            if ($task->purchase_order_id && $request->input('status') === 'Approved') {
+            // Check if this is a Purchase Order task and if it's being approved or referred
+            if ($task->purchase_order_id && in_array($request->input('status'), ['Approved', 'Referred'])) {
                 Log::info('=== PURCHASE ORDER TASK APPROVAL CHECK ===', [
                     'task_id' => $task->id,
                     'purchase_order_id' => $task->purchase_order_id,
@@ -1314,8 +1325,11 @@ class TaskController extends Controller
                     'current_status' => DB::table('purchase_orders')->where('id', $task->purchase_order_id)->value('status')
                 ]);
 
-                // Update the corresponding approval transaction
-                $approvalTransaction = DB::table('po_approval_transactions')
+                // IMPORTANT: Skip normal approval flow if this task has assigned_from_user_id
+                // This means it's a referral response task, and we already handled it above
+                if (!$task->assigned_from_user_id) {
+                    // Update the corresponding approval transaction
+                    $approvalTransaction = DB::table('po_approval_transactions')
                     ->where('purchase_order_id', $task->purchase_order_id)
                     ->where('assigned_to', $task->assigned_to_user_id)
                     ->first();
@@ -1410,6 +1424,7 @@ class TaskController extends Controller
                         'purchase_order_id' => $task->purchase_order_id,
                         'assigned_to' => $task->assigned_to_user_id
                     ]);
+                }
                 }
             }
 
@@ -1516,8 +1531,8 @@ class TaskController extends Controller
                 }
             }
 
-            // Check if this is a Material Request task and if it's being approved
-            if ($task->material_request_id && $request->input('status') === 'Approved') {
+            // Check if this is a Material Request task and if it's being approved or referred
+            if ($task->material_request_id && in_array($request->input('status'), ['Approved', 'Referred'])) {
                 Log::info('=== MATERIAL REQUEST TASK APPROVAL CHECK ===', [
                     'task_id' => $task->id,
                     'material_request_id' => $task->material_request_id,
@@ -1525,8 +1540,11 @@ class TaskController extends Controller
                     'current_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id')
                 ]);
 
-                // Update the corresponding approval transaction
-                $approvalTransaction = DB::table('material_request_transactions')
+                // IMPORTANT: Skip normal approval flow if this task has assigned_from_user_id
+                // This means it's a referral response task, and we already handled it above
+                if (!$task->assigned_from_user_id) {
+                    // Update the corresponding approval transaction
+                    $approvalTransaction = DB::table('material_request_transactions')
                     ->where('material_request_id', $task->material_request_id)
                     ->where('assigned_to', $task->assigned_to_user_id)
                     ->first();
@@ -1623,6 +1641,7 @@ class TaskController extends Controller
                         'material_request_id' => $task->material_request_id,
                         'assigned_to' => $task->assigned_to_user_id
                     ]);
+                }
                 }
             }
 
@@ -1798,11 +1817,70 @@ class TaskController extends Controller
                         'referred_task_id' => $referredTask->id,
                         'referred_to_user_id' => $taskDescription->user_id
                     ]);
+
+                    // Set the main record status to Pending when task is referred
+                    if ($task->material_request_id) {
+                        DB::table('material_requests')
+                            ->where('id', $task->material_request_id)
+                            ->update([
+                                'status_id' => 1, // Pending status
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->rfq_id) {
+                        DB::table('rfqs')
+                            ->where('id', $task->rfq_id)
+                            ->update([
+                                'status_id' => 48, // Pending status
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->purchase_order_id) {
+                        DB::table('purchase_orders')
+                            ->where('id', $task->purchase_order_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->payment_order_id) {
+                        DB::table('payment_orders')
+                            ->where('id', $task->payment_order_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->invoice_id) {
+                        DB::table('invoices')
+                            ->where('id', $task->invoice_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->budget_id) {
+                        DB::table('budgets')
+                            ->where('id', $task->budget_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->request_budgets_id) {
+                        DB::table('request_budgets')
+                            ->where('id', $task->request_budgets_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->grn_id) {
+                        DB::table('grns')
+                            ->where('id', $task->grn_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'updated_at' => now()
+                            ]);
+                    }
                 }
             }
 
             // === PAYMENT ORDER APPROVAL LOGIC ===
-            if ($task->payment_order_id && $request->input('status') === 'Approved') {
+            if ($task->payment_order_id && in_array($request->input('status'), ['Approved', 'Referred'])) {
                 Log::info('=== PAYMENT ORDER TASK APPROVAL CHECK ===', [
                     'task_id' => $task->id,
                     'payment_order_id' => $task->payment_order_id,
@@ -1811,8 +1889,11 @@ class TaskController extends Controller
                     'assigned_to_user_id' => $task->assigned_to_user_id
                 ]);
 
-                // Get total number of required approvals for this payment order
-                $totalApprovals = DB::table('tasks')
+                // IMPORTANT: Skip normal approval flow if this task has assigned_from_user_id
+                // This means it's a referral response task, and we already handled it above
+                if (!$task->assigned_from_user_id) {
+                    // Get total number of required approvals for this payment order
+                    $totalApprovals = DB::table('tasks')
                     ->where('payment_order_id', $task->payment_order_id)
                     ->where('process_id', $task->process_id)
                     ->count();
@@ -1866,6 +1947,7 @@ class TaskController extends Controller
                     Log::info('=== PAYMENT ORDER REJECTED - STATUS SET TO CANCELLED ===', [
                         'payment_order_id' => $paymentOrder->id
                     ]);
+                }
                 }
             }
 

@@ -123,8 +123,8 @@ class BudgetRequestApprovalTransactionController extends Controller
 
             $budgetRequestApprovalTransaction->update($validated);
 
-            // If the status is 'Approve', check if this is the final approval
-            if ($validated['status'] === 'Approve') {
+            // If the status is 'Approve' or 'Referred', check if this is the final approval
+            if (in_array($validated['status'], ['Approve', 'Referred'])) {
                 Log::info('Approval detected, checking if final approval', [
                     'request_budget_id' => $budgetRequestApprovalTransaction->request_budgets_id,
                     'current_status' => DB::table('request_budgets')->where('id', $budgetRequestApprovalTransaction->request_budgets_id)->value('status'),

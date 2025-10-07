@@ -133,8 +133,8 @@ class MahratInvoiceApprovalTransactionController extends Controller
 
             $mahratInvoiceApprovalTransaction->update($validated);
 
-            // If the status is 'Approve', check if this is the final approval
-            if ($validated['status'] === 'Approve') {
+            // If the status is 'Approve' or 'Referred', check if this is the final approval
+            if (in_array($validated['status'], ['Approve', 'Referred'])) {
                 $processSteps = DB::table('process_steps')
                     ->join('processes', 'process_steps.process_id', '=', 'processes.id')
                     ->where('processes.title', 'Maharat Invoice Approval')

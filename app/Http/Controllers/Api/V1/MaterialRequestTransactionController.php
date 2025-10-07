@@ -90,8 +90,8 @@ class MaterialRequestTransactionController extends Controller
 
             $materialRequestTransaction->update($request->validated());
 
-            // If the status is 'Approve', check if this is the final approval
-            if ($request->input('status') === 'Approve') {
+            // If the status is 'Approve' or 'Referred', check if this is the final approval
+            if (in_array($request->input('status'), ['Approve', 'Referred'])) {
                 $processSteps = DB::table('process_steps')
                     ->join('processes', 'process_steps.process_id', '=', 'processes.id')
                     ->where('processes.title', 'Material Request')
