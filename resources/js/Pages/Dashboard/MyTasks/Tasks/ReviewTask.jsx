@@ -45,6 +45,17 @@ const ReviewTask = () => {
                 `/api/v1/tasks/${taskId}?include=processStep,process,assignedFromUser,assignedToUser,descriptions`
             );
             setTaskData(response.data.data);
+            
+            console.log("=== FRONTEND: TASK LOADED ===", {
+                taskId: response.data.data.id,
+                status: response.data.data.status,
+                assignedFromUserId: response.data.data.assigned_from_user_id,
+                assignedToUserId: response.data.data.assigned_to_user_id,
+                continueApprovalFlow: response.data.data.continue_approval_flow,
+                materialRequestId: response.data.data.material_request_id,
+                rfqId: response.data.data.rfq_id,
+                purchaseOrderId: response.data.data.purchase_order_id
+            });
         } catch (error) {
             console.error("Error fetching task details:", error);
         }
@@ -72,6 +83,13 @@ const ReviewTask = () => {
         setIsSubmitting(true);
 
         try {
+            console.log("=== FRONTEND: APPROVAL PROCESS STARTED ===", {
+                taskId: taskData.id,
+                formData: formData,
+                taskData: taskData,
+                continueApprovalFlow: taskData.continue_approval_flow
+            });
+
             // Ensure task_id is set to the current task's ID
             const taskDescriptionData = {
                 ...formData,
@@ -84,13 +102,35 @@ const ReviewTask = () => {
             );
             const taskDescription = response.data.data;
 
+            console.log("=== FRONTEND: TASK DESCRIPTION CREATED ===", {
+                taskId: taskData.id,
+                taskDescription: taskDescription,
+                action: taskDescription.action,
+                continueApprovalFlow: taskData.continue_approval_flow
+            });
+
             // Only proceed with next task assignment if action is "Approve"
-            // BUT skip if this is a referral response (task has assigned_from_user_id)
-            if (taskDescription.action === "Approve" && !taskData.assigned_from_user_id) {
-                console.log("=== PROCEEDING WITH NEXT APPROVAL CREATION ===", {
+            // AND the task should continue approval flow (not a referral response)
+            console.log("=== FRONTEND: CHECKING TASK FOR NEXT APPROVAL CREATION ===", {
+                taskId: taskData.id,
+                action: taskDescription.action,
+                assignedFromUserId: taskData.assigned_from_user_id,
+                continueApprovalFlow: taskData.continue_approval_flow,
+                status: taskData.status,
+                assignedToUserId: taskData.assigned_to_user_id,
+                materialRequestId: taskData.material_request_id,
+                rfqId: taskData.rfq_id,
+                purchaseOrderId: taskData.purchase_order_id,
+                taskDataKeys: Object.keys(taskData)
+            });
+
+            if (taskDescription.action === "Approve" && taskData.continue_approval_flow == 1) {
+                console.log("=== FRONTEND: PROCEEDING WITH NEXT APPROVAL CREATION ===", {
                     taskId: taskData.id,
                     action: taskDescription.action,
-                    assignedFromUserId: taskData.assigned_from_user_id
+                    assignedFromUserId: taskData.assigned_from_user_id,
+                    continueApprovalFlow: taskData.continue_approval_flow,
+                    reason: "continue_approval_flow is 1"
                 });
                 const transactions = [
                     {
@@ -152,6 +192,31 @@ const ReviewTask = () => {
                     const existingTransactions =
                         transactionResponse?.data?.data || [];
                     const completedOrders = existingTransactions.map((t) => String(t.order));
+
+                    // Check if current step is the final approval step BEFORE finding next step
+                    const currentStepOrder = taskData.order_no;
+                    const totalSteps = process.steps.length;
+                    const isFinalApproval = currentStepOrder == totalSteps;
+                    
+                    console.log("=== FRONTEND: FINAL APPROVAL CHECK ===", {
+                        taskId: taskData.id,
+                        processTitle: processTitle,
+                        currentStepOrder: currentStepOrder,
+                        totalSteps: totalSteps,
+                        isFinalApproval: isFinalApproval,
+                        completedOrders: completedOrders
+                    });
+
+                    if (isFinalApproval) {
+                        console.log("=== FRONTEND: SKIPPING NEXT APPROVAL CREATION - FINAL APPROVAL ===", {
+                            taskId: taskData.id,
+                            processTitle: processTitle,
+                            currentStepOrder: currentStepOrder,
+                            totalSteps: totalSteps,
+                            reason: "This is the final approval step"
+                        });
+                        continue; // Skip creating next approval - this is the final step
+                    }
 
                     // Find next unprocessed step
                     const nextStep = process.steps.find(
@@ -229,12 +294,21 @@ const ReviewTask = () => {
                     // Note: The TaskController already handles updating the request_budgets table
                     // when the task is approved, so we don't need to make an additional PUT request here
                 }
-            } else if (taskDescription.action === "Approve" && taskData.assigned_from_user_id) {
-                console.log("=== SKIPPING NEXT APPROVAL CREATION - REFERRAL RESPONSE ===", {
+            } else if (taskDescription.action === "Approve" && taskData.continue_approval_flow == 0) {
+                console.log("=== FRONTEND: SKIPPING NEXT APPROVAL CREATION - REFERRAL RESPONSE ===", {
                     taskId: taskData.id,
                     action: taskDescription.action,
                     assignedFromUserId: taskData.assigned_from_user_id,
-                    reason: "This is a referral response, task will be assigned back to referrer"
+                    continueApprovalFlow: taskData.continue_approval_flow,
+                    reason: "continue_approval_flow is 0 - this is a referral response"
+                });
+            } else {
+                console.log("=== FRONTEND: SKIPPING NEXT APPROVAL CREATION - OTHER REASON ===", {
+                    taskId: taskData.id,
+                    action: taskDescription.action,
+                    assignedFromUserId: taskData.assigned_from_user_id,
+                    continueApprovalFlow: taskData.continue_approval_flow,
+                    reason: "Action is not Approve or continue_approval_flow is not 1"
                 });
             }
 

@@ -258,7 +258,27 @@ class PaymentOrderApprovalTransactionController extends Controller
                         }
                     }
                 } else {
-                    // This is the final approval - send final notification to requester
+                    // This is the final approval - update Payment Order status and send final notification to requester
+                    Log::info('=== FINAL PAYMENT ORDER APPROVAL - UPDATING STATUS ===', [
+                        'payment_order_id' => $paymentOrderApprovalTransaction->payment_order_id,
+                        'current_status' => DB::table('payment_orders')->where('id', $paymentOrderApprovalTransaction->payment_order_id)->value('status'),
+                        'target_status' => 'Approved'
+                    ]);
+                    
+                    // Update Payment Order status to Approved
+                    $paymentOrderUpdated = DB::table('payment_orders')
+                        ->where('id', $paymentOrderApprovalTransaction->payment_order_id)
+                        ->update([
+                            'status' => 'Approved',
+                            'updated_at' => now()
+                        ]);
+                    
+                    Log::info('=== PAYMENT ORDER STATUS UPDATE RESULT ===', [
+                        'payment_order_id' => $paymentOrderApprovalTransaction->payment_order_id,
+                        'update_success' => $paymentOrderUpdated,
+                        'new_status' => DB::table('payment_orders')->where('id', $paymentOrderApprovalTransaction->payment_order_id)->value('status')
+                    ]);
+                    
                     $task = Task::where('payment_order_id', $paymentOrderApprovalTransaction->payment_order_id)
                         ->with(['payment_order.user', 'process'])
                         ->first();

@@ -255,7 +255,42 @@ class RfqApprovalTransactionController extends Controller
                         }
                     }
                 } else {
-                    // This is the final approval - send final notification to requester
+                    // This is the final approval - update RFQ status and send final notification to requester
+                    Log::info('=== FINAL RFQ APPROVAL - UPDATING STATUS ===', [
+                        'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                        'current_status_id' => DB::table('rfqs')->where('id', $rfqApprovalTransaction->rfq_id)->value('status_id'),
+                        'target_status_id' => 47 // Approved
+                    ]);
+                    
+                    // Update RFQ status to Approved
+                    $rfqUpdated = DB::table('rfqs')
+                        ->where('id', $rfqApprovalTransaction->rfq_id)
+                        ->update([
+                            'status_id' => 47, // Approved
+                            'approved_at' => now(),
+                            'approved_by' => auth()->id(),
+                            'updated_at' => now()
+                        ]);
+                    
+                    Log::info('=== RFQ STATUS UPDATE RESULT ===', [
+                        'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                        'update_success' => $rfqUpdated,
+                        'new_status_id' => DB::table('rfqs')->where('id', $rfqApprovalTransaction->rfq_id)->value('status_id')
+                    ]);
+                    
+                    // Create status log entry
+                    if ($rfqUpdated) {
+                        DB::table('rfq_status_logs')->insert([
+                            'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                            'status_id' => 47,
+                            'changed_by' => auth()->id(),
+                            'remarks' => 'RFQ Approved by Final Approver',
+                            'approved_by' => auth()->id(),
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    }
+                    
                     $task = Task::where('rfq_id', $rfqApprovalTransaction->rfq_id)
                         ->with(['rfq.requester', 'process'])
                         ->first();
