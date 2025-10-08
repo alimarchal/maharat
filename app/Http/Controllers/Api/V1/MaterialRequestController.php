@@ -20,12 +20,16 @@ class MaterialRequestController extends Controller
 {
     public function index(): JsonResponse|ResourceCollection
     {
-        $requests = QueryBuilder::for(MaterialRequest::class)
+        $query = QueryBuilder::for(MaterialRequest::class)
             ->allowedFilters(MaterialRequestParameters::ALLOWED_FILTERS)
             ->allowedSorts(MaterialRequestParameters::ALLOWED_SORTS)
-            ->allowedIncludes(MaterialRequestParameters::ALLOWED_INCLUDES)
-            ->paginate()
-            ->appends(request()->query());
+            ->allowedIncludes(MaterialRequestParameters::ALLOWED_INCLUDES);
+
+        // Always filter by specific status IDs for received material requests
+        // Only show: Pending (1), Approved (4), Referred (2), Issued (51), Rejected (52)
+        $query->whereIn('status_id', [1, 4, 2, 51, 52]);
+
+        $requests = $query->paginate()->appends(request()->query());
 
         if ($requests->isEmpty()) {
             return response()->json([

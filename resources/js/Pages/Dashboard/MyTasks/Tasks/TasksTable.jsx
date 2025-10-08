@@ -170,7 +170,7 @@ const TasksTable = () => {
                                         >
                                             <FontAwesomeIcon icon={faEye} />
                                         </button>
-                                        {req.status !== "Approved" && (
+                                        {req.status === "Pending" && (
                                             <Link
                                                 href={`/tasks/${req.id}/new`}
                                                 className="flex items-center justify-center w-6 h-6 border border-[#9B9DA2] rounded-full text-[#9B9DA2] hover:text-gray-800 hover:border-gray-800 cursor-pointer transition duration-200"

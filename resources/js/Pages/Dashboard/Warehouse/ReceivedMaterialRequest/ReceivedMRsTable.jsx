@@ -24,21 +24,34 @@ const ReceivedMRsTable = () => {
     const fetchRequests = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('/api/v1/material-requests', {
-                params: {
-                    include: 'requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus',
-                    page: currentPage,
-                    per_page: 10,
-                    'filter[status_id]': '1,4,2,51,52', // Fetch Pending (1), Approved (4), Referred (2), Issued (51), and Rejected (52)
-                    sort: '-created_at'
-                }
-            });
+            // Fetch all records by getting multiple pages
+            let allRequests = [];
+            let currentPage = 1;
+            let hasMorePages = true;
             
-            if (response.data) {
-                setRequests(response.data.data || []);
-                setLastPage(response.data.meta?.last_page || 1);
-                setError("");
+            while (hasMorePages) {
+                const response = await axios.get('/api/v1/material-requests', {
+                    params: {
+                        include: 'requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus',
+                        page: currentPage,
+                        per_page: 100, // Fetch 100 records per page
+                        'filter[status_id]': '1,4,2,51,52', // Fetch Pending (1), Approved (4), Referred (2), Issued (51), and Rejected (52)
+                        sort: '-created_at'
+                    }
+                });
+                
+                if (response.data?.data) {
+                    allRequests = [...allRequests, ...response.data.data];
+                    hasMorePages = currentPage < (response.data.meta?.last_page || 1);
+                    currentPage++;
+                } else {
+                    hasMorePages = false;
+                }
             }
+            
+            setRequests(allRequests);
+            setLastPage(1); // Reset pagination since we're handling it client-side
+            setError("");
         } catch (err) {
             console.error("Error fetching requests:", err);
             setError("Error loading received material requests.");
@@ -50,7 +63,12 @@ const ReceivedMRsTable = () => {
 
     useEffect(() => {
         fetchRequests();
-    }, [currentPage]);
+    }, []); // Only fetch once on component mount
+
+    // Reset to page 1 when filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedFilter]);
 
     const statusColors = {
         "Pending": "text-yellow-500",
@@ -249,10 +267,30 @@ const ReceivedMRsTable = () => {
 
     const filteredRequests = requests.filter((req) => {
         if (selectedFilter === "All") return true;
-        // Treat both "Approved" and "Pending" status as "Pending" for filtering
-        const displayStatus = (req.status?.name === "Approved" || req.status?.name === "Pending") ? "Pending" : req.status?.name;
-        return displayStatus === selectedFilter;
+        
+        // Use status_id for accurate filtering
+        const statusId = req.status?.id;
+        
+        switch (selectedFilter) {
+            case "Pending":
+                return statusId === 1 || statusId === 4; // Pending or Approved
+            case "Referred":
+                return statusId === 2;
+            case "Issued":
+                return statusId === 51;
+            case "Rejected":
+                return statusId === 52;
+            default:
+                return true;
+        }
     });
+
+    // Client-side pagination
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedRequests = filteredRequests.slice(startIndex, endIndex);
 
     return (
         <div className="w-full overflow-hidden">
@@ -315,8 +353,8 @@ const ReceivedMRsTable = () => {
                                 {error}
                             </td>
                         </tr>
-                    ) : filteredRequests.length > 0 ? (
-                        filteredRequests.map((req) => (
+                    ) : paginatedRequests.length > 0 ? (
+                        paginatedRequests.map((req) => (
                                 <tr key={req.id}>
                                     <td className="py-3 px-4">MR-{req.id}</td>
                                     <td className="py-3 px-4">
@@ -360,7 +398,12 @@ const ReceivedMRsTable = () => {
                                             "text-gray-500"
                                         }`}
                                     >
-                                        {req.status?.name === "Approved" || req.status?.name === "Pending" ? "Pending" : req.status?.name || "N/A"}
+                                        {req.status?.id === 1 ? "Pending" : 
+                                         req.status?.id === 4 ? "Pending" : 
+                                         req.status?.id === 2 ? "Referred" :
+                                         req.status?.id === 51 ? "Issued" :
+                                         req.status?.id === 52 ? "Rejected" :
+                                         req.status?.name || "N/A"}
                                     </td>
                                     <td className="py-3 px-4">
                                         <div className="flex flex-col">
@@ -423,11 +466,7 @@ const ReceivedMRsTable = () => {
             </table>
 
             {/* Pagination */}
-            {!loading && !error && requests.filter(req => {
-                if (selectedFilter === "All") return true;
-                const displayStatus = (req.status?.name === "Approved" || req.status?.name === "Pending") ? "Pending" : req.status?.name;
-                return displayStatus === selectedFilter;
-            }).length > 0 && (
+            {!loading && !error && filteredRequests.length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                     <button
                         onClick={() => setCurrentPage(currentPage - 1)}
@@ -441,7 +480,7 @@ const ReceivedMRsTable = () => {
                         Previous
                     </button>
                     {Array.from(
-                        { length: lastPage },
+                        { length: totalPages },
                         (_, index) => index + 1
                     ).map((page) => (
                         <button
@@ -459,11 +498,11 @@ const ReceivedMRsTable = () => {
                     <button
                         onClick={() => setCurrentPage(currentPage + 1)}
                         className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
-                            currentPage >= lastPage
+                            currentPage >= totalPages
                                 ? "opacity-50 cursor-not-allowed"
                                 : ""
                         }`}
-                        disabled={currentPage >= lastPage}
+                        disabled={currentPage >= totalPages}
                     >
                         Next
                     </button>

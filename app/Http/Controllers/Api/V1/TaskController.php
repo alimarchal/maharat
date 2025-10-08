@@ -1734,6 +1734,30 @@ class TaskController extends Controller
                     'assigned_from_user_id' => $task->assigned_from_user_id
                 ]);
 
+                // Set Material Request status to 27 when task is initially approved or referred
+                if (in_array($request->input('status'), ['Approved', 'Referred'])) {
+                    Log::info('=== SETTING MATERIAL REQUEST STATUS TO 27 FOR INITIAL APPROVAL/REFERRAL ===', [
+                        'task_id' => $task->id,
+                        'material_request_id' => $task->material_request_id,
+                        'status' => $request->input('status'),
+                        'current_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id'),
+                        'target_status_id' => 27
+                    ]);
+                    
+                    DB::table('material_requests')
+                        ->where('id', $task->material_request_id)
+                        ->update([
+                            'status_id' => 27, // Pending status (different ID)
+                            'updated_at' => now()
+                        ]);
+                    
+                    Log::info('=== MATERIAL REQUEST STATUS UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'material_request_id' => $task->material_request_id,
+                        'new_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id')
+                    ]);
+                }
+
                 // Check if we already handled a referral response for this material request
                 // Look for a task that was created as a result of a referral response
                 $referralResponseHandled = DB::table('tasks')
@@ -2035,7 +2059,7 @@ class TaskController extends Controller
                         DB::table('material_requests')
                             ->where('id', $task->material_request_id)
                             ->update([
-                                'status_id' => 1, // Pending status
+                                'status_id' => 27, // Pending status (different ID)
                                 'updated_at' => now()
                             ]);
                     } elseif ($task->rfq_id) {
