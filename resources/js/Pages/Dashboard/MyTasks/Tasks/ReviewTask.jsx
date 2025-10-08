@@ -85,7 +85,13 @@ const ReviewTask = () => {
             const taskDescription = response.data.data;
 
             // Only proceed with next task assignment if action is "Approve"
-            if (taskDescription.action === "Approve") {
+            // BUT skip if this is a referral response (task has assigned_from_user_id)
+            if (taskDescription.action === "Approve" && !taskData.assigned_from_user_id) {
+                console.log("=== PROCEEDING WITH NEXT APPROVAL CREATION ===", {
+                    taskId: taskData.id,
+                    action: taskDescription.action,
+                    assignedFromUserId: taskData.assigned_from_user_id
+                });
                 const transactions = [
                     {
                         key: "material_request_id",
@@ -223,6 +229,13 @@ const ReviewTask = () => {
                     // Note: The TaskController already handles updating the request_budgets table
                     // when the task is approved, so we don't need to make an additional PUT request here
                 }
+            } else if (taskDescription.action === "Approve" && taskData.assigned_from_user_id) {
+                console.log("=== SKIPPING NEXT APPROVAL CREATION - REFERRAL RESPONSE ===", {
+                    taskId: taskData.id,
+                    action: taskDescription.action,
+                    assignedFromUserId: taskData.assigned_from_user_id,
+                    reason: "This is a referral response, task will be assigned back to referrer"
+                });
             }
 
             // Update task status if applicable
