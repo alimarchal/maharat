@@ -77,13 +77,11 @@ const ReviewTask = () => {
                 ...formData,
                 task_id: taskData.id, // Set the task_id to the current task's ID
             };
-            console.log('=== SUBMITTING TASK APPROVAL ===', taskDescriptionData);
 
             const response = await axios.post(
                 "/api/v1/task-descriptions",
                 taskDescriptionData
             );
-            console.log('=== TASK DESCRIPTION RESPONSE ===', response.data);
             const taskDescription = response.data.data;
 
             // Only proceed with next task assignment if action is "Approve"
@@ -138,7 +136,6 @@ const ReviewTask = () => {
                             processTitle
                         )}`
                     );
-                    console.log('=== PROCESS RESPONSE ===', processResponse.data);
                     const process = processResponse?.data?.data?.[0];
                     if (!process || !process.steps?.length) continue;
 
@@ -146,7 +143,6 @@ const ReviewTask = () => {
                     const transactionResponse = await axios.get(
                         `${url}?filter[${key}]=${id}`
                     );
-                    console.log('=== EXISTING TRANSACTIONS RESPONSE ===', transactionResponse.data);
                     const existingTransactions =
                         transactionResponse?.data?.data || [];
                     const completedOrders = existingTransactions.map((t) => String(t.order));
@@ -161,7 +157,6 @@ const ReviewTask = () => {
                     const existingTaskResponse = await axios.get(
                         `/api/v1/tasks?filter[${key}]=${id}&filter[process_step_id]=${nextStep.id}&filter[status]=Pending`
                     );
-                    console.log('=== EXISTING TASKS RESPONSE ===', existingTaskResponse.data);
                     const existingTasks = existingTaskResponse?.data?.data || [];
                     
                     // If a task already exists for this step, skip creating a new one
@@ -174,7 +169,6 @@ const ReviewTask = () => {
                     const stepUserResponse = await axios.get(
                         `/api/v1/process-steps/${nextStep.id}/user/${logged_user}`
                     );
-                    console.log('=== STEP USER RESPONSE ===', stepUserResponse.data);
                     const assignUser = stepUserResponse?.data?.data;
 
                     const commonPayload = {
@@ -186,7 +180,6 @@ const ReviewTask = () => {
                         referred_to: taskDescription?.user_id || null,
                     };
                     const payload = { ...commonPayload, [key]: id };
-                    console.log('=== CREATING TRANSACTION PAYLOAD ===', payload);
                     await axios.post(url, payload);
 
                     // Show budget update notification for invoice approvals
@@ -205,7 +198,6 @@ const ReviewTask = () => {
                         order_no: String(nextStep.order),
                         [key]: id,
                     };
-                    console.log('=== CREATING TASK PAYLOAD ===', taskPayload);
                     await axios.post("/api/v1/tasks", taskPayload);
 
                     // Note: The TaskController already handles updating the request_budgets table
@@ -231,9 +223,6 @@ const ReviewTask = () => {
                             taskPayload
                         );
                     } catch (taskUpdateError) {
-                        console.error("Task status update failed:", taskUpdateError);
-                        console.error("Task update error response:", taskUpdateError.response?.data);
-
                         // Check for specific budget error in task update
                         if (taskUpdateError.response?.data?.error === "NO_MAIN_BUDGET") {
                             const errorMessage = taskUpdateError.response.data.message || "Approval failed: No main budget found for this invoice's fiscal period.";
@@ -250,17 +239,11 @@ const ReviewTask = () => {
 
             router.visit("/tasks");
         } catch (error) {
-            console.error("Error submitting task:", error);
-            console.error("Error response:", error.response);
-            console.error("Error response data:", error.response?.data);
-
             // Check for specific budget error
             if (error.response?.data?.error === "NO_MAIN_BUDGET") {
-                console.log("NO_MAIN_BUDGET error detected, showing toast");
                 const errorMessage = error.response.data.message || "Approval failed: No main budget found for this invoice's fiscal period.";
                 toast.error(errorMessage, { id: "budget-error-toast" });
             } else {
-                console.log("Generic error, showing default message");
                 const errorMessage = "Failed to process task. Please try again.";
                 toast.error(errorMessage, { id: "budget-error-toast" });
             }
