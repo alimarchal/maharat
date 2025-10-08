@@ -82,16 +82,6 @@ const Sidebar = ({ isOpen }) => {
     
     // Check if sidebar should be enabled (user has main sidebar permission)
     const sidebarEnabled = hasPermission("view_sidebar");
-    
-    // Debug logging (remove after testing)
-    console.log('Sidebar Debug:', {
-        loading,
-        sidebarEnabled,
-        hasViewSidebar: hasPermission("view_sidebar"),
-        hasSidebarNotification: hasPermission("sidebar_notification"),
-        hasEditProfile: hasPermission("edit_profile"),
-        allPermissions: permissions
-    });
 
     return (
         <>
