@@ -21,6 +21,7 @@ class Task extends Model
         'order_no',
         'assigned_from_user_id',
         'assigned_to_user_id',
+        'continue_approval_flow',
         'material_request_id',
         'rfq_id',
         'purchase_order_id',

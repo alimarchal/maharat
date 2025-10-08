@@ -256,7 +256,27 @@ class GrnApprovalTransactionController extends Controller
                         }
                     }
                 } else {
-                    // This is the final approval - send final notification to requester
+                    // This is the final approval - update GRN status and send final notification to requester
+                    Log::info('=== FINAL GRN APPROVAL - UPDATING STATUS ===', [
+                        'grn_id' => $grnApprovalTransaction->grn_id,
+                        'current_status' => DB::table('grns')->where('id', $grnApprovalTransaction->grn_id)->value('status'),
+                        'target_status' => 'Approved'
+                    ]);
+                    
+                    // Update GRN status to Approved
+                    $grnUpdated = DB::table('grns')
+                        ->where('id', $grnApprovalTransaction->grn_id)
+                        ->update([
+                            'status' => 'Approved',
+                            'updated_at' => now()
+                        ]);
+                    
+                    Log::info('=== GRN STATUS UPDATE RESULT ===', [
+                        'grn_id' => $grnApprovalTransaction->grn_id,
+                        'update_success' => $grnUpdated,
+                        'new_status' => DB::table('grns')->where('id', $grnApprovalTransaction->grn_id)->value('status')
+                    ]);
+                    
                     $task = Task::where('grn_id', $grnApprovalTransaction->grn_id)
                         ->with(['grn.user', 'process'])
                         ->first();

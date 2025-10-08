@@ -291,7 +291,27 @@ class BudgetApprovalTransactionController extends Controller
                         }
                     }
                 } else {
-                    // This is the final approval - send final notification to requester
+                    // This is the final approval - update Budget status and send final notification to requester
+                    Log::info('=== FINAL TOTAL BUDGET APPROVAL - UPDATING STATUS ===', [
+                        'budget_id' => $budgetApprovalTransaction->budget_id,
+                        'current_status' => DB::table('budgets')->where('id', $budgetApprovalTransaction->budget_id)->value('status'),
+                        'target_status' => 'Approved'
+                    ]);
+                    
+                    // Update Budget status to Approved
+                    $budgetUpdated = DB::table('budgets')
+                        ->where('id', $budgetApprovalTransaction->budget_id)
+                        ->update([
+                            'status' => 'Approved',
+                            'updated_at' => now()
+                        ]);
+                    
+                    Log::info('=== TOTAL BUDGET STATUS UPDATE RESULT ===', [
+                        'budget_id' => $budgetApprovalTransaction->budget_id,
+                        'update_success' => $budgetUpdated,
+                        'new_status' => DB::table('budgets')->where('id', $budgetApprovalTransaction->budget_id)->value('status')
+                    ]);
+                    
                     // Get the original initiator from the first budget approval transaction (order = 1)
                     $originalInitiator = BudgetApprovalTransaction::where('budget_id', $budgetApprovalTransaction->budget_id)
                         ->where('order', 1)

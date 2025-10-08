@@ -114,7 +114,12 @@ class TaskController extends Controller
             // ============================================================
             // CHECK IF THIS IS A REFERRED TASK RESPONSE **BEFORE** UPDATING
             // ============================================================
+            // Only consider it a referral response if:
+            // 1. It has assigned_from_user_id (was created as a result of a referral)
+            // 2. It has continue_approval_flow = false (should not continue normal flow)
+            // 3. The status is Approved or Rejected
             if ($task->assigned_from_user_id && 
+                $task->continue_approval_flow == false &&
                 in_array($request->input('status'), ['Approved', 'Rejected'])) {
                 
                 Log::info('=== REFERRAL RESPONSE TASK DETECTED ===', [
@@ -197,6 +202,7 @@ class TaskController extends Controller
                         'order_no' => $originalTask->order_no,
                         'assigned_from_user_id' => $task->assigned_to_user_id, // From referred user
                         'assigned_to_user_id' => $originalTask->assigned_to_user_id, // To original approver
+                        'continue_approval_flow' => true, // This task SHOULD continue normal approval flow
                         'material_request_id' => $originalTask->material_request_id,
                         'rfq_id' => $originalTask->rfq_id,
                         'purchase_order_id' => $originalTask->purchase_order_id,
@@ -208,6 +214,16 @@ class TaskController extends Controller
                         'grn_id' => $originalTask->grn_id,
                         'status' => 'Pending',
                         'read_status' => null
+                    ]);
+
+                    Log::info('=== NEW TASK FOR ORIGINAL APPROVER CREATED ===', [
+                        'original_task_id' => $originalTask->id,
+                        'new_task_id' => $newTaskForOriginalApprover->id,
+                        'referral_response_task_id' => $task->id,
+                        'assigned_from_user_id' => $newTaskForOriginalApprover->assigned_from_user_id,
+                        'assigned_to_user_id' => $newTaskForOriginalApprover->assigned_to_user_id,
+                        'continue_approval_flow' => $newTaskForOriginalApprover->continue_approval_flow,
+                        'referral_response_status' => $request->input('status')
                     ]);
 
                     // Copy all task descriptions from original task to the new task
@@ -308,6 +324,61 @@ class TaskController extends Controller
                             'transaction_id' => $approvalTransaction->id,
                             'reason' => 'referral_response_handled'
                         ]);
+                        
+                        // Set continue_approval_flow = true on the original task when referrer approves
+                        $oldOriginalValue = $originalTask->continue_approval_flow;
+                        $originalTask->update(['continue_approval_flow' => true]);
+                        Log::info('=== REFERRER APPROVED - SETTING continue_approval_flow = true ON ORIGINAL TASK ===', [
+                            'original_task_id' => $originalTask->id,
+                            'referral_response_task_id' => $task->id,
+                            'referral_response_status' => $request->input('status'),
+                            'old_continue_approval_flow' => $oldOriginalValue,
+                            'new_continue_approval_flow' => true,
+                            'original_assigned_to_user_id' => $originalTask->assigned_to_user_id,
+                            'referral_response_assigned_to_user_id' => $task->assigned_to_user_id
+                        ]);
+                        
+                        // Check if this is a final approval and update Material Request status
+                        $processSteps = DB::table('process_steps')
+                            ->join('processes', 'process_steps.process_id', '=', 'processes.id')
+                            ->where('processes.title', 'Material Request')
+                            ->orderBy('process_steps.order')
+                            ->get();
+                        
+                        $totalRequiredApprovals = $processSteps->count();
+                        $isFinalApproval = $originalTask->order_no == $totalRequiredApprovals;
+                        
+                        Log::info('=== MATERIAL REQUEST FINAL APPROVAL CHECK FOR REFERRAL RESPONSE ===', [
+                            'task_id' => $task->id,
+                            'material_request_id' => $task->material_request_id,
+                            'original_task_order_no' => $originalTask->order_no,
+                            'total_required_approvals' => $totalRequiredApprovals,
+                            'is_final_approval' => $isFinalApproval
+                        ]);
+                        
+                        if ($isFinalApproval) {
+                            Log::info('=== FINAL MATERIAL REQUEST APPROVAL - UPDATING STATUS ===', [
+                                'task_id' => $task->id,
+                                'material_request_id' => $task->material_request_id,
+                                'current_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id'),
+                                'target_status_id' => 4 // Approved
+                            ]);
+                            
+                            // Update Material Request status to Approved
+                            $materialRequestUpdated = DB::table('material_requests')
+                                ->where('id', $task->material_request_id)
+                                ->update([
+                                    'status_id' => 4, // Approved
+                                    'updated_at' => now()
+                                ]);
+                            
+                            Log::info('=== MATERIAL REQUEST STATUS UPDATE RESULT ===', [
+                                'task_id' => $task->id,
+                                'material_request_id' => $task->material_request_id,
+                                'update_success' => $materialRequestUpdated,
+                                'new_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id')
+                            ]);
+                        }
                         } else {
                             Log::error('=== NO APPROVAL TRANSACTION FOUND FOR CONTROLLER CALL ===', [
                                 'material_request_id' => $task->material_request_id,
@@ -397,6 +468,20 @@ class TaskController extends Controller
             }
 
             $task->update($request->validated());
+
+            // Set continue_approval_flow = false when task is referred
+            if ($request->input('status') === 'Referred') {
+                $oldValue = $task->continue_approval_flow;
+                $task->update(['continue_approval_flow' => false]);
+                Log::info('=== TASK REFERRED - SETTING continue_approval_flow = false ===', [
+                    'task_id' => $task->id,
+                    'status' => $request->input('status'),
+                    'old_continue_approval_flow' => $oldValue,
+                    'new_continue_approval_flow' => false,
+                    'assigned_to_user_id' => $task->assigned_to_user_id,
+                    'assigned_from_user_id' => $task->assigned_from_user_id
+                ]);
+            }
 
             // Check if this is an RFQ task and if it's being approved or referred
             if ($task->rfq_id && in_array($request->input('status'), ['Approved', 'Referred'])) {
@@ -1654,6 +1739,7 @@ class TaskController extends Controller
                 $referralResponseHandled = DB::table('tasks')
                     ->where('material_request_id', $task->material_request_id)
                     ->whereNotNull('assigned_from_user_id')
+                    ->where('continue_approval_flow', false) // Only actual referral responses
                     ->where('created_at', '>=', now()->subMinutes(5)) // Created within last 5 minutes
                     ->exists();
                 
@@ -1663,9 +1749,9 @@ class TaskController extends Controller
                     'referral_response_handled' => $referralResponseHandled
                 ]);
 
-                // IMPORTANT: Skip normal approval flow if this task has assigned_from_user_id
+                // IMPORTANT: Skip normal approval flow if this task should not continue approval flow
                 // OR if we already handled a referral response for this material request
-                if (!$task->assigned_from_user_id && !$referralResponseHandled) {
+                if ($task->continue_approval_flow == true && !$referralResponseHandled) {
                     Log::info('=== PROCEEDING WITH NORMAL MATERIAL REQUEST APPROVAL FLOW ===', [
                         'task_id' => $task->id,
                         'material_request_id' => $task->material_request_id,
@@ -1692,7 +1778,6 @@ class TaskController extends Controller
                             ->where('id', $approvalTransaction->id)
                             ->update([
                                 'status' => 'Approve',
-                                'updated_by' => auth()->id(),
                                 'updated_at' => now()
                             ]);
                             
@@ -1702,6 +1787,48 @@ class TaskController extends Controller
                             'approval_transaction_id' => $approvalTransaction->id,
                             'update_result' => $updateResult
                         ]);
+                        
+                        // Check if this is a final approval and update Material Request status
+                        $processSteps = DB::table('process_steps')
+                            ->join('processes', 'process_steps.process_id', '=', 'processes.id')
+                            ->where('processes.title', 'Material Request')
+                            ->orderBy('process_steps.order')
+                            ->get();
+                        
+                        $totalRequiredApprovals = $processSteps->count();
+                        $isFinalApproval = $task->order_no == $totalRequiredApprovals;
+                        
+                        Log::info('=== MATERIAL REQUEST FINAL APPROVAL CHECK FOR NORMAL FLOW ===', [
+                            'task_id' => $task->id,
+                            'material_request_id' => $task->material_request_id,
+                            'current_order_no' => $task->order_no,
+                            'total_required_approvals' => $totalRequiredApprovals,
+                            'is_final_approval' => $isFinalApproval
+                        ]);
+                        
+                        if ($isFinalApproval) {
+                            Log::info('=== FINAL MATERIAL REQUEST APPROVAL - UPDATING STATUS ===', [
+                                'task_id' => $task->id,
+                                'material_request_id' => $task->material_request_id,
+                                'current_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id'),
+                                'target_status_id' => 4 // Approved
+                            ]);
+                            
+                            // Update Material Request status to Approved
+                            $materialRequestUpdated = DB::table('material_requests')
+                                ->where('id', $task->material_request_id)
+                                ->update([
+                                    'status_id' => 4, // Approved
+                                    'updated_at' => now()
+                                ]);
+                            
+                            Log::info('=== MATERIAL REQUEST STATUS UPDATE RESULT ===', [
+                                'task_id' => $task->id,
+                                'material_request_id' => $task->material_request_id,
+                                'update_success' => $materialRequestUpdated,
+                                'new_status_id' => DB::table('material_requests')->where('id', $task->material_request_id)->value('status_id')
+                            ]);
+                        }
                     } else {
                         Log::warning('=== NO APPROVAL TRANSACTION FOUND FOR MATERIAL REQUEST ===', [
                             'task_id' => $task->id,
@@ -1799,6 +1926,7 @@ class TaskController extends Controller
                         'order_no' => $task->order_no,
                         'assigned_from_user_id' => $task->assigned_to_user_id, // Current approver
                         'assigned_to_user_id' => $taskDescription->user_id, // Referred user
+                        'continue_approval_flow' => false, // This task should NOT continue approval flow
                         'material_request_id' => $task->material_request_id,
                         'rfq_id' => $task->rfq_id,
                         'purchase_order_id' => $task->purchase_order_id,
@@ -1810,6 +1938,15 @@ class TaskController extends Controller
                         'grn_id' => $task->grn_id,
                         'status' => 'Pending',
                         'read_status' => null
+                    ]);
+
+                    Log::info('=== REFERRAL TASK CREATED ===', [
+                        'original_task_id' => $task->id,
+                        'referred_task_id' => $referredTask->id,
+                        'referred_to_user_id' => $taskDescription->user_id,
+                        'continue_approval_flow' => $referredTask->continue_approval_flow,
+                        'assigned_from_user_id' => $referredTask->assigned_from_user_id,
+                        'assigned_to_user_id' => $referredTask->assigned_to_user_id
                     ]);
 
                     // Copy task descriptions to new task

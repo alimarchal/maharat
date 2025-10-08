@@ -21,6 +21,7 @@ class TaskResource extends JsonResource
             'order_no' => $this->order_no,
             'assigned_from_user_id' => $this->assigned_from_user_id,
             'assigned_to_user_id' => $this->assigned_to_user_id,
+            'continue_approval_flow' => $this->continue_approval_flow,
             'material_request_id' => $this->material_request_id,
             'rfq_id' => $this->rfq_id,
             'purchase_order_id' => $this->purchase_order_id,
