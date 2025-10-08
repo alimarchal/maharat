@@ -30,7 +30,7 @@ const ReviewTask = () => {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const response = await axios.get("/api/v1/users");
+                const response = await axios.get("/api/v1/users?per_page=1000000");
                 setEmployees(response.data.data);
             } catch (error) {
                 console.error("Error fetching users:", error);
