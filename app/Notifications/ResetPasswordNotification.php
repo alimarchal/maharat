@@ -41,8 +41,6 @@ class ResetPasswordNotification extends ResetPassword
                 "Password reset requested by user"
             );
 
-            \Log::info('Email logged successfully', ['email_log_id' => $emailLog->id]);
-
             $mailMessage = (new MailMessage)
                 ->subject('Reset Password Notification')
                 ->greeting("Hello {$notifiable->name},")
@@ -56,8 +54,6 @@ class ResetPasswordNotification extends ResetPassword
 
             // Mark as sent
             $emailLogService->markAsSent($emailLog);
-
-            \Log::info('Email marked as sent', ['email_log_id' => $emailLog->id]);
 
             return $mailMessage;
         } catch (Exception $e) {

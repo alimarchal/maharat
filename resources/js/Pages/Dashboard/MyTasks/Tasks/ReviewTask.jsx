@@ -180,6 +180,16 @@ const ReviewTask = () => {
                         referred_to: taskDescription?.user_id || null,
                     };
                     const payload = { ...commonPayload, [key]: id };
+                    
+                    console.log(`=== CREATING NEXT APPROVAL TRANSACTION ===`, {
+                        processTitle,
+                        [key]: id,
+                        nextStepOrder: nextStep.order,
+                        assignedTo: assignUser?.approver_id,
+                        referredTo: taskDescription?.user_id,
+                        payload
+                    });
+                    
                     await axios.post(url, payload);
 
                     // Show budget update notification for invoice approvals
@@ -198,6 +208,16 @@ const ReviewTask = () => {
                         order_no: String(nextStep.order),
                         [key]: id,
                     };
+                    
+                    console.log(`=== CREATING NEXT TASK ===`, {
+                        processTitle,
+                        [key]: id,
+                        nextStepOrder: nextStep.order,
+                        assignedToUserId: assignUser.approver_id,
+                        assignedFromUserId: logged_user,
+                        taskPayload
+                    });
+                    
                     await axios.post("/api/v1/tasks", taskPayload);
 
                     // Note: The TaskController already handles updating the request_budgets table

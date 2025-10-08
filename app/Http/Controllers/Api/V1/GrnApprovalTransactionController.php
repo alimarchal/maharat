@@ -112,6 +112,37 @@ class GrnApprovalTransactionController extends Controller
 
             // If the status is 'Approve', check if this is the final approval
             if ($validated['status'] === 'Approve') {
+                // Check if this is a referral response task - if so, skip normal approval flow
+                $currentTask = DB::table('tasks')
+                    ->where('grn_id', $grnApprovalTransaction->grn_id)
+                    ->where('process_step_id', $grnApprovalTransaction->process_step_id ?? null)
+                    ->where('assigned_to_user_id', $grnApprovalTransaction->assigned_to)
+                    ->whereNotNull('assigned_from_user_id')
+                    ->first();
+                
+                if ($currentTask) {
+                    Log::info('=== SKIPPING GRN APPROVAL FLOW - THIS IS A REFERRAL RESPONSE ===', [
+                        'grn_id' => $grnApprovalTransaction->grn_id,
+                        'task_id' => $currentTask->id,
+                        'assigned_from_user_id' => $currentTask->assigned_from_user_id,
+                        'assigned_to_user_id' => $currentTask->assigned_to_user_id
+                    ]);
+                    DB::commit();
+                    return response()->json([
+                        'message' => 'GRN approval transaction updated successfully (referral response)',
+                        'data' => new GrnApprovalTransactionResource(
+                            $grnApprovalTransaction->load([
+                                'grn',
+                                'requester',
+                                'assignedTo',
+                                'referredTo',
+                                'creator',
+                                'updater'
+                            ])
+                        )
+                    ], Response::HTTP_OK);
+                }
+                
                 $processSteps = DB::table('process_steps')
                     ->join('processes', 'process_steps.process_id', '=', 'processes.id')
                     ->where('processes.title', 'GRN Approval')

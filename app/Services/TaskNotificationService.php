@@ -51,14 +51,6 @@ class TaskNotificationService
 
             $isEnabled = $setting ? $setting->is_enabled : false;
 
-            Log::info('Email notification check result', [
-                'user_id' => $user->id,
-                'user_email' => $user->email,
-                'process_title' => $processTitle,
-                'notification_type_key' => $notificationTypeKey,
-                'is_enabled' => $isEnabled
-            ]);
-
             return $isEnabled;
 
         } catch (\Exception $e) {
@@ -119,13 +111,6 @@ class TaskNotificationService
             }
 
             $assignedToUser->notify(new TaskAssignmentNotification($task, $taskType));
-            
-            Log::info('Task assignment notification sent successfully', [
-                'task_id' => $task->id,
-                'task_type' => $taskType,
-                'assigned_to_user_id' => $task->assigned_to_user_id,
-                'assigned_to_email' => $assignedToUser->email
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to send task assignment notification', [
                 'task_id' => $task->id,
@@ -165,14 +150,6 @@ class TaskNotificationService
             }
 
             $requester->notify(new TaskStatusNotification($task, $taskType, $status, $comment));
-            
-            Log::info('Intermediate status notification sent successfully', [
-                'task_id' => $task->id,
-                'task_type' => $taskType,
-                'status' => $status,
-                'requester_id' => $requester->id,
-                'requester_email' => $requester->email
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to send intermediate status notification', [
                 'task_id' => $task->id,
@@ -213,14 +190,6 @@ class TaskNotificationService
             }
 
             $requester->notify(new TaskStatusNotification($task, $taskType, $status, $comment));
-            
-            Log::info('Final status notification sent successfully', [
-                'task_id' => $task->id,
-                'task_type' => $taskType,
-                'status' => $status,
-                'requester_id' => $requester->id,
-                'requester_email' => $requester->email
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to send final status notification', [
                 'task_id' => $task->id,

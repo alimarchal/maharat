@@ -113,6 +113,39 @@ class RfqApprovalTransactionController extends Controller
 
             // If the status is 'Approve' or 'Referred', check if this is the final approval
             if (in_array($validated['status'], ['Approve', 'Referred'])) {
+                // Check if this is a referral response task - if so, skip normal approval flow
+                // Look for a task that was created as a result of a referral response
+                $referralResponseTask = DB::table('tasks')
+                    ->where('rfq_id', $rfqApprovalTransaction->rfq_id)
+                    ->where('assigned_to_user_id', $rfqApprovalTransaction->assigned_to)
+                    ->whereNotNull('assigned_from_user_id')
+                    ->where('created_at', '>=', now()->subMinutes(5)) // Created within last 5 minutes
+                    ->first();
+                
+                if ($referralResponseTask) {
+                    Log::info('=== SKIPPING RFQ APPROVAL FLOW - THIS IS A REFERRAL RESPONSE ===', [
+                        'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                        'task_id' => $referralResponseTask->id,
+                        'assigned_from_user_id' => $referralResponseTask->assigned_from_user_id,
+                        'assigned_to_user_id' => $referralResponseTask->assigned_to_user_id,
+                        'task_created_at' => $referralResponseTask->created_at
+                    ]);
+                    DB::commit();
+                    return response()->json([
+                        'message' => 'RFQ approval transaction updated successfully (referral response)',
+                        'data' => new RfqApprovalTransactionResource(
+                            $rfqApprovalTransaction->load([
+                                'rfq',
+                                'requester',
+                                'assignedTo',
+                                'referredTo',
+                                'creator',
+                                'updater'
+                            ])
+                        )
+                    ], Response::HTTP_OK);
+                }
+                
                 $processSteps = DB::table('process_steps')
                     ->join('processes', 'process_steps.process_id', '=', 'processes.id')
                     ->where('processes.title', 'RFQ Approval')

@@ -20,33 +20,15 @@ class RfqController extends Controller
     public function index()
     {
         try {
-            // Only log in debug mode to reduce log spam
-            if (config('app.debug')) {
-                Log::info('Starting RFQ index request');
-            }
-
             // Check if sub_cost_centers table exists
             $hasSubCostCenters = Schema::hasTable('sub_cost_centers');
-            if (config('app.debug')) {
-                Log::info('Sub cost centers table exists: ' . ($hasSubCostCenters ? 'yes' : 'no'));
-            }
 
             // Build the relationships array
             $relationships = ['status', 'supplier', 'department', 'costCenter', 'requester'];
-            if (config('app.debug')) {
-                Log::info('Base relationships: ' . implode(', ', $relationships));
-            }
 
             // Only include subCostCenter if the table exists
             if ($hasSubCostCenters) {
                 $relationships[] = 'subCostCenter';
-                if (config('app.debug')) {
-                    Log::info('Added subCostCenter to relationships');
-                }
-            }
-
-            if (config('app.debug')) {
-                Log::info('Final relationships to load: ' . implode(', ', $relationships));
             }
 
             $rfqs = QueryBuilder::for(Rfq::class)
@@ -56,17 +38,6 @@ class RfqController extends Controller
                 ->with($relationships)
                 ->orderBy('created_at', 'desc')
                 ->paginate(10);
-
-            // Only log detailed info in debug mode (and limit to first 3 RFQs)
-            if (config('app.debug')) {
-                foreach ($rfqs->take(3) as $rfq) {
-                    Log::info("RFQ ID: {$rfq->id}, Requester ID: {$rfq->requester_id}, Requester Loaded: " . ($rfq->relationLoaded('requester') ? 'yes' : 'no'));
-                    if ($rfq->relationLoaded('requester') && $rfq->requester) {
-                        Log::info("Requester Name: {$rfq->requester->name}");
-                    }
-                }
-                Log::info('Successfully fetched RFQs');
-            }
 
             return RfqResource::collection($rfqs);
         } catch (\Exception $e) {
