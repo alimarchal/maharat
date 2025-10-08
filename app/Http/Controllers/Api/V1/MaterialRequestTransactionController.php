@@ -92,6 +92,55 @@ class MaterialRequestTransactionController extends Controller
 
             // If the status is 'Approve' or 'Referred', check if this is the final approval
             if (in_array($request->input('status'), ['Approve', 'Referred'])) {
+                Log::info('=== MATERIAL REQUEST APPROVAL TRANSACTION CONTROLLER UPDATE CALLED ===', [
+                    'transaction_id' => $materialRequestTransaction->id,
+                    'material_request_id' => $materialRequestTransaction->material_request_id,
+                    'assigned_to' => $materialRequestTransaction->assigned_to,
+                    'status' => $request->input('status'),
+                    'order' => $materialRequestTransaction->order
+                ]);
+                
+                // Check if this is a referral response task - if so, skip normal approval flow
+                // Look for a task that was created as a result of a referral response
+                $referralResponseTask = DB::table('tasks')
+                    ->where('material_request_id', $materialRequestTransaction->material_request_id)
+                    ->where('assigned_to_user_id', $materialRequestTransaction->assigned_to)
+                    ->whereNotNull('assigned_from_user_id')
+                    ->where('created_at', '>=', now()->subMinutes(5)) // Created within last 5 minutes
+                    ->first();
+                
+                Log::info('=== CHECKING FOR REFERRAL RESPONSE TASK ===', [
+                    'material_request_id' => $materialRequestTransaction->material_request_id,
+                    'assigned_to' => $materialRequestTransaction->assigned_to,
+                    'referral_response_task_found' => $referralResponseTask ? true : false,
+                    'referral_response_task_id' => $referralResponseTask ? $referralResponseTask->id : null,
+                    'referral_response_task_assigned_from' => $referralResponseTask ? $referralResponseTask->assigned_from_user_id : null,
+                    'referral_response_task_created_at' => $referralResponseTask ? $referralResponseTask->created_at : null
+                ]);
+                
+                if ($referralResponseTask) {
+                    Log::info('=== SKIPPING MATERIAL REQUEST APPROVAL FLOW - THIS IS A REFERRAL RESPONSE ===', [
+                        'material_request_id' => $materialRequestTransaction->material_request_id,
+                        'task_id' => $referralResponseTask->id,
+                        'assigned_from_user_id' => $referralResponseTask->assigned_from_user_id,
+                        'assigned_to_user_id' => $referralResponseTask->assigned_to_user_id,
+                        'task_created_at' => $referralResponseTask->created_at
+                    ]);
+                    DB::commit();
+                    return response()->json([
+                        'message' => 'Material request transaction updated successfully (referral response)',
+                        'data' => new MaterialRequestTransactionResource(
+                            $materialRequestTransaction->load(['materialRequest', 'requester', 'assignedUser', 'referredUser'])
+                        )
+                    ], Response::HTTP_OK);
+                }
+                
+                Log::info('=== PROCEEDING WITH NORMAL MATERIAL REQUEST APPROVAL FLOW ===', [
+                    'material_request_id' => $materialRequestTransaction->material_request_id,
+                    'assigned_to' => $materialRequestTransaction->assigned_to,
+                    'order' => $materialRequestTransaction->order
+                ]);
+                
                 $processSteps = DB::table('process_steps')
                     ->join('processes', 'process_steps.process_id', '=', 'processes.id')
                     ->where('processes.title', 'Material Request')

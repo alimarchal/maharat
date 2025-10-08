@@ -368,11 +368,6 @@ class UserController extends Controller
         // Get user permission overrides
         $userOverrides = UserPermissionOverrideService::getUserOverrides($user);
         
-        // Debug logging (only in debug mode to reduce spam)
-        if (config('app.debug')) {
-            \Log::info('🔍 User overrides for ' . $user->name . ' (ID: ' . $user->id . '):', $userOverrides);
-            \Log::info('🎭 Role permissions:', $rolePermissions);
-        }
         
         // Define permission categories (same as frontend)
         $permissionCategories = [
@@ -610,11 +605,6 @@ class UserController extends Controller
                 }
             }
         }
-
-        // Debug logging (only in debug mode to reduce spam)
-        if (config('app.debug')) {
-            \Log::info('🎯 Final combined permissions for ' . $user->name . ':', $combinedPermissions);
-        }
         
         return response()->json([
             'data' => $combinedPermissions
@@ -628,13 +618,6 @@ class UserController extends Controller
             'value' => 'required|boolean'
         ]);
 
-        // Use the new service to handle permission overrides
-        if (config('app.debug')) {
-            \Log::info('🔄 Toggling permission for ' . $user->name . ':', [
-                'permission' => $validated['permission'],
-                'value' => $validated['value']
-            ]);
-        }
         
         // Check if this matches the role's default permission
         $userRole = $user->roles()->first();
@@ -649,13 +632,6 @@ class UserController extends Controller
         if ($validated['value'] === $roleHasPermission) {
             UserPermissionOverrideService::removeOverride($user, $validated['permission']);
             
-            if (config('app.debug')) {
-                \Log::info('🗑️ Removed override - matches role default:', [
-                    'permission' => $validated['permission'],
-                    'role_has_permission' => $roleHasPermission,
-                    'user_value' => $validated['value']
-                ]);
-            }
         } else {
             // Value differs from role default, set override
             UserPermissionOverrideService::setOverride(
@@ -664,19 +640,9 @@ class UserController extends Controller
                 $validated['value']
             );
             
-            if (config('app.debug')) {
-                \Log::info('✅ Set override - differs from role default:', [
-                    'permission' => $validated['permission'],
-                    'role_has_permission' => $roleHasPermission,
-                    'user_value' => $validated['value']
-                ]);
-            }
         }
 
         $finalOverrides = UserPermissionOverrideService::getUserOverrides($user);
-        if (config('app.debug')) {
-            \Log::info('✅ Final overrides after toggle:', $finalOverrides);
-        }
 
         return response()->json([
             'success' => true,
@@ -690,11 +656,6 @@ class UserController extends Controller
             'permission' => 'required|string'
         ]);
 
-        if (config('app.debug')) {
-            \Log::info('🗑️ Clearing permission override for ' . $user->name . ':', [
-                'permission' => $validated['permission']
-            ]);
-        }
 
         UserPermissionOverrideService::removeOverride($user, $validated['permission']);
 

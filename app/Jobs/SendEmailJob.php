@@ -44,8 +44,6 @@ class SendEmailJob implements ShouldQueue
             // Send email logic here
             // This could be using Laravel's Mail facade
             // or any other email service
-            
-            Log::info('Email sent successfully');
         } catch (\Exception $e) {
             Log::error('Email sending failed', ['error' => $e->getMessage()]);
             throw $e;

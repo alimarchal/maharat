@@ -30,16 +30,6 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         try {
-            // Log the request details (only in debug mode)
-            if (config('app.debug')) {
-                \Log::info('Inertia Request', [
-                    'url' => $request->url(),
-                    'method' => $request->method(),
-                    'user_id' => $request->user()?->id,
-                    'route_name' => $request->route()?->getName(),
-                ]);
-            }
-
             // Safely get user data without complex relationships
             $userData = null;
             if ($request->user()) {

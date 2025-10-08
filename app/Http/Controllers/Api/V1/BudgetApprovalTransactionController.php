@@ -124,6 +124,39 @@ class BudgetApprovalTransactionController extends Controller
 
             // If the status is 'Approve' or 'Referred', check if this is the final approval
             if (isset($data['status']) && in_array($data['status'], ['Approve', 'Referred'])) {
+                // Check if this is a referral response task - if so, skip normal approval flow
+                // Look for a task that was created as a result of a referral response
+                $referralResponseTask = DB::table('tasks')
+                    ->where('budget_id', $budgetApprovalTransaction->budget_id)
+                    ->where('assigned_to_user_id', $budgetApprovalTransaction->assigned_to)
+                    ->whereNotNull('assigned_from_user_id')
+                    ->where('created_at', '>=', now()->subMinutes(5)) // Created within last 5 minutes
+                    ->first();
+                
+                if ($referralResponseTask) {
+                    Log::info('=== SKIPPING BUDGET APPROVAL FLOW - THIS IS A REFERRAL RESPONSE ===', [
+                        'budget_id' => $budgetApprovalTransaction->budget_id,
+                        'task_id' => $referralResponseTask->id,
+                        'assigned_from_user_id' => $referralResponseTask->assigned_from_user_id,
+                        'assigned_to_user_id' => $referralResponseTask->assigned_to_user_id,
+                        'task_created_at' => $referralResponseTask->created_at
+                    ]);
+                    DB::commit();
+                    return response()->json([
+                        'message' => 'Budget approval transaction updated successfully (referral response)',
+                        'data' => new BudgetApprovalTransactionResource(
+                            $budgetApprovalTransaction->load([
+                                'budget',
+                                'requester',
+                                'assignedUser',
+                                'referredUser',
+                                'createdByUser',
+                                'updatedByUser'
+                            ])
+                        )
+                    ], Response::HTTP_OK);
+                }
+                
                 $processSteps = DB::table('process_steps')
                     ->join('processes', 'process_steps.process_id', '=', 'processes.id')
                     ->where('processes.title', 'Total Budget Approval')

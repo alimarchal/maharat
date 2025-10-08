@@ -47,13 +47,6 @@ class EmailLogService
 
             $emailLog = EmailLog::create($logData);
 
-            Log::info('Email logged for sending', [
-                'email_log_id' => $emailLog->id,
-                'email_type' => $emailType,
-                'recipient_email' => $recipientEmail,
-                'subject' => $subject
-            ]);
-
             return $emailLog;
 
         } catch (\Exception $e) {
@@ -81,11 +74,6 @@ class EmailLogService
     {
         try {
             $emailLog->markAsSent($messageId);
-            
-            Log::info('Email marked as sent', [
-                'email_log_id' => $emailLog->id,
-                'message_id' => $messageId
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to mark email as sent', [
                 'email_log_id' => $emailLog->id,

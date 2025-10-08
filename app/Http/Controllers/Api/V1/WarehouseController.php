@@ -24,18 +24,12 @@ class WarehouseController extends Controller
             // Add debugging to see what's happening
             $query = QueryBuilder::for(Warehouse::class);
 
-            // Log the SQL query to see what's being executed
-            \Log::info('Warehouse Query: ' . $query->toSql());
-
             $warehouses = $query
                 ->allowedFilters(WarehouseParameters::ALLOWED_FILTERS)
                 ->allowedSorts(WarehouseParameters::ALLOWED_SORTS)
                 ->allowedIncludes(WarehouseParameters::ALLOWED_INCLUDES)
                 ->paginate()
                 ->appends(request()->query());
-
-            // Check what's being returned
-            \Log::info('Warehouse Count: ' . $warehouses->count());
 
             if ($warehouses->isEmpty()) {
                 return response()->json([

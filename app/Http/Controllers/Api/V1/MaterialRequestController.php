@@ -40,9 +40,6 @@ class MaterialRequestController extends Controller
     public function store(StoreMaterialRequestRequest $request): JsonResponse
     {
         try {
-            \Log::info("Material request store - Request data:", $request->all());
-            \Log::info("Material request store - Files:", $request->allFiles());
-            
             DB::beginTransaction();
 
             // Create material request
@@ -63,7 +60,7 @@ class MaterialRequestController extends Controller
                         \Log::error("Invalid file upload for item {$index}");
                     }
                 } else {
-                    \Log::info("No photo file for item {$index}");
+                    // No photo file provided
                 }
                 
                 $materialRequest->items()->create($itemData);

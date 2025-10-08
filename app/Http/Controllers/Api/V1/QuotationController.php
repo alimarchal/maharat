@@ -65,11 +65,6 @@ class QuotationController extends Controller
         $perPage = request()->get('per_page', 15); // Default to 15 records per page
         $includeTrashed = request()->get('include_trashed', false); // Only include trashed if specifically requested
         
-        // Only log in debug mode to reduce log spam
-        if (config('app.debug')) {
-            \Log::info('QuotationController::index called with rfq_id: ' . $rfqId . ', per_page: ' . $perPage);
-        }
-        
         $query = Quotation::with(['rfq.company', 'documents', 'status', 'supplier']);
         
         // Only include trashed records if specifically requested
@@ -80,23 +75,10 @@ class QuotationController extends Controller
         // Filter by RFQ ID if provided
         if ($rfqId) {
             $query->where('rfq_id', $rfqId);
-            if (config('app.debug')) {
-                \Log::info('Filtering quotations by RFQ ID: ' . $rfqId);
-            }
         }
         
         // Get the results with pagination
         $quotations = $query->orderBy('created_at', 'desc')->paginate($perPage);
-        
-        // Only log detailed info in debug mode
-        if (config('app.debug')) {
-            \Log::info('Found ' . $quotations->count() . ' quotations for RFQ ID: ' . $rfqId);
-            
-            // Log each quotation for debugging (only first 5 to prevent spam)
-            foreach ($quotations->take(5) as $quotation) {
-                \Log::info('Quotation ID: ' . $quotation->id . ', Supplier ID: ' . $quotation->supplier_id . ', RFQ ID: ' . $quotation->rfq_id);
-            }
-        }
         
         // Return paginated response
         return QuotationResource::collection($quotations);

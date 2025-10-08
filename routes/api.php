@@ -94,33 +94,6 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware(['auth:sanctum']);
 Route::post('/check-email', [AuthController::class, 'checkEmail']);
 
-// Logging endpoint for frontend debugging
-Route::post('/log', function (Request $request) {
-    $level = $request->input('level', 'info');
-    $message = $request->input('message', '');
-    $data = $request->input('data', []);
-    $component = $request->input('component', 'unknown');
-    
-    $logMessage = "[{$component}] {$message}";
-    
-    switch ($level) {
-        case 'error':
-            \Log::error($logMessage, $data);
-            break;
-        case 'warning':
-            \Log::warning($logMessage, $data);
-            break;
-        case 'debug':
-            \Log::debug($logMessage, $data);
-            break;
-        default:
-            \Log::info($logMessage, $data);
-            break;
-    }
-    
-    return response()->json(['success' => true]);
-});
-
 // Cards endpoint for user manual guides - accessible without auth
 Route::get('/v1/cards', [App\Http\Controllers\Api\V1\CardController::class, 'index']);
 Route::post('/v1/cards/refresh', [App\Http\Controllers\Api\V1\CardController::class, 'refresh']);
