@@ -21,9 +21,26 @@ const RequestTable = ({ selectedFilter }) => {
     // Calculate pagination when requests or filter changes
     useEffect(() => {
         const filteredRequests = requests.filter(
-            (req) =>
-                selectedFilter === "All" ||
-                req.status?.name === selectedFilter
+            (req) => {
+                if (selectedFilter === "All") return true;
+                
+                const statusId = req.status?.id;
+                
+                switch (selectedFilter) {
+                    case "Pending":
+                        return statusId === 27;
+                    case "Approved":
+                        return statusId === 1 || statusId === 4 || statusId === 51 || statusId === 30;
+                    case "Referred":
+                        return statusId === 2;
+                    case "Rejected":
+                        return statusId === 52 || statusId === 3;
+                    case "Draft":
+                        return req.status?.name === "Draft";
+                    default:
+                        return true;
+                }
+            }
         );
         
         const itemsPerPage = 10;
@@ -35,17 +52,24 @@ const RequestTable = ({ selectedFilter }) => {
         const fetchRequests = async () => {
             setLoading(true);
             try {
-                // Fetch all records for frontend filtering and pagination
+                // Fetch ALL records without pagination limits
                 const response = await fetch(
-                    `/api/v1/material-requests?include=requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus&filter[requester_id]=${user_id}&sort=-created_at&per_page=1000`
+                    `/api/v1/material-requests-all?include=requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus&sort=-created_at`
                 );
                 const data = await response.json();
 
                 if (response.ok) {
                     setRequests(data.data || []);
                     
-                    // Debug: Log status names to see what we're getting
-                    console.log('Status names from API:', data.data?.map(req => req.status?.name));
+                    // Debug: Log total count and status distribution
+                    console.log('Total records fetched:', data.data?.length);
+                    console.log('Status distribution:', data.data?.reduce((acc, req) => {
+                        const statusId = req.status?.id;
+                        const statusName = req.status?.name;
+                        const key = `${statusId} (${statusName})`;
+                        acc[key] = (acc[key] || 0) + 1;
+                        return acc;
+                    }, {}));
                 } else {
                     setError(data.message || "Failed to fetch requests.");
                 }
@@ -150,9 +174,26 @@ const RequestTable = ({ selectedFilter }) => {
                         </tr>
                     ) : (() => {
                         const filteredRequests = requests.filter(
-                            (req) =>
-                                selectedFilter === "All" ||
-                                req.status?.name === selectedFilter
+                            (req) => {
+                                if (selectedFilter === "All") return true;
+                                
+                                const statusId = req.status?.id;
+                                
+                                switch (selectedFilter) {
+                                    case "Pending":
+                                        return statusId === 27;
+                                    case "Approved":
+                                        return statusId === 1 || statusId === 4 || statusId === 51 || statusId === 30;
+                                    case "Referred":
+                                        return statusId === 2;
+                                    case "Rejected":
+                                        return statusId === 52 || statusId === 3;
+                                    case "Draft":
+                                        return req.status?.name === "Draft";
+                                    default:
+                                        return true;
+                                }
+                            }
                         );
                         
                         // Frontend pagination
@@ -213,10 +254,12 @@ const RequestTable = ({ selectedFilter }) => {
                                 </td>
                                 <td
                                     className={`py-3 px-4 font-semibold ${
-                                        statusColors[req.status?.name]
+                                        req.status?.id === 1 || req.status?.id === 4 || req.status?.id === 51 || req.status?.id === 30 
+                                            ? "text-green-500" 
+                                            : statusColors[req.status?.name]
                                     }`}
                                 >
-                                    {req.status?.name}
+                                    {req.status?.id === 1 || req.status?.id === 4 || req.status?.id === 51 || req.status?.id === 30 ? "Approved" : req.status?.name}
                                 </td>
                                 <td className="py-3 px-4">
                                     <div className="flex flex-col">
@@ -275,9 +318,26 @@ const RequestTable = ({ selectedFilter }) => {
             </table>
 
             {/* Pagination */}
-            {!loading && !error && requests.filter(req => 
-                selectedFilter === "All" || req.status?.name === selectedFilter
-            ).length > 0 && (
+            {!loading && !error && requests.filter(req => {
+                if (selectedFilter === "All") return true;
+                
+                const statusId = req.status?.id;
+                
+                switch (selectedFilter) {
+                    case "Pending":
+                        return statusId === 27;
+                    case "Approved":
+                        return statusId === 1 || statusId === 4 || statusId === 51 || statusId === 30;
+                    case "Referred":
+                        return statusId === 2;
+                    case "Rejected":
+                        return statusId === 52 || statusId === 3;
+                    case "Draft":
+                        return req.status?.name === "Draft";
+                    default:
+                        return true;
+                }
+            }).length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
                     <button
                         onClick={() => setCurrentPage(currentPage - 1)}

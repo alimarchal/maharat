@@ -84,11 +84,17 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
     if (!isOpen || !request) return null;
 
     // Status badge component
-    const StatusBadge = ({ status }) => {
+    const StatusBadge = ({ request }) => {
         let badgeClass = "px-3 py-1 rounded-full text-xs font-medium";
         let icon = null;
+        let displayStatus = request.status?.name;
 
-        switch (status?.toLowerCase()) {
+        // Check if status_id should display as "Approved"
+        if (request.status?.id === 1 || request.status?.id === 4 || request.status?.id === 51 || request.status?.id === 30) {
+            displayStatus = "Approved";
+        }
+
+        switch (displayStatus?.toLowerCase()) {
             case "draft":
                 badgeClass += " bg-gray-100 text-gray-800";
                 icon = faCircleExclamation;
@@ -121,7 +127,7 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
         return (
             <span className={badgeClass}>
                 {icon && <FontAwesomeIcon icon={icon} className="mr-1" />}
-                {status}
+                {displayStatus}
             </span>
         );
     };
@@ -183,7 +189,7 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
                                     Warehouse: {request.warehouse?.name || "N/A"}
                                 </p>
                             </div>
-                            <StatusBadge status={request.status?.name} />
+                            <StatusBadge request={request} />
                         </div>
                     </div>
 

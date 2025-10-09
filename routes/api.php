@@ -147,6 +147,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('products', ProductController::class);
     // Material Requests routes
     Route::apiResource('material-requests', MaterialRequestController::class);
+    Route::get('material-requests-all', [MaterialRequestController::class, 'all']);
     // Material Request Items routes
     Route::apiResource('material-request-items', MaterialRequestItemController::class);
     Route::apiResource('material-request-transactions', MaterialRequestTransactionController::class);
