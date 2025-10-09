@@ -515,14 +515,20 @@ class TaskController extends Controller
                     'assigned_from_user_id' => $task->assigned_from_user_id // Check if this is a referral response
                 ]);
 
-                // IMPORTANT: Skip normal approval flow if this task has assigned_from_user_id
-                // This means it's a referral response task, and we already handled it above
-                if (!$task->assigned_from_user_id) {
+                // IMPORTANT: Proceed with normal approval flow if:
+                // 1. Task should continue approval flow (continue_approval_flow == true)
+                // 2. This is NOT a referral response task (assigned_from_user_id is null OR this is the original approver)
+                $isReferralResponseTask = $task->assigned_from_user_id && $task->continue_approval_flow == false;
+                
+                if ($task->continue_approval_flow == true && !$isReferralResponseTask) {
                     Log::info('=== PROCEEDING WITH NORMAL APPROVAL FLOW ===', [
                         'task_id' => $task->id,
                         'rfq_id' => $task->rfq_id,
                         'assigned_to_user_id' => $task->assigned_to_user_id,
-                        'assigned_from_user_id' => $task->assigned_from_user_id
+                        'assigned_from_user_id' => $task->assigned_from_user_id,
+                        'continue_approval_flow' => $task->continue_approval_flow,
+                        'is_referral_response_task' => $isReferralResponseTask,
+                        'note' => 'This is the original approver making the final decision'
                     ]);
                     
                     // Update the corresponding RFQ approval transaction FIRST
@@ -621,9 +627,14 @@ class TaskController extends Controller
                         ]);
                     }
                 } else {
-                    Log::info('=== SKIPPING RFQ APPROVAL FLOW - THIS IS A REFERRAL RESPONSE ===', [
+                    Log::info('=== SKIPPING RFQ APPROVAL FLOW ===', [
                         'task_id' => $task->id,
-                        'assigned_from_user_id' => $task->assigned_from_user_id
+                        'rfq_id' => $task->rfq_id,
+                        'continue_approval_flow' => $task->continue_approval_flow,
+                        'is_referral_response_task' => $isReferralResponseTask,
+                        'reason' => $task->continue_approval_flow == false ? 'continue_approval_flow_is_false' : 'is_referral_response_task',
+                        'assigned_from_user_id' => $task->assigned_from_user_id,
+                        'note' => 'This task will be handled by referral response logic or is not meant to continue approval flow'
                     ]);
                 }
             }
@@ -741,9 +752,22 @@ class TaskController extends Controller
                     'current_status' => DB::table('invoices')->where('id', $task->invoice_id)->value('status')
                 ]);
 
-                // IMPORTANT: Skip normal approval flow if this task has assigned_from_user_id
-                // This means it's a referral response task, and we already handled it above
-                if (!$task->assigned_from_user_id) {
+                // IMPORTANT: Proceed with normal approval flow if:
+                // 1. Task should continue approval flow (continue_approval_flow == true)
+                // 2. This is NOT a referral response task (assigned_from_user_id is null OR this is the original approver)
+                $isReferralResponseTask = $task->assigned_from_user_id && $task->continue_approval_flow == false;
+                
+                if ($task->continue_approval_flow == true && !$isReferralResponseTask) {
+                    Log::info('=== PROCEEDING WITH NORMAL MAHARAT INVOICE APPROVAL FLOW ===', [
+                        'task_id' => $task->id,
+                        'invoice_id' => $task->invoice_id,
+                        'assigned_to_user_id' => $task->assigned_to_user_id,
+                        'assigned_from_user_id' => $task->assigned_from_user_id,
+                        'continue_approval_flow' => $task->continue_approval_flow,
+                        'is_referral_response_task' => $isReferralResponseTask,
+                        'note' => 'This is the original approver making the final decision'
+                    ]);
+                    
                     // Update the corresponding approval transaction
                     $approvalTransaction = DB::table('mahrat_invoice_approval_transactions')
                         ->where('invoice_id', $task->invoice_id)
@@ -1051,9 +1075,22 @@ class TaskController extends Controller
                     'current_status' => DB::table('request_budgets')->where('id', $task->request_budgets_id)->value('status')
                 ]);
 
-                // IMPORTANT: Skip normal approval flow if this task has assigned_from_user_id
-                // This means it's a referral response task, and we already handled it above
-                if (!$task->assigned_from_user_id) {
+                // IMPORTANT: Proceed with normal approval flow if:
+                // 1. Task should continue approval flow (continue_approval_flow == true)
+                // 2. This is NOT a referral response task (assigned_from_user_id is null OR this is the original approver)
+                $isReferralResponseTask = $task->assigned_from_user_id && $task->continue_approval_flow == false;
+                
+                if ($task->continue_approval_flow == true && !$isReferralResponseTask) {
+                    Log::info('=== PROCEEDING WITH NORMAL BUDGET REQUEST APPROVAL FLOW ===', [
+                        'task_id' => $task->id,
+                        'request_budget_id' => $task->request_budgets_id,
+                        'assigned_to_user_id' => $task->assigned_to_user_id,
+                        'assigned_from_user_id' => $task->assigned_from_user_id,
+                        'continue_approval_flow' => $task->continue_approval_flow,
+                        'is_referral_response_task' => $isReferralResponseTask,
+                        'note' => 'This is the original approver making the final decision'
+                    ]);
+                    
                     // Find the corresponding approval transaction
                     $approvalTransaction = DB::table('budget_request_approval_transactions')
                     ->where('request_budgets_id', $task->request_budgets_id)
@@ -1334,9 +1371,22 @@ class TaskController extends Controller
                     'current_status' => DB::table('budgets')->where('id', $task->budget_id)->value('status')
                 ]);
 
-                // IMPORTANT: Skip normal approval flow if this task has assigned_from_user_id
-                // This means it's a referral response task, and we already handled it above
-                if (!$task->assigned_from_user_id) {
+                // IMPORTANT: Proceed with normal approval flow if:
+                // 1. Task should continue approval flow (continue_approval_flow == true)
+                // 2. This is NOT a referral response task (assigned_from_user_id is null OR this is the original approver)
+                $isReferralResponseTask = $task->assigned_from_user_id && $task->continue_approval_flow == false;
+                
+                if ($task->continue_approval_flow == true && !$isReferralResponseTask) {
+                    Log::info('=== PROCEEDING WITH NORMAL BUDGET APPROVAL FLOW ===', [
+                        'task_id' => $task->id,
+                        'budget_id' => $task->budget_id,
+                        'assigned_to_user_id' => $task->assigned_to_user_id,
+                        'assigned_from_user_id' => $task->assigned_from_user_id,
+                        'continue_approval_flow' => $task->continue_approval_flow,
+                        'is_referral_response_task' => $isReferralResponseTask,
+                        'note' => 'This is the original approver making the final decision'
+                    ]);
+                    
                     // Find the corresponding budget approval transaction
                     $approvalTransaction = DB::table('budget_approval_transactions')
                     ->where('budget_id', $task->budget_id)
@@ -1538,9 +1588,22 @@ class TaskController extends Controller
                     'current_status' => DB::table('purchase_orders')->where('id', $task->purchase_order_id)->value('status')
                 ]);
 
-                // IMPORTANT: Skip normal approval flow if this task has assigned_from_user_id
-                // This means it's a referral response task, and we already handled it above
-                if (!$task->assigned_from_user_id) {
+                // IMPORTANT: Proceed with normal approval flow if:
+                // 1. Task should continue approval flow (continue_approval_flow == true)
+                // 2. This is NOT a referral response task (assigned_from_user_id is null OR this is the original approver)
+                $isReferralResponseTask = $task->assigned_from_user_id && $task->continue_approval_flow == false;
+                
+                if ($task->continue_approval_flow == true && !$isReferralResponseTask) {
+                    Log::info('=== PROCEEDING WITH NORMAL PURCHASE ORDER APPROVAL FLOW ===', [
+                        'task_id' => $task->id,
+                        'purchase_order_id' => $task->purchase_order_id,
+                        'assigned_to_user_id' => $task->assigned_to_user_id,
+                        'assigned_from_user_id' => $task->assigned_from_user_id,
+                        'continue_approval_flow' => $task->continue_approval_flow,
+                        'is_referral_response_task' => $isReferralResponseTask,
+                        'note' => 'This is the original approver making the final decision'
+                    ]);
+                    
                     // Update the corresponding approval transaction
                     $approvalTransaction = DB::table('po_approval_transactions')
                     ->where('purchase_order_id', $task->purchase_order_id)
@@ -2159,9 +2222,21 @@ class TaskController extends Controller
                     'assigned_to_user_id' => $task->assigned_to_user_id
                 ]);
 
-                // IMPORTANT: Skip normal approval flow if this task has assigned_from_user_id
-                // This means it's a referral response task, and we already handled it above
-                if (!$task->assigned_from_user_id) {
+                // IMPORTANT: Proceed with normal approval flow if:
+                // 1. Task should continue approval flow (continue_approval_flow == true)
+                // 2. This is NOT a referral response task (assigned_from_user_id is null OR this is the original approver)
+                $isReferralResponseTask = $task->assigned_from_user_id && $task->continue_approval_flow == false;
+                
+                if ($task->continue_approval_flow == true && !$isReferralResponseTask) {
+                    Log::info('=== PROCEEDING WITH NORMAL PAYMENT ORDER APPROVAL FLOW ===', [
+                        'task_id' => $task->id,
+                        'payment_order_id' => $task->payment_order_id,
+                        'assigned_to_user_id' => $task->assigned_to_user_id,
+                        'assigned_from_user_id' => $task->assigned_from_user_id,
+                        'continue_approval_flow' => $task->continue_approval_flow,
+                        'is_referral_response_task' => $isReferralResponseTask,
+                        'note' => 'This is the original approver making the final decision'
+                    ]);
                     // Get total number of required approvals for this payment order
                     $totalApprovals = DB::table('tasks')
                     ->where('payment_order_id', $task->payment_order_id)

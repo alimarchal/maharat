@@ -196,13 +196,24 @@ const ReviewTask = () => {
                     // Check if current step is the final approval step BEFORE finding next step
                     const currentStepOrder = taskData.order_no;
                     const totalSteps = process.steps.length;
-                    const isFinalApproval = currentStepOrder == totalSteps;
+                    
+                    // For referral response tasks (assignedFromUserId exists), check if this is the original approver
+                    // making the final decision. If so, treat it as final approval regardless of step order.
+                    const isReferralResponseTask = taskData.assigned_from_user_id && taskData.continue_approval_flow === 0;
+                    const isOriginalApproverFinalDecision = taskData.assigned_from_user_id && taskData.continue_approval_flow === 1;
+                    
+                    // Final approval if: 1) Normal flow final step OR 2) Original approver making final decision after referral
+                    const isFinalApproval = (currentStepOrder == totalSteps) || isOriginalApproverFinalDecision;
                     
                     console.log("=== FRONTEND: FINAL APPROVAL CHECK ===", {
                         taskId: taskData.id,
                         processTitle: processTitle,
                         currentStepOrder: currentStepOrder,
                         totalSteps: totalSteps,
+                        assignedFromUserId: taskData.assigned_from_user_id,
+                        continueApprovalFlow: taskData.continue_approval_flow,
+                        isReferralResponseTask: isReferralResponseTask,
+                        isOriginalApproverFinalDecision: isOriginalApproverFinalDecision,
                         isFinalApproval: isFinalApproval,
                         completedOrders: completedOrders
                     });
@@ -213,7 +224,10 @@ const ReviewTask = () => {
                             processTitle: processTitle,
                             currentStepOrder: currentStepOrder,
                             totalSteps: totalSteps,
-                            reason: "This is the final approval step"
+                            assignedFromUserId: taskData.assigned_from_user_id,
+                            continueApprovalFlow: taskData.continue_approval_flow,
+                            isOriginalApproverFinalDecision: isOriginalApproverFinalDecision,
+                            reason: isOriginalApproverFinalDecision ? "Original approver making final decision after referral" : "This is the final approval step"
                         });
                         continue; // Skip creating next approval - this is the final step
                     }
