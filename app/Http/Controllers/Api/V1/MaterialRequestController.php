@@ -41,6 +41,26 @@ class MaterialRequestController extends Controller
         return MaterialRequestResource::collection($requests);
     }
 
+    public function all(): JsonResponse|ResourceCollection
+    {
+        $query = QueryBuilder::for(MaterialRequest::class)
+            ->allowedFilters(MaterialRequestParameters::ALLOWED_FILTERS)
+            ->allowedSorts(MaterialRequestParameters::ALLOWED_SORTS)
+            ->allowedIncludes(MaterialRequestParameters::ALLOWED_INCLUDES);
+
+        // No status filter - get ALL records without pagination
+        $requests = $query->get();
+
+        if ($requests->isEmpty()) {
+            return response()->json([
+                'message' => 'No material requests found',
+                'data' => []
+            ], Response::HTTP_OK);
+        }
+
+        return MaterialRequestResource::collection($requests);
+    }
+
     public function store(StoreMaterialRequestRequest $request): JsonResponse
     {
         try {

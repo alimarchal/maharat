@@ -8,20 +8,21 @@ const MRTable = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-    const [lastPage, setLastPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const itemsPerPage = 15;
 
     useEffect(() => {
         const fetchRequests = async () => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/material-requests?include=requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus&page=${currentPage}`
+                    `/api/v1/material-requests-all?include=requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus&sort=-created_at`
                 );
                 const data = await response.json();
 
                 if (response.ok) {
                     setRequests(data.data || []);
-                    setLastPage(data.meta?.last_page || 1);
+                    setTotalPages(Math.ceil((data.data || []).length / itemsPerPage));
                 } else {
                     setError(data.message || "Failed to fetch requests.");
                 }
@@ -34,11 +35,19 @@ const MRTable = () => {
         };
 
         fetchRequests();
-    }, [currentPage]);
+    }, []);
+
+    // Frontend pagination
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedRequests = requests.slice(startIndex, endIndex);
 
     const statusColors = {
+        Draft: "text-gray-500",
         Pending: "text-yellow-500",
         Approved: "text-green-500",
+        Referred: "text-blue-500",
+        Issued: "text-green-500",
         Rejected: "text-red-500",
     };
 
@@ -87,8 +96,8 @@ const MRTable = () => {
                                 {error}
                             </td>
                         </tr>
-                    ) : requests.length > 0 ? (
-                        requests.map((req) => (
+                    ) : paginatedRequests.length > 0 ? (
+                        paginatedRequests.map((req) => (
                             <tr key={req.id}>
                                 <td className="py-3 px-4">MR-{req.id}</td>
                                 <td className="py-3 px-4">
@@ -168,10 +177,21 @@ const MRTable = () => {
             </table>
 
             {/* Pagination */}
-            {!loading && !error && requests.length > 0 && (
+            {!loading && !error && paginatedRequests.length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    <button
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage <= 1
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage <= 1}
+                    >
+                        Previous
+                    </button>
                     {Array.from(
-                        { length: lastPage },
+                        { length: totalPages },
                         (_, index) => index + 1
                     ).map((page) => (
                         <button
@@ -189,11 +209,11 @@ const MRTable = () => {
                     <button
                         onClick={() => setCurrentPage(currentPage + 1)}
                         className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
-                            currentPage >= lastPage
+                            currentPage >= totalPages
                                 ? "opacity-50 cursor-not-allowed"
                                 : ""
                         }`}
-                        disabled={currentPage >= lastPage}
+                        disabled={currentPage >= totalPages}
                     >
                         Next
                     </button>

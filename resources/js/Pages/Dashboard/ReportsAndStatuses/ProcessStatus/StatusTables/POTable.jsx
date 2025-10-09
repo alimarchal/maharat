@@ -7,20 +7,21 @@ export default function POTable() {
     const [purchaseOrders, setPurchaseOrders] = useState([]);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-    const [lastPage, setLastPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
+    const itemsPerPage = 15;
 
     useEffect(() => {
         const fetchPurchaseOrders = async () => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `api/v1/purchase-orders?include=department,costCenter,subCostCenter,warehouse,quotation,supplier,user,requestForQuotation.items.product.category,requestForQuotation.items.product.unit&page=${currentPage}`
+                    `api/v1/purchase-orders?include=department,costCenter,subCostCenter,warehouse,quotation,supplier,user,requestForQuotation.items.product.category,requestForQuotation.items.product.unit&sort=-created_at`
                 );
                 const data = await response.json();
                 if (response.ok) {
                     setPurchaseOrders(data.data || []);
-                    setLastPage(data.meta?.last_page || 1);
+                    setTotalPages(Math.ceil((data.data || []).length / itemsPerPage));
                 } else {
                     setError(data.message || "Failed to fetch PO.");
                 }
@@ -33,7 +34,12 @@ export default function POTable() {
         };
 
         fetchPurchaseOrders();
-    }, [currentPage]);
+    }, []);
+
+    // Frontend pagination
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedPurchaseOrders = purchaseOrders.slice(startIndex, endIndex);
 
     return (
         <div className="w-full overflow-hidden">
@@ -70,8 +76,8 @@ export default function POTable() {
                                 {error}
                             </td>
                         </tr>
-                    ) : purchaseOrders.length > 0 ? (
-                        purchaseOrders.map((order) => (
+                    ) : paginatedPurchaseOrders.length > 0 ? (
+                        paginatedPurchaseOrders.map((order) => (
                             <tr key={order.id}>
                                 <td className="px-3 py-4">
                                     {order.purchase_order_no || "N/A"}
@@ -115,10 +121,21 @@ export default function POTable() {
             </table>
 
             {/* Pagination */}
-            {!loading && !error && purchaseOrders.length > 0 && (
+            {!loading && !error && paginatedPurchaseOrders.length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    <button
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage <= 1
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage <= 1}
+                    >
+                        Previous
+                    </button>
                     {Array.from(
-                        { length: lastPage },
+                        { length: totalPages },
                         (_, index) => index + 1
                     ).map((page) => (
                         <button
@@ -136,11 +153,11 @@ export default function POTable() {
                     <button
                         onClick={() => setCurrentPage(currentPage + 1)}
                         className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
-                            currentPage >= lastPage
+                            currentPage >= totalPages
                                 ? "opacity-50 cursor-not-allowed"
                                 : ""
                         }`}
-                        disabled={currentPage >= lastPage}
+                        disabled={currentPage >= totalPages}
                     >
                         Next
                     </button>
