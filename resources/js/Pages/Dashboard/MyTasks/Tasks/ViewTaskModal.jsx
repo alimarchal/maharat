@@ -1228,8 +1228,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                             {rfqItems.map((item, index) => {
                                                                 const orderedQty = parseInt(item.quantity) || 0;
                                                                 const originalQty = parseInt(item.original_quantity || item.quantity) || 0;
-                                                                const additionalQty = parseInt(currentTask.grn?.quantity) || 0;
-                                                                const previouslyDeliveredQty = previouslyDelivered[item.id] || 0;
+                                                                const deliveredQty = parseInt(currentTask.grn?.quantity) || 0;
                                                                 
                                                                 // Debug unit data
                                                                 console.log("Unit debug for item:", item.id, {
@@ -1256,7 +1255,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                                             {item.unit?.name || item.product?.unit?.name || (item.unit_id ? `Unit ${item.unit_id}` : "N/A")}
                                                                         </td>
                                                                         <td className="px-3 py-2 text-center">{originalQty}</td>
-                                                                        <td className="px-3 py-2 text-center">{previouslyDeliveredQty}</td>
+                                                                        <td className="px-3 py-2 text-center">{deliveredQty}</td>
                                                                     </tr>
                                                                 );
                                                             })}
