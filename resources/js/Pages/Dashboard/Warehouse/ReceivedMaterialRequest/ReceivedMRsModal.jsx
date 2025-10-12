@@ -176,21 +176,51 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
             const items = requestData.items || [];
             
             for (const item of items) {
-                const rfqRequestData = {
-                    user_id: requestData.requester_id,
-                    name: item.product?.name || "Unknown Item",
-                    description: item.description || "",
-                    quantity: parseInt(item.quantity) || 1,
-                    category_id: item.product?.category_id,
-                    unit_id: item.unit_id,
-                    warehouse_id: requestData.warehouse_id,
-                    department_id: requestData.department_id,
-                    cost_center_id: requestData.cost_center_id,
-                    sub_cost_center_id: requestData.sub_cost_center_id,
-                    photo: item.photo,
-                };
+                const productId = item.product_id;
+                const warehouseId = requestData.warehouse_id;
+                const requestedQty = parseFloat(item.quantity);
+                let quantityToRequest = requestedQty;
+                
+                // Check current inventory to calculate the difference
+                try {
+                    const inventoryResponse = await axios.get(`/api/v1/inventories`, {
+                        params: {
+                            'filter[warehouse_id]': warehouseId,
+                            'filter[product_id]': productId
+                        }
+                    });
+                    
+                    if (inventoryResponse.data?.data?.length > 0) {
+                        const currentInventory = inventoryResponse.data.data[0];
+                        const availableQty = parseFloat(currentInventory.quantity) || 0;
+                        
+                        // Calculate the difference: requested - available
+                        quantityToRequest = Math.max(0, requestedQty - availableQty);
+                    }
+                } catch (inventoryError) {
+                    // If inventory check fails, use the full requested quantity
+                    console.error('Error checking inventory:', inventoryError);
+                    quantityToRequest = requestedQty;
+                }
+                
+                // Only create RFQ if there's a quantity to request
+                if (quantityToRequest > 0) {
+                    const rfqRequestData = {
+                        user_id: requestData.requester_id,
+                        name: item.product?.name || "Unknown Item",
+                        description: item.description || "",
+                        quantity: quantityToRequest,
+                        category_id: item.product?.category_id,
+                        unit_id: item.unit_id,
+                        warehouse_id: requestData.warehouse_id,
+                        department_id: requestData.department_id,
+                        cost_center_id: requestData.cost_center_id,
+                        sub_cost_center_id: requestData.sub_cost_center_id,
+                        photo: item.photo,
+                    };
 
-                await axios.post("/api/v1/rfq-requests", rfqRequestData);
+                    await axios.post("/api/v1/rfq-requests", rfqRequestData);
+                }
             }
 
             // Update material request status to "Referred" when RFQ is created
