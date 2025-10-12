@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPaperclip, faPlus } from "@fortawesome/free-solid-svg-icons";
 import CreateGRNModal from "./CreateGRNModal";
+import { useGRNCount } from "@/hooks/useGRNCount";
 
 const CreateGRNTable = () => {
     const [orders, setOrders] = useState([]);
@@ -11,6 +12,7 @@ const CreateGRNTable = () => {
     const [lastPage, setLastPage] = useState(1);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedGRNs, setSelectedGRNs] = useState(null);
+    const { refreshCount } = useGRNCount();
 
     useEffect(() => {
         const fetchPurchaseOrders = async () => {
@@ -191,6 +193,8 @@ const CreateGRNTable = () => {
                 onClose={() => {
                     setIsModalOpen(false);
                     setSelectedGRNs(null);
+                    // Refresh the count when modal closes (after GRN creation)
+                    refreshCount();
                 }}
                 grnsData={selectedGRNs}
             />

@@ -31,6 +31,7 @@ import { router } from "@inertiajs/react";
 import { usePage } from "@inertiajs/react";
 import { useRequestItems } from "@/Components/RequestItemsContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useGRNCount } from "@/hooks/useGRNCount";
 
 const DropdownItem = ({ text, icon, onClick, notificationCount = 0 }) => {
     return (
@@ -251,6 +252,7 @@ export default function MainDashboard({ roles, permissions }) {
     const user = usePage().props.auth.user;
     const user_id = user.id;
     const { hasPermission } = usePermissions();
+    const { count: grnCount, loading: grnCountLoading } = useGRNCount();
     const [pendingTasksCount, setPendingTasksCount] = useState(0);
     const [requestedItemsCount, setRequestedItemsCount] = useState(0);
     const [pendingMaterialRequestsCount, setPendingMaterialRequestsCount] = useState(0);
@@ -686,6 +688,7 @@ export default function MainDashboard({ roles, permissions }) {
             icon: faFileInvoice,
             onClick: () => router.visit("/goods-receiving-notes"),
             requiredPermission: "view_goods_receiving_notes",
+            notificationCount: grnCount,
         },
         {
             text: "Inventory Tracking",
@@ -783,6 +786,8 @@ export default function MainDashboard({ roles, permissions }) {
         let total = 0;
         if (hasPermission("view_material_requests")) total += pendingMaterialRequestsCount;
         if (hasPermission("view_items")) total += requestedItemsCount;
+        if (hasPermission("view_goods_receiving_notes")) total += grnCount;
+        // Note: Categories and Inventory Tracking don't have notification counts currently
         return total;
     })();
 
