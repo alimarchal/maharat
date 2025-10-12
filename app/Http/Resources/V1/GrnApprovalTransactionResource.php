@@ -25,6 +25,7 @@ class GrnApprovalTransactionResource extends JsonResource
             'grn' => new GrnResource($this->whenLoaded('grn')),
             'requester' => new UserResource($this->whenLoaded('requester')),
             'assignedTo' => new UserResource($this->whenLoaded('assignedTo')),
+            'assigned_to_user' => new UserResource($this->whenLoaded('assignedToUser')),
             'referredTo' => new UserResource($this->whenLoaded('referredTo')),
             'creator' => new UserResource($this->whenLoaded('creator')),
             'updater' => new UserResource($this->whenLoaded('updater')),

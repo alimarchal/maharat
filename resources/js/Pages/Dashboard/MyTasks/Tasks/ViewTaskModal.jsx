@@ -15,23 +15,291 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
     const [rfqCategoryName, setRfqCategoryName] = useState("");
     const [rfqDescription, setRfqDescription] = useState("");
     const [allDescriptions, setAllDescriptions] = useState([]);
+    const [completeTaskData, setCompleteTaskData] = useState(null);
+    const [previouslyDelivered, setPreviouslyDelivered] = useState({});
+    const [rfqItems, setRfqItems] = useState([]);
+
+    // Fetch complete task data with all includes when modal opens
+    useEffect(() => {
+        if (isOpen && task && task.id) {
+            const fetchCompleteTaskData = async () => {
+                try {
+                    console.log("=== FETCHING COMPLETE TASK DATA ===", {
+                        taskId: task.id,
+                        currentTaskData: task,
+                        processTitle: task.process?.title
+                    });
+
+                    const response = await axios.get(
+                        `/api/v1/tasks/${task.id}?include=processStep,process,assignedFromUser,assignedToUser,descriptions,material_request,material_request.items,material_request.items.product,material_request.items.unit,material_request.items.category,material_request.items.urgencyStatus,material_request.requester,material_request.warehouse,material_request.department,material_request.costCenter,rfq,rfq.items,rfq.items.product,rfq.items.unit,rfq.items.category,rfq.items.status,rfq.requester,rfq.warehouse,rfq.department,rfq.costCenter,purchase_order,purchase_order.supplier,purchase_order.user,payment_order,payment_order.supplier,payment_order.user,payment_order.purchase_order,invoice,invoice.items,invoice.client,invoice.representative,budget,budget.department,budget.costCenter,budget_approval_transaction,request_budget,request_budget.department,request_budget.costCenter,request_budget.fiscalPeriod,grn,grn.user,grn.quotation,grn.purchaseOrder,grn.approvalTransactions,grn.approvalTransactions.assignedToUser`
+                    );
+                    
+                    let taskData = response.data.data;
+                    
+                    // If this is a GRN task, fetch all needed data in parallel
+                    if (taskData.process?.title === "Short Delivery Adjustment Approval") {
+                        const promises = [];
+                        
+                        // If no GRN data, fetch it
+                        if (!taskData.grn && taskData.grn_id) {
+                            promises.push(
+                                axios.get(`/api/v1/grns/${taskData.grn_id}?include=user,quotation,purchaseOrder,approvalTransactions,approvalTransactions.assignedToUser`)
+                                    .then(response => ({ type: 'grn', data: response.data.data }))
+                                    .catch(error => ({ type: 'grn', error }))
+                            );
+                        }
+                        
+                        // If no RFQ items, fetch them from purchase order
+                        let rfqItems = taskData.rfq?.items || [];
+                        if (rfqItems.length === 0 && taskData.grn?.purchase_order_id) {
+                            promises.push(
+                                axios.get(`/api/v1/purchase-orders/${taskData.grn.purchase_order_id}?include=rfq,rfq.items,rfq.items.product,rfq.items.unit,rfq.items.category`)
+                                    .then(response => ({ type: 'rfq', data: response.data.data?.rfq?.items || [] }))
+                                    .catch(error => ({ type: 'rfq', error }))
+                            );
+                        }
+                        
+                        // Always fetch existing GRNs for previously delivered calculation
+                        if (taskData.grn?.purchase_order_id) {
+                            promises.push(
+                                axios.get(`/api/v1/grns?filter[purchase_order_id]=${taskData.grn.purchase_order_id}&include=receiveGoods`)
+                                    .then(response => ({ type: 'existingGrns', data: response.data.data || [] }))
+                                    .catch(error => ({ type: 'existingGrns', error }))
+                            );
+                        }
+                        
+                        // Execute all promises in parallel
+                        if (promises.length > 0) {
+                            console.log("=== FETCHING GRN DATA IN PARALLEL ===");
+                            const results = await Promise.all(promises);
+                            
+                            // Process results
+                            results.forEach(result => {
+                                if (result.type === 'grn' && result.data) {
+                                    taskData.grn = result.data;
+                                } else if (result.type === 'rfq' && result.data) {
+                                    rfqItems = result.data;
+                                } else if (result.type === 'existingGrns' && result.data) {
+                                    // Process existing GRNs immediately
+                                    processExistingGRNs(result.data, rfqItems);
+                                }
+                            });
+                        }
+                    }
+                    
+                    setCompleteTaskData(taskData);
+                    
+                    console.log("=== COMPLETE TASK DATA LOADED ===", {
+                        taskId: taskData.id,
+                        grnId: taskData.grn_id,
+                        grnData: taskData.grn,
+                        grnApprovalTransactions: taskData.grn?.approval_transactions,
+                        processTitle: taskData.process?.title,
+                        materialRequestData: taskData.material_request,
+                        materialRequestId: taskData.material_request_id
+                    });
+                } catch (error) {
+                    console.error("Error fetching complete task data:", error);
+                    // Fallback to original task data if fetch fails
+                    setCompleteTaskData(task);
+                }
+            };
+
+            fetchCompleteTaskData();
+        }
+    }, [isOpen, task]);
+
+    const processExistingGRNs = (existingGRNs, currentRfqItems) => {
+        try {
+            console.log('Processing existing GRNs for ViewTaskModal:', existingGRNs);
+            console.log('Current RFQ Items:', currentRfqItems);
+            
+            // Check if there are any partially delivered GRNs
+            const hasPartiallyDelivered = existingGRNs.some(grn => {
+                if (grn.status === 'Partially Delivered') {
+                    return true;
+                }
+                
+                if (grn.receive_goods && grn.receive_goods.length > 0) {
+                    return grn.receive_goods.some(receiveGood => {
+                        const delivered = parseFloat(receiveGood.quantity_delivered) || 0;
+                        const quoted = parseFloat(receiveGood.quantity_quoted) || 0;
+                        return delivered > 0 && delivered < quoted;
+                    });
+                }
+                
+                return false;
+            });
+            
+            if (hasPartiallyDelivered && currentRfqItems.length > 0) {
+                // Calculate total delivered quantities for each item
+                const deliveredQuantities = {};
+                
+                // Use the GRN quantity field directly (not receive_goods data)
+                existingGRNs.forEach(grn => {
+                    if (currentRfqItems.length > 0) {
+                        const itemId = currentRfqItems[0].id;
+                        const grnQuantity = parseFloat(grn.quantity) || 0;
+                        deliveredQuantities[itemId] = grnQuantity;
+                        
+                        console.log('Processing GRN quantity for ViewTaskModal:', {
+                            itemId,
+                            grnQuantity,
+                            grnId: grn.id,
+                            grnStatus: grn.status
+                        });
+                    }
+                });
+                
+                console.log('Delivered quantities calculated for ViewTaskModal:', deliveredQuantities);
+                
+                // Update RFQ items to show remaining quantities instead of original ordered quantities
+                const updatedRfqItems = currentRfqItems.map(item => {
+                    const deliveredQty = deliveredQuantities[item.id] || 0;
+                    const originalQty = parseInt(item.quantity) || 0;
+                    const remainingQty = originalQty - deliveredQty;
+                    
+                    return {
+                        ...item,
+                        original_quantity: originalQty, // Store original quantity
+                        quantity: remainingQty > 0 ? remainingQty : 0 // Show remaining quantity
+                    };
+                });
+                
+                console.log('Updated RFQ items for ViewTaskModal:', updatedRfqItems);
+                
+                // Update the RFQ items with remaining quantities
+                setRfqItems(updatedRfqItems);
+                
+                // Store previously delivered quantities
+                setPreviouslyDelivered(deliveredQuantities);
+                
+                console.log('Processed existing GRNs for ViewTaskModal:', {
+                    existingGRNs,
+                    deliveredQuantities,
+                    updatedRfqItems,
+                    hasPartiallyDelivered
+                });
+            } else {
+                // No partial delivery, use original RFQ items
+                setRfqItems(currentRfqItems);
+                setPreviouslyDelivered({});
+            }
+        } catch (error) {
+            console.error('Error processing existing GRNs for ViewTaskModal:', error);
+            // Fallback to original RFQ items
+            setRfqItems(currentRfqItems);
+            setPreviouslyDelivered({});
+        }
+    };
+
+    const loadExistingGRNs = async (purchaseOrderId, currentRfqItems) => {
+        try {
+            const response = await axios.get(`/api/v1/grns?filter[purchase_order_id]=${purchaseOrderId}&include=receiveGoods`);
+            const existingGRNs = response.data.data || [];
+            
+            console.log('Existing GRNs for ViewTaskModal:', existingGRNs);
+            console.log('Current RFQ Items:', currentRfqItems);
+            
+            // Check if there are any partially delivered GRNs
+            const hasPartiallyDelivered = existingGRNs.some(grn => {
+                if (grn.status === 'Partially Delivered') {
+                    return true;
+                }
+                
+                if (grn.receive_goods && grn.receive_goods.length > 0) {
+                    return grn.receive_goods.some(receiveGood => {
+                        const delivered = parseFloat(receiveGood.quantity_delivered) || 0;
+                        const quoted = parseFloat(receiveGood.quantity_quoted) || 0;
+                        return delivered > 0 && delivered < quoted;
+                    });
+                }
+                
+                return false;
+            });
+            
+            if (hasPartiallyDelivered && currentRfqItems.length > 0) {
+                // Calculate total delivered quantities for each item
+                const deliveredQuantities = {};
+                
+                // Use the GRN quantity field directly (not receive_goods data)
+                existingGRNs.forEach(grn => {
+                    if (currentRfqItems.length > 0) {
+                        const itemId = currentRfqItems[0].id;
+                        const grnQuantity = parseFloat(grn.quantity) || 0;
+                        deliveredQuantities[itemId] = grnQuantity;
+                        
+                        console.log('Processing GRN quantity for ViewTaskModal:', {
+                            itemId,
+                            grnQuantity,
+                            grnId: grn.id,
+                            grnStatus: grn.status
+                        });
+                    }
+                });
+                
+                console.log('Delivered quantities calculated for ViewTaskModal:', deliveredQuantities);
+                
+                // Update RFQ items to show remaining quantities instead of original ordered quantities
+                const updatedRfqItems = currentRfqItems.map(item => {
+                    const deliveredQty = deliveredQuantities[item.id] || 0;
+                    const originalQty = parseInt(item.quantity) || 0;
+                    const remainingQty = originalQty - deliveredQty;
+                    
+                    return {
+                        ...item,
+                        original_quantity: originalQty, // Store original quantity
+                        quantity: remainingQty > 0 ? remainingQty : 0 // Show remaining quantity
+                    };
+                });
+                
+                console.log('Updated RFQ items for ViewTaskModal:', updatedRfqItems);
+                
+                // Update the RFQ items with remaining quantities
+                setRfqItems(updatedRfqItems);
+                
+                // Store previously delivered quantities
+                setPreviouslyDelivered(deliveredQuantities);
+                
+                console.log('Loaded existing GRNs for ViewTaskModal:', {
+                    purchaseOrderId,
+                    existingGRNs,
+                    deliveredQuantities,
+                    updatedRfqItems,
+                    hasPartiallyDelivered
+                });
+            } else {
+                // No partial delivery, use original RFQ items
+                setRfqItems(currentRfqItems);
+                setPreviouslyDelivered({});
+            }
+        } catch (error) {
+            console.error('Error loading existing GRNs for ViewTaskModal:', error);
+            // Fallback to original RFQ items
+            setRfqItems(currentRfqItems);
+            setPreviouslyDelivered({});
+        }
+    };
 
     useEffect(() => {
-        if (isOpen && task && task.budget && task.budget.fiscal_period_id) {
+        // Use completeTaskData if available, otherwise fallback to original task
+        const currentTask = completeTaskData || task;
+        
+        if (isOpen && currentTask && currentTask.budget && currentTask.budget.fiscal_period_id) {
             // Fetch fiscal period name from API
-            axios.get(`/api/v1/fiscal-periods/${task.budget.fiscal_period_id}`)
+            axios.get(`/api/v1/fiscal-periods/${currentTask.budget.fiscal_period_id}`)
                 .then(response => {
                     setFiscalPeriodName(response.data.data.period_name);
                 })
                 .catch(error => {
                     console.error("Error fetching fiscal period:", error);
-                    setFiscalPeriodName(`Fiscal Period ID: ${task.budget.fiscal_period_id}`);
+                    setFiscalPeriodName(`Fiscal Period ID: ${currentTask.budget.fiscal_period_id}`);
                 });
         }
         
-        if (isOpen && task && task.rfq && task.rfq.items && task.rfq.items.length > 0) {
+        if (isOpen && currentTask && currentTask.rfq && currentTask.rfq.items && currentTask.rfq.items.length > 0) {
             // Get the product_id from the first RFQ item
-            const firstItem = task.rfq.items[0];
+            const firstItem = currentTask.rfq.items[0];
             if (firstItem.product_id) {
                 // Fetch the product details from products table using product_id
                 axios.get(`/api/v1/products/${firstItem.product_id}`)
@@ -59,34 +327,37 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
         }
 
         // Fetch all descriptions for this request type
-        if (isOpen && task) {
+        if (isOpen && currentTask) {
             const fetchAllDescriptions = async () => {
                 try {
                     let requestId = null;
                     let requestType = null;
 
                     // Determine the request type and ID
-                    if (task.material_request_id) {
-                        requestId = task.material_request_id;
+                    if (currentTask.material_request_id) {
+                        requestId = currentTask.material_request_id;
                         requestType = 'material_request';
-                    } else if (task.rfq_id) {
-                        requestId = task.rfq_id;
+                    } else if (currentTask.rfq_id) {
+                        requestId = currentTask.rfq_id;
                         requestType = 'rfq';
-                    } else if (task.purchase_order_id) {
-                        requestId = task.purchase_order_id;
+                    } else if (currentTask.purchase_order_id) {
+                        requestId = currentTask.purchase_order_id;
                         requestType = 'purchase_order';
-                    } else if (task.payment_order_id) {
-                        requestId = task.payment_order_id;
+                    } else if (currentTask.payment_order_id) {
+                        requestId = currentTask.payment_order_id;
                         requestType = 'payment_order';
-                    } else if (task.invoice_id) {
-                        requestId = task.invoice_id;
+                    } else if (currentTask.invoice_id) {
+                        requestId = currentTask.invoice_id;
                         requestType = 'invoice';
-                    } else if (task.budget_id) {
-                        requestId = task.budget_id;
+                    } else if (currentTask.budget_id) {
+                        requestId = currentTask.budget_id;
                         requestType = 'budget';
-                    } else if (task.request_budgets_id) {
-                        requestId = task.request_budgets_id;
+                    } else if (currentTask.request_budgets_id) {
+                        requestId = currentTask.request_budgets_id;
                         requestType = 'request_budgets';
+                    } else if (currentTask.grn_id) {
+                        requestId = currentTask.grn_id;
+                        requestType = 'grn';
                     }
 
                     if (requestId && requestType) {
@@ -123,9 +394,12 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
 
             fetchAllDescriptions();
         }
-    }, [isOpen, task]);
+    }, [isOpen, task, completeTaskData]);
 
     if (!isOpen || !task) return null;
+
+    // Use completeTaskData if available, otherwise fallback to original task
+    const currentTask = completeTaskData || task;
 
     // Status badge component
     const StatusBadge = ({ status }) => {
@@ -194,7 +468,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                             <h2 className="text-2xl md:text-3xl font-bold">
                                 Task Details
                             </h2>
-                            <p className="mt-1">Task #{task.id}</p>
+                            <p className="mt-1">Task #{currentTask.id}</p>
                         </div>
                         <button onClick={onClose}>
                             <FontAwesomeIcon icon={faTimes} size="lg" />
@@ -209,13 +483,13 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                         <div className="flex flex-wrap justify-between items-center">
                             <div>
                                 <h3 className="text-xl font-bold text-gray-800">
-                                    {task.process?.title || "Task"}
+                                    {currentTask.process?.title || "Task"}
                                 </h3>
                                 <p className="text-gray-500">
-                                    Assigned on {task.assigned_at ? new Date(task.assigned_at).toLocaleDateString() : "N/A"}
+                                    Assigned on {currentTask.assigned_at ? new Date(currentTask.assigned_at).toLocaleDateString() : "N/A"}
                                 </p>
                             </div>
-                            <StatusBadge status={task.status} />
+                            <StatusBadge status={currentTask.status} />
                         </div>
                     </div>
 
@@ -233,22 +507,22 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 <div className="flex justify-between border-b border-gray-100 pb-2">
                                     <span className="text-gray-600">Task Name:</span>
                                     <span className="font-medium">
-                                        {task.process?.title || "N/A"}
+                                        {currentTask.process?.title || "N/A"}
                                     </span>
                                 </div>
                                 <div className="flex justify-between border-b border-gray-100 pb-2">
                                     <span className="text-gray-600">Status:</span>
                                     <span className="font-medium">
-                                        <StatusBadge status={task.status} />
+                                        <StatusBadge status={currentTask.status} />
                                     </span>
                                 </div>
                                 {/* Show description from previous approvers for Pending/Rejected statuses */}
                                 {(() => {
                                     // For Pending/Rejected statuses, show descriptions from previous approvers
-                                    if ((task.status === 'Pending' || task.status === 'Rejected') && allDescriptions.length > 0) {
+                                    if ((currentTask.status === 'Pending' || currentTask.status === 'Rejected') && allDescriptions.length > 0) {
                                         // Filter descriptions from previous tasks (lower order numbers)
                                         const previousDescriptions = allDescriptions.filter(desc => 
-                                            desc.task_order < (task.order_no || 0)
+                                            desc.task_order < (currentTask.order_no || 0)
                                         );
                                         
                                         if (previousDescriptions.length > 0) {
@@ -264,12 +538,12 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                     }
                                     
                                     // For other statuses or when no previous descriptions, show current task descriptions
-                                    if (task.descriptions && task.descriptions.length > 0) {
+                                    if (currentTask.descriptions && currentTask.descriptions.length > 0) {
                                         return (
                                             <div className="flex justify-between border-b border-gray-100 pb-2">
                                                 <span className="text-gray-600">Description:</span>
                                                 <span className="font-medium text-gray-800 text-right max-w-xs">
-                                                    {task.descriptions.map((desc, index) => desc.description).join(', ')}
+                                                    {currentTask.descriptions.map((desc, index) => desc.description).join(', ')}
                                                 </span>
                                             </div>
                                         );
@@ -281,7 +555,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 <div className="flex justify-between border-b border-gray-100 pb-2">
                                     <span className="text-gray-600">Urgency:</span>
                                     <span className="font-medium">
-                                        <UrgencyBadge urgency={task.urgency} />
+                                        <UrgencyBadge urgency={currentTask.urgency} />
                                     </span>
                                 </div>
                             </div>
@@ -299,39 +573,39 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 <div className="flex justify-between border-b border-gray-100 pb-2">
                                     <span className="text-gray-600">Assigned To:</span>
                                     <span className="font-medium">
-                                        {task.assigned_to_user?.name || "N/A"}
+                                        {currentTask.assigned_to_user?.name || "N/A"}
                                     </span>
                                 </div>
                                 <div className="flex justify-between border-b border-gray-100 pb-2">
                                     <span className="text-gray-600">Assigned From:</span>
                                     <span className="font-medium">
-                                        {task.assigned_from_user?.name || "N/A"}
+                                        {currentTask.assigned_from_user?.name || "N/A"}
                                     </span>
                                 </div>
                                 <div className="flex justify-between border-b border-gray-100 pb-2">
                                     <span className="text-gray-600">Assigned Date:</span>
                                     <span className="font-medium">
-                                        {task.assigned_at ? new Date(task.assigned_at).toLocaleDateString() : "N/A"}
+                                        {currentTask.assigned_at ? new Date(currentTask.assigned_at).toLocaleDateString() : "N/A"}
                                     </span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Request Details Based on Process Type */}
-                        {task.process?.title && (
+                        {currentTask.process?.title && (
                             <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm md:col-span-2">
                                 <div className="flex items-center text-purple-600 mb-4">
                                     <FontAwesomeIcon icon={faFileAlt} className="mr-3" />
                                     <h3 className="text-lg font-semibold">
-                                        {task.process.title} Details
+                                        {currentTask.process.title} Details
                                     </h3>
                                 </div>
                                 
                                 {/* Check if any detailed information is available */}
-                                {!task.material_request && !task.rfq && !task.purchase_order && !task.payment_order && !task.invoice && !task.budget && !task.request_budget && !task.request_budget && (
+                                {!currentTask.material_request && !currentTask.rfq && !currentTask.purchase_order && !currentTask.payment_order && !currentTask.invoice && !currentTask.budget && !currentTask.request_budget && !currentTask.grn && (
                                     <div className="text-center py-8">
                                         <p className="text-gray-500 text-lg">
-                                            No detailed information available for this {task.process.title.toLowerCase()}.
+                                            No detailed information available for this {currentTask.process.title.toLowerCase()}.
                                         </p>
                                         <p className="text-gray-400 text-sm mt-2">
                                             The request details may not be loaded or the request may not exist.
@@ -340,39 +614,39 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 )}
 
                                 {/* Material Request Details */}
-                                {task.process.title === "Material Request" && task.material_request && (
+                                {currentTask.process.title === "Material Request Approval" && currentTask.material_request && (
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <span className="text-gray-600">Request ID:</span>
-                                                <span className="font-medium ml-2">MR-{task.material_request.id}</span>
+                                                <span className="font-medium ml-2">MR-{currentTask.material_request.id}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Requester:</span>
-                                                <span className="font-medium ml-2">{task.material_request.requester?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.material_request.requester?.name || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Warehouse:</span>
-                                                <span className="font-medium ml-2">{task.material_request.warehouse?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.material_request.warehouse?.name || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Department:</span>
-                                                <span className="font-medium ml-2">{task.material_request.department?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.material_request.department?.name || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Cost Center:</span>
-                                                <span className="font-medium ml-2">{task.material_request.costCenter?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.material_request.costCenter?.name || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Expected Delivery:</span>
                                                 <span className="font-medium ml-2">
-                                                    {task.material_request.expected_delivery_date ? new Date(task.material_request.expected_delivery_date).toLocaleDateString() : "N/A"}
+                                                    {currentTask.material_request.expected_delivery_date ? new Date(currentTask.material_request.expected_delivery_date).toLocaleDateString('en-GB') : "N/A"}
                                                 </span>
                                             </div>
                                         </div>
                                         
                                         {/* Requested Items */}
-                                        {task.material_request.items && task.material_request.items.length > 0 && (
+                                        {currentTask.material_request.items && currentTask.material_request.items.length > 0 && (
                                             <div className="mt-4">
                                                 <h4 className="font-semibold text-gray-700 mb-2">Requested Items:</h4>
                                                 <div className="overflow-x-auto">
@@ -384,14 +658,14 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                                 <th className="p-3 text-center">Description</th>
                                                                 <th className="p-3 text-center">Quantity</th>
                                                                 <th className="p-3 text-center">Unit</th>
-                                                                <th className={`p-3 text-center ${task.material_request.items?.some(item => item.photo_url && item.photo_url.trim() !== '') ? '' : 'rounded-tr-xl rounded-br-xl'}`}>Priority</th>
-                                                                {task.material_request.items?.some(item => item.photo_url && item.photo_url.trim() !== '') && (
+                                                                <th className={`p-3 text-center ${currentTask.material_request.items?.some(item => item.photo_url && item.photo_url.trim() !== '') ? '' : 'rounded-tr-xl rounded-br-xl'}`}>Priority</th>
+                                                                {currentTask.material_request.items?.some(item => item.photo_url && item.photo_url.trim() !== '') && (
                                                                     <th className="p-3 rounded-tr-xl rounded-br-xl text-center">Image</th>
                                                                 )}
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-gray-200">
-                                                            {task.material_request.items.map((item, index) => (
+                                                            {currentTask.material_request.items.map((item, index) => (
                                                                 <tr key={index}>
                                                                     <td className="px-3 py-2 text-center">{item.product?.name || "N/A"}</td>
                                                                     <td className="px-3 py-2 text-center">{item.category?.name || "N/A"}</td>
@@ -430,7 +704,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 )}
 
                                 {/* RFQ Details */}
-                                {task.process.title === "RFQ Approval" && task.rfq && (
+                                {currentTask.process.title === "RFQ Approval" && currentTask.rfq && (
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
@@ -524,8 +798,8 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                     </div>
                                 )}
 
-                               {/* Purchase Order Details */}
-                                {task.process.title === "Purchase Order Approval" && task.purchase_order && (
+                                {/* Purchase Order Details */}
+                                {currentTask.process.title === "Purchase Order Approval" && currentTask.purchase_order && (
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
@@ -610,7 +884,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 )}
 
                                 {/* Budget Request Details */}
-                                {task.process.title === "Budget Request Approval" && task.request_budget && (
+                                {currentTask.process.title === "Budget Request Approval" && currentTask.request_budget && (
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
@@ -688,7 +962,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 )}
 
                                 {/* Total Budget Approval Details */}
-                                {task.process.title === "Total Budget Approval" && task.budget && (
+                                {currentTask.process.title === "Total Budget Approval" && currentTask.budget && (
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
@@ -759,7 +1033,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 )}
 
                                 {/* Payment Order Details */}
-                                {task.process.title === "Payment Order Approval" && task.payment_order && (
+                                {currentTask.process.title === "Payment Order Approval" && currentTask.payment_order && (
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
@@ -828,7 +1102,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 )}
 
                                 {/* Invoice Details */}
-                                {task.process.title === "Maharat Invoice Approval" && task.invoice && (
+                                {currentTask.process.title === "Maharat Invoice Approval" && currentTask.invoice && (
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
@@ -909,6 +1183,84 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                                 <td className="px-3 py-2">{task.invoice.total_amount ? parseFloat(task.invoice.total_amount).toFixed(2) : "N/A"}</td>
                                                             </tr>
                                                         </tfoot>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* GRN Short Delivery Adjustment Approval Details */}
+                                {currentTask.process.title === "Short Delivery Adjustment Approval" && currentTask.grn && (
+                                    <div className="space-y-4">
+                                        {/* GRN Info - Matching other task formats */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <span className="text-gray-600">GRN Number:</span>
+                                                <span className="font-medium ml-2">{currentTask.grn.grn_number || "N/A"}</span>
+                                            </div>
+                                                <div>
+                                                    <span className="text-gray-600">Delivery Date:</span>
+                                                    <span className="font-medium ml-2">
+                                                        {currentTask.grn.delivery_date ? new Date(currentTask.grn.delivery_date).toLocaleDateString('en-GB') : "N/A"}
+                                                    </span>
+                                                </div>
+                                        </div>
+
+                                        {/* GRN Items Table - Matching CreateGRNModal format */}
+                                        {(rfqItems.length > 0) && (
+                                            <div className="mt-4">
+                                                <h4 className="font-semibold text-gray-700 mb-2">GRN Items:</h4>
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-sm">
+                                                        <thead className="bg-[#C7E7DE] text-[#2C323C]">
+                                                            <tr>
+                                                                <th className="px-3 py-2 text-left rounded-tl-xl rounded-bl-xl">ID #</th>
+                                                                <th className="px-3 py-2 text-left">Item Name</th>
+                                                                <th className="px-3 py-2 text-left">Description</th>
+                                                                <th className="px-3 py-2 text-left">Brand</th>
+                                                                <th className="px-3 py-2 text-left">Unit</th>
+                                                                <th className="px-3 py-2 text-center">Original Quantity</th>
+                                                                <th className="px-3 py-2 text-center rounded-tr-xl rounded-br-xl">Delivered Quantity</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-gray-200">
+                                                            {rfqItems.map((item, index) => {
+                                                                const orderedQty = parseInt(item.quantity) || 0;
+                                                                const originalQty = parseInt(item.original_quantity || item.quantity) || 0;
+                                                                const additionalQty = parseInt(currentTask.grn?.quantity) || 0;
+                                                                const previouslyDeliveredQty = previouslyDelivered[item.id] || 0;
+                                                                
+                                                                // Debug unit data
+                                                                console.log("Unit debug for item:", item.id, {
+                                                                    unit: item.unit,
+                                                                    unit_id: item.unit_id,
+                                                                    unitName: item.unit?.name,
+                                                                    product: item.product,
+                                                                    productUnit: item.product?.unit
+                                                                });
+                                                                
+                                                                return (
+                                                                    <tr key={item.id}>
+                                                                        <td className="px-3 py-2">{index + 1}</td>
+                                                                        <td className="px-3 py-2">
+                                                                            {item.item_name || item.product?.name || "N/A"}
+                                                                        </td>
+                                                                        <td className="px-3 py-2">
+                                                                            {item.description || item.product?.description || "N/A"}
+                                                                        </td>
+                                                                        <td className="px-3 py-2">
+                                                                            {item.brand || "N/A"}
+                                                                        </td>
+                                                                        <td className="px-3 py-2">
+                                                                            {item.unit?.name || item.product?.unit?.name || (item.unit_id ? `Unit ${item.unit_id}` : "N/A")}
+                                                                        </td>
+                                                                        <td className="px-3 py-2 text-center">{originalQty}</td>
+                                                                        <td className="px-3 py-2 text-center">{previouslyDeliveredQty}</td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
                                                     </table>
                                                 </div>
                                             </div>

@@ -31,5 +31,7 @@ class GrnParameters
         'receiveGoods.supplier',
         'receiveGoods.category',
         'externalDeliveryNote',
+        'approvalTransactions',
+        'approvalTransactions.assignedToUser',
     ];
 }

@@ -256,12 +256,12 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
         await processGRNCreation("complete_delivery");
     };
 
-    const handlePartialDeliveryConfirm = async (deliveryOption, processInfo = null) => {
+    const handlePartialDeliveryConfirm = async (deliveryOption) => {
         setShowPartialDeliveryModal(false);
-        await processGRNCreation(deliveryOption, processInfo);
+        await processGRNCreation(deliveryOption);
     };
 
-    const processGRNCreation = async (deliveryOption, processInfo = null) => {
+    const processGRNCreation = async (deliveryOption) => {
         setLoading(true);
         try {
             // Check if this is a partially delivered purchase order
@@ -302,6 +302,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                         quantity: newTotalQuantity,
                         status: newStatus,
                         delivery_date: currentDate,
+                        delivery_status: deliveryOption, // Add delivery_status to update payload
                     };
                     
                     console.log('GRN Status Update Details:', {
@@ -340,10 +341,19 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                     delivery_status: deliveryOption,
                 };
                 
-                console.log('Creating new GRN with payload:', grnsPayload);
+                console.log('=== FRONTEND: CREATING NEW GRN ===', {
+                    deliveryOption: deliveryOption,
+                    grnsPayload: grnsPayload,
+                    note: 'About to send to backend'
+                });
+                
                 const grnResponse = await axios.post("/api/v1/grns", grnsPayload);
                 grnId = grnResponse.data.data?.id;
-                console.log('New GRN created with ID:', grnId, 'Delivery status:', deliveryOption);
+                console.log('=== FRONTEND: NEW GRN CREATED ===', {
+                    grnId: grnId,
+                    deliveryOption: deliveryOption,
+                    grnData: grnResponse.data.data
+                });
             }
 
             // Handle receive goods records
@@ -480,39 +490,8 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
             
             await axios.put(`/api/v1/purchase-orders/${grnsData?.id}`, purchaseOrderPayload);
 
-            // Handle approval process for adjust_order option
-            if (deliveryOption === "adjust_order") {
-                if (!processInfo) {
-                    setError({ submit: "Failed to initialize approval process. Please try again." });
-                    setLoading(false);
-                    return;
-                }
-                const { processStep, assignUser, process } = processInfo;
-                
-                // Create GRN approval transaction
-                const GRNTransactionPayload = {
-                    grn_id: grnId,
-                    requester_id: user_id,
-                    assigned_to: assignUser.approver_id,
-                    order: processStep.order,
-                    description: processStep.description,
-                    status: "Pending",
-                };
-                await axios.post("/api/v1/grn-approval-transactions", GRNTransactionPayload);
-
-                // Create task for approver
-                const taskPayload = {
-                    process_step_id: processStep.id,
-                    process_id: processStep.process_id,
-                    assigned_at: new Date().toISOString(),
-                    urgency: "Normal",
-                    order_no: processStep.order,
-                    assigned_to_user_id: assignUser.approver_id,
-                    assigned_from_user_id: user_id,
-                    grn_id: grnId,
-                };
-                await axios.post("/api/v1/tasks", taskPayload);
-            }
+            // Note: Approval process for adjust_order is now handled automatically by the backend
+            // when task_status is set to 'Draft' during GRN creation
 
             // If adjusting order, create adjustment records
             if (deliveryOption === "adjust_order") {

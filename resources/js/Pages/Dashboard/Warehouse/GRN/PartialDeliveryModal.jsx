@@ -24,52 +24,22 @@ const PartialDeliveryModal = ({
             return;
         }
         
+        console.log('=== FRONTEND: PARTIAL DELIVERY MODAL CONFIRM ===', {
+            deliveryOption: deliveryOption,
+            note: 'User clicked confirm button'
+        });
+        
         setLoading(true);
         setErrors({});
         
         try {
-            // Only check process steps if user chose to adjust the order
-            if (deliveryOption === "adjust_order") {
-                const processResponse = await axios.get(
-                    "/api/v1/processes?include=steps,creator,updater&filter[title]=Short Delivery Adjustment Approval"
-                );
-                const process = processResponse.data?.data?.[0];
-                const processSteps = process?.steps || [];
-                
-                // Check if process and steps exist
-                if (!process || processSteps.length === 0) {
-                    setErrors({
-                        submit: "No approval process or steps found for Short Delivery Adjustment Approval",
-                    });
-                    setLoading(false);
-                    return;
-                }
-                
-                const processStep = processSteps[0];
-                
-                const processResponseViaUser = await axios.get(
-                    `/api/v1/process-steps/${processStep.id}/user/${user_id}`
-                );
-                const assignUser = processResponseViaUser?.data?.data;
-                
-                if (!assignUser || !assignUser.approver_id) {
-                    setErrors({
-                        submit: "No approver assigned for this process step",
-                    });
-                    setLoading(false);
-                    return;
-                }
-                
-                // Pass the process information to the confirm handler
-                await onConfirm(deliveryOption, {
-                    processStep,
-                    assignUser,
-                    process
-                });
-            } else {
-                // For later delivery, no approval process needed
-                await onConfirm(deliveryOption, null);
-            }
+            // For adjust_order, the backend will automatically handle the approval process
+            // For later_delivery, no approval process needed
+            console.log('=== FRONTEND: CALLING ONCONFIRM ===', {
+                deliveryOption: deliveryOption,
+                note: 'About to call parent component'
+            });
+            await onConfirm(deliveryOption);
         } catch (error) {
             console.error("Error in handleConfirm:", error);
             setErrors({
@@ -247,7 +217,13 @@ const PartialDeliveryModal = ({
                                     name="deliveryOption"
                                     value="adjust_order"
                                     checked={deliveryOption === "adjust_order"}
-                                    onChange={(e) => setDeliveryOption(e.target.value)}
+                                    onChange={(e) => {
+                                        console.log('=== FRONTEND: USER SELECTED ADJUST ORDER ===', {
+                                            value: e.target.value,
+                                            note: 'User clicked Adjust Order & Close option'
+                                        });
+                                        setDeliveryOption(e.target.value);
+                                    }}
                                     className="mt-1 mr-3 text-orange-600"
                                     disabled={loading}
                                 />

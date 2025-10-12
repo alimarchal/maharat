@@ -168,6 +168,11 @@ const ReviewTask = () => {
                         url: "/api/v1/budget-approval-transactions",
                         processTitle: "Total Budget Approval",
                     },
+                    {
+                        key: "grn_id",
+                        url: "/api/v1/grn-approval-transactions",
+                        processTitle: "Short Delivery Adjustment Approval",
+                    },
                 ];
 
                 for (const transaction of transactions) {

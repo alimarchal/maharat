@@ -26,6 +26,8 @@ class UpdateGrnRequest extends FormRequest
             'quantity' => ['sometimes', 'required', 'numeric', 'min:0'],
             'delivery_date' => ['sometimes', 'required', 'date'],
             'status' => ['sometimes', 'required', 'string', Rule::in(['Fully Delivered', 'Partially Delivered', 'Adjusted Delivery'])],
+            'delivery_status' => ['sometimes', 'nullable', 'string', Rule::in(['complete_delivery', 'later_delivery', 'adjust_order'])],
+            'task_status' => ['sometimes', 'nullable', 'string', Rule::in(['Approved', 'Pending', 'Draft', 'Rejected'])],
         ];
     }
 }
