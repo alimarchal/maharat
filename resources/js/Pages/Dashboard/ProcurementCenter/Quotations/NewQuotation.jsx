@@ -10,16 +10,12 @@ export default function NewQuotation() {
     const [lastPage, setLastPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [companies, setCompanies] = useState([]);
+    const [totalFilteredRecords, setTotalFilteredRecords] = useState(0);
 
     const fetchRfqs = async () => {
         setLoading(true);
 
         try {
-            const response = await axios.get(
-                `/api/v1/rfqs?page=${currentPage}&filter[status_id]=47&sort=rfq_number`
-            );
-            const rfqsData = response.data.data;
-
             // Fetch all purchase orders to check which RFQs already have POs
             const purchaseOrdersResponse = await axios.get("/api/v1/purchase-orders");
             const purchaseOrdersData = purchaseOrdersResponse.data.data || [];
@@ -32,11 +28,26 @@ export default function NewQuotation() {
                 }
             });
 
+            // Get ALL approved RFQs to calculate real pagination
+            const allRfqsResponse = await axios.get(
+                `/api/v1/rfqs?per_page=1000&filter[status_id]=47&sort=-created_at`
+            );
+            const allRfqsData = allRfqsResponse.data.data;
+
             // Filter out RFQs that already have purchase orders
-            const rfqsWithoutPO = rfqsData.filter((rfq) => !rfqIdsWithPO.has(rfq.id));
+            const allRfqsWithoutPO = allRfqsData.filter((rfq) => !rfqIdsWithPO.has(rfq.id));
+            
+            // Calculate real pagination based on filtered results
+            const totalFiltered = allRfqsWithoutPO.length;
+            const realLastPage = Math.ceil(totalFiltered / 15);
+            
+            // Get the current page data from filtered results
+            const startIndex = (currentPage - 1) * 15;
+            const endIndex = startIndex + 15;
+            const currentPageRfqs = allRfqsWithoutPO.slice(startIndex, endIndex);
 
             const rfqsWithDetails = await Promise.all(
-                rfqsWithoutPO.map(async (rfq) => {
+                currentPageRfqs.map(async (rfq) => {
                     const categoryResponse = await axios.get(`/api/v1/rfq-categories/${rfq.id}`);
                     return {
                         ...rfq,
@@ -45,15 +56,15 @@ export default function NewQuotation() {
                 })
             );
 
-            // Sort RFQs from latest to oldest based on created_at
-            const sortedRfqs = rfqsWithDetails.sort((a, b) => {
-                const dateA = new Date(a.created_at);
-                const dateB = new Date(b.created_at);
-                return dateB - dateA; // Latest first (descending order)
-            });
-
-            setRfqs(sortedRfqs);
-            setLastPage(response.data.meta.last_page);
+            setRfqs(rfqsWithDetails);
+            setTotalFilteredRecords(totalFiltered);
+            setLastPage(realLastPage);
+            
+            // If current page is beyond the real last page, reset to page 1
+            if (currentPage > realLastPage && realLastPage > 0) {
+                setCurrentPage(1);
+            }
+            
             setError("");
         } catch (error) {
             setError("Failed to load RFQs");
@@ -175,46 +186,51 @@ export default function NewQuotation() {
                     </table>
 
                     {/* Pagination */}
-                    {!loading && !error && rfqs.length > 0 && (
-                        <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
-                            <button
-                                onClick={() => setCurrentPage(currentPage - 1)}
-                                className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
-                                    currentPage <= 1
-                                        ? "opacity-50 cursor-not-allowed"
-                                        : ""
-                                }`}
-                                disabled={currentPage <= 1}
-                            >
-                                Previous
-                            </button>
-                            {Array.from(
-                                { length: lastPage },
-                                (_, index) => index + 1
-                            ).map((page) => (
+                    {!loading && !error && rfqs.length > 0 && lastPage > 1 && (
+                        <div className="p-4 flex justify-between items-center">
+                            <div className="text-sm text-gray-600">
+                                Showing {((currentPage - 1) * 15) + 1} to {Math.min(currentPage * 15, totalFilteredRecords)} of {totalFilteredRecords} RFQs
+                            </div>
+                            <div className="flex space-x-2 font-medium text-sm">
                                 <button
-                                    key={page}
-                                    onClick={() => setCurrentPage(page)}
-                                    className={`px-3 py-1 ${
-                                        currentPage === page
-                                            ? "bg-[#009FDC] text-white"
-                                            : "border border-[#B9BBBD] bg-white"
-                                    } rounded-full hover:bg-[#0077B6] transition`}
+                                    onClick={() => setCurrentPage(currentPage - 1)}
+                                    className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                                        currentPage <= 1
+                                            ? "opacity-50 cursor-not-allowed"
+                                            : ""
+                                    }`}
+                                    disabled={currentPage <= 1}
                                 >
-                                    {page}
+                                    Previous
                                 </button>
-                            ))}
-                            <button
-                                onClick={() => setCurrentPage(currentPage + 1)}
-                                className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
-                                    currentPage >= lastPage
-                                        ? "opacity-50 cursor-not-allowed"
-                                        : ""
-                                }`}
-                                disabled={currentPage >= lastPage}
-                            >
-                                Next
-                            </button>
+                                {Array.from(
+                                    { length: lastPage },
+                                    (_, index) => index + 1
+                                ).map((page) => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`px-3 py-1 ${
+                                            currentPage === page
+                                                ? "bg-[#009FDC] text-white"
+                                                : "border border-[#B9BBBD] bg-white"
+                                        } rounded-full hover:bg-[#0077B6] transition`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => setCurrentPage(currentPage + 1)}
+                                    className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                                        currentPage >= lastPage
+                                            ? "opacity-50 cursor-not-allowed"
+                                            : ""
+                                    }`}
+                                    disabled={currentPage >= lastPage}
+                                >
+                                    Next
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
