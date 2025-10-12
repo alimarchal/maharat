@@ -200,7 +200,9 @@ const ReviewTask = () => {
                     // For referral response tasks (assignedFromUserId exists), check if this is the original approver
                     // making the final decision. If so, treat it as final approval regardless of step order.
                     const isReferralResponseTask = taskData.assigned_from_user_id && taskData.continue_approval_flow === 0;
-                    const isOriginalApproverFinalDecision = taskData.assigned_from_user_id && taskData.continue_approval_flow === 1;
+                    // Only treat as final decision after referral if it's actually a referral scenario
+                    // AND the current step is the final step in the process
+                    const isOriginalApproverFinalDecision = isReferralResponseTask && (currentStepOrder == totalSteps);
                     
                     // Final approval if: 1) Normal flow final step OR 2) Original approver making final decision after referral
                     const isFinalApproval = (currentStepOrder == totalSteps) || isOriginalApproverFinalDecision;

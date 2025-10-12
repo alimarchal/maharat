@@ -5,6 +5,7 @@ import { faEye, faTrash } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import ViewGRNModal from "./ViewGRNModal";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useGRNCount } from "@/hooks/useGRNCount";
 
 export default function GRNTable() {
     const [grns, setGrns] = useState([]);
@@ -15,6 +16,7 @@ export default function GRNTable() {
     const [selectedGrn, setSelectedGrn] = useState(null);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const { hasPermission } = usePermissions();
+    const { count: grnCount, loading: countLoading } = useGRNCount();
 
     const fetchGrns = async () => {
         setLoading(true);
@@ -70,12 +72,19 @@ export default function GRNTable() {
                         Good Receiving Notes
                     </h2>
                     {hasPermission("create_goods_receiving_notes") && (
-                        <Link
-                            href="/goods-receiving-notes/create"
-                            className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
-                        >
-                            Create GRNs
-                        </Link>
+                        <div className="relative pr-3 pt-3">
+                            <Link
+                                href="/goods-receiving-notes/create"
+                                className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
+                            >
+                                Create GRNs
+                            </Link>
+                            {!countLoading && grnCount > 0 && (
+                                <span className="absolute top-0 right-0 bg-red-500 text-white text-sm h-6 w-6 rounded-full flex items-center justify-center">
+                                    {grnCount > 99 ? '99+' : grnCount}
+                                </span>
+                            )}
+                        </div>
                     )}
                 </div>
 

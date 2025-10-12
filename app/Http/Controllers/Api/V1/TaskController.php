@@ -576,13 +576,8 @@ class TaskController extends Controller
                     // Check if this is the final approval
                     $isFinalApproval = (string)$task->order_no === (string)$totalRequiredApprovals;
 
-                    // Trigger next task creation ONLY if NOT final approval
-                    if ($approvalTransaction && $transactionUpdated && !$isFinalApproval) {
-                        $rfqApprovalTransaction = \App\Models\RfqApprovalTransaction::find($approvalTransaction->id);
-                        if ($rfqApprovalTransaction) {
-                            $this->handleRfqApprovalTransactionUpdate($rfqApprovalTransaction);
-                        }
-                    }
+                    // Note: Next task creation is handled by the frontend (ReviewTask.jsx)
+                    // No need to trigger backend task creation here to avoid duplicates
 
                     // Update RFQ status based on approval stage
                     if ($isFinalApproval) {
@@ -1686,11 +1681,26 @@ class TaskController extends Controller
                                 'note' => 'Budget consumption will be handled when payments are made against this PO'
                             ]);
                         } else {
-                            Log::info('=== NOT FINAL PURCHASE ORDER APPROVAL - KEEPING DRAFT STATUS ===', [
+                            Log::info('=== INTERMEDIATE PURCHASE ORDER APPROVAL - UPDATING TO PENDING ===', [
                                 'task_id' => $task->id,
                                 'purchase_order_id' => $task->purchase_order_id,
                                 'total_approvals' => $totalApprovals,
                                 'completed_approvals' => $completedApprovals
+                            ]);
+
+                            // Update the purchase order status to Pending for intermediate approval
+                            $purchaseOrderUpdated = DB::table('purchase_orders')
+                                ->where('id', $task->purchase_order_id)
+                                ->update([
+                                    'status' => 'Pending',
+                                    'updated_at' => now()
+                                ]);
+
+                            Log::info('=== PURCHASE ORDER INTERMEDIATE STATUS UPDATE RESULT ===', [
+                                'task_id' => $task->id,
+                                'purchase_order_id' => $task->purchase_order_id,
+                                'update_success' => $purchaseOrderUpdated,
+                                'new_status' => 'Pending'
                             ]);
                         }
                     }
