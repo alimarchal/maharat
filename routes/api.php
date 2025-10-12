@@ -250,8 +250,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('task-descriptions/task/{taskId}', [TaskDescriptionController::class, 'getByTaskId']);
 
     // GRN routes
-    Route::apiResource('grns', GrnController::class);
+    Route::get('/grns/check-material-request-availability/{materialRequestId}', [GrnController::class, 'checkMaterialRequestAvailability']);
     Route::post('/grns/save-all', [GrnController::class, 'saveAll']);
+    Route::post('/grns/{grn}/update-material-request-status', [GrnController::class, 'updateMaterialRequestStatus']);
+    Route::apiResource('grns', GrnController::class);
 
     // GRN Receive Goods routes
     Route::apiResource('grn-receive-goods', GrnReceiveGoodController::class);

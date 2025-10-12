@@ -333,15 +333,44 @@ export default function MainDashboard({ roles, permissions }) {
     useEffect(() => {
         const fetchPendingMaterialRequests = async () => {
             try {
-                const response = await fetch(
-                    `/api/v1/material-requests?filter[status_id]=4&per_page=1`
-                );
-                const data = await response.json();
-                if (response.ok) {
-                    setPendingMaterialRequestsCount(data.meta?.total || 0);
+                // Use the exact same logic as the User Material Request table
+                // Fetch all records by getting multiple pages, then filter client-side
+                let allRequests = [];
+                let currentPage = 1;
+                let hasMorePages = true;
+                
+                while (hasMorePages) {
+                    const response = await fetch(
+                        `/api/v1/material-requests?include=requester,warehouse,department,costCenter,subCostCenter,status,items.product,items.unit,items.category,items.urgencyStatus&filter[status_id]=1,4,2,51,52&page=${currentPage}&per_page=100&sort=-created_at`
+                    );
+                    
+                    if (!response.ok) {
+                        hasMorePages = false;
+                        break;
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.data && Array.isArray(data.data)) {
+                        allRequests = [...allRequests, ...data.data];
+                        hasMorePages = currentPage < (data.meta?.last_page || 1);
+                        currentPage++;
+                    } else {
+                        hasMorePages = false;
+                    }
                 }
+                
+                // Filter client-side to match the "Pending" filter logic from the table
+                const pendingRequests = allRequests.filter(request => {
+                    const statusId = request.status?.id;
+                    return statusId === 1 || statusId === 4; // Pending or Approved
+                });
+                
+                setPendingMaterialRequestsCount(pendingRequests.length);
             } catch (err) {
                 // Error fetching pending material requests
+                console.error('Error fetching material requests:', err);
+                setPendingMaterialRequestsCount(0);
             }
         };
         fetchPendingMaterialRequests();

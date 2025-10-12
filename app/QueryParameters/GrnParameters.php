@@ -10,6 +10,7 @@ class GrnParameters
         'quotation_id',
         'purchase_order_id',
         'delivery_date',
+        'status',
     ];
 
     const ALLOWED_SORTS = [

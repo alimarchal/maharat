@@ -18,6 +18,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
     });
 
     const [quantityDelivered, setQuantityDelivered] = useState({});
+    const [previouslyDelivered, setPreviouslyDelivered] = useState({});
     const [error, setError] = useState({});
     const [loading, setLoading] = useState(false);
     const [rfqItems, setRfqItems] = useState([]);
@@ -38,8 +39,123 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
             
             const items = itemsFromRfq || itemsFromQuotationRfq || itemsFromRequestForQuotation || [];
             setRfqItems(items);
+            
+            console.log('GRN Modal Data:', {
+                grnsData,
+                items
+            });
+            
+            // Check if this is a partially delivered purchase order
+            // We need to check if there are any GRNs with "Partially Delivered" status for this PO
+            // Pass the items directly to avoid timing issues
+            loadExistingGRNs(grnsData.id, items);
         }
     }, [grnsData]);
+
+    const loadExistingGRNs = async (purchaseOrderId, currentRfqItems) => {
+        try {
+            const response = await axios.get(`/api/v1/grns?filter[purchase_order_id]=${purchaseOrderId}&include=receiveGoods`);
+            const existingGRNs = response.data.data || [];
+            
+            console.log('Existing GRNs:', existingGRNs);
+            console.log('Current RFQ Items:', currentRfqItems);
+            
+            // Check if there are any partially delivered GRNs
+            // We'll check both the status field and the receive_goods data
+            const hasPartiallyDelivered = existingGRNs.some(grn => {
+                // Check if GRN status is "Partially Delivered"
+                if (grn.status === 'Partially Delivered') {
+                    return true;
+                }
+                
+                // Fallback: Check if any receive_goods show partial delivery
+                if (grn.receive_goods && grn.receive_goods.length > 0) {
+                    return grn.receive_goods.some(receiveGood => {
+                        const delivered = parseFloat(receiveGood.quantity_delivered) || 0;
+                        const quoted = parseFloat(receiveGood.quantity_quoted) || 0;
+                        return delivered > 0 && delivered < quoted;
+                    });
+                }
+                
+                return false;
+            });
+            
+            if (hasPartiallyDelivered && currentRfqItems.length > 0) {
+                // Calculate total delivered quantities for each item
+                const deliveredQuantities = {};
+                
+                // Use the GRN quantity field directly (not receive_goods data)
+                existingGRNs.forEach(grn => {
+                    if (currentRfqItems.length > 0) {
+                        const itemId = currentRfqItems[0].id;
+                        const grnQuantity = parseFloat(grn.quantity) || 0;
+                        deliveredQuantities[itemId] = grnQuantity;
+                        
+                        console.log('Processing GRN quantity:', {
+                            itemId,
+                            grnQuantity,
+                            grnId: grn.id,
+                            grnStatus: grn.status,
+                            currentRfqItems: currentRfqItems
+                        });
+                    }
+                });
+                
+                console.log('Delivered quantities calculated:', deliveredQuantities);
+                
+                // Update RFQ items to show remaining quantities instead of original ordered quantities
+                console.log('Before mapping rfqItems:', currentRfqItems);
+                console.log('Delivered quantities for mapping:', deliveredQuantities);
+                
+                const updatedRfqItems = currentRfqItems.map(item => {
+                    const deliveredQty = deliveredQuantities[item.id] || 0;
+                    const originalQty = parseInt(item.quantity) || 0;
+                    const remainingQty = originalQty - deliveredQty;
+                    
+                    console.log('Mapping item:', {
+                        itemId: item.id,
+                        originalQty,
+                        deliveredQty,
+                        remainingQty,
+                        item
+                    });
+                    
+                    return {
+                        ...item,
+                        original_quantity: originalQty, // Store original quantity
+                        quantity: remainingQty > 0 ? remainingQty : 0 // Show remaining quantity
+                    };
+                });
+                
+                console.log('Updated RFQ items:', updatedRfqItems);
+                
+                // Update the RFQ items with remaining quantities
+                setRfqItems(updatedRfqItems);
+                
+                // For partially delivered items, we want to show previously delivered quantities
+                // but the input field should be empty for additional quantities
+                const additionalQuantities = {};
+                Object.keys(deliveredQuantities).forEach(itemId => {
+                    additionalQuantities[itemId] = 0; // Start with 0 for additional quantities
+                });
+                
+                // Store both delivered and additional quantities
+                setPreviouslyDelivered(deliveredQuantities);
+                setQuantityDelivered(additionalQuantities);
+                
+                console.log('Loaded existing GRNs for partial delivery:', {
+                    purchaseOrderId,
+                    existingGRNs,
+                    deliveredQuantities,
+                    additionalQuantities,
+                    updatedRfqItems,
+                    hasPartiallyDelivered
+                });
+            }
+        } catch (error) {
+            console.error('Error loading existing GRNs:', error);
+        }
+    };
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -148,48 +264,149 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
     const processGRNCreation = async (deliveryOption, processInfo = null) => {
         setLoading(true);
         try {
+            // Check if this is a partially delivered purchase order
+            const isPartiallyDelivered = Object.keys(previouslyDelivered).length > 0;
+            
             const totalDeliveredQuantity = rfqItems.reduce((sum, item) => {
-                const deliveredQty = parseInt(quantityDelivered[item.id]) || 0;
-                return sum + deliveredQty;
+                const additionalQty = parseInt(quantityDelivered[item.id]) || 0;
+                const previouslyDeliveredQty = previouslyDelivered[item.id] || 0;
+                
+                if (isPartiallyDelivered) {
+                    // For partially delivered items, add additional quantity to previously delivered
+                    return sum + additionalQty;
+                } else {
+                    // For new items, use the delivered quantity as is
+                    return sum + additionalQty;
+                }
             }, 0);
 
-            // Create GRN payload
-            const grnsPayload = {
-                purchase_order_id: grnsData.id,
-                quotation_id: grnsData.quotation_id,
-                delivery_date: currentDate,
-                quantity: totalDeliveredQuantity,
-                delivery_status: deliveryOption,
-            };
+            let grnId;
             
-            const grnResponse = await axios.post("/api/v1/grns", grnsPayload);
-            const grnId = grnResponse.data.data?.id;
-
-            // Create receive goods records
-            for (const item of rfqItems) {
-                const deliveredQty = quantityDelivered[item.id];
-                if (parseInt(deliveredQty) > 0) {
-                    const grnsGoodsPayload = {
-                        supplier_id: grnsData.supplier_id,
-                        grn_id: grnId,
-                        purchase_order_id: grnsData.id,
-                        quotation_id: grnsData.quotation_id,
-                        quantity_quoted: item.quantity,
-                        due_delivery_date: currentDate,
-                        receiver_name: formData.receiver_name,
-                        upc: grnsData.supplier?.upc || null,
-                        quantity_delivered: parseInt(deliveredQty),
+            if (isPartiallyDelivered) {
+                // Update existing GRN instead of creating new one
+                const existingGRN = await axios.get(`/api/v1/grns?filter[purchase_order_id]=${grnsData.id}&filter[status]=Partially Delivered`);
+                const existingGRNData = existingGRN.data.data?.[0];
+                
+                if (existingGRNData) {
+                    // Calculate new total quantity (existing + additional)
+                    const newTotalQuantity = parseFloat(existingGRNData.quantity) + totalDeliveredQuantity;
+                    
+                    // Determine new status based on completion
+                    const originalOrderedQty = rfqItems.reduce((sum, item) => {
+                        return sum + (parseInt(item.original_quantity || item.quantity) || 0);
+                    }, 0);
+                    
+                    const newStatus = newTotalQuantity >= originalOrderedQty ? 'Fully Delivered' : 'Partially Delivered';
+                    
+                    const updatePayload = {
+                        quantity: newTotalQuantity,
+                        status: newStatus,
                         delivery_date: currentDate,
-                        delivery_status: deliveryOption,
                     };
-                    await axios.post("/api/v1/grn-receive-goods", grnsGoodsPayload);
+                    
+                    console.log('GRN Status Update Details:', {
+                        existingGRNId: existingGRNData.id,
+                        existingQuantity: existingGRNData.quantity,
+                        additionalQuantity: totalDeliveredQuantity,
+                        newTotalQuantity,
+                        originalOrderedQty,
+                        newStatus,
+                        updatePayload
+                    });
+                    
+                    console.log('Updating existing GRN:', {
+                        existingGRNId: existingGRNData.id,
+                        existingQuantity: existingGRNData.quantity,
+                        additionalQuantity: totalDeliveredQuantity,
+                        newTotalQuantity,
+                        newStatus,
+                        originalOrderedQty
+                    });
+                    
+                    await axios.put(`/api/v1/grns/${existingGRNData.id}`, updatePayload);
+                    grnId = existingGRNData.id;
+                    
+                    console.log('GRN updated successfully, will trigger material request status update after inventory update');
+                } else {
+                    throw new Error('Existing partially delivered GRN not found');
+                }
+            } else {
+                // Create new GRN for first-time delivery
+                const grnsPayload = {
+                    purchase_order_id: grnsData.id,
+                    quotation_id: grnsData.quotation_id,
+                    delivery_date: currentDate,
+                    quantity: totalDeliveredQuantity,
+                    delivery_status: deliveryOption,
+                };
+                
+                console.log('Creating new GRN with payload:', grnsPayload);
+                const grnResponse = await axios.post("/api/v1/grns", grnsPayload);
+                grnId = grnResponse.data.data?.id;
+                console.log('New GRN created with ID:', grnId, 'Delivery status:', deliveryOption);
+            }
+
+            // Handle receive goods records
+            for (const item of rfqItems) {
+                const additionalQty = quantityDelivered[item.id];
+                if (parseInt(additionalQty) > 0) {
+                    if (isPartiallyDelivered) {
+                        // Update existing receive goods record
+                        const existingReceiveGoods = await axios.get(`/api/v1/grn-receive-goods?filter[grn_id]=${grnId}`);
+                        const existingRecord = existingReceiveGoods.data.data?.[0];
+                        
+                        if (existingRecord) {
+                            // Calculate new total delivered quantity
+                            const newTotalDelivered = parseFloat(existingRecord.quantity_delivered) + parseInt(additionalQty);
+                            
+                            const updatePayload = {
+                                quantity_delivered: newTotalDelivered,
+                                receiver_name: formData.receiver_name,
+                                delivery_date: currentDate,
+                            };
+                            
+                            console.log('Updating existing receive goods:', {
+                                recordId: existingRecord.id,
+                                existingDelivered: existingRecord.quantity_delivered,
+                                additionalQty,
+                                newTotalDelivered
+                            });
+                            
+                            await axios.put(`/api/v1/grn-receive-goods/${existingRecord.id}`, updatePayload);
+                        } else {
+                            throw new Error('Existing receive goods record not found');
+                        }
+                    } else {
+                        // Create new receive goods record for first-time delivery
+                        const grnsGoodsPayload = {
+                            supplier_id: grnsData.supplier_id,
+                            grn_id: grnId,
+                            purchase_order_id: grnsData.id,
+                            quotation_id: grnsData.quotation_id,
+                            quantity_quoted: item.quantity,
+                            due_delivery_date: currentDate,
+                            receiver_name: formData.receiver_name,
+                            upc: grnsData.supplier?.upc || null,
+                            quantity_delivered: parseInt(additionalQty),
+                            delivery_date: currentDate,
+                            delivery_status: deliveryOption,
+                        };
+                        
+                        console.log('Creating new receive goods:', {
+                            itemId: item.id,
+                            quotedQty: item.quantity,
+                            deliveredQty: additionalQty
+                        });
+                        
+                        await axios.post("/api/v1/grn-receive-goods", grnsGoodsPayload);
+                    }
                 }
             }
 
-            // Update inventory
+            // Update inventory - this happens for all delivery options including partial delivery
             for (const item of rfqItems) {
-                const deliveredQty = parseInt(quantityDelivered[item.id]) || 0;
-                if (deliveredQty > 0) {
+                const additionalQty = parseInt(quantityDelivered[item.id]) || 0;
+                if (additionalQty > 0) {
                     const warehouseId = grnsData?.warehouse_id || 
                                     grnsData?.warehouse?.id || 
                                     grnsData?.rfq?.warehouse_id || 
@@ -201,15 +418,34 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                     
                     const inventoryPayload = {
                         warehouse_id: warehouseId,
-                        quantity: deliveredQty,
+                        quantity: additionalQty,
                         reorder_level: parseInt(item.quantity),
                         description: item.description,
                     };
+                    
+                    console.log(`Updating inventory for product ${item?.product_id}:`, {
+                        deliveryOption,
+                        additionalQty,
+                        warehouseId,
+                        inventoryPayload,
+                        isPartiallyDelivered
+                    });
                     
                     await axios.post(
                         `/api/v1/inventories/product/${item?.product_id}/stock-in`,
                         inventoryPayload
                     );
+                }
+            }
+
+            // Trigger material request status update after inventory update
+            if (isPartiallyDelivered) {
+                console.log('Triggering material request status update after inventory update for GRN:', grnId);
+                try {
+                    await axios.post(`/api/v1/grns/${grnId}/update-material-request-status`);
+                    console.log('Material request status update completed');
+                } catch (error) {
+                    console.error('Failed to update material request status:', error);
                 }
             }
 
@@ -355,23 +591,28 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                                 <th className="py-3 px-4">Description</th>
                                 <th className="py-3 px-4">Brand</th>
                                 <th className="py-3 px-4">Unit</th>
-                                <th className="py-3 px-4 text-center">QTY Ordered</th>
+                                <th className="py-3 px-4 text-center">
+                                    {Object.keys(previouslyDelivered).length > 0 ? 'Original QTY' : 'QTY Ordered'}
+                                </th>
+                                {Object.keys(previouslyDelivered).length > 0 && (
+                                    <th className="py-3 px-4 text-center">Previously Delivered</th>
+                                )}
                                 <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
-                                    QTY Delivered
+                                    {Object.keys(previouslyDelivered).length > 0 ? 'Additional QTY' : 'QTY Delivered'}
                                 </th>
                             </tr>
                         </thead>
                         <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="7" className="text-center py-12">
+                                    <td colSpan={Object.keys(previouslyDelivered).length > 0 ? "8" : "7"} className="text-center py-12">
                                         <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                                     </td>
                                 </tr>
                             ) : error.fetch ? (
                                 <tr>
                                     <td
-                                        colSpan="7"
+                                        colSpan={Object.keys(previouslyDelivered).length > 0 ? "8" : "7"}
                                         className="text-center text-red-500 font-medium py-4"
                                     >
                                         {error.fetch}
@@ -383,6 +624,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                                     const deliveredQty = parseInt(quantityDelivered[item.id]) || 0;
                                     const isPartial = deliveredQty > 0 && deliveredQty !== orderedQty;
                                     const isExceeded = deliveredQty > orderedQty;
+                                    const isPartiallyDelivered = grnsData?.delivery_status === 'partially_delivered' || Object.keys(previouslyDelivered).length > 0;
                                     
                                     return (
                                         <tr key={item.id}>
@@ -399,18 +641,23 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                                             <td className="py-3 px-4">
                                                 {item.unit?.name || item.unit_id || "N/A"}
                                             </td>
-                                            <td className="py-3 px-4 text-xl font-medium text-center">
-                                                {orderedQty}
+                                            <td className="py-3 px-4 text-base font-medium text-center text-[#2C323C]">
+                                                {isPartiallyDelivered ? (item.original_quantity || orderedQty) : orderedQty}
                                             </td>
+                                            {isPartiallyDelivered && (
+                                                <td className="py-3 px-4 text-center text-base font-medium text-[#2C323C]">
+                                                    {previouslyDelivered[item.id] || 0}
+                                                </td>
+                                            )}
                                             <td className="py-3 px-4">
                                                 <input
                                                     type="number"
-                                                    value={quantityDelivered[item.id] || ""}
+                                                    value={isPartiallyDelivered ? (quantityDelivered[item.id] || "") : (quantityDelivered[item.id] || "")}
                                                     onChange={(e) => handleQuantityChange(e, item.id)}
                                                     className="w-full p-2 border rounded"
                                                     min="0"
-                                                    max={orderedQty}
-                                                    placeholder="Enter quantity"
+                                                    max={isPartiallyDelivered ? orderedQty : orderedQty}
+                                                    placeholder=""
                                                     style={{ 
                                                         outline: 'none !important',
                                                         boxShadow: 'none !important',

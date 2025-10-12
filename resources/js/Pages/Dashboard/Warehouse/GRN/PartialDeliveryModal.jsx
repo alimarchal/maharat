@@ -235,7 +235,7 @@ const PartialDeliveryModal = ({
                                         The remaining items will be delivered later. Keep the purchase order active for future deliveries.
                                     </div>
                                     <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                                        <strong>Impact:</strong> Purchase order remains open. You can create additional GRNs when remaining items arrive.
+                                        <strong>Impact:</strong> Purchase order remains open. Delivered items are added to warehouse inventory. Material requests will be checked for fulfillment - only set to pending if sufficient inventory is available.
                                     </div>
                                 </div>
                             </label>
