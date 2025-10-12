@@ -24,7 +24,11 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
     const [showPartialDeliveryModal, setShowPartialDeliveryModal] = useState(false);
     const [partialItems, setPartialItems] = useState([]);
 
-    const currentDate = new Date().toISOString().split("T")[0];
+    const currentDate = new Date().toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit", 
+        year: "numeric"
+    });
 
     useEffect(() => {
         if (grnsData) {
@@ -317,7 +321,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                         <div className="flex justify-start items-center gap-8">
                             <h2 className="text-xl font-medium text-[#2C323C]">
                                 Delivery Date:{" "}
-                                <span className="text-gray-500">{currentDate}</span>
+                                <span className="text-[#2C323C]">{currentDate}</span>
                             </h2>
                             <button
                                 onClick={onClose}
@@ -407,6 +411,20 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                                                     min="0"
                                                     max={orderedQty}
                                                     placeholder="Enter quantity"
+                                                    style={{ 
+                                                        outline: 'none !important',
+                                                        boxShadow: 'none !important',
+                                                        border: '1px solid #d1d5db',
+                                                        borderRadius: '0.375rem'
+                                                    }}
+                                                    onFocus={(e) => {
+                                                        e.target.style.outline = 'none';
+                                                        e.target.style.boxShadow = 'none';
+                                                        e.target.style.border = '2px solid #009FDC';
+                                                    }}
+                                                    onBlur={(e) => {
+                                                        e.target.style.border = '1px solid #d1d5db';
+                                                    }}
                                                 />
                                                 {error[item.id] && (
                                                     <p className="text-red-500 text-sm mt-1">
@@ -498,14 +516,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                         </div>
                     )}
 
-                    <div className="flex justify-between space-x-3 mt-6">
-                        <button
-                            onClick={onClose}
-                            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-                            disabled={loading}
-                        >
-                            Cancel
-                        </button>
+                    <div className="flex justify-end mt-6">
                         <button
                             type="submit"
                             onClick={handleSubmit}

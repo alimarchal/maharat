@@ -144,51 +144,43 @@ const PartialDeliveryModal = ({
                             Affected Items
                         </h3>
                         <div className="overflow-x-auto">
-                            <table className="w-full border border-gray-200 rounded-lg">
-                                <thead className="bg-gray-50">
+                            <table className="w-full">
+                                <thead className="bg-[#C7E7DE] text-[#2C323C] text-base font-medium text-left">
                                     <tr>
-                                        <th className="px-4 py-3 text-left font-medium text-gray-700">
+                                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                                             Item Name
                                         </th>
-                                        <th className="px-4 py-3 text-center font-medium text-gray-700">
-                                            Ordered Qty
-                                        </th>
-                                        <th className="px-4 py-3 text-center font-medium text-gray-700">
-                                            Delivered Qty
-                                        </th>
-                                        <th className="px-4 py-3 text-center font-medium text-gray-700">
-                                            Shortage
-                                        </th>
-                                        <th className="px-4 py-3 text-center font-medium text-gray-700">
-                                            Status
-                                        </th>
+                                        <th className="py-3 px-4 text-center">Ordered Qty</th>
+                                        <th className="py-3 px-4 text-center">Delivered Qty</th>
+                                        <th className="py-3 px-4 text-center">Shortage</th>
+                                        <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200">
+                                <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                                     {partialItems.map((item, index) => {
                                         const shortage = item.quantityOrdered - item.quantityDelivered;
                                         const isShortage = shortage > 0;
                                         const isOverDelivery = shortage < 0;
                                         
                                         return (
-                                            <tr key={index} className="hover:bg-gray-50">
-                                                <td className="px-4 py-3">
+                                            <tr key={index}>
+                                                <td className="px-3 py-4">
                                                     <div>
-                                                        <p className="font-medium text-gray-900">
+                                                        <p className="font-medium">
                                                             {item.itemName}
                                                         </p>
-                                                        <p className="text-sm text-gray-500">
+                                                        <p className="text-sm text-gray-600">
                                                             {item.description}
                                                         </p>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 text-center">
+                                                <td className="px-3 py-4 text-center">
                                                     {item.quantityOrdered}
                                                 </td>
-                                                <td className="px-4 py-3 text-center">
+                                                <td className="px-3 py-4 text-center">
                                                     {item.quantityDelivered}
                                                 </td>
-                                                <td className="px-4 py-3 text-center">
+                                                <td className="px-3 py-4 text-center">
                                                     <span className={`font-medium ${
                                                         isShortage ? 'text-red-600' : 
                                                         isOverDelivery ? 'text-blue-600' : 
@@ -198,7 +190,7 @@ const PartialDeliveryModal = ({
                                                         {isOverDelivery && ' (Over)'}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 text-center">
+                                                <td className="px-3 py-4 text-center">
                                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                                         isShortage ? 'bg-red-100 text-red-800' : 
                                                         isOverDelivery ? 'bg-blue-100 text-blue-800' : 
@@ -302,20 +294,13 @@ const PartialDeliveryModal = ({
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex justify-between space-x-3 pt-4 border-t">
-                        <button
-                            onClick={onClose}
-                            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                            disabled={loading}
-                        >
-                            Cancel
-                        </button>
+                    <div className="flex justify-end pt-4 border-t">
                         <button
                             onClick={handleConfirm}
                             disabled={!deliveryOption || loading}
                             className={`px-6 py-2 rounded-lg font-medium transition-colors ${
                                 deliveryOption && !loading
-                                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                    ? 'bg-[#009FDC] text-white hover:bg-[#0077B6]'
                                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             }`}
                         >
