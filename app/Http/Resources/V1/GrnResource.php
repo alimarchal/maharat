@@ -17,6 +17,7 @@ class GrnResource extends JsonResource
             'purchase_order_id' => $this->purchase_order_id,
             'quantity' => $this->quantity,
             'delivery_date' => $this->delivery_date?->format('Y-m-d'),
+            'status' => $this->status,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
 

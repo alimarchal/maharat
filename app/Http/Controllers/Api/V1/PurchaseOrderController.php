@@ -60,11 +60,16 @@ class PurchaseOrderController extends Controller
 
             if ($request->has('has_good_receive_note')) {
                 if ($hasGoodReceiveNote) {
-                    // Get purchase orders that have payment orders
+                    // Get purchase orders that have good receive notes
                     $query->whereHas('goodReceiveNote');
                 } else {
-                    // Get purchase orders that do NOT have payment orders
-                    $query->whereDoesntHave('goodReceiveNote');
+                    // Get purchase orders that do NOT have good receive notes OR are partially delivered
+                    $query->where(function($q) {
+                        $q->whereDoesntHave('goodReceiveNote')
+                          ->orWhereHas('goodReceiveNote', function($grnQuery) {
+                              $grnQuery->where('status', 'Partially Delivered');
+                          });
+                    });
                 }
             }
 

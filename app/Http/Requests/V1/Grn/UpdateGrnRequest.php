@@ -25,6 +25,7 @@ class UpdateGrnRequest extends FormRequest
             'purchase_order_id' => ['sometimes', 'nullable', 'exists:purchase_orders,id'],
             'quantity' => ['sometimes', 'required', 'numeric', 'min:0'],
             'delivery_date' => ['sometimes', 'required', 'date'],
+            'status' => ['sometimes', 'required', 'string', Rule::in(['Fully Delivered', 'Partially Delivered', 'Adjusted Delivery'])],
         ];
     }
 }

@@ -8,6 +8,7 @@ use App\Http\Requests\V1\Grn\UpdateGrnRequest;
 use App\Http\Resources\V1\GrnResource;
 use App\Models\Grn;
 use App\QueryParameters\GrnParameters;
+use App\Services\MaterialRequestAvailabilityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
@@ -101,6 +102,21 @@ class GrnController extends Controller
                 $validated['user_id'] = auth()->id();
             }
 
+            // Set GRN status based on delivery_status from request
+            if (!isset($validated['status'])) {
+                switch ($validated['delivery_status'] ?? 'complete_delivery') {
+                    case 'later_delivery':
+                        $validated['status'] = 'Partially Delivered';
+                        break;
+                    case 'adjust_order':
+                        $validated['status'] = 'Adjusted Delivery';
+                        break;
+                    default:
+                        $validated['status'] = 'Fully Delivered';
+                        break;
+                }
+            }
+
             $grn = Grn::create($validated);
 
             // Update material request status if GRN is issued against a purchase order
@@ -147,7 +163,28 @@ class GrnController extends Controller
         try {
             DB::beginTransaction();
 
+            \Log::info('=== GRN UPDATE STARTED ===', [
+                'grn_id' => $grn->id,
+                'grn_number' => $grn->grn_number,
+                'old_quantity' => $grn->quantity,
+                'old_status' => $grn->status,
+                'purchase_order_id' => $grn->purchase_order_id,
+                'update_data' => $request->validated()
+            ]);
+
             $grn->update($request->validated());
+
+            \Log::info('=== GRN UPDATE COMPLETED ===', [
+                'grn_id' => $grn->id,
+                'new_quantity' => $grn->quantity,
+                'new_status' => $grn->status
+            ]);
+
+            // Note: Material request status update will be triggered after inventory update
+            \Log::info('=== GRN UPDATE COMPLETED - MATERIAL REQUEST UPDATE WILL BE TRIGGERED AFTER INVENTORY UPDATE ===', [
+                'grn_id' => $grn->id,
+                'purchase_order_id' => $grn->purchase_order_id
+            ]);
 
             DB::commit();
 
@@ -159,6 +196,11 @@ class GrnController extends Controller
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('=== GRN UPDATE FAILED ===', [
+                'grn_id' => $grn->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'message' => 'Failed to update GRN',
                 'error' => $e->getMessage()
@@ -191,42 +233,141 @@ class GrnController extends Controller
     }
 
     /**
+     * Check material request availability for testing purposes
+     */
+    public function checkMaterialRequestAvailability(string $materialRequestId): JsonResponse
+    {
+        try {
+            $materialRequest = \App\Models\MaterialRequest::with(['items.product', 'warehouse'])
+                ->findOrFail($materialRequestId);
+            
+            $availabilityService = new MaterialRequestAvailabilityService();
+            $availabilityReport = $availabilityService->getAvailabilityReport($materialRequest);
+            
+            return response()->json([
+                'message' => 'Material request availability check completed',
+                'data' => $availabilityReport
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to check material request availability',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Update material request status after inventory update
+     */
+    public function updateMaterialRequestStatus(Grn $grn): JsonResponse
+    {
+        try {
+            \Log::info('=== MANUAL MATERIAL REQUEST STATUS UPDATE TRIGGERED ===', [
+                'grn_id' => $grn->id,
+                'grn_number' => $grn->grn_number,
+                'grn_status' => $grn->status,
+                'grn_quantity' => $grn->quantity
+            ]);
+
+            // Call the existing material request status update logic
+            $this->updateMaterialRequestStatusFromGRN($grn);
+
+            return response()->json([
+                'message' => 'Material request status update completed',
+                'grn_id' => $grn->id,
+                'grn_status' => $grn->status
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            \Log::error('=== FAILED TO UPDATE MATERIAL REQUEST STATUS MANUALLY ===', [
+                'grn_id' => $grn->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to update material request status',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
+    /**
      * Update material request status when GRN is issued against a purchase order
+     * Only updates to pending if inventory is sufficient to fulfill the request
      */
     private function updateMaterialRequestStatusFromGRN(Grn $grn): void
     {
         try {
+            \Log::info('=== MATERIAL REQUEST STATUS UPDATE STARTED ===', [
+                'grn_id' => $grn->id,
+                'grn_number' => $grn->grn_number,
+                'grn_status' => $grn->status,
+                'grn_quantity' => $grn->quantity,
+                'purchase_order_id' => $grn->purchase_order_id
+            ]);
+
             // Get the purchase order and its related RFQ
             $purchaseOrder = $grn->purchaseOrder()->with('rfq')->first();
             
             if (!$purchaseOrder || !$purchaseOrder->rfq) {
-                \Log::warning('GRN Status Update: Purchase order or RFQ not found', [
+                \Log::warning('=== MATERIAL REQUEST UPDATE FAILED - NO PURCHASE ORDER OR RFQ ===', [
                     'grn_id' => $grn->id,
-                    'purchase_order_id' => $grn->purchase_order_id
+                    'purchase_order_id' => $grn->purchase_order_id,
+                    'purchase_order_exists' => $purchaseOrder ? true : false,
+                    'rfq_exists' => $purchaseOrder && $purchaseOrder->rfq ? true : false
                 ]);
                 return;
             }
 
             $rfq = $purchaseOrder->rfq;
             
-            \Log::info('GRN Status Update: Processing GRN for material request update', [
+            \Log::info('=== PURCHASE ORDER AND RFQ FOUND ===', [
                 'grn_id' => $grn->id,
-                'grn_number' => $grn->grn_number,
                 'purchase_order_id' => $purchaseOrder->id,
                 'rfq_id' => $rfq->id,
-                'rfq_number' => $rfq->rfq_number
+                'rfq_number' => $rfq->rfq_number,
+                'rfq_department_id' => $rfq->department_id,
+                'rfq_cost_center_id' => $rfq->cost_center_id,
+                'rfq_sub_cost_center_id' => $rfq->sub_cost_center_id,
+                'rfq_warehouse_id' => $rfq->warehouse_id
             ]);
 
             // Find material requests that match this RFQ's details
-            // Material requests are linked to RFQs by matching department, cost center, sub cost center, and warehouse
-            $materialRequests = \App\Models\MaterialRequest::where('status_id', 2) // Referred status
-                ->where('department_id', $rfq->department_id)
-                ->where('cost_center_id', $rfq->cost_center_id)
-                ->where('sub_cost_center_id', $rfq->sub_cost_center_id)
-                ->where('warehouse_id', $rfq->warehouse_id)
-                ->get();
+            // Only look for material requests that are still in "Referred" status (status_id = 2)
+            // Don't update material requests that have already been issued (status_id = 51) or approved (status_id = 4)
+            
+            $query = \App\Models\MaterialRequest::where('status_id', 2); // Only Referred status
+            
+            if ($rfq->department_id) {
+                $query->where('department_id', $rfq->department_id);
+            }
+            if ($rfq->cost_center_id) {
+                $query->where('cost_center_id', $rfq->cost_center_id);
+            }
+            if ($rfq->sub_cost_center_id) {
+                $query->where('sub_cost_center_id', $rfq->sub_cost_center_id);
+            }
+            if ($rfq->warehouse_id) {
+                $query->where('warehouse_id', $rfq->warehouse_id);
+            }
+            
+            $materialRequests = $query->with(['items.product', 'warehouse'])->get();
+            
+            \Log::info('=== MATERIAL REQUEST SEARCH CRITERIA ===', [
+                'grn_id' => $grn->id,
+                'rfq_id' => $rfq->id,
+                'search_criteria' => [
+                    'status_id' => 2, // Only Referred
+                    'department_id' => $rfq->department_id,
+                    'cost_center_id' => $rfq->cost_center_id,
+                    'sub_cost_center_id' => $rfq->sub_cost_center_id,
+                    'warehouse_id' => $rfq->warehouse_id
+                ],
+                'note' => 'Only searching for material requests in Referred status (status_id = 2)'
+            ]);
 
-            \Log::info('GRN Status Update: Found matching material requests', [
+            \Log::info('=== MATERIAL REQUEST SEARCH RESULTS ===', [
                 'grn_id' => $grn->id,
                 'rfq_id' => $rfq->id,
                 'matching_requests_count' => $materialRequests->count(),
@@ -235,23 +376,66 @@ class GrnController extends Controller
                     'cost_center_id' => $rfq->cost_center_id,
                     'sub_cost_center_id' => $rfq->sub_cost_center_id,
                     'warehouse_id' => $rfq->warehouse_id
-                ]
+                ],
+                'material_requests' => $materialRequests->map(function($mr) {
+                    return [
+                        'id' => $mr->id,
+                        'status_id' => $mr->status_id,
+                        'warehouse_id' => $mr->warehouse_id,
+                        'items_count' => $mr->items->count()
+                    ];
+                })->toArray()
             ]);
 
-            foreach ($materialRequests as $materialRequest) {
-                // Update material request status to Approved (status_id = 4)
-                $materialRequest->update([
-                    'status_id' => 4, // Approved status
-                    'updated_at' => now()
-                ]);
+            $availabilityService = new MaterialRequestAvailabilityService();
 
-                \Log::info('GRN Status Update: Material request status updated', [
+            foreach ($materialRequests as $materialRequest) {
+                \Log::info('=== PROCESSING MATERIAL REQUEST ===', [
                     'grn_id' => $grn->id,
                     'material_request_id' => $materialRequest->id,
-                    'old_status_id' => 2, // Referred
-                    'new_status_id' => 4, // Approved
-                    'rfq_id' => $rfq->id
+                    'current_status_id' => $materialRequest->status_id,
+                    'warehouse_id' => $materialRequest->warehouse_id,
+                    'items_count' => $materialRequest->items->count()
                 ]);
+
+                // Always check if we can fulfill the request with current inventory
+                $canFulfill = $availabilityService->canSetToPending($materialRequest);
+                
+                \Log::info('=== INVENTORY AVAILABILITY CHECK ===', [
+                    'grn_id' => $grn->id,
+                    'material_request_id' => $materialRequest->id,
+                    'can_fulfill' => $canFulfill
+                ]);
+                
+                if ($canFulfill) {
+                    // Update material request status to Pending (status_id = 1) - ready for material issue
+                    $materialRequest->update([
+                        'status_id' => 1, // Pending status
+                        'updated_at' => now()
+                    ]);
+
+                    \Log::info('=== MATERIAL REQUEST STATUS UPDATED TO PENDING ===', [
+                        'grn_id' => $grn->id,
+                        'material_request_id' => $materialRequest->id,
+                        'old_status_id' => 2, // Referred
+                        'new_status_id' => 1, // Pending
+                        'rfq_id' => $rfq->id,
+                        'grn_status' => $grn->status,
+                        'reason' => 'Sufficient inventory available to fulfill material request'
+                    ]);
+                } else {
+                    // Get detailed availability report
+                    $availabilityReport = $availabilityService->getAvailabilityReport($materialRequest);
+                    
+                    \Log::warning('=== MATERIAL REQUEST STATUS NOT UPDATED - INSUFFICIENT INVENTORY ===', [
+                        'grn_id' => $grn->id,
+                        'material_request_id' => $materialRequest->id,
+                        'rfq_id' => $rfq->id,
+                        'grn_status' => $grn->status,
+                        'availability_report' => $availabilityReport,
+                        'reason' => 'Insufficient inventory to fulfill material request - keeping in referred status'
+                    ]);
+                }
             }
 
             if ($materialRequests->isEmpty()) {
