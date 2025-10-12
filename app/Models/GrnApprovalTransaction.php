@@ -43,6 +43,11 @@ class GrnApprovalTransaction extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    public function assignedToUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
+
     public function referredTo(): BelongsTo
     {
         return $this->belongsTo(User::class, 'referred_to');

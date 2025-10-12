@@ -41,6 +41,7 @@ class TaskParameters
             AllowedFilter::exact('budget_id'),
             AllowedFilter::exact('budget_approval_transaction_id'),
             AllowedFilter::exact('request_budgets_id'),
+            AllowedFilter::exact('grn_id'),
         ];
     }
 
@@ -63,6 +64,7 @@ class TaskParameters
         'budget_id',
         'budget_approval_transaction_id',
         'request_budgets_id',
+        'grn_id',
         'read_status',
         'created_at',
         'updated_at',
@@ -114,5 +116,11 @@ class TaskParameters
         'request_budget.department',
         'request_budget.costCenter',
         'request_budget.fiscalPeriod',
+        'grn',
+        'grn.user',
+        'grn.quotation',
+        'grn.purchaseOrder',
+        'grn.approvalTransactions',
+        'grn.approvalTransactions.assignedToUser',
     ];
 }

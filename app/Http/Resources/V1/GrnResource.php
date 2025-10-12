@@ -18,6 +18,7 @@ class GrnResource extends JsonResource
             'quantity' => $this->quantity,
             'delivery_date' => $this->delivery_date?->format('Y-m-d'),
             'status' => $this->status,
+            'task_status' => $this->task_status,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
 
@@ -27,6 +28,7 @@ class GrnResource extends JsonResource
             'purchase_order' => new PurchaseOrderResource($this->whenLoaded('purchaseOrder')),
             'receive_goods' => GrnReceiveGoodResource::collection($this->whenLoaded('receiveGoods')),
             'external_delivery_notes' => ExternalDeliveryNoteResource::collection($this->whenLoaded('externalDeliveryNote')),
+            'approval_transactions' => GrnApprovalTransactionResource::collection($this->whenLoaded('approvalTransactions')),
         ];
     }
 }

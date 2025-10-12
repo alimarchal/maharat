@@ -30,6 +30,7 @@ class TaskResource extends JsonResource
             'budget_id' => $this->budget_id,
             'budget_approval_transaction_id' => $this->budget_approval_transaction_id,
             'request_budgets_id' => $this->request_budgets_id,
+            'grn_id' => $this->grn_id,
             'read_status' => $this->read_status?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
@@ -50,6 +51,7 @@ class TaskResource extends JsonResource
             'budget' => new BudgetResource($this->whenLoaded('budget')),
             'budget_approval_transaction' => new BudgetApprovalTransactionResource($this->whenLoaded('budget_approval_transaction')),
             'request_budget' => new \App\Http\Resources\RequestBudgetResource($this->whenLoaded('request_budget')),
+            'grn' => new GrnResource($this->whenLoaded('grn')),
         ];
     }
 }

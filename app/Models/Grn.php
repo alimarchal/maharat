@@ -20,6 +20,7 @@ class Grn extends Model
         'quantity',
         'delivery_date',
         'status',
+        'task_status',
     ];
 
     protected $casts = [

@@ -2039,6 +2039,214 @@ class TaskController extends Controller
                 }
             }
 
+            // Check if this is a GRN task and if it's being approved or referred
+            if ($task->grn_id && in_array($request->input('status'), ['Approved', 'Referred'])) {
+                Log::info('=== GRN TASK APPROVAL CHECK ===', [
+                    'task_id' => $task->id,
+                    'grn_id' => $task->grn_id,
+                    'current_order_no' => $task->order_no,
+                    'current_task_status' => DB::table('grns')->where('id', $task->grn_id)->value('task_status'),
+                    'current_status' => DB::table('grns')->where('id', $task->grn_id)->value('status'),
+                    'process_id' => $task->process_id,
+                    'assigned_to_user_id' => $task->assigned_to_user_id,
+                    'assigned_from_user_id' => $task->assigned_from_user_id,
+                    'request_status' => $request->input('status')
+                ]);
+
+                // Update the corresponding GRN approval transaction
+                $approvalTransaction = DB::table('grn_approval_transactions')
+                    ->where('grn_id', $task->grn_id)
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->whereNull('referred_to') // Only get transactions that are NOT referrals
+                    ->first();
+
+                if ($approvalTransaction) {
+                    Log::info('=== UPDATING GRN APPROVAL TRANSACTION ===', [
+                        'task_id' => $task->id,
+                        'grn_id' => $task->grn_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+
+                    // Update the approval transaction status
+                    $transactionUpdated = DB::table('grn_approval_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => 'Approve',
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== GRN APPROVAL TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'grn_id' => $task->grn_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_result' => $transactionUpdated
+                    ]);
+
+                    // IMPORTANT: Update GRN task_status to 'Pending' on first approval/referral
+                    // This is the key missing piece!
+                    $grnTaskStatusUpdated = DB::table('grns')
+                        ->where('id', $task->grn_id)
+                        ->update([
+                            'task_status' => 'Pending',
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== GRN TASK STATUS UPDATED TO PENDING ===', [
+                        'task_id' => $task->id,
+                        'grn_id' => $task->grn_id,
+                        'update_result' => $grnTaskStatusUpdated,
+                        'new_task_status' => 'Pending'
+                    ]);
+
+                    // Check if this approval completes the final approval
+                    $pendingApprovalTransactions = DB::table('grn_approval_transactions')
+                        ->where('grn_id', $task->grn_id)
+                        ->where('status', 'Pending')
+                        ->count();
+                        
+                    $isFinalApproval = $pendingApprovalTransactions == 0;
+                    
+                    Log::info('=== GRN FINAL APPROVAL CHECK ===', [
+                        'task_id' => $task->id,
+                        'grn_id' => $task->grn_id,
+                        'pending_approval_transactions' => $pendingApprovalTransactions,
+                        'is_final_approval' => $isFinalApproval,
+                        'note' => 'Final if no pending approval transactions remain'
+                    ]);
+                    
+                    if ($isFinalApproval) {
+                        Log::info('=== FINAL GRN APPROVAL - UPDATING TASK STATUS ONLY ===', [
+                            'task_id' => $task->id,
+                            'grn_id' => $task->grn_id,
+                            'current_status' => DB::table('grns')->where('id', $task->grn_id)->value('status'),
+                            'current_task_status' => DB::table('grns')->where('id', $task->grn_id)->value('task_status'),
+                            'target_task_status' => 'Approved',
+                            'note' => 'Only updating task_status to Approved, status field remains unchanged'
+                        ]);
+                        
+                        // Update GRN task_status to Approved only (don't change status field)
+                        $grnUpdated = DB::table('grns')
+                            ->where('id', $task->grn_id)
+                            ->update([
+                                'task_status' => 'Approved',
+                                'updated_at' => now()
+                            ]);
+                        
+                        Log::info('=== GRN TASK STATUS UPDATE RESULT ===', [
+                            'task_id' => $task->id,
+                            'grn_id' => $task->grn_id,
+                            'update_success' => $grnUpdated,
+                            'status_unchanged' => DB::table('grns')->where('id', $task->grn_id)->value('status'),
+                            'new_task_status' => DB::table('grns')->where('id', $task->grn_id)->value('task_status')
+                        ]);
+                    } else {
+                        // NOT final approval - need to create next approval step
+                        Log::info('=== GRN NOT FINAL APPROVAL - CREATING NEXT STEP ===', [
+                            'task_id' => $task->id,
+                            'grn_id' => $task->grn_id,
+                            'current_order' => $task->order_no,
+                            'note' => 'Need to create next approval step'
+                        ]);
+
+                        // Get the next process step
+                        $nextStep = DB::table('process_steps')
+                            ->where('process_id', $task->process_id)
+                            ->where('order', '>', $task->order_no)
+                            ->orderBy('order')
+                            ->first();
+
+                        if ($nextStep) {
+                            Log::info('=== FOUND NEXT GRN PROCESS STEP ===', [
+                                'task_id' => $task->id,
+                                'grn_id' => $task->grn_id,
+                                'next_step_id' => $nextStep->id,
+                                'next_step_order' => $nextStep->order,
+                                'next_step_description' => $nextStep->description,
+                                'designation_id' => $nextStep->designation_id
+                            ]);
+
+                            // Get the approver for the next step
+                            $nextApproverId = $this->getApproverForGrnStep($nextStep, $task->grn_id);
+
+                            if ($nextApproverId) {
+                                Log::info('=== FOUND NEXT GRN APPROVER ===', [
+                                    'task_id' => $task->id,
+                                    'grn_id' => $task->grn_id,
+                                    'next_approver_id' => $nextApproverId,
+                                    'next_step_order' => $nextStep->order
+                                ]);
+
+                                // Create next approval transaction
+                                $nextApprovalTransactionId = DB::table('grn_approval_transactions')->insertGetId([
+                                    'grn_id' => $task->grn_id,
+                                    'requester_id' => DB::table('grns')->where('id', $task->grn_id)->value('user_id'),
+                                    'assigned_to' => $nextApproverId,
+                                    'order' => $nextStep->order,
+                                    'description' => $nextStep->description,
+                                    'status' => 'Pending',
+                                    'created_by' => auth()->id(),
+                                    'updated_by' => auth()->id(),
+                                    'created_at' => now(),
+                                    'updated_at' => now()
+                                ]);
+
+                                Log::info('=== CREATED NEXT GRN APPROVAL TRANSACTION ===', [
+                                    'task_id' => $task->id,
+                                    'grn_id' => $task->grn_id,
+                                    'next_approval_transaction_id' => $nextApprovalTransactionId,
+                                    'next_approver_id' => $nextApproverId,
+                                    'next_step_order' => $nextStep->order
+                                ]);
+
+                                // Create next task
+                                $nextTaskId = DB::table('tasks')->insertGetId([
+                                    'process_step_id' => $nextStep->id,
+                                    'process_id' => $task->process_id,
+                                    'assigned_at' => now(),
+                                    'urgency' => 'Normal',
+                                    'assigned_to_user_id' => $nextApproverId,
+                                    'assigned_from_user_id' => null,
+                                    'grn_id' => $task->grn_id,
+                                    'order_no' => $nextStep->order,
+                                    'continue_approval_flow' => true,
+                                    'created_at' => now(),
+                                    'updated_at' => now()
+                                ]);
+
+                                Log::info('=== CREATED NEXT GRN TASK ===', [
+                                    'task_id' => $task->id,
+                                    'grn_id' => $task->grn_id,
+                                    'next_task_id' => $nextTaskId,
+                                    'next_approver_id' => $nextApproverId,
+                                    'next_step_order' => $nextStep->order
+                                ]);
+                            } else {
+                                Log::error('=== NO NEXT GRN APPROVER FOUND ===', [
+                                    'task_id' => $task->id,
+                                    'grn_id' => $task->grn_id,
+                                    'next_step_id' => $nextStep->id,
+                                    'designation_id' => $nextStep->designation_id
+                                ]);
+                            }
+                        } else {
+                            Log::warning('=== NO NEXT GRN PROCESS STEP FOUND ===', [
+                                'task_id' => $task->id,
+                                'grn_id' => $task->grn_id,
+                                'current_order' => $task->order_no,
+                                'process_id' => $task->process_id
+                            ]);
+                        }
+                    }
+                } else {
+                    Log::warning('=== NO GRN APPROVAL TRANSACTION FOUND ===', [
+                        'task_id' => $task->id,
+                        'grn_id' => $task->grn_id,
+                        'assigned_to' => $task->assigned_to_user_id
+                    ]);
+                }
+            }
+
             // Check if this is a task being referred
             if ($request->input('status') === 'Referred') {
                 // Get the task description to find the referred user
@@ -2343,6 +2551,20 @@ class TaskController extends Controller
                     ]);
 
                     if ($transactionUpdated) {
+                        // Update GRN task_status to Rejected
+                        DB::table('grns')
+                            ->where('id', $task->grn_id)
+                            ->update([
+                                'task_status' => 'Rejected',
+                                'updated_at' => now()
+                            ]);
+
+                        Log::info('=== GRN REJECTION - TASK_STATUS UPDATED TO REJECTED ===', [
+                            'task_id' => $task->id,
+                            'grn_id' => $task->grn_id,
+                            'new_task_status' => 'Rejected'
+                        ]);
+
                         // Revert the PO status to partially_delivered since adjustment was rejected
                         DB::table('purchase_orders')
                             ->where('id', DB::table('grns')->where('id', $task->grn_id)->value('purchase_order_id'))
@@ -2508,8 +2730,61 @@ class TaskController extends Controller
         if ($task->invoice_id) return 'invoice_id';
         if ($task->request_budgets_id) return 'request_budgets_id';
         if ($task->budget_id) return 'budget_id';
+        if ($task->grn_id) return 'grn_id';
         
         return 'id'; // fallback
+    }
+
+    /**
+     * Get the approver for a GRN process step
+     */
+    private function getApproverForGrnStep($step, int $grnId): ?int
+    {
+        try {
+            // Get the requester ID from the GRN
+            $requesterId = DB::table('grns')->where('id', $grnId)->value('user_id');
+            
+            if (!$requesterId) {
+                Log::error('=== NO REQUESTER FOUND FOR GRN ===', [
+                    'grn_id' => $grnId,
+                    'step_id' => $step->id
+                ]);
+                return null;
+            }
+
+            // If step has a specific approver_id, use it
+            if ($step->approver_id) {
+                return $step->approver_id;
+            }
+
+            // If step has a designation_id, find user with that designation
+            if ($step->designation_id) {
+                $designation = DB::table('designations')->where('id', $step->designation_id)->first();
+                if ($designation) {
+                    // For Direct Manager designation, find the requester's direct manager
+                    if (strcasecmp(trim($designation->designation), 'Direct Manager') === 0) {
+                        $requester = DB::table('users')->where('id', $requesterId)->first();
+                        return $requester?->parent_id;
+                    }
+                    
+                    // For other designations, find the first user with that designation
+                    $user = DB::table('users')
+                        ->where('designation_id', $step->designation_id)
+                        ->where('is_active', true)
+                        ->first();
+                    return $user?->id;
+                }
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            Log::error('=== FAILED TO GET APPROVER FOR GRN STEP ===', [
+                'step_id' => $step->id,
+                'grn_id' => $grnId,
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
     }
 
     /**
