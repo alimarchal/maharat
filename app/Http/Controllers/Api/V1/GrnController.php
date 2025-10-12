@@ -110,6 +110,7 @@ class GrnController extends Controller
                         break;
                     case 'adjust_order':
                         $validated['status'] = 'Adjusted Delivery';
+                        $validated['task_status'] = 'Draft';
                         break;
                     default:
                         $validated['status'] = 'Fully Delivered';
@@ -172,7 +173,22 @@ class GrnController extends Controller
                 'update_data' => $request->validated()
             ]);
 
-            $grn->update($request->validated());
+            $validated = $request->validated();
+            
+            // Handle adjust_order case for updates
+            if (isset($validated['delivery_status']) && $validated['delivery_status'] === 'adjust_order') {
+                $validated['status'] = 'Adjusted Delivery';
+                $validated['task_status'] = 'Draft';
+                
+                \Log::info('=== GRN UPDATE - ADJUST ORDER ROUTE ===', [
+                    'grn_id' => $grn->id,
+                    'status' => 'Adjusted Delivery',
+                    'task_status' => 'Draft',
+                    'note' => 'Updated existing GRN to adjust & close'
+                ]);
+            }
+
+            $grn->update($validated);
 
             \Log::info('=== GRN UPDATE COMPLETED ===', [
                 'grn_id' => $grn->id,
