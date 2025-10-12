@@ -576,13 +576,8 @@ class TaskController extends Controller
                     // Check if this is the final approval
                     $isFinalApproval = (string)$task->order_no === (string)$totalRequiredApprovals;
 
-                    // Trigger next task creation ONLY if NOT final approval
-                    if ($approvalTransaction && $transactionUpdated && !$isFinalApproval) {
-                        $rfqApprovalTransaction = \App\Models\RfqApprovalTransaction::find($approvalTransaction->id);
-                        if ($rfqApprovalTransaction) {
-                            $this->handleRfqApprovalTransactionUpdate($rfqApprovalTransaction);
-                        }
-                    }
+                    // Note: Next task creation is handled by the frontend (ReviewTask.jsx)
+                    // No need to trigger backend task creation here to avoid duplicates
 
                     // Update RFQ status based on approval stage
                     if ($isFinalApproval) {
