@@ -468,15 +468,22 @@ class TaskController extends Controller
                                 ]);
                         }
 
-                        DB::table('rfq_approval_transactions')
+                        // Update the referrer's transaction to Pending when referee responds
+                        $updateResult = DB::table('rfq_approval_transactions')
                             ->where('rfq_id', $task->rfq_id)
                             ->where('assigned_to', $originalTask->assigned_to_user_id)
                             ->where('referred_to', $task->assigned_to_user_id)
                             ->update([
-                                'status' => 'Refer', // Keep as Refer to show referral status
-                                // Keep referred_to to maintain referee information
+                                'status' => 'Pending', // Change to Pending when referee responds
                                 'updated_at' => now()
                             ]);
+                        
+                        Log::info('=== RFQ TRANSACTION UPDATE RESULT FOR REFERRAL RESPONSE ===', [
+                            'task_id' => $task->id,
+                            'rfq_id' => $task->rfq_id,
+                            'update_result' => $updateResult,
+                            'rows_affected' => $updateResult
+                        ]);
                     } elseif ($task->purchase_order_id) {
                         // Update the referee's transaction with their actual response
                         $refereeTransaction = DB::table('po_approval_transactions')
@@ -499,8 +506,7 @@ class TaskController extends Controller
                             ->where('assigned_to', $originalTask->assigned_to_user_id)
                             ->where('referred_to', $task->assigned_to_user_id)
                             ->update([
-                                'status' => 'Refer', // Keep as Refer to show referral status
-                                // Keep referred_to to maintain referee information
+                                'status' => 'Pending', // Change to Pending when referee responds
                                 'updated_at' => now()
                             ]);
                     } elseif ($task->invoice_id) {
@@ -525,8 +531,7 @@ class TaskController extends Controller
                             ->where('assigned_to', $originalTask->assigned_to_user_id)
                             ->where('referred_to', $task->assigned_to_user_id)
                             ->update([
-                                'status' => 'Refer', // Keep as Refer to show referral status
-                                // Keep referred_to to maintain referee information
+                                'status' => 'Pending', // Change to Pending when referee responds
                                 'updated_at' => now()
                             ]);
                     } elseif ($task->budget_id) {
@@ -551,8 +556,7 @@ class TaskController extends Controller
                             ->where('assigned_to', $originalTask->assigned_to_user_id)
                             ->where('referred_to', $task->assigned_to_user_id)
                             ->update([
-                                'status' => 'Refer', // Keep as Refer to show referral status
-                                // Keep referred_to to maintain referee information
+                                'status' => 'Pending', // Change to Pending when referee responds
                                 'updated_at' => now()
                             ]);
                     } elseif ($task->request_budgets_id) {
@@ -577,8 +581,7 @@ class TaskController extends Controller
                             ->where('assigned_to', $originalTask->assigned_to_user_id)
                             ->where('referred_to', $task->assigned_to_user_id)
                             ->update([
-                                'status' => 'Refer', // Keep as Refer to show referral status
-                                // Keep referred_to to maintain referee information
+                                'status' => 'Pending', // Change to Pending when referee responds
                                 'updated_at' => now()
                             ]);
                     } elseif ($task->payment_order_id) {
@@ -655,8 +658,7 @@ class TaskController extends Controller
                             ->where('assigned_to', $originalTask->assigned_to_user_id)
                             ->where('referred_to', $task->assigned_to_user_id)
                             ->update([
-                                'status' => 'Refer', // Keep as Refer to show referral status
-                                // Keep referred_to to maintain referee information
+                                'status' => 'Pending', // Change to Pending when referee responds
                                 'updated_at' => now()
                             ]);
                     }

@@ -141,6 +141,35 @@ class PoApprovalTransactionController extends Controller
                     ], Response::HTTP_OK);
                 }
                 
+                // Check if this is a referrer approving after a referral response
+                // Look for a task that was created as a result of this user referring to someone else
+                $referrerTask = DB::table('tasks')
+                    ->where('purchase_order_id', $poApprovalTransaction->purchase_order_id)
+                    ->where('assigned_from_user_id', $poApprovalTransaction->assigned_to)
+                    ->whereNotNull('assigned_to_user_id')
+                    ->where('created_at', '>=', now()->subMinutes(10)) // Created within last 10 minutes
+                    ->first();
+                
+                if ($referrerTask && $validated['status'] === 'Approve') {
+                    Log::info('=== REFERRER APPROVING AFTER REFERRAL RESPONSE (PURCHASE ORDER) ===', [
+                        'purchase_order_id' => $poApprovalTransaction->purchase_order_id,
+                        'referrer_task_id' => $referrerTask->id,
+                        'referrer_user_id' => $poApprovalTransaction->assigned_to,
+                        'referee_user_id' => $referrerTask->assigned_to_user_id,
+                        'status' => $validated['status']
+                    ]);
+                    
+                    // Update the referrer's transaction status to Approve
+                    $poApprovalTransaction->update(['status' => 'Approve']);
+                    
+                    // Continue with normal approval flow
+                    Log::info('=== CONTINUING WITH NORMAL PURCHASE ORDER APPROVAL FLOW AFTER REFERRAL ===', [
+                        'purchase_order_id' => $poApprovalTransaction->purchase_order_id,
+                        'transaction_id' => $poApprovalTransaction->id,
+                        'order' => $poApprovalTransaction->order
+                    ]);
+                }
+                
                 $processSteps = DB::table('process_steps')
                     ->join('processes', 'process_steps.process_id', '=', 'processes.id')
                     ->where('processes.title', 'Purchase Order Approval')
