@@ -16,7 +16,7 @@ const GRNsTable = () => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/grns?include=user,quotation,purchaseOrder&sort=-created_at`
+                    `/api/v1/grns?include=user,quotation,purchaseOrder&filter[status]=Adjusted Delivery&sort=-created_at`
                 );
                 const data = await response.json();
                 if (response.ok) {
@@ -42,10 +42,11 @@ const GRNsTable = () => {
     const paginatedGrns = grns.slice(startIndex, endIndex);
 
     const statusColors = {
-        "Fully Delivered": "text-green-500",
-        "Partially Delivered": "text-yellow-500",
-        "Adjusted Delivery": "text-blue-500",
-        Draft: "text-gray-500",
+        "Pending": "text-yellow-500",
+        "Approved": "text-green-500",
+        "Rejected": "text-red-500",
+        "Referred": "text-blue-500",
+        "Draft": "text-gray-500",
     };
 
     return (
@@ -101,10 +102,10 @@ const GRNsTable = () => {
                                 </td>
                                 <td
                                     className={`py-3 px-4 font-semibold ${
-                                        statusColors[grn.status] || ""
+                                        statusColors[grn.task_status] || ""
                                     }`}
                                 >
-                                    {grn.status || "N/A"}
+                                    {grn.task_status || "N/A"}
                                 </td>
                                 <td className="py-3 px-4">
                                     {grn.user?.name || "N/A"}

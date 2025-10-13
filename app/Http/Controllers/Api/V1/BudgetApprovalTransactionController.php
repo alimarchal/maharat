@@ -157,6 +157,35 @@ class BudgetApprovalTransactionController extends Controller
                     ], Response::HTTP_OK);
                 }
                 
+                // Check if this is a referrer approving after a referral response
+                // Look for a task that was created as a result of this user referring to someone else
+                $referrerTask = DB::table('tasks')
+                    ->where('budget_id', $budgetApprovalTransaction->budget_id)
+                    ->where('assigned_from_user_id', $budgetApprovalTransaction->assigned_to)
+                    ->whereNotNull('assigned_to_user_id')
+                    ->where('created_at', '>=', now()->subMinutes(10)) // Created within last 10 minutes
+                    ->first();
+                
+                if ($referrerTask && $data['status'] === 'Approve') {
+                    Log::info('=== REFERRER APPROVING AFTER REFERRAL RESPONSE (TOTAL BUDGET) ===', [
+                        'budget_id' => $budgetApprovalTransaction->budget_id,
+                        'referrer_task_id' => $referrerTask->id,
+                        'referrer_user_id' => $budgetApprovalTransaction->assigned_to,
+                        'referee_user_id' => $referrerTask->assigned_to_user_id,
+                        'status' => $data['status']
+                    ]);
+                    
+                    // Force the status to Approve for the rest of the flow
+                    $data['status'] = 'Approve';
+                    
+                    // Continue with normal approval flow
+                    Log::info('=== CONTINUING WITH NORMAL TOTAL BUDGET APPROVAL FLOW AFTER REFERRAL ===', [
+                        'budget_id' => $budgetApprovalTransaction->budget_id,
+                        'transaction_id' => $budgetApprovalTransaction->id,
+                        'order' => $budgetApprovalTransaction->order
+                    ]);
+                }
+                
                 $processSteps = DB::table('process_steps')
                     ->join('processes', 'process_steps.process_id', '=', 'processes.id')
                     ->where('processes.title', 'Total Budget Approval')
@@ -385,6 +414,27 @@ class BudgetApprovalTransactionController extends Controller
                         }
                     }
                 }
+            }
+
+            // Final status update for referrer approval after referral response
+            // Check if this user was a referrer who should now approve after receiving a referral response
+            $isReferrerApprovingAfterReferral = DB::table('tasks')
+                ->where('budget_id', $budgetApprovalTransaction->budget_id)
+                ->where('assigned_from_user_id', $budgetApprovalTransaction->assigned_to)
+                ->whereNotNull('assigned_to_user_id')
+                ->where('created_at', '>=', now()->subMinutes(10))
+                ->exists();
+                
+            if ($isReferrerApprovingAfterReferral && $data['status'] === 'Approve') {
+                Log::info('=== FINAL STATUS UPDATE FOR REFERRER APPROVAL (TOTAL BUDGET) ===', [
+                    'budget_id' => $budgetApprovalTransaction->budget_id,
+                    'transaction_id' => $budgetApprovalTransaction->id,
+                    'final_status' => 'Approve',
+                    'is_referrer_approving_after_referral' => true
+                ]);
+                
+                // Ensure the transaction status is set to Approve
+                $budgetApprovalTransaction->update(['status' => 'Approve']);
             }
 
             DB::commit();
