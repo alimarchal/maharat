@@ -275,6 +275,52 @@ class TaskController extends Controller
                         'user_id' => $task->assigned_to_user_id
                     ]);
 
+                    // Update the referee's transaction with their actual response
+                    Log::info('=== LOOKING FOR REFEREE TRANSACTION (MATERIAL REQUEST) ===', [
+                        'task_id' => $task->id,
+                        'material_request_id' => $task->material_request_id,
+                        'referee_user_id' => $task->assigned_to_user_id,
+                        'referee_response' => $request->input('status')
+                    ]);
+                    
+                    $refereeTransaction = DB::table('material_request_transactions')
+                        ->where('material_request_id', $task->material_request_id)
+                        ->where('assigned_to', $task->assigned_to_user_id)
+                        ->where('created_at', '>=', now()->subMinutes(5)) // Recent transaction
+                        ->first();
+                    
+                    Log::info('=== REFEREE TRANSACTION SEARCH RESULT (MATERIAL REQUEST) ===', [
+                        'task_id' => $task->id,
+                        'referee_transaction_found' => $refereeTransaction ? true : false,
+                        'referee_transaction_id' => $refereeTransaction ? $refereeTransaction->id : null,
+                        'referee_transaction_status' => $refereeTransaction ? $refereeTransaction->status : null
+                    ]);
+                    
+                    if ($refereeTransaction) {
+                        $newStatus = $request->input('status') === 'Approved' ? 'Approve' : 'Reject';
+                        $updateResult = DB::table('material_request_transactions')
+                            ->where('id', $refereeTransaction->id)
+                            ->update([
+                                'status' => $newStatus,
+                                'updated_at' => now()
+                            ]);
+                        
+                        Log::info('=== REFEREE TRANSACTION UPDATE RESULT (MATERIAL REQUEST) ===', [
+                            'task_id' => $task->id,
+                            'referee_transaction_id' => $refereeTransaction->id,
+                            'new_status' => $newStatus,
+                            'update_success' => $updateResult > 0,
+                            'rows_affected' => $updateResult
+                        ]);
+                    } else {
+                        Log::info('=== REFEREE TRANSACTION NOT FOUND - THIS IS EXPECTED ===', [
+                            'task_id' => $task->id,
+                            'material_request_id' => $task->material_request_id,
+                            'referee_user_id' => $task->assigned_to_user_id,
+                            'note' => 'Referee transactions are not created separately - status is stored in referrer transaction'
+                        ]);
+                    }
+
                     // Update the approval transaction back to Pending and clear referral
                     if ($task->material_request_id) {
                         Log::info('=== UPDATING MATERIAL REQUEST TRANSACTION FOR REFERRAL RESPONSE ===', [
@@ -290,8 +336,8 @@ class TaskController extends Controller
                             ->where('assigned_to', $originalTask->assigned_to_user_id)
                             ->where('referred_to', $task->assigned_to_user_id)
                             ->update([
-                                'status' => 'Pending',
-                                'referred_to' => null,
+                                'status' => 'Refer', // Keep as Refer to show referral status
+                                // Keep referred_to to maintain referee information
                                 'updated_at' => now()
                             ]);
                             
@@ -327,7 +373,7 @@ class TaskController extends Controller
                         $updateResult = DB::table('material_request_transactions')
                             ->where('id', $approvalTransaction->id)
                             ->update([
-                                'status' => 'Approve',
+                                'status' => 'Pending', // Change to Pending when referee responds
                                 'updated_at' => now()
                             ]);
                         
@@ -406,53 +452,211 @@ class TaskController extends Controller
                             ]);
                         }
                     } elseif ($task->rfq_id) {
+                        // Update the referee's transaction with their actual response
+                        $refereeTransaction = DB::table('rfq_approval_transactions')
+                            ->where('rfq_id', $task->rfq_id)
+                            ->where('assigned_to', $task->assigned_to_user_id)
+                            ->where('created_at', '>=', now()->subMinutes(5)) // Recent transaction
+                            ->first();
+                        
+                        if ($refereeTransaction) {
+                            DB::table('rfq_approval_transactions')
+                                ->where('id', $refereeTransaction->id)
+                                ->update([
+                                    'status' => $request->input('status') === 'Approved' ? 'Approve' : 'Reject',
+                                    'updated_at' => now()
+                                ]);
+                        }
+
                         DB::table('rfq_approval_transactions')
                             ->where('rfq_id', $task->rfq_id)
                             ->where('assigned_to', $originalTask->assigned_to_user_id)
                             ->where('referred_to', $task->assigned_to_user_id)
                             ->update([
-                                'status' => 'Pending',
-                                'referred_to' => null,
+                                'status' => 'Refer', // Keep as Refer to show referral status
+                                // Keep referred_to to maintain referee information
                                 'updated_at' => now()
                             ]);
                     } elseif ($task->purchase_order_id) {
+                        // Update the referee's transaction with their actual response
+                        $refereeTransaction = DB::table('po_approval_transactions')
+                            ->where('purchase_order_id', $task->purchase_order_id)
+                            ->where('assigned_to', $task->assigned_to_user_id)
+                            ->where('created_at', '>=', now()->subMinutes(5)) // Recent transaction
+                            ->first();
+                        
+                        if ($refereeTransaction) {
+                            DB::table('po_approval_transactions')
+                                ->where('id', $refereeTransaction->id)
+                                ->update([
+                                    'status' => $request->input('status') === 'Approved' ? 'Approve' : 'Reject',
+                                    'updated_at' => now()
+                                ]);
+                        }
+
                         DB::table('po_approval_transactions')
                             ->where('purchase_order_id', $task->purchase_order_id)
                             ->where('assigned_to', $originalTask->assigned_to_user_id)
                             ->where('referred_to', $task->assigned_to_user_id)
                             ->update([
-                                'status' => 'Pending',
-                                'referred_to' => null,
+                                'status' => 'Refer', // Keep as Refer to show referral status
+                                // Keep referred_to to maintain referee information
                                 'updated_at' => now()
                             ]);
                     } elseif ($task->invoice_id) {
+                        // Update the referee's transaction with their actual response
+                        $refereeTransaction = DB::table('mahrat_invoice_approval_transactions')
+                            ->where('invoice_id', $task->invoice_id)
+                            ->where('assigned_to', $task->assigned_to_user_id)
+                            ->where('created_at', '>=', now()->subMinutes(5)) // Recent transaction
+                            ->first();
+                        
+                        if ($refereeTransaction) {
+                            DB::table('mahrat_invoice_approval_transactions')
+                                ->where('id', $refereeTransaction->id)
+                                ->update([
+                                    'status' => $request->input('status') === 'Approved' ? 'Approve' : 'Reject',
+                                    'updated_at' => now()
+                                ]);
+                        }
+
                         DB::table('mahrat_invoice_approval_transactions')
                             ->where('invoice_id', $task->invoice_id)
                             ->where('assigned_to', $originalTask->assigned_to_user_id)
                             ->where('referred_to', $task->assigned_to_user_id)
                             ->update([
-                                'status' => 'Pending',
-                                'referred_to' => null,
+                                'status' => 'Refer', // Keep as Refer to show referral status
+                                // Keep referred_to to maintain referee information
                                 'updated_at' => now()
                             ]);
                     } elseif ($task->budget_id) {
+                        // Update the referee's transaction with their actual response
+                        $refereeTransaction = DB::table('budget_approval_transactions')
+                            ->where('budget_id', $task->budget_id)
+                            ->where('assigned_to', $task->assigned_to_user_id)
+                            ->where('created_at', '>=', now()->subMinutes(5)) // Recent transaction
+                            ->first();
+                        
+                        if ($refereeTransaction) {
+                            DB::table('budget_approval_transactions')
+                                ->where('id', $refereeTransaction->id)
+                                ->update([
+                                    'status' => $request->input('status') === 'Approved' ? 'Approve' : 'Reject',
+                                    'updated_at' => now()
+                                ]);
+                        }
+
                         DB::table('budget_approval_transactions')
                             ->where('budget_id', $task->budget_id)
                             ->where('assigned_to', $originalTask->assigned_to_user_id)
                             ->where('referred_to', $task->assigned_to_user_id)
                             ->update([
-                                'status' => 'Pending',
-                                'referred_to' => null,
+                                'status' => 'Refer', // Keep as Refer to show referral status
+                                // Keep referred_to to maintain referee information
                                 'updated_at' => now()
                             ]);
                     } elseif ($task->request_budgets_id) {
+                        // Update the referee's transaction with their actual response
+                        $refereeTransaction = DB::table('budget_request_approval_transactions')
+                            ->where('request_budgets_id', $task->request_budgets_id)
+                            ->where('assigned_to', $task->assigned_to_user_id)
+                            ->where('created_at', '>=', now()->subMinutes(5)) // Recent transaction
+                            ->first();
+                        
+                        if ($refereeTransaction) {
+                            DB::table('budget_request_approval_transactions')
+                                ->where('id', $refereeTransaction->id)
+                                ->update([
+                                    'status' => $request->input('status') === 'Approved' ? 'Approve' : 'Reject',
+                                    'updated_at' => now()
+                                ]);
+                        }
+
                         DB::table('budget_request_approval_transactions')
                             ->where('request_budgets_id', $task->request_budgets_id)
                             ->where('assigned_to', $originalTask->assigned_to_user_id)
                             ->where('referred_to', $task->assigned_to_user_id)
                             ->update([
-                                'status' => 'Pending',
+                                'status' => 'Refer', // Keep as Refer to show referral status
+                                // Keep referred_to to maintain referee information
+                                'updated_at' => now()
+                            ]);
+                    } elseif ($task->payment_order_id) {
+                        // Update the referee's transaction with their actual response
+                        Log::info('=== LOOKING FOR REFEREE TRANSACTION (PAYMENT ORDER) ===', [
+                            'task_id' => $task->id,
+                            'payment_order_id' => $task->payment_order_id,
+                            'referee_user_id' => $task->assigned_to_user_id,
+                            'referee_response' => $request->input('status')
+                        ]);
+                        
+                        $refereeTransaction = DB::table('payment_order_approval_transactions')
+                            ->where('payment_order_id', $task->payment_order_id)
+                            ->where('assigned_to', $task->assigned_to_user_id)
+                            ->where('created_at', '>=', now()->subMinutes(5)) // Recent transaction
+                            ->first();
+                        
+                        Log::info('=== REFEREE TRANSACTION SEARCH RESULT (PAYMENT ORDER) ===', [
+                            'task_id' => $task->id,
+                            'referee_transaction_found' => $refereeTransaction ? true : false,
+                            'referee_transaction_id' => $refereeTransaction ? $refereeTransaction->id : null,
+                            'referee_transaction_status' => $refereeTransaction ? $refereeTransaction->status : null
+                        ]);
+                        
+                        if ($refereeTransaction) {
+                            $newStatus = $request->input('status') === 'Approved' ? 'Approve' : 'Reject';
+                            $updateResult = DB::table('payment_order_approval_transactions')
+                                ->where('id', $refereeTransaction->id)
+                                ->update([
+                                    'status' => $newStatus,
+                                    'updated_at' => now()
+                                ]);
+                            
+                            Log::info('=== REFEREE TRANSACTION UPDATE RESULT (PAYMENT ORDER) ===', [
+                                'task_id' => $task->id,
+                                'referee_transaction_id' => $refereeTransaction->id,
+                                'new_status' => $newStatus,
+                                'update_success' => $updateResult > 0,
+                                'rows_affected' => $updateResult
+                            ]);
+                        } else {
+                            Log::error('=== REFEREE TRANSACTION NOT FOUND (PAYMENT ORDER) ===', [
+                                'task_id' => $task->id,
+                                'payment_order_id' => $task->payment_order_id,
+                                'referee_user_id' => $task->assigned_to_user_id,
+                                'search_criteria' => 'created_at >= ' . now()->subMinutes(5)
+                            ]);
+                            
+                            // CREATE the referee's transaction since it doesn't exist
+                            $newStatus = $request->input('status') === 'Approved' ? 'Approve' : 'Reject';
+                            $refereeTransactionId = DB::table('payment_order_approval_transactions')->insertGetId([
+                                'payment_order_id' => $task->payment_order_id,
+                                'requester_id' => $task->assigned_from_user_id, // Original requester
+                                'assigned_to' => $task->assigned_to_user_id, // Referee
                                 'referred_to' => null,
+                                'order' => 1, // Same order as original
+                                'description' => 'Referee response',
+                                'status' => $newStatus,
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]);
+                            
+                            Log::info('=== REFEREE TRANSACTION CREATED (PAYMENT ORDER) ===', [
+                                'task_id' => $task->id,
+                                'payment_order_id' => $task->payment_order_id,
+                                'referee_user_id' => $task->assigned_to_user_id,
+                                'new_transaction_id' => $refereeTransactionId,
+                                'new_status' => $newStatus
+                            ]);
+                        }
+
+                        DB::table('payment_order_approval_transactions')
+                            ->where('payment_order_id', $task->payment_order_id)
+                            ->where('assigned_to', $originalTask->assigned_to_user_id)
+                            ->where('referred_to', $task->assigned_to_user_id)
+                            ->update([
+                                'status' => 'Refer', // Keep as Refer to show referral status
+                                // Keep referred_to to maintain referee information
                                 'updated_at' => now()
                             ]);
                     }
@@ -544,7 +748,7 @@ class TaskController extends Controller
                         $transactionUpdated = DB::table('rfq_approval_transactions')
                             ->where('id', $approvalTransaction->id)
                             ->update([
-                                'status' => 'Approve',
+                                'status' => 'Pending', // Change to Pending when referee responds
                                 'updated_by' => auth()->id(),
                                 'updated_at' => now()
                             ]);
@@ -781,7 +985,7 @@ class TaskController extends Controller
                     $transactionUpdated = DB::table('mahrat_invoice_approval_transactions')
                         ->where('id', $approvalTransaction->id)
                         ->update([
-                            'status' => 'Approve',
+                            'status' => 'Pending', // Change to Pending when referee responds
                             'updated_by' => auth()->id(),
                             'updated_at' => now()
                         ]);
@@ -1126,7 +1330,7 @@ class TaskController extends Controller
                     $transactionUpdated = DB::table('budget_request_approval_transactions')
                         ->where('id', $approvalTransaction->id)
                         ->update([
-                            'status' => 'Approve',
+                            'status' => 'Pending', // Change to Pending when referee responds
                             'updated_by' => auth()->id(),
                             'updated_at' => now()
                         ]);

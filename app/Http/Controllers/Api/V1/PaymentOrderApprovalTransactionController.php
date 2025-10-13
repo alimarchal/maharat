@@ -113,6 +113,16 @@ class PaymentOrderApprovalTransactionController extends Controller
 
             $paymentOrderApprovalTransaction->update($data);
 
+            // Log referee response for debugging
+            Log::info('=== PAYMENT ORDER APPROVAL TRANSACTION UPDATED ===', [
+                'transaction_id' => $paymentOrderApprovalTransaction->id,
+                'payment_order_id' => $paymentOrderApprovalTransaction->payment_order_id,
+                'assigned_to' => $paymentOrderApprovalTransaction->assigned_to,
+                'new_status' => $data['status'],
+                'updated_by' => auth()->id(),
+                'updated_at' => now()
+            ]);
+
             // If the status is 'Approve' or 'Referred', check if this is the final approval
             if (isset($data['status']) && in_array($data['status'], ['Approve', 'Referred'])) {
                 // Check if this is a referral response task - if so, skip normal approval flow
