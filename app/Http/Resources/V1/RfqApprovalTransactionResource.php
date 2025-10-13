@@ -12,12 +12,17 @@ class RfqApprovalTransactionResource extends JsonResource
         // Get referee's transaction status if this transaction has a referred_to user
         $refereeStatus = null;
         if ($this->referred_to) {
-            // Look for referee's transaction - find their existing transaction for this RFQ
-            $refereeTransaction = \App\Models\RfqApprovalTransaction::where('rfq_id', $this->rfq_id)
-                ->where('assigned_to', $this->referred_to)
-                ->orderBy('updated_at', 'desc') // Get the most recently updated one
+            // Get the referee's status from the task that was created for the referee
+            $refereeTask = \App\Models\Task::where('rfq_id', $this->rfq_id)
+                ->where('assigned_to_user_id', $this->referred_to)
+                ->where('assigned_from_user_id', $this->assigned_to)
+                ->where('status', '!=', 'Pending')
+                ->orderBy('updated_at', 'desc')
                 ->first();
-            $refereeStatus = $refereeTransaction ? $refereeTransaction->status : null;
+            
+            if ($refereeTask) {
+                $refereeStatus = $refereeTask->status === 'Approved' ? 'Approve' : ($refereeTask->status === 'Rejected' ? 'Reject' : $refereeTask->status);
+            }
         }
 
         return [

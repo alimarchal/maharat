@@ -17,26 +17,17 @@ class PaymentOrderApprovalTransactionResource extends JsonResource
         // Get referee's transaction status if this transaction has a referred_to user
         $refereeStatus = null;
         if ($this->referred_to) {
-            // Look for referee's transaction - find their existing transaction for this payment order
-            $refereeTransaction = \App\Models\PaymentOrderApprovalTransaction::where('payment_order_id', $this->payment_order_id)
-                ->where('assigned_to', $this->referred_to)
-                ->orderBy('updated_at', 'desc') // Get the most recently updated one
+            // Get the referee's status from the task that was created for the referee
+            $refereeTask = \App\Models\Task::where('payment_order_id', $this->payment_order_id)
+                ->where('assigned_to_user_id', $this->referred_to)
+                ->where('assigned_from_user_id', $this->assigned_to)
+                ->where('status', '!=', 'Pending')
+                ->orderBy('updated_at', 'desc')
                 ->first();
-            $refereeStatus = $refereeTransaction ? $refereeTransaction->status : null;
             
-            // Debug logging
-            \Log::info('=== API RESOURCE REFEREE STATUS DEBUG ===', [
-                'payment_order_id' => $this->payment_order_id,
-                'referred_to' => $this->referred_to,
-                'referee_transaction_found' => $refereeTransaction ? true : false,
-                'referee_status' => $refereeStatus,
-                'referee_transaction_id' => $refereeTransaction ? $refereeTransaction->id : null,
-                'referee_transaction_updated_at' => $refereeTransaction ? $refereeTransaction->updated_at : null,
-                'all_referee_transactions' => \App\Models\PaymentOrderApprovalTransaction::where('payment_order_id', $this->payment_order_id)
-                    ->where('assigned_to', $this->referred_to)
-                    ->get(['id', 'status', 'created_at', 'updated_at'])
-                    ->toArray()
-            ]);
+            if ($refereeTask) {
+                $refereeStatus = $refereeTask->status === 'Approved' ? 'Approve' : ($refereeTask->status === 'Rejected' ? 'Reject' : $refereeTask->status);
+            }
         }
 
         return [
