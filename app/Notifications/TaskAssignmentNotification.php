@@ -132,6 +132,12 @@ class TaskAssignmentNotification extends Notification
                 }
                 break;
 
+            case 'Short Delivery Adjustment Approval':
+                if ($this->task->grn) {
+                    return $this->task->grn->grn_number;
+                }
+                break;
+
             default:
                 return "Task #{$this->task->id}";
         }
@@ -200,6 +206,11 @@ class TaskAssignmentNotification extends Notification
             case 'Maharat Invoice Approval':
                 if ($this->task->invoice_id) {
                     $relatedData['invoice_id'] = $this->task->invoice_id;
+                }
+                break;
+            case 'Short Delivery Adjustment Approval':
+                if ($this->task->grn_id) {
+                    $relatedData['grn_id'] = $this->task->grn_id;
                 }
                 break;
         }

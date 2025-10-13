@@ -25,11 +25,7 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
     const [showPartialDeliveryModal, setShowPartialDeliveryModal] = useState(false);
     const [partialItems, setPartialItems] = useState([]);
 
-    const currentDate = new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "2-digit", 
-        year: "numeric"
-    });
+    const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
 
     useEffect(() => {
         if (grnsData) {
@@ -536,7 +532,11 @@ const CreateGRNModal = ({ isOpen, onClose, grnsData }) => {
                         <div className="flex justify-start items-center gap-8">
                             <h2 className="text-xl font-medium text-[#2C323C]">
                                 Delivery Date:{" "}
-                                <span className="text-[#2C323C]">{currentDate}</span>
+                                <span className="text-[#2C323C]">{new Date().toLocaleDateString("en-GB", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric"
+                                })}</span>
                             </h2>
                             <button
                                 onClick={onClose}
