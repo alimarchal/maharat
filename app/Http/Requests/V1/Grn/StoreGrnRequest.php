@@ -20,6 +20,7 @@ class StoreGrnRequest extends FormRequest
             'purchase_order_id' => ['nullable', 'exists:purchase_orders,id'],
             'quantity' => ['required', 'numeric', 'min:0'],
             'delivery_date' => ['required', 'date'],
+            'delivery_status' => ['nullable', 'string', 'in:complete_delivery,later_delivery,adjust_order'],
         ];
     }
 }

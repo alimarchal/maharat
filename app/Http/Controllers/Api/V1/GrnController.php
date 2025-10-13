@@ -90,7 +90,19 @@ class GrnController extends Controller
         try {
             DB::beginTransaction();
 
+            \Log::info('=== GRN STORE REQUEST RECEIVED ===', [
+                'raw_request_data' => $request->all(),
+                'delivery_status_raw' => $request->input('delivery_status'),
+                'delivery_status_type' => gettype($request->input('delivery_status'))
+            ]);
+
             $validated = $request->validated();
+
+            \Log::info('=== GRN STORE REQUEST VALIDATED ===', [
+                'validated_data' => $validated,
+                'delivery_status_validated' => $validated['delivery_status'] ?? 'NOT_SET',
+                'delivery_status_present' => isset($validated['delivery_status'])
+            ]);
 
             // Auto-generate GRN number if not provided
             if (!isset($validated['grn_number'])) {
@@ -123,6 +135,32 @@ class GrnController extends Controller
             // Update material request status if GRN is issued against a purchase order
             if ($grn->purchase_order_id) {
                 $this->updateMaterialRequestStatusFromGRN($grn);
+            }
+
+            // If this is an adjust_order or later_delivery, start the Short Delivery Adjustment Approval process
+            \Log::info('=== CHECKING FOR APPROVAL PROCESS TRIGGER ===', [
+                'grn_id' => $grn->id,
+                'delivery_status_present' => isset($validated['delivery_status']),
+                'delivery_status_value' => $validated['delivery_status'] ?? 'NOT_SET',
+                'is_adjust_order' => isset($validated['delivery_status']) && $validated['delivery_status'] === 'adjust_order',
+                'is_later_delivery' => isset($validated['delivery_status']) && $validated['delivery_status'] === 'later_delivery',
+                'should_trigger_approval' => isset($validated['delivery_status']) && in_array($validated['delivery_status'], ['adjust_order', 'later_delivery'])
+            ]);
+
+            if (isset($validated['delivery_status']) && in_array($validated['delivery_status'], ['adjust_order', 'later_delivery'])) {
+                \Log::info('=== APPROVAL PROCESS TRIGGER DETECTED - STARTING APPROVAL PROCESS ===', [
+                    'grn_id' => $grn->id,
+                    'grn_number' => $grn->grn_number,
+                    'delivery_status' => $validated['delivery_status'],
+                    'reason' => 'delivery_status requires approval process'
+                ]);
+                $this->startShortDeliveryAdjustmentApprovalProcess($grn);
+            } else {
+                \Log::info('=== APPROVAL PROCESS NOT TRIGGERED ===', [
+                    'grn_id' => $grn->id,
+                    'delivery_status' => $validated['delivery_status'] ?? 'NOT_SET',
+                    'reason' => 'delivery_status does not require approval process'
+                ]);
             }
 
             DB::commit();
@@ -170,21 +208,36 @@ class GrnController extends Controller
                 'old_quantity' => $grn->quantity,
                 'old_status' => $grn->status,
                 'purchase_order_id' => $grn->purchase_order_id,
-                'update_data' => $request->validated()
+                'raw_request_data' => $request->all(),
+                'delivery_status_raw' => $request->input('delivery_status'),
+                'delivery_status_type' => gettype($request->input('delivery_status'))
             ]);
 
             $validated = $request->validated();
+
+            \Log::info('=== GRN UPDATE REQUEST VALIDATED ===', [
+                'grn_id' => $grn->id,
+                'validated_data' => $validated,
+                'delivery_status_validated' => $validated['delivery_status'] ?? 'NOT_SET',
+                'delivery_status_present' => isset($validated['delivery_status'])
+            ]);
             
-            // Handle adjust_order case for updates
-            if (isset($validated['delivery_status']) && $validated['delivery_status'] === 'adjust_order') {
-                $validated['status'] = 'Adjusted Delivery';
-                $validated['task_status'] = 'Draft';
+            // Handle adjust_order and later_delivery cases for updates
+            if (isset($validated['delivery_status']) && in_array($validated['delivery_status'], ['adjust_order', 'later_delivery'])) {
+                if ($validated['delivery_status'] === 'adjust_order') {
+                    $validated['status'] = 'Adjusted Delivery';
+                    $validated['task_status'] = 'Draft';
+                } elseif ($validated['delivery_status'] === 'later_delivery') {
+                    $validated['status'] = 'Partially Delivered';
+                    $validated['task_status'] = 'Draft';
+                }
                 
-                \Log::info('=== GRN UPDATE - ADJUST ORDER ROUTE ===', [
+                \Log::info('=== GRN UPDATE - APPROVAL REQUIRED ROUTE ===', [
                     'grn_id' => $grn->id,
-                    'status' => 'Adjusted Delivery',
-                    'task_status' => 'Draft',
-                    'note' => 'Updated existing GRN to adjust & close'
+                    'delivery_status' => $validated['delivery_status'],
+                    'status' => $validated['status'],
+                    'task_status' => $validated['task_status'],
+                    'note' => 'Updated existing GRN to require approval'
                 ]);
             }
 
@@ -195,6 +248,32 @@ class GrnController extends Controller
                 'new_quantity' => $grn->quantity,
                 'new_status' => $grn->status
             ]);
+
+            // If this is an adjust_order or later_delivery, start the Short Delivery Adjustment Approval process
+            \Log::info('=== UPDATE: CHECKING FOR APPROVAL PROCESS TRIGGER ===', [
+                'grn_id' => $grn->id,
+                'delivery_status_present' => isset($validated['delivery_status']),
+                'delivery_status_value' => $validated['delivery_status'] ?? 'NOT_SET',
+                'is_adjust_order' => isset($validated['delivery_status']) && $validated['delivery_status'] === 'adjust_order',
+                'is_later_delivery' => isset($validated['delivery_status']) && $validated['delivery_status'] === 'later_delivery',
+                'should_trigger_approval' => isset($validated['delivery_status']) && in_array($validated['delivery_status'], ['adjust_order', 'later_delivery'])
+            ]);
+
+            if (isset($validated['delivery_status']) && in_array($validated['delivery_status'], ['adjust_order', 'later_delivery'])) {
+                \Log::info('=== UPDATE: APPROVAL PROCESS TRIGGER DETECTED - STARTING APPROVAL PROCESS ===', [
+                    'grn_id' => $grn->id,
+                    'grn_number' => $grn->grn_number,
+                    'delivery_status' => $validated['delivery_status'],
+                    'reason' => 'delivery_status requires approval process'
+                ]);
+                $this->startShortDeliveryAdjustmentApprovalProcess($grn);
+            } else {
+                \Log::info('=== UPDATE: APPROVAL PROCESS NOT TRIGGERED ===', [
+                    'grn_id' => $grn->id,
+                    'delivery_status' => $validated['delivery_status'] ?? 'NOT_SET',
+                    'reason' => 'delivery_status does not require approval process'
+                ]);
+            }
 
             // Note: Material request status update will be triggered after inventory update
             \Log::info('=== GRN UPDATE COMPLETED - MATERIAL REQUEST UPDATE WILL BE TRIGGERED AFTER INVENTORY UPDATE ===', [
@@ -469,6 +548,188 @@ class GrnController extends Controller
 
         } catch (\Exception $e) {
             \Log::error('GRN Status Update: Failed to update material request status', [
+                'grn_id' => $grn->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * Start the Short Delivery Adjustment Approval process for a GRN
+     */
+    private function startShortDeliveryAdjustmentApprovalProcess(Grn $grn): void
+    {
+        try {
+            \Log::info('=== STARTING SHORT DELIVERY ADJUSTMENT APPROVAL PROCESS ===', [
+                'grn_id' => $grn->id,
+                'grn_number' => $grn->grn_number,
+                'requester_id' => $grn->user_id
+            ]);
+
+            // Check if approval process is already started for this GRN
+            $existingTransaction = DB::table('grn_approval_transactions')
+                ->where('grn_id', $grn->id)
+                ->first();
+
+            \Log::info('=== CHECKING FOR EXISTING APPROVAL TRANSACTIONS ===', [
+                'grn_id' => $grn->id,
+                'existing_transaction_found' => $existingTransaction ? true : false,
+                'existing_transaction_id' => $existingTransaction ? $existingTransaction->id : null
+            ]);
+
+            if ($existingTransaction) {
+                \Log::info('=== SHORT DELIVERY ADJUSTMENT APPROVAL PROCESS ALREADY STARTED ===', [
+                    'grn_id' => $grn->id,
+                    'existing_transaction_id' => $existingTransaction->id,
+                    'reason' => 'Approval process already exists for this GRN'
+                ]);
+                return;
+            }
+
+            // Get the Short Delivery Adjustment Approval process
+            $process = DB::table('processes')
+                ->where('title', 'Short Delivery Adjustment Approval')
+                ->where('status', 'Active')
+                ->first();
+
+            \Log::info('=== SEARCHING FOR SHORT DELIVERY ADJUSTMENT APPROVAL PROCESS ===', [
+                'grn_id' => $grn->id,
+                'process_found' => $process ? true : false,
+                'process_id' => $process ? $process->id : null,
+                'process_title' => $process ? $process->title : null,
+                'process_status' => $process ? $process->status : null
+            ]);
+
+            if (!$process) {
+                \Log::error('=== SHORT DELIVERY ADJUSTMENT APPROVAL PROCESS NOT FOUND ===', [
+                    'grn_id' => $grn->id,
+                    'reason' => 'Process with title "Short Delivery Adjustment Approval" and status "Active" not found in database'
+                ]);
+                return;
+            }
+
+            // Get the first step of the process
+            $firstStep = DB::table('process_steps')
+                ->where('process_id', $process->id)
+                ->orderBy('order')
+                ->first();
+
+            \Log::info('=== SEARCHING FOR PROCESS STEPS ===', [
+                'grn_id' => $grn->id,
+                'process_id' => $process->id,
+                'first_step_found' => $firstStep ? true : false,
+                'first_step_id' => $firstStep ? $firstStep->id : null,
+                'first_step_order' => $firstStep ? $firstStep->order : null,
+                'first_step_description' => $firstStep ? $firstStep->description : null
+            ]);
+
+            if (!$firstStep) {
+                \Log::error('=== NO PROCESS STEPS FOUND FOR SHORT DELIVERY ADJUSTMENT APPROVAL ===', [
+                    'grn_id' => $grn->id,
+                    'process_id' => $process->id,
+                    'reason' => 'No process steps found for the Short Delivery Adjustment Approval process'
+                ]);
+                return;
+            }
+
+            \Log::info('=== PROCESS AND FIRST STEP FOUND ===', [
+                'grn_id' => $grn->id,
+                'process_id' => $process->id,
+                'process_title' => $process->title,
+                'first_step_id' => $firstStep->id,
+                'first_step_order' => $firstStep->order,
+                'first_step_description' => $firstStep->description
+            ]);
+
+            // Get the approver for the first step
+            $resolver = new \App\Services\ApproverResolver();
+            $eloquentStep = \App\Models\ProcessStep::find($firstStep->id);
+            $requester = \App\Models\User::find($grn->user_id);
+
+            if (!$eloquentStep || !$requester) {
+                \Log::error('=== FAILED TO RESOLVE APPROVER - MISSING STEP OR REQUESTER ===', [
+                    'grn_id' => $grn->id,
+                    'eloquent_step_found' => $eloquentStep ? true : false,
+                    'requester_found' => $requester ? true : false
+                ]);
+                return;
+            }
+
+            $approverId = $resolver->resolveApproverId($eloquentStep, $requester);
+
+            if (!$approverId) {
+                \Log::error('=== FAILED TO RESOLVE APPROVER ===', [
+                    'grn_id' => $grn->id,
+                    'step_id' => $firstStep->id,
+                    'requester_id' => $grn->user_id
+                ]);
+                return;
+            }
+
+            \Log::info('=== APPROVER RESOLVED ===', [
+                'grn_id' => $grn->id,
+                'approver_id' => $approverId,
+                'step_id' => $firstStep->id
+            ]);
+
+            // Create the approval transaction
+            $approvalTransactionId = DB::table('grn_approval_transactions')->insertGetId([
+                'grn_id' => $grn->id,
+                'requester_id' => $grn->user_id,
+                'assigned_to' => $approverId,
+                'order' => $firstStep->order,
+                'description' => $firstStep->description,
+                'status' => 'Pending',
+                'created_by' => auth()->id(),
+                'updated_by' => auth()->id(),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            \Log::info('=== CREATED GRN APPROVAL TRANSACTION ===', [
+                'grn_id' => $grn->id,
+                'approval_transaction_id' => $approvalTransactionId,
+                'approver_id' => $approverId,
+                'step_order' => $firstStep->order
+            ]);
+
+            // Create the task
+            $taskId = DB::table('tasks')->insertGetId([
+                'process_step_id' => $firstStep->id,
+                'process_id' => $process->id,
+                'assigned_at' => now(),
+                'urgency' => 'Normal',
+                'order_no' => $firstStep->order,
+                'assigned_to_user_id' => $approverId,
+                'assigned_from_user_id' => $grn->user_id,
+                'read_status' => null,
+                'grn_id' => $grn->id,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            \Log::info('=== CREATED GRN APPROVAL TASK ===', [
+                'grn_id' => $grn->id,
+                'task_id' => $taskId,
+                'approver_id' => $approverId,
+                'step_order' => $firstStep->order
+            ]);
+
+            // Send task assignment notification
+            $task = \App\Models\Task::with(['assignedToUser', 'process'])->find($taskId);
+            if ($task) {
+                $task->assignedToUser->notify(new \App\Notifications\TaskAssignmentNotification($task, 'Short Delivery Adjustment Approval'));
+                \Log::info('=== TASK ASSIGNMENT NOTIFICATION SENT ===', [
+                    'grn_id' => $grn->id,
+                    'task_id' => $taskId,
+                    'approver_id' => $approverId,
+                    'task_type' => 'Short Delivery Adjustment Approval'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('=== FAILED TO START SHORT DELIVERY ADJUSTMENT APPROVAL PROCESS ===', [
                 'grn_id' => $grn->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()

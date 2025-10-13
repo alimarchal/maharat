@@ -68,6 +68,34 @@ class ProcessStepSeeder extends Seeder
         foreach ($steps as $step) {
             ProcessStep::create($step);
         }
+
+        // Create steps for Short Delivery Adjustment Approval process
+        $shortDeliveryProcess = Process::where('title', 'Short Delivery Adjustment Approval')->first();
+        
+        if ($shortDeliveryProcess) {
+            $shortDeliverySteps = [
+                [
+                    'process_id' => $shortDeliveryProcess->id,
+                    'designation_id' => 4, // Direct Manager
+                    'order' => 1,
+                    'description' => "Direct Manager Approval for Short Delivery Adjustment",
+                    'is_active' => true,
+                    'timeout_days' => 2
+                ],
+                [
+                    'process_id' => $shortDeliveryProcess->id,
+                    'designation_id' => 3, // Manager
+                    'order' => 2,
+                    'description' => "Manager Approval for Short Delivery Adjustment",
+                    'is_active' => true,
+                    'timeout_days' => 2
+                ],
+            ];
+
+            foreach ($shortDeliverySteps as $step) {
+                ProcessStep::create($step);
+            }
+        }
     }
 }
 
