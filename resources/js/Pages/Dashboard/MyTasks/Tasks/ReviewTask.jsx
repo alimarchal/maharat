@@ -125,13 +125,22 @@ const ReviewTask = () => {
             });
 
             if (taskDescription.action === "Approve" && taskData.continue_approval_flow == 1) {
-                console.log("=== FRONTEND: PROCEEDING WITH NEXT APPROVAL CREATION ===", {
-                    taskId: taskData.id,
-                    action: taskDescription.action,
-                    assignedFromUserId: taskData.assigned_from_user_id,
-                    continueApprovalFlow: taskData.continue_approval_flow,
-                    reason: "continue_approval_flow is 1"
-                });
+                // Skip frontend task creation for GRN tasks - backend handles it
+                if (taskData.grn_id) {
+                    console.log("=== FRONTEND: SKIPPING NEXT APPROVAL CREATION - GRN TASK ===", {
+                        taskId: taskData.id,
+                        action: taskDescription.action,
+                        grnId: taskData.grn_id,
+                        reason: "GRN tasks are handled by backend"
+                    });
+                } else {
+                    console.log("=== FRONTEND: PROCEEDING WITH NEXT APPROVAL CREATION ===", {
+                        taskId: taskData.id,
+                        action: taskDescription.action,
+                        assignedFromUserId: taskData.assigned_from_user_id,
+                        continueApprovalFlow: taskData.continue_approval_flow,
+                        reason: "continue_approval_flow is 1"
+                    });
                 const transactions = [
                     {
                         key: "material_request_id",
@@ -314,6 +323,7 @@ const ReviewTask = () => {
 
                     // Note: The TaskController already handles updating the request_budgets table
                     // when the task is approved, so we don't need to make an additional PUT request here
+                }
                 }
             } else if (taskDescription.action === "Approve" && taskData.continue_approval_flow == 0) {
                 console.log("=== FRONTEND: SKIPPING NEXT APPROVAL CREATION - REFERRAL RESPONSE ===", {
