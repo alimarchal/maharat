@@ -186,8 +186,8 @@ class MahratInvoiceApprovalTransactionController extends Controller
                         'status' => $validated['status']
                     ]);
                     
-                    // Update the referrer's transaction status to Approve
-                    $mahratInvoiceApprovalTransaction->update(['status' => 'Approve']);
+                    // Force the status to Approve for the rest of the flow
+                    $validated['status'] = 'Approve';
                     
                     // Continue with normal approval flow
                     Log::info('=== CONTINUING WITH NORMAL MAHARAT INVOICE APPROVAL FLOW AFTER REFERRAL ===', [
@@ -331,6 +331,27 @@ class MahratInvoiceApprovalTransactionController extends Controller
                         $notificationService->sendFinalStatusNotification($task, 'Maharat Invoice Approval', 'Rejected', $requester);
                     }
                 }
+            }
+
+            // Final status update for referrer approval after referral response
+            // Check if this user was a referrer who should now approve after receiving a referral response
+            $isReferrerApprovingAfterReferral = DB::table('tasks')
+                ->where('invoice_id', $mahratInvoiceApprovalTransaction->invoice_id)
+                ->where('assigned_from_user_id', $mahratInvoiceApprovalTransaction->assigned_to)
+                ->whereNotNull('assigned_to_user_id')
+                ->where('created_at', '>=', now()->subMinutes(10))
+                ->exists();
+                
+            if ($isReferrerApprovingAfterReferral && $validated['status'] === 'Approve') {
+                Log::info('=== FINAL STATUS UPDATE FOR REFERRER APPROVAL (MAHARAT INVOICE) ===', [
+                    'invoice_id' => $mahratInvoiceApprovalTransaction->invoice_id,
+                    'transaction_id' => $mahratInvoiceApprovalTransaction->id,
+                    'final_status' => 'Approve',
+                    'is_referrer_approving_after_referral' => true
+                ]);
+                
+                // Ensure the transaction status is set to Approve
+                $mahratInvoiceApprovalTransaction->update(['status' => 'Approve']);
             }
 
             DB::commit();

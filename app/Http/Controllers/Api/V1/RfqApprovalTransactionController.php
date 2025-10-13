@@ -156,7 +156,7 @@ class RfqApprovalTransactionController extends Controller
                     ->first();
                 
                 if ($referrerTask && $validated['status'] === 'Approve') {
-                    Log::info('=== REFERRER APPROVING AFTER REFERRAL RESPONSE ===', [
+                    Log::info('=== REFERRER APPROVING AFTER REFERRAL RESPONSE (RFQ) ===', [
                         'rfq_id' => $rfqApprovalTransaction->rfq_id,
                         'referrer_task_id' => $referrerTask->id,
                         'referrer_user_id' => $rfqApprovalTransaction->assigned_to,
@@ -164,8 +164,8 @@ class RfqApprovalTransactionController extends Controller
                         'status' => $validated['status']
                     ]);
                     
-                    // Update the referrer's transaction status to Approve
-                    $rfqApprovalTransaction->update(['status' => 'Approve']);
+                    // Force the status to Approve for the rest of the flow
+                    $validated['status'] = 'Approve';
                     
                     // Continue with normal approval flow
                     Log::info('=== CONTINUING WITH NORMAL RFQ APPROVAL FLOW AFTER REFERRAL ===', [
@@ -345,6 +345,27 @@ class RfqApprovalTransactionController extends Controller
                         $notificationService->sendFinalStatusNotification($task, 'RFQ Approval', 'Rejected', $requester);
                     }
                 }
+            }
+
+            // Final status update for referrer approval after referral response
+            // Check if this user was a referrer who should now approve after receiving a referral response
+            $isReferrerApprovingAfterReferral = DB::table('tasks')
+                ->where('rfq_id', $rfqApprovalTransaction->rfq_id)
+                ->where('assigned_from_user_id', $rfqApprovalTransaction->assigned_to)
+                ->whereNotNull('assigned_to_user_id')
+                ->where('created_at', '>=', now()->subMinutes(10))
+                ->exists();
+                
+            if ($isReferrerApprovingAfterReferral && $validated['status'] === 'Approve') {
+                Log::info('=== FINAL STATUS UPDATE FOR REFERRER APPROVAL (RFQ) ===', [
+                    'rfq_id' => $rfqApprovalTransaction->rfq_id,
+                    'transaction_id' => $rfqApprovalTransaction->id,
+                    'final_status' => 'Approve',
+                    'is_referrer_approving_after_referral' => true
+                ]);
+                
+                // Ensure the transaction status is set to Approve
+                $rfqApprovalTransaction->update(['status' => 'Approve']);
             }
 
             DB::commit();

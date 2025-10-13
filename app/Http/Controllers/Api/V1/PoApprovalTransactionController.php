@@ -159,8 +159,8 @@ class PoApprovalTransactionController extends Controller
                         'status' => $validated['status']
                     ]);
                     
-                    // Update the referrer's transaction status to Approve
-                    $poApprovalTransaction->update(['status' => 'Approve']);
+                    // Force the status to Approve for the rest of the flow
+                    $validated['status'] = 'Approve';
                     
                     // Continue with normal approval flow
                     Log::info('=== CONTINUING WITH NORMAL PURCHASE ORDER APPROVAL FLOW AFTER REFERRAL ===', [
@@ -335,6 +335,27 @@ class PoApprovalTransactionController extends Controller
                         $notificationService->sendFinalStatusNotification($task, 'Purchase Order Approval', 'Rejected', $requester);
                     }
                 }
+            }
+
+            // Final status update for referrer approval after referral response
+            // Check if this user was a referrer who should now approve after receiving a referral response
+            $isReferrerApprovingAfterReferral = DB::table('tasks')
+                ->where('purchase_order_id', $poApprovalTransaction->purchase_order_id)
+                ->where('assigned_from_user_id', $poApprovalTransaction->assigned_to)
+                ->whereNotNull('assigned_to_user_id')
+                ->where('created_at', '>=', now()->subMinutes(10))
+                ->exists();
+                
+            if ($isReferrerApprovingAfterReferral && $validated['status'] === 'Approve') {
+                Log::info('=== FINAL STATUS UPDATE FOR REFERRER APPROVAL (PURCHASE ORDER) ===', [
+                    'purchase_order_id' => $poApprovalTransaction->purchase_order_id,
+                    'transaction_id' => $poApprovalTransaction->id,
+                    'final_status' => 'Approve',
+                    'is_referrer_approving_after_referral' => true
+                ]);
+                
+                // Ensure the transaction status is set to Approve
+                $poApprovalTransaction->update(['status' => 'Approve']);
             }
 
             DB::commit();

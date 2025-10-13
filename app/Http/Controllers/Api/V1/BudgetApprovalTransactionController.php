@@ -175,8 +175,8 @@ class BudgetApprovalTransactionController extends Controller
                         'status' => $data['status']
                     ]);
                     
-                    // Update the referrer's transaction status to Approve
-                    $budgetApprovalTransaction->update(['status' => 'Approve']);
+                    // Force the status to Approve for the rest of the flow
+                    $data['status'] = 'Approve';
                     
                     // Continue with normal approval flow
                     Log::info('=== CONTINUING WITH NORMAL TOTAL BUDGET APPROVAL FLOW AFTER REFERRAL ===', [
@@ -414,6 +414,27 @@ class BudgetApprovalTransactionController extends Controller
                         }
                     }
                 }
+            }
+
+            // Final status update for referrer approval after referral response
+            // Check if this user was a referrer who should now approve after receiving a referral response
+            $isReferrerApprovingAfterReferral = DB::table('tasks')
+                ->where('budget_id', $budgetApprovalTransaction->budget_id)
+                ->where('assigned_from_user_id', $budgetApprovalTransaction->assigned_to)
+                ->whereNotNull('assigned_to_user_id')
+                ->where('created_at', '>=', now()->subMinutes(10))
+                ->exists();
+                
+            if ($isReferrerApprovingAfterReferral && $data['status'] === 'Approve') {
+                Log::info('=== FINAL STATUS UPDATE FOR REFERRER APPROVAL (TOTAL BUDGET) ===', [
+                    'budget_id' => $budgetApprovalTransaction->budget_id,
+                    'transaction_id' => $budgetApprovalTransaction->id,
+                    'final_status' => 'Approve',
+                    'is_referrer_approving_after_referral' => true
+                ]);
+                
+                // Ensure the transaction status is set to Approve
+                $budgetApprovalTransaction->update(['status' => 'Approve']);
             }
 
             DB::commit();

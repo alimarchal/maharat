@@ -738,19 +738,34 @@ class TaskController extends Controller
                     ]);
                     
                     // Update the corresponding RFQ approval transaction FIRST
+                    // For referral scenarios, we need to find the transaction that matches the current user
                     $approvalTransaction = DB::table('rfq_approval_transactions')
                         ->where('rfq_id', $task->rfq_id)
                         ->where('assigned_to', $task->assigned_to_user_id)
-                        ->whereNull('referred_to') // Only get transactions that are NOT referrals
                         ->first();
 
                     if ($approvalTransaction) {
 
                         // Update the approval transaction status
+                        // Check if this is a referrer approving after referral response
+                        $isReferrerApprovingAfterReferral = $approvalTransaction->referred_to !== null;
+                        
+                        $newStatus = $isReferrerApprovingAfterReferral ? 'Approve' : 'Pending';
+                        
+                        Log::info('=== RFQ APPROVAL TRANSACTION STATUS UPDATE ===', [
+                            'task_id' => $task->id,
+                            'rfq_id' => $task->rfq_id,
+                            'approval_transaction_id' => $approvalTransaction->id,
+                            'assigned_to' => $approvalTransaction->assigned_to,
+                            'referred_to' => $approvalTransaction->referred_to,
+                            'is_referrer_approving_after_referral' => $isReferrerApprovingAfterReferral,
+                            'new_status' => $newStatus
+                        ]);
+                        
                         $transactionUpdated = DB::table('rfq_approval_transactions')
                             ->where('id', $approvalTransaction->id)
                             ->update([
-                                'status' => 'Pending', // Change to Pending when referee responds
+                                'status' => $newStatus,
                                 'updated_by' => auth()->id(),
                                 'updated_at' => now()
                             ]);
@@ -768,6 +783,17 @@ class TaskController extends Controller
                             'task_id' => $task->id,
                             'rfq_id' => $task->rfq_id,
                             'assigned_to' => $task->assigned_to_user_id
+                        ]);
+                        
+                        // Debug: Show all RFQ approval transactions for this RFQ
+                        $allTransactions = DB::table('rfq_approval_transactions')
+                            ->where('rfq_id', $task->rfq_id)
+                            ->get();
+                            
+                        Log::info('=== ALL RFQ APPROVAL TRANSACTIONS FOR DEBUG ===', [
+                            'task_id' => $task->id,
+                            'rfq_id' => $task->rfq_id,
+                            'all_transactions' => $allTransactions->toArray()
                         ]);
                     }
 
@@ -2309,7 +2335,6 @@ class TaskController extends Controller
                     $approvalTransaction = DB::table('grn_approval_transactions')
                         ->where('grn_id', $task->grn_id)
                         ->where('assigned_to', $task->assigned_to_user_id)
-                        ->whereNull('referred_to') // Only get transactions that are NOT referrals
                         ->first();
                         
                     Log::info('=== NORMAL GRN APPROVAL TRANSACTION SEARCH RESULT ===', [
@@ -2357,10 +2382,25 @@ class TaskController extends Controller
                     ]);
 
                     // Update the approval transaction status directly (like material request)
+                    // Check if this is a referrer approving after referral response
+                    $isReferrerApprovingAfterReferral = $approvalTransaction->referred_to !== null;
+                    
+                    $newStatus = $request->input('status') === 'Approved' ? 'Approve' : ($request->input('status') === 'Referred' ? 'Refer' : $request->input('status'));
+                    
+                    Log::info('=== GRN APPROVAL TRANSACTION STATUS UPDATE ===', [
+                        'task_id' => $task->id,
+                        'grn_id' => $task->grn_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'assigned_to' => $approvalTransaction->assigned_to,
+                        'referred_to' => $approvalTransaction->referred_to,
+                        'is_referrer_approving_after_referral' => $isReferrerApprovingAfterReferral,
+                        'new_status' => $newStatus
+                    ]);
+                    
                     $transactionUpdated = DB::table('grn_approval_transactions')
                         ->where('id', $approvalTransaction->id)
                         ->update([
-                            'status' => $request->input('status') === 'Approved' ? 'Approve' : ($request->input('status') === 'Referred' ? 'Refer' : $request->input('status')),
+                            'status' => $newStatus,
                             'updated_at' => now()
                         ]);
 

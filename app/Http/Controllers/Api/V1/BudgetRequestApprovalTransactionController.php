@@ -176,8 +176,8 @@ class BudgetRequestApprovalTransactionController extends Controller
                         'status' => $validated['status']
                     ]);
                     
-                    // Update the referrer's transaction status to Approve
-                    $budgetRequestApprovalTransaction->update(['status' => 'Approve']);
+                    // Force the status to Approve for the rest of the flow
+                    $validated['status'] = 'Approve';
                     
                     // Continue with normal approval flow
                     Log::info('=== CONTINUING WITH NORMAL BUDGET REQUEST APPROVAL FLOW AFTER REFERRAL ===', [
@@ -402,6 +402,27 @@ class BudgetRequestApprovalTransactionController extends Controller
                     'status' => $validated['status'],
                     'request_budget_id' => $budgetRequestApprovalTransaction->request_budgets_id
                 ]);
+            }
+
+            // Final status update for referrer approval after referral response
+            // Check if this user was a referrer who should now approve after receiving a referral response
+            $isReferrerApprovingAfterReferral = DB::table('tasks')
+                ->where('request_budgets_id', $budgetRequestApprovalTransaction->request_budgets_id)
+                ->where('assigned_from_user_id', $budgetRequestApprovalTransaction->assigned_to)
+                ->whereNotNull('assigned_to_user_id')
+                ->where('created_at', '>=', now()->subMinutes(10))
+                ->exists();
+                
+            if ($isReferrerApprovingAfterReferral && $validated['status'] === 'Approve') {
+                Log::info('=== FINAL STATUS UPDATE FOR REFERRER APPROVAL (BUDGET REQUEST) ===', [
+                    'request_budgets_id' => $budgetRequestApprovalTransaction->request_budgets_id,
+                    'transaction_id' => $budgetRequestApprovalTransaction->id,
+                    'final_status' => 'Approve',
+                    'is_referrer_approving_after_referral' => true
+                ]);
+                
+                // Ensure the transaction status is set to Approve
+                $budgetRequestApprovalTransaction->update(['status' => 'Approve']);
             }
 
             DB::commit();

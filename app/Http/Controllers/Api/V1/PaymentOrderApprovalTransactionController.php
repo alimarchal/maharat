@@ -176,8 +176,8 @@ class PaymentOrderApprovalTransactionController extends Controller
                         'status' => $data['status']
                     ]);
                     
-                    // Update the referrer's transaction status to Approve
-                    $paymentOrderApprovalTransaction->update(['status' => 'Approve']);
+                    // Force the status to Approve for the rest of the flow
+                    $data['status'] = 'Approve';
                     
                     // Continue with normal approval flow
                     Log::info('=== CONTINUING WITH NORMAL PAYMENT ORDER APPROVAL FLOW AFTER REFERRAL ===', [
@@ -343,6 +343,27 @@ class PaymentOrderApprovalTransactionController extends Controller
                         $notificationService->sendFinalStatusNotification($task, 'Payment Order Approval', 'Rejected', $requester);
                     }
                 }
+            }
+
+            // Final status update for referrer approval after referral response
+            // Check if this user was a referrer who should now approve after receiving a referral response
+            $isReferrerApprovingAfterReferral = DB::table('tasks')
+                ->where('payment_order_id', $paymentOrderApprovalTransaction->payment_order_id)
+                ->where('assigned_from_user_id', $paymentOrderApprovalTransaction->assigned_to)
+                ->whereNotNull('assigned_to_user_id')
+                ->where('created_at', '>=', now()->subMinutes(10))
+                ->exists();
+                
+            if ($isReferrerApprovingAfterReferral && $data['status'] === 'Approve') {
+                Log::info('=== FINAL STATUS UPDATE FOR REFERRER APPROVAL (PAYMENT ORDER) ===', [
+                    'payment_order_id' => $paymentOrderApprovalTransaction->payment_order_id,
+                    'transaction_id' => $paymentOrderApprovalTransaction->id,
+                    'final_status' => 'Approve',
+                    'is_referrer_approving_after_referral' => true
+                ]);
+                
+                // Ensure the transaction status is set to Approve
+                $paymentOrderApprovalTransaction->update(['status' => 'Approve']);
             }
 
             DB::commit();
