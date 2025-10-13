@@ -398,7 +398,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('payment-order-approval-trans', PaymentOrderApprovalTransactionController::class);
     Route::apiResource('mahrat-invoice-approval-trans', MahratInvoiceApprovalTransactionController::class);
     Route::apiResource('budget-request-approval-trans', BudgetRequestApprovalTransactionController::class);
-
+    Route::apiResource('grn-approval-transactions', GrnApprovalTransactionController::class);
 
     Route::apiResource('issue-materials', IssueMaterialController::class);
     Route::post('issue-materials/{id}/restore', [IssueMaterialController::class, 'restore'])->name('issue-materials.restore');
@@ -523,8 +523,5 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('/process-steps/reorder', [App\Http\Controllers\Api\V1\ProcessStepController::class, 'reorder']);
 
     Route::put('/rfqs/{id}/status', [RfqController::class, 'updateStatus']);
-
-    // GRN Approval Transactions
-    Route::apiResource('grn-approval-transactions', GrnApprovalTransactionController::class);
 
 });
