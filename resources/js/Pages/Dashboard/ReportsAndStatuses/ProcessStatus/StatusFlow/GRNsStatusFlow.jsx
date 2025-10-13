@@ -14,7 +14,6 @@ const GRNStatusFlow = () => {
     const { id } = usePage().props;
 
     const [statuses, setStatuses] = useState([]);
-    const [grnData, setGrnData] = useState(null);
     const [cardData, setCardData] = useState([]);
     const [currentStep, setCurrentStep] = useState(0);
     const [showModal, setShowModal] = useState(false);
@@ -31,7 +30,7 @@ const GRNStatusFlow = () => {
     const fetchGRNStatus = async (id) => {
         try {
             const processResponse = await axios.get(
-                "/api/v1/processes?include=steps,creator,updater&filter[title]= Short Delivery Adjustment Approval"
+                "/api/v1/processes?include=steps,creator,updater&filter[title]=Short Delivery Adjustment Approval"
             );
 
             if (processResponse.data?.data?.[0]?.steps?.[0]) {
@@ -52,11 +51,17 @@ const GRNStatusFlow = () => {
                 setStatuses([requesterStep, ...sortedStatuses]);
             }
 
-            const transactionResponse = await axios.get('/api/v1/grn-approval-transactions?include=grn,assignedTo&sort=-created_at');
-            setCardData(transactionResponse.data?.data);
+            const response = await axios.get(
+                `/api/v1/grn-approval-transactions?filter[grn_id]=${id}&include=grn,requester,assignedTo,referredTo,creator,updater`
+            );
+            setCardData(response.data?.data);
 
-            if (transactionResponse.data?.data && transactionResponse.data.data.length > 0) {
-                setCurrentStep(1 + transactionResponse.data.data.length);
+            if (response.data?.data?.[0]?.grn?.created_at) {
+                setGrnDate(response.data.data[0].grn.created_at);
+            }
+
+            if (response.data?.data && response.data.data.length > 0) {
+                setCurrentStep(1 + response.data.data.length);
             }
         } catch (error) {
             console.error("Error fetching GRN status:", error);
@@ -74,9 +79,9 @@ const GRNStatusFlow = () => {
         setSelectedUser(null);
     };
 
-    // Create cards array - show creator + all assigned users
+    // Create cards array - show requester + all assigned users + referred users
     const createCardsArray = () => {
-        if (!grnData) return [];
+        if (cardData.length === 0) return [];
         const cards = [];
 
         // First card - Always show the requester from the first record
@@ -91,19 +96,25 @@ const GRNStatusFlow = () => {
             });
         }
 
-        // Then show all assigned users from all transaction records
-        if (cardData && cardData.length > 0) {
-            cardData.forEach((transaction) => {
+        // Then show all assigned users from all records
+        cardData.forEach((card, index) => {
                 cards.push({
-                    id: `assigned-${transaction.id}`,
+                id: `assigned-${card.id}`,
                     type: "assigned",
-                    user: transaction.assigned_user,
-                    status: transaction.status,
-                    created_at: transaction.created_at,
-                    grnData: grnData,
-                });
+                user: card.assigned_to_user,
+                status: card.status,
+                created_at: card.created_at,
+                cardData: card,
+                referredUser: card.referred_to_user ? {
+                    id: `referred-${card.id}`,
+                    type: "referred",
+                    user: card.referred_to_user,
+                    status: card.referred_user_status || "Pending", // Use actual status if available
+                    created_at: card.created_at,
+                    cardData: card,
+                } : null
             });
-        }
+        });
 
         return cards;
     };
@@ -122,7 +133,7 @@ const GRNStatusFlow = () => {
                         <div className="font-medium">
                             GRN ID:{" "}
                             <span className="text-gray-600">
-                                {grnData?.grn_number || `GRN-${id}`}
+                                {cardData[0]?.grn?.grn_number || `GRN-${id}`}
                             </span>
                         </div>
                         <div className="text-gray-500 text-sm">
@@ -222,30 +233,32 @@ const GRNStatusFlow = () => {
 
                         {cardsToShow.length > 0 ? (
                             <div className="w-full pb-4 mb-6">
-                                <div className="relative w-full">
-                                    <div
-                                        className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
-                                        style={{
-                                            scrollbarWidth: "thin",
-                                            WebkitOverflowScrolling: "touch",
-                                        }}
-                                    >
-                                        <div className="flex space-x-4 pb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
                                             {cardsToShow.map((card) => (
+                                        <div key={`card-group-${card.id}`} className="flex flex-col">
+                                            {/* Main Card */}
                                                 <div
                                                     key={`card-container-${card.id}`}
-                                                    className="flex-none w-full md:w-2/3 lg:w-1/2 xl:w-1/6 border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white shadow-md"
-                                                    style={{
-                                                        minWidth: "400px",
-                                                        maxWidth: "500px",
-                                                    }}
+                                                className="border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white shadow-md w-full"
                                                 >
                                                     <div className="rounded-xl p-5 bg-gray-100 shadow-sm">
                                                         <div className="mb-4">
-                                                            <button className="border border-[#22c55e] text-[#22c55e] rounded-full px-4 py-1 text-base flex items-center">
+                                                        <button className={`border rounded-full px-4 py-1 text-base flex items-center ${
+                                                            card.status === "Filled Request" 
+                                                                ? "border-green-400 text-green-500"
+                                                                : card.status === "Refer"
+                                                                ? "border-blue-400 text-blue-500"
+                                                                : card.status === "Pending"
+                                                                ? "border-yellow-400 text-yellow-500"
+                                                                : card.status === "Approve"
+                                                                ? "border-green-400 text-green-500"
+                                                                : card.status === "Reject"
+                                                                ? "border-red-400 text-red-500"
+                                                                : "border-gray-400 text-gray-500"
+                                                        }`}>
                                                                 {card.status}
                                                                 {card.type !==
-                                                                    "creator" && (
+                                                                "requester" && (
                                                                     <FontAwesomeIcon
                                                                         icon={
                                                                             faChevronRight
@@ -266,7 +279,13 @@ const GRNStatusFlow = () => {
                                                                     ""}
                                                             </span>
                                                             <span
-                                                                className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:bg-green-600 transition-colors duration-200"
+                                                            className={`text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:opacity-80 transition-colors duration-200 ${
+                                                                card.type === "requester"
+                                                                    ? "bg-blue-500 hover:bg-blue-600"
+                                                                    : card.type === "referred"
+                                                                    ? "bg-orange-500 hover:bg-orange-600"
+                                                                    : "bg-purple-500 hover:bg-purple-600"
+                                                            }`}
                                                                 onClick={() =>
                                                                     openModal(
                                                                         card.user,
@@ -288,9 +307,10 @@ const GRNStatusFlow = () => {
                                                         <div className="flex items-start">
                                                             <div
                                                                 className={`w-10 h-10 ${
-                                                                    card.type ===
-                                                                    "creator"
+                                                                card.type === "requester"
                                                                         ? "bg-blue-200 text-blue-600"
+                                                                : card.type === "referred"
+                                                                ? "bg-orange-200 text-orange-600"
                                                                         : "bg-purple-200 text-purple-600"
                                                                 } rounded-full flex items-center justify-center`}
                                                             >
@@ -336,9 +356,118 @@ const GRNStatusFlow = () => {
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ))}
+
+                                            {/* Referred User Card - Directly Below */}
+                                            {card.referredUser && (
+                                                <div className="mt-2 w-full">
+                                                    <div
+                                                        key={`card-container-${card.referredUser.id}`}
+                                                        className="border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white shadow-md w-full"
+                                                    >
+                                                        <div className="rounded-xl p-5 bg-gray-100 shadow-sm">
+                                                            <div className="mb-4">
+                                                                <button className={`border rounded-full px-4 py-1 text-base flex items-center ${
+                                                                    card.referredUser.status === "Filled Request" 
+                                                                        ? "border-green-400 text-green-500"
+                                                                        : card.referredUser.status === "Refer"
+                                                                        ? "border-blue-400 text-blue-500"
+                                                                        : card.referredUser.status === "Pending"
+                                                                        ? "border-yellow-400 text-yellow-500"
+                                                                        : card.referredUser.status === "Approve"
+                                                                        ? "border-green-400 text-green-500"
+                                                                        : card.referredUser.status === "Reject"
+                                                                        ? "border-red-400 text-red-500"
+                                                                        : "border-gray-400 text-gray-500"
+                                                                }`}>
+                                                                    {card.referredUser.status}
+                                                                    {card.referredUser.type !==
+                                                                        "requester" && (
+                                                                        <FontAwesomeIcon
+                                                                            icon={
+                                                                                faChevronRight
+                                                                            }
+                                                                            className="ml-2 text-xs"
+                                                                        />
+                                                                    )}
+                                                                </button>
+                                                            </div>
+
+                                                            <div className="flex justify-between items-center gap-4">
+                                                                <span className="text-sm font-medium">
+                                                                    {card.referredUser.user
+                                                                        ?.designation
+                                                                        ?.designation ||
+                                                                        card.referredUser.user
+                                                                            ?.designation ||
+                                                                        ""}
+                                                                </span>
+                                                                <span
+                                                                    className="bg-orange-500 hover:bg-orange-600 text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:opacity-80 transition-colors duration-200"
+                                                                    onClick={() =>
+                                                                        openModal(
+                                                                            card.referredUser.user,
+                                                                            card.referredUser.type
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <FontAwesomeIcon
+                                                                        icon={
+                                                                            faInfoCircle
+                                                                        }
+                                                                        className="text-white"
+                                                                    />
+                                                                </span>
+                                                            </div>
+
+                                                            <div className="h-px bg-gray-300 w-full my-4"></div>
+
+                                                            <div className="flex items-start">
+                                                                <div className="w-10 h-10 bg-orange-200 text-orange-600 rounded-full flex items-center justify-center">
+                                                                    <span className="text-sm font-medium">
+                                                                        {card.referredUser.user
+                                                                            ?.firstname?.[0] ||
+                                                                            card.referredUser.user
+                                                                                ?.name?.[0] ||
+                                                                            "?"}
+                                                                    </span>
+                                                                </div>
+
+                                                                <div className="ml-4">
+                                                                    <div
+                                                                        className="text-base font-medium cursor-pointer"
+                                                                        onClick={() =>
+                                                                            openModal(
+                                                                                card.referredUser.user,
+                                                                                card.referredUser.type
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        {card.referredUser.user
+                                                                            ?.name ||
+                                                                            "Unknown User"}
+                                                                    </div>
+                                                                    <div className="text-sm text-gray-500 flex items-center mt-1">
+                                                                        <FontAwesomeIcon
+                                                                            icon={
+                                                                                faCalendarAlt
+                                                                            }
+                                                                            className="mr-1 text-gray-500"
+                                                                        />
+                                                                        <span>
+                                                                            Post:{" "}
+                                                                            {new Date(
+                                                                                card.referredUser.created_at
+                                                                            ).toLocaleDateString()}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
+                                    ))}
                                 </div>
                             </div>
                         ) : (
