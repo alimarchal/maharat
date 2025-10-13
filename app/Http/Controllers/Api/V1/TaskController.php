@@ -2260,7 +2260,14 @@ class TaskController extends Controller
                 ]);
 
                 // Check if this is a referral response task
-                $isReferralResponseTask = $task->assigned_from_user_id && $task->continue_approval_flow == false;
+                // A referral response task is one that was created as a result of a referee responding
+                // It has assigned_from_user_id (the referee) and was created after a referral
+                $isReferralResponseTask = $task->assigned_from_user_id && 
+                    DB::table('grn_approval_transactions')
+                        ->where('grn_id', $task->grn_id)
+                        ->where('assigned_to', $task->assigned_to_user_id)
+                        ->whereNotNull('referred_to')
+                        ->exists();
                 
                 Log::info('=== GRN REFERRAL RESPONSE CHECK ===', [
                     'task_id' => $task->id,
