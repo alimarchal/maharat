@@ -82,18 +82,7 @@ import AccountDetailsTable from "./Dashboard/Finance/Accounts/AccountDetailsTabl
 import ViewReceivableDetails from "./Dashboard/Finance/AccountReceivables/ViewReceivableDetails";
 import ViewPayableDetails from "./Dashboard/Finance/AccountPayables/ViewPayableDetails";
 import { preloadDashboardImages } from "@/utils/imageOptimization";
-
-// Loading component for better UX
-const LoadingSpinner = () => (
-    <div className="w-full">
-        <div className="flex justify-center items-center h-64">
-            <div className="text-center">
-                <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-[#7D8086]">Loading...</p>
-            </div>
-        </div>
-    </div>
-);
+import GRNStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/GRNsStatusFlow";
 
 export default function Dashboard({ auth, page }) {
     const [realTimePermissions, setRealTimePermissions] = useState(null);
@@ -286,6 +275,11 @@ export default function Dashboard({ auth, page }) {
             "ReportsAndStatuses/ProcessStatus/StatusFlow/TotalBudgetStatusFlow"
         )
             return <TotalBudgetStatusFlow />;
+        if (
+            page ===
+            "ReportsAndStatuses/ProcessStatus/StatusFlow/GRNsStatusFlow"
+        )
+            return <GRNStatusFlow />;
         if (page === "FAQs/FAQ") return <FAQAccordion />;
         if (page === "FAQs/ViewFAQ") return <ViewFAQ />;
         if (page === "UserManual/UserManual") return <UserManual />;

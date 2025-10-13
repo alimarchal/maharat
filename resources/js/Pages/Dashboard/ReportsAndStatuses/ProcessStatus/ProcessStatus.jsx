@@ -7,6 +7,7 @@ import MInvoiceTable from "./StatusTables/MInvoiceTable";
 import BudgetRequestTable from "./StatusTables/BudgetRequestTable";
 import TotalBudgetTable from "./StatusTables/TotalBudgetTable";
 import { usePermissions } from "@/hooks/usePermissions";
+import GRNsTable from "./StatusTables/GRNsTable";
 
 const ProcessStatus = () => {
     const { hasPermission } = usePermissions();
@@ -20,6 +21,7 @@ const ProcessStatus = () => {
         { name: "Invoice Status", permission: "view_maharat_invoice_status" },
         { name: "Budget Request Status", permission: "view_budget_request_status" },
         { name: "Total Budget Status", permission: "view_total_budget_status" },
+        { name: "Short Delivery Status", permission: "view_material_request_status" }
     ];
 
     const filters = allFilters.filter(filter => hasPermission(filter.permission));
@@ -56,6 +58,8 @@ const ProcessStatus = () => {
                 return <BudgetRequestTable />;
             case "Total Budget Status":
                 return <TotalBudgetTable />;
+            case "Short Delivery Status":
+                return <GRNsTable />;
             default:
                 return <MRTable />;
         }
