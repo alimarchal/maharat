@@ -15,6 +15,17 @@ class BudgetRequestApprovalTransactionResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        // Get referee's transaction status if this transaction has a referred_to user
+        $refereeStatus = null;
+        if ($this->referred_to) {
+            // Look for referee's transaction - find their existing transaction for this budget request
+            $refereeTransaction = \App\Models\BudgetRequestApprovalTransaction::where('request_budgets_id', $this->request_budgets_id)
+                ->where('assigned_to', $this->referred_to)
+                ->orderBy('updated_at', 'desc') // Get the most recently updated one
+                ->first();
+            $refereeStatus = $refereeTransaction ? $refereeTransaction->status : null;
+        }
+
         return [
             'id' => $this->id,
             'request_budgets_id' => $this->request_budgets_id,
@@ -34,6 +45,9 @@ class BudgetRequestApprovalTransactionResource extends JsonResource
             'referred_user' => new UserResource($this->whenLoaded('referredUser')),
             'created_by_user' => new UserResource($this->whenLoaded('createdByUser')),
             'updated_by_user' => new UserResource($this->whenLoaded('updatedByUser')),
+
+            // Add referee's status
+            'referred_user_status' => $refereeStatus,
 
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

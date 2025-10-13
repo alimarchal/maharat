@@ -105,6 +105,14 @@ const PMTStatusFlow = () => {
                 status: card.status,
                 created_at: card.created_at,
                 cardData: card,
+                referredUser: card.referred_user ? {
+                    id: `referred-${card.id}`,
+                    type: "referred",
+                    user: card.referred_user,
+                    status: card.referred_user_status || "Pending", // Use actual status if available
+                    created_at: card.created_at,
+                    cardData: card,
+                } : null
             });
         });
 
@@ -223,34 +231,33 @@ const PMTStatusFlow = () => {
 
                         {cardsToShow.length > 0 ? (
                             <div className="w-full pb-4 mb-6">
-                                <div className="relative w-full">
-                                    <div
-                                        className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
-                                        style={{
-                                            scrollbarWidth: "thin",
-                                            WebkitOverflowScrolling: "touch",
-                                        }}
-                                    >
-                                        <div className="flex space-x-4 pb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
                                             {cardsToShow.map((card) => (
+                                        <div key={`card-group-${card.id}`} className="flex flex-col">
+                                            {/* Main Card */}
                                                 <div
                                                     key={`card-container-${card.id}`}
-                                                    className="flex-none w-full md:w-2/3 lg:w-1/2 xl:w-1/6 border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white shadow-md"
-                                                    style={{
-                                                        minWidth: "400px",
-                                                        maxWidth: "500px",
-                                                    }}
+                                                className="border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white shadow-md w-full"
                                                 >
                                                     <div className="rounded-xl p-5 bg-gray-100 shadow-sm">
                                                         <div className="mb-4">
-                                                            <button className="border border-[#22c55e] text-[#22c55e] rounded-full px-4 py-1 text-base flex items-center">
+                                                        <button className={`border rounded-full px-4 py-1 text-base flex items-center ${
+                                                            card.status === "Filled Request" 
+                                                                ? "border-green-400 text-green-500"
+                                                                : card.status === "Refer"
+                                                                ? "border-blue-400 text-blue-500"
+                                                                : card.status === "Pending"
+                                                                ? "border-yellow-400 text-yellow-500"
+                                                                : card.status === "Approve"
+                                                                ? "border-green-400 text-green-500"
+                                                                : card.status === "Reject"
+                                                                ? "border-red-400 text-red-500"
+                                                                : "border-gray-400 text-gray-500"
+                                                        }`}>
                                                                 {card.status}
-                                                                {card.type !==
-                                                                    "requester" && (
+                                                            {card.type !== "requester" && (
                                                                     <FontAwesomeIcon
-                                                                        icon={
-                                                                            faChevronRight
-                                                                        }
+                                                                    icon={faChevronRight}
                                                                         className="ml-2 text-xs"
                                                                     />
                                                                 )}
@@ -276,9 +283,7 @@ const PMTStatusFlow = () => {
                                                                 }
                                                             >
                                                                 <FontAwesomeIcon
-                                                                    icon={
-                                                                        faInfoCircle
-                                                                    }
+                                                                icon={faInfoCircle}
                                                                     className="text-white"
                                                                 />
                                                             </span>
@@ -289,8 +294,7 @@ const PMTStatusFlow = () => {
                                                         <div className="flex items-start">
                                                             <div
                                                                 className={`w-10 h-10 ${
-                                                                    card.type ===
-                                                                    "requester"
+                                                                card.type === "requester"
                                                                         ? "bg-blue-200 text-blue-600"
                                                                         : "bg-purple-200 text-purple-600"
                                                                 } rounded-full flex items-center justify-center`}
@@ -298,8 +302,7 @@ const PMTStatusFlow = () => {
                                                                 <span className="text-sm font-medium">
                                                                     {card.user
                                                                         ?.firstname?.[0] ||
-                                                                        card
-                                                                            .user
+                                                                    card.user
                                                                             ?.name?.[0] ||
                                                                         "?"}
                                                                 </span>
@@ -321,15 +324,96 @@ const PMTStatusFlow = () => {
                                                                 </div>
                                                                 <div className="text-sm text-gray-500 flex items-center mt-1">
                                                                     <FontAwesomeIcon
-                                                                        icon={
-                                                                            faCalendarAlt
-                                                                        }
+                                                                    icon={faCalendarAlt}
+                                                                    className="mr-1 text-gray-500"
+                                                                />
+                                                                <span>
+                                                                    Post:{" "}
+                                                                    {new Date(
+                                                                        card.created_at
+                                                                    ).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Referred User Card */}
+                                            {card.referredUser && (
+                                                <div className="mt-2 border-2 border-dashed border-blue-400 rounded-xl p-4 bg-blue-50 shadow-md w-full">
+                                                    <div className="rounded-xl p-5 bg-blue-100 shadow-sm">
+                                                        <div className="mb-4">
+                                                            <button className="border border-yellow-400 text-yellow-500 rounded-full px-4 py-1 text-base flex items-center">
+                                                                {card.referredUser.status}
+                                                                <FontAwesomeIcon
+                                                                    icon={faChevronRight}
+                                                                    className="ml-2 text-xs"
+                                                                />
+                                                            </button>
+                                                        </div>
+
+                                                        <div className="flex justify-between items-center gap-4">
+                                                            <span className="text-sm font-medium">
+                                                                {card.referredUser.user
+                                                                    ?.designation
+                                                                    ?.designation ||
+                                                                    card.referredUser.user
+                                                                        ?.designation ||
+                                                                    ""}
+                                                            </span>
+                                                            <span
+                                                                className="bg-blue-500 text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:bg-blue-600 transition-colors duration-200"
+                                                                onClick={() =>
+                                                                    openModal(
+                                                                        card.referredUser.user,
+                                                                        card.referredUser.type
+                                                                    )
+                                                                }
+                                                            >
+                                                                <FontAwesomeIcon
+                                                                    icon={faInfoCircle}
+                                                                    className="text-white"
+                                                                />
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="h-px bg-gray-300 w-full my-4"></div>
+
+                                                        <div className="flex items-start">
+                                                            <div className="w-10 h-10 bg-blue-200 text-blue-600 rounded-full flex items-center justify-center">
+                                                                <span className="text-sm font-medium">
+                                                                    {card.referredUser.user
+                                                                        ?.firstname?.[0] ||
+                                                                        card.referredUser.user
+                                                                            ?.name?.[0] ||
+                                                                        "?"}
+                                                                </span>
+                                                            </div>
+
+                                                            <div className="ml-4">
+                                                                <div
+                                                                    className="text-base font-medium cursor-pointer"
+                                                                    onClick={() =>
+                                                                        openModal(
+                                                                            card.referredUser.user,
+                                                                            card.referredUser.type
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    {card.referredUser.user
+                                                                        ?.name ||
+                                                                        "Unknown User"}
+                                                                </div>
+                                                                <div className="text-sm text-gray-500 flex items-center mt-1">
+                                                                    <FontAwesomeIcon
+                                                                        icon={faCalendarAlt}
                                                                         className="mr-1 text-gray-500"
                                                                     />
                                                                     <span>
                                                                         Post:{" "}
                                                                         {new Date(
-                                                                            card.created_at
+                                                                            card.referredUser.created_at
                                                                         ).toLocaleDateString()}
                                                                     </span>
                                                                 </div>
@@ -337,9 +421,9 @@ const PMTStatusFlow = () => {
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ))}
+                                            )}
                                         </div>
-                                    </div>
+                                    ))}
                                 </div>
                             </div>
                         ) : (

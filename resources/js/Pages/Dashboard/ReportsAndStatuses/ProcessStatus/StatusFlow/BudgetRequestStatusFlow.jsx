@@ -105,11 +105,11 @@ const BudgetRequestStatusFlow = () => {
                 status: card.status,
                 created_at: card.created_at,
                 cardData: card,
-                referredUser: card.status === "Refer" && card.referred_user ? {
+                referredUser: card.referred_user ? {
                     id: `referred-${card.id}`,
                     type: "referred",
                     user: card.referred_user,
-                    status: "Pending",
+                    status: card.referred_user_status || "Pending", // Use actual status if available
                     created_at: card.created_at,
                     cardData: card,
                 } : null
