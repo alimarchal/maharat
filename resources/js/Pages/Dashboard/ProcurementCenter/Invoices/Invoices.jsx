@@ -91,7 +91,7 @@ const InvoicesTable = () => {
 
         try {
             const response = await axios.get(
-                `/api/v1/external-invoices?page=${currentPage}&include=supplier,purchaseOrder,documents`
+                `/api/v1/external-invoices?page=${currentPage}&include=supplier,purchaseOrder,documents&sort=-created_at`
             );
 
             if (response.data && response.data.data) {

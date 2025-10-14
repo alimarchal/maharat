@@ -481,7 +481,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                     readOnly
                                 />
                                 <label
-                                    className={`absolute left-3 px-1 bg-white transition-all -top-2 text-base text-[#009FDC]`}
+                                    className={`absolute left-3 px-1 bg-white transition-all -top-2 text-base text-gray-500`}
                                 >
                                     Amount
                                 </label>
@@ -504,7 +504,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                     readOnly
                                 />
                                 <label
-                                    className={`absolute left-3 px-1 bg-white text-base transition-all -top-2 text-[#009FDC]`}
+                                    className={`absolute left-3 px-1 bg-white text-base transition-all -top-2 text-gray-500`}
                                 >
                                     VAT Amount
                                 </label>
