@@ -24,11 +24,6 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
         if (isOpen && task && task.id) {
             const fetchCompleteTaskData = async () => {
                 try {
-                    console.log("=== FETCHING COMPLETE TASK DATA ===", {
-                        taskId: task.id,
-                        currentTaskData: task,
-                        processTitle: task.process?.title
-                    });
 
                     const response = await axios.get(
                         `/api/v1/tasks/${task.id}?include=processStep,process,assignedFromUser,assignedToUser,descriptions,material_request,material_request.items,material_request.items.product,material_request.items.unit,material_request.items.category,material_request.items.urgencyStatus,material_request.requester,material_request.warehouse,material_request.department,material_request.costCenter,rfq,rfq.items,rfq.items.product,rfq.items.unit,rfq.items.category,rfq.items.status,rfq.requester,rfq.warehouse,rfq.department,rfq.costCenter,purchase_order,purchase_order.supplier,purchase_order.user,payment_order,payment_order.supplier,payment_order.user,payment_order.purchase_order,invoice,invoice.items,invoice.client,invoice.representative,budget,budget.department,budget.costCenter,budget_approval_transaction,request_budget,request_budget.department,request_budget.costCenter,request_budget.fiscalPeriod,grn,grn.user,grn.quotation,grn.purchaseOrder,grn.approvalTransactions,grn.approvalTransactions.assignedToUser`
@@ -88,16 +83,6 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                     }
                     
                     setCompleteTaskData(taskData);
-                    
-                    console.log("=== COMPLETE TASK DATA LOADED ===", {
-                        taskId: taskData.id,
-                        grnId: taskData.grn_id,
-                        grnData: taskData.grn,
-                        grnApprovalTransactions: taskData.grn?.approval_transactions,
-                        processTitle: taskData.process?.title,
-                        materialRequestData: taskData.material_request,
-                        materialRequestId: taskData.material_request_id
-                    });
                 } catch (error) {
                     console.error("Error fetching complete task data:", error);
                     // Fallback to original task data if fetch fails
@@ -520,17 +505,22 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 {(() => {
                                     // For Pending/Rejected statuses, show descriptions from previous approvers
                                     if ((currentTask.status === 'Pending' || currentTask.status === 'Rejected') && allDescriptions.length > 0) {
-                                        // Filter descriptions from previous tasks (lower order numbers)
-                                        const previousDescriptions = allDescriptions.filter(desc => 
-                                            desc.task_order < (currentTask.order_no || 0)
+                                        // Filter descriptions from previous tasks (different task_id and action = "Approve")
+                                        const previousApprovals = allDescriptions.filter(desc => 
+                                            desc.task_id !== currentTask.id && desc.action === "Approve"
                                         );
                                         
-                                        if (previousDescriptions.length > 0) {
+                                        if (previousApprovals.length > 0) {
+                                            // Get the most recent previous approval (highest task_id)
+                                            const mostRecentApproval = previousApprovals.reduce((latest, current) => 
+                                                (current.task_id > latest.task_id) ? current : latest
+                                            );
+                                            
                                             return (
                                                 <div className="flex justify-between border-b border-gray-100 pb-2">
                                                     <span className="text-gray-600">Description:</span>
                                                     <span className="font-medium text-gray-800 text-right max-w-xs">
-                                                        {previousDescriptions.map((desc, index) => desc.description).join(', ')}
+                                                        {mostRecentApproval.description}
                                                     </span>
                                                 </div>
                                             );
@@ -543,7 +533,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                             <div className="flex justify-between border-b border-gray-100 pb-2">
                                                 <span className="text-gray-600">Description:</span>
                                                 <span className="font-medium text-gray-800 text-right max-w-xs">
-                                                    {currentTask.descriptions.map((desc, index) => desc.description).join(', ')}
+                                                    {currentTask.descriptions[0].description}
                                                 </span>
                                             </div>
                                         );
