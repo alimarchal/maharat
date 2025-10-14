@@ -38,6 +38,7 @@ class UserResource extends JsonResource
             'language' => $this->language,
             'employee_type' => $this->employee_type,
             'description' => $this->description,
+            'gender' => $this->gender,
             'profile_photo_path' => $this->profile_photo_path,
             'designation' => Designation::find($this->designation_id),
             'roles' => $this->roles->pluck('name'),

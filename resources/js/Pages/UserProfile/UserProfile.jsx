@@ -51,40 +51,74 @@ const UserProfile = () => {
                 setReportingManager(managerResponse.data.data);
 
                 if (user) {
-                    setFormData({
-                        employee_id: user.employee_id,
-                        username: user.username,
-                        firstname: user.firstname,
-                        lastname: user.lastname,
-                        email: user.email,
-                        landline: user.landline,
-                        mobile: user.mobile,
-                        photo: user.profile_photo_path,
-                        designation_id: user.designation_id,
-                        department_id: user.department_id,
-                        language: user.language,
-                        employee_type: user.employee_type,
-                        description: user.description,
-                        parent_id: user.parent_id,
-                        gender: user.gender,
-                    });
+                    console.log('Auth user data:', user); // Debug log
+                    
+                    // Try to fetch complete user data from API
+                    try {
+                        const userResponse = await axios.get(`/api/v1/users/${user.id}`);
+                        const completeUserData = userResponse.data.data;
+                        console.log('Complete user data from API:', completeUserData);
+                        
+                        setFormData({
+                            employee_id: completeUserData.employee_id || "",
+                            username: completeUserData.username || "",
+                            firstname: completeUserData.firstname || "",
+                            lastname: completeUserData.lastname || "",
+                            email: completeUserData.email || "",
+                            landline: completeUserData.landline || "",
+                            mobile: completeUserData.mobile || "",
+                            photo: completeUserData.profile_photo_path || "",
+                            designation_id: completeUserData.designation_id || "",
+                            department_id: completeUserData.department_id || "",
+                            language: completeUserData.language || "",
+                            employee_type: completeUserData.employee_type || "",
+                            description: completeUserData.description || "",
+                            parent_id: completeUserData.parent_id || "",
+                            gender: completeUserData.gender || "",
+                        });
 
-                    if (user.profile_photo_path) {
-                        setPhotoPreview(`/storage/${user.profile_photo_path}`);
+                        if (completeUserData.profile_photo_path) {
+                            setPhotoPreview(`/storage/${completeUserData.profile_photo_path}`);
+                        }
+                    } catch (apiError) {
+                        console.warn('Failed to fetch complete user data, using auth data:', apiError);
+                        
+                        // Fallback to auth user data
+                        setFormData({
+                            employee_id: user.employee_id || "",
+                            username: user.username || "",
+                            firstname: user.firstname || "",
+                            lastname: user.lastname || "",
+                            email: user.email || "",
+                            landline: user.landline || "",
+                            mobile: user.mobile || "",
+                            photo: user.profile_photo_path || "",
+                            designation_id: user.designation_id || "",
+                            department_id: user.department_id || "",
+                            language: user.language || "",
+                            employee_type: user.employee_type || "",
+                            description: user.description || "",
+                            parent_id: user.parent_id || "",
+                            gender: user.gender || "",
+                        });
+
+                        if (user.profile_photo_path) {
+                            setPhotoPreview(`/storage/${user.profile_photo_path}`);
+                        }
                     }
 
                     setIsEditing(true);
                 }
             } catch (error) {
                 console.error(
-                    "Error:",
+                    "Error fetching data:",
                     error.response ? error.response.data : error.message
                 );
             }
         };
 
         fetchData();
-    }, []);
+    }, [user]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
