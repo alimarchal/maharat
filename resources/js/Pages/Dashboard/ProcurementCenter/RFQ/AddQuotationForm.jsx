@@ -1238,41 +1238,56 @@ function AddQuotationForm() {
     }, [paymentTypes]);
 
     // Handler for Make RFQ button
-    const handleSelectRfqRequest = (rfqRequest) => {
-        console.log('Selected RFQ Request:', rfqRequest);
+    const handleSelectRfqRequest = (rfqRequestGroup) => {
+        console.log('Selected RFQ Request Group:', rfqRequestGroup);
         console.log('Current categories:', categories);
         
-        setSelectedRfqRequest(rfqRequest);
-        // Auto-fill the form with the RFQ request data
+        setSelectedRfqRequest(rfqRequestGroup);
+        
+        // Auto-fill the form with the RFQ request group data
         setFormData((prev) => {
+            const firstRequest = rfqRequestGroup.firstRequest || rfqRequestGroup;
+            
+            // Create items array from all requests in the group
+            const items = rfqRequestGroup.requests ? rfqRequestGroup.requests.map(request => ({
+                product_id: "", // No product yet
+                item_name: request.name,
+                description: request.description || "",
+                unit_id: request.unit_id ? String(request.unit_id) : "",
+                quantity: request.quantity,
+                brand: "",
+                expected_delivery_date: "",
+                rfq_id: rfqId || "",
+                status_id: 48,
+            })) : [{
+                product_id: "", // No product yet
+                item_name: firstRequest.name,
+                description: firstRequest.description || "",
+                unit_id: firstRequest.unit_id ? String(firstRequest.unit_id) : "",
+                quantity: firstRequest.quantity,
+                brand: "",
+                expected_delivery_date: "",
+                rfq_id: rfqId || "",
+                status_id: 48,
+            }];
+
             const newFormData = {
                 ...prev,
-                category_id: rfqRequest.category_id ? String(rfqRequest.category_id) : "",
-                warehouse_id: rfqRequest.warehouse_id ? String(rfqRequest.warehouse_id) : "",
-                cost_center_id: rfqRequest.cost_center_id ? String(rfqRequest.cost_center_id) : "",
-                sub_cost_center_id: rfqRequest.sub_cost_center_id ? String(rfqRequest.sub_cost_center_id) : "",
-                department_id: rfqRequest.department_id ? String(rfqRequest.department_id) : "",
-                items: [
-                    {
-                        product_id: "", // No product yet
-                        item_name: rfqRequest.name,
-                        description: rfqRequest.description || "",
-                        unit_id: rfqRequest.unit_id ? String(rfqRequest.unit_id) : "",
-                        quantity: rfqRequest.quantity,
-                        brand: "",
-                        expected_delivery_date: "",
-                        rfq_id: rfqId || "",
-                        status_id: 48,
-                    },
-                ],
+                category_id: firstRequest.category_id ? String(firstRequest.category_id) : "",
+                warehouse_id: firstRequest.warehouse_id ? String(firstRequest.warehouse_id) : "",
+                cost_center_id: firstRequest.cost_center_id ? String(firstRequest.cost_center_id) : "",
+                sub_cost_center_id: firstRequest.sub_cost_center_id ? String(firstRequest.sub_cost_center_id) : "",
+                department_id: firstRequest.department_id ? String(firstRequest.department_id) : "",
+                items: items,
             };
             console.log('Updated formData:', newFormData);
             return newFormData;
         });
 
         // Load sub cost centers if cost center is selected
-        if (rfqRequest.cost_center_id) {
-            updateSubCostCenter(String(rfqRequest.cost_center_id));
+        const firstRequest = rfqRequestGroup.firstRequest || rfqRequestGroup;
+        if (firstRequest.cost_center_id) {
+            updateSubCostCenter(String(firstRequest.cost_center_id));
         }
     };
 
@@ -1675,14 +1690,24 @@ function AddQuotationForm() {
                 await axios.post("/api/v1/tasks", taskPayload);
             }
 
-            // Mark the RFQ request as requested only after successful RFQ creation
+            // Mark the RFQ request group as requested only after successful RFQ creation
             if (selectedRfqRequest) {
                 try {
-                    await axios.put(`/api/v1/rfq-requests/${selectedRfqRequest.id}/mark-requested`);
-                    markRfqRequestAsRequested(selectedRfqRequest.id);
+                    // Handle grouped requests
+                    if (selectedRfqRequest.requests && selectedRfqRequest.requests.length > 0) {
+                        // Mark all requests in the group as requested
+                        for (const request of selectedRfqRequest.requests) {
+                            await axios.put(`/api/v1/rfq-requests/${request.id}/mark-requested`);
+                            markRfqRequestAsRequested(request.id);
+                        }
+                    } else {
+                        // Handle single request (backward compatibility)
+                        await axios.put(`/api/v1/rfq-requests/${selectedRfqRequest.id}/mark-requested`);
+                        markRfqRequestAsRequested(selectedRfqRequest.id);
+                    }
                     setSelectedRfqRequest(null);
                 } catch (error) {
-                    console.error('Error marking RFQ request as requested:', error);
+                    console.error('Error marking RFQ request group as requested:', error);
                 }
             }
 

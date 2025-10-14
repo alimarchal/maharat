@@ -172,8 +172,9 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
 
     const handleCreateRfqRequest = async () => {
         try {
-            // Create RFQ request for each item in the material request
+            // Collect all items that need RFQ creation
             const items = requestData.items || [];
+            const itemsNeedingRfq = [];
             
             for (const item of items) {
                 const productId = item.product_id;
@@ -203,14 +204,37 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
                     quantityToRequest = requestedQty;
                 }
                 
-                // Only create RFQ if there's a quantity to request
+                // Only include item if there's a quantity to request
                 if (quantityToRequest > 0) {
-                    const rfqRequestData = {
-                        user_id: requestData.requester_id,
+                    itemsNeedingRfq.push({
                         name: item.product?.name || "Unknown Item",
-                        description: item.description || "",
                         quantity: quantityToRequest,
+                        description: item.description || "",
                         category_id: item.product?.category_id,
+                        unit_id: item.unit_id,
+                        photo: item.photo
+                    });
+                }
+            }
+
+            // Only create RFQ requests if there are items to request
+            if (itemsNeedingRfq.length > 0) {
+                // Generate a unique group ID for this material request
+                const groupId = `MR-${requestData.id}-${Date.now()}`;
+                
+                // Create group description
+                const groupDescription = `Material Request #${requestData.id} - ${itemsNeedingRfq.length} items`;
+                
+                // Create individual RFQ requests for each item with the same group_id
+                for (const item of itemsNeedingRfq) {
+                    const rfqRequestData = {
+                        group_id: groupId,
+                        group_description: groupDescription,
+                        user_id: requestData.requester_id,
+                        name: item.name,
+                        description: item.description,
+                        quantity: item.quantity,
+                        category_id: item.category_id,
                         unit_id: item.unit_id,
                         warehouse_id: requestData.warehouse_id,
                         department_id: requestData.department_id,
@@ -226,7 +250,7 @@ function ReceivedMRsModal({ isOpen, onClose, onSave, requestData }) {
             // Update material request status to "Referred" when RFQ is created
             await axios.put(`/api/v1/material-requests/${requestData.id}`, {
                 status_id: 2, // Referred status
-                description: "RFQ request created for items with no inventory"
+                description: "RFQ requests created for items with insufficient inventory"
             });
 
             // Update the form data to reflect the new status

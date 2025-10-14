@@ -16,6 +16,8 @@ class RfqRequestResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'group_id' => $this->group_id,
+            'group_description' => $this->group_description,
             'user_id' => $this->user_id,
             'name' => $this->name,
             'description' => $this->description,

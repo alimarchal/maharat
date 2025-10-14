@@ -11,6 +11,8 @@ class RfqRequest extends Model
     use HasFactory;
 
     protected $fillable = [
+        'group_id',
+        'group_description',
         'user_id',
         'name',
         'description',
