@@ -105,7 +105,8 @@ class QuotationDocumentController extends Controller
             return response()->json([
                 'message' => 'File updated successfully',
                 'file_path' => asset('storage/' . $relativePath),
-                'document' => new QuotationDocumentResource($existingDocument)
+                'document' => new QuotationDocumentResource($existingDocument),
+                'success' => true
             ], 200);
         } else {
             // Create new record
