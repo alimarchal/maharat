@@ -505,14 +505,14 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 {(() => {
                                     // For Pending/Rejected statuses, show descriptions from previous approvers
                                     if ((currentTask.status === 'Pending' || currentTask.status === 'Rejected') && allDescriptions.length > 0) {
-                                        // Filter descriptions from previous tasks (different task_id and action = "Approve")
-                                        const previousApprovals = allDescriptions.filter(desc => 
-                                            desc.task_id !== currentTask.id && desc.action === "Approve"
+                                        // Filter descriptions from previous tasks (different task_id)
+                                        const previousDescriptions = allDescriptions.filter(desc => 
+                                            desc.task_id !== currentTask.id
                                         );
                                         
-                                        if (previousApprovals.length > 0) {
-                                            // Get the most recent previous approval (highest task_id)
-                                            const mostRecentApproval = previousApprovals.reduce((latest, current) => 
+                                        if (previousDescriptions.length > 0) {
+                                            // Get the most recent previous description (highest task_id)
+                                            const mostRecentDescription = previousDescriptions.reduce((latest, current) => 
                                                 (current.task_id > latest.task_id) ? current : latest
                                             );
                                             
@@ -520,7 +520,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 <div className="flex justify-between border-b border-gray-100 pb-2">
                                                     <span className="text-gray-600">Description:</span>
                                                     <span className="font-medium text-gray-800 text-right max-w-xs">
-                                                        {mostRecentApproval.description}
+                                                        {mostRecentDescription.description}
                                                     </span>
                                                 </div>
                                             );
