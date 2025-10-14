@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCamera, faPlus, faTrash, faCheckCircle } from "@fortawesome/free-solid-svg-icons";
 import SelectFloating from "../../../Components/SelectFloating";
@@ -231,6 +231,7 @@ const MakeRequest = () => {
         const { name, value } = e.target;
         const newItems = [...formData.items];
         const oldCategoryId = newItems[index].category_id;
+        const oldProductId = newItems[index].product_id;
         
         newItems[index] = { ...newItems[index], [name]: value };
         
@@ -238,9 +239,25 @@ const MakeRequest = () => {
         if (name === 'category_id') {
             newItems[index].product_id = ""; // Reset product selection
             
+            // Reset all subsequent items to match the new category
+            for (let i = index + 1; i < newItems.length; i++) {
+                newItems[i].category_id = value;
+                newItems[i].product_id = ""; // Also reset product selection
+            }
+            
             // Check if we already have products for this category
             if (!filteredProducts[value] || filteredProducts[value].length === 0) {
-            fetchProductsForCategory(value);
+                fetchProductsForCategory(value);
+            }
+        }
+        
+        // If product is changed, reset all subsequent items that have the same product
+        if (name === 'product_id') {
+            // Reset all items after current index that have the same product_id as the old selection
+            for (let i = index + 1; i < newItems.length; i++) {
+                if (newItems[i].product_id === oldProductId) {
+                    newItems[i].product_id = "";
+                }
             }
         }
         
@@ -439,13 +456,35 @@ const MakeRequest = () => {
         }
     };
 
-    const getAvailableProducts = (index, categoryId) => {
-        if (!categoryId) {
-            return [];
-        }
-        const products = filteredProducts[categoryId] || [];
-        return products;
-    };
+    // Memoized function to get available products for each item
+    const getAvailableProducts = useMemo(() => {
+        return (index, categoryId) => {
+            if (!categoryId) {
+                return [];
+            }
+            const products = filteredProducts[categoryId] || [];
+            
+            // For items after the first one, filter out already selected products
+            if (index > 0) {
+                // Get all selected product IDs from items before current index
+                const selectedProductIds = formData.items
+                    .slice(0, index)
+                    .map(item => item.product_id)
+                    .filter(id => id !== "" && id !== null && id !== undefined);
+                
+                // Filter out selected products
+                const availableProducts = products.filter(product => {
+                    const productId = product.id;
+                    const isSelected = selectedProductIds.includes(productId);
+                    return !isSelected;
+                });
+                
+                return availableProducts;
+            }
+            
+            return products;
+        };
+    }, [formData.items, filteredProducts]);
 
     const getAvailableSubCostCenters = (costCenterId) => {
         if (!costCenterId) return [];
@@ -782,20 +821,22 @@ const MakeRequest = () => {
         // Get the category from the first item
         const firstItemCategory = formData.items.length > 0 ? formData.items[0].category_id : "";
         
+        const newItems = [
+            ...formData.items,
+            {
+                product_id: "",
+                unit_id: "",
+                category_id: firstItemCategory, // Auto-set to first item's category
+                quantity: "",
+                urgency: "",
+                photo: null,
+                description: "",
+            },
+        ];
+        
         setFormData((prev) => ({
             ...prev,
-            items: [
-                ...prev.items,
-                {
-                    product_id: "",
-                    unit_id: "",
-                    category_id: firstItemCategory, // Auto-set to first item's category
-                    quantity: "",
-                    urgency: "",
-                    photo: null,
-                    description: "",
-                },
-            ],
+            items: newItems,
         }));
     };
 
