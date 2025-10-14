@@ -82,6 +82,8 @@ const RfqRequestsTable = ({ onSelectRfqRequest }) => {
     };
 
     const handleMakeRfq = (group) => {
+        // Collapse the table when Make RFQ is clicked
+        setShowTable(false);
         // Pass the entire group to the onSelectRfqRequest function
         onSelectRfqRequest(group);
     };

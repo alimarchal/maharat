@@ -217,9 +217,9 @@ function AddQuotationForm() {
                     console.log("Current sub cost center is not valid, clearing it");
                     handleFormInputChange("sub_cost_center_id", "");
                 } else {
-                    console.log("Current sub cost center is valid, keeping it");
+                    console.log("Current sub cost center is valid, setting it:", currentSubCostCenterId);
+                    handleFormInputChange("sub_cost_center_id", currentSubCostCenterId.toString());
                 }
-                // If it's valid, keep the current value (don't change it)
             } else {
                 // No current sub cost center, but don't clear it if we're in edit mode and it was previously set
                 console.log("No current sub cost center, but keeping existing value");
@@ -1238,9 +1238,7 @@ function AddQuotationForm() {
     }, [paymentTypes]);
 
     // Handler for Make RFQ button
-    const handleSelectRfqRequest = (rfqRequestGroup) => {
-        console.log('Selected RFQ Request Group:', rfqRequestGroup);
-        console.log('Current categories:', categories);
+    const handleSelectRfqRequest = async (rfqRequestGroup) => {
         
         setSelectedRfqRequest(rfqRequestGroup);
         
@@ -1248,8 +1246,10 @@ function AddQuotationForm() {
         setFormData((prev) => {
             const firstRequest = rfqRequestGroup.firstRequest || rfqRequestGroup;
             
+            
             // Create items array from all requests in the group
-            const items = rfqRequestGroup.requests ? rfqRequestGroup.requests.map(request => ({
+            const items = rfqRequestGroup.requests ? rfqRequestGroup.requests.map((request, index) => ({
+                id: `temp-${Date.now()}-${index}`, // Add unique temporary ID
                 product_id: "", // No product yet
                 item_name: request.name,
                 description: request.description || "",
@@ -1260,6 +1260,7 @@ function AddQuotationForm() {
                 rfq_id: rfqId || "",
                 status_id: 48,
             })) : [{
+                id: `temp-${Date.now()}-0`, // Add unique temporary ID
                 product_id: "", // No product yet
                 item_name: firstRequest.name,
                 description: firstRequest.description || "",
@@ -1286,8 +1287,20 @@ function AddQuotationForm() {
 
         // Load sub cost centers if cost center is selected
         const firstRequest = rfqRequestGroup.firstRequest || rfqRequestGroup;
+        console.log('About to call updateSubCostCenter with:', firstRequest.cost_center_id);
         if (firstRequest.cost_center_id) {
-            updateSubCostCenter(String(firstRequest.cost_center_id));
+            // Load budgeted cost centers for the department first
+            if (firstRequest.department_id) {
+                console.log('Loading budgeted cost centers for department:', firstRequest.department_id);
+                await fetchBudgetedCostCenters(firstRequest.department_id);
+                
+                // Load budgeted sub cost centers for the department and cost center
+                console.log('Loading budgeted sub cost centers for department and cost center:', firstRequest.department_id, firstRequest.cost_center_id);
+                await fetchBudgetedSubCostCenters(firstRequest.department_id, firstRequest.cost_center_id);
+            }
+            
+            // Then load sub cost centers
+            updateSubCostCenter(String(firstRequest.cost_center_id), firstRequest.sub_cost_center_id ? String(firstRequest.sub_cost_center_id) : null);
         }
     };
 
