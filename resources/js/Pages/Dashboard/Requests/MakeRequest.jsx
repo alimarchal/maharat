@@ -274,7 +274,7 @@ const MakeRequest = () => {
         setProcessError(""); // Clear any previous process errors
 
         try {
-            // Check if any items have photos
+            // Check if any items have NEW photos (File objects), not existing ones
             const hasPhotos = formData.items.some(item => item.photo && item.photo instanceof File);
             
             const url = requestId
@@ -319,10 +319,11 @@ const MakeRequest = () => {
                     submitData.append(`items[${index}][user_id]`, user_id);
                     submitData.append(`items[${index}][is_added]`, 'false');
                     
-                    // Add photo file if exists
+                    // Add photo file if it's a new File object
                     if (item.photo && item.photo instanceof File) {
                         submitData.append(`items[${index}][photo]`, item.photo);
                     }
+                    // For existing photos (strings), don't send anything - let backend keep existing
                 });
                 
                 // Debug FormData contents
@@ -337,7 +338,9 @@ const MakeRequest = () => {
                     items: formData.items.map(item => ({
                         ...item,
                         user_id: user_id,
-                        is_added: false
+                        is_added: false,
+                        // Remove photo field for existing photos to avoid validation errors
+                        photo: item.photo instanceof File ? item.photo : undefined
                     }))
                 };
                 
@@ -740,6 +743,14 @@ const MakeRequest = () => {
                             fetchProductsForCategory(categoryId);
                         }
                     });
+                    
+                    // Fetch budgeted options for the selected department and cost center
+                    if (requestData.department?.id) {
+                        fetchBudgetedCostCenters(requestData.department.id);
+                        if (requestData.costCenter?.id) {
+                            fetchBudgetedSubCostCenters(requestData.department.id, requestData.costCenter.id);
+                        }
+                    }
                 })
                 .catch((error) => {
                     console.error("Error fetching request data:", error);
@@ -1133,7 +1144,7 @@ const MakeRequest = () => {
                                 />
                                 {item.photo ? (
                                     <span 
-                                        className="text-gray-700 text-sm sm:text-base overflow-hidden text-ellipsis max-w-[80%] cursor-pointer hover:text-blue-600 hover:underline"
+                                        className="text-blue-600 text-sm sm:text-base overflow-hidden text-ellipsis max-w-[80%] cursor-pointer hover:text-blue-800 hover:underline"
                                         onClick={() => {
                                             if (item.photo instanceof File) {
                                                 // For new files, create object URL
@@ -1147,7 +1158,16 @@ const MakeRequest = () => {
                                         }}
                                         title="Click to view image"
                                     >
-                                        {item.photo instanceof File ? item.photo.name : 'Attachment'}
+                                        {item.photo instanceof File ? item.photo.name : 
+                                         // In edit mode, show the product name if available, otherwise show "Attachment"
+                                         requestId && item.product_id ? 
+                                            (() => {
+                                                // Find product in filteredProducts for the item's category
+                                                const categoryProducts = filteredProducts[item.category_id] || [];
+                                                const product = categoryProducts.find(p => p.id === item.product_id);
+                                                return product?.name || 'Attachment';
+                                            })() : 
+                                            'Attachment'}
                                     </span>
                                 ) : (
                                     <span className="text-sm sm:text-base">

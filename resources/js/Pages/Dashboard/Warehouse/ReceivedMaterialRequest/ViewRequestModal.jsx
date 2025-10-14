@@ -286,6 +286,7 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
                                             <th className="py-3 px-4">Category</th>
                                             <th className="py-3 px-4">Quantity</th>
                                             <th className="py-3 px-4">Unit</th>
+                                            <th className="py-3 px-4">Description</th>
                                             <th className={`py-3 px-4 ${request.items?.some(item => item.photo_url) ? '' : 'rounded-tr-2xl rounded-br-2xl'}`}>Priority</th>
                                             {request.items?.some(item => item.photo_url) && (
                                                 <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">Image</th>
@@ -306,6 +307,9 @@ const ViewRequestModal = ({ isOpen, onClose, request }) => {
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     {item.unit?.name || "N/A"}
+                                                </td>
+                                                <td className="px-4 py-2">
+                                                    {item.description || "N/A"}
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     <PriorityBadge priority={item.urgency_status?.name} />
