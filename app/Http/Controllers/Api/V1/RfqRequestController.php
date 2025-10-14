@@ -32,6 +32,8 @@ class RfqRequestController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
+            'group_id' => 'nullable|string',
+            'group_description' => 'nullable|string',
             'user_id' => 'required|exists:users,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',

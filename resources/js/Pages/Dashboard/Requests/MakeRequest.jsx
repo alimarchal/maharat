@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCamera, faPlus, faTrash, faCheckCircle } from "@fortawesome/free-solid-svg-icons";
 import SelectFloating from "../../../Components/SelectFloating";
@@ -45,6 +45,9 @@ const MakeRequest = () => {
     const [departments, setDepartments] = useState([]);
     const [filteredProducts, setFilteredProducts] = useState({});
     const [filteredSubCostCenters, setFilteredSubCostCenters] = useState({});
+    const [budgetedDepartments, setBudgetedDepartments] = useState([]);
+    const [budgetedCostCenters, setBudgetedCostCenters] = useState([]);
+    const [budgetedSubCostCenters, setBudgetedSubCostCenters] = useState([]);
     const [loading, setLoading] = useState(false);
     const [processError, setProcessError] = useState("");
     const [name, setName] = useState('');
@@ -228,6 +231,7 @@ const MakeRequest = () => {
         const { name, value } = e.target;
         const newItems = [...formData.items];
         const oldCategoryId = newItems[index].category_id;
+        const oldProductId = newItems[index].product_id;
         
         newItems[index] = { ...newItems[index], [name]: value };
         
@@ -235,9 +239,25 @@ const MakeRequest = () => {
         if (name === 'category_id') {
             newItems[index].product_id = ""; // Reset product selection
             
+            // Reset all subsequent items to match the new category
+            for (let i = index + 1; i < newItems.length; i++) {
+                newItems[i].category_id = value;
+                newItems[i].product_id = ""; // Also reset product selection
+            }
+            
             // Check if we already have products for this category
             if (!filteredProducts[value] || filteredProducts[value].length === 0) {
-            fetchProductsForCategory(value);
+                fetchProductsForCategory(value);
+            }
+        }
+        
+        // If product is changed, reset all subsequent items that have the same product
+        if (name === 'product_id') {
+            // Reset all items after current index that have the same product_id as the old selection
+            for (let i = index + 1; i < newItems.length; i++) {
+                if (newItems[i].product_id === oldProductId) {
+                    newItems[i].product_id = "";
+                }
             }
         }
         
@@ -254,7 +274,7 @@ const MakeRequest = () => {
         setProcessError(""); // Clear any previous process errors
 
         try {
-            // Check if any items have photos
+            // Check if any items have NEW photos (File objects), not existing ones
             const hasPhotos = formData.items.some(item => item.photo && item.photo instanceof File);
             
             const url = requestId
@@ -299,10 +319,11 @@ const MakeRequest = () => {
                     submitData.append(`items[${index}][user_id]`, user_id);
                     submitData.append(`items[${index}][is_added]`, 'false');
                     
-                    // Add photo file if exists
+                    // Add photo file if it's a new File object
                     if (item.photo && item.photo instanceof File) {
                         submitData.append(`items[${index}][photo]`, item.photo);
                     }
+                    // For existing photos (strings), don't send anything - let backend keep existing
                 });
                 
                 // Debug FormData contents
@@ -317,13 +338,14 @@ const MakeRequest = () => {
                     items: formData.items.map(item => ({
                         ...item,
                         user_id: user_id,
-                        is_added: false
+                        is_added: false,
+                        // Remove photo field for existing photos to avoid validation errors
+                        photo: item.photo instanceof File ? item.photo : undefined
                     }))
                 };
                 
-                // Convert empty string to null for sub_cost_center_id if no sub cost centers are available
-                const availableSubCostCenters = getAvailableSubCostCenters(formData.cost_center_id);
-                if (submitData.sub_cost_center_id === "" && availableSubCostCenters.length === 0) {
+                // Convert empty string to null for sub_cost_center_id if no budgeted sub cost centers are available
+                if (submitData.sub_cost_center_id === "" && budgetedSubCostCenters.length === 0) {
                     submitData.sub_cost_center_id = null;
                 }
             }
@@ -437,13 +459,35 @@ const MakeRequest = () => {
         }
     };
 
-    const getAvailableProducts = (index, categoryId) => {
-        if (!categoryId) {
-            return [];
-        }
-        const products = filteredProducts[categoryId] || [];
-        return products;
-    };
+    // Memoized function to get available products for each item
+    const getAvailableProducts = useMemo(() => {
+        return (index, categoryId) => {
+            if (!categoryId) {
+                return [];
+            }
+            const products = filteredProducts[categoryId] || [];
+            
+            // For items after the first one, filter out already selected products
+            if (index > 0) {
+                // Get all selected product IDs from items before current index
+                const selectedProductIds = formData.items
+                    .slice(0, index)
+                    .map(item => item.product_id)
+                    .filter(id => id !== "" && id !== null && id !== undefined);
+                
+                // Filter out selected products
+                const availableProducts = products.filter(product => {
+                    const productId = product.id;
+                    const isSelected = selectedProductIds.includes(productId);
+                    return !isSelected;
+                });
+                
+                return availableProducts;
+            }
+            
+            return products;
+        };
+    }, [formData.items, filteredProducts]);
 
     const getAvailableSubCostCenters = (costCenterId) => {
         if (!costCenterId) return [];
@@ -467,7 +511,8 @@ const MakeRequest = () => {
                 await Promise.all([
                     fetchAllCostCenters(),
                     fetchAllSubCostCenters(),
-                    fetchAllStatuses()
+                    fetchAllStatuses(),
+                    fetchBudgetedDepartments()
                 ]);
 
                 // Fetch categories with pagination
@@ -578,6 +623,79 @@ const MakeRequest = () => {
         }
     };
 
+    const fetchBudgetedDepartments = async () => {
+        try {
+            const response = await axios.get('/api/v1/budgets?include=department&filter[status]=Active');
+            const budgets = response.data.data;
+            
+            // Extract unique departments that have budgets
+            const uniqueDepartments = budgets
+                .filter(budget => budget.department)
+                .reduce((acc, budget) => {
+                    if (!acc.find(dept => dept.id === budget.department.id)) {
+                        acc.push(budget.department);
+                    }
+                    return acc;
+                }, []);
+            
+            setBudgetedDepartments(uniqueDepartments);
+        } catch (error) {
+            console.error("Error fetching budgeted departments:", error);
+        }
+    };
+
+    const fetchBudgetedCostCenters = async (departmentId) => {
+        if (!departmentId) {
+            setBudgetedCostCenters([]);
+            return;
+        }
+        
+        try {
+            const response = await axios.get(`/api/v1/budgets?include=costCenter&filter[department_id]=${departmentId}&filter[status]=Active`);
+            const budgets = response.data.data;
+            
+            // Extract unique cost centers that have budgets for this department
+            const uniqueCostCenters = budgets
+                .filter(budget => budget.cost_center)
+                .reduce((acc, budget) => {
+                    if (!acc.find(cc => cc.id === budget.cost_center.id)) {
+                        acc.push(budget.cost_center);
+                    }
+                    return acc;
+                }, []);
+            
+            setBudgetedCostCenters(uniqueCostCenters);
+        } catch (error) {
+            console.error("Error fetching budgeted cost centers:", error);
+        }
+    };
+
+    const fetchBudgetedSubCostCenters = async (departmentId, costCenterId) => {
+        if (!departmentId || !costCenterId) {
+            setBudgetedSubCostCenters([]);
+            return;
+        }
+        
+        try {
+            const response = await axios.get(`/api/v1/budgets?include=subCostCenter&filter[department_id]=${departmentId}&filter[cost_center_id]=${costCenterId}&filter[status]=Active`);
+            const budgets = response.data.data;
+            
+            // Extract unique sub cost centers that have budgets for this department + cost center
+            const uniqueSubCostCenters = budgets
+                .filter(budget => budget.sub_cost_center)
+                .reduce((acc, budget) => {
+                    if (!acc.find(scc => scc.id === budget.sub_cost_center.id)) {
+                        acc.push(budget.sub_cost_center);
+                    }
+                    return acc;
+                }, []);
+            
+            setBudgetedSubCostCenters(uniqueSubCostCenters);
+        } catch (error) {
+            console.error("Error fetching budgeted sub cost centers:", error);
+        }
+    };
+
     useEffect(() => {
         if (requestId) {
             axios
@@ -625,6 +743,14 @@ const MakeRequest = () => {
                             fetchProductsForCategory(categoryId);
                         }
                     });
+                    
+                    // Fetch budgeted options for the selected department and cost center
+                    if (requestData.department?.id) {
+                        fetchBudgetedCostCenters(requestData.department.id);
+                        if (requestData.costCenter?.id) {
+                            fetchBudgetedSubCostCenters(requestData.department.id, requestData.costCenter.id);
+                        }
+                    }
                 })
                 .catch((error) => {
                     console.error("Error fetching request data:", error);
@@ -637,9 +763,8 @@ const MakeRequest = () => {
         if (!formData.cost_center_id)
             newErrors.cost_center_id = "Cost Center is required";
         
-        // Only require sub_cost_center_id if there are sub cost centers available
-        const availableSubCostCenters = getAvailableSubCostCenters(formData.cost_center_id);
-        if (availableSubCostCenters.length > 0 && !formData.sub_cost_center_id) {
+        // Only require sub_cost_center_id if there are budgeted sub cost centers available
+        if (budgetedSubCostCenters.length > 0 && !formData.sub_cost_center_id) {
             newErrors.sub_cost_center_id = "Sub Cost Center is required";
         }
         
@@ -680,6 +805,14 @@ const MakeRequest = () => {
             // Reset sub_cost_center_id when cost_center_id changes
             ...(name === 'cost_center_id' && { sub_cost_center_id: '' })
         }));
+
+        // Fetch budgeted options based on selection
+        if (name === 'department_id') {
+            fetchBudgetedCostCenters(value);
+            setBudgetedSubCostCenters([]); // Clear sub cost centers
+        } else if (name === 'cost_center_id') {
+            fetchBudgetedSubCostCenters(formData.department_id, value);
+        }
     };
 
     const handleFileChange = async (index, e) => {
@@ -696,20 +829,25 @@ const MakeRequest = () => {
     };
 
     const addItem = () => {
+        // Get the category from the first item
+        const firstItemCategory = formData.items.length > 0 ? formData.items[0].category_id : "";
+        
+        const newItems = [
+            ...formData.items,
+            {
+                product_id: "",
+                unit_id: "",
+                category_id: firstItemCategory, // Auto-set to first item's category
+                quantity: "",
+                urgency: "",
+                photo: null,
+                description: "",
+            },
+        ];
+        
         setFormData((prev) => ({
             ...prev,
-            items: [
-                ...prev.items,
-                {
-                    product_id: "",
-                    unit_id: "",
-                    category_id: "",
-                    quantity: "",
-                    urgency: "",
-                    photo: null,
-                    description: "",
-                },
-            ],
+            items: newItems,
         }));
     };
 
@@ -894,16 +1032,25 @@ const MakeRequest = () => {
                                 value={item.category_id}
                                 onChange={(e) => handleItemChange(index, e)}
                                 onScroll={handleCategoryScroll}
-                                options={categories.map((p) => ({
-                                    id: p.id,
-                                    label: p.name,
-                                }))}
+                                options={index > 0 ? 
+                                    // For items after the first, only show the current category
+                                    categories.filter(cat => cat.id === item.category_id).map((p) => ({
+                                        id: p.id,
+                                        label: p.name,
+                                    })) :
+                                    // For the first item, show all categories
+                                    categories.map((p) => ({
+                                        id: p.id,
+                                        label: p.name,
+                                    }))
+                                }
                                 loading={loadingCategories}
                                 hasMore={categoriesHasMore}
                                 showPagination={true}
                                 currentPage={categoriesPage}
                                 totalPages={categoriesTotalPages}
                                 onPageChange={handleCategoryPageChange}
+                                disabled={index > 0} // Disable category selection for items after the first one
                             />
                             {errors[`items.${index}.category_id`] && (
                                 <p className="text-red-500 text-sm">
@@ -997,7 +1144,7 @@ const MakeRequest = () => {
                                 />
                                 {item.photo ? (
                                     <span 
-                                        className="text-gray-700 text-sm sm:text-base overflow-hidden text-ellipsis max-w-[80%] cursor-pointer hover:text-blue-600 hover:underline"
+                                        className="text-blue-600 text-sm sm:text-base overflow-hidden text-ellipsis max-w-[80%] cursor-pointer hover:text-blue-800 hover:underline"
                                         onClick={() => {
                                             if (item.photo instanceof File) {
                                                 // For new files, create object URL
@@ -1011,7 +1158,16 @@ const MakeRequest = () => {
                                         }}
                                         title="Click to view image"
                                     >
-                                        {item.photo instanceof File ? item.photo.name : 'Attachment'}
+                                        {item.photo instanceof File ? item.photo.name : 
+                                         // In edit mode, show the product name if available, otherwise show "Attachment"
+                                         requestId && item.product_id ? 
+                                            (() => {
+                                                // Find product in filteredProducts for the item's category
+                                                const categoryProducts = filteredProducts[item.category_id] || [];
+                                                const product = categoryProducts.find(p => p.id === item.product_id);
+                                                return product?.name || 'Attachment';
+                                            })() : 
+                                            'Attachment'}
                                     </span>
                                 ) : (
                                     <span className="text-sm sm:text-base">
@@ -1116,14 +1272,32 @@ const MakeRequest = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <SelectFloating
+                            label="Department"
+                            name="department_id"
+                            value={formData.department_id}
+                            onChange={handleChange}
+                            options={budgetedDepartments.map((dept) => ({
+                                id: dept.id,
+                                label: dept.name,
+                            }))}
+                        />
+                        {errors.department_id && (
+                            <p className="text-red-500 text-sm">
+                                {errors.department_id}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <SelectFloating
                             label="Cost Center"
                             name="cost_center_id"
                             value={formData.cost_center_id}
                             onChange={handleChange}
-                            options={costCenters.map((cc) => ({
+                            options={budgetedCostCenters.map((cc) => ({
                                 id: cc.id,
                                 label: cc.name,
                             }))}
+                            disabled={!formData.department_id}
                         />
                         {errors.cost_center_id && (
                             <p className="text-red-500 text-sm">
@@ -1137,39 +1311,18 @@ const MakeRequest = () => {
                             name="sub_cost_center_id"
                             value={formData.sub_cost_center_id}
                             onChange={handleChange}
-                            options={(() => {
-                                const availableSubCostCenters = getAvailableSubCostCenters(formData.cost_center_id);
-                                if (availableSubCostCenters.length > 0) {
-                                    return availableSubCostCenters.map((scc) => ({
-                                        id: scc.id,
-                                        label: scc.name,
-                                    }));
-                                } else {
-                                    return [{ id: "", label: "No sub cost centers available" }];
-                                }
-                            })()}
-                            disabled={!formData.cost_center_id || getAvailableSubCostCenters(formData.cost_center_id).length === 0}
+                            options={budgetedSubCostCenters.length > 0 ? 
+                                budgetedSubCostCenters.map((scc) => ({
+                                    id: scc.id,
+                                    label: scc.name,
+                                })) : 
+                                [{ id: "", label: "No sub cost centers available" }]
+                            }
+                            disabled={!formData.cost_center_id || budgetedSubCostCenters.length === 0}
                         />
                         {errors.sub_cost_center_id && (
                             <p className="text-red-500 text-sm">
                                 {errors.sub_cost_center_id}
-                            </p>
-                        )}
-                    </div>
-                    <div>
-                        <SelectFloating
-                            label="Department"
-                            name="department_id"
-                            value={formData.department_id}
-                            onChange={handleChange}
-                            options={departments.map((dept) => ({
-                                id: dept.id,
-                                label: dept.name,
-                            }))}
-                        />
-                        {errors.department_id && (
-                            <p className="text-red-500 text-sm">
-                                {errors.department_id}
                             </p>
                         )}
                     </div>

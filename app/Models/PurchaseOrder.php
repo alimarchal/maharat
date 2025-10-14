@@ -30,14 +30,23 @@ class PurchaseOrder extends Model
         'generated_document',
         'status',
         'fiscal_period_id',
-        'request_budget_id'
+        'request_budget_id',
+        'grn_status',
+        'adjusted_amount',
+        'adjusted_tax',
+        'original_amount',
+        'original_vat_amount'
     ];
 
     protected $casts = [
         'purchase_order_date' => 'date',
         'expiry_date' => 'date',
         'amount' => 'decimal:2',
-        'vat_amount' => 'decimal:2'
+        'vat_amount' => 'decimal:2',
+        'adjusted_amount' => 'decimal:2',
+        'adjusted_tax' => 'decimal:2',
+        'original_amount' => 'decimal:2',
+        'original_vat_amount' => 'decimal:2'
     ];
 
 

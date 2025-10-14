@@ -54,6 +54,7 @@ const MRStatusFlow = () => {
             const response = await axios.get(
                 `/api/v1/material-request-transactions?filter[material_request_id]=${id}&include=materialRequest,requester,assignedUser,referredUser`
             );
+            console.log('MR Status API Response:', response.data?.data);
             setCardData(response.data?.data);
 
             if (response.data?.data?.[0]?.material_request?.created_at) {
@@ -98,6 +99,14 @@ const MRStatusFlow = () => {
 
         // Then show all assigned users from all records
         cardData.forEach((card, index) => {
+            console.log(`Card ${index} data:`, {
+                id: card.id,
+                status: card.status,
+                referred_user: card.referred_user,
+                referred_user_status: card.referred_user_status,
+                all_fields: Object.keys(card)
+            });
+            
             cards.push({
                 id: `assigned-${card.id}`,
                 type: "assigned",

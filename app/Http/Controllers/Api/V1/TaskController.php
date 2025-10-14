@@ -2290,7 +2290,9 @@ class TaskController extends Controller
                 // Check if this is a referral response task
                 // A referral response task is one that was created as a result of a referee responding
                 // It has assigned_from_user_id (the referee) and was created after a referral
+                // BUT it should NOT continue the approval flow (continue_approval_flow should be false)
                 $isReferralResponseTask = $task->assigned_from_user_id && 
+                    $task->continue_approval_flow == false &&
                     DB::table('grn_approval_transactions')
                         ->where('grn_id', $task->grn_id)
                         ->where('assigned_to', $task->assigned_to_user_id)
@@ -2302,6 +2304,7 @@ class TaskController extends Controller
                     'grn_id' => $task->grn_id,
                     'assigned_from_user_id' => $task->assigned_from_user_id,
                     'continue_approval_flow' => $task->continue_approval_flow,
+                    'continue_approval_flow_false_check' => $task->continue_approval_flow == false,
                     'is_referral_response_task' => $isReferralResponseTask
                 ]);
                 
@@ -2369,16 +2372,88 @@ class TaskController extends Controller
 
                     $totalRequiredApprovals = $processSteps->count();
                     
+                    // Check if this is a referral response task - if so, skip normal approval flow
+                    $isReferralResponseTask = $task->assigned_from_user_id && 
+                        $task->continue_approval_flow == false &&
+                        DB::table('grn_approval_transactions')
+                            ->where('grn_id', $task->grn_id)
+                            ->where('assigned_to', $task->assigned_to_user_id)
+                            ->whereNotNull('referred_to')
+                            ->exists();
+                    
+                    Log::info('=== GRN REFERRAL RESPONSE CHECK ===', [
+                        'task_id' => $task->id,
+                        'grn_id' => $task->grn_id,
+                        'assigned_from_user_id' => $task->assigned_from_user_id,
+                        'continue_approval_flow' => $task->continue_approval_flow,
+                        'continue_approval_flow_false_check' => $task->continue_approval_flow == false,
+                        'is_referral_response_task' => $isReferralResponseTask
+                    ]);
+                    
+                    if ($isReferralResponseTask) {
+                        Log::info('=== SKIPPING GRN APPROVAL FLOW - THIS IS A REFERRAL RESPONSE ===', [
+                            'task_id' => $task->id,
+                            'grn_id' => $task->grn_id,
+                            'assigned_from_user_id' => $task->assigned_from_user_id,
+                            'assigned_to_user_id' => $task->assigned_to_user_id
+                        ]);
+                        
+                        // Update the approval transaction status directly
+                        $newStatus = $request->input('status') === 'Approved' ? 'Approve' : ($request->input('status') === 'Referred' ? 'Refer' : $request->input('status'));
+                        
+                        $transactionUpdated = DB::table('grn_approval_transactions')
+                            ->where('id', $approvalTransaction->id)
+                            ->update([
+                                'status' => $newStatus,
+                                'updated_at' => now()
+                            ]);
+                        
+                        Log::info('=== GRN REFERRAL RESPONSE TRANSACTION UPDATED ===', [
+                            'task_id' => $task->id,
+                            'grn_id' => $task->grn_id,
+                            'approval_transaction_id' => $approvalTransaction->id,
+                            'new_status' => $newStatus,
+                            'update_result' => $transactionUpdated
+                        ]);
+                        
+                        // Skip the rest of the approval flow for referral responses
+                        return response()->json([
+                            'message' => 'GRN referral response recorded successfully',
+                            'data' => new TaskResource($task->load([
+                                'processStep',
+                                'process',
+                                'assignedUser',
+                                'descriptions',
+                                'material_request',
+                                'rfq',
+                                'purchase_order',
+                                'payment_order',
+                                'invoice',
+                                'budget',
+                                'budget_approval_transaction',
+                                'request_budget',
+                            ]))
+                        ], Response::HTTP_OK);
+                    }
+                    
                     // Check if this is the final approval (current order equals total required approvals)
-                    $isFinalApproval = $approvalTransaction->order == $totalRequiredApprovals;
+                    $isFinalApproval = $task->order_no == $totalRequiredApprovals;
 
                     Log::info('=== GRN FINAL APPROVAL CHECK ===', [
                         'task_id' => $task->id,
                         'grn_id' => $task->grn_id,
-                        'current_order' => $approvalTransaction->order,
+                        'task_order_no' => $task->order_no,
+                        'approval_transaction_order' => $approvalTransaction->order,
                         'total_required_approvals' => $totalRequiredApprovals,
                         'is_final_approval' => $isFinalApproval,
-                        'process_steps_count' => $processSteps->count()
+                        'process_steps_count' => $processSteps->count(),
+                        'comparison_details' => [
+                            'task_order_no_type' => gettype($task->order_no),
+                            'total_required_type' => gettype($totalRequiredApprovals),
+                            'strict_comparison' => $task->order_no === $totalRequiredApprovals,
+                            'loose_comparison' => $task->order_no == $totalRequiredApprovals,
+                            'string_comparison' => (string)$task->order_no === (string)$totalRequiredApprovals
+                        ]
                     ]);
 
                     // Update the approval transaction status directly (like material request)
@@ -2386,6 +2461,34 @@ class TaskController extends Controller
                     $isReferrerApprovingAfterReferral = $approvalTransaction->referred_to !== null;
                     
                     $newStatus = $request->input('status') === 'Approved' ? 'Approve' : ($request->input('status') === 'Referred' ? 'Refer' : $request->input('status'));
+                    
+                    // Check if this is a referrer approving after a referral response
+                    // Look for a task that was created as a result of this user referring to someone else
+                    $referrerTask = DB::table('tasks')
+                        ->where('grn_id', $task->grn_id)
+                        ->where('assigned_from_user_id', $task->assigned_to_user_id)
+                        ->whereNotNull('assigned_to_user_id')
+                        ->where('created_at', '>=', now()->subMinutes(10)) // Created within last 10 minutes
+                        ->first();
+                    
+                    if ($referrerTask && $request->input('status') === 'Approved') {
+                        Log::info('=== REFERRER APPROVING AFTER REFERRAL RESPONSE (GRN) ===', [
+                            'grn_id' => $task->grn_id,
+                            'referrer_task_id' => $referrerTask->id,
+                            'referrer_user_id' => $task->assigned_to_user_id,
+                            'referee_user_id' => $referrerTask->assigned_to_user_id,
+                            'status' => $request->input('status')
+                        ]);
+                        
+                        // Force the status to Approve for the rest of the flow
+                        $newStatus = 'Approve';
+                        
+                        Log::info('=== CONTINUING WITH NORMAL GRN APPROVAL FLOW AFTER REFERRAL ===', [
+                            'grn_id' => $task->grn_id,
+                            'task_id' => $task->id,
+                            'order' => $approvalTransaction->order
+                        ]);
+                    }
                     
                     Log::info('=== GRN APPROVAL TRANSACTION STATUS UPDATE ===', [
                         'task_id' => $task->id,
@@ -2433,7 +2536,8 @@ class TaskController extends Controller
                             'current_status' => DB::table('grns')->where('id', $task->grn_id)->value('status'),
                             'current_task_status' => DB::table('grns')->where('id', $task->grn_id)->value('task_status'),
                             'target_task_status' => 'Approved',
-                            'note' => 'Final approval - updating task_status to Approved'
+                            'note' => 'Final approval - updating task_status to Approved',
+                            'is_final_approval_confirmed' => true
                         ]);
                         
                         // Update GRN task_status to Approved (final approval)
@@ -2449,8 +2553,25 @@ class TaskController extends Controller
                             'grn_id' => $task->grn_id,
                             'update_success' => $grnUpdated,
                             'status_unchanged' => DB::table('grns')->where('id', $task->grn_id)->value('status'),
-                            'new_task_status' => DB::table('grns')->where('id', $task->grn_id)->value('task_status')
+                            'new_task_status' => DB::table('grns')->where('id', $task->grn_id)->value('task_status'),
+                            'rows_affected' => $grnUpdated
                         ]);
+                        
+                        // Update Purchase Order with GRN adjustment
+                        if ($grnUpdated) {
+                            Log::info('=== CALLING GRN ADJUSTMENT FUNCTION ===', [
+                                'task_id' => $task->id,
+                                'grn_id' => $task->grn_id,
+                                'grn_updated' => $grnUpdated
+                            ]);
+                            $this->updatePurchaseOrderWithGrnAdjustment($task->grn_id);
+                        } else {
+                            Log::warning('=== GRN UPDATE FAILED - NOT CALLING ADJUSTMENT ===', [
+                                'task_id' => $task->id,
+                                'grn_id' => $task->grn_id,
+                                'grn_updated' => $grnUpdated
+                            ]);
+                        }
                     } else {
                         // NOT final approval - only create next approval step if this is an approval (not referral)
                         if ($request->input('status') === 'Approved') {
@@ -2773,6 +2894,15 @@ class TaskController extends Controller
                                 'status' => 'Refer',
                                 'updated_at' => now()
                             ]);
+                    } elseif ($task->payment_order_id) {
+                        DB::table('payment_order_approval_transactions')
+                            ->where('payment_order_id', $task->payment_order_id)
+                            ->where('assigned_to', $task->assigned_to_user_id)
+                            ->update([
+                                'referred_to' => $taskDescription->user_id,
+                                'status' => 'Refer',
+                                'updated_at' => now()
+                            ]);
                     } elseif ($task->budget_id) {
                         DB::table('budget_approval_transactions')
                             ->where('budget_id', $task->budget_id)
@@ -2879,71 +3009,266 @@ class TaskController extends Controller
 
             // === PAYMENT ORDER APPROVAL LOGIC ===
             if ($task->payment_order_id && in_array($request->input('status'), ['Approved', 'Referred'])) {
-                Log::info('=== PAYMENT ORDER TASK APPROVAL CHECK ===', [
+                Log::info('=== PAYMENT ORDER TASK APPROVAL CHECK START ===', [
                     'task_id' => $task->id,
                     'payment_order_id' => $task->payment_order_id,
                     'current_order_no' => $task->order_no,
+                    'current_task_status' => DB::table('payment_orders')->where('id', $task->payment_order_id)->value('status'),
                     'process_id' => $task->process_id,
-                    'assigned_to_user_id' => $task->assigned_to_user_id
+                    'assigned_to_user_id' => $task->assigned_to_user_id,
+                    'assigned_from_user_id' => $task->assigned_from_user_id,
+                    'request_status' => $request->input('status'),
+                    'continue_approval_flow' => $task->continue_approval_flow
                 ]);
 
-                // IMPORTANT: Proceed with normal approval flow if:
-                // 1. Task should continue approval flow (continue_approval_flow == true)
-                // 2. This is NOT a referral response task (assigned_from_user_id is null OR this is the original approver)
-                $isReferralResponseTask = $task->assigned_from_user_id && $task->continue_approval_flow == false;
+                // Check if this is a referral response task
+                // A referral response task is one that was created as a result of a referee responding
+                // It has assigned_from_user_id (the referee) and was created after a referral
+                $isReferralResponseTask = $task->assigned_from_user_id && 
+                    DB::table('payment_order_approval_transactions')
+                        ->where('payment_order_id', $task->payment_order_id)
+                        ->where('assigned_to', $task->assigned_to_user_id)
+                        ->whereNotNull('referred_to')
+                        ->exists();
                 
-                if ($task->continue_approval_flow == true && !$isReferralResponseTask) {
-                    Log::info('=== PROCEEDING WITH NORMAL PAYMENT ORDER APPROVAL FLOW ===', [
+                Log::info('=== PAYMENT ORDER REFERRAL RESPONSE CHECK ===', [
                         'task_id' => $task->id,
                         'payment_order_id' => $task->payment_order_id,
-                        'assigned_to_user_id' => $task->assigned_to_user_id,
                         'assigned_from_user_id' => $task->assigned_from_user_id,
                         'continue_approval_flow' => $task->continue_approval_flow,
-                        'is_referral_response_task' => $isReferralResponseTask,
-                        'note' => 'This is the original approver making the final decision'
+                    'is_referral_response_task' => $isReferralResponseTask
                     ]);
-                    // Get total number of required approvals for this payment order
-                    $totalApprovals = DB::table('tasks')
-                    ->where('payment_order_id', $task->payment_order_id)
-                    ->where('process_id', $task->process_id)
-                    ->count();
 
-                // Get all tasks for this payment order to verify
-                $allTasks = DB::table('tasks')
+                // Update the corresponding Payment Order approval transaction
+                $approvalTransaction = DB::table('payment_order_approval_transactions')
                     ->where('payment_order_id', $task->payment_order_id)
-                    ->where('process_id', $task->process_id)
+                    ->where('assigned_to', $task->assigned_to_user_id)
+                    ->first();
+                
+                if ($approvalTransaction) {
+                    // Get process steps for Payment Order Approval
+                    $processSteps = DB::table('process_steps')
+                        ->join('processes', 'process_steps.process_id', '=', 'processes.id')
+                        ->where('processes.title', 'Payment Order Approval')
+                        ->orderBy('process_steps.order')
                     ->get();
 
-                // Check if this is the final approval
-                $isFinalApproval = (string)$task->order_no === (string)$totalApprovals;
+                    $totalRequiredApprovals = $processSteps->count();
+                    
+                    // Check if this is a referral response task - if so, skip normal approval flow
+                    if ($isReferralResponseTask) {
+                        Log::info('=== SKIPPING PAYMENT ORDER APPROVAL FLOW - THIS IS A REFERRAL RESPONSE ===', [
+                            'task_id' => $task->id,
+                            'payment_order_id' => $task->payment_order_id,
+                            'assigned_from_user_id' => $task->assigned_from_user_id,
+                            'assigned_to_user_id' => $task->assigned_to_user_id
+                        ]);
+                        
+                        // Update the approval transaction status directly
+                        $newStatus = $request->input('status') === 'Approved' ? 'Approve' : ($request->input('status') === 'Referred' ? 'Refer' : $request->input('status'));
+                        
+                        $transactionUpdated = DB::table('payment_order_approval_transactions')
+                            ->where('id', $approvalTransaction->id)
+                            ->update([
+                                'status' => $newStatus,
+                                'updated_at' => now()
+                            ]);
+                        
+                        Log::info('=== PAYMENT ORDER REFERRAL RESPONSE TRANSACTION UPDATED ===', [
+                            'task_id' => $task->id,
+                            'payment_order_id' => $task->payment_order_id,
+                            'approval_transaction_id' => $approvalTransaction->id,
+                            'new_status' => $newStatus,
+                            'update_result' => $transactionUpdated
+                        ]);
+                        
+                        // Skip the rest of the approval flow for referral responses
+                        return response()->json([
+                            'message' => 'Payment Order referral response recorded successfully',
+                            'data' => new TaskResource($task->load([
+                                'processStep',
+                                'process',
+                                'assignedUser',
+                                'descriptions',
+                                'material_request',
+                                'rfq',
+                                'purchase_order',
+                                'payment_order',
+                                'invoice',
+                                'budget',
+                                'budget_approval_transaction',
+                                'request_budget',
+                            ]))
+                        ], Response::HTTP_OK);
+                    }
+                    
+                    // Check if this is the final approval (current order equals total required approvals)
+                    $isFinalApproval = $approvalTransaction->order == $totalRequiredApprovals;
 
-                $paymentOrder = \App\Models\PaymentOrder::find($task->payment_order_id);
-                if (!$paymentOrder) {
-                    Log::error('=== PAYMENT ORDER NOT FOUND FOR APPROVAL ===', [
-                        'payment_order_id' => $task->payment_order_id
+                    Log::info('=== PAYMENT ORDER FINAL APPROVAL CHECK ===', [
+                        'task_id' => $task->id,
+                        'payment_order_id' => $task->payment_order_id,
+                        'current_order' => $approvalTransaction->order,
+                        'total_required_approvals' => $totalRequiredApprovals,
+                        'is_final_approval' => $isFinalApproval,
+                        'process_steps_count' => $processSteps->count()
                     ]);
-                } else {
+
+                    // Update the approval transaction status directly (like material request)
+                    // Check if this is a referrer approving after referral response
+                    $isReferrerApprovingAfterReferral = $approvalTransaction->referred_to !== null;
+                    
+                    $newStatus = $request->input('status') === 'Approved' ? 'Approve' : ($request->input('status') === 'Referred' ? 'Refer' : $request->input('status'));
+                    
+                    // Check if this is a referrer approving after a referral response
+                    // Look for a task that was created as a result of this user referring to someone else
+                    $referrerTask = DB::table('tasks')
+                        ->where('payment_order_id', $task->payment_order_id)
+                        ->where('assigned_from_user_id', $task->assigned_to_user_id)
+                        ->whereNotNull('assigned_to_user_id')
+                        ->where('created_at', '>=', now()->subMinutes(10)) // Created within last 10 minutes
+                        ->first();
+                    
+                    if ($referrerTask && $request->input('status') === 'Approved') {
+                        Log::info('=== REFERRER APPROVING AFTER REFERRAL RESPONSE (PAYMENT ORDER) ===', [
+                            'payment_order_id' => $task->payment_order_id,
+                            'referrer_task_id' => $referrerTask->id,
+                            'referrer_user_id' => $task->assigned_to_user_id,
+                            'referee_user_id' => $referrerTask->assigned_to_user_id,
+                            'status' => $request->input('status')
+                        ]);
+                        
+                        // Force the status to Approve for the rest of the flow
+                        $newStatus = 'Approve';
+                        
+                        Log::info('=== CONTINUING WITH NORMAL PAYMENT ORDER APPROVAL FLOW AFTER REFERRAL ===', [
+                            'payment_order_id' => $task->payment_order_id,
+                            'task_id' => $task->id,
+                            'order' => $approvalTransaction->order
+                        ]);
+                    }
+                    
+                    Log::info('=== PAYMENT ORDER APPROVAL TRANSACTION STATUS UPDATE ===', [
+                        'task_id' => $task->id,
+                        'payment_order_id' => $task->payment_order_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'assigned_to' => $approvalTransaction->assigned_to,
+                        'referred_to' => $approvalTransaction->referred_to,
+                        'is_referrer_approving_after_referral' => $isReferrerApprovingAfterReferral,
+                        'new_status' => $newStatus
+                    ]);
+                    
+                    $transactionUpdated = DB::table('payment_order_approval_transactions')
+                        ->where('id', $approvalTransaction->id)
+                        ->update([
+                            'status' => $newStatus,
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== PAYMENT ORDER APPROVAL TRANSACTION UPDATE RESULT ===', [
+                        'task_id' => $task->id,
+                        'payment_order_id' => $task->payment_order_id,
+                        'approval_transaction_id' => $approvalTransaction->id,
+                        'update_result' => $transactionUpdated
+                    ]);
+
+                    // IMPORTANT: Update Payment Order task_status to 'Pending' on first approval/referral
+                    $paymentOrderTaskStatusUpdated = DB::table('payment_orders')
+                        ->where('id', $task->payment_order_id)
+                        ->update([
+                            'status' => 'Pending',
+                            'updated_at' => now()
+                        ]);
+
+                    Log::info('=== PAYMENT ORDER TASK STATUS UPDATED TO PENDING ===', [
+                        'task_id' => $task->id,
+                        'payment_order_id' => $task->payment_order_id,
+                        'update_result' => $paymentOrderTaskStatusUpdated,
+                        'new_status' => 'Pending'
+                    ]);
+                    
                     if ($isFinalApproval) {
-                        // Final approver logic
-                        $today = now();
-                        $dueDate = $paymentOrder->due_date;
-                        if ($dueDate && $dueDate->lt($today)) {
-                            $paymentOrder->status = 'Overdue';
-                        } else {
-                            $paymentOrder->status = 'Approved';
-                        }
-                        $paymentOrder->save();
-                        Log::info('=== FINAL PAYMENT ORDER APPROVAL - STATUS UPDATED (NEW LOGIC) ===', [
-                            'payment_order_id' => $paymentOrder->id,
-                            'new_status' => $paymentOrder->status
+                        Log::info('=== FINAL PAYMENT ORDER APPROVAL - UPDATING TASK STATUS TO APPROVED ===', [
+                            'task_id' => $task->id,
+                            'payment_order_id' => $task->payment_order_id,
+                            'current_status' => DB::table('payment_orders')->where('id', $task->payment_order_id)->value('status'),
+                            'target_status' => 'Approved',
+                            'note' => 'Final approval - updating status to Approved'
+                        ]);
+                        
+                        // Update Payment Order status to Approved (final approval)
+                        $paymentOrderUpdated = DB::table('payment_orders')
+                            ->where('id', $task->payment_order_id)
+                            ->update([
+                                'status' => 'Approved',
+                                'updated_at' => now()
+                            ]);
+                        
+                        Log::info('=== PAYMENT ORDER STATUS UPDATE RESULT ===', [
+                            'task_id' => $task->id,
+                            'payment_order_id' => $task->payment_order_id,
+                            'update_success' => $paymentOrderUpdated,
+                            'new_status' => DB::table('payment_orders')->where('id', $task->payment_order_id)->value('status')
                         ]);
                     } else {
-                        // First approver (not final)
-                        $paymentOrder->status = 'Pending';
-                        $paymentOrder->save();
-                        Log::info('=== INTERMEDIATE PAYMENT ORDER APPROVAL - STATUS SET TO PENDING ===', [
-                            'payment_order_id' => $paymentOrder->id
-                        ]);
+                        // NOT final approval - only create next approval step if this is an approval (not referral)
+                        if ($request->input('status') === 'Approved') {
+                            Log::info('=== PAYMENT ORDER NOT FINAL APPROVAL - CREATING NEXT STEP ===', [
+                                'task_id' => $task->id,
+                                'payment_order_id' => $task->payment_order_id,
+                                'current_order' => $approvalTransaction->order,
+                                'total_required_approvals' => $totalRequiredApprovals,
+                                'note' => 'Creating next approval step for approval'
+                            ]);
+
+                            // Get the next process step
+                            $nextOrder = $approvalTransaction->order + 1;
+                            $nextStep = $processSteps->where('order', $nextOrder)->first();
+
+                            if ($nextStep) {
+                                $resolver = new ApproverResolver();
+                                $eloquentStep = EloquentProcessStep::find($nextStep->id);
+                                $requester = User::find($approvalTransaction->requester_id);
+                                $resolvedApproverId = $eloquentStep && $requester
+                                    ? $resolver->resolveApproverId($eloquentStep, $requester)
+                                    : null;
+
+                                if ($resolvedApproverId) {
+                                    $nextTransaction = new \App\Models\PaymentOrderApprovalTransaction([
+                                        'payment_order_id' => $approvalTransaction->payment_order_id,
+                                        'requester_id' => $approvalTransaction->requester_id,
+                                        'assigned_to' => $resolvedApproverId,
+                                        'order' => $nextOrder,
+                                        'description' => $nextStep->description,
+                                        'status' => 'Pending',
+                                        'created_by' => auth()->id(),
+                                        'updated_by' => auth()->id()
+                                    ]);
+                                    $nextTransaction->save();
+
+                                    $taskId = DB::table('tasks')->insertGetId([
+                                        'process_step_id' => $nextStep->id,
+                                        'process_id' => $nextStep->process_id,
+                                        'assigned_at' => now(),
+                                        'urgency' => 'Normal',
+                                        'order_no' => $nextOrder,
+                                        'assigned_to_user_id' => $resolvedApproverId,
+                                        'assigned_from_user_id' => $approvalTransaction->requester_id,
+                                        'read_status' => null,
+                                        'payment_order_id' => $approvalTransaction->payment_order_id,
+                                        'created_at' => now(),
+                                        'updated_at' => now()
+                                    ]);
+
+                                    // Send task assignment notification
+                                    $task = Task::with(['assignedToUser', 'process'])->find($taskId);
+                                    if ($task) {
+                                        $notificationService = new TaskNotificationService();
+                                        $notificationService->sendTaskAssignmentNotification($task, 'Payment Order Approval');
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -2957,7 +3282,6 @@ class TaskController extends Controller
                     Log::info('=== PAYMENT ORDER REJECTED - STATUS SET TO CANCELLED ===', [
                         'payment_order_id' => $paymentOrder->id
                     ]);
-                }
                 }
             }
 
@@ -3507,5 +3831,143 @@ class TaskController extends Controller
         }
 
         return response()->json(new TaskCollection($tasks), Response::HTTP_OK);
+    }
+    
+    /**
+     * Update Purchase Order with GRN adjustment when final approval is given
+     */
+    private function updatePurchaseOrderWithGrnAdjustment($grnId)
+    {
+        try {
+            Log::info('=== STARTING PURCHASE ORDER GRN ADJUSTMENT ===', [
+                'grn_id' => $grnId
+            ]);
+            
+            // Get GRN details
+            $grn = DB::table('grns')->where('id', $grnId)->first();
+            if (!$grn || !$grn->purchase_order_id) {
+                Log::warning('GRN not found or no purchase_order_id', ['grn_id' => $grnId]);
+                return;
+            }
+            
+            // Get purchase order details
+            $purchaseOrder = DB::table('purchase_orders')->where('id', $grn->purchase_order_id)->first();
+            if (!$purchaseOrder) {
+                Log::warning('Purchase order not found', ['purchase_order_id' => $grn->purchase_order_id]);
+                return;
+            }
+            
+            // Safety check: Check if external invoice exists and validate paid amount
+            $externalInvoice = DB::table('external_invoices')
+                ->where('purchase_order_id', $grn->purchase_order_id)
+                ->first();
+                
+            if ($externalInvoice) {
+                $totalAmount = $purchaseOrder->amount + $purchaseOrder->vat_amount;
+                if ($externalInvoice->paid_amount >= $totalAmount) {
+                    Log::error('=== EXTERNAL INVOICE PAID AMOUNT VALIDATION FAILED ===', [
+                        'grn_id' => $grnId,
+                        'purchase_order_id' => $grn->purchase_order_id,
+                        'external_invoice_id' => $externalInvoice->id,
+                        'paid_amount' => $externalInvoice->paid_amount,
+                        'total_amount' => $totalAmount
+                    ]);
+                    
+                    throw new \Exception('Paid Amount Exceeds New Adjustment Total Amount in External Invoices. Can\'t update.');
+                }
+            }
+            
+            // Calculate adjusted amounts from grn_receive_goods
+            $grnReceiveGoods = DB::table('grn_receive_goods')
+                ->where('grn_id', $grnId)
+                ->get();
+                
+            $adjustedAmount = 0;
+            foreach ($grnReceiveGoods as $receiveGood) {
+                if ($receiveGood->quantity_delivered && $receiveGood->upc) {
+                    $adjustedAmount += $receiveGood->quantity_delivered * $receiveGood->upc;
+                }
+            }
+            
+            $adjustedTax = $adjustedAmount * 0.15;
+            
+            Log::info('=== GRN ADJUSTMENT CALCULATIONS ===', [
+                'grn_id' => $grnId,
+                'purchase_order_id' => $grn->purchase_order_id,
+                'adjusted_amount' => $adjustedAmount,
+                'adjusted_tax' => $adjustedTax,
+                'grn_receive_goods_count' => $grnReceiveGoods->count()
+            ]);
+            
+            // Update purchase order
+            $updateResult = DB::table('purchase_orders')
+                ->where('id', $grn->purchase_order_id)
+                ->update([
+                    'grn_status' => 'Adjusted',
+                    'adjusted_amount' => $adjustedAmount,
+                    'adjusted_tax' => $adjustedTax,
+                    'original_amount' => $purchaseOrder->amount,
+                    'original_vat_amount' => $purchaseOrder->vat_amount,
+                    'amount' => $adjustedAmount,
+                    'vat_amount' => $adjustedTax,
+                    'updated_at' => now()
+                ]);
+                
+            Log::info('=== PURCHASE ORDER UPDATE RESULT ===', [
+                'grn_id' => $grnId,
+                'purchase_order_id' => $grn->purchase_order_id,
+                'update_success' => $updateResult,
+                'new_amount' => $adjustedAmount,
+                'new_vat_amount' => $adjustedTax
+            ]);
+            
+            // Update external invoice if exists
+            if ($externalInvoice) {
+                DB::table('external_invoices')
+                    ->where('id', $externalInvoice->id)
+                    ->update([
+                        'amount' => $adjustedAmount,
+                        'vat_amount' => $adjustedTax,
+                        'updated_at' => now()
+                    ]);
+                    
+                Log::info('=== EXTERNAL INVOICE UPDATED ===', [
+                    'external_invoice_id' => $externalInvoice->id,
+                    'new_amount' => $adjustedAmount,
+                    'new_vat_amount' => $adjustedTax
+                ]);
+            }
+            
+            // Update payment order if exists
+            $paymentOrder = DB::table('payment_orders')
+                ->where('purchase_order_id', $grn->purchase_order_id)
+                ->first();
+                
+            if ($paymentOrder) {
+                DB::table('payment_orders')
+                    ->where('id', $paymentOrder->id)
+                    ->update([
+                        'total_amount' => $adjustedAmount,
+                        'vat_amount' => $adjustedTax,
+                        'updated_at' => now()
+                    ]);
+                    
+                Log::info('=== PAYMENT ORDER UPDATED ===', [
+                    'payment_order_id' => $paymentOrder->id,
+                    'new_total_amount' => $adjustedAmount,
+                    'new_vat_amount' => $adjustedTax
+                ]);
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('=== PURCHASE ORDER GRN ADJUSTMENT FAILED ===', [
+                'grn_id' => $grnId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Re-throw the exception to fail the approval
+            throw $e;
+        }
     }
 }
