@@ -45,6 +45,9 @@ const MakeRequest = () => {
     const [departments, setDepartments] = useState([]);
     const [filteredProducts, setFilteredProducts] = useState({});
     const [filteredSubCostCenters, setFilteredSubCostCenters] = useState({});
+    const [budgetedDepartments, setBudgetedDepartments] = useState([]);
+    const [budgetedCostCenters, setBudgetedCostCenters] = useState([]);
+    const [budgetedSubCostCenters, setBudgetedSubCostCenters] = useState([]);
     const [loading, setLoading] = useState(false);
     const [processError, setProcessError] = useState("");
     const [name, setName] = useState('');
@@ -321,9 +324,8 @@ const MakeRequest = () => {
                     }))
                 };
                 
-                // Convert empty string to null for sub_cost_center_id if no sub cost centers are available
-                const availableSubCostCenters = getAvailableSubCostCenters(formData.cost_center_id);
-                if (submitData.sub_cost_center_id === "" && availableSubCostCenters.length === 0) {
+                // Convert empty string to null for sub_cost_center_id if no budgeted sub cost centers are available
+                if (submitData.sub_cost_center_id === "" && budgetedSubCostCenters.length === 0) {
                     submitData.sub_cost_center_id = null;
                 }
             }
@@ -467,7 +469,8 @@ const MakeRequest = () => {
                 await Promise.all([
                     fetchAllCostCenters(),
                     fetchAllSubCostCenters(),
-                    fetchAllStatuses()
+                    fetchAllStatuses(),
+                    fetchBudgetedDepartments()
                 ]);
 
                 // Fetch categories with pagination
@@ -578,6 +581,79 @@ const MakeRequest = () => {
         }
     };
 
+    const fetchBudgetedDepartments = async () => {
+        try {
+            const response = await axios.get('/api/v1/budgets?include=department&filter[status]=Active');
+            const budgets = response.data.data;
+            
+            // Extract unique departments that have budgets
+            const uniqueDepartments = budgets
+                .filter(budget => budget.department)
+                .reduce((acc, budget) => {
+                    if (!acc.find(dept => dept.id === budget.department.id)) {
+                        acc.push(budget.department);
+                    }
+                    return acc;
+                }, []);
+            
+            setBudgetedDepartments(uniqueDepartments);
+        } catch (error) {
+            console.error("Error fetching budgeted departments:", error);
+        }
+    };
+
+    const fetchBudgetedCostCenters = async (departmentId) => {
+        if (!departmentId) {
+            setBudgetedCostCenters([]);
+            return;
+        }
+        
+        try {
+            const response = await axios.get(`/api/v1/budgets?include=costCenter&filter[department_id]=${departmentId}&filter[status]=Active`);
+            const budgets = response.data.data;
+            
+            // Extract unique cost centers that have budgets for this department
+            const uniqueCostCenters = budgets
+                .filter(budget => budget.cost_center)
+                .reduce((acc, budget) => {
+                    if (!acc.find(cc => cc.id === budget.cost_center.id)) {
+                        acc.push(budget.cost_center);
+                    }
+                    return acc;
+                }, []);
+            
+            setBudgetedCostCenters(uniqueCostCenters);
+        } catch (error) {
+            console.error("Error fetching budgeted cost centers:", error);
+        }
+    };
+
+    const fetchBudgetedSubCostCenters = async (departmentId, costCenterId) => {
+        if (!departmentId || !costCenterId) {
+            setBudgetedSubCostCenters([]);
+            return;
+        }
+        
+        try {
+            const response = await axios.get(`/api/v1/budgets?include=subCostCenter&filter[department_id]=${departmentId}&filter[cost_center_id]=${costCenterId}&filter[status]=Active`);
+            const budgets = response.data.data;
+            
+            // Extract unique sub cost centers that have budgets for this department + cost center
+            const uniqueSubCostCenters = budgets
+                .filter(budget => budget.sub_cost_center)
+                .reduce((acc, budget) => {
+                    if (!acc.find(scc => scc.id === budget.sub_cost_center.id)) {
+                        acc.push(budget.sub_cost_center);
+                    }
+                    return acc;
+                }, []);
+            
+            setBudgetedSubCostCenters(uniqueSubCostCenters);
+        } catch (error) {
+            console.error("Error fetching budgeted sub cost centers:", error);
+        }
+    };
+
     useEffect(() => {
         if (requestId) {
             axios
@@ -637,9 +713,8 @@ const MakeRequest = () => {
         if (!formData.cost_center_id)
             newErrors.cost_center_id = "Cost Center is required";
         
-        // Only require sub_cost_center_id if there are sub cost centers available
-        const availableSubCostCenters = getAvailableSubCostCenters(formData.cost_center_id);
-        if (availableSubCostCenters.length > 0 && !formData.sub_cost_center_id) {
+        // Only require sub_cost_center_id if there are budgeted sub cost centers available
+        if (budgetedSubCostCenters.length > 0 && !formData.sub_cost_center_id) {
             newErrors.sub_cost_center_id = "Sub Cost Center is required";
         }
         
@@ -680,6 +755,14 @@ const MakeRequest = () => {
             // Reset sub_cost_center_id when cost_center_id changes
             ...(name === 'cost_center_id' && { sub_cost_center_id: '' })
         }));
+
+        // Fetch budgeted options based on selection
+        if (name === 'department_id') {
+            fetchBudgetedCostCenters(value);
+            setBudgetedSubCostCenters([]); // Clear sub cost centers
+        } else if (name === 'cost_center_id') {
+            fetchBudgetedSubCostCenters(formData.department_id, value);
+        }
     };
 
     const handleFileChange = async (index, e) => {
@@ -696,6 +779,9 @@ const MakeRequest = () => {
     };
 
     const addItem = () => {
+        // Get the category from the first item
+        const firstItemCategory = formData.items.length > 0 ? formData.items[0].category_id : "";
+        
         setFormData((prev) => ({
             ...prev,
             items: [
@@ -703,7 +789,7 @@ const MakeRequest = () => {
                 {
                     product_id: "",
                     unit_id: "",
-                    category_id: "",
+                    category_id: firstItemCategory, // Auto-set to first item's category
                     quantity: "",
                     urgency: "",
                     photo: null,
@@ -894,16 +980,25 @@ const MakeRequest = () => {
                                 value={item.category_id}
                                 onChange={(e) => handleItemChange(index, e)}
                                 onScroll={handleCategoryScroll}
-                                options={categories.map((p) => ({
-                                    id: p.id,
-                                    label: p.name,
-                                }))}
+                                options={index > 0 ? 
+                                    // For items after the first, only show the current category
+                                    categories.filter(cat => cat.id === item.category_id).map((p) => ({
+                                        id: p.id,
+                                        label: p.name,
+                                    })) :
+                                    // For the first item, show all categories
+                                    categories.map((p) => ({
+                                        id: p.id,
+                                        label: p.name,
+                                    }))
+                                }
                                 loading={loadingCategories}
                                 hasMore={categoriesHasMore}
                                 showPagination={true}
                                 currentPage={categoriesPage}
                                 totalPages={categoriesTotalPages}
                                 onPageChange={handleCategoryPageChange}
+                                disabled={index > 0} // Disable category selection for items after the first one
                             />
                             {errors[`items.${index}.category_id`] && (
                                 <p className="text-red-500 text-sm">
@@ -1116,14 +1211,32 @@ const MakeRequest = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <SelectFloating
+                            label="Department"
+                            name="department_id"
+                            value={formData.department_id}
+                            onChange={handleChange}
+                            options={budgetedDepartments.map((dept) => ({
+                                id: dept.id,
+                                label: dept.name,
+                            }))}
+                        />
+                        {errors.department_id && (
+                            <p className="text-red-500 text-sm">
+                                {errors.department_id}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <SelectFloating
                             label="Cost Center"
                             name="cost_center_id"
                             value={formData.cost_center_id}
                             onChange={handleChange}
-                            options={costCenters.map((cc) => ({
+                            options={budgetedCostCenters.map((cc) => ({
                                 id: cc.id,
                                 label: cc.name,
                             }))}
+                            disabled={!formData.department_id}
                         />
                         {errors.cost_center_id && (
                             <p className="text-red-500 text-sm">
@@ -1137,39 +1250,18 @@ const MakeRequest = () => {
                             name="sub_cost_center_id"
                             value={formData.sub_cost_center_id}
                             onChange={handleChange}
-                            options={(() => {
-                                const availableSubCostCenters = getAvailableSubCostCenters(formData.cost_center_id);
-                                if (availableSubCostCenters.length > 0) {
-                                    return availableSubCostCenters.map((scc) => ({
-                                        id: scc.id,
-                                        label: scc.name,
-                                    }));
-                                } else {
-                                    return [{ id: "", label: "No sub cost centers available" }];
-                                }
-                            })()}
-                            disabled={!formData.cost_center_id || getAvailableSubCostCenters(formData.cost_center_id).length === 0}
+                            options={budgetedSubCostCenters.length > 0 ? 
+                                budgetedSubCostCenters.map((scc) => ({
+                                    id: scc.id,
+                                    label: scc.name,
+                                })) : 
+                                [{ id: "", label: "No sub cost centers available" }]
+                            }
+                            disabled={!formData.cost_center_id || budgetedSubCostCenters.length === 0}
                         />
                         {errors.sub_cost_center_id && (
                             <p className="text-red-500 text-sm">
                                 {errors.sub_cost_center_id}
-                            </p>
-                        )}
-                    </div>
-                    <div>
-                        <SelectFloating
-                            label="Department"
-                            name="department_id"
-                            value={formData.department_id}
-                            onChange={handleChange}
-                            options={departments.map((dept) => ({
-                                id: dept.id,
-                                label: dept.name,
-                            }))}
-                        />
-                        {errors.department_id && (
-                            <p className="text-red-500 text-sm">
-                                {errors.department_id}
                             </p>
                         )}
                     </div>

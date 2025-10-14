@@ -69,6 +69,9 @@ function AddQuotationForm() {
     const [errors, setErrors] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const [subCostCenters, setSubCostCenters] = useState([]);
+    const [budgetedDepartments, setBudgetedDepartments] = useState([]);
+    const [budgetedCostCenters, setBudgetedCostCenters] = useState([]);
+    const [budgetedSubCostCenters, setBudgetedSubCostCenters] = useState([]);
 
     // Add state for modal
     const [isItemModalOpen, setIsItemModalOpen] = useState(false);
@@ -417,6 +420,80 @@ function AddQuotationForm() {
         }
     };
 
+    // Budget-based filtering functions (same as MakeRequest.jsx)
+    const fetchBudgetedDepartments = async () => {
+        try {
+            const response = await axios.get('/api/v1/budgets?include=department&filter[status]=Active');
+            const budgets = response.data.data;
+            
+            // Extract unique departments that have budgets
+            const uniqueDepartments = budgets
+                .filter(budget => budget.department)
+                .reduce((acc, budget) => {
+                    if (!acc.find(dept => dept.id === budget.department.id)) {
+                        acc.push(budget.department);
+                    }
+                    return acc;
+                }, []);
+            
+            setBudgetedDepartments(uniqueDepartments);
+        } catch (error) {
+            console.error("Error fetching budgeted departments:", error);
+        }
+    };
+
+    const fetchBudgetedCostCenters = async (departmentId) => {
+        if (!departmentId) {
+            setBudgetedCostCenters([]);
+            return;
+        }
+        
+        try {
+            const response = await axios.get(`/api/v1/budgets?include=costCenter&filter[department_id]=${departmentId}&filter[status]=Active`);
+            const budgets = response.data.data;
+            
+            // Extract unique cost centers that have budgets for this department
+            const uniqueCostCenters = budgets
+                .filter(budget => budget.cost_center)
+                .reduce((acc, budget) => {
+                    if (!acc.find(cc => cc.id === budget.cost_center.id)) {
+                        acc.push(budget.cost_center);
+                    }
+                    return acc;
+                }, []);
+            
+            setBudgetedCostCenters(uniqueCostCenters);
+        } catch (error) {
+            console.error("Error fetching budgeted cost centers:", error);
+        }
+    };
+
+    const fetchBudgetedSubCostCenters = async (departmentId, costCenterId) => {
+        if (!departmentId || !costCenterId) {
+            setBudgetedSubCostCenters([]);
+            return;
+        }
+        
+        try {
+            const response = await axios.get(`/api/v1/budgets?include=subCostCenter&filter[department_id]=${departmentId}&filter[cost_center_id]=${costCenterId}&filter[status]=Active`);
+            const budgets = response.data.data;
+            
+            // Extract unique sub cost centers that have budgets for this department + cost center
+            const uniqueSubCostCenters = budgets
+                .filter(budget => budget.sub_cost_center)
+                .reduce((acc, budget) => {
+                    if (!acc.find(scc => scc.id === budget.sub_cost_center.id)) {
+                        acc.push(budget.sub_cost_center);
+                    }
+                    return acc;
+                }, []);
+            
+            setBudgetedSubCostCenters(uniqueSubCostCenters);
+        } catch (error) {
+            console.error("Error fetching budgeted sub cost centers:", error);
+        }
+    };
+
     // Scroll handlers for dropdowns
     const handleCategoryScroll = (e) => {
         if (loadingCategories || !categoriesHasMore) return;
@@ -747,6 +824,7 @@ function AddQuotationForm() {
                     fetchDepartments(),
                     fetchAllCostCenters(),
                     fetchPaymentTypes(),
+                    fetchBudgetedDepartments(), // Add budgeted departments
                 ]);
 
                 // Fetch all statuses for payment types (keeping existing logic)
@@ -931,7 +1009,7 @@ function AddQuotationForm() {
         return dateA - dateB;
     });
 
-    // Replace handleSaveItem with this improved version
+    // Replace handleSaveItem with this improved version that prevents duplicates
     const handleSaveItem = (itemData) => {
         const newItems = [...formData.items];
 
@@ -947,14 +1025,41 @@ function AddQuotationForm() {
                 setFormData({ ...formData, items: newItems });
             }
         } else {
-            const tempId = `temp-${Date.now()}`;
-            newItems.push({
-                ...itemData,
-                id: tempId,
-                rfq_id: formData.id || formData.rfq_id || null,
-                status_id: 24, // Always set to 24 (Draft) for both creation and editing
-            });
-            setFormData({ ...formData, items: newItems });
+            // Check if an item with the same product_id and brand already exists
+            const existingItemIndex = newItems.findIndex(
+                (item) => 
+                    item.product_id === itemData.product_id && 
+                    item.brand === itemData.brand &&
+                    item.product_id !== "" && 
+                    item.brand !== ""
+            );
+
+            if (existingItemIndex !== -1) {
+                // Merge quantities for existing item
+                const existingItem = newItems[existingItemIndex];
+                const newQuantity = parseInt(existingItem.quantity || 0) + parseInt(itemData.quantity || 0);
+                
+                newItems[existingItemIndex] = {
+                    ...existingItem,
+                    quantity: newQuantity.toString(),
+                    // Update other fields with the latest data
+                    description: itemData.description || existingItem.description,
+                    expected_delivery_date: itemData.expected_delivery_date || existingItem.expected_delivery_date,
+                    attachment: itemData.attachment || existingItem.attachment,
+                };
+                
+                setFormData({ ...formData, items: newItems });
+            } else {
+                // Add as new item
+                const tempId = `temp-${Date.now()}`;
+                newItems.push({
+                    ...itemData,
+                    id: tempId,
+                    rfq_id: formData.id || formData.rfq_id || null,
+                    status_id: 24, // Always set to 24 (Draft) for both creation and editing
+                });
+                setFormData({ ...formData, items: newItems });
+            }
         }
     };
 
@@ -1039,6 +1144,14 @@ function AddQuotationForm() {
                 ...prev,
                 [field]: value,
             }));
+        }
+        
+        // Handle budget-based filtering
+        if (field === 'department_id') {
+            fetchBudgetedCostCenters(value);
+            setBudgetedSubCostCenters([]); // Clear sub cost centers
+        } else if (field === 'cost_center_id') {
+            fetchBudgetedSubCostCenters(formData.department_id, value);
         }
         
         // Clear error for this field if it exists
@@ -1190,7 +1303,7 @@ function AddQuotationForm() {
         }
 
         // Check sub cost center if options are shown
-        if (subCostCenters.length > 0 && (!formData.sub_cost_center_id || formData.sub_cost_center_id === "")) {
+        if (budgetedSubCostCenters.length > 0 && (!formData.sub_cost_center_id || formData.sub_cost_center_id === "")) {
             validationErrors.sub_cost_center_id = "Sub Cost Center is required";
         }
 
@@ -1287,8 +1400,8 @@ function AddQuotationForm() {
                 updated_at: new Date().toISOString(),
             };
 
-            // Convert empty string to null for sub_cost_center_id
-            if (rfqData.sub_cost_center_id === "" || rfqData.sub_cost_center_id === null) {
+            // Convert empty string to null for sub_cost_center_id if no budgeted sub cost centers are available
+            if (rfqData.sub_cost_center_id === "" && budgetedSubCostCenters.length === 0) {
                 rfqData.sub_cost_center_id = null;
             }
 
@@ -1829,7 +1942,7 @@ function AddQuotationForm() {
                                 >
                                     <span className={formData.department_id ? "text-black" : "text-black"}>
                                         {formData.department_id 
-                                            ? departments.find(d => d.id.toString() === formData.department_id)?.name || "Select Department"
+                                            ? budgetedDepartments.find(d => d.id.toString() === formData.department_id)?.name || "Select Department"
                                             : "Select Department"
                                         }
                                     </span>
@@ -1859,7 +1972,7 @@ function AddQuotationForm() {
                                             `}
                                         </style>
                                         <div className="py-1 custom-scrollbar overflow-y-auto max-h-32 pr-2" onScroll={handleDepartmentScroll}>
-                                            {departments.map((department) => (
+                                            {budgetedDepartments.map((department) => (
                                                 <button
                                                     key={department.id}
                                                     type="button"
@@ -2018,7 +2131,7 @@ function AddQuotationForm() {
                                 >
                                     <span className={formData.cost_center_id ? "text-black" : "text-black"}>
                                         {formData.cost_center_id 
-                                            ? costCenters.find(c => c.id.toString() === formData.cost_center_id)?.name || "Select Cost Center"
+                                            ? budgetedCostCenters.find(c => c.id.toString() === formData.cost_center_id)?.name || "Select Cost Center"
                                             : "Select Cost Center"
                                         }
                                     </span>
@@ -2048,7 +2161,7 @@ function AddQuotationForm() {
                                             `}
                                         </style>
                                         <div className="py-1 custom-scrollbar overflow-y-auto max-h-32 pr-2" onScroll={handleCostCenterScroll}>
-                                            {costCenters.map((costCenter) => (
+                                            {budgetedCostCenters.map((costCenter) => (
                                                 <button
                                                     key={costCenter.id}
                                                     type="button"
@@ -2199,7 +2312,7 @@ function AddQuotationForm() {
                             readOnly
                         />
 
-                        {subCostCenters.length > 0 && (
+                        {budgetedSubCostCenters.length > 0 && (
                             <>
                                 <span className="font-medium text-gray-600">
                                     Sub Cost Center:
@@ -2215,7 +2328,7 @@ function AddQuotationForm() {
                                         >
                                             <span className={formData.sub_cost_center_id ? "text-black" : "text-black"}>
                                                 {formData.sub_cost_center_id 
-                                                    ? subCostCenters.find(s => s.id.toString() === formData.sub_cost_center_id)?.name || "Select Sub Cost Center"
+                                                    ? budgetedSubCostCenters.find(s => s.id.toString() === formData.sub_cost_center_id)?.name || "Select Sub Cost Center"
                                                     : "Select Sub Cost Center"
                                                 }
                                             </span>
@@ -2245,20 +2358,25 @@ function AddQuotationForm() {
                                                     `}
                                                 </style>
                                                 <div className="py-1 custom-scrollbar overflow-y-auto max-h-32 pr-2">
-                                                    {subCostCenters.map((subCenter) => (
-                                                        <button
-                                                            key={subCenter.id}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                console.log("Sub cost center changed:", { oldValue: formData.sub_cost_center_id, newValue: subCenter.id.toString() });
-                                                                handleFormInputChange("sub_cost_center_id", subCenter.id.toString());
-                                                                setIsSubCostCenterOpen(false);
-                                                            }}
-                                                            className="w-full px-3 py-2 text-left text-[#009FDC] hover:bg-blue-100 focus:bg-blue-100 focus:outline-none text-base"
-                                                        >
-                                                            {subCenter.name}
-                                                        </button>
-                                                    ))}
+                                                    {budgetedSubCostCenters.length > 0 ? 
+                                                        budgetedSubCostCenters.map((subCenter) => (
+                                                            <button
+                                                                key={subCenter.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    console.log("Sub cost center changed:", { oldValue: formData.sub_cost_center_id, newValue: subCenter.id.toString() });
+                                                                    handleFormInputChange("sub_cost_center_id", subCenter.id.toString());
+                                                                    setIsSubCostCenterOpen(false);
+                                                                }}
+                                                                className="w-full px-3 py-2 text-left text-[#009FDC] hover:bg-blue-100 focus:bg-blue-100 focus:outline-none text-base"
+                                                            >
+                                                                {subCenter.name}
+                                                            </button>
+                                                        )) :
+                                                        <div className="px-3 py-2 text-gray-500 text-center">
+                                                            No sub cost centers available
+                                                        </div>
+                                                    }
                                                 </div>
                                             </div>
                                         )}
