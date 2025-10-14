@@ -2451,6 +2451,11 @@ class TaskController extends Controller
                             'status_unchanged' => DB::table('grns')->where('id', $task->grn_id)->value('status'),
                             'new_task_status' => DB::table('grns')->where('id', $task->grn_id)->value('task_status')
                         ]);
+                        
+                        // Update Purchase Order with GRN adjustment
+                        if ($grnUpdated) {
+                            $this->updatePurchaseOrderWithGrnAdjustment($task->grn_id);
+                        }
                     } else {
                         // NOT final approval - only create next approval step if this is an approval (not referral)
                         if ($request->input('status') === 'Approved') {
@@ -3507,5 +3512,141 @@ class TaskController extends Controller
         }
 
         return response()->json(new TaskCollection($tasks), Response::HTTP_OK);
+    }
+    
+    /**
+     * Update Purchase Order with GRN adjustment when final approval is given
+     */
+    private function updatePurchaseOrderWithGrnAdjustment($grnId)
+    {
+        try {
+            Log::info('=== STARTING PURCHASE ORDER GRN ADJUSTMENT ===', [
+                'grn_id' => $grnId
+            ]);
+            
+            // Get GRN details
+            $grn = DB::table('grns')->where('id', $grnId)->first();
+            if (!$grn || !$grn->purchase_order_id) {
+                Log::warning('GRN not found or no purchase_order_id', ['grn_id' => $grnId]);
+                return;
+            }
+            
+            // Get purchase order details
+            $purchaseOrder = DB::table('purchase_orders')->where('id', $grn->purchase_order_id)->first();
+            if (!$purchaseOrder) {
+                Log::warning('Purchase order not found', ['purchase_order_id' => $grn->purchase_order_id]);
+                return;
+            }
+            
+            // Safety check: Check if external invoice exists and validate paid amount
+            $externalInvoice = DB::table('external_invoices')
+                ->where('purchase_order_id', $grn->purchase_order_id)
+                ->first();
+                
+            if ($externalInvoice) {
+                $totalAmount = $purchaseOrder->amount + $purchaseOrder->vat_amount;
+                if ($externalInvoice->paid_amount >= $totalAmount) {
+                    Log::error('=== EXTERNAL INVOICE PAID AMOUNT VALIDATION FAILED ===', [
+                        'grn_id' => $grnId,
+                        'purchase_order_id' => $grn->purchase_order_id,
+                        'external_invoice_id' => $externalInvoice->id,
+                        'paid_amount' => $externalInvoice->paid_amount,
+                        'total_amount' => $totalAmount
+                    ]);
+                    
+                    throw new \Exception('Paid Amount Exceeds New Adjustment Total Amount in External Invoices. Can\'t update.');
+                }
+            }
+            
+            // Calculate adjusted amounts from grn_receive_goods
+            $grnReceiveGoods = DB::table('grn_receive_goods')
+                ->where('grn_id', $grnId)
+                ->get();
+                
+            $adjustedAmount = 0;
+            foreach ($grnReceiveGoods as $receiveGood) {
+                if ($receiveGood->quantity_delivered && $receiveGood->upc) {
+                    $adjustedAmount += $receiveGood->quantity_delivered * $receiveGood->upc;
+                }
+            }
+            
+            $adjustedTax = $adjustedAmount * 0.15;
+            
+            Log::info('=== GRN ADJUSTMENT CALCULATIONS ===', [
+                'grn_id' => $grnId,
+                'purchase_order_id' => $grn->purchase_order_id,
+                'adjusted_amount' => $adjustedAmount,
+                'adjusted_tax' => $adjustedTax,
+                'grn_receive_goods_count' => $grnReceiveGoods->count()
+            ]);
+            
+            // Update purchase order
+            $updateResult = DB::table('purchase_orders')
+                ->where('id', $grn->purchase_order_id)
+                ->update([
+                    'grn_status' => 'Adjusted',
+                    'adjusted_amount' => $adjustedAmount,
+                    'adjusted_tax' => $adjustedTax,
+                    'original_amount' => $purchaseOrder->amount,
+                    'original_vat_amount' => $purchaseOrder->vat_amount,
+                    'amount' => $adjustedAmount,
+                    'vat_amount' => $adjustedTax,
+                    'updated_at' => now()
+                ]);
+                
+            Log::info('=== PURCHASE ORDER UPDATE RESULT ===', [
+                'grn_id' => $grnId,
+                'purchase_order_id' => $grn->purchase_order_id,
+                'update_success' => $updateResult,
+                'new_amount' => $adjustedAmount,
+                'new_vat_amount' => $adjustedTax
+            ]);
+            
+            // Update external invoice if exists
+            if ($externalInvoice) {
+                $newInvoiceAmount = $adjustedAmount + $adjustedTax;
+                DB::table('external_invoices')
+                    ->where('id', $externalInvoice->id)
+                    ->update([
+                        'amount' => $newInvoiceAmount,
+                        'updated_at' => now()
+                    ]);
+                    
+                Log::info('=== EXTERNAL INVOICE UPDATED ===', [
+                    'external_invoice_id' => $externalInvoice->id,
+                    'new_amount' => $newInvoiceAmount
+                ]);
+            }
+            
+            // Update payment order if exists
+            $paymentOrder = DB::table('payment_orders')
+                ->where('purchase_order_id', $grn->purchase_order_id)
+                ->first();
+                
+            if ($paymentOrder) {
+                $newPaymentAmount = $adjustedAmount + $adjustedTax;
+                DB::table('payment_orders')
+                    ->where('id', $paymentOrder->id)
+                    ->update([
+                        'amount' => $newPaymentAmount,
+                        'updated_at' => now()
+                    ]);
+                    
+                Log::info('=== PAYMENT ORDER UPDATED ===', [
+                    'payment_order_id' => $paymentOrder->id,
+                    'new_amount' => $newPaymentAmount
+                ]);
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('=== PURCHASE ORDER GRN ADJUSTMENT FAILED ===', [
+                'grn_id' => $grnId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Re-throw the exception to fail the approval
+            throw $e;
+        }
     }
 }

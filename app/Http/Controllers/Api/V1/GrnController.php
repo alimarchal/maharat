@@ -144,7 +144,9 @@ class GrnController extends Controller
                 'delivery_status_value' => $validated['delivery_status'] ?? 'NOT_SET',
                 'is_adjust_order' => isset($validated['delivery_status']) && $validated['delivery_status'] === 'adjust_order',
                 'is_later_delivery' => isset($validated['delivery_status']) && $validated['delivery_status'] === 'later_delivery',
-                'should_trigger_approval' => isset($validated['delivery_status']) && in_array($validated['delivery_status'], ['adjust_order', 'later_delivery'])
+                'should_trigger_approval' => isset($validated['delivery_status']) && in_array($validated['delivery_status'], ['adjust_order', 'later_delivery']),
+                'grn_status' => $grn->status,
+                'grn_task_status' => $grn->task_status ?? 'NOT_SET'
             ]);
 
             if (isset($validated['delivery_status']) && in_array($validated['delivery_status'], ['adjust_order', 'later_delivery'])) {
@@ -159,7 +161,8 @@ class GrnController extends Controller
                 \Log::info('=== APPROVAL PROCESS NOT TRIGGERED ===', [
                     'grn_id' => $grn->id,
                     'delivery_status' => $validated['delivery_status'] ?? 'NOT_SET',
-                    'reason' => 'delivery_status does not require approval process'
+                    'reason' => 'delivery_status does not require approval process',
+                    'validated_data' => $validated
                 ]);
             }
 
@@ -598,7 +601,8 @@ class GrnController extends Controller
                 'process_found' => $process ? true : false,
                 'process_id' => $process ? $process->id : null,
                 'process_title' => $process ? $process->title : null,
-                'process_status' => $process ? $process->status : null
+                'process_status' => $process ? $process->status : null,
+                'all_processes' => DB::table('processes')->where('title', 'LIKE', '%Short Delivery%')->get(['id', 'title', 'status'])
             ]);
 
             if (!$process) {
