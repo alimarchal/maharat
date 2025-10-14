@@ -109,7 +109,7 @@ const PMTStatusFlow = () => {
                     id: `referred-${card.id}`,
                     type: "referred",
                     user: card.referred_user,
-                    status: card.referred_user_status || "Pending", // Use actual status if available
+                    status: card.referred_user_status || "Pending",
                     created_at: card.created_at,
                     cardData: card,
                 } : null
@@ -235,12 +235,12 @@ const PMTStatusFlow = () => {
                                             {cardsToShow.map((card) => (
                                         <div key={`card-group-${card.id}`} className="flex flex-col">
                                             {/* Main Card */}
-                                                <div
-                                                    key={`card-container-${card.id}`}
+                                            <div
+                                                key={`card-container-${card.id}`}
                                                 className="border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white shadow-md w-full"
-                                                >
-                                                    <div className="rounded-xl p-5 bg-gray-100 shadow-sm">
-                                                        <div className="mb-4">
+                                            >
+                                                <div className="rounded-xl p-5 bg-gray-100 shadow-sm">
+                                                    <div className="mb-4">
                                                         <button className={`border rounded-full px-4 py-1 text-base flex items-center ${
                                                             card.status === "Filled Request" 
                                                                 ? "border-green-400 text-green-500"
@@ -254,27 +254,71 @@ const PMTStatusFlow = () => {
                                                                 ? "border-red-400 text-red-500"
                                                                 : "border-gray-400 text-gray-500"
                                                         }`}>
-                                                                {card.status}
+                                                            {card.status}
                                                             {card.type !== "requester" && (
-                                                                    <FontAwesomeIcon
+                                                                <FontAwesomeIcon
                                                                     icon={faChevronRight}
-                                                                        className="ml-2 text-xs"
-                                                                    />
-                                                                )}
-                                                            </button>
-                                                        </div>
+                                                                    className="ml-2 text-xs"
+                                                                />
+                                                            )}
+                                                        </button>
+                                                    </div>
 
-                                                        <div className="flex justify-between items-center gap-4">
+                                                    <div className="flex justify-between items-center gap-4">
+                                                        <span className="text-sm font-medium">
+                                                            {card.user
+                                                                ?.designation
+                                                                ?.designation ||
+                                                                card.user
+                                                                    ?.designation ||
+                                                                ""}
+                                                        </span>
+                                                        <span
+                                                            className={`text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:opacity-80 transition-colors duration-200 ${
+                                                                card.type === "requester"
+                                                                    ? "bg-blue-500 hover:bg-blue-600"
+                                                                    : card.type === "referred"
+                                                                    ? "bg-orange-500 hover:bg-orange-600"
+                                                                    : "bg-purple-500 hover:bg-purple-600"
+                                                            }`}
+                                                            onClick={() =>
+                                                                openModal(
+                                                                    card.user,
+                                                                    card.type
+                                                                )
+                                                            }
+                                                        >
+                                                            <FontAwesomeIcon
+                                                                icon={faInfoCircle}
+                                                                className="text-white"
+                                                            />
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="h-px bg-gray-300 w-full my-4"></div>
+
+                                                    <div className="flex items-start">
+                                                        <div
+                                                            className={`w-10 h-10 ${
+                                                                card.type === "requester"
+                                                                    ? "bg-blue-200 text-blue-600"
+                                                                    : card.type === "referred"
+                                                                    ? "bg-orange-200 text-orange-600"
+                                                                    : "bg-purple-200 text-purple-600"
+                                                            } rounded-full flex items-center justify-center`}
+                                                        >
                                                             <span className="text-sm font-medium">
                                                                 {card.user
-                                                                    ?.designation
-                                                                    ?.designation ||
+                                                                    ?.firstname?.[0] ||
                                                                     card.user
-                                                                        ?.designation ||
-                                                                    ""}
+                                                                        ?.name?.[0] ||
+                                                                    "?"}
                                                             </span>
-                                                            <span
-                                                                className="bg-[#22c55e] text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:bg-green-600 transition-colors duration-200"
+                                                        </div>
+
+                                                        <div className="ml-4">
+                                                            <div
+                                                                className="text-base font-medium cursor-pointer"
                                                                 onClick={() =>
                                                                     openModal(
                                                                         card.user,
@@ -282,48 +326,12 @@ const PMTStatusFlow = () => {
                                                                     )
                                                                 }
                                                             >
-                                                                <FontAwesomeIcon
-                                                                icon={faInfoCircle}
-                                                                    className="text-white"
-                                                                />
-                                                            </span>
-                                                        </div>
-
-                                                        <div className="h-px bg-gray-300 w-full my-4"></div>
-
-                                                        <div className="flex items-start">
-                                                            <div
-                                                                className={`w-10 h-10 ${
-                                                                card.type === "requester"
-                                                                        ? "bg-blue-200 text-blue-600"
-                                                                        : "bg-purple-200 text-purple-600"
-                                                                } rounded-full flex items-center justify-center`}
-                                                            >
-                                                                <span className="text-sm font-medium">
-                                                                    {card.user
-                                                                        ?.firstname?.[0] ||
-                                                                    card.user
-                                                                            ?.name?.[0] ||
-                                                                        "?"}
-                                                                </span>
+                                                                {card.user
+                                                                    ?.name ||
+                                                                    "Unknown User"}
                                                             </div>
-
-                                                            <div className="ml-4">
-                                                                <div
-                                                                    className="text-base font-medium cursor-pointer"
-                                                                    onClick={() =>
-                                                                        openModal(
-                                                                            card.user,
-                                                                            card.type
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    {card.user
-                                                                        ?.name ||
-                                                                        "Unknown User"}
-                                                                </div>
-                                                                <div className="text-sm text-gray-500 flex items-center mt-1">
-                                                                    <FontAwesomeIcon
+                                                            <div className="text-sm text-gray-500 flex items-center mt-1">
+                                                                <FontAwesomeIcon
                                                                     icon={faCalendarAlt}
                                                                     className="mr-1 text-gray-500"
                                                                 />
@@ -338,62 +346,53 @@ const PMTStatusFlow = () => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            
-                                            {/* Referred User Card */}
+
+                                            {/* Referred User Card - Directly Below */}
                                             {card.referredUser && (
-                                                <div className="mt-2 border-2 border-dashed border-blue-400 rounded-xl p-4 bg-blue-50 shadow-md w-full">
-                                                    <div className="rounded-xl p-5 bg-blue-100 shadow-sm">
-                                                        <div className="mb-4">
-                                                            <button className="border border-yellow-400 text-yellow-500 rounded-full px-4 py-1 text-base flex items-center">
-                                                                {card.referredUser.status}
-                                                                <FontAwesomeIcon
-                                                                    icon={faChevronRight}
-                                                                    className="ml-2 text-xs"
-                                                                />
-                                                            </button>
-                                                        </div>
-
-                                                        <div className="flex justify-between items-center gap-4">
-                                                            <span className="text-sm font-medium">
-                                                                {card.referredUser.user
-                                                                    ?.designation
-                                                                    ?.designation ||
-                                                                    card.referredUser.user
-                                                                        ?.designation ||
-                                                                    ""}
-                                                            </span>
-                                                            <span
-                                                                className="bg-blue-500 text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:bg-blue-600 transition-colors duration-200"
-                                                                onClick={() =>
-                                                                    openModal(
-                                                                        card.referredUser.user,
-                                                                        card.referredUser.type
-                                                                    )
-                                                                }
-                                                            >
-                                                                <FontAwesomeIcon
-                                                                    icon={faInfoCircle}
-                                                                    className="text-white"
-                                                                />
-                                                            </span>
-                                                        </div>
-
-                                                        <div className="h-px bg-gray-300 w-full my-4"></div>
-
-                                                        <div className="flex items-start">
-                                                            <div className="w-10 h-10 bg-blue-200 text-blue-600 rounded-full flex items-center justify-center">
-                                                                <span className="text-sm font-medium">
-                                                                    {card.referredUser.user
-                                                                        ?.firstname?.[0] ||
-                                                                        card.referredUser.user
-                                                                            ?.name?.[0] ||
-                                                                        "?"}
-                                                                </span>
+                                                <div className="mt-2 w-full">
+                                                    <div
+                                                        key={`card-container-${card.referredUser.id}`}
+                                                        className="border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white shadow-md w-full"
+                                                    >
+                                                        <div className="rounded-xl p-5 bg-gray-100 shadow-sm">
+                                                            <div className="mb-4">
+                                                                <button className={`border rounded-full px-4 py-1 text-base flex items-center ${
+                                                                    card.referredUser.status === "Filled Request" 
+                                                                        ? "border-green-400 text-green-500"
+                                                                        : card.referredUser.status === "Refer"
+                                                                        ? "border-blue-400 text-blue-500"
+                                                                        : card.referredUser.status === "Pending"
+                                                                        ? "border-yellow-400 text-yellow-500"
+                                                                        : card.referredUser.status === "Approve"
+                                                                        ? "border-green-400 text-green-500"
+                                                                        : card.referredUser.status === "Reject"
+                                                                        ? "border-red-400 text-red-500"
+                                                                        : "border-gray-400 text-gray-500"
+                                                                }`}>
+                                                                    {card.referredUser.status}
+                                                                    {card.referredUser.type !==
+                                                                        "requester" && (
+                                                                        <FontAwesomeIcon
+                                                                            icon={
+                                                                                faChevronRight
+                                                                            }
+                                                                            className="ml-2 text-xs"
+                                                                        />
+                                                                    )}
+                                                                </button>
                                                             </div>
 
-                                                            <div className="ml-4">
-                                                                <div
-                                                                    className="text-base font-medium cursor-pointer"
+                                                            <div className="flex justify-between items-center gap-4">
+                                                                <span className="text-sm font-medium">
+                                                                    {card.referredUser.user
+                                                                        ?.designation
+                                                                        ?.designation ||
+                                                                        card.referredUser.user
+                                                                            ?.designation ||
+                                                                        ""}
+                                                                </span>
+                                                                <span
+                                                                    className="bg-orange-500 hover:bg-orange-600 text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:opacity-80 transition-colors duration-200"
                                                                     onClick={() =>
                                                                         openModal(
                                                                             card.referredUser.user,
@@ -401,21 +400,56 @@ const PMTStatusFlow = () => {
                                                                         )
                                                                     }
                                                                 >
-                                                                    {card.referredUser.user
-                                                                        ?.name ||
-                                                                        "Unknown User"}
-                                                                </div>
-                                                                <div className="text-sm text-gray-500 flex items-center mt-1">
                                                                     <FontAwesomeIcon
-                                                                        icon={faCalendarAlt}
-                                                                        className="mr-1 text-gray-500"
+                                                                        icon={
+                                                                            faInfoCircle
+                                                                        }
+                                                                        className="text-white"
                                                                     />
-                                                                    <span>
-                                                                        Post:{" "}
-                                                                        {new Date(
-                                                                            card.referredUser.created_at
-                                                                        ).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+
+                                                            <div className="h-px bg-gray-300 w-full my-4"></div>
+
+                                                            <div className="flex items-start">
+                                                                <div className="w-10 h-10 bg-orange-200 text-orange-600 rounded-full flex items-center justify-center">
+                                                                    <span className="text-sm font-medium">
+                                                                        {card.referredUser.user
+                                                                            ?.firstname?.[0] ||
+                                                                            card.referredUser.user
+                                                                                ?.name?.[0] ||
+                                                                            "?"}
                                                                     </span>
+                                                                </div>
+
+                                                                <div className="ml-4">
+                                                                    <div
+                                                                        className="text-base font-medium cursor-pointer"
+                                                                        onClick={() =>
+                                                                            openModal(
+                                                                                card.referredUser.user,
+                                                                                card.referredUser.type
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        {card.referredUser.user
+                                                                            ?.name ||
+                                                                            "Unknown User"}
+                                                                    </div>
+                                                                    <div className="text-sm text-gray-500 flex items-center mt-1">
+                                                                        <FontAwesomeIcon
+                                                                            icon={
+                                                                                faCalendarAlt
+                                                                            }
+                                                                            className="mr-1 text-gray-500"
+                                                                        />
+                                                                        <span>
+                                                                            Post:{" "}
+                                                                            {new Date(
+                                                                                card.referredUser.created_at
+                                                                            ).toLocaleDateString()}
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
