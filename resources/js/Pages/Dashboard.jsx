@@ -299,10 +299,43 @@ export default function Dashboard({ auth, page }) {
         if (isLoadingPermissions) {
             return (
                 <div className="w-full">
-                    <div className="flex justify-center items-center h-64">
+                    {/* Banner placeholder with same responsive sizing as MainDashboard */}
+                    <div
+                        className="relative w-full h-48 sm:h-56 md:h-64 lg:h-52 xl:h-56 2xl:h-60 bg-gray-200 p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl lg:rounded-3xl animate-pulse"
+                    >
+                        <div className="absolute bottom-2 sm:bottom-3 lg:bottom-4 text-left">
+                            <div className="h-8 sm:h-10 md:h-12 lg:h-10 xl:h-12 2xl:h-14 bg-gray-300 rounded w-48 sm:w-56 md:w-64 lg:w-56 xl:w-64 2xl:w-72 mb-2"></div>
+                            <div className="h-4 sm:h-5 md:h-6 lg:h-5 xl:h-6 2xl:h-7 bg-gray-300 rounded w-64 sm:w-72 md:w-80 lg:w-72 xl:w-80 2xl:w-96"></div>
+                        </div>
+                    </div>
+                    
+                    {/* Cards grid placeholder with same responsive sizing as MainDashboard */}
+                    <div className="grid grid-cols-4 gap-3 sm:gap-4 lg:gap-6 my-4 sm:my-6">
+                        {[...Array(8)].map((_, index) => (
+                            <div
+                                key={index}
+                                className="bg-white p-3 sm:p-4 lg:p-6 xl:p-8 rounded-tr-[1.5rem] sm:rounded-tr-[2rem] lg:rounded-tr-[3rem] xl:rounded-tr-[4rem] rounded-bl-[1.5rem] sm:rounded-bl-[2rem] lg:rounded-bl-[3rem] xl:rounded-bl-[4rem] shadow-md border border-gray-100 h-40 sm:h-44 lg:h-48 xl:h-52 2xl:h-56 flex flex-col animate-pulse"
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div className="bg-gray-200 flex justify-center items-center p-1.5 sm:p-2 lg:p-3 rounded-full w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 xl:w-14 xl:h-14"></div>
+                                    <div className="bg-gray-200 rounded-full w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12"></div>
+                                </div>
+                                
+                                <div className="flex-grow mt-4 sm:mt-6 lg:mt-8"></div>
+                                
+                                <div className="flex flex-col">
+                                    <div className="h-5 sm:h-6 lg:h-7 xl:h-8 2xl:h-9 bg-gray-200 rounded mb-1"></div>
+                                    <div className="h-3 sm:h-3 lg:h-4 xl:h-4 bg-gray-200 rounded w-3/4"></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    {/* Loading spinner overlay */}
+                    <div className="fixed inset-0 bg-white bg-opacity-75 flex justify-center items-center z-50">
                         <div className="text-center">
-                            <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                            <p className="text-[#7D8086]">Loading Dashboard...</p>
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                            <p className="text-[#7D8086] text-sm sm:text-base lg:text-lg">Loading Dashboard...</p>
                         </div>
                     </div>
                 </div>

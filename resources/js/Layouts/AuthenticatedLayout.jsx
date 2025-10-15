@@ -40,11 +40,11 @@ export default function AuthenticatedLayout({ header, children }) {
             <RequestItemsProvider userId={user.id}>
                 <div className="min-h-screen flex flex-col bg-[#C4E4F0] bg-opacity-20">
                     <header
-                        className={`flex justify-between items-center px-6 py-4 w-full fixed top-0 left-0 right-0 z-[100] transition-all ${
+                        className={`flex justify-between items-center px-3 sm:px-4 lg:px-6 py-3 sm:py-4 w-full fixed top-0 left-0 right-0 z-[100] transition-all ${
                             isScrolled ? "bg-white shadow-md" : "bg-transparent"
                         }`}
                     >
-                        <div className="flex items-center gap-4 lg:gap-12">
+                        <div className="flex items-center gap-2 sm:gap-4 lg:gap-12">
                             <button
                                 className="lg:hidden text-gray-600 focus:outline-none"
                                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -53,21 +53,21 @@ export default function AuthenticatedLayout({ header, children }) {
                             </button>
 
                             <Link href="/">
-                                <ApplicationLogo className="block h-10 w-auto fill-current" />
+                                <ApplicationLogo className="block h-8 sm:h-10 w-auto fill-current" />
                             </Link>
 
-                            <div>
-                                <h1 className="text-xl lg:text-2xl font-medium text-[#2C323C]">
+                            <div className="hidden sm:block">
+                                <h1 className="text-lg sm:text-xl lg:text-2xl font-medium text-[#2C323C]">
                                     Hi {user.name}!
                                 </h1>
-                                <p className="text-sm lg:text-base text-[#7D8086]">
+                                <p className="text-xs sm:text-sm lg:text-base text-[#7D8086]">
                                     {greeting}
                                 </p>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4 lg:gap-6">
-                            <div className="relative hidden md:flex w-40 lg:w-72">
+                        <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
+                            <div className="relative hidden sm:flex w-32 sm:w-40 lg:w-72">
                                 <FontAwesomeIcon
                                     icon={faSearch}
                                     className="absolute left-4 top-3 text-[#B9BBBD]"
@@ -136,7 +136,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             <Sidebar />
                         </div>
 
-                        <main className="flex-1 lg:ml-36 transition-all">
+                        <main className="flex-1 lg:ml-32 transition-all px-2 sm:px-4 lg:px-6">
                             {header && (
                                 <header className="p-6 mb-4">{header}</header>
                             )}

@@ -644,7 +644,7 @@ const QuotationModal = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[200] p-4">
             <div className="bg-white rounded-2xl w-[90%] max-w-3xl max-h-[90vh] flex flex-col">
                 <div className="flex justify-between border-b pb-2 mb-4 p-8 pb-4">
                     <h2 className="text-3xl font-bold text-[#2C323C]">
