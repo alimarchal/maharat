@@ -52,7 +52,7 @@ export default function POTable() {
                         <th className="py-3 px-4">Quotation #</th>
                         <th className="py-3 px-4">Company</th>
                         <th className="py-3 px-4">Issue Date</th>
-                        <th className="py-3 px-4">Expiry Date</th>
+                        {/* <th className="py-3 px-4">Expiry Date</th> */}
                         <th className="py-3 px-4">Amount</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                             Action
@@ -91,9 +91,9 @@ export default function POTable() {
                                 <td className="px-3 py-4">
                                     {order.purchase_order_date}
                                 </td>
-                                <td className="px-6 py-4">
+                                {/* <td className="px-6 py-4">
                                     {order.expiry_date}
-                                </td>
+                                </td> */}
                                 <td className="px-6 py-4">
                                     {Number(order.amount || 0).toLocaleString()}
                                 </td>

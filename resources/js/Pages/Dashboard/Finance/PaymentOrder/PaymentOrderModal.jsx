@@ -36,7 +36,15 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
         let newErrors = {};
         if (!formData.issue_date)
             newErrors.issue_date = "Issue date is required";
-        if (!formData.due_date) newErrors.due_date = "Due date is required";
+        if (!formData.due_date) {
+            newErrors.due_date = "Due date is required";
+        } else {
+            // Check if due date is before current date
+            const today = new Date().toISOString().split("T")[0];
+            if (formData.due_date < today) {
+                newErrors.due_date = "Due date cannot be before current date";
+            }
+        }
         if (!formData.payment_type)
             newErrors.payment_type = "Payment type is required";
         if (!formData.total_amount || parseFloat(formData.total_amount) <= 0)
@@ -91,6 +99,20 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                 delete newErrors[name];
                 return newErrors;
             });
+        }
+
+        // Real-time validation for due date
+        if (name === "due_date" && value) {
+            const today = new Date().toISOString().split("T")[0];
+            if (value < today) {
+                setErrors((prev) => ({ ...prev, due_date: "Due date cannot be before current date" }));
+            } else if (errors.due_date && value >= today) {
+                setErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.due_date;
+                    return newErrors;
+                });
+            }
         }
 
         // If form was previously submitted, validate again on change
@@ -439,6 +461,7 @@ const PaymentOrderModal = ({ isOpen, onClose, selectedOrder }) => {
                                 value={formData.due_date}
                                 onChange={handleChange}
                                 error={errors.due_date}
+                                min={new Date().toISOString().split("T")[0]}
                             />
                         </div>
 

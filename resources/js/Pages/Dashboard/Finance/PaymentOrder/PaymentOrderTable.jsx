@@ -27,7 +27,7 @@ const PaymentOrderTable = () => {
         setLoading(true);
         try {
             const response = await fetch(
-                `/api/v1/payment-orders?include=user,purchaseOrder,purchaseOrder.supplier,purchaseOrder.quotation,logs&page=${currentPage}&sort=payment_order_number`
+                `/api/v1/payment-orders?include=user,purchaseOrder,purchaseOrder.supplier,purchaseOrder.quotation,logs&page=${currentPage}&sort=-created_at`
             );
             const res = await response.json();
             if (response.ok) {
