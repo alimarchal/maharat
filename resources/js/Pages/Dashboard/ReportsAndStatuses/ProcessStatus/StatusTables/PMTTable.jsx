@@ -103,6 +103,10 @@ const PMTTable = () => {
                                                 ? "bg-yellow-100 text-yellow-800"
                                                 : order.status === "Draft"
                                                 ? "bg-gray-100 text-gray-800"
+                                                : order.status === "Referred"
+                                                ? "bg-orange-100 text-orange-800"
+                                                : order.status === "Approved"
+                                                ? "bg-green-100 text-green-800"
                                                 : "bg-gray-100 text-gray-800"
                                         }`}
                                     >

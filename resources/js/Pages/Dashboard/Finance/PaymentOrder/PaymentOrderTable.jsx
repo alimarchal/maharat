@@ -27,7 +27,7 @@ const PaymentOrderTable = () => {
         setLoading(true);
         try {
             const response = await fetch(
-                `/api/v1/payment-orders?include=user,purchaseOrder,purchaseOrder.supplier,purchaseOrder.quotation,logs&page=${currentPage}&sort=payment_order_number`
+                `/api/v1/payment-orders?include=user,purchaseOrder,purchaseOrder.supplier,purchaseOrder.quotation,logs&page=${currentPage}&sort=-created_at`
             );
             const res = await response.json();
             if (response.ok) {
@@ -144,6 +144,12 @@ const PaymentOrderTable = () => {
                 break;
             case "draft":
                 badgeClass += "bg-gray-100 text-gray-800";
+                break;
+            case "referred":
+                badgeClass += "bg-orange-100 text-orange-800";
+                break;
+            case "approved":
+                badgeClass += "bg-green-100 text-green-800";
                 break;
             default:
                 badgeClass += "bg-gray-100 text-gray-800";

@@ -79,10 +79,12 @@ const PMTStatusFlow = () => {
         setSelectedUser(null);
     };
 
-    // Create cards array - show requester + all assigned users
+    // Create cards array - show requester + all assigned users (avoid duplicates)
     const createCardsArray = () => {
         if (cardData.length === 0) return [];
         const cards = [];
+        const seenUserIds = new Set();
+        const userCardMap = new Map(); // Track which card to show for each user
 
         // First card - Always show the requester from the first record
         if (cardData[0]) {
@@ -94,21 +96,55 @@ const PMTStatusFlow = () => {
                 created_at: cardData[0].created_at,
                 cardData: cardData[0],
             });
+            seenUserIds.add(cardData[0].requester?.id);
         }
 
-        // Then show all assigned users from all records
+        // First pass: Collect all cards and prioritize referral cards
         cardData.forEach((card, index) => {
+            // Use the same field names as RFQStatusFlow.jsx for consistency
+            const assignedUser = card.assigned_user || card.assignedToUser || card.assignedUser;
+            const referredUser = card.referred_user || card.referredUser || card.referredToUser;
+            
+            if (assignedUser?.id) {
+                const isReferralCard = referredUser !== null && referredUser !== undefined;
+                const isRefereeResponseCard = card.description === "Referee response";
+                const existingCard = userCardMap.get(assignedUser.id);
+                
+                // Skip referee response cards - they're duplicates of users already shown in referral cards
+                if (isRefereeResponseCard) {
+                    return; // Skip this card
+                }
+                
+                // Priority logic:
+                // 1. If this is a referral card, always use it (overwrite existing)
+                // 2. If no existing card, use this one
+                // 3. If existing card is not a referral and this is not a referral, use the first one
+                if (isReferralCard || !existingCard) {
+                    userCardMap.set(assignedUser.id, {
+                        card,
+                        assignedUser,
+                        referredUser,
+                        isReferralCard
+                    });
+                }
+            }
+        });
+        
+        // Second pass: Create cards from the map
+        userCardMap.forEach((cardData, userId) => {
+            const { card, assignedUser, referredUser, isReferralCard } = cardData;
+            
             cards.push({
                 id: `assigned-${card.id}`,
                 type: "assigned",
-                user: card.assigned_user,
+                user: assignedUser,
                 status: card.status,
                 created_at: card.created_at,
                 cardData: card,
-                referredUser: card.referred_user ? {
+                referredUser: referredUser ? {
                     id: `referred-${card.id}`,
                     type: "referred",
-                    user: card.referred_user,
+                    user: referredUser,
                     status: card.referred_user_status || "Pending",
                     created_at: card.created_at,
                     cardData: card,
