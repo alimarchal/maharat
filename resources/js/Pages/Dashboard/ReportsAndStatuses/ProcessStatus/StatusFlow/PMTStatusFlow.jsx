@@ -79,10 +79,11 @@ const PMTStatusFlow = () => {
         setSelectedUser(null);
     };
 
-    // Create cards array - show requester + all assigned users
+    // Create cards array - show requester + all assigned users (avoid duplicates)
     const createCardsArray = () => {
         if (cardData.length === 0) return [];
         const cards = [];
+        const seenUserIds = new Set();
 
         // First card - Always show the requester from the first record
         if (cardData[0]) {
@@ -94,26 +95,39 @@ const PMTStatusFlow = () => {
                 created_at: cardData[0].created_at,
                 cardData: cardData[0],
             });
+            seenUserIds.add(cardData[0].requester?.id);
         }
 
-        // Then show all assigned users from all records
+        // Then show all assigned users from all records, but avoid duplicates
         cardData.forEach((card, index) => {
-            cards.push({
-                id: `assigned-${card.id}`,
-                type: "assigned",
-                user: card.assigned_user,
-                status: card.status,
-                created_at: card.created_at,
-                cardData: card,
-                referredUser: card.referred_user ? {
-                    id: `referred-${card.id}`,
-                    type: "referred",
-                    user: card.referred_user,
-                    status: card.referred_user_status || "Pending",
+            // Priority logic:
+            // 1. If this card has a referred_user, always show it (it's a referral)
+            // 2. If this user hasn't been seen before, show it
+            // 3. If this user has been seen before but this is NOT a referral, skip it (avoid duplicates)
+            
+            const shouldShowCard = card.referred_user || !seenUserIds.has(card.assigned_user?.id);
+            
+            if (shouldShowCard) {
+                cards.push({
+                    id: `assigned-${card.id}`,
+                    type: "assigned",
+                    user: card.assigned_user,
+                    status: card.status,
                     created_at: card.created_at,
                     cardData: card,
-                } : null
-            });
+                    referredUser: card.referred_user ? {
+                        id: `referred-${card.id}`,
+                        type: "referred",
+                        user: card.referred_user,
+                        status: card.referred_user_status || "Pending",
+                        created_at: card.created_at,
+                        cardData: card,
+                    } : null
+                });
+                
+                // Mark this user as seen
+                seenUserIds.add(card.assigned_user?.id);
+            }
         });
 
         return cards;

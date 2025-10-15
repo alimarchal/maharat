@@ -360,7 +360,20 @@ const ReviewTask = () => {
                             `/api/v1/tasks/${taskData.id}`,
                             taskPayload
                         );
+                        
+                        console.log("=== FRONTEND: TASK STATUS UPDATED ===", {
+                            taskId: taskData.id,
+                            action: taskDescription.action,
+                            status: status,
+                            response: taskUpdateResponse.data
+                        });
                     } catch (taskUpdateError) {
+                        console.error("=== FRONTEND: TASK UPDATE ERROR ===", {
+                            taskId: taskData.id,
+                            action: taskDescription.action,
+                            error: taskUpdateError.response?.data || taskUpdateError.message
+                        });
+                        
                         // Check for specific budget error in task update
                         if (taskUpdateError.response?.data?.error === "NO_MAIN_BUDGET") {
                             const errorMessage = taskUpdateError.response.data.message || "Approval failed: No main budget found for this invoice's fiscal period.";

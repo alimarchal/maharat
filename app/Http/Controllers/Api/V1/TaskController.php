@@ -9,9 +9,12 @@ use App\Http\Resources\V1\TaskResource;
 use App\Http\Resources\V1\TaskCollection;
 use App\Models\Task;
 use App\Models\TaskDescription;
+use App\Models\ProcessStep as EloquentProcessStep;
+use App\Models\User;
 use App\QueryParameters\TaskParameters;
 use App\Services\TransactionFlowService;
 use App\Services\TaskNotificationService;
+use App\Services\ApproverResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -661,6 +664,21 @@ class TaskController extends Controller
                                 'status' => 'Pending', // Change to Pending when referee responds
                                 'updated_at' => now()
                             ]);
+                        
+                        // Update payment order status back to Pending when referee responds
+                        DB::table('payment_orders')
+                            ->where('id', $task->payment_order_id)
+                            ->update([
+                                'status' => 'Pending',
+                                'updated_at' => now()
+                            ]);
+                        
+                        Log::info('=== PAYMENT ORDER STATUS UPDATED TO PENDING AFTER REFERRAL RESPONSE ===', [
+                            'task_id' => $task->id,
+                            'payment_order_id' => $task->payment_order_id,
+                            'referee_response' => $request->input('status'),
+                            'new_status' => 'Pending'
+                        ]);
                     }
 
                     // Send notification to original approver
@@ -693,7 +711,17 @@ class TaskController extends Controller
                 }
             }
 
+            // Update the task with the new data
+            $oldStatus = $task->status;
             $task->update($request->validated());
+            
+            Log::info('=== TASK STATUS UPDATED ===', [
+                'task_id' => $task->id,
+                'old_status' => $oldStatus,
+                'new_status' => $task->status,
+                'request_status' => $request->input('status'),
+                'payment_order_id' => $task->payment_order_id
+            ]);
 
             // Set continue_approval_flow = false when task is referred
             if ($request->input('status') === 'Referred') {
@@ -3024,7 +3052,9 @@ class TaskController extends Controller
                 // Check if this is a referral response task
                 // A referral response task is one that was created as a result of a referee responding
                 // It has assigned_from_user_id (the referee) and was created after a referral
+                // AND it should NOT continue the approval flow (continue_approval_flow should be false)
                 $isReferralResponseTask = $task->assigned_from_user_id && 
+                    $task->continue_approval_flow == false &&
                     DB::table('payment_order_approval_transactions')
                         ->where('payment_order_id', $task->payment_order_id)
                         ->where('assigned_to', $task->assigned_to_user_id)
@@ -3036,6 +3066,8 @@ class TaskController extends Controller
                         'payment_order_id' => $task->payment_order_id,
                         'assigned_from_user_id' => $task->assigned_from_user_id,
                         'continue_approval_flow' => $task->continue_approval_flow,
+                        'continue_approval_flow_false_check' => $task->continue_approval_flow == false,
+                        'continue_approval_flow_zero_check' => $task->continue_approval_flow == 0,
                     'is_referral_response_task' => $isReferralResponseTask
                     ]);
 
@@ -3054,6 +3086,20 @@ class TaskController extends Controller
                     ->get();
 
                     $totalRequiredApprovals = $processSteps->count();
+                    
+                    // IMPORTANT: Proceed with normal approval flow if:
+                    // 1. Task should continue approval flow (continue_approval_flow == true)
+                    // 2. This is NOT a referral response task (assigned_from_user_id is null OR this is the original approver)
+                    
+                    Log::info('=== PAYMENT ORDER APPROVAL FLOW CHECK ===', [
+                        'task_id' => $task->id,
+                        'payment_order_id' => $task->payment_order_id,
+                        'continue_approval_flow' => $task->continue_approval_flow,
+                        'continue_approval_flow_true_check' => $task->continue_approval_flow == true,
+                        'continue_approval_flow_one_check' => $task->continue_approval_flow == 1,
+                        'is_referral_response_task' => $isReferralResponseTask,
+                        'should_proceed_with_approval_flow' => $task->continue_approval_flow == true && !$isReferralResponseTask
+                    ]);
                     
                     // Check if this is a referral response task - if so, skip normal approval flow
                     if ($isReferralResponseTask) {
@@ -3083,27 +3129,64 @@ class TaskController extends Controller
                         ]);
                         
                         // Skip the rest of the approval flow for referral responses
-                        return response()->json([
-                            'message' => 'Payment Order referral response recorded successfully',
-                            'data' => new TaskResource($task->load([
-                                'processStep',
-                                'process',
-                                'assignedUser',
-                                'descriptions',
-                                'material_request',
-                                'rfq',
-                                'purchase_order',
-                                'payment_order',
-                                'invoice',
-                                'budget',
-                                'budget_approval_transaction',
-                                'request_budget',
-                            ]))
-                        ], Response::HTTP_OK);
+                        // BUT continue with normal task update to change status
+                        Log::info('=== PAYMENT ORDER REFERRAL RESPONSE - CONTINUING WITH TASK UPDATE ===', [
+                            'task_id' => $task->id,
+                            'payment_order_id' => $task->payment_order_id,
+                            'note' => 'Skipping approval flow but allowing task status update'
+                        ]);
+                        
+                        // Don't return here - let the normal task update flow continue
                     }
                     
-                    // Check if this is the final approval (current order equals total required approvals)
-                    $isFinalApproval = $approvalTransaction->order == $totalRequiredApprovals;
+                    // IMPORTANT: Only proceed with normal approval flow if task should continue approval flow
+                    if ($task->continue_approval_flow != true) {
+                        Log::info('=== SKIPPING PAYMENT ORDER APPROVAL FLOW - continue_approval_flow is not true ===', [
+                            'task_id' => $task->id,
+                            'payment_order_id' => $task->payment_order_id,
+                            'continue_approval_flow' => $task->continue_approval_flow,
+                            'continue_approval_flow_true_check' => $task->continue_approval_flow == true,
+                            'continue_approval_flow_one_check' => $task->continue_approval_flow == 1,
+                            'reason' => 'Task should not continue approval flow'
+                        ]);
+                        
+                        // Update the approval transaction status directly but don't create next step
+                        $newStatus = $request->input('status') === 'Approved' ? 'Approve' : ($request->input('status') === 'Referred' ? 'Refer' : $request->input('status'));
+                        
+                        $transactionUpdated = DB::table('payment_order_approval_transactions')
+                            ->where('id', $approvalTransaction->id)
+                            ->update([
+                                'status' => $newStatus,
+                                'updated_at' => now()
+                            ]);
+                        
+                        Log::info('=== PAYMENT ORDER APPROVAL TRANSACTION UPDATED (NO NEXT STEP) ===', [
+                            'task_id' => $task->id,
+                            'payment_order_id' => $task->payment_order_id,
+                            'approval_transaction_id' => $approvalTransaction->id,
+                            'new_status' => $newStatus,
+                            'update_result' => $transactionUpdated,
+                            'reason' => 'continue_approval_flow is not true'
+                        ]);
+                        
+                        // Skip creating next approval step but continue with task update
+                        Log::info('=== PAYMENT ORDER APPROVAL - CONTINUING WITH TASK UPDATE (NO NEXT STEP) ===', [
+                            'task_id' => $task->id,
+                            'payment_order_id' => $task->payment_order_id,
+                            'note' => 'Skipping next approval step but allowing task status update'
+                        ]);
+                        
+                        // Don't return here - let the normal task update flow continue
+                    }
+                    
+                    // Check if this is the final approval - use same logic as PaymentOrderApprovalTransactionController
+                    $currentStep = $processSteps->where('order', $approvalTransaction->order)->first();
+                    $eloquentCurrentStep = $currentStep ? EloquentProcessStep::find($currentStep->id) : null;
+                    $isDirectManagerFlow = $eloquentCurrentStep && $eloquentCurrentStep->designation && strcasecmp(trim($eloquentCurrentStep->designation->designation), 'Direct Manager') === 0;
+                    $currentApprover = User::find($approvalTransaction->assigned_to);
+                    $isFinalApproval = $isDirectManagerFlow
+                        ? ($currentApprover?->parent_id ? false : true)
+                        : ($approvalTransaction->order == $totalRequiredApprovals);
 
                     Log::info('=== PAYMENT ORDER FINAL APPROVAL CHECK ===', [
                         'task_id' => $task->id,
@@ -3111,6 +3194,9 @@ class TaskController extends Controller
                         'current_order' => $approvalTransaction->order,
                         'total_required_approvals' => $totalRequiredApprovals,
                         'is_final_approval' => $isFinalApproval,
+                        'is_direct_manager_flow' => $isDirectManagerFlow,
+                        'current_approver_id' => $currentApprover?->id,
+                        'current_approver_parent_id' => $currentApprover?->parent_id,
                         'process_steps_count' => $processSteps->count()
                     ]);
 
@@ -3172,19 +3258,22 @@ class TaskController extends Controller
                         'update_result' => $transactionUpdated
                     ]);
 
-                    // IMPORTANT: Update Payment Order task_status to 'Pending' on first approval/referral
+                    // IMPORTANT: Update Payment Order status based on the action
+                    // Payment Order status ENUM: ['Draft', 'Approved','Overdue', 'Cancelled','Paid', 'Pending', 'Partially Paid']
+                    // "Referred" is not a valid status, so use 'Pending' for referrals
+                    $newPaymentOrderStatus = $request->input('status') === 'Approved' ? 'Approved' : 'Pending';
                     $paymentOrderTaskStatusUpdated = DB::table('payment_orders')
                         ->where('id', $task->payment_order_id)
                         ->update([
-                            'status' => 'Pending',
+                            'status' => $newPaymentOrderStatus,
                             'updated_at' => now()
                         ]);
 
-                    Log::info('=== PAYMENT ORDER TASK STATUS UPDATED TO PENDING ===', [
+                    Log::info('=== PAYMENT ORDER TASK STATUS UPDATED ===', [
                         'task_id' => $task->id,
                         'payment_order_id' => $task->payment_order_id,
                         'update_result' => $paymentOrderTaskStatusUpdated,
-                        'new_status' => 'Pending'
+                        'new_status' => $newPaymentOrderStatus
                     ]);
                     
                     if ($isFinalApproval) {

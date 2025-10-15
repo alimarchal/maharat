@@ -145,6 +145,12 @@ const PaymentOrderTable = () => {
             case "draft":
                 badgeClass += "bg-gray-100 text-gray-800";
                 break;
+            case "referred":
+                badgeClass += "bg-orange-100 text-orange-800";
+                break;
+            case "approved":
+                badgeClass += "bg-green-100 text-green-800";
+                break;
             default:
                 badgeClass += "bg-gray-100 text-gray-800";
                 break;
