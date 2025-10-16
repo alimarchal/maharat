@@ -4,16 +4,53 @@ import { faEye } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 import axios from "axios";
 
+// Status badge component for Total Budgets
+const StatusBadge = ({ status }) => {
+    let badgeClass = "px-3 py-1 rounded-full text-xs font-medium";
+
+    switch (status?.toLowerCase()) {
+        case "active":
+            badgeClass += " bg-green-100 text-green-800";
+            break;
+        case "pending":
+            badgeClass += " bg-yellow-100 text-yellow-800";
+            break;
+        case "closed":
+            badgeClass += " bg-red-100 text-red-800";
+            break;
+        default:
+            badgeClass += " bg-gray-300 text-gray-800";
+            break;
+    }
+
+    return (
+        <span className={badgeClass}>
+            {status}
+        </span>
+    );
+};
+
 const TotalBudgetTable = () => {
+    const [allBudgets, setAllBudgets] = useState([]);
     const [budgets, setBudgets] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
+    const itemsPerPage = 15;
 
     useEffect(() => {
         fetchBudgets();
-    }, [currentPage]);
+    }, []);
+
+    useEffect(() => {
+        // Handle pagination on frontend
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const paginatedBudgets = allBudgets.slice(startIndex, endIndex);
+        setBudgets(paginatedBudgets);
+        setLastPage(Math.ceil(allBudgets.length / itemsPerPage));
+    }, [allBudgets, currentPage]);
 
     const fetchBudgets = async () => {
         setLoading(true);
@@ -21,11 +58,10 @@ const TotalBudgetTable = () => {
 
         try {
             const response = await axios.get(
-                `/api/v1/budgets?include=fiscalPeriod,creator,updater&page=${currentPage}&per_page=15&sort=id&order=desc`
+                `/api/v1/budgets?include=fiscalPeriod,creator,updater&per_page=1000&sort=-created_at`
             );
             if (response.data && response.data.data) {
-                setBudgets(response.data.data);
-                setLastPage(response.data.meta?.last_page || 1);
+                setAllBudgets(response.data.data);
             } else {
                 setError("Invalid response format. Please try again.");
             }
@@ -80,18 +116,20 @@ const TotalBudgetTable = () => {
                                 <td className="py-3 px-4">
                                     {budget.fiscal_period?.fiscal_year}
                                 </td>
-                                <td className="py-3 px-4">{budget.status}</td>
                                 <td className="py-3 px-4">
-                                    {budget.total_revenue_planned}
+                                    <StatusBadge status={budget.status} />
                                 </td>
                                 <td className="py-3 px-4">
-                                    {budget.total_revenue_actual}
+                                    {budget.total_revenue_planned} SAR
                                 </td>
                                 <td className="py-3 px-4">
-                                    {budget.total_expense_planned}
+                                    {budget.total_revenue_actual} SAR
                                 </td>
                                 <td className="py-3 px-4">
-                                    {budget.total_expense_actual}
+                                    {budget.total_expense_planned} SAR
+                                </td>
+                                <td className="py-3 px-4">
+                                    {budget.total_expense_actual} SAR
                                 </td>
                                 <td className="py-3 px-4 flex items-center justify-center gap-4">
                                     <Link
@@ -119,6 +157,17 @@ const TotalBudgetTable = () => {
             {/* Pagination */}
             {!loading && !error && budgets.length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    <button
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage <= 1
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage <= 1}
+                    >
+                        Previous
+                    </button>
                     {Array.from(
                         { length: lastPage },
                         (_, index) => index + 1

@@ -4,6 +4,65 @@ import { faEye } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import { Link } from "@inertiajs/react";
 
+// Status badge component for Budget Requests
+const StatusBadge = ({ status }) => {
+    let badgeClass = "px-3 py-1 rounded-full text-xs font-medium";
+
+    switch (status?.toLowerCase()) {
+        case "draft":
+            badgeClass += " bg-gray-100 text-gray-800";
+            break;
+        case "approved":
+        case "submitted":
+            badgeClass += " bg-green-100 text-green-800";
+            break;
+        case "pending":
+            badgeClass += " bg-yellow-100 text-yellow-800";
+            break;
+        case "referred":
+            badgeClass += " bg-blue-100 text-blue-800";
+            break;
+        case "rejected":
+            badgeClass += " bg-red-100 text-red-800";
+            break;
+        default:
+            badgeClass += " bg-gray-300 text-gray-800";
+            break;
+    }
+
+    return (
+        <span className={badgeClass}>
+            {status}
+        </span>
+    );
+};
+
+// Urgency badge component for Budget Requests
+const UrgencyBadge = ({ urgency }) => {
+    let textClass = "text-base font-bold";
+
+    switch (urgency?.toLowerCase()) {
+        case "high":
+            textClass += " text-red-600";
+            break;
+        case "medium":
+            textClass += " text-orange-600";
+            break;
+        case "low":
+            textClass += " text-green-600";
+            break;
+        default:
+            textClass += " text-gray-600";
+            break;
+    }
+
+    return (
+        <span className={textClass}>
+            {urgency}
+        </span>
+    );
+};
+
 const BudgetRequestTable = () => {
     const [budgetRequests, setBudgetRequests] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -16,10 +75,10 @@ const BudgetRequestTable = () => {
             setLoading(true);
             try {
                 const response = await axios.get(
-                    `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator&page=${currentPage}`
+                    `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator&page=${currentPage}&per_page=15&sort=-created_at`
                 );
                 setBudgetRequests(response.data.data);
-                setLastPage(response.meta?.last_page || 1);
+                setLastPage(response.data.meta?.last_page || 1);
             } catch (err) {
                 setError("Failed to fetch budget requests.");
             } finally {
@@ -28,7 +87,7 @@ const BudgetRequestTable = () => {
         };
 
         fetchBudgetRequests();
-    }, []);
+    }, [currentPage]);
 
     return (
         <div className="w-full">
@@ -44,7 +103,7 @@ const BudgetRequestTable = () => {
                         <th className="py-3 px-4">Previous Budget</th>
                         <th className="py-3 px-4">Requested Amount</th>
                         <th className="py-3 px-4">Urgency</th>
-                        <th className="py-3 px-4">Description</th>
+                        <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                             Action
                         </th>
@@ -82,14 +141,16 @@ const BudgetRequestTable = () => {
                                     {request.sub_cost_center_details?.name}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {request.previous_year_budget_amount}
+                                    {request.previous_year_budget_amount} SAR
                                 </td>
                                 <td className="py-3 px-4">
-                                    {request.requested_amount}
+                                    {request.requested_amount} SAR
                                 </td>
-                                <td className="py-3 px-4">{request.urgency}</td>
                                 <td className="py-3 px-4">
-                                    {request.reason_for_increase}
+                                    <UrgencyBadge urgency={request.urgency} />
+                                </td>
+                                <td className="py-3 px-4">
+                                    <StatusBadge status={request.status} />
                                 </td>
                                 <td className="py-3 px-4 flex items-center justify-center gap-4">
                                     <Link
@@ -117,6 +178,17 @@ const BudgetRequestTable = () => {
             {/* Pagination */}
             {!loading && !error && budgetRequests.length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    <button
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        className={`px-3 py-1 bg-[#009FDC] text-white rounded-full hover:bg-[#0077B6] transition ${
+                            currentPage <= 1
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                        }`}
+                        disabled={currentPage <= 1}
+                    >
+                        Previous
+                    </button>
                     {Array.from(
                         { length: lastPage },
                         (_, index) => index + 1

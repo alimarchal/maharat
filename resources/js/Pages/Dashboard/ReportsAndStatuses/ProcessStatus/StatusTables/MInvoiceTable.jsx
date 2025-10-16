@@ -3,6 +3,40 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 
+// Status badge component for Maharat Invoices
+const StatusBadge = ({ status }) => {
+    let badgeClass = "px-3 py-1 rounded-full text-xs font-medium";
+
+    switch (status?.toLowerCase()) {
+        case "draft":
+            badgeClass += " bg-gray-100 text-gray-800";
+            break;
+        case "approved":
+        case "paid":
+            badgeClass += " bg-green-100 text-green-800";
+            break;
+        case "pending":
+            badgeClass += " bg-yellow-100 text-yellow-800";
+            break;
+        case "overdue":
+        case "partially paid":
+            badgeClass += " bg-purple-100 text-purple-800";
+            break;
+        case "cancelled":
+            badgeClass += " bg-red-100 text-red-800";
+            break;
+        default:
+            badgeClass += " bg-gray-300 text-gray-800";
+            break;
+    }
+
+    return (
+        <span className={badgeClass}>
+            {status}
+        </span>
+    );
+};
+
 const MInvoiceTable = () => {
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -84,7 +118,9 @@ const MInvoiceTable = () => {
                                           ).toLocaleString()} SAR`
                                         : "N/A"}
                                 </td>
-                                <td className="py-3 px-4">{invoice.status}</td>
+                                <td className="py-3 px-4">
+                                    <StatusBadge status={invoice.status} />
+                                </td>
                                 <td className="py-3 px-4">
                                     <div className="flex flex-col">
                                         {invoice.updated_at

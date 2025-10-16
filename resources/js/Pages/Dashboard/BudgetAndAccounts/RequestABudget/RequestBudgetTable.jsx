@@ -68,17 +68,17 @@ const RequestBudgetTable = () => {
 
     return (
         <div className="w-full">
-            <div className="flex justify-between items-center text-center mb-6">
-                <h2 className="text-3xl font-bold text-[#2C323C]">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4 sm:gap-0">
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#2C323C]">
                     Department Budget Requests
                 </h2>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
                     {hasPermission('create_department_budget_request') && (
-                        <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
+                        <div className="p-0.5 sm:p-1 border border-[#B9BBBD] bg-white rounded-full overflow-x-auto flex">
                             {filters.map((filter) => (
                                 <button
                                     key={filter}
-                                    className={`px-6 py-2 rounded-full text-xl transition ${
+                                    className={`px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm lg:text-base transition whitespace-nowrap flex-shrink-0 ${
                                         selectedFilter === filter
                                             ? "bg-[#009FDC] text-white"
                                             : "text-[#9B9DA2]"
@@ -93,7 +93,7 @@ const RequestBudgetTable = () => {
                     {hasPermission('create_department_budget_request') && (
                         <Link
                             href={`/request-budgets/create`}
-                            className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
+                            className="bg-[#009FDC] text-white px-3 sm:px-4 lg:px-6 py-1.5 sm:py-2 rounded-full text-sm sm:text-base lg:text-xl font-medium whitespace-nowrap"
                         >
                             Create Department Budget Request
                         </Link>

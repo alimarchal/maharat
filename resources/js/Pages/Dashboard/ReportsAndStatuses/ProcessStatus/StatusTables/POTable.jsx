@@ -3,6 +3,35 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "@inertiajs/react";
 
+// Status badge component for Purchase Orders
+const StatusBadge = ({ status }) => {
+    let badgeClass = "px-3 py-1 rounded-full text-xs font-medium";
+
+    switch (status?.toLowerCase()) {
+        case "approved":
+            badgeClass += " bg-green-100 text-green-800";
+            break;
+        case "pending":
+            badgeClass += " bg-yellow-100 text-yellow-800";
+            break;
+        case "draft":
+            badgeClass += " bg-gray-100 text-gray-800";
+            break;
+        case "rejected":
+            badgeClass += " bg-red-100 text-red-800";
+            break;
+        default:
+            badgeClass += " bg-gray-300 text-gray-800";
+            break;
+    }
+
+    return (
+        <span className={badgeClass}>
+            {status}
+        </span>
+    );
+};
+
 export default function POTable() {
     const [purchaseOrders, setPurchaseOrders] = useState([]);
     const [error, setError] = useState("");
@@ -54,6 +83,7 @@ export default function POTable() {
                         <th className="py-3 px-4">Issue Date</th>
                         {/* <th className="py-3 px-4">Expiry Date</th> */}
                         <th className="py-3 px-4">Amount</th>
+                        <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                             Action
                         </th>
@@ -63,14 +93,14 @@ export default function POTable() {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="7" className="text-center py-12">
+                            <td colSpan="8" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="7"
+                                colSpan="8"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -95,7 +125,10 @@ export default function POTable() {
                                     {order.expiry_date}
                                 </td> */}
                                 <td className="px-6 py-4">
-                                    {Number(order.amount || 0).toLocaleString()}
+                                    {Number(order.amount || 0).toLocaleString()} SAR
+                                </td>
+                                <td className="px-3 py-4">
+                                    <StatusBadge status={order.status} />
                                 </td>
                                 <td className="py-3 px-4 flex justify-center space-x-3">
                                     <Link
@@ -110,7 +143,7 @@ export default function POTable() {
                     ) : (
                         <tr>
                             <td
-                                colSpan="7"
+                                colSpan="8"
                                 className="text-center text-[#2C323C] font-medium py-4"
                             >
                                 No Material Requests found.
