@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('grns', function (Blueprint $table) {
-            //
+            $table->enum('task_status', ['Pending', 'Approved', 'Rejected', 'Referred'])->default('Pending')->nullable();
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('grns', function (Blueprint $table) {
-            //
+            $table->dropColumn('task_status');
         });
     }
 };
