@@ -231,39 +231,29 @@ const BudgetRequestStatusFlow = () => {
 
                         {cardsToShow.length > 0 ? (
                             <div className="w-full pb-4 mb-6">
-                                <div className="relative w-full">
-                                    <div
-                                        className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
-                                        style={{
-                                            scrollbarWidth: "thin",
-                                            WebkitOverflowScrolling: "touch",
-                                        }}
-                                    >
-                                        <div className="flex space-x-4 pb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
                                             {cardsToShow.map((card) => (
+                                        <div key={`card-group-${card.id}`} className="flex flex-col">
+                                            {/* Main Card */}
                                                 <div
                                                     key={`card-container-${card.id}`}
-                                                    className="flex-none w-full md:w-2/3 lg:w-1/2 xl:w-1/6 border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white shadow-md"
-                                                    style={{
-                                                        minWidth: "400px",
-                                                        maxWidth: "500px",
-                                                    }}
+                                                className="border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white shadow-md w-full"
                                                 >
                                                     <div className="rounded-xl p-5 bg-gray-100 shadow-sm">
                                                         <div className="mb-4">
-                                                            <button className={`border rounded-full px-4 py-1 text-base flex items-center ${
-                                                                card.status === "Filled Request" 
-                                                                    ? "border-green-400 text-green-500"
-                                                                    : card.status === "Refer"
-                                                                    ? "border-blue-400 text-blue-500"
-                                                                    : card.status === "Pending"
-                                                                    ? "border-yellow-400 text-yellow-500"
-                                                                    : card.status === "Approve"
-                                                                    ? "border-green-400 text-green-500"
-                                                                    : card.status === "Reject"
-                                                                    ? "border-red-400 text-red-500"
-                                                                    : "border-gray-400 text-gray-500"
-                                                            }`}>
+                                                        <button className={`border rounded-full px-4 py-1 text-base flex items-center ${
+                                                            card.status === "Filled Request" 
+                                                                ? "border-green-400 text-green-500"
+                                                                : card.status === "Refer"
+                                                                ? "border-blue-400 text-blue-500"
+                                                                : card.status === "Pending"
+                                                                ? "border-yellow-400 text-yellow-500"
+                                                                : card.status === "Approve"
+                                                                ? "border-green-400 text-green-500"
+                                                                : card.status === "Reject"
+                                                                ? "border-red-400 text-red-500"
+                                                                : "border-gray-400 text-gray-500"
+                                                        }`}>
                                                                 {card.status}
                                                                 {card.type !==
                                                                     "requester" && (
@@ -287,13 +277,13 @@ const BudgetRequestStatusFlow = () => {
                                                                     ""}
                                                             </span>
                                                             <span
-                                                                className={`text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:opacity-80 transition-colors duration-200 ${
-                                                                    card.type === "requester"
-                                                                        ? "bg-blue-500 hover:bg-blue-600"
-                                                                        : card.type === "referred"
-                                                                        ? "bg-orange-500 hover:bg-orange-600"
-                                                                        : "bg-purple-500 hover:bg-purple-600"
-                                                                }`}
+                                                            className={`text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:opacity-80 transition-colors duration-200 ${
+                                                                card.type === "requester"
+                                                                    ? "bg-blue-500 hover:bg-blue-600"
+                                                                    : card.type === "referred"
+                                                                    ? "bg-orange-500 hover:bg-orange-600"
+                                                                    : "bg-purple-500 hover:bg-purple-600"
+                                                            }`}
                                                                 onClick={() =>
                                                                     openModal(
                                                                         card.user,
@@ -315,10 +305,10 @@ const BudgetRequestStatusFlow = () => {
                                                         <div className="flex items-start">
                                                             <div
                                                                 className={`w-10 h-10 ${
-                                                                    card.type === "requester"
+                                                                card.type === "requester"
                                                                         ? "bg-blue-200 text-blue-600"
-                                                                        : card.type === "referred"
-                                                                        ? "bg-orange-200 text-orange-600"
+                                                                    : card.type === "referred"
+                                                                    ? "bg-orange-200 text-orange-600"
                                                                         : "bg-purple-200 text-purple-600"
                                                                 } rounded-full flex items-center justify-center`}
                                                             >
@@ -364,9 +354,129 @@ const BudgetRequestStatusFlow = () => {
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ))}
+
+                                            {/* Referred User Card - Directly Below */}
+                                            {card.referredUser && (
+                                                <div className="mt-2 w-full">
+                                                    <div
+                                                        key={`card-container-${card.referredUser.id}`}
+                                                        className="border-2 border-dashed border-gray-400 rounded-xl p-4 bg-white shadow-md w-full"
+                                                    >
+                                                    <div className="rounded-xl p-5 bg-gray-100 shadow-sm">
+                                                        <div className="mb-4">
+                                                            <button className={`border rounded-full px-4 py-1 text-base flex items-center ${
+                                                                card.referredUser.status === "Filled Request" 
+                                                                    ? "border-green-400 text-green-500"
+                                                                    : card.referredUser.status === "Refer"
+                                                                    ? "border-blue-400 text-blue-500"
+                                                                    : card.referredUser.status === "Pending"
+                                                                    ? "border-yellow-400 text-yellow-500"
+                                                                    : card.referredUser.status === "Approve"
+                                                                    ? "border-green-400 text-green-500"
+                                                                    : card.referredUser.status === "Reject"
+                                                                    ? "border-red-400 text-red-500"
+                                                                    : "border-gray-400 text-gray-500"
+                                                            }`}>
+                                                                {card.referredUser.status}
+                                                                <FontAwesomeIcon
+                                                                    icon={
+                                                                        faChevronRight
+                                                                    }
+                                                                    className="ml-2 text-xs"
+                                                                />
+                                                            </button>
+                                                        </div>
+
+                                                        <div className="flex justify-between items-center gap-4">
+                                                            <span className="text-sm font-medium">
+                                                                {card.referredUser.user
+                                                                    ?.designation
+                                                                    ?.designation ||
+                                                                    card.referredUser.user
+                                                                        ?.designation ||
+                                                                    ""}
+                                                            </span>
+                                                            <span
+                                                                className={`text-white text-sm w-6 h-6 flex items-center justify-center rounded-full cursor-pointer hover:opacity-80 transition-colors duration-200 ${
+                                                                    card.referredUser.type === "requester"
+                                                                        ? "bg-blue-500 hover:bg-blue-600"
+                                                                        : card.referredUser.type === "referred"
+                                                                        ? "bg-orange-500 hover:bg-orange-600"
+                                                                        : "bg-purple-500 hover:bg-purple-600"
+                                                                }`}
+                                                                onClick={() =>
+                                                                    openModal(
+                                                                        card.referredUser.user,
+                                                                        card.referredUser.type
+                                                                    )
+                                                                }
+                                                            >
+                                                                <FontAwesomeIcon
+                                                                    icon={
+                                                                        faInfoCircle
+                                                                    }
+                                                                    className="text-white"
+                                                                />
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="h-px bg-gray-300 w-full my-4"></div>
+
+                                                        <div className="flex items-start">
+                                                            <div
+                                                                className={`w-10 h-10 ${
+                                                                    card.referredUser.type === "requester"
+                                                                        ? "bg-blue-200 text-blue-600"
+                                                                        : card.referredUser.type === "referred"
+                                                                        ? "bg-orange-200 text-orange-600"
+                                                                        : "bg-purple-200 text-purple-600"
+                                                                } rounded-full flex items-center justify-center`}
+                                                            >
+                                                                <span className="text-sm font-medium">
+                                                                    {card.referredUser.user
+                                                                        ?.firstname?.[0] ||
+                                                                        card.referredUser.user
+                                                                            ?.name?.[0] ||
+                                                                        "?"}
+                                                                </span>
+                                                            </div>
+
+                                                            <div className="ml-4">
+                                                                <div
+                                                                    className="text-base font-medium cursor-pointer"
+                                                                    onClick={() =>
+                                                                        openModal(
+                                                                            card.referredUser.user,
+                                                                            card.referredUser.type
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    {card.referredUser.user
+                                                                        ?.name ||
+                                                                        "Unknown User"}
+                                                                </div>
+                                                                <div className="text-sm text-gray-500 flex items-center mt-1">
+                                                                    <FontAwesomeIcon
+                                                                        icon={
+                                                                            faCalendarAlt
+                                                                        }
+                                                                        className="mr-1 text-gray-500"
+                                                                    />
+                                                                    <span>
+                                                                        Post:{" "}
+                                                                        {new Date(
+                                                                            card.referredUser.created_at
+                                                                        ).toLocaleDateString()}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
+                                            ))}
                                 </div>
                             </div>
                         ) : (

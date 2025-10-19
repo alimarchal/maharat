@@ -49,7 +49,7 @@ const MInvoiceTable = () => {
             setLoading(true);
             try {
                 const response = await fetch(
-                    `/api/v1/invoices?include=client,items&page=${currentPage}`
+                    `/api/v1/invoices?include=client,items&page=${currentPage}&sort=-created_at`
                 );
                 const data = await response.json();
                 if (response.ok) {
