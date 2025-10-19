@@ -775,10 +775,7 @@ class TaskController extends Controller
                     if ($approvalTransaction) {
 
                         // Update the approval transaction status
-                        // Check if this is a referrer approving after referral response
-                        $isReferrerApprovingAfterReferral = $approvalTransaction->referred_to !== null;
-                        
-                        $newStatus = $isReferrerApprovingAfterReferral ? 'Approve' : 'Pending';
+                        $newStatus = $request->input('status') === 'Approved' ? 'Approve' : ($request->input('status') === 'Rejected' ? 'Reject' : 'Pending');
                         
                         Log::info('=== RFQ APPROVAL TRANSACTION STATUS UPDATE ===', [
                             'task_id' => $task->id,
@@ -786,8 +783,8 @@ class TaskController extends Controller
                             'approval_transaction_id' => $approvalTransaction->id,
                             'assigned_to' => $approvalTransaction->assigned_to,
                             'referred_to' => $approvalTransaction->referred_to,
-                            'is_referrer_approving_after_referral' => $isReferrerApprovingAfterReferral,
-                            'new_status' => $newStatus
+                            'new_status' => $newStatus,
+                            'request_status' => $request->input('status')
                         ]);
                         
                         $transactionUpdated = DB::table('rfq_approval_transactions')
