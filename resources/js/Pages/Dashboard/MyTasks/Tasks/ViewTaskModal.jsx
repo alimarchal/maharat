@@ -676,45 +676,57 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                         <StatusBadge status={currentTask.status} />
                                     </span>
                                 </div>
-                                {/* Show description from previous approvers for Pending/Rejected statuses */}
+                                {/* Show latest description for current task; fallback to latest from previous tasks in the chain */}
                                 {(() => {
-                                    // For Pending/Rejected statuses, show descriptions from previous approvers
-                                    if ((currentTask.status === 'Pending' || currentTask.status === 'Rejected') && allDescriptions.length > 0) {
-                                        // Filter descriptions from previous tasks (different task_id)
-                                        const previousDescriptions = allDescriptions.filter(desc => 
-                                            desc.task_id !== currentTask.id
-                                        );
-                                        
-                                        if (previousDescriptions.length > 0) {
-                                            // Get the most recent previous description (highest task_id)
-                                            const mostRecentDescription = previousDescriptions.reduce((latest, current) => 
-                                                (current.task_id > latest.task_id) ? current : latest
-                                            );
-                                            
-                                            return (
-                                                <div className="flex justify-between border-b border-gray-100 pb-2">
-                                                    <span className="text-gray-600">Description:</span>
-                                                    <span className="font-medium text-gray-800 text-right max-w-xs">
-                                                        {mostRecentDescription.description}
-                                                    </span>
-                                                </div>
-                                            );
-                                        }
-                                    }
-                                    
-                                    // For other statuses or when no previous descriptions, show current task descriptions
+                                    // Primary: latest description on this task
                                     if (currentTask.descriptions && currentTask.descriptions.length > 0) {
+                                        const latest = [...currentTask.descriptions].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
                                         return (
                                             <div className="flex justify-between border-b border-gray-100 pb-2">
                                                 <span className="text-gray-600">Description:</span>
                                                 <span className="font-medium text-gray-800 text-right max-w-xs">
-                                                    {currentTask.descriptions[0].description}
+                                                    {latest?.description}
                                                 </span>
                                             </div>
                                         );
                                     }
-                                    
-                                    // No description to show
+
+                                    // Fallback: find most recent description on any previous task in this set
+                                    if (Array.isArray(allDescriptions) && allDescriptions.length > 0) {
+                                        const previousDescriptions = allDescriptions.filter(d => d.task_id !== currentTask.id);
+                                        if (previousDescriptions.length > 0) {
+                                            const mostRecent = previousDescriptions.sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+                                            if (mostRecent?.description) {
+                                                return (
+                                                    <div className="flex justify-between border-b border-gray-100 pb-2">
+                                                        <span className="text-gray-600">Description:</span>
+                                                        <span className="font-medium text-gray-800 text-right max-w-xs">
+                                                            {mostRecent.description}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            }
+                                        }
+                                    }
+                                    return null;
+                                })()}
+
+                                {/* Indicator: Refer Status for referee decision (Approved/Rejected) */}
+                                {(() => {
+                                    const actions = (currentTask.descriptions || []).map(d => (d.action || '').toLowerCase());
+                                    const hasRefereeApprove = actions.includes('approve');
+                                    const hasRefereeReject = actions.includes('reject');
+                                    if (currentTask.assigned_from_user && (hasRefereeApprove || hasRefereeReject)) {
+                                        const referStatus = hasRefereeApprove ? 'Approved' : 'Rejected';
+                                        return (
+                                            <div className="flex justify-between border-b border-gray-100 pb-2">
+                                                <span className="text-gray-600">Refer Status:</span>
+                                                <span className="font-medium">
+                                                    <StatusBadge status={referStatus} />
+                                                </span>
+                                            </div>
+                                        );
+                                    }
                                     return null;
                                 })()}
                                 <div className="flex justify-between border-b border-gray-100 pb-2">
