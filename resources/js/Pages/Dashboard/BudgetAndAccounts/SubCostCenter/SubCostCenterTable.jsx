@@ -111,8 +111,8 @@ const SubCostCenterTable = () => {
                 <table className="w-full border-collapse">
                     <thead className="bg-[#C7E7DE] text-[#2C323C] text-xl font-medium text-left">
                         <tr>
-                            <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
-                                ID
+                            <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl min-w-[8rem] whitespace-nowrap">
+                                Code
                             </th>
                             <th className="py-3 px-4">Cost Center Name</th>
                             <th className="py-3 px-4">Sub Cost Center Name</th>
@@ -122,7 +122,7 @@ const SubCostCenterTable = () => {
                             <th className="py-3 px-4">Status</th>
                             <th className="py-3 px-4">Expenses</th>
                             <th className="py-3 px-4">Balance</th>
-                            <th className="py-3 px-4">Description</th>
+                            {/* <th className="py-3 px-4">Description</th> */}
                             <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                                 Actions
                             </th>
@@ -131,14 +131,14 @@ const SubCostCenterTable = () => {
                     <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                         {loading ? (
                             <tr>
-                                <td colSpan="11" className="py-12">
+                                <td colSpan="10" className="py-12">
                                     <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                                 </td>
                             </tr>
                         ) : error ? (
                             <tr>
                                 <td
-                                    colSpan="11"
+                                    colSpan="10"
                                     className="text-center text-red-500 font-medium py-4"
                                 >
                                     {error}
@@ -153,7 +153,7 @@ const SubCostCenterTable = () => {
                                     
                                     return (
                                         <tr key={center.id}>
-                                            <td className="py-3 px-4">{displayId}</td>
+                                            <td className="py-3 px-4 min-w-[8rem] whitespace-nowrap">{center.code || "N/A"}</td>
                                             <td className="py-3 px-4">
                                                 {getParentName(center)}
                                             </td>
@@ -186,9 +186,9 @@ const SubCostCenterTable = () => {
                                                     {formatCurrency(center.total_balance)}
                                                 </span>
                                             </td>
-                                            <td className="py-3 px-4">
+                                            {/* <td className="py-3 px-4">
                                                 {center.description || "N/A"}
-                                            </td>
+                                            </td> */}
                                             <td className="py-3 px-4 flex justify-center text-center space-x-3">
                                                 <button
                                                     onClick={() => {
@@ -218,7 +218,7 @@ const SubCostCenterTable = () => {
                         ) : (
                             <tr>
                                 <td
-                                    colSpan="11"
+                                    colSpan="10"
                                     className="text-center text-[#2C323C] font-medium py-4"
                                 >
                                     No Sub Cost Centers found.
@@ -232,6 +232,17 @@ const SubCostCenterTable = () => {
             {/* Pagination */}
             {!loading && !error && subCostCenters.length > 0 && (
                 <div className="p-4 flex justify-end space-x-2 font-medium text-sm">
+                    <button
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        className={`px-3 py-1 rounded-full transition ${
+                            currentPage <= 1
+                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                : "bg-[#009FDC] text-white hover:bg-[#0077B6]"
+                        }`}
+                        disabled={currentPage <= 1}
+                    >
+                        Previous
+                    </button>
                     {Array.from(
                         { length: lastPage },
                         (_, index) => index + 1

@@ -148,7 +148,6 @@ const InventoryTable = () => {
                         <th className="py-3 px-4">Warehouse</th>
                         <th className="py-3 px-4">Product</th>
                         <th className="py-3 px-4">Quantity</th>
-                        <th className="py-3 px-4">Reorder Level</th>
                         <th className="py-3 px-4">Description</th>
                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                             Actions
@@ -158,14 +157,14 @@ const InventoryTable = () => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="7" className="text-center py-12">
+                            <td colSpan="6" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="7"
+                                colSpan="6"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -183,9 +182,6 @@ const InventoryTable = () => {
                                 </td>
                                 <td className="py-3 px-4">
                                     {parseInt(inventory.quantity)}
-                                </td>
-                                <td className="py-3 px-4">
-                                    {parseInt(inventory.reorder_level)}
                                 </td>
                                 <td className="py-3 px-4">
                                     {inventory.description}
@@ -270,7 +266,7 @@ const InventoryTable = () => {
                     ) : (
                         <tr>
                             <td
-                                colSpan="7"
+                                colSpan="6"
                                 className="text-center text-[#2C323C] font-medium py-4"
                             >
                                 No Inventories found.
