@@ -36,7 +36,7 @@ import { useGRNCount } from "@/hooks/useGRNCount";
 const DropdownItem = ({ text, icon, onClick, notificationCount = 0 }) => {
     return (
         <div
-            className="p-3 cursor-pointer flex items-center justify-between transition-all duration-300 hover:bg-[#009FDC] group"
+            className="p-2.5 sm:p-3 cursor-pointer flex items-center justify-between transition-all duration-300 hover:bg-[#009FDC] group min-h-[3rem]"
             onClick={(e) => {
                 e.stopPropagation();
                 if (onClick) onClick(e);
@@ -50,26 +50,26 @@ const DropdownItem = ({ text, icon, onClick, notificationCount = 0 }) => {
                 }
             }}
         >
-            <div className="flex items-center gap-3">
-                <div className="p-2 w-12 h-12 flex justify-center items-center border border-[#B9BBBD] rounded-full transition-all duration-300 group-hover:border-[#009FDC] group-hover:bg-white relative">
+            <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
+                <div className="p-1.5 sm:p-2 w-9 h-9 sm:w-10 sm:h-10 flex justify-center items-center border border-[#B9BBBD] rounded-full transition-all duration-300 group-hover:border-[#009FDC] group-hover:bg-white relative flex-shrink-0">
                     <FontAwesomeIcon
                         icon={icon}
-                        className="text-[#9B9DA2] w-5 transition-all duration-300 group-hover:text-[#009FDC]"
+                        className="text-[#9B9DA2] w-4 sm:w-4.5 transition-all duration-300 group-hover:text-[#009FDC]"
                     />
                     {/* Notification Badge for dropdown items */}
                     {notificationCount > 0 && (
-                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border border-white">
+                        <div className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center border border-white">
                             {notificationCount > 99 ? '99+' : notificationCount}
                         </div>
                     )}
                 </div>
-                <span className="text-lg text-[#9B9DA2] transition-all duration-300 group-hover:text-white">
+                <span className="text-base sm:text-base lg:text-lg text-[#9B9DA2] transition-all duration-300 group-hover:text-white truncate">
                     {text}
                 </span>
             </div>
             <FontAwesomeIcon
                 icon={faChevronRight}
-                className="text-[#9B9DA2] w-3 transition-all duration-300 group-hover:text-white"
+                className="text-[#9B9DA2] w-3.5 sm:w-4 transition-all duration-300 group-hover:text-white flex-shrink-0 ml-2"
             />
         </div>
     );
@@ -170,22 +170,22 @@ const DashboardCard = ({
             onMouseLeave={() => setIsHovered(false)}
         >
             <div
-                className={`bg-white p-10 rounded-tr-[5rem] rounded-bl-[5rem] shadow-md border border-gray-100 relative transition-all duration-300 h-64 flex flex-col justify-between ${
+                className={`bg-white p-3 sm:p-4 lg:p-6 xl:p-8 rounded-tr-[1.5rem] sm:rounded-tr-[2rem] lg:rounded-tr-[3rem] xl:rounded-tr-[4rem] rounded-bl-[1.5rem] sm:rounded-bl-[2rem] lg:rounded-bl-[3rem] xl:rounded-bl-[4rem] shadow-md border border-gray-100 relative transition-all duration-300 h-40 sm:h-44 lg:h-48 xl:h-52 2xl:h-56 flex flex-col ${
                     isHovered ? "shadow-lg" : ""
                 } ${onClick ? "cursor-pointer" : ""}`}
                 onClick={handleCardClick}
             >
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-start">
                     <div
-                        className={`${bgColor} flex justify-center items-center p-3 rounded-full w-14 h-14 relative`}
+                        className={`${bgColor} flex justify-center items-center p-1.5 sm:p-2 lg:p-3 rounded-full w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 xl:w-14 xl:h-14 relative`}
                     >
                         <FontAwesomeIcon
                             icon={icon}
-                            className={`text-2xl ${iconColor}`}
+                            className={`text-sm sm:text-lg lg:text-xl xl:text-2xl ${iconColor}`}
                         />
                         {/* Notification Badge */}
                         {notificationCount > 0 && (
-                            <div className="absolute -top-2 -right-2 bg-red-500 text-white text-base font-bold rounded-full w-7 h-7 flex items-center justify-center border-2 border-white">
+                            <div className="absolute -top-1 -right-1 sm:-top-1 sm:-right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 flex items-center justify-center border-2 border-white">
                                 {notificationCount > 99 ? '99+' : notificationCount}
                             </div>
                         )}
@@ -197,7 +197,7 @@ const DashboardCard = ({
                                 e.stopPropagation();
                                 setIsOpen(!isOpen);
                             }}
-                            className={`rounded-full w-12 h-12 flex items-center justify-center transition-all duration-300 ${
+                            className={`rounded-full w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12 flex items-center justify-center transition-all duration-300 ${
                                 isOpen
                                     ? "bg-[#009FDC] border-[#009FDC]"
                                     : "border border-[#B9BBBD]"
@@ -207,18 +207,22 @@ const DashboardCard = ({
                         >
                             <FontAwesomeIcon
                                 icon={isOpen ? faChevronUp : faChevronDown}
-                                className={`text-xl transition-all duration-300 ${
+                                className={`text-xs sm:text-sm lg:text-lg xl:text-xl transition-all duration-300 ${
                                     isOpen ? "text-white" : "text-[#074D38]"
                                 }`}
                             />
                         </button>
                     )}
                 </div>
-                <div className="flex flex-col flex-grow justify-end">
-                    <h3 className="text-3xl font-medium text-[#2C323C]">
+                
+                {/* Add more spacing between icon and text */}
+                <div className="flex-grow mt-4 sm:mt-6 lg:mt-8"></div>
+                
+                <div className="flex flex-col">
+                    <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-medium text-[#2C323C]">
                         {title}
                     </h3>
-                    <p className="text-base text-[#9B9DA2] mt-1">{subtitle}</p>
+                    <p className="text-xs sm:text-xs lg:text-sm xl:text-sm text-[#9B9DA2] mt-1">{subtitle}</p>
                 </div>
             </div>
             {dropdownItems && dropdownItems.length > 0 && (
@@ -226,9 +230,9 @@ const DashboardCard = ({
                     ref={dropdownRef}
                     className={`absolute ${
                         dropdownPosition === "top"
-                            ? "bottom-52 right-5"
-                            : "top-20 right-5"
-                    } bg-white rounded-lg shadow-lg w-72 z-50 ${
+                            ? "bottom-52 right-2 sm:right-5"
+                            : "top-16 sm:top-20 right-2 sm:right-5"
+                    } bg-white rounded-lg shadow-lg w-64 sm:w-72 z-[100] ${
                         isOpen ? "opacity-100" : "opacity-0 invisible"
                     } transition-opacity duration-200`}
                     role="menu"
@@ -842,7 +846,7 @@ export default function MainDashboard({ roles, permissions }) {
     return (
         <>
             <div
-                className="relative w-full h-72 md:h-80 lg:h-60 bg-cover bg-center text-white p-6 rounded-3xl"
+                className="relative w-full h-48 sm:h-56 md:h-64 lg:h-52 xl:h-56 2xl:h-60 bg-cover bg-center text-white p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl lg:rounded-3xl"
                 style={{ 
                     backgroundImage: "url('/images/banner.png')",
                     backgroundSize: 'cover',
@@ -856,16 +860,16 @@ export default function MainDashboard({ roles, permissions }) {
                     alt="" 
                     className="hidden" 
                 />
-                <div className="absolute bottom-4 text-left">
-                    <h2 className="text-3xl md:text-4xl font-bold">
+                <div className="absolute bottom-2 sm:bottom-3 lg:bottom-4 text-left">
+                    <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-bold">
                         Welcome Back!
                     </h2>
-                    <p className="text-lg md:text-xl font-medium mt-2">
+                    <p className="text-xs sm:text-sm md:text-base lg:text-sm xl:text-base 2xl:text-lg font-medium mt-1 sm:mt-2">
                         To Maharat Procurement & Inventory Management System
                     </p>
                 </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 my-6">
+            <div className="grid grid-cols-4 gap-3 sm:gap-4 lg:gap-6 my-4 sm:my-6">
                 {showRequestsCard && (
                     <DashboardCard
                         icon={faClipboardList}

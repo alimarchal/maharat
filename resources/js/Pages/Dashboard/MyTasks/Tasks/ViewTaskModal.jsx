@@ -8,7 +8,10 @@ import {
     faCircleExclamation,
     faCircleXmark,
     faFileAlt,
+    faRemove,
 } from "@fortawesome/free-solid-svg-icons";
+import PurchaseOrderPDF from "../../ProcurementCenter/PurchaseOrder/PurchaseOrderPDF";
+import RFQPDF from "../../ProcurementCenter/RFQ/RFQPDF";
 
 const ViewTaskModal = ({ isOpen, onClose, task }) => {
     const [fiscalPeriodName, setFiscalPeriodName] = useState("");
@@ -18,6 +21,16 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
     const [completeTaskData, setCompleteTaskData] = useState(null);
     const [previouslyDelivered, setPreviouslyDelivered] = useState({});
     const [rfqItems, setRfqItems] = useState([]);
+    
+    // PDF generation states
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+    const [selectedPurchaseOrderId, setSelectedPurchaseOrderId] = useState(null);
+    const [savedPdfUrl, setSavedPdfUrl] = useState(null);
+    
+    // RFQ PDF generation states
+    const [isGeneratingRFQPDF, setIsGeneratingRFQPDF] = useState(false);
+    const [selectedRFQId, setSelectedRFQId] = useState(null);
+    const [savedRFQPdfUrl, setSavedRFQPdfUrl] = useState(null);
 
     // Fetch complete task data with all includes when modal opens
     useEffect(() => {
@@ -381,6 +394,32 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
         }
     }, [isOpen, task, completeTaskData]);
 
+    // Handle PDF generation for Purchase Orders
+    const handleGeneratePurchaseOrderPDF = (purchaseOrderId) => {
+        setIsGeneratingPDF(true);
+        setSelectedPurchaseOrderId(purchaseOrderId);
+        setSavedPdfUrl(null);
+    };
+
+    const handlePurchaseOrderPDFGenerated = (documentUrl) => {
+        setSavedPdfUrl(documentUrl);
+        setIsGeneratingPDF(false);
+        setSelectedPurchaseOrderId(null);
+    };
+
+    // Handle PDF generation for RFQs
+    const handleGenerateRFQPDF = (rfqId) => {
+        setIsGeneratingRFQPDF(true);
+        setSelectedRFQId(rfqId);
+        setSavedRFQPdfUrl(null);
+    };
+
+    const handleRFQPDFGenerated = (documentUrl) => {
+        setSavedRFQPdfUrl(documentUrl);
+        setIsGeneratingRFQPDF(false);
+        setSelectedRFQId(null);
+    };
+
     if (!isOpen || !task) return null;
 
     // Use completeTaskData if available, otherwise fallback to original task
@@ -445,6 +484,142 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[99999]">
+            {/* PDF Generation Modal */}
+            {isGeneratingPDF && selectedPurchaseOrderId && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999999]">
+                    <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-semibold">
+                                Generating Purchase Order PDF
+                            </h3>
+                            <button
+                                onClick={() => setIsGeneratingPDF(false)}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <FontAwesomeIcon icon={faRemove} />
+                            </button>
+                        </div>
+
+                        {savedPdfUrl ? (
+                            <div className="text-center">
+                                <div className="mb-4 text-green-600">
+                                    <svg
+                                        className="w-16 h-16 mx-auto"
+                                        fill="currentColor"
+                                        viewBox="0 0 20 20"
+                                    >
+                                        <path
+                                            fillRule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                            clipRule="evenodd"
+                                        />
+                                    </svg>
+                                </div>
+                                <p className="mb-4">
+                                    Purchase Order PDF has been generated successfully!
+                                </p>
+                                <div className="flex justify-center space-x-4">
+                                    <a
+                                        href={savedPdfUrl}
+                                        target="_blank"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                    >
+                                        Download PDF
+                                    </a>
+                                    <button
+                                        onClick={() => setIsGeneratingPDF(false)}
+                                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <div className="flex items-center mb-4">
+                                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mr-3"></div>
+                                    <p>
+                                        Please wait, generating Purchase Order PDF document...
+                                    </p>
+                                </div>
+                                <PurchaseOrderPDF
+                                    purchaseOrderId={selectedPurchaseOrderId}
+                                    onGenerated={handlePurchaseOrderPDFGenerated}
+                                />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* RFQ PDF Generation Modal */}
+            {isGeneratingRFQPDF && selectedRFQId && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999999]">
+                    <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-semibold">
+                                Generating RFQ PDF
+                            </h3>
+                            <button
+                                onClick={() => setIsGeneratingRFQPDF(false)}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <FontAwesomeIcon icon={faRemove} />
+                            </button>
+                        </div>
+
+                        {savedRFQPdfUrl ? (
+                            <div className="text-center">
+                                <div className="mb-4 text-green-600">
+                                    <svg
+                                        className="w-16 h-16 mx-auto"
+                                        fill="currentColor"
+                                        viewBox="0 0 20 20"
+                                    >
+                                        <path
+                                            fillRule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                            clipRule="evenodd"
+                                        />
+                                    </svg>
+                                </div>
+                                <p className="mb-4">
+                                    RFQ PDF has been generated successfully!
+                                </p>
+                                <div className="flex justify-center space-x-4">
+                                    <a
+                                        href={savedRFQPdfUrl}
+                                        target="_blank"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                    >
+                                        Download PDF
+                                    </a>
+                                    <button
+                                        onClick={() => setIsGeneratingRFQPDF(false)}
+                                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <div className="flex items-center mb-4">
+                                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mr-3"></div>
+                                    <p>
+                                        Please wait, generating RFQ PDF document...
+                                    </p>
+                                </div>
+                                <RFQPDF
+                                    rfqId={selectedRFQId}
+                                    onGenerated={handleRFQPDFGenerated}
+                                />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+            
             <div className="bg-white rounded-2xl w-[95%] max-w-4xl max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="bg-[#C7E7DE] text-[#2C323C] px-8 py-4 rounded-t-2xl">
@@ -785,6 +960,24 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 </div>
                                             </div>
                                         )}
+                                        
+                                        {/* RFQ PDF Generation */}
+                                        <div className="mt-4">
+                                            <h4 className="font-semibold text-gray-700 mb-2">RFQ Document:</h4>
+                                            <div className="flex flex-wrap gap-2">
+                                                <button
+                                                    onClick={() => handleGenerateRFQPDF(currentTask.rfq.id)}
+                                                    className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors"
+                                                >
+                                                    <img
+                                                        src="/images/pdf-file.png"
+                                                        alt="PDF"
+                                                        className="w-4 h-4"
+                                                    />
+                                                    <span>Generate RFQ PDF</span>
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 
@@ -836,38 +1029,22 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                         </div>
                                         
                                         {/* Purchase Order Attachments */}
-                                        {task.purchase_order.attachment && (
-                                            <div className="mt-4">
-                                                <h4 className="font-semibold text-gray-700 mb-2">Attachments:</h4>
-                                                <div className="flex flex-wrap gap-2">
-                                                    <button
-                                                        onClick={() => {
-                                                            let fileUrl = null;
-                                                            if (typeof task.purchase_order.attachment === "string") {
-                                                                fileUrl = `/storage/${task.purchase_order.attachment}`.replace("/storage/storage/", "/storage/");
-                                                            } else if (typeof task.purchase_order.attachment === "object") {
-                                                                if (task.purchase_order.attachment.url && task.purchase_order.attachment.url.startsWith("http")) {
-                                                                    fileUrl = task.purchase_order.attachment.url;
-                                                                } else {
-                                                                    fileUrl = `/storage/${task.purchase_order.attachment.url || task.purchase_order.attachment.path || task.purchase_order.attachment}`.replace("/storage/storage/", "/storage/");
-                                                                }
-                                                            }
-                                                            if (fileUrl) {
-                                                                window.open(fileUrl, '_blank');
-                                                            }
-                                                        }}
-                                                        className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors"
-                                                    >
-                                                        <img
-                                                            src="/images/pdf-file.png"
-                                                            alt="PDF"
-                                                            className="w-4 h-4"
-                                                        />
-                                                        <span>Purchase Order Document</span>
-                                                    </button>
-                                                </div>
+                                        <div className="mt-4">
+                                            <h4 className="font-semibold text-gray-700 mb-2">Purchase Order Document:</h4>
+                                            <div className="flex flex-wrap gap-2">
+                                                <button
+                                                    onClick={() => handleGeneratePurchaseOrderPDF(currentTask.purchase_order.id)}
+                                                    className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors"
+                                                >
+                                                    <img
+                                                        src="/images/pdf-file.png"
+                                                        alt="PDF"
+                                                        className="w-4 h-4"
+                                                    />
+                                                    <span>Generate Purchase Order PDF</span>
+                                                </button>
                                             </div>
-                                        )}
+                                        </div>
                                         
                                         {/* Purchase Order Items section removed - PurchaseOrder model doesn't have items */}
                                     </div>

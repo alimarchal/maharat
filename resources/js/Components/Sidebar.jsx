@@ -86,11 +86,16 @@ const Sidebar = ({ isOpen }) => {
     return (
         <>
             <aside
-                className={`h-3/5 lg:h-[35rem] bg-white shadow-md flex flex-col justify-between rounded-[50px] py-6 items-center fixed left-24 lg:left-6 w-24 border-[0.5px] border-[#B9BBBD] transition-transform ${
+                className={`bg-white shadow-md flex flex-col justify-between rounded-[50px] py-6 items-center fixed left-24 lg:left-6 w-24 border-[0.5px] border-[#B9BBBD] transition-transform ${
                     isOpen ? "translate-x-0" : "-translate-x-20"
                 } lg:translate-x-0 top-24`}
+                style={{
+                    height: 'calc(100vh - 16rem)', // More space for logout button gap
+                    minHeight: '400px',
+                    maxHeight: 'calc(100vh - 12rem)'
+                }}
             >
-                <nav className="flex flex-col gap-6">
+                <nav className="flex flex-col gap-4 lg:gap-6">
                     <SidebarButton
                         icon={faHome}
                         link="/dashboard"
@@ -115,7 +120,7 @@ const Sidebar = ({ isOpen }) => {
                     )}
                 </nav>
 
-                <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-4 lg:gap-6">
                     {hasPermission("view_sidebar") && hasPermission("view_user_manual") && (
                         <SidebarButton
                             icon={faBookOpen}
@@ -135,8 +140,8 @@ const Sidebar = ({ isOpen }) => {
                 </div>
             </aside>
 
-            {/* Logout button */}
-            <div className="fixed left-10 lg:left-12 bottom-12">
+            {/* Logout button - positioned safely below sidebar */}
+            <div className="fixed left-10 lg:left-12 bottom-8">
                 <SidebarButton
                     icon={faRightFromBracket}
                     link="/logout"

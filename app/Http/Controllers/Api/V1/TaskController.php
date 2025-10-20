@@ -775,10 +775,7 @@ class TaskController extends Controller
                     if ($approvalTransaction) {
 
                         // Update the approval transaction status
-                        // Check if this is a referrer approving after referral response
-                        $isReferrerApprovingAfterReferral = $approvalTransaction->referred_to !== null;
-                        
-                        $newStatus = $isReferrerApprovingAfterReferral ? 'Approve' : 'Pending';
+                        $newStatus = $request->input('status') === 'Approved' ? 'Approve' : ($request->input('status') === 'Rejected' ? 'Reject' : 'Pending');
                         
                         Log::info('=== RFQ APPROVAL TRANSACTION STATUS UPDATE ===', [
                             'task_id' => $task->id,
@@ -786,8 +783,8 @@ class TaskController extends Controller
                             'approval_transaction_id' => $approvalTransaction->id,
                             'assigned_to' => $approvalTransaction->assigned_to,
                             'referred_to' => $approvalTransaction->referred_to,
-                            'is_referrer_approving_after_referral' => $isReferrerApprovingAfterReferral,
-                            'new_status' => $newStatus
+                            'new_status' => $newStatus,
+                            'request_status' => $request->input('status')
                         ]);
                         
                         $transactionUpdated = DB::table('rfq_approval_transactions')
@@ -1038,10 +1035,11 @@ class TaskController extends Controller
                     ]);
 
                     // Update the approval transaction status
+                    $newStatus = $request->input('status') === 'Approved' ? 'Approve' : ($request->input('status') === 'Rejected' ? 'Reject' : 'Pending');
                     $transactionUpdated = DB::table('mahrat_invoice_approval_transactions')
                         ->where('id', $approvalTransaction->id)
                         ->update([
-                            'status' => 'Pending', // Change to Pending when referee responds
+                            'status' => $newStatus, // Use actual status from request
                             'updated_by' => auth()->id(),
                             'updated_at' => now()
                         ]);
@@ -1050,6 +1048,8 @@ class TaskController extends Controller
                         'task_id' => $task->id,
                         'invoice_id' => $task->invoice_id,
                         'approval_transaction_id' => $approvalTransaction->id,
+                        'new_status' => $newStatus,
+                        'request_status' => $request->input('status'),
                         'update_success' => $transactionUpdated
                     ]);
 
@@ -1383,10 +1383,11 @@ class TaskController extends Controller
                     ]);
 
                     // Update the approval transaction status
+                    $newStatus = $request->input('status') === 'Approved' ? 'Approve' : ($request->input('status') === 'Rejected' ? 'Reject' : 'Pending');
                     $transactionUpdated = DB::table('budget_request_approval_transactions')
                         ->where('id', $approvalTransaction->id)
                         ->update([
-                            'status' => 'Pending', // Change to Pending when referee responds
+                            'status' => $newStatus, // Use actual status from request
                             'updated_by' => auth()->id(),
                             'updated_at' => now()
                         ]);
@@ -1395,6 +1396,8 @@ class TaskController extends Controller
                         'task_id' => $task->id,
                         'request_budget_id' => $task->request_budgets_id,
                         'approval_transaction_id' => $approvalTransaction->id,
+                        'new_status' => $newStatus,
+                        'request_status' => $request->input('status'),
                         'update_success' => $transactionUpdated
                     ]);
 
