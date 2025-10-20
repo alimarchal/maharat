@@ -15,7 +15,7 @@ const TasksTable = () => {
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
 
-    const [selectedFilter, setSelectedFilter] = useState("All");
+    const [selectedFilter, setSelectedFilter] = useState("Pending");
     const filters = ["All", "Pending", "Approved", "Rejected", "Referred"];
     
     // Reset to page 1 when filter changes
