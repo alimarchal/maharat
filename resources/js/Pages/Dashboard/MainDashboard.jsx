@@ -671,6 +671,7 @@ export default function MainDashboard({ roles, permissions }) {
             text: "Accounts",
             icon: faBook,
             onClick: () => router.visit("/accounts"),
+            notificationCount: maharatInvoicesCount + paymentOrdersCount,
             requiredPermission: "view_accounts",
         },
         {

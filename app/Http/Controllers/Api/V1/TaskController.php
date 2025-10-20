@@ -262,7 +262,12 @@ class TaskController extends Controller
 
                     // Add the referred user's response as a description to the new task
                     $referredUserName = $task->assignedToUser->name ?? 'Referred User';
-                    $referredUserComment = $request->input('descriptions.0.description') ?? 'No comment provided';
+                    // Prefer comment coming from request; if missing, fallback to the latest description saved on the referee's task
+                    $referredUserComment = $request->input('descriptions.0.description');
+                    if (!$referredUserComment) {
+                        $latestRefereeDesc = $task->descriptions()->latest('id')->first();
+                        $referredUserComment = $latestRefereeDesc?->description ?: 'No comment provided';
+                    }
                     
                     Log::info('=== ADDING REFERRAL RESPONSE DESCRIPTION ===', [
                         'new_task_id' => $newTaskForOriginalApprover->id,
