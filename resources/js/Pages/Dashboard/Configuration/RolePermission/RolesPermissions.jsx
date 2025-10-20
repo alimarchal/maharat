@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import SelectFloating from "@/Components/SelectFloating";
+import { usePage } from "@inertiajs/react";
 
-// Main cards with sub-options permission system - using actual database permissions
-const permissionCategories = {
+// Function to create permission categories based on user access
+const createPermissionCategories = (canSeeModifyManual) => ({
     "Requests": {
         base: "view_requests",
         description: "Request management system",
@@ -320,12 +321,12 @@ const permissionCategories = {
             "User Manual": {
                 base: "view_user_manual",
                 description: "Access user manual with creation, editing, and deletion capabilities",
-                subOptions: {
+                subOptions: canSeeModifyManual ? {
                     "Modify Manual": {
                         base: "modify_user_manual",
                         description: "Create, edit, and delete user manual entries",
                     },
-                },
+                } : {},
             },
             "FAQs": {
                 base: "view_faqs",
@@ -347,9 +348,10 @@ const permissionCategories = {
             },
         },
     },
-};
+});
 
 const RolesPermissions = () => {
+    const { auth } = usePage().props;
     const [permissions, setPermissions] = useState({});
     const [currentUserRole, setCurrentUserRole] = useState(null);
     const [roles, setRoles] = useState([]);
@@ -358,6 +360,12 @@ const RolesPermissions = () => {
     const [selectedUser, setSelectedUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [permissionMode, setPermissionMode] = useState("role");
+    
+    // Check if current user is allowed to see Modify Manual option
+    const canSeeModifyManual = auth?.user?.id && [2, 3, 4].includes(auth.user.id);
+    
+    // Create permission categories based on user access
+    const permissionCategories = createPermissionCategories(canSeeModifyManual);
 
     useEffect(() => {
         const fetchInitialData = async () => {
