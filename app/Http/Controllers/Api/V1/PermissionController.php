@@ -43,7 +43,7 @@ class PermissionController extends Controller
             'view_finance', 'view_maharat_invoices', 'add_customers', 'create_new_invoice', 'view_payment_orders', 'create_payment_order', 'view_account_receivables', 'view_account_payables', 'view_accounts', 'create_new_account',
             'view_warehouse', 'stock_in', 'stock_out', 'view_material_requests', 'view_goods_receiving_notes', 'view_categories', 'view_items', 'view_inventory_tracking', 'create_warehouse', 'create_categories', 'create_items', 'create_goods_receiving_notes', 'add_inventory',
             'view_budget', 'manage_budget', 'approve_budget', 'view_cost_centers', 'view_income_statement', 'view_balance_sheet', 'view_request_budget', 'create_cost_center', 'create_sub_cost_center', 'create_fiscal_year', 'create_budget', 'approve_budget_option', 'create_department_budget_request',
-            'view_statuses', 'view_material_request_status', 'view_rfq_status', 'view_purchase_order_status', 'view_payment_order_status', 'view_maharat_invoice_status', 'view_budget_request_status', 'view_total_budget_status',
+            'view_statuses', 'view_material_request_status', 'view_rfq_status', 'view_purchase_order_status', 'view_payment_order_status', 'view_maharat_invoice_status', 'view_budget_request_status', 'view_total_budget_status', 'view_short_delivery_status',
             'view_faqs', 'create_faqs', 'edit_faqs', 'delete_faqs',
             'view_configuration', 'view_process_flow', 'manage_settings', 'view_org_chart', 'view_permission_settings',
             'view_notifications', 'edit_profile', 'view_user_manual', 'create_user_manual', 'edit_user_manual', 'delete_user_manual', 'modify_user_manual',
@@ -261,6 +261,7 @@ class PermissionController extends Controller
                     'maharat_invoice_status' => $hasEffectivePermission('view_maharat_invoice_status'),
                     'budget_request_status' => $hasEffectivePermission('view_budget_request_status'),
                     'total_budget_status' => $hasEffectivePermission('view_total_budget_status'),
+                    'short_delivery_status' => $hasEffectivePermission('view_short_delivery_status'),
                 ]
             ],
             'reports' => [

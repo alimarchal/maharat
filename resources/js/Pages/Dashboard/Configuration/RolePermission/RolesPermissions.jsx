@@ -263,6 +263,10 @@ const permissionCategories = {
                 base: "view_total_budget_status",
                 description: "View total budget statuses",
             },
+            "Short Delivery Status": {
+                base: "view_short_delivery_status",
+                description: "View short delivery adjustment statuses",
+            },
         },
     },
     "Configuration Center": {

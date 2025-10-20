@@ -21,7 +21,7 @@ const ProcessStatus = () => {
         { name: "Invoice Status", permission: "view_maharat_invoice_status" },
         { name: "Budget Request Status", permission: "view_budget_request_status" },
         { name: "Total Budget Status", permission: "view_total_budget_status" },
-        { name: "Short Delivery Status", permission: "view_material_request_status" }
+        { name: "Short Delivery Status", permission: "view_short_delivery_status" }
     ];
 
     const filters = allFilters.filter(filter => hasPermission(filter.permission));

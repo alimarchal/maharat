@@ -114,7 +114,7 @@ class DesignationPermissionService
                 'view_notifications', 'manage_notifications', 'manage_settings',
                 'view_sidebar', 'sidebar_notification',
                 'view_statuses', 'view_material_request_status', 'view_rfq_status', 'view_purchase_order_status',
-                'view_payment_order_status', 'view_maharat_invoice_status', 'view_budget_request_status', 'view_total_budget_status'
+                'view_payment_order_status', 'view_maharat_invoice_status', 'view_budget_request_status', 'view_total_budget_status', 'view_short_delivery_status'
             ],
             'Department Director' => [
                 'view_dashboard', 'edit_profile',
