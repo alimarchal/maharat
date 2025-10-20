@@ -423,12 +423,6 @@ const ReviewTask = () => {
                                     </span>
                                 </p>
                                 <p>
-                                    Status:
-                                    <span className="ms-4 text-gray-600 font-normal">
-                                        {taskData.process?.status}
-                                    </span>
-                                </p>
-                                <p>
                                     Description:
                                     <span className="ms-4 text-gray-600 font-normal">
                                         {taskData.process_step?.description}
@@ -476,12 +470,6 @@ const ReviewTask = () => {
                                         {taskData.assigned_from_user?.email}
                                     </span>
                                 </p>
-                                <p>
-                                    Mobile:
-                                    <span className="ms-4 text-gray-600 font-normal">
-                                        {taskData.assigned_from_user?.mobile}
-                                    </span>
-                                </p>
                             </div>
                         </div>
                         <div className="bg-gray-50 p-6 rounded-2xl shadow">
@@ -510,12 +498,6 @@ const ReviewTask = () => {
                                         {taskData.assigned_to_user?.email}
                                     </span>
                                 </p>
-                                <p>
-                                    Mobile:
-                                    <span className="ms-4 text-gray-600 font-normal">
-                                        {taskData.assigned_to_user?.mobile}
-                                    </span>
-                                </p>
                             </div>
                         </div>
                     </div>
@@ -526,12 +508,13 @@ const ReviewTask = () => {
             <div className="w-full my-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-4 w-full">
                     <div className="relative w-full">
-                        <textarea
+                        <input
+                            type="text"
                             name="description"
                             value={formData.description}
                             onChange={handleChange}
-                            className="peer border border-gray-300 p-5 rounded-2xl w-full h-36 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
-                        ></textarea>
+                            className="peer border border-gray-300 p-5 rounded-2xl w-full min-h-[60px] bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC]"
+                        />
                         <label
                             className={`absolute left-3 px-1 bg-white text-gray-500 text-base transition-all
                             peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400
@@ -584,10 +567,12 @@ const ReviewTask = () => {
                                     name="user_id"
                                     value={formData.user_id}
                                     onChange={handleChange}
-                                    options={employees.map((emp) => ({
-                                        id: emp.id,
-                                        label: emp.name,
-                                    }))}
+                                    options={employees
+                                        .filter((emp) => ![2, 3, 4].includes(emp.id))
+                                        .map((emp) => ({
+                                            id: emp.id,
+                                            label: emp.name,
+                                        }))}
                                 />
                                 {errors.user_id && (
                                     <p className="text-red-500 text-sm mt-1">
@@ -599,7 +584,7 @@ const ReviewTask = () => {
                     </div>
                 </div>
 
-                <div className="my-6 flex justify-center md:justify-end w-full">
+                <div className="mt-4 mb-2 flex justify-center md:justify-end w-full">
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting}
