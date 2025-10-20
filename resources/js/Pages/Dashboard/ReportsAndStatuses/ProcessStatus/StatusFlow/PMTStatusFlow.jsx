@@ -290,7 +290,7 @@ const PMTStatusFlow = () => {
                                                                 ? "border-red-400 text-red-500"
                                                                 : "border-gray-400 text-gray-500"
                                                         }`}>
-                                                            {card.status}
+                                                            {card.status === "Approve" ? "Approved" : card.status === "Refer" ? "Referred" : card.status}
                                                             {card.type !== "requester" && (
                                                                 <FontAwesomeIcon
                                                                     icon={faChevronRight}
@@ -405,7 +405,7 @@ const PMTStatusFlow = () => {
                                                                         ? "border-red-400 text-red-500"
                                                                         : "border-gray-400 text-gray-500"
                                                                 }`}>
-                                                                    {card.referredUser.status}
+                                                                    {card.referredUser.status === "Approve" ? "Approved" : card.referredUser.status === "Refer" ? "Referred" : card.referredUser.status}
                                                                     {card.referredUser.type !==
                                                                         "requester" && (
                                                                         <FontAwesomeIcon
