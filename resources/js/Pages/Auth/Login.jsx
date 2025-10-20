@@ -256,16 +256,16 @@ const LoginPage = () => {
                             backgroundImage: 'url("/images/favicon.png")',
                             opacity: 0.1,
                             pointerEvents: "none",
-                            backgroundSize: "90%",
+                            backgroundSize: "contain",
                         }}
                     >
                         <style>
                             {`
                               @media (min-width: 640px) { 
-                                div[style] { background-size: 60% !important; }
+                                div[style] { background-size: contain !important; }
                               }
                               @media (min-width: 1024px) {
-                                div[style] { background-size: 80% !important; }
+                                div[style] { background-size: contain !important; }
                               }
                             `}
                         </style>
