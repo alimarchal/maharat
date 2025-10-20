@@ -506,7 +506,8 @@ class UserController extends Controller
                     "Payment Order Status" => ["base" => "view_payment_order_status"],
                     "Maharat Invoice Status" => ["base" => "view_maharat_invoice_status"],
                     "Budget Request Status" => ["base" => "view_budget_request_status"],
-                    "Total Budget Status" => ["base" => "view_total_budget_status"]
+                    "Total Budget Status" => ["base" => "view_total_budget_status"],
+                    "Short Delivery Status" => ["base" => "view_short_delivery_status"]
                 ]
             ],
             "Configuration Center" => [

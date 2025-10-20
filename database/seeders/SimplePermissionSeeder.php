@@ -70,6 +70,7 @@ class SimplePermissionSeeder extends Seeder
             'view_purchase_order_status',
             'view_payment_order_status',
             'view_invoice_status',
+            'view_short_delivery_status',
             'view_budget_request_status',
             'total_budget_request',
             
