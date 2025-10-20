@@ -558,11 +558,18 @@ const ReviewTask = () => {
                                 name="action"
                                 value={formData.action}
                                 onChange={handleChange}
-                                options={[
-                                    { id: "Approve", label: "Approve" },
-                                    { id: "Reject", label: "Reject" },
-                                    { id: "Refer", label: "Refer" },
-                                ]}
+                                options={
+                                    taskData?.continue_approval_flow == 0
+                                        ? [
+                                            { id: "Approve", label: "Approve" },
+                                            { id: "Reject", label: "Reject" },
+                                        ]
+                                        : [
+                                            { id: "Approve", label: "Approve" },
+                                            { id: "Reject", label: "Reject" },
+                                            { id: "Refer", label: "Refer" },
+                                        ]
+                                }
                             />
                             {errors.action && (
                                 <p className="text-red-500 text-sm mt-1">
