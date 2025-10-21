@@ -102,7 +102,7 @@ const CreateGRNTable = () => {
                                 <td className="py-3 px-4 text-center text-[#009FDC] hover:text-blue-700 cursor-pointer">
                                     {order.attachment ? (
                                         <a
-                                            href={`/uploads/${order.attachment}`}
+                                            href={`/storage/${order.attachment}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                         >
