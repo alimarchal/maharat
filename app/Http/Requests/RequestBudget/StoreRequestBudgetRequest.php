@@ -3,6 +3,7 @@
 namespace App\Http\Requests\RequestBudget;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class StoreRequestBudgetRequest extends FormRequest
@@ -57,10 +58,19 @@ class StoreRequestBudgetRequest extends FormRequest
      */
     private function validateHierarchicalUniqueness($validator)
     {
+        Log::info('=== VALIDATING HIERARCHICAL UNIQUENESS ===');
+        
         $fiscalPeriodId = $this->fiscal_period_id;
         $departmentId = $this->department_id;
         $costCenterId = $this->cost_center_id;
         $subCostCenter = $this->sub_cost_center;
+        
+        Log::info('Checking uniqueness for', [
+            'fiscal_period_id' => $fiscalPeriodId,
+            'department_id' => $departmentId,
+            'cost_center_id' => $costCenterId,
+            'sub_cost_center' => $subCostCenter
+        ]);
         
         $query = \App\Models\RequestBudget::where('fiscal_period_id', $fiscalPeriodId)
             ->where('department_id', $departmentId)
@@ -69,12 +79,15 @@ class StoreRequestBudgetRequest extends FormRequest
         // Handle sub_cost_center - if null/empty, use whereNull, otherwise use where
         if (empty($subCostCenter)) {
             $query->whereNull('sub_cost_center');
+            Log::info('Checking for existing request with NULL sub_cost_center');
         } else {
             $subCostCenterConverted = is_numeric($subCostCenter) ? (int)$subCostCenter : $subCostCenter;
             $query->where('sub_cost_center', $subCostCenterConverted);
+            Log::info('Checking for existing request with sub_cost_center', ['sub_cost_center' => $subCostCenterConverted]);
         }
         
         $exists = $query->exists();
+        Log::info('Uniqueness check result', ['exists' => $exists]);
         
         if ($exists) {
             $fiscalPeriod = \App\Models\FiscalPeriod::find($fiscalPeriodId);
@@ -88,7 +101,17 @@ class StoreRequestBudgetRequest extends FormRequest
                 $errorMessage .= ", Sub Cost Center: {$subCostCenterModel->name}";
             }
             
+            Log::warning('Duplicate budget request detected', [
+                'message' => $errorMessage,
+                'fiscal_period_id' => $fiscalPeriodId,
+                'department_id' => $departmentId,
+                'cost_center_id' => $costCenterId,
+                'sub_cost_center' => $subCostCenter
+            ]);
+            
             $validator->errors()->add('hierarchical_uniqueness', $errorMessage);
+        } else {
+            Log::info('No duplicate found - proceeding with creation');
         }
     }
 }

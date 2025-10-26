@@ -361,97 +361,129 @@ const BudgetRequestForm = () => {
     };
 
     const createNewBudgetRequest = async () => {
-        const processResponse = await axios.get(
-            "/api/v1/processes?include=steps,creator,updater&filter[title]=Budget Request Approval"
-        );
-        const process = processResponse.data?.data?.[0];
-        const processSteps = process?.steps || [];
-
-        // Check if process and steps exist
-        if (!process || processSteps.length === 0) {
-            setErrors({
-                submit: "No Process or steps found for Budget Request Approval",
-            });
-            setIsSubmitting(false);
-            return;
-        }
-        const processStep = processSteps[0];
-
-        const processResponseViaUser = await axios.get(
-            `/api/v1/process-steps/${processStep.id}/user/${user_id}`
-        );
-        const assignUser = processResponseViaUser?.data?.data;
-        if (!assignUser) {
-            setErrors({
-                submit: "No assignee found for this process step and user",
-            });
-            setIsSubmitting(false);
-            return;
-        }
-
-        // Prepare data for submission - convert empty string to null for sub_cost_center
-        const submitData = {
-            ...formData,
-            status: "Draft"
-        };
+        console.log('=== CREATING NEW BUDGET REQUEST ===');
+        console.log('Form Data:', formData);
+        console.log('User ID:', user_id);
         
-        // Convert empty string to null for sub_cost_center if no sub cost centers are available
-        if (submitData.sub_cost_center === "" && filteredSubCostCenters.length === 0) {
-            submitData.sub_cost_center = null;
-        }
-        
-        // Create budget request
-        const response = await axios.post("/api/v1/request-budgets", submitData);
-        const budgetRequestId = response.data.data?.id;
-        if (!budgetRequestId) {
-            setErrors({
-                submit: "Failed to create budget request. No ID was returned.",
-            });
-            setIsSubmitting(false);
-            return;
-        }
+        try {
+            const processResponse = await axios.get(
+                "/api/v1/processes?include=steps,creator,updater&filter[title]=Budget Request Approval"
+            );
+            console.log('Process Response:', processResponse.data);
+            
+            const process = processResponse.data?.data?.[0];
+            const processSteps = process?.steps || [];
 
-        // Upload attachment if provided
-        if (tempAttachment) {
-            const uploadSuccess = await uploadAttachmentToServer(budgetRequestId, tempAttachment);
-            if (!uploadSuccess) {
+            // Check if process and steps exist
+            if (!process || processSteps.length === 0) {
+                console.error('No Process or steps found');
                 setErrors({
-                    submit: "Failed to upload attachment. Please try again.",
+                    submit: "No Process or steps found for Budget Request Approval",
                 });
                 setIsSubmitting(false);
                 return;
             }
-            // Clear file input after upload
-            if (fileInputRef.current) fileInputRef.current.value = "";
+            const processStep = processSteps[0];
+
+            const processResponseViaUser = await axios.get(
+                `/api/v1/process-steps/${processStep.id}/user/${user_id}`
+            );
+            console.log('Process Step User Response:', processResponseViaUser.data);
+            
+            const assignUser = processResponseViaUser?.data?.data;
+            if (!assignUser) {
+                console.error('No assignee found');
+                setErrors({
+                    submit: "No assignee found for this process step and user",
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Prepare data for submission - convert empty string to null for sub_cost_center
+            const submitData = {
+                ...formData,
+                status: "Draft"
+            };
+            
+            // Convert empty string to null for sub_cost_center if no sub cost centers are available
+            if (submitData.sub_cost_center === "" && filteredSubCostCenters.length === 0) {
+                submitData.sub_cost_center = null;
+            }
+            
+            console.log('Submitting budget request with data:', submitData);
+            
+            // Create budget request
+            const response = await axios.post("/api/v1/request-budgets", submitData);
+            console.log('Budget Request API Response:', response.data);
+            
+            const budgetRequestId = response.data.data?.id;
+            if (!budgetRequestId) {
+                console.error('No ID returned from API:', response.data);
+                setErrors({
+                    submit: "Failed to create budget request. No ID was returned.",
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Upload attachment if provided
+            if (tempAttachment) {
+                console.log('Uploading attachment...');
+                const uploadSuccess = await uploadAttachmentToServer(budgetRequestId, tempAttachment);
+                if (!uploadSuccess) {
+                    console.error('Failed to upload attachment');
+                    setErrors({
+                        submit: "Failed to upload attachment. Please try again.",
+                    });
+                    setIsSubmitting(false);
+                    return;
+                }
+                // Clear file input after upload
+                if (fileInputRef.current) fileInputRef.current.value = "";
+            }
+
+            console.log('Creating budget request transaction...');
+            // Create budget request transaction
+            const transactionPayload = {
+                request_budgets_id: budgetRequestId,
+                requester_id: user_id,
+                assigned_to: assignUser.approver_id,
+                order: processStep.order,
+                description: processStep.description,
+                status: "Pending",
+            };
+            console.log('Transaction Payload:', transactionPayload);
+
+            await axios.post(
+                "/api/v1/budget-request-approval-trans",
+                transactionPayload
+            );
+            console.log('Transaction created successfully');
+
+            // Create task
+            console.log('Creating task...');
+            const taskPayload = {
+                process_step_id: processStep.id,
+                process_id: processStep.process_id,
+                assigned_at: new Date().toISOString(),
+                urgency: "Normal",
+                assigned_to_user_id: assignUser.approver_id,
+                assigned_from_user_id: user_id,
+                request_budgets_id: budgetRequestId,
+            };
+            console.log('Task Payload:', taskPayload);
+
+            await axios.post("/api/v1/tasks", taskPayload);
+            console.log('Task created successfully');
+            console.log('=== BUDGET REQUEST CREATED SUCCESSFULLY ===');
+        } catch (error) {
+            console.error('=== ERROR IN createNewBudgetRequest ===');
+            console.error('Error object:', error);
+            console.error('Error response:', error.response);
+            console.error('Error message:', error.message);
+            throw error;
         }
-
-        // Create budget request transaction
-        const transactionPayload = {
-            request_budgets_id: budgetRequestId,
-            requester_id: user_id,
-            assigned_to: assignUser.approver_id,
-            order: processStep.order,
-            description: processStep.description,
-            status: "Pending",
-        };
-
-        await axios.post(
-            "/api/v1/budget-request-approval-trans",
-            transactionPayload
-        );
-
-        // Create task
-        const taskPayload = {
-            process_step_id: processStep.id,
-            process_id: processStep.process_id,
-            assigned_at: new Date().toISOString(),
-            urgency: "Normal",
-            assigned_to_user_id: assignUser.approver_id,
-            assigned_from_user_id: user_id,
-            request_budgets_id: budgetRequestId,
-        };
-
-        await axios.post("/api/v1/tasks", taskPayload);
     };
 
     const updateBudgetRequest = async () => {

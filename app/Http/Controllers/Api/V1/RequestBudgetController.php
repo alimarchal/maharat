@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Spatie\QueryBuilder\QueryBuilder;
 
 class RequestBudgetController extends Controller
@@ -45,10 +46,24 @@ class RequestBudgetController extends Controller
     public function store(StoreRequestBudgetRequest $request): JsonResponse
     {
         try {
+            Log::info('=== REQUEST BUDGET STORE STARTED ===', [
+                'user_id' => auth()->id(),
+                'request_data' => $request->all(),
+                'ip' => $request->ip(),
+                'url' => $request->fullUrl()
+            ]);
+
             DB::beginTransaction();
 
             $data = $request->validated();
+            Log::info('Request data validated successfully', [
+                'validated_data' => $data
+            ]);
+
             $data['created_by'] = auth()->id();
+            Log::info('Authenticated user ID set', [
+                'created_by' => $data['created_by']
+            ]);
 
             // Set default status if not provided
             if (!isset($data['status'])) {
@@ -56,8 +71,17 @@ class RequestBudgetController extends Controller
             }
 
             $requestBudget = RequestBudget::create($data);
+            Log::info('Request budget created in database', [
+                'request_budget_id' => $requestBudget->id,
+                'status' => $requestBudget->status
+            ]);
 
             DB::commit();
+
+            Log::info('=== REQUEST BUDGET CREATED SUCCESSFULLY ===', [
+                'request_budget_id' => $requestBudget->id,
+                'user_id' => auth()->id()
+            ]);
 
             return response()->json([
                 'message' => 'Request budget created successfully',
@@ -67,6 +91,15 @@ class RequestBudgetController extends Controller
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('=== REQUEST BUDGET CREATION FAILED ===', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'request_data' => $request->all(),
+                'user_id' => auth()->id()
+            ]);
+            
             return response()->json([
                 'message' => 'Failed to create request budget',
                 'error' => $e->getMessage()
