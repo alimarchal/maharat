@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { Toaster } from 'react-hot-toast';
+import DevToolsLock from './Components/DevToolsLock';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -23,6 +24,7 @@ createInertiaApp({
         root.render(
             <>
                 <App {...props} />
+                <DevToolsLock />
                 <Toaster 
                     position="top-center"
                     toastOptions={{
