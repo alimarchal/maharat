@@ -13,9 +13,9 @@ const RequestBudgetTable = () => {
     const [deletingId, setDeletingId] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
-    const [selectedFilter, setSelectedFilter] = useState("All");
+    const [selectedFilter, setSelectedFilter] = useState("Draft");
 
-    const filters = ["All", "Approved", "Pending", "Rejected", "Draft"];
+    const filters = ["All", "Draft", "Approved", "Pending", "Rejected"];
 
     useEffect(() => {
         const fetchBudgetRequests = async () => {
@@ -24,12 +24,9 @@ const RequestBudgetTable = () => {
             try {
                 let url = `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator&page=${currentPage}&per_page=15&sort=-created_at`;
                 
-                // Determine effective filter
-                const canCreate = hasPermission('create_department_budget_request');
-                const effectiveFilter = canCreate ? selectedFilter : 'All';
-
-                if (effectiveFilter !== "All") {
-                    url += `&filter[status]=${effectiveFilter}`;
+                // Apply filter if not "All"
+                if (selectedFilter !== "All") {
+                    url += `&filter[status]=${selectedFilter}`;
                 }
 
                 const response = await axios.get(url);
@@ -91,12 +88,20 @@ const RequestBudgetTable = () => {
                         </div>
                     )}
                     {hasPermission('create_department_budget_request') && (
-                        <Link
-                            href={`/request-budgets/create`}
-                            className="bg-[#009FDC] text-white px-3 sm:px-4 lg:px-6 py-1.5 sm:py-2 rounded-full text-sm sm:text-base lg:text-xl font-medium whitespace-nowrap"
-                        >
-                            Create Department Budget Request
-                        </Link>
+                        <>
+                            <Link
+                                href={`/request-budgets/reallocate`}
+                                className="bg-[#009FDC] text-white px-3 sm:px-4 lg:px-6 py-1.5 sm:py-2 rounded-full text-sm sm:text-base lg:text-xl font-medium whitespace-nowrap"
+                            >
+                                Reallocate Budget
+                            </Link>
+                            <Link
+                                href={`/request-budgets/create`}
+                                className="bg-[#009FDC] text-white px-3 sm:px-4 lg:px-6 py-1.5 sm:py-2 rounded-full text-sm sm:text-base lg:text-xl font-medium whitespace-nowrap"
+                            >
+                                Budget Request
+                            </Link>
+                        </>
                     )}
                 </div>
             </div>
