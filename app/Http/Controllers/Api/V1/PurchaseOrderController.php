@@ -196,28 +196,284 @@ class PurchaseOrderController extends Controller
 
             \Log::info('PurchaseOrder Store - Budget validation result: ' . json_encode($budgetValidation));
 
+            // Check if alternative subcost center is provided when budget fails
+            $alternativeSubCostCenterId = $request->input('alternative_sub_cost_center_id');
+            
             if (!$budgetValidation['valid']) {
-                throw new \Exception($budgetValidation['message']);
+                // If budget validation failed, check if alternative subcost center is provided
+                if (!$alternativeSubCostCenterId) {
+                    // Return error with alternatives for frontend to display
+                    return response()->json([
+                        'message' => $budgetValidation['message'],
+                        'error' => $budgetValidation['message'],
+                        'alternatives' => $budgetValidation['alternatives'] ?? [],
+                        'shortfall_amount' => $budgetValidation['shortfall_amount'] ?? 0,
+                        'available_amount' => $budgetValidation['available_amount'] ?? 0
+                    ], Response::HTTP_BAD_REQUEST);
+                }
+                
+                // Alternative subcost center provided - proceed with split reservation
+                $availableAmount = $budgetValidation['available_amount'] ?? 0;
+                $shortfallAmount = $budgetValidation['shortfall_amount'] ?? $totalAmount;
+                
+                // Get the original budget even though validation failed - we still need to reserve from it
+                $originalBudget = \App\Models\RequestBudget::where('fiscal_period_id', $fiscalPeriodId)
+                    ->where('status', 'Approved');
+                
+                if ($rfq->department_id) {
+                    $originalBudget->where('department_id', $rfq->department_id);
+                }
+                if ($rfq->cost_center_id) {
+                    $originalBudget->where('cost_center_id', $rfq->cost_center_id);
+                }
+                if ($rfq->sub_cost_center_id) {
+                    $originalBudget->where('sub_cost_center', $rfq->sub_cost_center_id);
+                } else {
+                    $originalBudget->whereNull('sub_cost_center');
+                }
+                
+                $originalBudget = $originalBudget->first();
+                
+                if (!$originalBudget) {
+                    throw new \Exception('Original budget not found for current subcost center');
+                }
+                
+                // Validate alternative subcost center budget
+                $alternativeBudgetValidation = $budgetService->validateBudgetAvailability(
+                    $rfq->department_id,
+                    $rfq->cost_center_id,
+                    $alternativeSubCostCenterId,
+                    $fiscalPeriodId,
+                    $shortfallAmount
+                );
+                
+                if (!$alternativeBudgetValidation['valid']) {
+                    throw new \Exception('Alternative subcost center also has insufficient budget: ' . $alternativeBudgetValidation['message']);
+                }
+                
+                $alternativeBudget = $alternativeBudgetValidation['budget'];
+                
+                // Reserve FULL PO amount from original budget (as per user requirement)
+                // THIS HAPPENS WHEN PO REQUEST IS MADE, NOT AFTER APPROVAL
+                $originalAuditLogId = null;
+                if ($originalBudget && $totalAmount > 0) {
+                    $originalReservedBefore = $originalBudget->reserved_amount;
+                    $originalBalanceBefore = $originalBudget->balance_amount;
+                    
+                    \Log::info('=== PO CREATION: RESERVING BUDGET FROM CURRENT SUBCOST CENTER ===', [
+                        'action' => 'PO_REQUEST_MADE',
+                        'stage' => 'BEFORE_RESERVATION',
+                        'budget_id' => $originalBudget->id,
+                        'sub_cost_center_id' => $originalBudget->sub_cost_center,
+                        'reserved_amount_before' => $originalReservedBefore,
+                        'balance_amount_before' => $originalBalanceBefore,
+                        'po_total_amount' => $totalAmount,
+                        'shortage_amount' => $shortfallAmount,
+                        'note' => 'This happens when PO request is created, NOT after approval'
+                    ]);
+                    
+                    // Update reserved_amount: reserved_amount = reserved_amount + PO total amount
+                    $originalBudget->reserved_amount += $totalAmount;
+                    
+                    // Update balance_amount: balance_amount = balance_amount + shortage amount
+                    $originalBudget->balance_amount += $shortfallAmount;
+                    
+                    $originalBudget->save();
+                    
+                    // Refresh budget to get updated values
+                    $originalBudget->refresh();
+                    
+                    \Log::info('=== PO CREATION: BUDGET RESERVED FROM CURRENT SUBCOST CENTER ===', [
+                        'action' => 'PO_REQUEST_MADE',
+                        'stage' => 'AFTER_RESERVATION',
+                        'budget_id' => $originalBudget->id,
+                        'sub_cost_center_id' => $originalBudget->sub_cost_center,
+                        'reserved_amount_before' => $originalReservedBefore,
+                        'reserved_amount_after' => $originalBudget->reserved_amount,
+                        'reserved_amount_increase' => $originalBudget->reserved_amount - $originalReservedBefore,
+                        'balance_amount_before' => $originalBalanceBefore,
+                        'balance_amount_after' => $originalBudget->balance_amount,
+                        'balance_amount_increase' => $originalBudget->balance_amount - $originalBalanceBefore,
+                        'po_total_amount' => $totalAmount,
+                        'shortage_amount' => $shortfallAmount,
+                        'note' => 'Budget updated when PO request is made - reserved_amount increased by PO total, balance_amount increased by shortage amount'
+                    ]);
+                    
+                    // Log audit
+                    $originalAuditLogId = DB::table('budget_audit_logs')->insertGetId([
+                        'request_budget_id' => $originalBudget->id,
+                        'purchase_order_id' => null, // Will be updated after PO is created
+                        'action' => 'reserve',
+                        'amount' => $totalAmount,
+                        'reserved_amount_before' => $originalReservedBefore,
+                        'reserved_amount_after' => $originalBudget->reserved_amount,
+                        'balance_amount_before' => $originalBalanceBefore,
+                        'balance_amount_after' => $originalBudget->balance_amount,
+                        'notes' => 'PO created - reserved full PO amount',
+                        'created_by' => auth()->id(),
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    
+                    \Log::info('PurchaseOrder Store - Original budget reserved (full PO amount)', [
+                        'budget_id' => $originalBudget->id,
+                        'reserved_amount' => $totalAmount,
+                        'po_total_amount' => $totalAmount,
+                        'audit_log_id' => $originalAuditLogId
+                    ]);
+                }
+                
+                // Reserve shortfall amount from alternative budget
+                $alternativeAuditLogId = null;
+                $alternativeReservedBefore = $alternativeBudget->reserved_amount;
+                $alternativeBalanceBefore = $alternativeBudget->balance_amount;
+                
+                $budgetService->reserveBudget($alternativeBudget, $shortfallAmount);
+                
+                // Refresh budget to get updated values
+                $alternativeBudget->refresh();
+                
+                // Log audit
+                $alternativeAuditLogId = DB::table('budget_audit_logs')->insertGetId([
+                    'request_budget_id' => $alternativeBudget->id,
+                    'purchase_order_id' => null, // Will be updated after PO is created
+                    'action' => 'reserve',
+                    'amount' => $shortfallAmount,
+                    'reserved_amount_before' => $alternativeReservedBefore,
+                    'reserved_amount_after' => $alternativeBudget->reserved_amount,
+                    'balance_amount_before' => $alternativeBalanceBefore,
+                    'balance_amount_after' => $alternativeBudget->balance_amount,
+                    'notes' => 'PO created - reserved alternative budget amount',
+                    'created_by' => auth()->id(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+                
+                \Log::info('PurchaseOrder Store - Alternative budget reserved', [
+                    'budget_id' => $alternativeBudget->id,
+                    'reserved_amount' => $shortfallAmount,
+                    'audit_log_id' => $alternativeAuditLogId
+                ]);
+                
+                // Add alternative subcost center info to purchase order
+                $validatedData['alternative_sub_cost_center_id'] = $alternativeSubCostCenterId;
+                $validatedData['alternative_budget_amount'] = $shortfallAmount;
+                $validatedData['alternative_request_budget_id'] = $alternativeBudget->id;
+                
+                // Add fiscal period and budget info to purchase order
+                $validatedData['fiscal_period_id'] = $fiscalPeriodId;
+                $validatedData['request_budget_id'] = $originalBudget ? $originalBudget->id : null;
+                
+                \Log::info('PurchaseOrder Store - Split budget reservation completed', [
+                    'original_budget_id' => $originalBudget ? $originalBudget->id : null,
+                    'original_reserved' => $availableAmount,
+                    'alternative_budget_id' => $alternativeBudget->id,
+                    'alternative_reserved' => $shortfallAmount,
+                    'total_amount' => $totalAmount
+                ]);
+            } else {
+                // Normal flow - sufficient budget in original subcost center
+                // THIS HAPPENS WHEN PO REQUEST IS MADE, NOT AFTER APPROVAL
+                $normalBudget = $budgetValidation['budget'];
+                $normalReservedBefore = $normalBudget->reserved_amount;
+                $normalBalanceBefore = $normalBudget->balance_amount;
+                
+                \Log::info('=== PO CREATION: RESERVING BUDGET FROM CURRENT SUBCOST CENTER (NORMAL FLOW) ===', [
+                    'action' => 'PO_REQUEST_MADE',
+                    'stage' => 'BEFORE_RESERVATION',
+                    'budget_id' => $normalBudget->id,
+                    'sub_cost_center_id' => $normalBudget->sub_cost_center,
+                    'reserved_amount_before' => $normalReservedBefore,
+                    'balance_amount_before' => $normalBalanceBefore,
+                    'po_total_amount' => $totalAmount,
+                    'note' => 'This happens when PO request is created, NOT after approval'
+                ]);
+                
+                // Reserve budget with total amount (including VAT)
+                $budgetService->reserveBudget($normalBudget, $totalAmount);
+                
+                // Refresh budget to get updated values
+                $normalBudget->refresh();
+                
+                \Log::info('=== PO CREATION: BUDGET RESERVED FROM CURRENT SUBCOST CENTER (NORMAL FLOW) ===', [
+                    'action' => 'PO_REQUEST_MADE',
+                    'stage' => 'AFTER_RESERVATION',
+                    'budget_id' => $normalBudget->id,
+                    'sub_cost_center_id' => $normalBudget->sub_cost_center,
+                    'reserved_amount_before' => $normalReservedBefore,
+                    'reserved_amount_after' => $normalBudget->reserved_amount,
+                    'reserved_amount_increase' => $normalBudget->reserved_amount - $normalReservedBefore,
+                    'balance_amount_before' => $normalBalanceBefore,
+                    'balance_amount_after' => $normalBudget->balance_amount,
+                    'balance_amount_decrease' => $normalBalanceBefore - $normalBudget->balance_amount,
+                    'po_total_amount' => $totalAmount,
+                    'note' => 'Budget updated when PO request is made - reserved_amount increased, balance_amount decreased'
+                ]);
+                
+                // Log audit
+                $normalAuditLogId = DB::table('budget_audit_logs')->insertGetId([
+                    'request_budget_id' => $normalBudget->id,
+                    'purchase_order_id' => null, // Will be updated after PO is created
+                    'action' => 'reserve',
+                    'amount' => $totalAmount,
+                    'reserved_amount_before' => $normalReservedBefore,
+                    'reserved_amount_after' => $normalBudget->reserved_amount,
+                    'balance_amount_before' => $normalBalanceBefore,
+                    'balance_amount_after' => $normalBudget->balance_amount,
+                    'notes' => 'PO created - reserved budget',
+                    'created_by' => auth()->id(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+                
+                \Log::info('PurchaseOrder Store - Budget reserved successfully', [
+                    'reserved_amount' => $totalAmount,
+                    'base_amount' => $baseAmount,
+                    'vat_amount' => $vatAmount,
+                    'audit_log_id' => $normalAuditLogId
+                ]);
+
+                // Add fiscal period and budget info to purchase order
+                $validatedData['fiscal_period_id'] = $fiscalPeriodId;
+                $validatedData['request_budget_id'] = $normalBudget->id;
             }
-
-            // Reserve budget with total amount (including VAT)
-            $budgetService->reserveBudget($budgetValidation['budget'], $totalAmount);
-            \Log::info('PurchaseOrder Store - Budget reserved successfully', [
-                'reserved_amount' => $totalAmount,
-                'base_amount' => $baseAmount,
-                'vat_amount' => $vatAmount
-            ]);
-
-            // Add fiscal period and budget info to purchase order
-            $validatedData['fiscal_period_id'] = $fiscalPeriodId;
-            $validatedData['request_budget_id'] = $budgetValidation['budget']->id;
 
             \Log::info('PurchaseOrder Store - Final validated data before creation: ' . json_encode($validatedData));
 
             // Create purchase order
+            \Log::info('=== PO CREATION: CREATING PURCHASE ORDER RECORD ===', [
+                'action' => 'PO_REQUEST_MADE',
+                'stage' => 'CREATING_PO_RECORD',
+                'note' => 'Budget has already been reserved above. Now creating PO record in database.'
+            ]);
+            
             try {
                 $purchaseOrder = PurchaseOrder::create($validatedData);
+                \Log::info('=== PO CREATION: PURCHASE ORDER RECORD CREATED ===', [
+                    'action' => 'PO_REQUEST_MADE',
+                    'stage' => 'PO_RECORD_CREATED',
+                    'purchase_order_id' => $purchaseOrder->id,
+                    'purchase_order_no' => $purchaseOrder->purchase_order_no,
+                    'note' => 'PO record created. Budget was reserved BEFORE this step.'
+                ]);
                 \Log::info('PurchaseOrder Store - Purchase order created with ID: ' . $purchaseOrder->id);
+                
+                // Update audit logs with purchase order ID
+                if (isset($originalAuditLogId) && $originalAuditLogId) {
+                    DB::table('budget_audit_logs')
+                        ->where('id', $originalAuditLogId)
+                        ->update(['purchase_order_id' => $purchaseOrder->id]);
+                }
+                if (isset($alternativeAuditLogId) && $alternativeAuditLogId) {
+                    DB::table('budget_audit_logs')
+                        ->where('id', $alternativeAuditLogId)
+                        ->update(['purchase_order_id' => $purchaseOrder->id]);
+                }
+                if (isset($normalAuditLogId) && $normalAuditLogId) {
+                    DB::table('budget_audit_logs')
+                        ->where('id', $normalAuditLogId)
+                        ->update(['purchase_order_id' => $purchaseOrder->id]);
+                }
             } catch (\Exception $e) {
                 \Log::error('PurchaseOrder Store - Failed to create purchase order: ' . $e->getMessage());
                 \Log::error('PurchaseOrder Store - Stack trace: ' . $e->getTraceAsString());
@@ -267,8 +523,10 @@ class PurchaseOrderController extends Controller
                         'department',
                         'costCenter',
                         'subCostCenter',
+                        'alternativeSubCostCenter',
                         'warehouse',
                         'requestBudget',
+                        'alternativeRequestBudget',
                         'fiscalPeriod'
                         ])
                 )

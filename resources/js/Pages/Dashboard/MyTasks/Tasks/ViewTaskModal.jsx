@@ -39,7 +39,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                 try {
 
                     const response = await axios.get(
-                        `/api/v1/tasks/${task.id}?include=processStep,process,assignedFromUser,assignedToUser,descriptions,material_request,material_request.items,material_request.items.product,material_request.items.unit,material_request.items.category,material_request.items.urgencyStatus,material_request.requester,material_request.warehouse,material_request.department,material_request.costCenter,rfq,rfq.items,rfq.items.product,rfq.items.unit,rfq.items.category,rfq.items.status,rfq.requester,rfq.warehouse,rfq.department,rfq.costCenter,purchase_order,purchase_order.supplier,purchase_order.user,payment_order,payment_order.supplier,payment_order.user,payment_order.purchase_order,invoice,invoice.items,invoice.client,invoice.representative,budget,budget.department,budget.costCenter,budget_approval_transaction,request_budget,request_budget.department,request_budget.costCenter,request_budget.fiscalPeriod,grn,grn.user,grn.quotation,grn.purchaseOrder,grn.approvalTransactions,grn.approvalTransactions.assignedToUser`
+                        `/api/v1/tasks/${task.id}?include=processStep,process,assignedFromUser,assignedToUser,descriptions,material_request,material_request.items,material_request.items.product,material_request.items.unit,material_request.items.category,material_request.items.urgencyStatus,material_request.requester,material_request.warehouse,material_request.department,material_request.costCenter,rfq,rfq.items,rfq.items.product,rfq.items.unit,rfq.items.category,rfq.items.status,rfq.requester,rfq.warehouse,rfq.department,rfq.costCenter,rfq.subCostCenter,purchase_order,purchase_order.supplier,purchase_order.user,purchase_order.subCostCenter,purchase_order.alternativeSubCostCenter,payment_order,payment_order.supplier,payment_order.user,payment_order.purchase_order,invoice,invoice.items,invoice.client,invoice.representative,budget,budget.department,budget.costCenter,budget_approval_transaction,request_budget,request_budget.department,request_budget.costCenter,request_budget.fiscalPeriod,grn,grn.user,grn.quotation,grn.purchaseOrder,grn.approvalTransactions,grn.approvalTransactions.assignedToUser`
                     );
                     
                     let taskData = response.data.data;
@@ -886,32 +886,32 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <span className="text-gray-600">RFQ Number:</span>
-                                                <span className="font-medium ml-2">{task.rfq.rfq_number || "N/A"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-600">Organization Name:</span>
-                                                <span className="font-medium ml-2">{task.rfq.organization_name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.rfq.rfq_number || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Warehouse:</span>
-                                                <span className="font-medium ml-2">{task.rfq.warehouse?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.rfq.warehouse?.name || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Department:</span>
-                                                <span className="font-medium ml-2">{task.rfq.department?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.rfq.department?.name || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Cost Center:</span>
-                                                <span className="font-medium ml-2">{task.rfq.costCenter?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.rfq.costCenter?.name || "N/A"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600">Sub Cost Center:</span>
+                                                <span className="font-medium ml-2">{currentTask.rfq.subCostCenter?.name || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Created By:</span>
-                                                <span className="font-medium ml-2">{task.rfq.requester?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.rfq.requester?.name || "N/A"}</span>
                                             </div>
                                         </div>
                                         
                                         {/* RFQ Items */}
-                                        {task.rfq.items && task.rfq.items.length > 0 && (
+                                        {currentTask.rfq.items && currentTask.rfq.items.length > 0 && (
                                             <div className="mt-4">
                                                 <h4 className="font-semibold text-gray-700 mb-2">RFQ Items:</h4>
                                                 <div className="overflow-x-auto">
@@ -921,14 +921,14 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                                 <th className="px-3 py-2 text-center rounded-tl-xl rounded-bl-xl">Item</th>
                                                                 <th className="px-3 py-2 text-center">Category</th>
                                                                 <th className="px-3 py-2 text-center">Quantity</th>
-                                                                <th className={`px-3 py-2 text-center ${task.rfq.items?.some(item => item.attachment) ? '' : 'rounded-tr-xl rounded-br-xl'}`}>Unit</th>
-                                                                {task.rfq.items?.some(item => item.attachment) && (
+                                                                <th className={`px-3 py-2 text-center ${currentTask.rfq.items?.some(item => item.attachment) ? '' : 'rounded-tr-xl rounded-br-xl'}`}>Unit</th>
+                                                                {currentTask.rfq.items?.some(item => item.attachment) && (
                                                                     <th className="px-3 py-2 text-center rounded-tr-xl rounded-br-xl">Attachment</th>
                                                                 )}
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-gray-200">
-                                                            {task.rfq.items.map((item, index) => (
+                                                            {currentTask.rfq.items.map((item, index) => (
                                                                 <tr key={index}>
                                                                     <td className="px-3 py-2 text-center">{item.item_name || item.product?.name || "N/A"}</td>
                                                                     <td className="px-3 py-2 text-center">
@@ -936,7 +936,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                                     </td>
                                                                     <td className="px-3 py-2 text-center">{item.quantity ? parseFloat(item.quantity).toFixed(1) : "N/A"}</td>
                                                                     <td className="px-3 py-2 text-center">{item.unit?.name || item.product?.unit?.name || "N/A"}</td>
-                                                                    {task.rfq.items?.some(item => item.attachment) && (
+                                                                    {currentTask.rfq.items?.some(item => item.attachment) && (
                                                                         <td className="px-3 py-2 text-center">
                                                                             {item.attachment ? (
                                                                                 <div className="flex justify-center">
@@ -1039,6 +1039,34 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 </span>
                                             </div>
                                         </div>
+                                        
+                                        {/* Alternative SubCost Center Budget Indicator */}
+                                        {currentTask.purchase_order?.alternative_sub_cost_center_id && currentTask.purchase_order?.alternative_budget_amount && (
+                                            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-300 rounded-lg">
+                                                <div className="flex items-start">
+                                                    <div className="flex-shrink-0">
+                                                        <svg className="h-5 w-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                    <div className="ml-3 flex-1">
+                                                        <h4 className="text-sm font-medium text-yellow-800">
+                                                            Budget Allocation Note
+                                                        </h4>
+                                                        <div className="mt-2 text-sm text-yellow-700">
+                                                            <p>
+                                                                <span className="font-semibold">{parseFloat(currentTask.purchase_order.alternative_budget_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> has been allocated from an alternative subcost center: <span className="font-semibold">{currentTask.purchase_order.alternativeSubCostCenter?.name || currentTask.purchase_order.alternative_sub_cost_center?.name || 'N/A'}</span>
+                                                            </p>
+                                                            {currentTask.purchase_order.subCostCenter && (
+                                                                <p className="mt-1 text-xs">
+                                                                    Original subcost center: {currentTask.purchase_order.subCostCenter.name}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                         
                                         {/* Purchase Order Attachments */}
                                         <div className="mt-4">
@@ -1511,11 +1539,11 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 </div>
                                             </div>
                                         )}
-                                        {task.rfq && (
+                                        {currentTask.rfq && (
                                             <div className="text-sm">
                                                 <div className="font-medium text-gray-700 mb-1">RFQ Approvals:</div>
                                                 <div className="pl-4 space-y-1">
-                                                    {task.rfq.approval_transactions?.map((approval, index) => (
+                                                    {currentTask.rfq.approval_transactions?.map((approval, index) => (
                                                         <div key={index} className="flex justify-between items-center text-xs">
                                                             <span className="text-gray-600">
                                                                 {approval.assigned_to_user?.name || "Unknown User"}

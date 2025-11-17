@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import InputFloating from "../../../../Components/InputFloating";
+import SelectFloating from "../../../../Components/SelectFloating";
 import { usePage, router } from "@inertiajs/react";
 
 const ApproveOrder = ({
@@ -36,6 +37,11 @@ const ApproveOrder = ({
     const [fiscalPeriods, setFiscalPeriods] = useState([]);
     const [selectedFiscalPeriod, setSelectedFiscalPeriod] = useState(null);
     const [budgetValidation, setBudgetValidation] = useState(null);
+    const [alternativeSubCostCenters, setAlternativeSubCostCenters] = useState([]);
+    const [selectedAlternativeSubCostCenter, setSelectedAlternativeSubCostCenter] = useState(null);
+    const [shortfallAmount, setShortfallAmount] = useState(0);
+    const [isAlternativeDropdownOpen, setIsAlternativeDropdownOpen] = useState(false);
+    const alternativeDropdownRef = useRef(null);
 
     const generatePONumber = () => {
         const date = new Date();
@@ -145,23 +151,35 @@ const ApproveOrder = ({
         if (!quotationDetails?.rfq) return;
         
         try {
+            const totalAmount = parseFloat(formData.amount || 0) + parseFloat(formData.vat_amount || 0);
             const response = await axios.post('/api/v1/purchase-orders/validate-budget', {
                 department_id: quotationDetails.rfq.department_id,
                 cost_center_id: quotationDetails.rfq.cost_center_id,
                 sub_cost_center_id: quotationDetails.rfq.sub_cost_center_id,
                 fiscal_period_id: fiscalPeriodId,
-                amount: formData.amount
+                amount: totalAmount
             });
             
             setBudgetValidation(response.data);
             
             if (!response.data.success) {
+                // Check if alternatives are available
+                const alternatives = response.data.data?.alternatives || [];
+                const shortfall = response.data.data?.shortfall_amount || 0;
+                
+                setAlternativeSubCostCenters(alternatives);
+                setShortfallAmount(shortfall);
+                setSelectedAlternativeSubCostCenter(null); // Reset selection
+                
                 setErrors(prev => ({
                     ...prev,
                     budget: response.data.data.message
                 }));
             } else {
-                // Clear budget error if validation passes
+                // Clear budget error and alternatives if validation passes
+                setAlternativeSubCostCenters([]);
+                setShortfallAmount(0);
+                setSelectedAlternativeSubCostCenter(null);
                 setErrors(prev => {
                     const newErrors = { ...prev };
                     delete newErrors.budget;
@@ -230,6 +248,23 @@ const ApproveOrder = ({
             }
         }
     }, [isOpen, isEdit, quotationId]);
+
+    // Close alternative dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (alternativeDropdownRef.current && !alternativeDropdownRef.current.contains(event.target)) {
+                setIsAlternativeDropdownOpen(false);
+            }
+        };
+
+        if (isAlternativeDropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isAlternativeDropdownOpen]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -319,11 +354,23 @@ const ApproveOrder = ({
 
             // Check budget validation
             if (budgetValidation && !budgetValidation.success) {
-                setErrors({
-                    submit: budgetValidation.data.message,
-                });
-                setIsSaving(false);
-                return;
+                // If budget fails, require alternative subcost center selection
+                if (alternativeSubCostCenters.length > 0 && !selectedAlternativeSubCostCenter) {
+                    setErrors({
+                        submit: "Please select an alternative subcost center to proceed with insufficient budget.",
+                    });
+                    setIsSaving(false);
+                    return;
+                }
+                
+                // If no alternatives available, show error
+                if (alternativeSubCostCenters.length === 0) {
+                    setErrors({
+                        submit: budgetValidation.data.message,
+                    });
+                    setIsSaving(false);
+                    return;
+                }
             }
 
             // Prepare form data
@@ -332,6 +379,11 @@ const ApproveOrder = ({
                 ...formData,
                 fiscal_period_id: selectedFiscalPeriod?.id,
             };
+            
+            // Add alternative subcost center if selected
+            if (selectedAlternativeSubCostCenter) {
+                dataToSubmit.alternative_sub_cost_center_id = selectedAlternativeSubCostCenter;
+            }
 
             // Ensure we have a purchase order number
             if (!dataToSubmit.purchase_order_no) {
@@ -414,27 +466,51 @@ const ApproveOrder = ({
         } catch (error) {
             console.error("Purchase order creation error:", error.response?.data);
             
-            let errorMessage = "Failed to save purchase order";
-            
-            // Check for nested error structure
-            if (error.response?.data?.error) {
-                errorMessage = error.response.data.error;
-            } else if (error.response?.data?.message) {
-                errorMessage = error.response.data.message;
-            } else if (error.response?.data?.errors) {
-                // Handle validation errors
-                const firstError = Object.values(error.response.data.errors)[0];
-                if (Array.isArray(firstError)) {
-                    errorMessage = firstError[0];
-                } else {
-                    errorMessage = firstError;
+            // Check if error contains alternatives (budget validation failed)
+            if (error.response?.data?.alternatives && error.response.data.alternatives.length > 0) {
+                // Set alternatives and shortfall for dropdown display
+                setAlternativeSubCostCenters(error.response.data.alternatives);
+                setShortfallAmount(error.response.data.shortfall_amount || 0);
+                setSelectedAlternativeSubCostCenter(null); // Reset selection
+                
+                // Update budget validation state to show dropdown
+                setBudgetValidation({
+                    success: false,
+                    data: {
+                        message: error.response.data.message || error.response.data.error,
+                        alternatives: error.response.data.alternatives,
+                        shortfall_amount: error.response.data.shortfall_amount || 0,
+                        available_amount: error.response.data.available_amount || 0
+                    }
+                });
+                
+                setErrors({
+                    budget: error.response.data.message || error.response.data.error,
+                });
+            } else {
+                // Regular error handling
+                let errorMessage = "Failed to save purchase order";
+                
+                // Check for nested error structure
+                if (error.response?.data?.error) {
+                    errorMessage = error.response.data.error;
+                } else if (error.response?.data?.message) {
+                    errorMessage = error.response.data.message;
+                } else if (error.response?.data?.errors) {
+                    // Handle validation errors
+                    const firstError = Object.values(error.response.data.errors)[0];
+                    if (Array.isArray(firstError)) {
+                        errorMessage = firstError[0];
+                    } else {
+                        errorMessage = firstError;
+                    }
                 }
+                
+                setErrors({
+                    submit: errorMessage,
+                    ...error.response?.data?.errors,
+                });
             }
-            
-            setErrors({
-                submit: errorMessage,
-                ...error.response?.data?.errors,
-            });
         } finally {
             setIsSaving(false);
         }
@@ -483,13 +559,13 @@ const ApproveOrder = ({
                 )}
 
                 {/* Error messages */}
-                {(errors.rfq_id || errors.submit || /* errors.fiscal_period || */ errors.budget) && (
+                {(errors.rfq_id || errors.submit) && (
                     <div
                         className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
                         role="alert"
                     >
                         <span className="block sm:inline">
-                            {errors.rfq_id || errors.submit || /* errors.fiscal_period || */ errors.budget}
+                            {errors.rfq_id || errors.submit}
                         </span>
                     </div>
                 )}
@@ -527,6 +603,72 @@ const ApproveOrder = ({
                         <strong>Budget Validation:</strong> Available amount: {budgetValidation.data.available_amount}
                     </div>
                 )} */}
+
+                {/* Alternative SubCost Center Selection */}
+                {budgetValidation && !budgetValidation.success && alternativeSubCostCenters.length > 0 && (
+                    <div className="bg-white text-black px-4 py-3 rounded relative mb-4">
+                        <div className="mb-3">
+                            <strong className="text-red-600">Insufficient Budget Available</strong>
+                            <p className="text-sm mt-1 text-black">
+                                Shortfall Amount: <span className="font-bold text-red-600">{shortfallAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </p>
+                        </div>
+                        <div className="mt-3 flex items-center gap-4">
+                            <label className="text-black font-medium whitespace-nowrap">Alternative SubCost Center:</label>
+                            <div className="flex-1 relative" ref={alternativeDropdownRef}>
+                                <div
+                                    className="w-full p-5 border border-gray-300 rounded-2xl bg-white focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC] transition-all duration-300 min-h-[60px] text-gray-900 cursor-pointer flex items-center justify-between"
+                                    onClick={() => setIsAlternativeDropdownOpen(!isAlternativeDropdownOpen)}
+                                >
+                                    <span className={selectedAlternativeSubCostCenter ? 'text-gray-900' : 'text-gray-400'}>
+                                        {selectedAlternativeSubCostCenter 
+                                            ? alternativeSubCostCenters.find(alt => alt.sub_cost_center_id == selectedAlternativeSubCostCenter)?.sub_cost_center_name || 'Select Alternative SubCost Center'
+                                            : 'Select Alternative SubCost Center'
+                                        }
+                                    </span>
+                                    <svg
+                                        className={`w-4 h-4 transition-transform ${isAlternativeDropdownOpen ? 'rotate-180' : ''}`}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                                {isAlternativeDropdownOpen && (
+                                    <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-[200px] overflow-y-auto">
+                                        <div className="py-1">
+                                            {alternativeSubCostCenters.map((alt) => {
+                                                const availableAmount = parseFloat(alt.available_amount) || 0;
+                                                const formattedAmount = availableAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                return (
+                                                    <div
+                                                        key={alt.sub_cost_center_id}
+                                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-gray-900"
+                                                        onClick={() => {
+                                                            setSelectedAlternativeSubCostCenter(alt.sub_cost_center_id);
+                                                            setIsAlternativeDropdownOpen(false);
+                                                            setErrors(prev => {
+                                                                const newErrors = { ...prev };
+                                                                delete newErrors.budget;
+                                                                return newErrors;
+                                                            });
+                                                        }}
+                                                    >
+                                                        {alt.sub_cost_center_name} (Available: <span className="text-red-600 font-semibold">{formattedAmount}</span>)
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                                {errors.alternative_sub_cost_center && (
+                                    <p className="text-red-500 text-sm mt-1">{errors.alternative_sub_cost_center}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
