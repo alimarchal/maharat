@@ -35,6 +35,10 @@ class RequestBudgetParameters
         'department',
         'costCenter',
         'subCostCenter',
+        'reallocateToSubCostCenter',
+        'reallocationHistory',
+        'reallocationHistory.sourceBudgetRequest',
+        'reallocationHistory.destinationBudgetRequest',
         'creator',
         'updater',
     ];

@@ -170,7 +170,7 @@ const ReviewTask = () => {
                     {
                         key: "request_budgets_id",
                         url: "/api/v1/budget-request-approval-trans",
-                        processTitle: "Budget Request Approval",
+                        processTitle: taskData.process?.title || "Budget Request Approval", // Use actual process from task
                     },
                     {
                         key: "budget_id",
@@ -300,7 +300,7 @@ const ReviewTask = () => {
 
                     const taskPayload = {
                         process_step_id: nextStep.id,
-                        process_id: nextStep.process_id,
+                        process_id: process.id, // Use process.id from the fetched process, not nextStep.process_id
                         assigned_at: new Date().toISOString(),
                         urgency: "Normal",
                         assigned_to_user_id: assignUser.approver_id || null,

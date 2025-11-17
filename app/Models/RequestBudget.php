@@ -25,6 +25,11 @@ class RequestBudget extends Model
         'reserved_amount',
         'consumed_amount',
         'balance_amount',
+        'old_balance',
+        'reallocate_amount',
+        'reallocate_to_sub_cost_center',
+        'destination_old_balance',
+        'type',
         'urgency',
         'attachment_path',
         'original_name',
@@ -44,6 +49,9 @@ class RequestBudget extends Model
         'reserved_amount' => 'decimal:2',
         'consumed_amount' => 'decimal:2',
         'balance_amount' => 'decimal:2',
+        'old_balance' => 'decimal:2',
+        'reallocate_amount' => 'decimal:2',
+        'destination_old_balance' => 'decimal:2',
     ];
 
     /**
@@ -76,6 +84,22 @@ class RequestBudget extends Model
     public function subCostCenter(): BelongsTo
     {
         return $this->belongsTo(CostCenter::class, 'sub_cost_center');
+    }
+
+    /**
+     * Get the destination sub cost center for reallocation.
+     */
+    public function reallocateToSubCostCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class, 'reallocate_to_sub_cost_center');
+    }
+
+    /**
+     * Get the reallocation history record for this reallocation request.
+     */
+    public function reallocationHistory()
+    {
+        return $this->hasOne(BudgetReallocationHistory::class, 'reallocation_request_id');
     }
 
     /**

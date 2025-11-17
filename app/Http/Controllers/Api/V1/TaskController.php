@@ -11,6 +11,8 @@ use App\Models\Task;
 use App\Models\TaskDescription;
 use App\Models\ProcessStep as EloquentProcessStep;
 use App\Models\User;
+use App\Models\RequestBudget;
+use App\Models\BudgetReallocationHistory;
 use App\QueryParameters\TaskParameters;
 use App\Services\TransactionFlowService;
 use App\Services\TaskNotificationService;
@@ -1367,10 +1369,11 @@ class TaskController extends Controller
 
                     // Check if this will be the final approval BEFORE updating the transaction
                     // Get the process steps to determine the total number of required approvals
+                    // Get the process from the task to check the correct process steps
+                    $taskProcess = DB::table('processes')->where('id', $task->process_id)->first();
                     $processSteps = DB::table('process_steps')
-                        ->join('processes', 'process_steps.process_id', '=', 'processes.id')
-                        ->where('processes.title', 'Budget Request Approval')
-                        ->orderBy('process_steps.order')
+                        ->where('process_id', $task->process_id)
+                        ->orderBy('order')
                         ->get();
 
                     $totalRequiredApprovals = $processSteps->count();
@@ -1407,8 +1410,57 @@ class TaskController extends Controller
                     ]);
 
                     if ($transactionUpdated) {
+                        // If status is Referred, update budget request status to Pending
+                        if ($request->input('status') === 'Referred') {
+                            Log::info('=== BUDGET REQUEST TASK REFERRED - UPDATING STATUS TO PENDING ===', [
+                                'task_id' => $task->id,
+                                'request_budget_id' => $task->request_budgets_id
+                            ]);
+
+                            // Get the budget request to check if it's a reallocation
+                            $budgetRequest = DB::table('request_budgets')->where('id', $task->request_budgets_id)->first();
+
+                            // Update budget request status to Pending
+                            $budgetRequestUpdated = DB::table('request_budgets')
+                                ->where('id', $task->request_budgets_id)
+                                ->update([
+                                    'status' => 'Pending',
+                                    'updated_at' => now()
+                                ]);
+
+                            // Update history record status to Pending if it's a reallocation
+                            if ($budgetRequest && $budgetRequest->type === 'reallocation') {
+                                $historyRecord = BudgetReallocationHistory::where('reallocation_request_id', $task->request_budgets_id)->first();
+                                if ($historyRecord) {
+                                    $oldStatus = $historyRecord->status;
+                                    $historyRecord->update([
+                                        'status' => 'Pending',
+                                        'updated_by' => auth()->id(),
+                                    ]);
+                                    Log::info('=== REALLOCATION HISTORY STATUS UPDATED TO PENDING (REFERRED) ===', [
+                                        'task_id' => $task->id,
+                                        'request_budget_id' => $task->request_budgets_id,
+                                        'history_record_id' => $historyRecord->id,
+                                        'old_status' => $oldStatus,
+                                        'new_status' => 'Pending'
+                                    ]);
+                                } else {
+                                    Log::warning('=== REALLOCATION HISTORY RECORD NOT FOUND (REFERRED) ===', [
+                                        'task_id' => $task->id,
+                                        'request_budget_id' => $task->request_budgets_id
+                                    ]);
+                                }
+                            }
+
+                            Log::info('=== BUDGET REQUEST STATUS UPDATED TO PENDING (REFERRED) ===', [
+                                'task_id' => $task->id,
+                                'request_budget_id' => $task->request_budgets_id,
+                                'update_success' => $budgetRequestUpdated
+                            ]);
+                        }
+                        
                         // Now trigger the budget request approval logic
-                        if ($isFinalApproval) {
+                        if ($isFinalApproval && $request->input('status') === 'Approved') {
                             Log::info('=== FINAL BUDGET REQUEST APPROVAL - UPDATING STATUS AND CREATING BUDGET ===', [
                                 'task_id' => $task->id,
                                 'request_budget_id' => $task->request_budgets_id,
@@ -1416,15 +1468,94 @@ class TaskController extends Controller
                                 'target_status' => 'Approved'
                             ]);
 
-                            // Update budget request status to Approved
-                            $budgetRequestUpdated = DB::table('request_budgets')
-                                ->where('id', $task->request_budgets_id)
-                                ->update([
-                                    'status' => 'Approved',
-                                    'approved_amount' => DB::raw('requested_amount'),
-                                    'balance_amount' => DB::raw('requested_amount'),
-                                    'updated_at' => now()
+                            // Get the budget request to check if it's a reallocation
+                            $budgetRequest = DB::table('request_budgets')->where('id', $task->request_budgets_id)->first();
+                            
+                            if ($budgetRequest && $budgetRequest->type === 'reallocation') {
+                                Log::info('=== PROCESSING REALLOCATION FINAL APPROVAL ===', [
+                                    'request_budget_id' => $task->request_budgets_id,
+                                    'reallocate_amount' => $budgetRequest->reallocate_amount
                                 ]);
+
+                                // Find source and destination approved budget requests
+                                $sourceBudget = RequestBudget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
+                                    ->where('department_id', $budgetRequest->department_id)
+                                    ->where('cost_center_id', $budgetRequest->cost_center_id)
+                                    ->where('sub_cost_center', $budgetRequest->sub_cost_center)
+                                    ->where('status', 'Approved')
+                                    ->first();
+
+                                $destinationBudget = RequestBudget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
+                                    ->where('department_id', $budgetRequest->department_id)
+                                    ->where('cost_center_id', $budgetRequest->cost_center_id)
+                                    ->where('sub_cost_center', $budgetRequest->reallocate_to_sub_cost_center)
+                                    ->where('status', 'Approved')
+                                    ->first();
+
+                                if ($sourceBudget && $destinationBudget) {
+                                    // Store old approved amounts before updating
+                                    $sourceOldApproved = $sourceBudget->approved_amount;
+                                    $destinationOldApproved = $destinationBudget->approved_amount;
+
+                                    // Update source: approved_amount = approved_amount - reallocate_amount
+                                    $sourceBudget->approved_amount = $sourceBudget->approved_amount - $budgetRequest->reallocate_amount;
+                                    $sourceBudget->save();
+
+                                    // Update destination: approved_amount = approved_amount + reallocate_amount
+                                    $destinationBudget->approved_amount = $destinationBudget->approved_amount + $budgetRequest->reallocate_amount;
+                                    $destinationBudget->save();
+
+                                    // Update history record
+                                    $historyRecord = BudgetReallocationHistory::where('reallocation_request_id', $task->request_budgets_id)->first();
+                                    if ($historyRecord) {
+                                        $oldStatus = $historyRecord->status;
+                                        $historyRecord->update([
+                                            'status' => 'Approved',
+                                            'source_old_approved_amount' => $sourceOldApproved,
+                                            'source_new_approved_amount' => $sourceBudget->approved_amount,
+                                            'destination_old_approved_amount' => $destinationOldApproved,
+                                            'destination_new_approved_amount' => $destinationBudget->approved_amount,
+                                            'updated_by' => auth()->id(),
+                                        ]);
+                                        Log::info('=== REALLOCATION HISTORY STATUS UPDATED TO APPROVED (FINAL APPROVAL) ===', [
+                                            'task_id' => $task->id,
+                                            'request_budget_id' => $task->request_budgets_id,
+                                            'history_record_id' => $historyRecord->id,
+                                            'old_status' => $oldStatus,
+                                            'new_status' => 'Approved'
+                                        ]);
+                                    } else {
+                                        Log::warning('=== REALLOCATION HISTORY RECORD NOT FOUND (FINAL APPROVAL) ===', [
+                                            'task_id' => $task->id,
+                                            'request_budget_id' => $task->request_budgets_id
+                                        ]);
+                                    }
+
+                                    Log::info('=== REALLOCATION APPROVED AMOUNTS UPDATED ===', [
+                                        'source_approved_amount' => $sourceBudget->approved_amount,
+                                        'destination_approved_amount' => $destinationBudget->approved_amount
+                                    ]);
+                                }
+
+                                // Update reallocation request: status = Approved, reallocate_amount = 0
+                                $budgetRequestUpdated = DB::table('request_budgets')
+                                    ->where('id', $task->request_budgets_id)
+                                    ->update([
+                                        'status' => 'Approved',
+                                        'reallocate_amount' => 0,
+                                        'updated_at' => now()
+                                    ]);
+                            } else {
+                                // Regular budget request approval
+                                $budgetRequestUpdated = DB::table('request_budgets')
+                                    ->where('id', $task->request_budgets_id)
+                                    ->update([
+                                        'status' => 'Approved',
+                                        'approved_amount' => DB::raw('requested_amount'),
+                                        'balance_amount' => DB::raw('requested_amount'),
+                                        'updated_at' => now()
+                                    ]);
+                            }
 
                             Log::info('=== BUDGET REQUEST STATUS UPDATE RESULT ===', [
                                 'task_id' => $task->id,
@@ -1434,10 +1565,12 @@ class TaskController extends Controller
                             ]);
 
                             if ($budgetRequestUpdated) {
-                                // Create budget in budgets table from approved budget request
+                                // Get the budget request again to check type
                                 $budgetRequest = DB::table('request_budgets')->where('id', $task->request_budgets_id)->first();
                                 
-                                if ($budgetRequest) {
+                                // Only create budget for regular budget requests, not reallocations
+                                if ($budgetRequest && $budgetRequest->type !== 'reallocation') {
+                                    // Create budget in budgets table from approved budget request
                                     Log::info('=== CREATING BUDGET FROM APPROVED BUDGET REQUEST ===', [
                                         'task_id' => $task->id,
                                         'request_budget_id' => $budgetRequest->id,
@@ -1544,6 +1677,9 @@ class TaskController extends Controller
                                 'total_required_approvals' => $totalRequiredApprovals
                             ]);
 
+                            // Get the budget request to check if it's a reallocation
+                            $budgetRequest = DB::table('request_budgets')->where('id', $task->request_budgets_id)->first();
+
                             // Update budget request status to Pending
                             $budgetRequestUpdated = DB::table('request_budgets')
                                 ->where('id', $task->request_budgets_id)
@@ -1551,6 +1687,30 @@ class TaskController extends Controller
                                     'status' => 'Pending',
                                     'updated_at' => now()
                                 ]);
+
+                            // Update history record status to Pending if it's a reallocation
+                            if ($budgetRequest && $budgetRequest->type === 'reallocation') {
+                                $historyRecord = BudgetReallocationHistory::where('reallocation_request_id', $task->request_budgets_id)->first();
+                                if ($historyRecord) {
+                                    $oldStatus = $historyRecord->status;
+                                    $historyRecord->update([
+                                        'status' => 'Pending',
+                                        'updated_by' => auth()->id(),
+                                    ]);
+                                    Log::info('=== REALLOCATION HISTORY STATUS UPDATED TO PENDING (INTERMEDIATE APPROVAL) ===', [
+                                        'task_id' => $task->id,
+                                        'request_budget_id' => $task->request_budgets_id,
+                                        'history_record_id' => $historyRecord->id,
+                                        'old_status' => $oldStatus,
+                                        'new_status' => 'Pending'
+                                    ]);
+                                } else {
+                                    Log::warning('=== REALLOCATION HISTORY RECORD NOT FOUND (INTERMEDIATE APPROVAL) ===', [
+                                        'task_id' => $task->id,
+                                        'request_budget_id' => $task->request_budgets_id
+                                    ]);
+                                }
+                            }
 
                             Log::info('=== BUDGET REQUEST STATUS UPDATE TO PENDING RESULT ===', [
                                 'task_id' => $task->id,
@@ -1608,6 +1768,73 @@ class TaskController extends Controller
                     ]);
 
                     if ($transactionUpdated) {
+                        // Get the budget request to check if it's a reallocation
+                        $budgetRequest = DB::table('request_budgets')->where('id', $task->request_budgets_id)->first();
+                        
+                        if ($budgetRequest && $budgetRequest->type === 'reallocation') {
+                            Log::info('=== PROCESSING REALLOCATION REJECTION ===', [
+                                'request_budget_id' => $task->request_budgets_id
+                            ]);
+
+                            // Find source and destination approved budget requests
+                            $sourceBudget = RequestBudget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
+                                ->where('department_id', $budgetRequest->department_id)
+                                ->where('cost_center_id', $budgetRequest->cost_center_id)
+                                ->where('sub_cost_center', $budgetRequest->sub_cost_center)
+                                ->where('status', 'Approved')
+                                ->first();
+
+                            $destinationBudget = RequestBudget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
+                                ->where('department_id', $budgetRequest->department_id)
+                                ->where('cost_center_id', $budgetRequest->cost_center_id)
+                                ->where('sub_cost_center', $budgetRequest->reallocate_to_sub_cost_center)
+                                ->where('status', 'Approved')
+                                ->first();
+
+                            // Use old_balance from the reallocation record itself, not from source/destination records
+                            if ($budgetRequest->old_balance !== null) {
+                                // Revert source balance_amount using old_balance from reallocation record
+                                $sourceBudget->balance_amount = $budgetRequest->old_balance;
+                                $sourceBudget->save();
+                                Log::info('=== SOURCE BALANCE REVERTED ===', [
+                                    'source_balance' => $sourceBudget->balance_amount,
+                                    'reverted_from' => $budgetRequest->old_balance
+                                ]);
+                            }
+
+                            if ($budgetRequest->destination_old_balance !== null) {
+                                // Revert destination balance_amount using destination_old_balance from reallocation record
+                                $destinationBudget->balance_amount = $budgetRequest->destination_old_balance;
+                                $destinationBudget->save();
+                                Log::info('=== DESTINATION BALANCE REVERTED ===', [
+                                    'destination_balance' => $destinationBudget->balance_amount,
+                                    'reverted_from' => $budgetRequest->destination_old_balance
+                                ]);
+                            }
+
+                            // Update history record status to Rejected
+                            $historyRecord = BudgetReallocationHistory::where('reallocation_request_id', $task->request_budgets_id)->first();
+                            if ($historyRecord) {
+                                $oldStatus = $historyRecord->status;
+                                $historyRecord->update([
+                                    'status' => 'Rejected',
+                                    'updated_by' => auth()->id(),
+                                ]);
+                                Log::info('=== REALLOCATION HISTORY STATUS UPDATED TO REJECTED ===', [
+                                    'task_id' => $task->id,
+                                    'request_budget_id' => $task->request_budgets_id,
+                                    'history_record_id' => $historyRecord->id,
+                                    'old_status' => $oldStatus,
+                                    'new_status' => 'Rejected'
+                                ]);
+                            } else {
+                                Log::warning('=== REALLOCATION HISTORY RECORD NOT FOUND (REJECTION) ===', [
+                                    'task_id' => $task->id,
+                                    'request_budget_id' => $task->request_budgets_id
+                                ]);
+                            }
+                        }
+
                         // Immediately update budget request status to Rejected
                         $budgetRequestUpdated = DB::table('request_budgets')
                             ->where('id', $task->request_budgets_id)

@@ -22,7 +22,7 @@ const RequestBudgetTable = () => {
             setLoading(true);
             setError("");
             try {
-                let url = `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator&page=${currentPage}&per_page=15&sort=-created_at`;
+                let url = `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,reallocateToSubCostCenter,creator,reallocationHistory.sourceBudgetRequest,reallocationHistory.destinationBudgetRequest&page=${currentPage}&per_page=15&sort=-created_at`;
                 
                 // Apply filter if not "All"
                 if (selectedFilter !== "All") {
@@ -112,13 +112,13 @@ const RequestBudgetTable = () => {
                         <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
                             Year
                         </th>
+                        <th className="py-3 px-4">Type</th>
                         <th className="py-3 px-4">Created By</th>
                         <th className="py-3 px-4">Department</th>
                         <th className="py-3 px-4">Cost Center</th>
                         <th className="py-3 px-4">Sub Cost Center</th>
                         <th className="py-3 px-4">Previous Budget</th>
                         <th className="py-3 px-4">Requested Amount</th>
-                        <th className="py-3 px-2">Planned Revenue</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 text-center rounded-tr-2xl rounded-br-2xl">
                             Actions
@@ -148,6 +148,13 @@ const RequestBudgetTable = () => {
                                     {request.fiscal_period?.fiscal_year}
                                 </td>
                                 <td className="py-3 px-4">
+                                    <span className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap inline-block ${
+                                        request.type === 'reallocation' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                                    }`}>
+                                        {request.type === 'reallocation' ? 'Reallocation' : 'Budget Request'}
+                                    </span>
+                                </td>
+                                <td className="py-3 px-4">
                                     {request.creator?.name}
                                 </td>
                                 <td className="py-3 px-4">
@@ -157,16 +164,19 @@ const RequestBudgetTable = () => {
                                     {request.cost_center?.name}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {request.sub_cost_center_details?.name}
+                                    {request.type === 'reallocation'
+                                        ? (request.reallocate_to_sub_cost_center_details?.name || 'N/A')
+                                        : request.sub_cost_center_details?.name}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {request.previous_year_budget_amount}
+                                    {request.type === 'reallocation' 
+                                        ? (request.reallocation_history?.destination_budget_request?.approved_amount || 'N/A')
+                                        : request.previous_year_budget_amount}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {request.requested_amount}
-                                </td>
-                                <td className="py-3 px-2">
-                                    {request.revenue_planned}
+                                    {request.type === 'reallocation'
+                                        ? (request.reallocation_history?.reallocate_amount ?? request.reallocate_amount ?? 'N/A')
+                                        : request.requested_amount}
                                 </td>
                                 <td className="py-3 px-4">
                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${

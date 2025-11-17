@@ -432,7 +432,7 @@ const ReallocateBudgetForm = () => {
                 cost_center_id: formData.cost_center_id,
                 sub_cost_center: formData.sub_cost_center,
                 reallocate_to_sub_cost_center: formData.reallocate_sub_cost_center,
-                reallocate_amount: formData.reallocate_amount,
+                reallocate_amount: parseFloat(formData.reallocate_amount),
                 reason_for_increase: formData.reason_for_increase,
                 status: "Draft",
                 type: "reallocation",
@@ -461,6 +461,81 @@ const ReallocateBudgetForm = () => {
                 }
                 if (fileInputRef.current) fileInputRef.current.value = "";
             }
+
+            // Get the approval process and create approval transaction and task
+            console.log('Fetching approval process...');
+            const processResponse = await axios.get(
+                "/api/v1/processes?include=steps,creator,updater&filter[title]=Budget Reallocate Approval"
+            );
+            console.log('Process Response:', processResponse.data);
+            
+            const process = processResponse.data?.data?.[0];
+            let processSteps = process?.steps || [];
+
+            // Check if process and steps exist
+            if (!process || processSteps.length === 0) {
+                console.error('No Process or steps found');
+                setErrors({
+                    submit: "No Process or steps found for Budget Reallocate Approval",
+                });
+                setIsSubmitting(false);
+                return;
+            }
+            
+            // Sort process steps by order to get the first step
+            processSteps = processSteps.sort((a, b) => a.order - b.order);
+            const processStep = processSteps[0];
+
+            const processResponseViaUser = await axios.get(
+                `/api/v1/process-steps/${processStep.id}/user/${user_id}`
+            );
+            console.log('Process Step User Response:', processResponseViaUser.data);
+            
+            const assignUser = processResponseViaUser?.data?.data;
+            if (!assignUser) {
+                console.error('No assignee found');
+                setErrors({
+                    submit: "No assignee found for this process step and user",
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
+            console.log('Creating budget request transaction...');
+            // Create budget request transaction
+            const transactionPayload = {
+                request_budgets_id: reallocationId,
+                requester_id: user_id,
+                assigned_to: assignUser.approver_id,
+                order: processStep.order,
+                description: processStep.description,
+                status: "Pending",
+            };
+            console.log('Transaction Payload:', transactionPayload);
+
+            await axios.post(
+                "/api/v1/budget-request-approval-trans",
+                transactionPayload
+            );
+            console.log('Transaction created successfully');
+
+            // Create task
+            console.log('Creating task...');
+            const taskPayload = {
+                process_step_id: processStep.id,
+                process_id: processStep.process_id,
+                assigned_at: new Date().toISOString(),
+                urgency: "Normal",
+                assigned_to_user_id: assignUser.approver_id,
+                assigned_from_user_id: user_id,
+                request_budgets_id: reallocationId,
+                status: "Pending",
+            };
+            console.log('Task Payload:', taskPayload);
+
+            await axios.post("/api/v1/tasks", taskPayload);
+            console.log('Task created successfully');
+            console.log('=== REALLOCATION REQUEST CREATED SUCCESSFULLY ===');
 
             router.visit("/request-budgets");
         } catch (error) {

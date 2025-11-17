@@ -75,8 +75,34 @@ const BudgetRequestTable = () => {
             setLoading(true);
             try {
                 const response = await axios.get(
-                    `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator&page=${currentPage}&per_page=15&sort=-created_at`
+                    `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator,reallocationHistory&page=${currentPage}&per_page=15&sort=-created_at`
                 );
+                
+                console.log('=== BUDGET REQUEST TABLE API RESPONSE ===', {
+                    total_requests: response.data.data?.length || 0,
+                    first_request: response.data.data?.[0] || null
+                });
+                
+                // Debug: Check if reallocation_history is loaded
+                if (response.data.data && response.data.data.length > 0) {
+                    console.log('All request types:', response.data.data.map(r => ({ id: r.id, type: r.type })));
+                    
+                    const reallocationRequests = response.data.data.filter(r => r.type === 'reallocation');
+                    console.log('Reallocation requests found:', reallocationRequests.length);
+                    
+                    reallocationRequests.forEach(req => {
+                        console.log('=== REALLOCATION REQUEST DETAILS ===', {
+                            id: req.id,
+                            type: req.type,
+                            request_reallocate_amount: req.reallocate_amount,
+                            has_reallocation_history: !!req.reallocation_history,
+                            history_reallocate_amount: req.reallocation_history?.reallocate_amount,
+                            history_status: req.reallocation_history?.status,
+                            full_history: req.reallocation_history,
+                            full_request_object: req
+                        });
+                    });
+                }
                 setBudgetRequests(response.data.data);
                 setLastPage(response.data.meta?.last_page || 1);
             } catch (err) {
@@ -144,13 +170,34 @@ const BudgetRequestTable = () => {
                                     {request.previous_year_budget_amount} SAR
                                 </td>
                                 <td className="py-3 px-4">
-                                    {request.requested_amount} SAR
+                                    {(() => {
+                                        if (request.type === 'reallocation') {
+                                            // For reallocations, use reallocate_amount from history if available
+                                            // The history table preserves the original reallocate_amount even after approval
+                                            const historyAmount = request.reallocation_history?.reallocate_amount;
+                                            if (historyAmount !== null && historyAmount !== undefined && historyAmount !== 0) {
+                                                return historyAmount;
+                                            }
+                                            // Fallback to reallocate_amount from request_budgets (might be 0 after approval)
+                                            const requestAmount = request.reallocate_amount;
+                                            if (requestAmount !== null && requestAmount !== undefined && requestAmount !== 0) {
+                                                return requestAmount;
+                                            }
+                                            // If both are 0 or null, show 0 (shouldn't happen if history is loaded)
+                                            return 0;
+                                        }
+                                        return request.requested_amount;
+                                    })()} SAR
                                 </td>
                                 <td className="py-3 px-4">
                                     <UrgencyBadge urgency={request.urgency} />
                                 </td>
                                 <td className="py-3 px-4">
-                                    <StatusBadge status={request.status} />
+                                    <StatusBadge status={
+                                        request.type === 'reallocation' && request.reallocation_history?.status
+                                            ? request.reallocation_history.status
+                                            : request.status
+                                    } />
                                 </td>
                                 <td className="py-3 px-4 flex items-center justify-center gap-4">
                                     <Link
