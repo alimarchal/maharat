@@ -363,10 +363,16 @@ const ApproveOrder = ({
                     return;
                 }
                 
-                // If no alternatives available, show error
+                // If no alternatives available, show formatted error
                 if (alternativeSubCostCenters.length === 0) {
+                    const availableAmount = budgetValidation.data?.available_amount || 0;
+                    const requiredAmount = parseFloat(formData.amount || 0) + parseFloat(formData.vat_amount || 0);
+                    const shortfall = budgetValidation.data?.shortfall_amount || 0;
+                    
+                    const formattedMessage = `No Sufficient Budget Balance in Any Sub Cost Center.\n\nAvailable Amount in Sub Cost Center: ${parseFloat(availableAmount).toFixed(2)}\nRequired Amount: ${requiredAmount.toFixed(2)}\nShortfall Amount: ${shortfall.toFixed(2)}`;
+                    
                     setErrors({
-                        submit: budgetValidation.data.message,
+                        submit: formattedMessage,
                     });
                     setIsSaving(false);
                     return;
@@ -467,7 +473,9 @@ const ApproveOrder = ({
             console.error("Purchase order creation error:", error.response?.data);
             
             // Check if error contains alternatives (budget validation failed)
-            if (error.response?.data?.alternatives && error.response.data.alternatives.length > 0) {
+            const hasAlternatives = error.response?.data?.alternatives && Array.isArray(error.response.data.alternatives) && error.response.data.alternatives.length > 0;
+            
+            if (hasAlternatives) {
                 // Set alternatives and shortfall for dropdown display
                 setAlternativeSubCostCenters(error.response.data.alternatives);
                 setShortfallAmount(error.response.data.shortfall_amount || 0);
@@ -486,6 +494,21 @@ const ApproveOrder = ({
                 
                 setErrors({
                     budget: error.response.data.message || error.response.data.error,
+                });
+            } else if (error.response?.data?.message && (
+                error.response.data.message.includes('Insufficient budget') || 
+                error.response.data.message.includes('insufficient budget') ||
+                (error.response.data.shortfall_amount && !hasAlternatives)
+            )) {
+                // Format error message when no alternatives are available
+                const availableAmount = error.response.data.available_amount || 0;
+                const requiredAmount = parseFloat(formData.amount || 0) + parseFloat(formData.vat_amount || 0);
+                const shortfall = error.response.data.shortfall_amount || 0;
+                
+                const formattedMessage = `No Sufficient Budget Balance in Any Sub Cost Center.\n\nAvailable Amount in Sub Cost Center: ${parseFloat(availableAmount).toFixed(2)}\nRequired Amount: ${requiredAmount.toFixed(2)}\nShortfall Amount: ${shortfall.toFixed(2)}`;
+                
+                setErrors({
+                    submit: formattedMessage,
                 });
             } else {
                 // Regular error handling
@@ -564,9 +587,9 @@ const ApproveOrder = ({
                         className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
                         role="alert"
                     >
-                        <span className="block sm:inline">
+                        <div className="block sm:inline whitespace-pre-line">
                             {errors.rfq_id || errors.submit}
-                        </span>
+                        </div>
                     </div>
                 )}
 
@@ -708,6 +731,18 @@ const ApproveOrder = ({
                                 disabled={true}
                                 readOnly={true}
                                 error={errors.vat_amount}
+                            />
+                        </div>
+                        <div>
+                            <InputFloating
+                                label="Total Amount"
+                                name="total_amount"
+                                type="number"
+                                value={(parseFloat(formData.amount || 0) + parseFloat(formData.vat_amount || 0)).toFixed(2)}
+                                onChange={() => {}}
+                                onKeyDown={(e) => e.preventDefault()}
+                                disabled={true}
+                                readOnly={true}
                             />
                         </div>
                         {/* <div>

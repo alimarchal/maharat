@@ -578,7 +578,7 @@ const ReallocateBudgetForm = () => {
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-3xl font-bold text-[#2C323C]">
-                        Reallocate Budget
+                        Reallocate Sub Cost Center Budget
                     </h2>
                     <p className="text-[#7D8086] text-lg">
                         Reallocate budget from one sub cost center to another
@@ -619,7 +619,7 @@ const ReallocateBudgetForm = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <SelectFloating
                             label="Department Name"
@@ -648,9 +648,12 @@ const ReallocateBudgetForm = () => {
                         />
                         <ErrorMessage error={errors.cost_center_id} />
                     </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <SelectFloating
-                            label="Sub Cost Center"
+                            label="Move From Sub Cost Center"
                             name="sub_cost_center"
                             value={formData.sub_cost_center}
                             onChange={handleChange}
@@ -662,9 +665,6 @@ const ReallocateBudgetForm = () => {
                         />
                         <ErrorMessage error={errors.sub_cost_center} />
                     </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <InputFloating
                             label="Current Available Budget"
@@ -675,9 +675,12 @@ const ReallocateBudgetForm = () => {
                             readOnly
                         />
                     </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <SelectFloating
-                            label="Reallocate Sub Cost Center"
+                            label="Move To Sub Cost Center"
                             name="reallocate_sub_cost_center"
                             value={formData.reallocate_sub_cost_center}
                             onChange={handleChange}
