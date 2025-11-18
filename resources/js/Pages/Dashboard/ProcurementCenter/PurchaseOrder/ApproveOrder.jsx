@@ -429,10 +429,13 @@ const ApproveOrder = ({
                 );
             }
             const newPOId = response.data.data?.id;
+            const poStatus = response.data.data?.status;
 
             if (newPOId) {
                 // Only create workflow (transaction and task) if this is a new purchase order, not an edit
-                if (!isEdit) {
+                // AND if the PO status is NOT "Pending Reallocation"
+                // If status is "Pending Reallocation", the PO approval will be triggered after reallocation is approved
+                if (!isEdit && poStatus !== 'Pending Reallocation') {
                     // Create approval transaction
                     const POTransactionPayload = {
                         purchase_order_id: newPOId,
@@ -460,6 +463,9 @@ const ApproveOrder = ({
                     };
 
                     await axios.post("/api/v1/tasks", taskPayload);
+                } else if (!isEdit && poStatus === 'Pending Reallocation') {
+                    // PO is pending reallocation - approval will be triggered after reallocation is approved
+                    console.log('Purchase order created with "Pending Reallocation" status. PO approval will be triggered after reallocation is approved.');
                 }
 
                 // Successfully completed workflow - navigate to ViewOrder page

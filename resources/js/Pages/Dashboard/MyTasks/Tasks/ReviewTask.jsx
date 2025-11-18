@@ -13,12 +13,14 @@ const ReviewTask = () => {
         description: "",
         action: "",
         user_id: "",
+        new_destination_sub_cost_center_id: "",
     });
 
     const [taskData, setTaskData] = useState(null);
     const [employees, setEmployees] = useState([]);
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [availableAlternatives, setAvailableAlternatives] = useState([]);
 
     useEffect(() => {
         if (id) {
@@ -42,9 +44,22 @@ const ReviewTask = () => {
     const fetchTaskDetails = async (taskId) => {
         try {
             const response = await axios.get(
-                `/api/v1/tasks/${taskId}?include=processStep,process,assignedFromUser,assignedToUser,descriptions`
+                `/api/v1/tasks/${taskId}?include=processStep,process,assignedFromUser,assignedToUser,descriptions,request_budget,request_budget.department,request_budget.costCenter,request_budget.fiscalPeriod,request_budget.subCostCenter,request_budget.reallocateToSubCostCenter,request_budget.originalDestinationSubCostCenter,request_budget.updatedDestinationSubCostCenter,request_budget.updatedByUser,request_budget.purchaseOrder`
             );
             setTaskData(response.data.data);
+            
+            // If this is a reallocation request, load available alternatives
+            if (response.data.data.process?.title === "Budget Reallocate Approval" && 
+                response.data.data.request_budget?.type === 'reallocation' &&
+                response.data.data.request_budget?.available_alternatives_json) {
+                try {
+                    const alternatives = JSON.parse(response.data.data.request_budget.available_alternatives_json);
+                    setAvailableAlternatives(alternatives || []);
+                } catch (e) {
+                    console.error("Error parsing alternatives:", e);
+                    setAvailableAlternatives([]);
+                }
+            }
             
             console.log("=== FRONTEND: TASK LOADED ===", {
                 taskId: response.data.data.id,
@@ -76,6 +91,8 @@ const ReviewTask = () => {
         if (!formData.action) newErrors.action = "Action is required";
         if (formData.action === "Refer" && !formData.user_id)
             newErrors.user_id = "User is required";
+        if (formData.action === "Update Sub Cost Center" && !formData.new_destination_sub_cost_center_id)
+            newErrors.new_destination_sub_cost_center_id = "New destination sub cost center is required";
 
         setErrors(newErrors);
         if (Object.keys(newErrors).length > 0) return;
@@ -89,6 +106,174 @@ const ReviewTask = () => {
                 taskData: taskData,
                 continueApprovalFlow: taskData.continue_approval_flow
             });
+
+            // Handle "Update Sub Cost Center" action separately
+            // This action updates the destination AND approves the current task
+            if (formData.action === "Update Sub Cost Center") {
+                if (!taskData.request_budget?.id) {
+                    toast.error("Request budget not found");
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                try {
+                    // Step 1: Update the destination sub cost center
+                    const updateResponse = await axios.put(
+                        `/api/v1/request-budgets/${taskData.request_budget.id}/update-destination`,
+                        {
+                            new_destination_sub_cost_center_id: formData.new_destination_sub_cost_center_id
+                        }
+                    );
+
+                    if (!updateResponse.data.success) {
+                        toast.error(updateResponse.data.message || "Failed to update destination");
+                        setIsSubmitting(false);
+                        return;
+                    }
+
+                    toast.success("Destination sub cost center updated successfully");
+                    
+                    // Step 2: Refresh task data to get updated information
+                    await fetchTaskDetails(taskData.id);
+                    const refreshedTaskData = await axios.get(
+                        `/api/v1/tasks/${taskData.id}?include=processStep,process,assignedFromUser,assignedToUser,descriptions,request_budget,request_budget.department,request_budget.costCenter,request_budget.fiscalPeriod,request_budget.subCostCenter,request_budget.reallocateToSubCostCenter,request_budget.originalDestinationSubCostCenter,request_budget.updatedDestinationSubCostCenter,request_budget.updatedByUser,request_budget.purchaseOrder`
+                    );
+                    const updatedTaskData = refreshedTaskData.data.data;
+                    
+                    // Step 3: Create task description with "Approve" action
+                    const taskDescriptionData = {
+                        task_id: taskData.id,
+                        description: formData.description || "Updated destination sub cost center and approved",
+                        action: "Approve", // Treat update as approval
+                        user_id: "",
+                    };
+                    const descriptionResponse = await axios.post("/api/v1/task-descriptions", taskDescriptionData);
+                    const taskDescription = descriptionResponse.data.data;
+
+                    // Step 4: Update task status to "Approved"
+                    const taskPayload = { status: "Approved" };
+                    await axios.put(`/api/v1/tasks/${taskData.id}`, taskPayload);
+
+                    // Step 5: If continue_approval_flow is 1, create next approval transaction and task
+                    if (taskDescription.action === "Approve" && updatedTaskData.continue_approval_flow == 1) {
+                        // Skip frontend task creation for GRN tasks - backend handles it
+                        if (updatedTaskData.grn_id) {
+                            console.log("=== FRONTEND: SKIPPING NEXT APPROVAL CREATION - GRN TASK ===");
+                        } else {
+                            // Get the process and find the next step
+                            const process = updatedTaskData.process;
+                            if (!process) {
+                                console.error("Process not found for task");
+                                router.visit("/tasks");
+                                return;
+                            }
+
+                            const currentStep = updatedTaskData.process_step;
+                            if (!currentStep) {
+                                console.error("Current process step not found");
+                                router.visit("/tasks");
+                                return;
+                            }
+
+                            // Find the next step
+                            const processStepsResponse = await axios.get(
+                                `/api/v1/process-steps?filter[process_id]=${process.id}&sort=order`
+                            );
+                            const allSteps = processStepsResponse.data.data;
+                            const nextStep = allSteps.find(step => step.order > currentStep.order);
+
+                            if (nextStep) {
+                                // Get approver for next step
+                                const approverResponse = await axios.get(
+                                    `/api/v1/process-step-users?filter[process_step_id]=${nextStep.id}&filter[user_id]=${logged_user}`
+                                );
+                                const approvers = approverResponse.data.data;
+                                const assignUser = approvers.length > 0 ? approvers[0] : null;
+
+                                if (assignUser?.approver_id) {
+                                    // Determine the process type and create appropriate approval transaction
+                                    const processTitle = process.title;
+                                    let url = "";
+                                    let payload = {};
+                                    let key = "";
+
+                                    if (processTitle === "Material Request Approval") {
+                                        url = "/api/v1/material-request-approval-transactions";
+                                        key = "material_request_id";
+                                        payload = {
+                                            material_request_id: updatedTaskData.material_request_id,
+                                            requester_id: logged_user,
+                                            assigned_to: assignUser.approver_id,
+                                            order: nextStep.order,
+                                            description: nextStep.description,
+                                            status: "Pending",
+                                        };
+                                    } else if (processTitle === "RFQ Approval") {
+                                        url = "/api/v1/rfq-approval-transactions";
+                                        key = "rfq_id";
+                                        payload = {
+                                            rfq_id: updatedTaskData.rfq_id,
+                                            requester_id: logged_user,
+                                            assigned_to: assignUser.approver_id,
+                                            order: nextStep.order,
+                                            description: nextStep.description,
+                                            status: "Pending",
+                                        };
+                                    } else if (processTitle === "Purchase Order Approval") {
+                                        url = "/api/v1/po-approval-transactions";
+                                        key = "purchase_order_id";
+                                        payload = {
+                                            purchase_order_id: updatedTaskData.purchase_order_id,
+                                            requester_id: logged_user,
+                                            assigned_to: assignUser.approver_id,
+                                            order: nextStep.order,
+                                            description: nextStep.description,
+                                            status: "Pending",
+                                        };
+                                    } else if (processTitle === "Budget Reallocate Approval") {
+                                        url = "/api/v1/budget-request-approval-transactions";
+                                        key = "request_budgets_id";
+                                        payload = {
+                                            request_budgets_id: updatedTaskData.request_budget?.id,
+                                            requester_id: logged_user,
+                                            assigned_to: assignUser.approver_id,
+                                            order: nextStep.order,
+                                            description: nextStep.description,
+                                            status: "Pending",
+                                        };
+                                    }
+
+                                    if (url && Object.keys(payload).length > 0) {
+                                        await axios.post(url, payload);
+
+                                        const taskPayload = {
+                                            process_step_id: nextStep.id,
+                                            process_id: process.id,
+                                            assigned_at: new Date().toISOString(),
+                                            urgency: "Normal",
+                                            assigned_to_user_id: assignUser.approver_id || null,
+                                            assigned_from_user_id: logged_user,
+                                            read_status: null,
+                                            order_no: String(nextStep.order),
+                                            [key]: updatedTaskData[key] || updatedTaskData.request_budget?.id,
+                                        };
+
+                                        await axios.post("/api/v1/tasks", taskPayload);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    router.visit("/tasks");
+                } catch (error) {
+                    console.error("Error updating destination and approving:", error);
+                    toast.error(error.response?.data?.message || "Failed to update destination sub cost center and approve");
+                } finally {
+                    setIsSubmitting(false);
+                }
+                return;
+            }
 
             // Ensure task_id is set to the current task's ID
             const taskDescriptionData = {
@@ -542,16 +727,33 @@ const ReviewTask = () => {
                                 value={formData.action}
                                 onChange={handleChange}
                                 options={
-                                    taskData?.continue_approval_flow == 0
-                                        ? [
-                                            { id: "Approve", label: "Approve" },
-                                            { id: "Reject", label: "Reject" },
-                                        ]
-                                        : [
-                                            { id: "Approve", label: "Approve" },
-                                            { id: "Reject", label: "Reject" },
-                                            { id: "Refer", label: "Refer" },
-                                        ]
+                                    (() => {
+                                        const isReallocation = taskData?.process?.title === "Budget Reallocate Approval" && 
+                                                              taskData?.request_budget?.type === 'reallocation' &&
+                                                              !taskData?.request_budget?.sub_cost_center_updated &&
+                                                              availableAlternatives.length > 0;
+                                        
+                                        if (taskData?.continue_approval_flow == 0) {
+                                            const baseOptions = [
+                                                { id: "Approve", label: "Approve" },
+                                                { id: "Reject", label: "Reject" },
+                                            ];
+                                            if (isReallocation) {
+                                                baseOptions.push({ id: "Update Sub Cost Center", label: "Update Sub Cost Center" });
+                                            }
+                                            return baseOptions;
+                                        } else {
+                                            const baseOptions = [
+                                                { id: "Approve", label: "Approve" },
+                                                { id: "Reject", label: "Reject" },
+                                                { id: "Refer", label: "Refer" },
+                                            ];
+                                            if (isReallocation) {
+                                                baseOptions.push({ id: "Update Sub Cost Center", label: "Update Sub Cost Center" });
+                                            }
+                                            return baseOptions;
+                                        }
+                                    })()
                                 }
                             />
                             {errors.action && (
@@ -577,6 +779,46 @@ const ReviewTask = () => {
                                 {errors.user_id && (
                                     <p className="text-red-500 text-sm mt-1">
                                         {errors.user_id}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                        {formData.action === "Update Sub Cost Center" && (
+                            <div className="w-full">
+                                <SelectFloating
+                                    label="Take From Sub Cost Center"
+                                    name="new_destination_sub_cost_center_id"
+                                    value={formData.new_destination_sub_cost_center_id}
+                                    onChange={handleChange}
+                                    options={availableAlternatives
+                                        .filter(alt => 
+                                            alt.sub_cost_center_id != taskData?.request_budget?.reallocate_to_sub_cost_center &&
+                                            alt.sub_cost_center_id != taskData?.request_budget?.updated_destination_sub_cost_center
+                                        )
+                                        .map((alt) => {
+                                            const name = String(alt.sub_cost_center_name || '').trim();
+                                            // Remove any trailing "0" that's not part of a number
+                                            let cleanName = name;
+                                            while (cleanName.endsWith('0') && cleanName.length > 1) {
+                                                const secondLastChar = cleanName.charAt(cleanName.length - 2);
+                                                if (!/\d/.test(secondLastChar)) {
+                                                    cleanName = cleanName.slice(0, -1);
+                                                } else {
+                                                    break;
+                                                }
+                                            }
+                                            const availableAmount = parseFloat(alt.available_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                            return {
+                                                id: alt.sub_cost_center_id,
+                                                label: cleanName, // Just the name for selected display
+                                                displayLabel: `${cleanName}\nAvailable: ${availableAmount}`, // Name + Available on next line for dropdown
+                                                availableAmount: availableAmount,
+                                            };
+                                        })}
+                                />
+                                {errors.new_destination_sub_cost_center_id && (
+                                    <p className="text-red-500 text-sm mt-1">
+                                        {errors.new_destination_sub_cost_center_id}
                                     </p>
                                 )}
                             </div>

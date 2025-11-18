@@ -1485,10 +1485,14 @@ class TaskController extends Controller
                                     ->where('status', 'Approved')
                                     ->first();
 
+                                // Use updated destination if it was changed, otherwise use original
+                                $destinationSubCostCenter = $budgetRequest->updated_destination_sub_cost_center 
+                                    ?? $budgetRequest->reallocate_to_sub_cost_center;
+                                
                                 $destinationBudget = RequestBudget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
                                     ->where('department_id', $budgetRequest->department_id)
                                     ->where('cost_center_id', $budgetRequest->cost_center_id)
-                                    ->where('sub_cost_center', $budgetRequest->reallocate_to_sub_cost_center)
+                                    ->where('sub_cost_center', $destinationSubCostCenter)
                                     ->where('status', 'Approved')
                                     ->first();
 
@@ -1545,6 +1549,108 @@ class TaskController extends Controller
                                         'reallocate_amount' => 0,
                                         'updated_at' => now()
                                     ]);
+                                
+                                // If reallocation is linked to a purchase order, trigger PO approval process
+                                // ONLY if this is the final approval and PO status is "Pending Reallocation"
+                                if ($budgetRequest && $budgetRequest->purchase_order_id) {
+                                    // Verify PO status is "Pending Reallocation" before proceeding
+                                    $poStatus = DB::table('purchase_orders')
+                                        ->where('id', $budgetRequest->purchase_order_id)
+                                        ->value('status');
+                                    
+                                    if ($poStatus !== 'Pending Reallocation') {
+                                        Log::warning('=== PO APPROVAL NOT TRIGGERED - PO STATUS IS NOT PENDING REALLOCATION ===', [
+                                            'purchase_order_id' => $budgetRequest->purchase_order_id,
+                                            'current_status' => $poStatus,
+                                            'expected_status' => 'Pending Reallocation',
+                                            'note' => 'PO approval should only be triggered when PO status is Pending Reallocation'
+                                        ]);
+                                        // Skip PO approval creation if status is not "Pending Reallocation"
+                                    } else {
+                                        Log::info('=== REALLOCATION FINAL APPROVAL - TRIGGERING PO APPROVAL PROCESS ===', [
+                                            'reallocation_request_id' => $task->request_budgets_id,
+                                            'purchase_order_id' => $budgetRequest->purchase_order_id,
+                                            'po_status' => $poStatus,
+                                            'is_final_approval' => true
+                                        ]);
+                                        
+                                        // Update PO status from "Pending Reallocation" to "Draft"
+                                        DB::table('purchase_orders')
+                                            ->where('id', $budgetRequest->purchase_order_id)
+                                            ->update([
+                                                'status' => 'Draft',
+                                                'updated_at' => now()
+                                            ]);
+                                    
+                                    // Get the Purchase Order Approval process
+                                    $poProcess = DB::table('processes')
+                                        ->where('title', 'Purchase Order Approval')
+                                        ->first();
+                                    
+                                    if ($poProcess) {
+                                        $poProcessSteps = DB::table('process_steps')
+                                            ->where('process_id', $poProcess->id)
+                                            ->orderBy('order')
+                                            ->get();
+                                        
+                                        if ($poProcessSteps->isNotEmpty()) {
+                                            $firstPoStep = $poProcessSteps->first();
+                                            
+                                            // Use ApproverResolver to get the approver
+                                            $approverResolver = new ApproverResolver();
+                                            $requester = User::find($budgetRequest->created_by);
+                                            $poApproverId = $approverResolver->resolveApproverId(
+                                                EloquentProcessStep::find($firstPoStep->id),
+                                                $requester
+                                            );
+                                            
+                                            if ($poApproverId) {
+                                                // Create PO approval transaction
+                                                DB::table('po_approval_transactions')->insert([
+                                                    'purchase_order_id' => $budgetRequest->purchase_order_id,
+                                                    'requester_id' => $budgetRequest->created_by,
+                                                    'assigned_to' => $poApproverId,
+                                                    'order' => $firstPoStep->order,
+                                                    'description' => $firstPoStep->description,
+                                                    'status' => 'Pending',
+                                                    'created_at' => now(),
+                                                    'updated_at' => now()
+                                                ]);
+                                                
+                                                // Create task for PO approval
+                                                DB::table('tasks')->insert([
+                                                    'process_step_id' => $firstPoStep->id,
+                                                    'process_id' => $firstPoStep->process_id,
+                                                    'assigned_at' => now(),
+                                                    'urgency' => 'Normal',
+                                                    'assigned_to_user_id' => $poApproverId,
+                                                    'assigned_from_user_id' => $budgetRequest->created_by,
+                                                    'purchase_order_id' => $budgetRequest->purchase_order_id,
+                                                    'status' => 'Pending',
+                                                    'created_at' => now(),
+                                                    'updated_at' => now()
+                                                ]);
+                                                
+                                                Log::info('=== PO APPROVAL PROCESS TRIGGERED SUCCESSFULLY ===', [
+                                                    'purchase_order_id' => $budgetRequest->purchase_order_id,
+                                                    'task_created' => true
+                                                ]);
+                                            } else {
+                                                Log::warning('=== NO APPROVER FOUND FOR PO PROCESS STEP ===', [
+                                                    'process_step_id' => $firstPoStep->id,
+                                                    'requester_id' => $budgetRequest->created_by
+                                                ]);
+                                            }
+                                        } else {
+                                            Log::warning('=== NO PO PROCESS STEPS FOUND ===', [
+                                                'process_id' => $poProcess->id
+                                            ]);
+                                        }
+                                    } else {
+                                        Log::warning('=== NO PO APPROVAL PROCESS FOUND ===');
+                                    }
+                                    }
+                                }
                             } else {
                                 // Regular budget request approval
                                 $budgetRequestUpdated = DB::table('request_budgets')
@@ -1773,6 +1879,31 @@ class TaskController extends Controller
                         
                         if ($budgetRequest && $budgetRequest->type === 'reallocation') {
                             Log::info('=== PROCESSING REALLOCATION REJECTION ===', [
+                                'request_budget_id' => $task->request_budgets_id,
+                                'purchase_order_id' => $budgetRequest->purchase_order_id ?? null
+                            ]);
+                            
+                            // If reallocation is linked to a purchase order, reject the PO
+                            if ($budgetRequest->purchase_order_id) {
+                                Log::info('=== REALLOCATION REJECTED - REJECTING LINKED PO ===', [
+                                    'reallocation_request_id' => $task->request_budgets_id,
+                                    'purchase_order_id' => $budgetRequest->purchase_order_id
+                                ]);
+                                
+                                // Update PO status to "Rejected"
+                                DB::table('purchase_orders')
+                                    ->where('id', $budgetRequest->purchase_order_id)
+                                    ->update([
+                                        'status' => 'Rejected',
+                                        'updated_at' => now()
+                                    ]);
+                                
+                                Log::info('=== PO REJECTED DUE TO REALLOCATION REJECTION ===', [
+                                    'purchase_order_id' => $budgetRequest->purchase_order_id
+                                ]);
+                            }
+                            
+                            Log::info('=== PROCESSING REALLOCATION REJECTION (CONTINUED) ===', [
                                 'request_budget_id' => $task->request_budgets_id
                             ]);
 
@@ -1784,10 +1915,14 @@ class TaskController extends Controller
                                 ->where('status', 'Approved')
                                 ->first();
 
+                            // Use updated destination if it was changed, otherwise use original
+                            $destinationSubCostCenter = $budgetRequest->updated_destination_sub_cost_center 
+                                ?? $budgetRequest->reallocate_to_sub_cost_center;
+                            
                             $destinationBudget = RequestBudget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
                                 ->where('department_id', $budgetRequest->department_id)
                                 ->where('cost_center_id', $budgetRequest->cost_center_id)
-                                ->where('sub_cost_center', $budgetRequest->reallocate_to_sub_cost_center)
+                                ->where('sub_cost_center', $destinationSubCostCenter)
                                 ->where('status', 'Approved')
                                 ->first();
 

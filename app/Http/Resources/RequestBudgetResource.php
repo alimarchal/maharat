@@ -6,6 +6,7 @@ use App\Http\Resources\V1\CostCenterResource;
 use App\Http\Resources\V1\DepartmentResource;
 use App\Http\Resources\V1\FiscalPeriodResource;
 use App\Http\Resources\V1\UserResource;
+use App\Http\Resources\V1\PurchaseOrderResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -55,6 +56,25 @@ class RequestBudgetResource extends JsonResource
             'cost_center' => new CostCenterResource($this->whenLoaded('costCenter')),
             'sub_cost_center_details' => new CostCenterResource($this->whenLoaded('subCostCenter')),
             'reallocate_to_sub_cost_center_details' => new CostCenterResource($this->whenLoaded('reallocateToSubCostCenter')),
+            'original_destination_sub_cost_center_details' => new CostCenterResource($this->whenLoaded('originalDestinationSubCostCenter')),
+            'updated_destination_sub_cost_center_details' => new CostCenterResource($this->whenLoaded('updatedDestinationSubCostCenter')),
+            'updated_by_user' => new UserResource($this->whenLoaded('updatedByUser')),
+            'purchase_order' => new PurchaseOrderResource($this->whenLoaded('purchaseOrder')),
+            'source_budget_request' => $this->whenLoaded('sourceBudgetRequest', function () {
+                if (!$this->sourceBudgetRequest) {
+                    return null;
+                }
+                return [
+                    'id' => $this->sourceBudgetRequest->id,
+                    'balance_amount' => $this->sourceBudgetRequest->balance_amount,
+                    'approved_amount' => $this->sourceBudgetRequest->approved_amount,
+                ];
+            }),
+            'sub_cost_center_updated' => $this->sub_cost_center_updated,
+            'original_destination_sub_cost_center' => $this->original_destination_sub_cost_center,
+            'updated_destination_sub_cost_center' => $this->updated_destination_sub_cost_center,
+            'updated_by_user_id' => $this->updated_by_user_id,
+            'available_alternatives_json' => $this->available_alternatives_json,
             'reallocation_history' => $this->whenLoaded('reallocationHistory', function () {
                 return [
                     'id' => $this->reallocationHistory->id,

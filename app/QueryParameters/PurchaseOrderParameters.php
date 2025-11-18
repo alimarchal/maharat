@@ -56,5 +56,9 @@ class PurchaseOrderParameters
         'requestForQuotation.warehouse',
         'requestForQuotation.items.product.category',
         'requestForQuotation.items.product.unit',
+        'reallocationRequest',
+        'reallocationRequest.updatedDestinationSubCostCenter',
+        'reallocationRequest.reallocateToSubCostCenter',
+        'alternativeSubCostCenter',
     ];
 }

@@ -19,6 +19,9 @@ use App\Services\PurchaseOrderBudgetService;
 use App\Models\RequestBudget;
 use App\Services\BudgetValidationService;
 use App\Models\Quotation;
+use App\Services\ApproverResolver;
+use App\Models\ProcessStep;
+use App\Models\User;
 
 class PurchaseOrderController extends Controller
 {
@@ -198,6 +201,8 @@ class PurchaseOrderController extends Controller
 
             // Check if alternative subcost center is provided when budget fails
             $alternativeSubCostCenterId = $request->input('alternative_sub_cost_center_id');
+            $shortfallAmount = null;
+            $alternatives = [];
             
             if (!$budgetValidation['valid']) {
                 // If budget validation failed, check if alternative subcost center is provided
@@ -212,11 +217,12 @@ class PurchaseOrderController extends Controller
                     ], Response::HTTP_BAD_REQUEST);
                 }
                 
-                // Alternative subcost center provided - proceed with split reservation
+                // Alternative subcost center provided - create reallocation request instead of reserving budget
                 $availableAmount = $budgetValidation['available_amount'] ?? 0;
                 $shortfallAmount = $budgetValidation['shortfall_amount'] ?? $totalAmount;
+                $alternatives = $budgetValidation['alternatives'] ?? [];
                 
-                // Get the original budget even though validation failed - we still need to reserve from it
+                // Get the original budget (source budget for reallocation)
                 $originalBudget = \App\Models\RequestBudget::where('fiscal_period_id', $fiscalPeriodId)
                     ->where('status', 'Approved');
                 
@@ -238,139 +244,26 @@ class PurchaseOrderController extends Controller
                     throw new \Exception('Original budget not found for current subcost center');
                 }
                 
-                // Validate alternative subcost center budget
-                $alternativeBudgetValidation = $budgetService->validateBudgetAvailability(
-                    $rfq->department_id,
-                    $rfq->cost_center_id,
-                    $alternativeSubCostCenterId,
-                    $fiscalPeriodId,
-                    $shortfallAmount
-                );
-                
-                if (!$alternativeBudgetValidation['valid']) {
-                    throw new \Exception('Alternative subcost center also has insufficient budget: ' . $alternativeBudgetValidation['message']);
-                }
-                
-                $alternativeBudget = $alternativeBudgetValidation['budget'];
-                
-                // Reserve FULL PO amount from original budget (as per user requirement)
-                // THIS HAPPENS WHEN PO REQUEST IS MADE, NOT AFTER APPROVAL
-                $originalAuditLogId = null;
-                if ($originalBudget && $totalAmount > 0) {
-                    $originalReservedBefore = $originalBudget->reserved_amount;
-                    $originalBalanceBefore = $originalBudget->balance_amount;
-                    
-                    \Log::info('=== PO CREATION: RESERVING BUDGET FROM CURRENT SUBCOST CENTER ===', [
-                        'action' => 'PO_REQUEST_MADE',
-                        'stage' => 'BEFORE_RESERVATION',
-                        'budget_id' => $originalBudget->id,
-                        'sub_cost_center_id' => $originalBudget->sub_cost_center,
-                        'reserved_amount_before' => $originalReservedBefore,
-                        'balance_amount_before' => $originalBalanceBefore,
-                        'po_total_amount' => $totalAmount,
-                        'shortage_amount' => $shortfallAmount,
-                        'note' => 'This happens when PO request is created, NOT after approval'
-                    ]);
-                    
-                    // Update reserved_amount: reserved_amount = reserved_amount + PO total amount
-                    $originalBudget->reserved_amount += $totalAmount;
-                    
-                    // Update balance_amount: balance_amount = balance_amount + shortage amount
-                    $originalBudget->balance_amount += $shortfallAmount;
-                    
-                    $originalBudget->save();
-                    
-                    // Refresh budget to get updated values
-                    $originalBudget->refresh();
-                    
-                    \Log::info('=== PO CREATION: BUDGET RESERVED FROM CURRENT SUBCOST CENTER ===', [
-                        'action' => 'PO_REQUEST_MADE',
-                        'stage' => 'AFTER_RESERVATION',
-                        'budget_id' => $originalBudget->id,
-                        'sub_cost_center_id' => $originalBudget->sub_cost_center,
-                        'reserved_amount_before' => $originalReservedBefore,
-                        'reserved_amount_after' => $originalBudget->reserved_amount,
-                        'reserved_amount_increase' => $originalBudget->reserved_amount - $originalReservedBefore,
-                        'balance_amount_before' => $originalBalanceBefore,
-                        'balance_amount_after' => $originalBudget->balance_amount,
-                        'balance_amount_increase' => $originalBudget->balance_amount - $originalBalanceBefore,
-                        'po_total_amount' => $totalAmount,
-                        'shortage_amount' => $shortfallAmount,
-                        'note' => 'Budget updated when PO request is made - reserved_amount increased by PO total, balance_amount increased by shortage amount'
-                    ]);
-                    
-                    // Log audit
-                    $originalAuditLogId = DB::table('budget_audit_logs')->insertGetId([
-                        'request_budget_id' => $originalBudget->id,
-                        'purchase_order_id' => null, // Will be updated after PO is created
-                        'action' => 'reserve',
-                        'amount' => $totalAmount,
-                        'reserved_amount_before' => $originalReservedBefore,
-                        'reserved_amount_after' => $originalBudget->reserved_amount,
-                        'balance_amount_before' => $originalBalanceBefore,
-                        'balance_amount_after' => $originalBudget->balance_amount,
-                        'notes' => 'PO created - reserved full PO amount',
-                        'created_by' => auth()->id(),
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
-                    
-                    \Log::info('PurchaseOrder Store - Original budget reserved (full PO amount)', [
-                        'budget_id' => $originalBudget->id,
-                        'reserved_amount' => $totalAmount,
-                        'po_total_amount' => $totalAmount,
-                        'audit_log_id' => $originalAuditLogId
-                    ]);
-                }
-                
-                // Reserve shortfall amount from alternative budget
-                $alternativeAuditLogId = null;
-                $alternativeReservedBefore = $alternativeBudget->reserved_amount;
-                $alternativeBalanceBefore = $alternativeBudget->balance_amount;
-                
-                $budgetService->reserveBudget($alternativeBudget, $shortfallAmount);
-                
-                // Refresh budget to get updated values
-                $alternativeBudget->refresh();
-                
-                // Log audit
-                $alternativeAuditLogId = DB::table('budget_audit_logs')->insertGetId([
-                    'request_budget_id' => $alternativeBudget->id,
-                    'purchase_order_id' => null, // Will be updated after PO is created
-                    'action' => 'reserve',
-                    'amount' => $shortfallAmount,
-                    'reserved_amount_before' => $alternativeReservedBefore,
-                    'reserved_amount_after' => $alternativeBudget->reserved_amount,
-                    'balance_amount_before' => $alternativeBalanceBefore,
-                    'balance_amount_after' => $alternativeBudget->balance_amount,
-                    'notes' => 'PO created - reserved alternative budget amount',
-                    'created_by' => auth()->id(),
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-                
-                \Log::info('PurchaseOrder Store - Alternative budget reserved', [
-                    'budget_id' => $alternativeBudget->id,
-                    'reserved_amount' => $shortfallAmount,
-                    'audit_log_id' => $alternativeAuditLogId
-                ]);
-                
-                // Add alternative subcost center info to purchase order
-                $validatedData['alternative_sub_cost_center_id'] = $alternativeSubCostCenterId;
-                $validatedData['alternative_budget_amount'] = $shortfallAmount;
-                $validatedData['alternative_request_budget_id'] = $alternativeBudget->id;
+                // Set PO status to "Pending Reallocation"
+                $validatedData['status'] = 'Pending Reallocation';
                 
                 // Add fiscal period and budget info to purchase order
                 $validatedData['fiscal_period_id'] = $fiscalPeriodId;
-                $validatedData['request_budget_id'] = $originalBudget ? $originalBudget->id : null;
+                $validatedData['request_budget_id'] = $originalBudget->id;
                 
-                \Log::info('PurchaseOrder Store - Split budget reservation completed', [
-                    'original_budget_id' => $originalBudget ? $originalBudget->id : null,
-                    'original_reserved' => $availableAmount,
-                    'alternative_budget_id' => $alternativeBudget->id,
-                    'alternative_reserved' => $shortfallAmount,
-                    'total_amount' => $totalAmount
+                // Store alternative subcost center info (will be used after reallocation is approved)
+                $validatedData['alternative_sub_cost_center_id'] = $alternativeSubCostCenterId;
+                $validatedData['alternative_budget_amount'] = $shortfallAmount;
+                
+                \Log::info('PurchaseOrder Store - Creating reallocation request for PO', [
+                    'original_budget_id' => $originalBudget->id,
+                    'alternative_sub_cost_center_id' => $alternativeSubCostCenterId,
+                    'shortfall_amount' => $shortfallAmount,
+                    'total_amount' => $totalAmount,
+                    'alternatives_count' => count($alternatives)
                 ]);
+                
+                // Note: Reallocation request will be created after PO is created (see below)
             } else {
                 // Normal flow - sufficient budget in original subcost center
                 // THIS HAPPENS WHEN PO REQUEST IS MADE, NOT AFTER APPROVAL
@@ -473,6 +366,111 @@ class PurchaseOrderController extends Controller
                     DB::table('budget_audit_logs')
                         ->where('id', $normalAuditLogId)
                         ->update(['purchase_order_id' => $purchaseOrder->id]);
+                }
+                
+                // If PO status is "Pending Reallocation", create reallocation request
+                if ($purchaseOrder->status === 'Pending Reallocation' && isset($alternativeSubCostCenterId) && isset($shortfallAmount)) {
+                    \Log::info('PurchaseOrder Store - Creating reallocation request for PO', [
+                        'purchase_order_id' => $purchaseOrder->id,
+                        'alternative_sub_cost_center_id' => $alternativeSubCostCenterId,
+                        'shortfall_amount' => $shortfallAmount
+                    ]);
+                    
+                    // Prepare alternatives data for storage
+                    $alternativesData = [];
+                    foreach ($alternatives as $alt) {
+                        $alternativesData[] = [
+                            'sub_cost_center_id' => $alt['sub_cost_center_id'] ?? null,
+                            'sub_cost_center_name' => $alt['sub_cost_center_name'] ?? null,
+                            'available_amount' => $alt['available_amount'] ?? 0
+                        ];
+                    }
+                    
+                    // Create reallocation request
+                    $reallocationRequest = RequestBudget::create([
+                        'purchase_order_id' => $purchaseOrder->id,
+                        'fiscal_period_id' => $fiscalPeriodId,
+                        'department_id' => $rfq->department_id,
+                        'cost_center_id' => $rfq->cost_center_id,
+                        'sub_cost_center' => $rfq->sub_cost_center_id,
+                        'reallocate_to_sub_cost_center' => $alternativeSubCostCenterId,
+                        'reallocate_amount' => $shortfallAmount,
+                        'original_destination_sub_cost_center' => $alternativeSubCostCenterId,
+                        'type' => 'reallocation',
+                        'status' => 'Draft',
+                        'reason_for_increase' => 'Budget reallocation required for Purchase Order: ' . $purchaseOrder->purchase_order_no,
+                        'created_by' => auth()->id(),
+                        'available_alternatives_json' => json_encode($alternativesData),
+                    ]);
+                    
+                    \Log::info('PurchaseOrder Store - Reallocation request created', [
+                        'reallocation_request_id' => $reallocationRequest->id,
+                        'purchase_order_id' => $purchaseOrder->id
+                    ]);
+                    
+                    // Get the approval process and create approval transaction and task
+                    $process = DB::table('processes')
+                        ->where('title', 'Budget Reallocate Approval')
+                        ->first();
+                    
+                    if (!$process) {
+                        throw new \Exception('No approval process found for Budget Reallocate Approval');
+                    }
+                    
+                    $processSteps = DB::table('process_steps')
+                        ->where('process_id', $process->id)
+                        ->orderBy('order')
+                        ->get();
+                    
+                    if ($processSteps->isEmpty()) {
+                        throw new \Exception('No approval process steps found for Budget Reallocate Approval');
+                    }
+                    
+                    // Get the first step
+                    $processStep = $processSteps->first();
+                    
+                    // Use ApproverResolver to get the approver
+                    $approverResolver = new ApproverResolver();
+                    $requester = User::find(auth()->id());
+                    $approverId = $approverResolver->resolveApproverId(
+                        ProcessStep::find($processStep->id),
+                        $requester
+                    );
+                    
+                    if (!$approverId) {
+                        throw new \Exception('No assignee found for this process step and user');
+                    }
+                    
+                    // Create budget request transaction
+                    DB::table('budget_request_approval_transactions')->insert([
+                        'request_budgets_id' => $reallocationRequest->id,
+                        'requester_id' => auth()->id(),
+                        'assigned_to' => $approverId,
+                        'order' => $processStep->order,
+                        'description' => $processStep->description,
+                        'status' => 'Pending',
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    
+                    // Create task
+                    DB::table('tasks')->insert([
+                        'process_step_id' => $processStep->id,
+                        'process_id' => $processStep->process_id,
+                        'assigned_at' => now(),
+                        'urgency' => 'Normal',
+                        'assigned_to_user_id' => $approverId,
+                        'assigned_from_user_id' => auth()->id(),
+                        'request_budgets_id' => $reallocationRequest->id,
+                        'status' => 'Pending',
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    
+                    \Log::info('PurchaseOrder Store - Reallocation approval workflow created', [
+                        'reallocation_request_id' => $reallocationRequest->id,
+                        'task_created' => true
+                    ]);
                 }
             } catch (\Exception $e) {
                 \Log::error('PurchaseOrder Store - Failed to create purchase order: ' . $e->getMessage());

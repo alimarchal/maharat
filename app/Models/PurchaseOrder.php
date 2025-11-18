@@ -164,4 +164,12 @@ class PurchaseOrder extends Model
     {
         return $this->hasOne(ExternalInvoice::class);
     }
+
+    /**
+     * Get the reallocation request associated with this purchase order.
+     */
+    public function reallocationRequest()
+    {
+        return $this->hasOne(RequestBudget::class, 'purchase_order_id')->where('type', 'reallocation');
+    }
 }

@@ -58,6 +58,7 @@ class PurchaseOrderResource extends JsonResource
             'fiscalPeriod' => new FiscalPeriodResource($this->whenLoaded('fiscalPeriod')),
             'paymentOrders' => PaymentOrderResource::collection($this->whenLoaded('paymentOrders')),
             'goodReceiveNotes' => GrnResource::collection($this->whenLoaded('goodReceiveNote')),
+            'reallocationRequest' => new RequestBudgetResource($this->whenLoaded('reallocationRequest')),
         ];
     }
 }

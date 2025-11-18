@@ -11,6 +11,7 @@ use App\Models\RequestBudget;
 use App\Models\BudgetReallocationHistory;
 use App\QueryParameters\RequestBudgetParameters;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -329,6 +330,87 @@ class RequestBudgetController extends Controller
             return response()->json([
                 'message' => 'Failed to update request budget status',
                 'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Update destination sub cost center for reallocation request
+     */
+    public function updateDestination(Request $request, RequestBudget $requestBudget): JsonResponse
+    {
+        try {
+            // Check if this is a reallocation request
+            if ($requestBudget->type !== 'reallocation') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This is not a reallocation request'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            // Check if destination has already been updated
+            if ($requestBudget->sub_cost_center_updated) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Destination sub cost center has already been updated by a previous approver'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            $newDestinationId = $request->input('new_destination_sub_cost_center_id');
+            if (!$newDestinationId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'New destination sub cost center ID is required'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            // Validate that the new destination is in the available alternatives
+            $availableAlternatives = json_decode($requestBudget->available_alternatives_json, true) ?? [];
+            $isValidAlternative = false;
+            foreach ($availableAlternatives as $alt) {
+                if (($alt['sub_cost_center_id'] ?? null) == $newDestinationId) {
+                    $isValidAlternative = true;
+                    break;
+                }
+            }
+
+            if (!$isValidAlternative) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Selected destination is not in the available alternatives'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            // Store original destination if not already stored
+            if (!$requestBudget->original_destination_sub_cost_center) {
+                $requestBudget->original_destination_sub_cost_center = $requestBudget->reallocate_to_sub_cost_center;
+            }
+
+            // Update destination
+            $requestBudget->reallocate_to_sub_cost_center = $newDestinationId;
+            $requestBudget->updated_destination_sub_cost_center = $newDestinationId;
+            $requestBudget->sub_cost_center_updated = true;
+            $requestBudget->updated_by_user_id = auth()->id();
+            $requestBudget->save();
+
+            Log::info('=== REALLOCATION DESTINATION UPDATED ===', [
+                'request_budget_id' => $requestBudget->id,
+                'original_destination' => $requestBudget->original_destination_sub_cost_center,
+                'new_destination' => $newDestinationId,
+                'updated_by' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Destination sub cost center updated successfully',
+                'data' => new RequestBudgetResource($requestBudget->fresh())
+            ], Response::HTTP_OK);
+
+        } catch (\Exception $e) {
+            Log::error('Error updating reallocation destination: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update destination: ' . $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
