@@ -606,7 +606,7 @@ const BudgetRequestForm = () => {
                             : "Request by department head for the budget"}
                     </p>
                 </div>
-                <div className="w-full lg:w-1/4">
+                <div className="w-full lg:w-1/3">
                     {isEditMode ? (
                         <InputFloating
                             label="Budget"

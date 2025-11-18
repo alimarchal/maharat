@@ -35,7 +35,10 @@ class PurchaseOrder extends Model
         'adjusted_amount',
         'adjusted_tax',
         'original_amount',
-        'original_vat_amount'
+        'original_vat_amount',
+        'alternative_sub_cost_center_id',
+        'alternative_budget_amount',
+        'alternative_request_budget_id'
     ];
 
     protected $casts = [
@@ -46,7 +49,8 @@ class PurchaseOrder extends Model
         'adjusted_amount' => 'decimal:2',
         'adjusted_tax' => 'decimal:2',
         'original_amount' => 'decimal:2',
-        'original_vat_amount' => 'decimal:2'
+        'original_vat_amount' => 'decimal:2',
+        'alternative_budget_amount' => 'decimal:2'
     ];
 
 
@@ -118,6 +122,22 @@ class PurchaseOrder extends Model
     }
 
     /**
+     * Get the alternative sub cost center used when original has insufficient budget.
+     */
+    public function alternativeSubCostCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class, 'alternative_sub_cost_center_id');
+    }
+
+    /**
+     * Get the alternative request budget used when original has insufficient budget.
+     */
+    public function alternativeRequestBudget(): BelongsTo
+    {
+        return $this->belongsTo(RequestBudget::class, 'alternative_request_budget_id');
+    }
+
+    /**
      * Get the payment orders associated with this purchase order.
      */
     public function paymentOrders()
@@ -143,5 +163,13 @@ class PurchaseOrder extends Model
     public function externalInvoice()
     {
         return $this->hasOne(ExternalInvoice::class);
+    }
+
+    /**
+     * Get the reallocation request associated with this purchase order.
+     */
+    public function reallocationRequest()
+    {
+        return $this->hasOne(RequestBudget::class, 'purchase_order_id')->where('type', 'reallocation');
     }
 }

@@ -11,6 +11,8 @@ use App\Models\Task;
 use App\Models\TaskDescription;
 use App\Models\ProcessStep as EloquentProcessStep;
 use App\Models\User;
+use App\Models\RequestBudget;
+use App\Models\BudgetReallocationHistory;
 use App\QueryParameters\TaskParameters;
 use App\Services\TransactionFlowService;
 use App\Services\TaskNotificationService;
@@ -1367,10 +1369,11 @@ class TaskController extends Controller
 
                     // Check if this will be the final approval BEFORE updating the transaction
                     // Get the process steps to determine the total number of required approvals
+                    // Get the process from the task to check the correct process steps
+                    $taskProcess = DB::table('processes')->where('id', $task->process_id)->first();
                     $processSteps = DB::table('process_steps')
-                        ->join('processes', 'process_steps.process_id', '=', 'processes.id')
-                        ->where('processes.title', 'Budget Request Approval')
-                        ->orderBy('process_steps.order')
+                        ->where('process_id', $task->process_id)
+                        ->orderBy('order')
                         ->get();
 
                     $totalRequiredApprovals = $processSteps->count();
@@ -1407,8 +1410,57 @@ class TaskController extends Controller
                     ]);
 
                     if ($transactionUpdated) {
+                        // If status is Referred, update budget request status to Pending
+                        if ($request->input('status') === 'Referred') {
+                            Log::info('=== BUDGET REQUEST TASK REFERRED - UPDATING STATUS TO PENDING ===', [
+                                'task_id' => $task->id,
+                                'request_budget_id' => $task->request_budgets_id
+                            ]);
+
+                            // Get the budget request to check if it's a reallocation
+                            $budgetRequest = DB::table('request_budgets')->where('id', $task->request_budgets_id)->first();
+
+                            // Update budget request status to Pending
+                            $budgetRequestUpdated = DB::table('request_budgets')
+                                ->where('id', $task->request_budgets_id)
+                                ->update([
+                                    'status' => 'Pending',
+                                    'updated_at' => now()
+                                ]);
+
+                            // Update history record status to Pending if it's a reallocation
+                            if ($budgetRequest && $budgetRequest->type === 'reallocation') {
+                                $historyRecord = BudgetReallocationHistory::where('reallocation_request_id', $task->request_budgets_id)->first();
+                                if ($historyRecord) {
+                                    $oldStatus = $historyRecord->status;
+                                    $historyRecord->update([
+                                        'status' => 'Pending',
+                                        'updated_by' => auth()->id(),
+                                    ]);
+                                    Log::info('=== REALLOCATION HISTORY STATUS UPDATED TO PENDING (REFERRED) ===', [
+                                        'task_id' => $task->id,
+                                        'request_budget_id' => $task->request_budgets_id,
+                                        'history_record_id' => $historyRecord->id,
+                                        'old_status' => $oldStatus,
+                                        'new_status' => 'Pending'
+                                    ]);
+                                } else {
+                                    Log::warning('=== REALLOCATION HISTORY RECORD NOT FOUND (REFERRED) ===', [
+                                        'task_id' => $task->id,
+                                        'request_budget_id' => $task->request_budgets_id
+                                    ]);
+                                }
+                            }
+
+                            Log::info('=== BUDGET REQUEST STATUS UPDATED TO PENDING (REFERRED) ===', [
+                                'task_id' => $task->id,
+                                'request_budget_id' => $task->request_budgets_id,
+                                'update_success' => $budgetRequestUpdated
+                            ]);
+                        }
+                        
                         // Now trigger the budget request approval logic
-                        if ($isFinalApproval) {
+                        if ($isFinalApproval && $request->input('status') === 'Approved') {
                             Log::info('=== FINAL BUDGET REQUEST APPROVAL - UPDATING STATUS AND CREATING BUDGET ===', [
                                 'task_id' => $task->id,
                                 'request_budget_id' => $task->request_budgets_id,
@@ -1416,15 +1468,200 @@ class TaskController extends Controller
                                 'target_status' => 'Approved'
                             ]);
 
-                            // Update budget request status to Approved
-                            $budgetRequestUpdated = DB::table('request_budgets')
-                                ->where('id', $task->request_budgets_id)
-                                ->update([
-                                    'status' => 'Approved',
-                                    'approved_amount' => DB::raw('requested_amount'),
-                                    'balance_amount' => DB::raw('requested_amount'),
-                                    'updated_at' => now()
+                            // Get the budget request to check if it's a reallocation
+                            $budgetRequest = DB::table('request_budgets')->where('id', $task->request_budgets_id)->first();
+                            
+                            if ($budgetRequest && $budgetRequest->type === 'reallocation') {
+                                Log::info('=== PROCESSING REALLOCATION FINAL APPROVAL ===', [
+                                    'request_budget_id' => $task->request_budgets_id,
+                                    'reallocate_amount' => $budgetRequest->reallocate_amount
                                 ]);
+
+                                // Find source and destination approved budget requests
+                                $sourceBudget = RequestBudget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
+                                    ->where('department_id', $budgetRequest->department_id)
+                                    ->where('cost_center_id', $budgetRequest->cost_center_id)
+                                    ->where('sub_cost_center', $budgetRequest->sub_cost_center)
+                                    ->where('status', 'Approved')
+                                    ->first();
+
+                                // Use updated destination if it was changed, otherwise use original
+                                $destinationSubCostCenter = $budgetRequest->updated_destination_sub_cost_center 
+                                    ?? $budgetRequest->reallocate_to_sub_cost_center;
+                                
+                                $destinationBudget = RequestBudget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
+                                    ->where('department_id', $budgetRequest->department_id)
+                                    ->where('cost_center_id', $budgetRequest->cost_center_id)
+                                    ->where('sub_cost_center', $destinationSubCostCenter)
+                                    ->where('status', 'Approved')
+                                    ->first();
+
+                                if ($sourceBudget && $destinationBudget) {
+                                    // Store old approved amounts before updating
+                                    $sourceOldApproved = $sourceBudget->approved_amount;
+                                    $destinationOldApproved = $destinationBudget->approved_amount;
+
+                                    // Update source: approved_amount = approved_amount - reallocate_amount
+                                    $sourceBudget->approved_amount = $sourceBudget->approved_amount - $budgetRequest->reallocate_amount;
+                                    $sourceBudget->save();
+
+                                    // Update destination: approved_amount = approved_amount + reallocate_amount
+                                    $destinationBudget->approved_amount = $destinationBudget->approved_amount + $budgetRequest->reallocate_amount;
+                                    $destinationBudget->save();
+
+                                    // Update history record
+                                    $historyRecord = BudgetReallocationHistory::where('reallocation_request_id', $task->request_budgets_id)->first();
+                                    if ($historyRecord) {
+                                        $oldStatus = $historyRecord->status;
+                                        $historyRecord->update([
+                                            'status' => 'Approved',
+                                            'source_old_approved_amount' => $sourceOldApproved,
+                                            'source_new_approved_amount' => $sourceBudget->approved_amount,
+                                            'destination_old_approved_amount' => $destinationOldApproved,
+                                            'destination_new_approved_amount' => $destinationBudget->approved_amount,
+                                            'updated_by' => auth()->id(),
+                                        ]);
+                                        Log::info('=== REALLOCATION HISTORY STATUS UPDATED TO APPROVED (FINAL APPROVAL) ===', [
+                                            'task_id' => $task->id,
+                                            'request_budget_id' => $task->request_budgets_id,
+                                            'history_record_id' => $historyRecord->id,
+                                            'old_status' => $oldStatus,
+                                            'new_status' => 'Approved'
+                                        ]);
+                                    } else {
+                                        Log::warning('=== REALLOCATION HISTORY RECORD NOT FOUND (FINAL APPROVAL) ===', [
+                                            'task_id' => $task->id,
+                                            'request_budget_id' => $task->request_budgets_id
+                                        ]);
+                                    }
+
+                                    Log::info('=== REALLOCATION APPROVED AMOUNTS UPDATED ===', [
+                                        'source_approved_amount' => $sourceBudget->approved_amount,
+                                        'destination_approved_amount' => $destinationBudget->approved_amount
+                                    ]);
+                                }
+
+                                // Update reallocation request: status = Approved, reallocate_amount = 0
+                                $budgetRequestUpdated = DB::table('request_budgets')
+                                    ->where('id', $task->request_budgets_id)
+                                    ->update([
+                                        'status' => 'Approved',
+                                        'reallocate_amount' => 0,
+                                        'updated_at' => now()
+                                    ]);
+                                
+                                // If reallocation is linked to a purchase order, trigger PO approval process
+                                // ONLY if this is the final approval and PO status is "Pending Reallocation"
+                                if ($budgetRequest && $budgetRequest->purchase_order_id) {
+                                    // Verify PO status is "Pending Reallocation" before proceeding
+                                    $poStatus = DB::table('purchase_orders')
+                                        ->where('id', $budgetRequest->purchase_order_id)
+                                        ->value('status');
+                                    
+                                    if ($poStatus !== 'Pending Reallocation') {
+                                        Log::warning('=== PO APPROVAL NOT TRIGGERED - PO STATUS IS NOT PENDING REALLOCATION ===', [
+                                            'purchase_order_id' => $budgetRequest->purchase_order_id,
+                                            'current_status' => $poStatus,
+                                            'expected_status' => 'Pending Reallocation',
+                                            'note' => 'PO approval should only be triggered when PO status is Pending Reallocation'
+                                        ]);
+                                        // Skip PO approval creation if status is not "Pending Reallocation"
+                                    } else {
+                                        Log::info('=== REALLOCATION FINAL APPROVAL - TRIGGERING PO APPROVAL PROCESS ===', [
+                                            'reallocation_request_id' => $task->request_budgets_id,
+                                            'purchase_order_id' => $budgetRequest->purchase_order_id,
+                                            'po_status' => $poStatus,
+                                            'is_final_approval' => true
+                                        ]);
+                                        
+                                        // Update PO status from "Pending Reallocation" to "Draft"
+                                        DB::table('purchase_orders')
+                                            ->where('id', $budgetRequest->purchase_order_id)
+                                            ->update([
+                                                'status' => 'Draft',
+                                                'updated_at' => now()
+                                            ]);
+                                    
+                                    // Get the Purchase Order Approval process
+                                    $poProcess = DB::table('processes')
+                                        ->where('title', 'Purchase Order Approval')
+                                        ->first();
+                                    
+                                    if ($poProcess) {
+                                        $poProcessSteps = DB::table('process_steps')
+                                            ->where('process_id', $poProcess->id)
+                                            ->orderBy('order')
+                                            ->get();
+                                        
+                                        if ($poProcessSteps->isNotEmpty()) {
+                                            $firstPoStep = $poProcessSteps->first();
+                                            
+                                            // Use ApproverResolver to get the approver
+                                            $approverResolver = new ApproverResolver();
+                                            $requester = User::find($budgetRequest->created_by);
+                                            $poApproverId = $approverResolver->resolveApproverId(
+                                                EloquentProcessStep::find($firstPoStep->id),
+                                                $requester
+                                            );
+                                            
+                                            if ($poApproverId) {
+                                                // Create PO approval transaction
+                                                DB::table('po_approval_transactions')->insert([
+                                                    'purchase_order_id' => $budgetRequest->purchase_order_id,
+                                                    'requester_id' => $budgetRequest->created_by,
+                                                    'assigned_to' => $poApproverId,
+                                                    'order' => $firstPoStep->order,
+                                                    'description' => $firstPoStep->description,
+                                                    'status' => 'Pending',
+                                                    'created_at' => now(),
+                                                    'updated_at' => now()
+                                                ]);
+                                                
+                                                // Create task for PO approval
+                                                DB::table('tasks')->insert([
+                                                    'process_step_id' => $firstPoStep->id,
+                                                    'process_id' => $firstPoStep->process_id,
+                                                    'assigned_at' => now(),
+                                                    'urgency' => 'Normal',
+                                                    'assigned_to_user_id' => $poApproverId,
+                                                    'assigned_from_user_id' => $budgetRequest->created_by,
+                                                    'purchase_order_id' => $budgetRequest->purchase_order_id,
+                                                    'status' => 'Pending',
+                                                    'created_at' => now(),
+                                                    'updated_at' => now()
+                                                ]);
+                                                
+                                                Log::info('=== PO APPROVAL PROCESS TRIGGERED SUCCESSFULLY ===', [
+                                                    'purchase_order_id' => $budgetRequest->purchase_order_id,
+                                                    'task_created' => true
+                                                ]);
+                                            } else {
+                                                Log::warning('=== NO APPROVER FOUND FOR PO PROCESS STEP ===', [
+                                                    'process_step_id' => $firstPoStep->id,
+                                                    'requester_id' => $budgetRequest->created_by
+                                                ]);
+                                            }
+                                        } else {
+                                            Log::warning('=== NO PO PROCESS STEPS FOUND ===', [
+                                                'process_id' => $poProcess->id
+                                            ]);
+                                        }
+                                    } else {
+                                        Log::warning('=== NO PO APPROVAL PROCESS FOUND ===');
+                                    }
+                                    }
+                                }
+                            } else {
+                                // Regular budget request approval
+                                $budgetRequestUpdated = DB::table('request_budgets')
+                                    ->where('id', $task->request_budgets_id)
+                                    ->update([
+                                        'status' => 'Approved',
+                                        'approved_amount' => DB::raw('requested_amount'),
+                                        'balance_amount' => DB::raw('requested_amount'),
+                                        'updated_at' => now()
+                                    ]);
+                            }
 
                             Log::info('=== BUDGET REQUEST STATUS UPDATE RESULT ===', [
                                 'task_id' => $task->id,
@@ -1434,10 +1671,12 @@ class TaskController extends Controller
                             ]);
 
                             if ($budgetRequestUpdated) {
-                                // Create budget in budgets table from approved budget request
+                                // Get the budget request again to check type
                                 $budgetRequest = DB::table('request_budgets')->where('id', $task->request_budgets_id)->first();
                                 
-                                if ($budgetRequest) {
+                                // Only create budget for regular budget requests, not reallocations
+                                if ($budgetRequest && $budgetRequest->type !== 'reallocation') {
+                                    // Create budget in budgets table from approved budget request
                                     Log::info('=== CREATING BUDGET FROM APPROVED BUDGET REQUEST ===', [
                                         'task_id' => $task->id,
                                         'request_budget_id' => $budgetRequest->id,
@@ -1544,6 +1783,9 @@ class TaskController extends Controller
                                 'total_required_approvals' => $totalRequiredApprovals
                             ]);
 
+                            // Get the budget request to check if it's a reallocation
+                            $budgetRequest = DB::table('request_budgets')->where('id', $task->request_budgets_id)->first();
+
                             // Update budget request status to Pending
                             $budgetRequestUpdated = DB::table('request_budgets')
                                 ->where('id', $task->request_budgets_id)
@@ -1551,6 +1793,30 @@ class TaskController extends Controller
                                     'status' => 'Pending',
                                     'updated_at' => now()
                                 ]);
+
+                            // Update history record status to Pending if it's a reallocation
+                            if ($budgetRequest && $budgetRequest->type === 'reallocation') {
+                                $historyRecord = BudgetReallocationHistory::where('reallocation_request_id', $task->request_budgets_id)->first();
+                                if ($historyRecord) {
+                                    $oldStatus = $historyRecord->status;
+                                    $historyRecord->update([
+                                        'status' => 'Pending',
+                                        'updated_by' => auth()->id(),
+                                    ]);
+                                    Log::info('=== REALLOCATION HISTORY STATUS UPDATED TO PENDING (INTERMEDIATE APPROVAL) ===', [
+                                        'task_id' => $task->id,
+                                        'request_budget_id' => $task->request_budgets_id,
+                                        'history_record_id' => $historyRecord->id,
+                                        'old_status' => $oldStatus,
+                                        'new_status' => 'Pending'
+                                    ]);
+                                } else {
+                                    Log::warning('=== REALLOCATION HISTORY RECORD NOT FOUND (INTERMEDIATE APPROVAL) ===', [
+                                        'task_id' => $task->id,
+                                        'request_budget_id' => $task->request_budgets_id
+                                    ]);
+                                }
+                            }
 
                             Log::info('=== BUDGET REQUEST STATUS UPDATE TO PENDING RESULT ===', [
                                 'task_id' => $task->id,
@@ -1608,6 +1874,102 @@ class TaskController extends Controller
                     ]);
 
                     if ($transactionUpdated) {
+                        // Get the budget request to check if it's a reallocation
+                        $budgetRequest = DB::table('request_budgets')->where('id', $task->request_budgets_id)->first();
+                        
+                        if ($budgetRequest && $budgetRequest->type === 'reallocation') {
+                            Log::info('=== PROCESSING REALLOCATION REJECTION ===', [
+                                'request_budget_id' => $task->request_budgets_id,
+                                'purchase_order_id' => $budgetRequest->purchase_order_id ?? null
+                            ]);
+                            
+                            // If reallocation is linked to a purchase order, reject the PO
+                            if ($budgetRequest->purchase_order_id) {
+                                Log::info('=== REALLOCATION REJECTED - REJECTING LINKED PO ===', [
+                                    'reallocation_request_id' => $task->request_budgets_id,
+                                    'purchase_order_id' => $budgetRequest->purchase_order_id
+                                ]);
+                                
+                                // Update PO status to "Rejected"
+                                DB::table('purchase_orders')
+                                    ->where('id', $budgetRequest->purchase_order_id)
+                                    ->update([
+                                        'status' => 'Rejected',
+                                        'updated_at' => now()
+                                    ]);
+                                
+                                Log::info('=== PO REJECTED DUE TO REALLOCATION REJECTION ===', [
+                                    'purchase_order_id' => $budgetRequest->purchase_order_id
+                                ]);
+                            }
+                            
+                            Log::info('=== PROCESSING REALLOCATION REJECTION (CONTINUED) ===', [
+                                'request_budget_id' => $task->request_budgets_id
+                            ]);
+
+                            // Find source and destination approved budget requests
+                            $sourceBudget = RequestBudget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
+                                ->where('department_id', $budgetRequest->department_id)
+                                ->where('cost_center_id', $budgetRequest->cost_center_id)
+                                ->where('sub_cost_center', $budgetRequest->sub_cost_center)
+                                ->where('status', 'Approved')
+                                ->first();
+
+                            // Use updated destination if it was changed, otherwise use original
+                            $destinationSubCostCenter = $budgetRequest->updated_destination_sub_cost_center 
+                                ?? $budgetRequest->reallocate_to_sub_cost_center;
+                            
+                            $destinationBudget = RequestBudget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
+                                ->where('department_id', $budgetRequest->department_id)
+                                ->where('cost_center_id', $budgetRequest->cost_center_id)
+                                ->where('sub_cost_center', $destinationSubCostCenter)
+                                ->where('status', 'Approved')
+                                ->first();
+
+                            // Use old_balance from the reallocation record itself, not from source/destination records
+                            if ($budgetRequest->old_balance !== null) {
+                                // Revert source balance_amount using old_balance from reallocation record
+                                $sourceBudget->balance_amount = $budgetRequest->old_balance;
+                                $sourceBudget->save();
+                                Log::info('=== SOURCE BALANCE REVERTED ===', [
+                                    'source_balance' => $sourceBudget->balance_amount,
+                                    'reverted_from' => $budgetRequest->old_balance
+                                ]);
+                            }
+
+                            if ($budgetRequest->destination_old_balance !== null) {
+                                // Revert destination balance_amount using destination_old_balance from reallocation record
+                                $destinationBudget->balance_amount = $budgetRequest->destination_old_balance;
+                                $destinationBudget->save();
+                                Log::info('=== DESTINATION BALANCE REVERTED ===', [
+                                    'destination_balance' => $destinationBudget->balance_amount,
+                                    'reverted_from' => $budgetRequest->destination_old_balance
+                                ]);
+                            }
+
+                            // Update history record status to Rejected
+                            $historyRecord = BudgetReallocationHistory::where('reallocation_request_id', $task->request_budgets_id)->first();
+                            if ($historyRecord) {
+                                $oldStatus = $historyRecord->status;
+                                $historyRecord->update([
+                                    'status' => 'Rejected',
+                                    'updated_by' => auth()->id(),
+                                ]);
+                                Log::info('=== REALLOCATION HISTORY STATUS UPDATED TO REJECTED ===', [
+                                    'task_id' => $task->id,
+                                    'request_budget_id' => $task->request_budgets_id,
+                                    'history_record_id' => $historyRecord->id,
+                                    'old_status' => $oldStatus,
+                                    'new_status' => 'Rejected'
+                                ]);
+                            } else {
+                                Log::warning('=== REALLOCATION HISTORY RECORD NOT FOUND (REJECTION) ===', [
+                                    'task_id' => $task->id,
+                                    'request_budget_id' => $task->request_budgets_id
+                                ]);
+                            }
+                        }
+
                         // Immediately update budget request status to Rejected
                         $budgetRequestUpdated = DB::table('request_budgets')
                             ->where('id', $task->request_budgets_id)
@@ -1941,13 +2303,119 @@ class TaskController extends Controller
                                 'new_status' => DB::table('purchase_orders')->where('id', $task->purchase_order_id)->value('status')
                             ]);
 
-                            // Note: Budget consumption now happens during payment processing, not PO approval
-                            // PO approval only changes PO status, budget amounts remain unchanged
-                            Log::info('=== PO APPROVED - BUDGET CONSUMPTION HANDLED DURING PAYMENTS ===', [
-                                'task_id' => $task->id,
-                                'purchase_order_id' => $task->purchase_order_id,
-                                'note' => 'Budget consumption will be handled when payments are made against this PO'
-                            ]);
+                            // Handle split budget transfer if alternative subcost center was used
+                            $purchaseOrder = DB::table('purchase_orders')->where('id', $task->purchase_order_id)->first();
+                            if ($purchaseOrder && $purchaseOrder->alternative_sub_cost_center_id && $purchaseOrder->alternative_request_budget_id) {
+                                Log::info('=== SPLIT BUDGET TRANSFER ON PO FINAL APPROVAL ===', [
+                                    'purchase_order_id' => $task->purchase_order_id,
+                                    'request_budget_id' => $purchaseOrder->request_budget_id,
+                                    'alternative_budget_id' => $purchaseOrder->alternative_request_budget_id,
+                                    'alternative_budget_amount' => $purchaseOrder->alternative_budget_amount
+                                ]);
+
+                                // Get alternative budget
+                                $alternativeBudget = DB::table('request_budgets')->where('id', $purchaseOrder->alternative_request_budget_id)->first();
+                                
+                                // Find original budget - if request_budget_id is null, find it from RFQ
+                                $originalBudget = null;
+                                if ($purchaseOrder->request_budget_id) {
+                                    $originalBudget = DB::table('request_budgets')->where('id', $purchaseOrder->request_budget_id)->first();
+                                } else {
+                                    // Find original budget from RFQ
+                                    $rfq = DB::table('rfqs')->where('id', $purchaseOrder->rfq_id)->first();
+                                    if ($rfq) {
+                                        $originalBudgetQuery = DB::table('request_budgets')
+                                            ->where('status', 'Approved')
+                                            ->where('fiscal_period_id', $purchaseOrder->fiscal_period_id);
+                                        
+                                        if ($rfq->department_id) {
+                                            $originalBudgetQuery->where('department_id', $rfq->department_id);
+                                        }
+                                        if ($rfq->cost_center_id) {
+                                            $originalBudgetQuery->where('cost_center_id', $rfq->cost_center_id);
+                                        }
+                                        if ($rfq->sub_cost_center_id) {
+                                            $originalBudgetQuery->where('sub_cost_center', $rfq->sub_cost_center_id);
+                                        }
+                                        
+                                        $originalBudget = $originalBudgetQuery->first();
+                                    }
+                                }
+
+                                if ($originalBudget && $alternativeBudget) {
+                                    $alternativeReservedAmount = floatval($purchaseOrder->alternative_budget_amount ?? 0);
+                                    
+                                    // Calculate PO total amount
+                                    $poTotalAmount = floatval($purchaseOrder->amount ?? 0) + floatval($purchaseOrder->vat_amount ?? 0);
+                                    
+                                    // For current subcost center (original):
+                                    // 1. reserved_amount = reserved_amount + PO total amount (already done during PO creation)
+                                    // 2. balance_amount = balance_amount + shortage amount
+                                    $shortageAmount = $alternativeReservedAmount;
+                                    $tempBalance = $originalBudget->balance_amount + $shortageAmount;
+                                    
+                                    // 3. approved_amount = approved_amount + reserved_amount (from alternative)
+                                    $newOriginalApproved = $originalBudget->approved_amount + $alternativeReservedAmount;
+                                    
+                                    // 4. balance_amount = balance_amount - reserved_amount (from alternative)
+                                    $newOriginalBalance = $tempBalance - $alternativeReservedAmount;
+                                    
+                                    // For alternative subcost center:
+                                    // 1. approved_amount = approved_amount - reserved_amount
+                                    $newAlternativeApproved = $alternativeBudget->approved_amount - $alternativeReservedAmount;
+                                    
+                                    // 2. reserved_amount = reserved_amount - shortage amount (after approved_amount is updated)
+                                    $newAlternativeReserved = $alternativeBudget->reserved_amount - $alternativeReservedAmount;
+                                    
+                                    // Update original budget
+                                    DB::table('request_budgets')
+                                        ->where('id', $originalBudget->id)
+                                        ->update([
+                                            'approved_amount' => $newOriginalApproved,
+                                            'balance_amount' => $newOriginalBalance,
+                                            'updated_at' => now()
+                                        ]);
+                                    
+                                    // Update alternative budget
+                                    DB::table('request_budgets')
+                                        ->where('id', $alternativeBudget->id)
+                                        ->update([
+                                            'approved_amount' => $newAlternativeApproved,
+                                            'reserved_amount' => $newAlternativeReserved,
+                                            'updated_at' => now()
+                                        ]);
+                                    
+                                    Log::info('=== ALTERNATIVE BUDGET UPDATED ON FINAL APPROVAL ===', [
+                                        'alternative_budget_id' => $alternativeBudget->id,
+                                        'approved_amount_before' => $alternativeBudget->approved_amount,
+                                        'approved_amount_after' => $newAlternativeApproved,
+                                        'reserved_amount_before' => $alternativeBudget->reserved_amount,
+                                        'reserved_amount_after' => $newAlternativeReserved,
+                                        'shortage_amount' => $alternativeReservedAmount,
+                                        'note' => 'approved_amount decreased first, then reserved_amount decreased by shortage amount'
+                                    ]);
+                                    
+                                    Log::info('=== SPLIT BUDGET TRANSFER COMPLETED ===', [
+                                        'original_budget_id' => $originalBudget->id,
+                                        'original_approved_before' => $originalBudget->approved_amount,
+                                        'original_approved_after' => $newOriginalApproved,
+                                        'original_balance_before' => $originalBudget->balance_amount,
+                                        'original_balance_after' => $newOriginalBalance,
+                                        'alternative_budget_id' => $alternativeBudget->id,
+                                        'alternative_approved_before' => $alternativeBudget->approved_amount,
+                                        'alternative_approved_after' => $newAlternativeApproved,
+                                        'amount_transferred' => $alternativeReservedAmount
+                                    ]);
+                                } else {
+                                    Log::warning('=== SPLIT BUDGET TRANSFER FAILED - BUDGETS NOT FOUND ===', [
+                                        'purchase_order_id' => $task->purchase_order_id,
+                                        'original_budget_found' => $originalBudget !== null,
+                                        'alternative_budget_found' => $alternativeBudget !== null,
+                                        'request_budget_id' => $purchaseOrder->request_budget_id,
+                                        'alternative_request_budget_id' => $purchaseOrder->alternative_request_budget_id
+                                    ]);
+                                }
+                            }
                         } else {
                             Log::info('=== INTERMEDIATE PURCHASE ORDER APPROVAL - UPDATING TO PENDING ===', [
                                 'task_id' => $task->id,
@@ -2041,7 +2509,7 @@ class TaskController extends Controller
                                 ->where('id', $task->purchase_order_id)
                                 ->first();
 
-                            if ($purchaseOrder && $purchaseOrder->request_budget_id) {
+                            if ($purchaseOrder) {
                                 // Calculate total amount including VAT for budget release
                                 $baseAmount = floatval($purchaseOrder->amount ?? 0);
                                 $vatAmount = floatval($purchaseOrder->vat_amount ?? 0);
@@ -2051,28 +2519,179 @@ class TaskController extends Controller
                                     'task_id' => $task->id,
                                     'purchase_order_id' => $task->purchase_order_id,
                                     'request_budget_id' => $purchaseOrder->request_budget_id,
+                                    'alternative_request_budget_id' => $purchaseOrder->alternative_request_budget_id,
                                     'po_base_amount' => $baseAmount,
                                     'po_vat_amount' => $vatAmount,
                                     'po_total_amount' => $totalAmount
                                 ]);
 
-                                // Release reserved budget back to available balance (including VAT)
-                                $budgetReleased = DB::table('request_budgets')
-                                    ->where('id', $purchaseOrder->request_budget_id)
-                                    ->update([
-                                        'reserved_amount' => DB::raw('reserved_amount - ' . $totalAmount),
-                                        'balance_amount' => DB::raw('balance_amount + ' . $totalAmount),
+                                // Check if this is a split budget scenario
+                                $isSplitBudget = $purchaseOrder->alternative_sub_cost_center_id && $purchaseOrder->alternative_request_budget_id;
+                                
+                                if ($isSplitBudget) {
+                                    // Split budget scenario - find original budget
+                                    $originalBudget = null;
+                                    if ($purchaseOrder->request_budget_id) {
+                                        $originalBudget = DB::table('request_budgets')->where('id', $purchaseOrder->request_budget_id)->first();
+                                    } else {
+                                        // Find original budget from RFQ
+                                        $rfq = DB::table('rfqs')->where('id', $purchaseOrder->rfq_id)->first();
+                                        if ($rfq) {
+                                            $originalBudgetQuery = DB::table('request_budgets')
+                                                ->where('status', 'Approved')
+                                                ->where('fiscal_period_id', $purchaseOrder->fiscal_period_id);
+                                            
+                                            if ($rfq->department_id) {
+                                                $originalBudgetQuery->where('department_id', $rfq->department_id);
+                                            }
+                                            if ($rfq->cost_center_id) {
+                                                $originalBudgetQuery->where('cost_center_id', $rfq->cost_center_id);
+                                            }
+                                            if ($rfq->sub_cost_center_id) {
+                                                $originalBudgetQuery->where('sub_cost_center', $rfq->sub_cost_center_id);
+                                            }
+                                            
+                                            $originalBudget = $originalBudgetQuery->first();
+                                        }
+                                    }
+
+                                // Release original budget (full PO amount was reserved)
+                                if ($originalBudget) {
+                                    $originalReservedBefore = $originalBudget->reserved_amount;
+                                    $originalBalanceBefore = $originalBudget->balance_amount;
+                                    
+                                    DB::table('request_budgets')
+                                        ->where('id', $originalBudget->id)
+                                        ->update([
+                                            'reserved_amount' => DB::raw('reserved_amount - ' . $totalAmount),
+                                            'balance_amount' => DB::raw('balance_amount + ' . $totalAmount),
+                                            'updated_at' => now()
+                                        ]);
+
+                                    // Log audit
+                                    DB::table('budget_audit_logs')->insert([
+                                        'request_budget_id' => $originalBudget->id,
+                                        'purchase_order_id' => $task->purchase_order_id,
+                                        'action' => 'release',
+                                        'amount' => $totalAmount,
+                                        'reserved_amount_before' => $originalReservedBefore,
+                                        'reserved_amount_after' => $originalReservedBefore - $totalAmount,
+                                        'balance_amount_before' => $originalBalanceBefore,
+                                        'balance_amount_after' => $originalBalanceBefore + $totalAmount,
+                                        'notes' => 'PO rejected - releasing reserved budget',
+                                        'created_by' => auth()->id(),
+                                        'created_at' => now(),
                                         'updated_at' => now()
                                     ]);
 
-                                Log::info('=== BUDGET RELEASE RESULT ===', [
-                                    'task_id' => $task->id,
-                                    'purchase_order_id' => $task->purchase_order_id,
-                                    'budget_release_success' => $budgetReleased,
-                                    'amount_released' => $totalAmount,
-                                    'base_amount' => $baseAmount,
-                                    'vat_amount' => $vatAmount
-                                ]);
+                                    Log::info('=== ORIGINAL BUDGET RELEASED FOR REJECTED PO ===', [
+                                        'budget_id' => $originalBudget->id,
+                                        'amount_released' => $totalAmount
+                                    ]);
+                                }
+
+                                // Release alternative budget if exists
+                                if ($purchaseOrder->alternative_request_budget_id) {
+                                    $alternativeBudget = DB::table('request_budgets')
+                                        ->where('id', $purchaseOrder->alternative_request_budget_id)
+                                        ->first();
+                                    
+                                    if ($alternativeBudget) {
+                                        $alternativeAmount = floatval($purchaseOrder->alternative_budget_amount ?? 0);
+                                        $alternativeReservedBefore = $alternativeBudget->reserved_amount;
+                                        $alternativeBalanceBefore = $alternativeBudget->balance_amount;
+                                        
+                                        DB::table('request_budgets')
+                                            ->where('id', $alternativeBudget->id)
+                                            ->update([
+                                                'reserved_amount' => DB::raw('reserved_amount - ' . $alternativeAmount),
+                                                'balance_amount' => DB::raw('balance_amount + ' . $alternativeAmount),
+                                                'updated_at' => now()
+                                            ]);
+
+                                        // Log audit
+                                        DB::table('budget_audit_logs')->insert([
+                                            'request_budget_id' => $alternativeBudget->id,
+                                            'purchase_order_id' => $task->purchase_order_id,
+                                            'action' => 'release',
+                                            'amount' => $alternativeAmount,
+                                            'reserved_amount_before' => $alternativeReservedBefore,
+                                            'reserved_amount_after' => $alternativeReservedBefore - $alternativeAmount,
+                                            'balance_amount_before' => $alternativeBalanceBefore,
+                                            'balance_amount_after' => $alternativeBalanceBefore + $alternativeAmount,
+                                            'notes' => 'PO rejected - releasing alternative reserved budget',
+                                            'created_by' => auth()->id(),
+                                            'created_at' => now(),
+                                            'updated_at' => now()
+                                        ]);
+
+                                        Log::info('=== ALTERNATIVE BUDGET RELEASED FOR REJECTED PO ===', [
+                                            'budget_id' => $alternativeBudget->id,
+                                            'amount_released' => $alternativeAmount
+                                        ]);
+                                    }
+                                }
+                                } else {
+                                    // Normal budget scenario - release from single budget
+                                    $normalBudget = null;
+                                    if ($purchaseOrder->request_budget_id) {
+                                        $normalBudget = DB::table('request_budgets')->where('id', $purchaseOrder->request_budget_id)->first();
+                                    } else {
+                                        // Find budget from RFQ
+                                        $rfq = DB::table('rfqs')->where('id', $purchaseOrder->rfq_id)->first();
+                                        if ($rfq) {
+                                            $normalBudgetQuery = DB::table('request_budgets')
+                                                ->where('status', 'Approved')
+                                                ->where('fiscal_period_id', $purchaseOrder->fiscal_period_id);
+                                            
+                                            if ($rfq->department_id) {
+                                                $normalBudgetQuery->where('department_id', $rfq->department_id);
+                                            }
+                                            if ($rfq->cost_center_id) {
+                                                $normalBudgetQuery->where('cost_center_id', $rfq->cost_center_id);
+                                            }
+                                            if ($rfq->sub_cost_center_id) {
+                                                $normalBudgetQuery->where('sub_cost_center', $rfq->sub_cost_center_id);
+                                            }
+                                            
+                                            $normalBudget = $normalBudgetQuery->first();
+                                        }
+                                    }
+                                    
+                                    if ($normalBudget) {
+                                        $normalReservedBefore = $normalBudget->reserved_amount;
+                                        $normalBalanceBefore = $normalBudget->balance_amount;
+                                        
+                                        DB::table('request_budgets')
+                                            ->where('id', $normalBudget->id)
+                                            ->update([
+                                                'reserved_amount' => DB::raw('reserved_amount - ' . $totalAmount),
+                                                'balance_amount' => DB::raw('balance_amount + ' . $totalAmount),
+                                                'updated_at' => now()
+                                            ]);
+
+                                        // Log audit
+                                        DB::table('budget_audit_logs')->insert([
+                                            'request_budget_id' => $normalBudget->id,
+                                            'purchase_order_id' => $task->purchase_order_id,
+                                            'action' => 'release',
+                                            'amount' => $totalAmount,
+                                            'reserved_amount_before' => $normalReservedBefore,
+                                            'reserved_amount_after' => $normalReservedBefore - $totalAmount,
+                                            'balance_amount_before' => $normalBalanceBefore,
+                                            'balance_amount_after' => $normalBalanceBefore + $totalAmount,
+                                            'notes' => 'PO rejected - releasing reserved budget',
+                                            'created_by' => auth()->id(),
+                                            'created_at' => now(),
+                                            'updated_at' => now()
+                                        ]);
+
+                                        Log::info('=== NORMAL BUDGET RELEASED FOR REJECTED PO ===', [
+                                            'budget_id' => $normalBudget->id,
+                                            'amount_released' => $totalAmount
+                                        ]);
+                                    }
+                                }
                             }
                         }
                     }

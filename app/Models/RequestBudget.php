@@ -25,6 +25,11 @@ class RequestBudget extends Model
         'reserved_amount',
         'consumed_amount',
         'balance_amount',
+        'old_balance',
+        'reallocate_amount',
+        'reallocate_to_sub_cost_center',
+        'destination_old_balance',
+        'type',
         'urgency',
         'attachment_path',
         'original_name',
@@ -32,6 +37,12 @@ class RequestBudget extends Model
         'status',
         'created_by',
         'updated_by',
+        'purchase_order_id',
+        'sub_cost_center_updated',
+        'original_destination_sub_cost_center',
+        'updated_destination_sub_cost_center',
+        'updated_by_user_id',
+        'available_alternatives_json',
     ];
 
     protected $casts = [
@@ -44,6 +55,9 @@ class RequestBudget extends Model
         'reserved_amount' => 'decimal:2',
         'consumed_amount' => 'decimal:2',
         'balance_amount' => 'decimal:2',
+        'old_balance' => 'decimal:2',
+        'reallocate_amount' => 'decimal:2',
+        'destination_old_balance' => 'decimal:2',
     ];
 
     /**
@@ -76,6 +90,67 @@ class RequestBudget extends Model
     public function subCostCenter(): BelongsTo
     {
         return $this->belongsTo(CostCenter::class, 'sub_cost_center');
+    }
+
+    /**
+     * Get the destination sub cost center for reallocation.
+     */
+    public function reallocateToSubCostCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class, 'reallocate_to_sub_cost_center');
+    }
+
+    /**
+     * Get the purchase order associated with this reallocation request.
+     */
+    public function purchaseOrder(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    /**
+     * Get the original destination sub cost center.
+     */
+    public function originalDestinationSubCostCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class, 'original_destination_sub_cost_center');
+    }
+
+    /**
+     * Get the updated destination sub cost center.
+     */
+    public function updatedDestinationSubCostCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class, 'updated_destination_sub_cost_center');
+    }
+
+    /**
+     * Get the user who updated the destination sub cost center.
+     */
+    public function updatedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by_user_id');
+    }
+
+    /**
+     * Get the reallocation history record for this reallocation request.
+     */
+    public function reallocationHistory()
+    {
+        return $this->hasOne(BudgetReallocationHistory::class, 'reallocation_request_id');
+    }
+
+    /**
+     * Get the source budget request (approved budget for the source sub cost center).
+     */
+    public function sourceBudgetRequest()
+    {
+        return $this->hasOne(RequestBudget::class, 'sub_cost_center', 'sub_cost_center')
+            ->whereColumn('request_budgets.fiscal_period_id', 'request_budgets.fiscal_period_id')
+            ->whereColumn('request_budgets.department_id', 'request_budgets.department_id')
+            ->whereColumn('request_budgets.cost_center_id', 'request_budgets.cost_center_id')
+            ->where('request_budgets.status', 'Approved')
+            ->where('request_budgets.type', '!=', 'reallocation'); // Exclude reallocation requests
     }
 
     /**

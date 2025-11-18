@@ -345,19 +345,13 @@ class AccountController extends Controller
                 }
             }
 
+            // Normal scenario: Single budget update (split budget transfer happens on PO approval, not payment)
             \Log::info('=== UPDATING BUDGET CONSUMPTION FOR PAYMENT ===', [
                 'payment_order_id' => $paymentOrder->id,
                 'purchase_order_id' => $purchaseOrder->id,
                 'request_budget_id' => $requestBudgetId,
                 'payment_amount' => $paymentAmount,
                 'po_total_amount' => $purchaseOrder->amount
-            ]);
-
-            // Update budget: increase consumed_amount and decrease reserved_amount
-            \Log::info('=== ATTEMPTING DATABASE UPDATE ===', [
-                'request_budget_id' => $requestBudgetId,
-                'payment_amount' => $paymentAmount,
-                'payment_amount_type' => gettype($paymentAmount)
             ]);
 
             // First, let's get the current budget values
@@ -371,7 +365,7 @@ class AccountController extends Controller
                 ]);
             }
 
-            // Try the update with explicit values first
+            // Calculate new values
             $newConsumedAmount = $currentBudget->consumed_amount + $paymentAmount;
             $newReservedAmount = $currentBudget->reserved_amount - $paymentAmount;
 

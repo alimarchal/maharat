@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -31,6 +31,84 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
     const [isGeneratingRFQPDF, setIsGeneratingRFQPDF] = useState(false);
     const [selectedRFQId, setSelectedRFQId] = useState(null);
     const [savedRFQPdfUrl, setSavedRFQPdfUrl] = useState(null);
+    
+    // Ref for destination sub cost center name element
+    const destinationSubCostCenterRef = useRef(null);
+
+    // Clean the destination sub cost center name after render
+    useEffect(() => {
+        if (destinationSubCostCenterRef.current && completeTaskData?.request_budget) {
+            const requestBudget = completeTaskData.request_budget;
+            const updatedName = requestBudget.updated_destination_sub_cost_center_details?.name;
+            const reallocateName = requestBudget.reallocate_to_sub_cost_center_details?.name;
+            let name = updatedName || reallocateName || null;
+            
+            if (name) {
+                let nameStr = String(name).trim();
+                const costCenterId = requestBudget.updated_destination_sub_cost_center_details?.id || 
+                                    requestBudget.reallocate_to_sub_cost_center_details?.id;
+                
+                // Remove trailing "0" if it exists and the character before it is not a digit
+                while (nameStr.length > 1 && nameStr.endsWith('0')) {
+                    const charBeforeZero = nameStr.charAt(nameStr.length - 2);
+                    if (!/\d/.test(charBeforeZero)) {
+                        nameStr = nameStr.slice(0, -1);
+                    } else {
+                        break;
+                    }
+                }
+                
+                // If ID exists and name ends with the last digit of ID, remove it
+                if (costCenterId) {
+                    const idStr = String(costCenterId);
+                    const lastDigitOfId = idStr.charAt(idStr.length - 1);
+                    if (nameStr.endsWith(lastDigitOfId) && nameStr.length > 1) {
+                        const charBeforeLastDigit = nameStr.charAt(nameStr.length - 2);
+                        if (!/\d/.test(charBeforeLastDigit)) {
+                            nameStr = nameStr.slice(0, -1);
+                        }
+                    }
+                }
+                
+                // Final pass: Remove any trailing "0" one more time
+                if (nameStr.endsWith('0') && nameStr.length > 1) {
+                    const charBeforeZero = nameStr.charAt(nameStr.length - 2);
+                    if (!/\d/.test(charBeforeZero)) {
+                        nameStr = nameStr.slice(0, -1);
+                    }
+                }
+                
+                // Check if there's a text node or element after this one that has "0"
+                const nextSibling = destinationSubCostCenterRef.current.nextSibling;
+                if (nextSibling && nextSibling.nodeType === 3) { // Text node
+                    const nextText = nextSibling.textContent.trim();
+                    if (nextText === '0' || nextText.startsWith('0')) {
+                        nextSibling.remove();
+                    }
+                }
+                
+                // Also check parent's innerHTML to see if there's something else
+                const parentElement = destinationSubCostCenterRef.current.parentElement;
+                if (parentElement) {
+                    const parentText = parentElement.textContent;
+                    if (parentText.endsWith('0') && !nameStr.endsWith('0')) {
+                        Array.from(parentElement.childNodes).forEach((child) => {
+                            if (child.nodeType === 3 && child.textContent.trim() === '0') { // Text node with just "0"
+                                child.remove();
+                            }
+                        });
+                    }
+                }
+                
+                // Directly set the text content to avoid any React rendering issues
+                // Clear all children first, then set text
+                destinationSubCostCenterRef.current.textContent = '';
+                destinationSubCostCenterRef.current.textContent = nameStr;
+            } else if (destinationSubCostCenterRef.current.textContent !== "N/A") {
+                destinationSubCostCenterRef.current.textContent = "N/A";
+            }
+        }
+    }, [completeTaskData, isOpen]);
 
     // Fetch complete task data with all includes when modal opens
     useEffect(() => {
@@ -39,7 +117,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                 try {
 
                     const response = await axios.get(
-                        `/api/v1/tasks/${task.id}?include=processStep,process,assignedFromUser,assignedToUser,descriptions,material_request,material_request.items,material_request.items.product,material_request.items.unit,material_request.items.category,material_request.items.urgencyStatus,material_request.requester,material_request.warehouse,material_request.department,material_request.costCenter,rfq,rfq.items,rfq.items.product,rfq.items.unit,rfq.items.category,rfq.items.status,rfq.requester,rfq.warehouse,rfq.department,rfq.costCenter,purchase_order,purchase_order.supplier,purchase_order.user,payment_order,payment_order.supplier,payment_order.user,payment_order.purchase_order,invoice,invoice.items,invoice.client,invoice.representative,budget,budget.department,budget.costCenter,budget_approval_transaction,request_budget,request_budget.department,request_budget.costCenter,request_budget.fiscalPeriod,grn,grn.user,grn.quotation,grn.purchaseOrder,grn.approvalTransactions,grn.approvalTransactions.assignedToUser`
+                        `/api/v1/tasks/${task.id}?include=processStep,process,assignedFromUser,assignedToUser,descriptions,material_request,material_request.items,material_request.items.product,material_request.items.unit,material_request.items.category,material_request.items.urgencyStatus,material_request.requester,material_request.warehouse,material_request.department,material_request.costCenter,rfq,rfq.items,rfq.items.product,rfq.items.unit,rfq.items.category,rfq.items.status,rfq.requester,rfq.warehouse,rfq.department,rfq.costCenter,rfq.subCostCenter,purchase_order,purchase_order.supplier,purchase_order.user,purchase_order.subCostCenter,purchase_order.alternativeSubCostCenter,purchase_order.reallocationRequest,purchase_order.reallocationRequest.updatedDestinationSubCostCenter,purchase_order.reallocationRequest.reallocateToSubCostCenter,payment_order,payment_order.supplier,payment_order.user,payment_order.purchase_order,invoice,invoice.items,invoice.client,invoice.representative,budget,budget.department,budget.costCenter,budget_approval_transaction,request_budget,request_budget.department,request_budget.costCenter,request_budget.fiscalPeriod,request_budget.subCostCenter,request_budget.reallocateToSubCostCenter,request_budget.originalDestinationSubCostCenter,request_budget.updatedDestinationSubCostCenter,request_budget.updatedByUser,request_budget.purchaseOrder,request_budget.sourceBudgetRequest,grn,grn.user,grn.quotation,grn.purchaseOrder,grn.approvalTransactions,grn.approvalTransactions.assignedToUser`
                     );
                     
                     let taskData = response.data.data;
@@ -96,6 +174,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                     }
                     
                     setCompleteTaskData(taskData);
+                    
                 } catch (error) {
                     console.error("Error fetching complete task data:", error);
                     // Fallback to original task data if fetch fails
@@ -395,6 +474,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
     }, [isOpen, task, completeTaskData]);
 
     // Handle PDF generation for Purchase Orders
+
     const handleGeneratePurchaseOrderPDF = (purchaseOrderId) => {
         setIsGeneratingPDF(true);
         setSelectedPurchaseOrderId(purchaseOrderId);
@@ -713,10 +793,15 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
 
                                 {/* Indicator: Refer Status for referee decision (Approved/Rejected) */}
                                 {(() => {
+                                    // Only show Refer Status if there was an actual "Refer" action
+                                    // Check if any description has "Refer" action, not just "Approve" or "Reject"
                                     const actions = (currentTask.descriptions || []).map(d => (d.action || '').toLowerCase());
+                                    const hasReferAction = actions.includes('refer');
                                     const hasRefereeApprove = actions.includes('approve');
                                     const hasRefereeReject = actions.includes('reject');
-                                    if (currentTask.assigned_from_user && (hasRefereeApprove || hasRefereeReject)) {
+                                    
+                                    // Only show if there was a Refer action AND this is a referral response task
+                                    if (hasReferAction && currentTask.assigned_from_user && (hasRefereeApprove || hasRefereeReject)) {
                                         const referStatus = hasRefereeApprove ? 'Approved' : 'Rejected';
                                         return (
                                             <div className="flex justify-between border-b border-gray-100 pb-2">
@@ -886,32 +971,32 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <span className="text-gray-600">RFQ Number:</span>
-                                                <span className="font-medium ml-2">{task.rfq.rfq_number || "N/A"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-600">Organization Name:</span>
-                                                <span className="font-medium ml-2">{task.rfq.organization_name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.rfq.rfq_number || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Warehouse:</span>
-                                                <span className="font-medium ml-2">{task.rfq.warehouse?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.rfq.warehouse?.name || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Department:</span>
-                                                <span className="font-medium ml-2">{task.rfq.department?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.rfq.department?.name || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Cost Center:</span>
-                                                <span className="font-medium ml-2">{task.rfq.costCenter?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.rfq.costCenter?.name || "N/A"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600">Sub Cost Center:</span>
+                                                <span className="font-medium ml-2">{currentTask.rfq.subCostCenter?.name || "N/A"}</span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Created By:</span>
-                                                <span className="font-medium ml-2">{task.rfq.requester?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.rfq.requester?.name || "N/A"}</span>
                                             </div>
                                         </div>
                                         
                                         {/* RFQ Items */}
-                                        {task.rfq.items && task.rfq.items.length > 0 && (
+                                        {currentTask.rfq.items && currentTask.rfq.items.length > 0 && (
                                             <div className="mt-4">
                                                 <h4 className="font-semibold text-gray-700 mb-2">RFQ Items:</h4>
                                                 <div className="overflow-x-auto">
@@ -921,14 +1006,14 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                                 <th className="px-3 py-2 text-center rounded-tl-xl rounded-bl-xl">Item</th>
                                                                 <th className="px-3 py-2 text-center">Category</th>
                                                                 <th className="px-3 py-2 text-center">Quantity</th>
-                                                                <th className={`px-3 py-2 text-center ${task.rfq.items?.some(item => item.attachment) ? '' : 'rounded-tr-xl rounded-br-xl'}`}>Unit</th>
-                                                                {task.rfq.items?.some(item => item.attachment) && (
+                                                                <th className={`px-3 py-2 text-center ${currentTask.rfq.items?.some(item => item.attachment) ? '' : 'rounded-tr-xl rounded-br-xl'}`}>Unit</th>
+                                                                {currentTask.rfq.items?.some(item => item.attachment) && (
                                                                     <th className="px-3 py-2 text-center rounded-tr-xl rounded-br-xl">Attachment</th>
                                                                 )}
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-gray-200">
-                                                            {task.rfq.items.map((item, index) => (
+                                                            {currentTask.rfq.items.map((item, index) => (
                                                                 <tr key={index}>
                                                                     <td className="px-3 py-2 text-center">{item.item_name || item.product?.name || "N/A"}</td>
                                                                     <td className="px-3 py-2 text-center">
@@ -936,7 +1021,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                                     </td>
                                                                     <td className="px-3 py-2 text-center">{item.quantity ? parseFloat(item.quantity).toFixed(1) : "N/A"}</td>
                                                                     <td className="px-3 py-2 text-center">{item.unit?.name || item.product?.unit?.name || "N/A"}</td>
-                                                                    {task.rfq.items?.some(item => item.attachment) && (
+                                                                    {currentTask.rfq.items?.some(item => item.attachment) && (
                                                                         <td className="px-3 py-2 text-center">
                                                                             {item.attachment ? (
                                                                                 <div className="flex justify-center">
@@ -1040,6 +1125,48 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                             </div>
                                         </div>
                                         
+                                        {/* Alternative SubCost Center Budget Indicator */}
+                                        {currentTask.purchase_order?.alternative_sub_cost_center_id && currentTask.purchase_order?.alternative_budget_amount && (
+                                            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-300 rounded-lg">
+                                                <div className="flex items-start">
+                                                    <div className="flex-shrink-0">
+                                                        <svg className="h-5 w-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                    <div className="ml-3 flex-1">
+                                                        <h4 className="text-sm font-medium text-yellow-800">
+                                                            Budget Allocation Note
+                                                        </h4>
+                                                        <div className="mt-2 text-sm text-yellow-700">
+                                                            <p>
+                                                                <span className="font-semibold">{parseFloat(currentTask.purchase_order.alternative_budget_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> has been allocated from an alternative subcost center: <span className="font-semibold">
+                                                                    {(() => {
+                                                                        // Check if there's a reallocation request with updated destination
+                                                                        const reallocationRequest = currentTask.purchase_order.reallocationRequest;
+                                                                        if (reallocationRequest) {
+                                                                            // Use updated destination if available (from RequestBudgetResource)
+                                                                            const updatedDestination = reallocationRequest.updated_destination_sub_cost_center_details?.name;
+                                                                            // Otherwise use reallocate_to
+                                                                            const reallocateTo = reallocationRequest.reallocate_to_sub_cost_center_details?.name;
+                                                                            return updatedDestination || reallocateTo || currentTask.purchase_order.alternativeSubCostCenter?.name || 'N/A';
+                                                                        }
+                                                                        // Fallback to original alternative sub cost center
+                                                                        return currentTask.purchase_order.alternativeSubCostCenter?.name || currentTask.purchase_order.alternative_sub_cost_center?.name || 'N/A';
+                                                                    })()}
+                                                                </span>
+                                                            </p>
+                                                            {currentTask.purchase_order.subCostCenter && (
+                                                                <p className="mt-1 text-xs">
+                                                                    Original subcost center: {currentTask.purchase_order.subCostCenter.name}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
                                         {/* Purchase Order Attachments */}
                                         <div className="mt-4">
                                             <h4 className="font-semibold text-gray-700 mb-2">Purchase Order Document:</h4>
@@ -1137,6 +1264,117 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 </div>
                                             </div>
                                         )}
+                                    </div>
+                                )}
+
+                                {/* Budget Reallocation Approval Details */}
+                                {currentTask.process.title === "Budget Reallocate Approval" && currentTask.request_budget && currentTask.request_budget.type === 'reallocation' && (
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <span className="text-gray-600">Department:</span>
+                                                <span className="font-medium ml-2">{currentTask.request_budget.department?.name || "N/A"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600">Cost Center:</span>
+                                                <span className="font-medium ml-2">{currentTask.request_budget.cost_center?.name || "N/A"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600">Taking From Sub Cost Center:</span>
+                                                <span className="font-medium ml-2">{currentTask.request_budget.sub_cost_center_details?.name || "N/A"}</span>
+                                            </div>
+                                            {currentTask.request_budget.purchase_order && (
+                                                <div>
+                                                    <span className="text-gray-600">Related Purchase Order:</span>
+                                                    <span className="font-medium ml-2">{currentTask.request_budget.purchase_order.purchase_order_no || "N/A"}</span>
+                                                </div>
+                                            )}
+                                            <div>
+                                                <span className="text-gray-600">Reallocation Amount:</span>
+                                                <span className="font-medium ml-2 text-red-600">
+                                                    {parseFloat(currentTask.request_budget.reallocate_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600">Current Budget Amount:</span>
+                                                <span className="font-medium ml-2">
+                                                    {currentTask.request_budget.source_budget_request?.balance_amount 
+                                                        ? parseFloat(currentTask.request_budget.source_budget_request.balance_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                                        : currentTask.request_budget.old_balance
+                                                        ? parseFloat(currentTask.request_budget.old_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                                        : "N/A"}
+                                                </span>
+                                            </div>
+                                            <div className="col-span-2">
+                                                <span className="text-gray-600">Current Destination Sub Cost Center:</span>
+                                                <span 
+                                                    ref={destinationSubCostCenterRef}
+                                                    className="font-medium ml-2"
+                                                    style={{ position: 'relative' }}
+                                                >
+                                                    {(() => {
+                                                        if (!currentTask?.request_budget) return "N/A";
+                                                        
+                                                        const updatedName = currentTask.request_budget.updated_destination_sub_cost_center_details?.name;
+                                                        const reallocateName = currentTask.request_budget.reallocate_to_sub_cost_center_details?.name;
+                                                        let name = updatedName || reallocateName || null;
+                                                        
+                                                        if (!name) return "N/A";
+                                                        
+                                                        // Convert to string and trim
+                                                        let nameStr = String(name).trim();
+                                                        
+                                                        // Get the cost center ID
+                                                        const costCenterId = currentTask.request_budget.updated_destination_sub_cost_center_details?.id || 
+                                                                            currentTask.request_budget.reallocate_to_sub_cost_center_details?.id;
+                                                        
+                                                        // AGGRESSIVE CLEANING: Remove ANY trailing "0" that's not part of a number
+                                                        // This handles the case where "0" (from ID 90) might be appended
+                                                        let cleaned = nameStr;
+                                                        
+                                                        // Remove trailing "0" if it exists and the character before it is not a digit
+                                                        while (cleaned.length > 1 && cleaned.endsWith('0')) {
+                                                            const charBeforeZero = cleaned.charAt(cleaned.length - 2);
+                                                            if (!/\d/.test(charBeforeZero)) {
+                                                                cleaned = cleaned.slice(0, -1);
+                                                            } else {
+                                                                break; // It's part of a number like "10", "20", etc
+                                                            }
+                                                        }
+                                                        
+                                                        // If ID exists and name ends with the last digit of ID, remove it
+                                                        if (costCenterId) {
+                                                            const idStr = String(costCenterId);
+                                                            const lastDigitOfId = idStr.charAt(idStr.length - 1);
+                                                            if (cleaned.endsWith(lastDigitOfId) && cleaned.length > 1) {
+                                                                const charBeforeLastDigit = cleaned.charAt(cleaned.length - 2);
+                                                                if (!/\d/.test(charBeforeLastDigit)) {
+                                                                    cleaned = cleaned.slice(0, -1);
+                                                                }
+                                                            }
+                                                        }
+                                                        
+                                                        // Final pass: Remove any trailing "0" one more time (safety net)
+                                                        if (cleaned.endsWith('0') && cleaned.length > 1) {
+                                                            const charBeforeZero = cleaned.charAt(cleaned.length - 2);
+                                                            if (!/\d/.test(charBeforeZero)) {
+                                                                cleaned = cleaned.slice(0, -1);
+                                                            }
+                                                        }
+                                                        
+                                                        // Return as plain text (not JSX fragment) to avoid any React rendering issues
+                                                        return cleaned;
+                                                    })()}
+                                                </span>
+                                                {currentTask.request_budget.sub_cost_center_updated && currentTask.request_budget.updated_by_user && (
+                                                    <div className="mt-2 text-sm">
+                                                        <span className="font-bold text-red-600">
+                                                            Changed from {currentTask.request_budget.original_destination_sub_cost_center_details?.name || "Original"} by {currentTask.request_budget.updated_by_user?.name || "Previous Approver"}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 
@@ -1511,11 +1749,11 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 </div>
                                             </div>
                                         )}
-                                        {task.rfq && (
+                                        {currentTask.rfq && (
                                             <div className="text-sm">
                                                 <div className="font-medium text-gray-700 mb-1">RFQ Approvals:</div>
                                                 <div className="pl-4 space-y-1">
-                                                    {task.rfq.approval_transactions?.map((approval, index) => (
+                                                    {currentTask.rfq.approval_transactions?.map((approval, index) => (
                                                         <div key={index} className="flex justify-between items-center text-xs">
                                                             <span className="text-gray-600">
                                                                 {approval.assigned_to_user?.name || "Unknown User"}

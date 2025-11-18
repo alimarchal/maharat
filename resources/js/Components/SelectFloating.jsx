@@ -103,7 +103,7 @@ const SelectFloating = ({ label, name, value, onChange, options, onScroll, loadi
                     {value ? selectedLabel : `Select ${label}`}
                 </span>
                 <svg
-                    className={`absolute right-4 w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                    className={`absolute right-4 w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''} pointer-events-none`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -138,7 +138,23 @@ const SelectFloating = ({ label, name, value, onChange, options, onScroll, loadi
                                         className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-gray-900"
                                         onClick={() => handleSelect(option)}
                                     >
-                                        {option.label}
+                                        {option.displayLabel ? (
+                                            <div className="whitespace-pre-line">
+                                                {option.displayLabel.split('\n').map((line, idx) => 
+                                                    idx === 0 ? (
+                                                        <span key={idx}>{line}</span>
+                                                    ) : (
+                                                        <span key={idx} className="text-green-600 font-medium block">{line}</span>
+                                                    )
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <span dangerouslySetInnerHTML={{
+                                                __html: typeof option.label === 'string' 
+                                                    ? option.label.replace(/\(Available: ([\d,.]+)\)/g, '<span class="text-green-600 font-medium">(Available: $1)</span>')
+                                                    : String(option.label)
+                                            }} />
+                                        )}
                                     </div>
                                 )
                             ))
@@ -200,13 +216,18 @@ const SelectFloating = ({ label, name, value, onChange, options, onScroll, loadi
             )}
             
             <label
-                className={`absolute left-3 px-2 bg-white text-gray-500 text-base transition-all
+                className={`absolute left-3 px-2 bg-white text-gray-500 text-base transition-all pointer-events-none
                 peer-focus:top-0 peer-focus:text-base peer-focus:text-[#009FDC] peer-focus:px-2
                 -translate-y-1/2 ${
                     value
                         ? "top-0 text-base text-[#009FDC] px-2"
                         : "top-1/2 text-base text-gray-400"
                 }`}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpen(!isOpen);
+                }}
+                style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             >
                 {value ? label : `Select ${label}`}
             </label>

@@ -773,6 +773,7 @@ class AccountController extends Controller
                 }
             }
 
+            // Normal scenario: Single budget update (split budget transfer happens on PO approval, not payment)
             \Log::info('=== UPDATING BUDGET CONSUMPTION FOR PAYMENT ===', [
                 'payment_order_id' => $paymentOrder->id,
                 'purchase_order_id' => $purchaseOrder->id,

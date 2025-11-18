@@ -155,10 +155,23 @@ class BudgetValidationService
                     'availableAmount' => $availableAmount,
                     'requiredAmount' => $amount
                 ]);
+                
+                // Get alternative subcost centers with available budget
+                $shortfallAmount = $amount - $availableAmount;
+                $alternatives = $this->getAlternativeSubCostCenters(
+                    $departmentId,
+                    $costCenterId,
+                    $subCostCenterId,
+                    $fiscalPeriodId,
+                    $shortfallAmount
+                );
+                
                 return [
                     'valid' => false,
-                    'message' => "Insufficient budget balance. Available: {$availableAmount}, Required: {$amount}",
-                    'available_amount' => $availableAmount
+                    'message' => "Insufficient budget balance. Available: {$availableAmount}, Required: {$amount}. Shortfall: {$shortfallAmount}",
+                    'available_amount' => $availableAmount,
+                    'shortfall_amount' => $shortfallAmount,
+                    'alternatives' => $alternatives
                 ];
             }
 
@@ -222,5 +235,70 @@ class BudgetValidationService
     {
         $purchaseOrder = PurchaseOrder::with('requestBudget')->find($purchaseOrderId);
         return $purchaseOrder->requestBudget ?? null;
+    }
+
+    /**
+     * Get alternative subcost centers with available budget
+     * Same department and cost center, different subcost center
+     * 
+     * @param int|null $departmentId
+     * @param int|null $costCenterId
+     * @param int|null $excludeSubCostCenterId Subcost center to exclude (original one)
+     * @param int $fiscalPeriodId
+     * @param float $requiredAmount Minimum amount required
+     * @return array
+     */
+    public function getAlternativeSubCostCenters($departmentId, $costCenterId, $excludeSubCostCenterId, $fiscalPeriodId, $requiredAmount)
+    {
+        \Log::info('BudgetValidationService: Getting alternative subcost centers', [
+            'departmentId' => $departmentId,
+            'costCenterId' => $costCenterId,
+            'excludeSubCostCenterId' => $excludeSubCostCenterId,
+            'fiscalPeriodId' => $fiscalPeriodId,
+            'requiredAmount' => $requiredAmount
+        ]);
+
+        // Get all approved request budgets for same department and cost center
+        // but different subcost centers with sufficient balance
+        $query = RequestBudget::where('fiscal_period_id', $fiscalPeriodId)
+            ->where('status', 'Approved')
+            ->whereNotNull('sub_cost_center');
+
+        if ($departmentId !== null) {
+            $query->where('department_id', $departmentId);
+        }
+
+        if ($costCenterId !== null) {
+            $query->where('cost_center_id', $costCenterId);
+        }
+
+        // Exclude the original subcost center
+        if ($excludeSubCostCenterId !== null) {
+            $query->where('sub_cost_center', '!=', $excludeSubCostCenterId);
+        }
+
+        // Get budgets with sufficient balance
+        $alternativeBudgets = $query->get()->filter(function ($budget) use ($requiredAmount) {
+            return ($budget->balance_amount ?? 0) >= $requiredAmount;
+        });
+
+        $alternatives = [];
+        foreach ($alternativeBudgets as $budget) {
+            $subCostCenter = \App\Models\CostCenter::find($budget->sub_cost_center);
+            if ($subCostCenter) {
+                $alternatives[] = [
+                    'sub_cost_center_id' => $budget->sub_cost_center,
+                    'sub_cost_center_name' => $subCostCenter->name,
+                    'available_amount' => $budget->balance_amount ?? 0,
+                    'request_budget_id' => $budget->id
+                ];
+            }
+        }
+
+        \Log::info('BudgetValidationService: Found alternative subcost centers', [
+            'count' => count($alternatives)
+        ]);
+
+        return $alternatives;
     }
 } 

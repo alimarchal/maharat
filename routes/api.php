@@ -310,6 +310,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::apiResource('request-budgets', RequestBudgetController::class);
     Route::post('request-budgets/{id}/restore', [RequestBudgetController::class, 'restore']);
     Route::patch('request-budgets/{requestBudget}/status', [RequestBudgetController::class, 'updateStatus']);
+    Route::put('request-budgets/{requestBudget}/update-destination', [RequestBudgetController::class, 'updateDestination']);
     
     // Budget Request Attachments
     Route::post('budget-request-attachments', [App\Http\Controllers\Api\V1\BudgetRequestAttachmentController::class, 'store']);
