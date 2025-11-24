@@ -93,6 +93,7 @@ class RequestBudgetResource extends JsonResource
                     'source_budget_request' => $this->reallocationHistory->sourceBudgetRequest ? [
                         'id' => $this->reallocationHistory->sourceBudgetRequest->id,
                         'approved_amount' => $this->reallocationHistory->sourceBudgetRequest->approved_amount,
+                        'previous_year_budget_amount' => $this->reallocationHistory->sourceBudgetRequest->previous_year_budget_amount,
                     ] : null,
                     'destination_budget_request' => $this->reallocationHistory->destinationBudgetRequest ? [
                         'id' => $this->reallocationHistory->destinationBudgetRequest->id,

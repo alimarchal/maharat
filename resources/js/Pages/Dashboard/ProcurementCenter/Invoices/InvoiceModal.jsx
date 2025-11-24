@@ -205,12 +205,12 @@ const InvoiceModal = ({
                             return (b.id || 0) - (a.id || 0);
                         })
                         .map((po) => ({
-                            id: po.id,
-                            label: po.purchase_order_no || `PO-${po.id}`,
-                            supplier_id: po.supplier_id,
-                            amount: po.amount,
-                            vat_amount: po.vat_amount,
-                        }));
+                        id: po.id,
+                        label: po.purchase_order_no || `PO-${po.id}`,
+                        supplier_id: po.supplier_id,
+                        amount: po.amount,
+                        vat_amount: po.vat_amount,
+                    }));
                     setPurchaseOrders(availablePOs);
                 }
             } else {

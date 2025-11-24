@@ -64,6 +64,7 @@ import PMTStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFl
 import MInvoiceStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/MInvoiceStatusFlow";
 import BudgetRequestStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/BudgetRequestStatusFlow";
 import TotalBudgetStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/TotalBudgetStatusFlow";
+import BudgetReallocationStatusFlow from "./Dashboard/ReportsAndStatuses/ProcessStatus/StatusFlow/BudgetReallocationStatusFlow";
 import UserProfile from "./UserProfile/UserProfile";
 import ViewFAQ from "./FAQs/ViewFAQ";
 import FAQAccordion from "./FAQs/FAQ";
@@ -278,6 +279,11 @@ export default function Dashboard({ auth, page }) {
             "ReportsAndStatuses/ProcessStatus/StatusFlow/TotalBudgetStatusFlow"
         )
             return <TotalBudgetStatusFlow />;
+        if (
+            page ===
+            "ReportsAndStatuses/ProcessStatus/StatusFlow/BudgetReallocationStatusFlow"
+        )
+            return <BudgetReallocationStatusFlow />;
         if (
             page ===
             "ReportsAndStatuses/ProcessStatus/StatusFlow/GRNsStatusFlow"

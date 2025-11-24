@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import MRTable from "./StatusTables/MRTable";
 import RFQTable from "./StatusTables/RFQTable";
 import POTable from "./StatusTables/POTable";
@@ -6,12 +6,20 @@ import PMTTable from "./StatusTables/PMTTable";
 import MInvoiceTable from "./StatusTables/MInvoiceTable";
 import BudgetRequestTable from "./StatusTables/BudgetRequestTable";
 import TotalBudgetTable from "./StatusTables/TotalBudgetTable";
+import BudgetReallocationTable from "./StatusTables/BudgetReallocationTable";
 import { usePermissions } from "@/hooks/usePermissions";
 import GRNsTable from "./StatusTables/GRNsTable";
 
 const ProcessStatus = () => {
     const { hasPermission } = usePermissions();
     const [selectedFilter, setSelectedFilter] = useState("MR Status");
+    
+    // Debug logging
+    useEffect(() => {
+        console.log('=== ProcessStatus Permission Check ===', {
+            hasPermission_view_budget_reallocation_status: hasPermission('view_budget_reallocation_status')
+        });
+    }, [hasPermission]);
 
     const allFilters = [
         { name: "MR Status", permission: "view_material_request_status" },
@@ -21,10 +29,20 @@ const ProcessStatus = () => {
         { name: "Invoice Status", permission: "view_maharat_invoice_status" },
         { name: "Budget Request Status", permission: "view_budget_request_status" },
         { name: "Total Budget Status", permission: "view_total_budget_status" },
+        { name: "Budget Reallocation Status", permission: "view_budget_reallocation_status" },
         { name: "Short Delivery Status", permission: "view_short_delivery_status" }
     ];
 
     const filters = allFilters.filter(filter => hasPermission(filter.permission));
+
+    // Calculate dynamic text size based on number of filters
+    const getTextSize = () => {
+        const count = filters.length;
+        if (count <= 3) return 'text-base md:text-lg';
+        if (count <= 5) return 'text-sm md:text-base';
+        if (count <= 7) return 'text-xs md:text-sm';
+        return 'text-xs';
+    };
 
     // Auto-select first available filter if current selection is not available
     React.useEffect(() => {
@@ -58,6 +76,8 @@ const ProcessStatus = () => {
                 return <BudgetRequestTable />;
             case "Total Budget Status":
                 return <TotalBudgetTable />;
+            case "Budget Reallocation Status":
+                return <BudgetReallocationTable />;
             case "Short Delivery Status":
                 return <GRNsTable />;
             default:
@@ -70,11 +90,11 @@ const ProcessStatus = () => {
             <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
                 <h2 className="text-3xl font-bold text-[#2C323C]">Statuses</h2>
                 <div className="w-full lg:w-auto overflow-x-auto">
-                    <div className="flex space-x-2 border border-[#B9BBBD] bg-white rounded-full p-1 w-max mx-auto lg:mx-0">
+                    <div className="flex space-x-2 border border-[#B9BBBD] bg-white rounded-full p-1 w-max mx-auto lg:mx-0 max-w-full">
                         {filters.map((filter) => (
                             <button
                                 key={filter.name}
-                                className={`px-4 py-2 text-sm md:text-base rounded-full transition whitespace-nowrap ${
+                                className={`px-3 md:px-4 py-2 ${getTextSize()} rounded-full transition whitespace-nowrap ${
                                     selectedFilter === filter.name
                                         ? "bg-[#009FDC] text-white"
                                         : "text-[#9B9DA2]"

@@ -228,6 +228,10 @@ const createPermissionCategories = (canSeeModifyManual) => ({
                         base: "create_department_budget_request",
                         description: "Create new department budget requests",
                     },
+                    "View Budget Reallocation": {
+                        base: "view_budget_reallocation",
+                        description: "View and create budget reallocation requests",
+                    },
                 },
             },
         },
@@ -259,6 +263,10 @@ const createPermissionCategories = (canSeeModifyManual) => ({
             "Budget Request Status": {
                 base: "view_budget_request_status",
                 description: "View budget request statuses",
+            },
+            "Budget Reallocation Status": {
+                base: "view_budget_reallocation_status",
+                description: "View budget reallocation statuses",
             },
             "Total Budget Status": {
                 base: "view_total_budget_status",
@@ -505,6 +513,18 @@ const RolesPermissions = () => {
         const categoryConfig = permissionCategories[category];
         const isMainCard = subOption === null;
         const isNestedSubOption = nestedSubOption !== null;
+        
+        // Debug logging
+        console.log('=== TOGGLE PERMISSION DEBUG ===', {
+            category,
+            subOption,
+            nestedSubOption,
+            permissionMode,
+            selectedRole: selectedRole?.id,
+            selectedUser: selectedUser?.id,
+            isMainCard,
+            isNestedSubOption
+        });
 
         if (isMainCard) {
             // Toggle main card
@@ -580,6 +600,10 @@ const RolesPermissions = () => {
 
                     // Always refresh to get updated override status from backend
                     fetchCombinedUserPermissions(selectedUser.id);
+                    // Dispatch event to refresh permissions in other components
+                    if (allSuccessful) {
+                        window.dispatchEvent(new CustomEvent('permissionsUpdated'));
+                    }
                 } catch (error) {
                     console.error("Failed to toggle user permission:", error);
                     fetchCombinedUserPermissions(selectedUser.id);
@@ -639,19 +663,20 @@ const RolesPermissions = () => {
                 if (!selectedUser || !canManageUser(selectedUser)) return;
 
                 try {
+                    // Update UI immediately
+                    const newPermissions = { ...permissions };
+                    if (!newPermissions[category]) newPermissions[category] = { main: false, subOptions: {} };
+                    if (!newPermissions[category].subOptions) newPermissions[category].subOptions = {};
+                    if (!newPermissions[category].subOptions[subOption]) newPermissions[category].subOptions[subOption] = { enabled: false };
+                    newPermissions[category].subOptions[subOption].enabled = newValue;
+
+                    setPermissions(newPermissions);
+
                     // Toggle sub-option permission
                     const permissionsToToggle = [{
                         permission: categoryConfig.subOptions[subOption].base,
                         value: newValue,
                     }];
-
-                    // Handle special cases for linked permissions (disabled to prevent auto-enabling)
-                    // Commented out to give users full control over their permissions
-                    // if (categoryConfig.subOptions[subOption].base === "sidebar_notification") {
-                    //     permissionsToToggle.push({ permission: "notification_settings", value: newValue });
-                    // } else if (categoryConfig.subOptions[subOption].base === "notification_settings") {
-                    //     permissionsToToggle.push({ permission: "sidebar_notification", value: newValue });
-                    // }
 
                     // Toggle all permissions
                     const promises = permissionsToToggle.map(({ permission, value }) =>
@@ -662,12 +687,27 @@ const RolesPermissions = () => {
                     );
 
                     const results = await Promise.all(promises);
+                    console.log('=== USER SUB-OPTION TOGGLE RESULTS ===', {
+                        results,
+                        allResults: results.map(r => r.data),
+                        permission: categoryConfig.subOptions[subOption].base,
+                        value: newValue
+                    });
                     const allSuccessful = results.every((result) => result.data.success === true);
 
                     // Always refresh to get updated override status from backend
-                    fetchCombinedUserPermissions(selectedUser.id);
+                    if (!allSuccessful) {
+                        console.error('Toggle failed, refreshing permissions');
+                        fetchCombinedUserPermissions(selectedUser.id);
+                    } else {
+                        // Update the specific permission in state after successful toggle
+                        fetchCombinedUserPermissions(selectedUser.id);
+                        // Dispatch event to refresh permissions in other components
+                        window.dispatchEvent(new CustomEvent('permissionsUpdated'));
+                    }
                 } catch (error) {
                     console.error("Failed to toggle user permission:", error);
+                    console.error("Error details:", error.response?.data || error.message);
                     fetchCombinedUserPermissions(selectedUser.id);
                 }
             }
@@ -719,6 +759,17 @@ const RolesPermissions = () => {
                 if (!selectedUser || !canManageUser(selectedUser)) return;
 
                 try {
+                    // Update UI immediately
+                    const newPermissions = { ...permissions };
+                    if (!newPermissions[category]) newPermissions[category] = { main: false, subOptions: {} };
+                    if (!newPermissions[category].subOptions) newPermissions[category].subOptions = {};
+                    if (!newPermissions[category].subOptions[subOption]) newPermissions[category].subOptions[subOption] = { enabled: false, subOptions: {} };
+                    if (!newPermissions[category].subOptions[subOption].subOptions) newPermissions[category].subOptions[subOption].subOptions = {};
+                    if (!newPermissions[category].subOptions[subOption].subOptions[nestedSubOption]) newPermissions[category].subOptions[subOption].subOptions[nestedSubOption] = { enabled: false };
+                    newPermissions[category].subOptions[subOption].subOptions[nestedSubOption].enabled = newValue;
+
+                    setPermissions(newPermissions);
+
                     // Toggle nested sub-option permission
                     const permissionsToToggle = [{
                         permission: categoryConfig.subOptions[subOption].subOptions[nestedSubOption].base,
@@ -734,12 +785,27 @@ const RolesPermissions = () => {
                     );
 
                     const results = await Promise.all(promises);
+                    console.log('=== USER NESTED SUB-OPTION TOGGLE RESULTS ===', {
+                        results,
+                        allResults: results.map(r => r.data),
+                        permission: categoryConfig.subOptions[subOption].subOptions[nestedSubOption].base,
+                        value: newValue
+                    });
                     const allSuccessful = results.every((result) => result.data.success === true);
 
                     // Always refresh to get updated override status from backend
-                    fetchCombinedUserPermissions(selectedUser.id);
+                    if (!allSuccessful) {
+                        console.error('Toggle failed, refreshing permissions');
+                        fetchCombinedUserPermissions(selectedUser.id);
+                    } else {
+                        // Update the specific permission in state after successful toggle
+                        fetchCombinedUserPermissions(selectedUser.id);
+                        // Dispatch event to refresh permissions in other components
+                        window.dispatchEvent(new CustomEvent('permissionsUpdated'));
+                    }
                 } catch (error) {
                     console.error("Failed to toggle user permission:", error);
+                    console.error("Error details:", error.response?.data || error.message);
                     fetchCombinedUserPermissions(selectedUser.id);
                 }
             }
@@ -876,9 +942,8 @@ const RolesPermissions = () => {
                 {Object.keys(permissionCategories).map((category) => {
                     const categoryConfig = permissionCategories[category];
                     const mainEnabled = permissions[category]?.main || false;
-                    const canEdit = permissionMode === "role"
-                        ? canManageRole(selectedRole)
-                        : canManageUser(selectedUser);
+                    const canEdit = (permissionMode === "role" && selectedRole && canManageRole(selectedRole)) ||
+                                     (permissionMode === "user" && selectedUser && canManageUser(selectedUser));
 
                     return (
                         <div key={category} className="mb-8">
