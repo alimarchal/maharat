@@ -172,8 +172,8 @@ const InvoiceModal = ({
 
     const fetchAvailablePurchaseOrders = async () => {
         try {
-            // Fetch only approved purchase orders
-            const response = await axios.get("/api/v1/purchase-orders?filter[status]=Approved");
+            // Fetch only approved purchase orders, sorted by created_at descending (newest first)
+            const response = await axios.get("/api/v1/purchase-orders?filter[status]=Approved&sort=-created_at");
             
             if (response.data.data) {
                 const allPOs = response.data.data;
@@ -186,6 +186,10 @@ const InvoiceModal = ({
 
                     const availablePOs = allPOs
                         .filter((po) => !usedPOIds.includes(String(po.id)))
+                        .sort((a, b) => {
+                            // Sort by ID descending (newest first) as fallback if created_at is not available
+                            return (b.id || 0) - (a.id || 0);
+                        })
                         .map((po) => ({
                             id: po.id,
                             label: po.purchase_order_no || `PO-${po.id}`,
@@ -195,13 +199,18 @@ const InvoiceModal = ({
                         }));
                     setPurchaseOrders(availablePOs);
                 } else {
-                    const availablePOs = allPOs.map((po) => ({
-                        id: po.id,
-                        label: po.purchase_order_no || `PO-${po.id}`,
-                        supplier_id: po.supplier_id,
-                        amount: po.amount,
-                        vat_amount: po.vat_amount,
-                    }));
+                    const availablePOs = allPOs
+                        .sort((a, b) => {
+                            // Sort by ID descending (newest first) as fallback if created_at is not available
+                            return (b.id || 0) - (a.id || 0);
+                        })
+                        .map((po) => ({
+                            id: po.id,
+                            label: po.purchase_order_no || `PO-${po.id}`,
+                            supplier_id: po.supplier_id,
+                            amount: po.amount,
+                            vat_amount: po.vat_amount,
+                        }));
                     setPurchaseOrders(availablePOs);
                 }
             } else {

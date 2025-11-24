@@ -354,15 +354,6 @@ const ApproveOrder = ({
 
             // Check budget validation
             if (budgetValidation && !budgetValidation.success) {
-                // If budget fails, require alternative subcost center selection
-                if (alternativeSubCostCenters.length > 0 && !selectedAlternativeSubCostCenter) {
-                    setErrors({
-                        submit: "Please select an alternative subcost center to proceed with insufficient budget.",
-                    });
-                    setIsSaving(false);
-                    return;
-                }
-                
                 // If no alternatives available, show formatted error
                 if (alternativeSubCostCenters.length === 0) {
                     const availableAmount = budgetValidation.data?.available_amount || 0;
@@ -377,6 +368,8 @@ const ApproveOrder = ({
                     setIsSaving(false);
                     return;
                 }
+                // If alternatives are available, allow submission without selecting one
+                // The sub cost center will be selected during approval process
             }
 
             // Prepare form data
@@ -386,10 +379,7 @@ const ApproveOrder = ({
                 fiscal_period_id: selectedFiscalPeriod?.id,
             };
             
-            // Add alternative subcost center if selected
-            if (selectedAlternativeSubCostCenter) {
-                dataToSubmit.alternative_sub_cost_center_id = selectedAlternativeSubCostCenter;
-            }
+            // Don't send alternative_sub_cost_center_id - it will be selected during approval
 
             // Ensure we have a purchase order number
             if (!dataToSubmit.purchase_order_no) {
@@ -633,7 +623,7 @@ const ApproveOrder = ({
                     </div>
                 )} */}
 
-                {/* Alternative SubCost Center Selection */}
+                {/* Insufficient Budget Notice */}
                 {budgetValidation && !budgetValidation.success && alternativeSubCostCenters.length > 0 && (
                     <div className="bg-white text-black px-4 py-3 rounded relative mb-4">
                         <div className="mb-3">
@@ -641,60 +631,9 @@ const ApproveOrder = ({
                             <p className="text-sm mt-1 text-black">
                                 Shortfall Amount: <span className="font-bold text-red-600">{shortfallAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </p>
-                        </div>
-                        <div className="mt-3 flex items-center gap-4">
-                            <label className="text-black font-medium whitespace-nowrap">Alternative SubCost Center:</label>
-                            <div className="flex-1 relative" ref={alternativeDropdownRef}>
-                                <div
-                                    className="w-full p-5 border border-gray-300 rounded-2xl bg-white focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC] transition-all duration-300 min-h-[60px] text-gray-900 cursor-pointer flex items-center justify-between"
-                                    onClick={() => setIsAlternativeDropdownOpen(!isAlternativeDropdownOpen)}
-                                >
-                                    <span className={selectedAlternativeSubCostCenter ? 'text-gray-900' : 'text-gray-400'}>
-                                        {selectedAlternativeSubCostCenter 
-                                            ? alternativeSubCostCenters.find(alt => alt.sub_cost_center_id == selectedAlternativeSubCostCenter)?.sub_cost_center_name || 'Select Alternative SubCost Center'
-                                            : 'Select Alternative SubCost Center'
-                                        }
-                                    </span>
-                                    <svg
-                                        className={`w-4 h-4 transition-transform ${isAlternativeDropdownOpen ? 'rotate-180' : ''}`}
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </div>
-                                {isAlternativeDropdownOpen && (
-                                    <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-[200px] overflow-y-auto">
-                                        <div className="py-1">
-                                            {alternativeSubCostCenters.map((alt) => {
-                                                const availableAmount = parseFloat(alt.available_amount) || 0;
-                                                const formattedAmount = availableAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                                                return (
-                                                    <div
-                                                        key={alt.sub_cost_center_id}
-                                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-gray-900"
-                                                        onClick={() => {
-                                                            setSelectedAlternativeSubCostCenter(alt.sub_cost_center_id);
-                                                            setIsAlternativeDropdownOpen(false);
-                                                            setErrors(prev => {
-                                                                const newErrors = { ...prev };
-                                                                delete newErrors.budget;
-                                                                return newErrors;
-                                                            });
-                                                        }}
-                                                    >
-                                                        {alt.sub_cost_center_name} (Available: <span className="text-red-600 font-semibold">{formattedAmount}</span>)
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                                {errors.alternative_sub_cost_center && (
-                                    <p className="text-red-500 text-sm mt-1">{errors.alternative_sub_cost_center}</p>
-                                )}
-                            </div>
+                            <p className="text-sm mt-2 text-gray-600">
+                                A sub cost center will be selected during the approval process.
+                            </p>
                         </div>
                     </div>
                 )}

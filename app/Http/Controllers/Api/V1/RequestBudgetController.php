@@ -382,8 +382,9 @@ class RequestBudgetController extends Controller
             }
 
             // Store original destination if not already stored
+            // If reallocate_to_sub_cost_center is null, this is the first update, so set original to the new destination
             if (!$requestBudget->original_destination_sub_cost_center) {
-                $requestBudget->original_destination_sub_cost_center = $requestBudget->reallocate_to_sub_cost_center;
+                $requestBudget->original_destination_sub_cost_center = $requestBudget->reallocate_to_sub_cost_center ?? $newDestinationId;
             }
 
             // Update destination

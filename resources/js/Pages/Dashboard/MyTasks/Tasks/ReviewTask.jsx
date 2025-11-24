@@ -729,29 +729,50 @@ const ReviewTask = () => {
                                 options={
                                     (() => {
                                         const isReallocation = taskData?.process?.title === "Budget Reallocate Approval" && 
-                                                              taskData?.request_budget?.type === 'reallocation' &&
-                                                              !taskData?.request_budget?.sub_cost_center_updated &&
-                                                              availableAlternatives.length > 0;
+                                                              taskData?.request_budget?.type === 'reallocation';
                                         
+                                        // For Budget Reallocate Approval process only
+                                        if (isReallocation) {
+                                            // Check if sub cost center has been updated (destination selected)
+                                            const subCostCenterUpdated = taskData?.request_budget?.sub_cost_center_updated;
+                                            
+                                            // Show "Update Sub Cost Center" only if not updated yet and alternatives exist
+                                            const canUpdateSubCostCenter = !subCostCenterUpdated && 
+                                                                          availableAlternatives.length > 0;
+                                            
+                                            const baseOptions = [];
+                                            
+                                            // Add "Update Sub Cost Center" if available (replaces Approve when not updated)
+                                            if (canUpdateSubCostCenter) {
+                                                baseOptions.push({ id: "Update Sub Cost Center", label: "Update Sub Cost Center" });
+                                            } else {
+                                                // Add "Approve" only if sub cost center has been updated
+                                                baseOptions.push({ id: "Approve", label: "Approve" });
+                                            }
+                                            
+                                            // Always add "Reject"
+                                            baseOptions.push({ id: "Reject", label: "Reject" });
+                                            
+                                            // Add "Refer" only if continue_approval_flow is not 0
+                                            if (taskData?.continue_approval_flow != 0) {
+                                                baseOptions.push({ id: "Refer", label: "Refer" });
+                                            }
+                                            
+                                            return baseOptions;
+                                        }
+                                        
+                                        // For all other processes (Purchase Order Approval, etc.) - normal flow
                                         if (taskData?.continue_approval_flow == 0) {
-                                            const baseOptions = [
+                                            return [
                                                 { id: "Approve", label: "Approve" },
                                                 { id: "Reject", label: "Reject" },
                                             ];
-                                            if (isReallocation) {
-                                                baseOptions.push({ id: "Update Sub Cost Center", label: "Update Sub Cost Center" });
-                                            }
-                                            return baseOptions;
                                         } else {
-                                            const baseOptions = [
+                                            return [
                                                 { id: "Approve", label: "Approve" },
                                                 { id: "Reject", label: "Reject" },
                                                 { id: "Refer", label: "Refer" },
                                             ];
-                                            if (isReallocation) {
-                                                baseOptions.push({ id: "Update Sub Cost Center", label: "Update Sub Cost Center" });
-                                            }
-                                            return baseOptions;
                                         }
                                     })()
                                 }
