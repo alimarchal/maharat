@@ -492,7 +492,8 @@ class UserController extends Controller
                     "Request a Budget" => [
                         "base" => "view_request_budget",
                         "subOptions" => [
-                            "Create Department Budget Request" => ["base" => "create_department_budget_request"]
+                            "Create Department Budget Request" => ["base" => "create_department_budget_request"],
+                            "View Budget Reallocation" => ["base" => "view_budget_reallocation"]
                         ]
                     ]
                 ]
@@ -506,6 +507,7 @@ class UserController extends Controller
                     "Payment Order Status" => ["base" => "view_payment_order_status"],
                     "Maharat Invoice Status" => ["base" => "view_maharat_invoice_status"],
                     "Budget Request Status" => ["base" => "view_budget_request_status"],
+                    "Budget Reallocation Status" => ["base" => "view_budget_reallocation_status"],
                     "Total Budget Status" => ["base" => "view_total_budget_status"],
                     "Short Delivery Status" => ["base" => "view_short_delivery_status"]
                 ]

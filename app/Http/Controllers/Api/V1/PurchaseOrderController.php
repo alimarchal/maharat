@@ -391,9 +391,14 @@ class PurchaseOrderController extends Controller
                         'available_alternatives_json' => json_encode($alternativesData),
                     ]);
                     
+                    // Note: History record will be created when destination is set via updateDestination()
+                    // This ensures we have both source and destination budget info
+                    
                     \Log::info('PurchaseOrder Store - Reallocation request created', [
                         'reallocation_request_id' => $reallocationRequest->id,
-                        'purchase_order_id' => $purchaseOrder->id
+                        'purchase_order_id' => $purchaseOrder->id,
+                        'source_budget_id' => $originalBudget->id ?? null,
+                        'note' => 'History record will be created when destination is set'
                     ]);
                     
                     // Get the approval process and create approval transaction and task

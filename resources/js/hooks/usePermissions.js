@@ -125,6 +125,18 @@ export const usePermissions = () => {
     useEffect(() => {
         fetchPermissions();
         fetchPermissionStructure();
+        
+        // Listen for permission updates
+        const handlePermissionUpdate = () => {
+            fetchPermissions();
+            fetchPermissionStructure();
+        };
+        
+        window.addEventListener('permissionsUpdated', handlePermissionUpdate);
+        
+        return () => {
+            window.removeEventListener('permissionsUpdated', handlePermissionUpdate);
+        };
     }, []);
 
     return {

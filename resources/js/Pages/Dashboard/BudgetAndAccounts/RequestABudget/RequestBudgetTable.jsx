@@ -17,6 +17,16 @@ const RequestBudgetTable = () => {
 
     const filters = ["All", "Draft", "Approved", "Pending", "Rejected"];
 
+    const canViewReallocation = hasPermission('view_budget_reallocation');
+    
+    // Debug logging
+    useEffect(() => {
+        console.log('=== RequestBudgetTable Permission Check ===', {
+            canViewReallocation,
+            hasPermission_view_budget_reallocation: hasPermission('view_budget_reallocation')
+        });
+    }, [canViewReallocation, hasPermission]);
+
     useEffect(() => {
         const fetchBudgetRequests = async () => {
             setLoading(true);
@@ -27,6 +37,11 @@ const RequestBudgetTable = () => {
                 // Apply filter if not "All"
                 if (selectedFilter !== "All") {
                     url += `&filter[status]=${selectedFilter}`;
+                }
+
+                // Exclude reallocation type if user doesn't have permission to view reallocation
+                if (!canViewReallocation) {
+                    url += `&filter[type]=budget_request`;
                 }
 
                 const response = await axios.get(url);
@@ -40,7 +55,7 @@ const RequestBudgetTable = () => {
         };
 
         fetchBudgetRequests();
-    }, [currentPage, selectedFilter]);
+    }, [currentPage, selectedFilter, canViewReallocation]);
 
     const handleDelete = async (id) => {
         if (!window.confirm("Are you sure you want to delete this budget request? This will also delete any associated tasks and approval transactions.")) {
@@ -89,12 +104,14 @@ const RequestBudgetTable = () => {
                     )}
                     {hasPermission('create_department_budget_request') && (
                         <>
-                            <Link
-                                href={`/request-budgets/reallocate`}
-                                className="bg-[#009FDC] text-white px-3 sm:px-4 lg:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm lg:text-base font-medium whitespace-nowrap"
-                            >
-                                Reallocate Sub Cost Center Budget
-                            </Link>
+                            {hasPermission('view_budget_reallocation') && (
+                                <Link
+                                    href={`/request-budgets/reallocate`}
+                                    className="bg-[#009FDC] text-white px-3 sm:px-4 lg:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm lg:text-base font-medium whitespace-nowrap"
+                                >
+                                    Reallocate Sub Cost Center Budget
+                                </Link>
+                            )}
                             <Link
                                 href={`/request-budgets/create`}
                                 className="bg-[#009FDC] text-white px-3 sm:px-4 lg:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm lg:text-base font-medium whitespace-nowrap"

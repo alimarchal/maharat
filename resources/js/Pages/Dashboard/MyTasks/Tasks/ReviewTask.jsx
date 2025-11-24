@@ -764,14 +764,14 @@ const ReviewTask = () => {
                                         // For all other processes (Purchase Order Approval, etc.) - normal flow
                                         if (taskData?.continue_approval_flow == 0) {
                                             return [
-                                                { id: "Approve", label: "Approve" },
-                                                { id: "Reject", label: "Reject" },
+                                            { id: "Approve", label: "Approve" },
+                                            { id: "Reject", label: "Reject" },
                                             ];
                                         } else {
                                             return [
-                                                { id: "Approve", label: "Approve" },
-                                                { id: "Reject", label: "Reject" },
-                                                { id: "Refer", label: "Refer" },
+                                            { id: "Approve", label: "Approve" },
+                                            { id: "Reject", label: "Reject" },
+                                            { id: "Refer", label: "Refer" },
                                             ];
                                         }
                                     })()

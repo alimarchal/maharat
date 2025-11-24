@@ -177,6 +177,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/statuses/total-budget-status/{id}', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/TotalBudgetStatusFlow', 'id' => $id]);
     })->name('processStatus.totalBudget');
+    Route::get('/statuses/budget-reallocation-status/{id}', function ($id) {
+        return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/BudgetReallocationStatusFlow', 'id' => $id]);
+    })->name('processStatus.budgetReallocation');
     Route::get('/statuses/grns/{id}', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'ReportsAndStatuses/ProcessStatus/StatusFlow/GRNsStatusFlow', 'id' => $id]);
     })->name('processStatus.grns');

@@ -11,6 +11,7 @@ class RequestBudgetParameters
         'sub_cost_center',
         'urgency',
         'status',
+        'type',
         'created_by',
     ];
 

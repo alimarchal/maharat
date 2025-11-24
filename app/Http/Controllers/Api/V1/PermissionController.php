@@ -38,6 +38,7 @@ class PermissionController extends Controller
         // Define all possible permissions
         $allPermissions = [
             'view_requests', 'request_new_item', 'make_new_request',
+            'view_budget_reallocation', 'view_budget_reallocation_status',
             'view_tasks',
             'view_procurement', 'view_rfqs', 'make_new_rfq', 'view_quotations', 'add_supplier', 'add_new_quotation', 'view_purchase_orders', 'create_new_purchase_order', 'view_invoices', 'add_invoice',
             'view_finance', 'view_maharat_invoices', 'add_customers', 'create_new_invoice', 'view_payment_orders', 'create_payment_order', 'view_account_receivables', 'view_account_payables', 'view_accounts', 'create_new_account',
@@ -247,6 +248,7 @@ class PermissionController extends Controller
                         'enabled' => $hasEffectivePermission('view_request_budget'),
                         'subOptions' => [
                             'create_department_budget_request' => $hasEffectivePermission('create_department_budget_request'),
+                            'view_budget_reallocation' => $hasEffectivePermission('view_budget_reallocation'),
                         ]
                     ],
                 ]
@@ -260,6 +262,7 @@ class PermissionController extends Controller
                     'payment_order_status' => $hasEffectivePermission('view_payment_order_status'),
                     'maharat_invoice_status' => $hasEffectivePermission('view_maharat_invoice_status'),
                     'budget_request_status' => $hasEffectivePermission('view_budget_request_status'),
+                    'budget_reallocation_status' => $hasEffectivePermission('view_budget_reallocation_status'),
                     'total_budget_status' => $hasEffectivePermission('view_total_budget_status'),
                     'short_delivery_status' => $hasEffectivePermission('view_short_delivery_status'),
                 ]

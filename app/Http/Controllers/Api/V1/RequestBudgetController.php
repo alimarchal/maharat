@@ -387,17 +387,82 @@ class RequestBudgetController extends Controller
                 $requestBudget->original_destination_sub_cost_center = $requestBudget->reallocate_to_sub_cost_center ?? $newDestinationId;
             }
 
+            // Find source and destination budgets
+            $sourceBudget = RequestBudget::where('fiscal_period_id', $requestBudget->fiscal_period_id)
+                ->where('department_id', $requestBudget->department_id)
+                ->where('cost_center_id', $requestBudget->cost_center_id)
+                ->where('sub_cost_center', $requestBudget->sub_cost_center)
+                ->where('status', 'Approved')
+                ->first();
+
+            if (!$sourceBudget) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Source budget request not found or not approved'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            $destinationBudget = RequestBudget::where('fiscal_period_id', $requestBudget->fiscal_period_id)
+                ->where('department_id', $requestBudget->department_id)
+                ->where('cost_center_id', $requestBudget->cost_center_id)
+                ->where('sub_cost_center', $newDestinationId)
+                ->where('status', 'Approved')
+                ->first();
+
+            if (!$destinationBudget) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Destination budget request not found or not approved'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
             // Update destination
             $requestBudget->reallocate_to_sub_cost_center = $newDestinationId;
             $requestBudget->updated_destination_sub_cost_center = $newDestinationId;
             $requestBudget->sub_cost_center_updated = true;
             $requestBudget->updated_by_user_id = auth()->id();
+            
+            // Store old balances before any updates
+            $requestBudget->old_balance = $sourceBudget->balance_amount;
+            $requestBudget->destination_old_balance = $destinationBudget->balance_amount;
             $requestBudget->save();
+
+            // Create or update history record
+            $historyRecord = \App\Models\BudgetReallocationHistory::where('reallocation_request_id', $requestBudget->id)->first();
+            
+            if (!$historyRecord) {
+                // Create history record if it doesn't exist
+                \App\Models\BudgetReallocationHistory::create([
+                    'reallocation_request_id' => $requestBudget->id,
+                    'source_budget_request_id' => $sourceBudget->id,
+                    'destination_budget_request_id' => $destinationBudget->id,
+                    'reallocate_amount' => $requestBudget->reallocate_amount ?? 0,
+                    'source_old_balance' => $sourceBudget->balance_amount,
+                    'source_new_balance' => $sourceBudget->balance_amount, // Will be updated when approved
+                    'destination_old_balance' => $destinationBudget->balance_amount,
+                    'destination_new_balance' => $destinationBudget->balance_amount, // Will be updated when approved
+                    'source_old_approved_amount' => $sourceBudget->approved_amount,
+                    'destination_old_approved_amount' => $destinationBudget->approved_amount,
+                    'status' => $requestBudget->status ?? 'Draft',
+                    'notes' => $requestBudget->reason_for_increase ?? null,
+                    'created_by' => auth()->id(),
+                ]);
+            } else {
+                // Update existing history record with new destination
+                $historyRecord->destination_budget_request_id = $destinationBudget->id;
+                $historyRecord->destination_old_balance = $destinationBudget->balance_amount;
+                $historyRecord->destination_old_approved_amount = $destinationBudget->approved_amount;
+                $historyRecord->updated_by = auth()->id();
+                $historyRecord->save();
+            }
 
             Log::info('=== REALLOCATION DESTINATION UPDATED ===', [
                 'request_budget_id' => $requestBudget->id,
                 'original_destination' => $requestBudget->original_destination_sub_cost_center,
                 'new_destination' => $newDestinationId,
+                'source_budget_id' => $sourceBudget->id,
+                'destination_budget_id' => $destinationBudget->id,
+                'history_created' => !$historyRecord,
                 'updated_by' => auth()->id()
             ]);
 

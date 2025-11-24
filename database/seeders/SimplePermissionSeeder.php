@@ -72,6 +72,8 @@ class SimplePermissionSeeder extends Seeder
             'view_invoice_status',
             'view_short_delivery_status',
             'view_budget_request_status',
+            'view_budget_reallocation',
+            'view_budget_reallocation_status',
             'total_budget_request',
             
             // Configuration Center sub-options
