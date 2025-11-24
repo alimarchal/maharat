@@ -205,19 +205,8 @@ class PurchaseOrderController extends Controller
             $alternatives = [];
             
             if (!$budgetValidation['valid']) {
-                // If budget validation failed, check if alternative subcost center is provided
-                if (!$alternativeSubCostCenterId) {
-                    // Return error with alternatives for frontend to display
-                    return response()->json([
-                        'message' => $budgetValidation['message'],
-                        'error' => $budgetValidation['message'],
-                        'alternatives' => $budgetValidation['alternatives'] ?? [],
-                        'shortfall_amount' => $budgetValidation['shortfall_amount'] ?? 0,
-                        'available_amount' => $budgetValidation['available_amount'] ?? 0
-                    ], Response::HTTP_BAD_REQUEST);
-                }
-                
-                // Alternative subcost center provided - create reallocation request instead of reserving budget
+                // Budget validation failed - create reallocation request
+                // Sub cost center will be selected during approval process
                 $availableAmount = $budgetValidation['available_amount'] ?? 0;
                 $shortfallAmount = $budgetValidation['shortfall_amount'] ?? $totalAmount;
                 $alternatives = $budgetValidation['alternatives'] ?? [];
@@ -251,16 +240,15 @@ class PurchaseOrderController extends Controller
                 $validatedData['fiscal_period_id'] = $fiscalPeriodId;
                 $validatedData['request_budget_id'] = $originalBudget->id;
                 
-                // Store alternative subcost center info (will be used after reallocation is approved)
-                $validatedData['alternative_sub_cost_center_id'] = $alternativeSubCostCenterId;
+                // Store shortfall amount (alternative_sub_cost_center_id will be set during approval)
                 $validatedData['alternative_budget_amount'] = $shortfallAmount;
                 
                 \Log::info('PurchaseOrder Store - Creating reallocation request for PO', [
                     'original_budget_id' => $originalBudget->id,
-                    'alternative_sub_cost_center_id' => $alternativeSubCostCenterId,
                     'shortfall_amount' => $shortfallAmount,
                     'total_amount' => $totalAmount,
-                    'alternatives_count' => count($alternatives)
+                    'alternatives_count' => count($alternatives),
+                    'note' => 'Sub cost center will be selected during approval process'
                 ]);
                 
                 // Note: Reallocation request will be created after PO is created (see below)
@@ -369,11 +357,11 @@ class PurchaseOrderController extends Controller
                 }
                 
                 // If PO status is "Pending Reallocation", create reallocation request
-                if ($purchaseOrder->status === 'Pending Reallocation' && isset($alternativeSubCostCenterId) && isset($shortfallAmount)) {
+                if ($purchaseOrder->status === 'Pending Reallocation' && isset($shortfallAmount)) {
                     \Log::info('PurchaseOrder Store - Creating reallocation request for PO', [
                         'purchase_order_id' => $purchaseOrder->id,
-                        'alternative_sub_cost_center_id' => $alternativeSubCostCenterId,
-                        'shortfall_amount' => $shortfallAmount
+                        'shortfall_amount' => $shortfallAmount,
+                        'alternatives_count' => count($alternatives)
                     ]);
                     
                     // Prepare alternatives data for storage
@@ -386,16 +374,16 @@ class PurchaseOrderController extends Controller
                         ];
                     }
                     
-                    // Create reallocation request
+                    // Create reallocation request without destination (will be set during approval)
                     $reallocationRequest = RequestBudget::create([
                         'purchase_order_id' => $purchaseOrder->id,
                         'fiscal_period_id' => $fiscalPeriodId,
                         'department_id' => $rfq->department_id,
                         'cost_center_id' => $rfq->cost_center_id,
                         'sub_cost_center' => $rfq->sub_cost_center_id,
-                        'reallocate_to_sub_cost_center' => $alternativeSubCostCenterId,
+                        'reallocate_to_sub_cost_center' => null, // Will be set during approval
                         'reallocate_amount' => $shortfallAmount,
-                        'original_destination_sub_cost_center' => $alternativeSubCostCenterId,
+                        'original_destination_sub_cost_center' => null, // Will be set when first approver selects
                         'type' => 'reallocation',
                         'status' => 'Draft',
                         'reason_for_increase' => 'Budget reallocation required for Purchase Order: ' . $purchaseOrder->purchase_order_no,

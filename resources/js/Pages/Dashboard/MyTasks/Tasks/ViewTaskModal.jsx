@@ -1369,7 +1369,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 {currentTask.request_budget.sub_cost_center_updated && currentTask.request_budget.updated_by_user && (
                                                     <div className="mt-2 text-sm">
                                                         <span className="font-bold text-red-600">
-                                                            Changed from {currentTask.request_budget.original_destination_sub_cost_center_details?.name || "Original"} by {currentTask.request_budget.updated_by_user?.name || "Previous Approver"}
+                                                            Changed To {currentTask.request_budget.updated_destination_sub_cost_center_details?.name || currentTask.request_budget.reallocate_to_sub_cost_center_details?.name || "N/A"} by {currentTask.request_budget.updated_by_user?.name || "Previous Approver"}
                                                         </span>
                                                     </div>
                                                 )}
